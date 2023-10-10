@@ -1,4 +1,4 @@
-namespace Celbridge.Business.Models
+namespace Celbridge.Models
 {
     public record AppConfig
     {

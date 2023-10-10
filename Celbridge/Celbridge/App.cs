@@ -1,3 +1,5 @@
+using Celbridge.Models;
+
 namespace Celbridge
 {
     public class App : Application
