@@ -1,4 +1,4 @@
-﻿global using Celbridge.Business.Models;
+﻿global using Celbridge.Models;
 global using CommunityToolkit.Mvvm.ComponentModel;
 global using CommunityToolkit.Mvvm.Input;
 global using Microsoft.Extensions.DependencyInjection;
