@@ -1,0 +1,16 @@
+<Page x:Class="Celbridge.MainPage"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:local="using:Celbridge"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+	<StackPanel HorizontalAlignment="Center"
+				VerticalAlignment="Center">
+		<TextBlock AutomationProperties.AutomationId="HelloTextBlock"
+					Text="That very night in Max's room a forest grew... and grew and grew until his ceiling hung with vines and the walls became the world all around..." 
+					HorizontalAlignment="Center" />
+	</StackPanel>
+</Page>
