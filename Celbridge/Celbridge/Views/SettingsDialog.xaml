@@ -1,0 +1,20 @@
+﻿<ContentDialog
+    x:Class="Celbridge.Views.SettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Settings"
+    CloseButtonText="Close"
+    DataContext="{x:Bind ViewModel}">
+
+    <StackPanel VerticalAlignment="Stretch" 
+                HorizontalAlignment="Stretch">
+        <ComboBox ItemsSource="{x:Bind ViewModel.ThemeValues}"
+                  SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}"
+                  Header="Theme" 
+                  PlaceholderText="Application theme" Width="200"/>
+    </StackPanel>
+</ContentDialog>

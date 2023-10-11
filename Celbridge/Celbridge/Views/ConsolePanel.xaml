@@ -1,0 +1,68 @@
+﻿<UserControl
+    x:Class="Celbridge.Views.ConsolePanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    DataContext="{x:Bind ViewModel}"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Background="{StaticResource PanelBackgroundABrush}"
+          BorderBrush="{StaticResource PanelBorderBrush}" 
+          BorderThickness="0 0 0 0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                BorderBrush="{StaticResource PanelBorderBrush}" 
+                BorderThickness="0 1 0 0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Margin="6 0 6 0" 
+                           Text="Console"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="2"
+                        Margin="6 0 6 0"
+                        Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Clear"
+                        ToolTipService.Placement="Top">
+                    <SymbolIcon Symbol="Cancel"/>
+                </Button>                
+                <Button Grid.Column="3"
+                        Command="{x:Bind ViewModel.CollapseCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Close"
+                        ToolTipService.Placement="Top">
+                    <SymbolIcon Symbol="ClosePane"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      x:Name="ConsoleScrollViewer"
+                      Background="{StaticResource PanelBackgroundBBrush}">
+            <TextBox Margin="0 1 0 0"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     Text="{x:Bind ViewModel.OutputText, Mode=OneWay}"
+                     VerticalAlignment="Stretch" 
+                     HorizontalAlignment="Stretch"/>
+        </ScrollViewer>
+
+        <TextBox x:Name="CommandTextBox" 
+                 Grid.Row="2" 
+                 KeyDown="CommandTextBox_KeyDown"
+                 KeyUp="CommandTextBox_KeyUp"
+                 Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 VerticalAlignment="Bottom" 
+                 HorizontalAlignment="Stretch" 
+                 IsSpellCheckEnabled="False"/>
+    </Grid>
+</UserControl>

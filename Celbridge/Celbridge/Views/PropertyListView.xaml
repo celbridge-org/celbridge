@@ -1,0 +1,38 @@
+﻿<UserControl
+    x:Class="Celbridge.Views.PropertyListView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:utils="using:Celbridge.Utils"
+    xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <utils:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Vertical">
+        <ListView x:Name="ItemsListView"
+            CanReorderItems="True"
+            CanDragItems="True"
+            AllowDrop="True"
+            SelectionMode="Single"
+            Header="{x:Bind ViewModel.LabelText}"
+            DragItemsStarting="ItemsListView_DragItemsStarting"
+            DragItemsCompleted="ItemsListView_DragItemsCompleted"
+            Margin="0"
+            win:Transitions="{x:Null}"
+            win:ItemContainerTransitions="{x:Null}"
+            SelectionChanged="ItemsListView_SelectionChanged"/>
+
+        <Button Margin="12 0 0 0"
+                HorizontalAlignment="Center"
+                Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}"
+                ToolTipService.ToolTip="Add a new item to the list"
+                ToolTipService.Placement="Bottom"
+                Command="{x:Bind ViewModel.AddItemCommand}">
+            <SymbolIcon Symbol="Add"/>
+        </Button>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,208 @@
+﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Celbridge.Views;
+using Celbridge.Services;
+using Celbridge.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml.Media;
+using Celbridge.Utils;
+using System.Threading.Tasks;
+using Serilog;
+
+namespace Celbridge
+{
+    public sealed partial class Shell : Page
+    {
+        private ISettingsService _settings;
+
+        public ShellViewModel ViewModel { get; set; }
+
+        public Shell()
+        {
+            this.InitializeComponent();
+
+            var app = Application.Current as App;
+            ViewModel = app.Host.Services.GetService<ShellViewModel>();
+            ViewModel.WindowActivated += Window_Activated;
+
+            Loaded += Page_Loaded;
+        }
+
+        private void Window_Activated(bool active)
+        {
+#if WINDOWS
+            if (active)
+            {
+                var ActiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarActiveColor");
+                TitleBar.Background = new SolidColorBrush(ActiveColor);
+            }
+            else
+            {
+                var InactiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarInactiveColor");
+                TitleBar.Background = new SolidColorBrush(InactiveColor);
+            }
+#endif
+            UpdateSidePanels();
+        }
+
+        private void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            var app = Application.Current as App;
+
+#if WINDOWS
+            // Todo: Set titlebar content again
+            // app.SetTitleBarContent(TitleBar);
+#endif
+            BottomPanel.Children.Add(new ConsolePanel());
+            LeftPanel.Children.Add(new ProjectPanel());
+            LeftNavigationBar.Children.Add(new LeftNavigationBar());
+            RightNavigationBar.Children.Add(new RightNavigationBar());
+            StatusBar.Children.Add(new StatusBar());
+            CenterPanel.Children.Add(new DocumentsPanel());
+            RightPanel.Children.Add(new InspectorPanel());
+
+            _settings = app.Host.Services.GetService<ISettingsService>();
+            _settings.EditorSettings.PropertyChanged += Settings_PropertyChanged;
+
+            LeftSplitter.SizeChanged += LeftSplitter_SizeChanged;
+            RightSplitter.SizeChanged += RightSplitter_SizeChanged;
+            CenterPanelGrid.LayoutUpdated += CenterPanelGrid_LayoutUpdated;
+
+            UpdateSidePanels();
+
+            var projectService = app.Host.Services.GetService<IProjectService>();
+            
+            async Task OpenPreviousProject()
+            {
+                var openResult = await projectService.OpenPreviousProject();
+                if (openResult is ErrorResult openError)
+                {
+                    Log.Error(openError.Message);
+                }
+            }
+
+            _ = OpenPreviousProject();
+        }
+
+        private void LeftSplitter_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            _settings.EditorSettings.LeftPanelWidth = (float)e.NewSize.Width;
+        }
+
+        private void RightSplitter_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            _settings.EditorSettings.RightPanelWidth = (float)e.NewSize.Width;
+        }
+
+        private void CenterPanelGrid_LayoutUpdated(object sender, object e)
+        {
+            // For some reason, the panels get initialized first with a value of 4.
+            // The code here only updates the value stored in settings when the width
+            // is greater than the minWidth - using this as a hacky way to tell when we're
+            // actually resizing using a GridSplitter.
+
+            var leftWidth = (float)LeftPanelColumn.Width.Value;
+            if (leftWidth > LeftPanelColumn.MinWidth)
+            {
+                _settings.EditorSettings.LeftPanelWidth = leftWidth;
+            }
+
+            var rightWidth = (float)RightPanelColumn.Width.Value;
+            if (rightWidth > RightPanelColumn.MinWidth)
+            {
+                _settings.EditorSettings.RightPanelWidth = rightWidth;
+            }
+
+            var bottomHeight = (float)BottomPanelRow.Height.Value;
+            if (bottomHeight > BottomPanelRow.MinHeight)
+            {
+                _settings.EditorSettings.BottomPanelHeight = bottomHeight;
+            }
+        }
+
+        private void Settings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "LeftPanelExpanded")
+            {
+                if (!_settings.EditorSettings.LeftPanelExpanded)
+                {
+                    // Record the current width before collapsing the panel
+                    _settings.EditorSettings.LeftPanelWidth = (float)LeftPanelColumn.Width.Value;
+                }
+                UpdateSidePanels();
+            }
+            else if (e.PropertyName == "RightPanelExpanded")
+            {
+                if (!_settings.EditorSettings.RightPanelExpanded)
+                {
+                    // Record the current width before collapsing the panel
+                    _settings.EditorSettings.RightPanelWidth = (float)RightPanelColumn.Width.Value;
+                }
+                UpdateSidePanels();
+            }
+            else if (e.PropertyName == "BottomPanelExpanded")
+            {
+                if (!_settings.EditorSettings.BottomPanelExpanded)
+                {
+                    // Record the current height before collapsing the panel
+                    _settings.EditorSettings.BottomPanelHeight = (float)BottomPanelRow.Height.Value;
+                }
+                UpdateSidePanels();
+            }
+        }
+
+        private void UpdateSidePanels()
+        {
+            // The trick here is to set the panel to collapsed _before_ setting the width to 0.
+            // This avoids an exception in Skia.Gtk where it tries to perform layout on a 0 sized control.
+
+            var leftPanelExpanded = _settings.EditorSettings.LeftPanelExpanded;
+            if (leftPanelExpanded)
+            {
+                LeftSplitter.Visibility = Visibility.Visible;
+                LeftPanel.Visibility = Visibility.Visible;
+                LeftPanelColumn.MinWidth = 100;
+                LeftPanelColumn.Width = new GridLength(_settings.EditorSettings.LeftPanelWidth);
+            }
+            else
+            {
+                LeftSplitter.Visibility = Visibility.Collapsed;
+                LeftPanel.Visibility = Visibility.Collapsed;
+                LeftPanelColumn.MinWidth = 0;
+                LeftPanelColumn.Width = new GridLength(0);
+            }
+
+            var rightPanelExpanded = _settings.EditorSettings.RightPanelExpanded;
+            if (rightPanelExpanded)
+            {
+                RightSplitter.Visibility = Visibility.Visible;
+                RightPanel.Visibility = Visibility.Visible;
+                RightPanelColumn.MinWidth = 100;
+                RightPanelColumn.Width = new GridLength(_settings.EditorSettings.RightPanelWidth);
+            }
+            else
+            {
+                RightSplitter.Visibility = Visibility.Collapsed;
+                RightPanel.Visibility = Visibility.Collapsed;
+                RightPanelColumn.MinWidth = 0;
+                RightPanelColumn.Width = new GridLength(0);
+            }
+
+            var bottomPanelExpanded = _settings.EditorSettings.BottomPanelExpanded;
+            if (bottomPanelExpanded)
+            {
+                BottomSplitter.Visibility = Visibility.Visible;
+                BottomPanel.Visibility = Visibility.Visible;
+                BottomPanelRow.MinHeight = 100;
+                BottomPanelRow.Height = new GridLength(_settings.EditorSettings.BottomPanelHeight);
+            }
+            else
+            {
+                BottomSplitter.Visibility = Visibility.Collapsed;
+                BottomPanel.Visibility = Visibility.Collapsed;
+                BottomPanelRow.MinHeight = 0;
+                BottomPanelRow.Height = new GridLength(0);
+            }
+        }
+    }
+}
