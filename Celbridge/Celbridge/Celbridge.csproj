@@ -9,6 +9,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Diagnostics" />
+		<PackageReference Include="IronPython" />
+		<PackageReference Include="IronPython.StdLib" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+		<PackageReference Include="Newtonsoft.Json" />
+		<PackageReference Include="OpenAI" />
+		<PackageReference Include="Scriban" />
+		<PackageReference Include="Serilog" />
+		<PackageReference Include="Serilog.Sinks.Debug" />
 		<PackageReference Include="Uno.WinUI" />
 		<PackageReference Include="Uno.Resizetizer" />
 		<PackageReference Include="CommunityToolkit.Mvvm" />
