@@ -1,0 +1,135 @@
+﻿<UserControl
+    x:Class="Celbridge.Views.InspectorPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:utils="using:Celbridge.Utils"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+    xmlns:views="using:Celbridge.Views"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    DataContext="{x:Bind ViewModel}">
+
+    <UserControl.Resources>
+        <utils:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource PanelBackgroundABrush}"
+          BorderBrush="{StaticResource PanelBorderBrush}" 
+          BorderThickness="1 0 0 0"
+          LayoutUpdated="InspectorPanel_LayoutUpdated">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                BorderBrush="{StaticResource PanelBorderBrush}" 
+                BorderThickness="0 0 0 1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Margin="6 0 6 0" 
+                           Text="Inspector"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="2" 
+                        Command="{x:Bind ViewModel.CollapseCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Close"
+                        ToolTipService.Placement="Bottom">
+                    <SymbolIcon Symbol="ClosePane"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1"
+              x:Name="PropertyGrid"
+              Visibility="{x:Bind ViewModel.HasSelectedEntity, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition x:Name="DetailPanelRow" 
+                               MinHeight="120"
+                               Height="200"/>
+            </Grid.RowDefinitions>
+            
+            <Grid Grid.Row="0"
+                  HorizontalAlignment="Stretch"
+                  BorderBrush="{StaticResource PanelBorderBrush}" 
+                  BorderThickness="0 0 0 1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <SymbolIcon Grid.Column="0"
+                            Symbol="{x:Bind ViewModel.TypeIcon, Mode=OneWay}"
+                            Margin="6"/>
+                <TextBlock Grid.Column="1"
+                            x:Name="ItemType"
+                            VerticalAlignment="Center"
+                            Text="{x:Bind ViewModel.TypeName, Mode=OneWay}"/>
+                <Button Grid.Column="3"
+                        Margin="0 0 6 0"
+                        ToolTipService.ToolTip="Open Folder"
+                        ToolTipService.Placement="Bottom"
+                        Command="{x:Bind ViewModel.OpenFolderCommand}">
+                    <SymbolIcon Symbol="OpenLocal"/>
+                </Button>
+                <Button Grid.Column="4"
+                        ToolTipService.ToolTip="Delete"
+                        ToolTipService.Placement="Bottom"
+                        Command="{x:Bind ViewModel.DeleteEntityCommand}">
+                    <SymbolIcon Symbol="Delete"/>
+                </Button>
+            </Grid>
+
+            <ListView Grid.Row="1"
+                      x:Name="PropertyListView"
+                      SelectionMode="None"
+                      win:Transitions="{x:Null}"
+                      win:ItemContainerTransitions="{x:Null}">
+                <!--
+                // Todo: Reduce the margin on each list item to make better use of space
+                // Looks like the only way to do this is to create a custom style by copying the default style?
+                // https://nicksnettravels.builttoroam.com/xaml-button-styles/
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListItemStyle}">
+                        <Setter Property="Margin" Value="6"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                -->
+            </ListView>
+
+            <!-- Detail Panel -->
+            <views:DetailPanel Grid.Row="2"/>
+
+            <toolkit:GridSplitter Grid.Row="2" 
+                                  Grid.Column="0"
+                                  VerticalAlignment="Top"
+                                  MinHeight="4"
+                                  Height="4"
+                                  GripperCursor="Default"
+                                  ResizeDirection="Auto"
+                                  ResizeBehavior="BasedOnAlignment"
+                                  CursorBehavior="ChangeOnSplitterHover"
+                                  Background="{StaticResource PanelBorderBrush}" 
+                                  Foreground="{StaticResource PanelBackgroundBBrush}">
+                <toolkit:GridSplitter.RenderTransform>
+                    <TranslateTransform Y="-2" />
+                </toolkit:GridSplitter.RenderTransform>
+                <toolkit:GridSplitter.Element>
+                    <Grid>
+                        <!-- No gripper -->
+                    </Grid>
+                </toolkit:GridSplitter.Element>
+            </toolkit:GridSplitter>
+        </Grid>
+    </Grid>
+</UserControl>

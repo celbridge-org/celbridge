@@ -1,0 +1,13 @@
+﻿<ContentDialog
+    x:Class="Celbridge.Views.ProgressDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="{x:Bind ViewModel.Title}"
+    PrimaryButtonCommand="{x:Bind ViewModel.CancelCommand}">
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <ProgressBar Width="200" Height="20" IsIndeterminate="True"/>
+        </StackPanel>
+    </Grid>
+</ContentDialog>

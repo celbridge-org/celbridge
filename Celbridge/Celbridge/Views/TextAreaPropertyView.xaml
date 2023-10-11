@@ -1,0 +1,16 @@
+﻿<UserControl
+    x:Class="Celbridge.Views.TextAreaPropertyView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <TextBox x:Name="ValueTextBox"
+            Text="{x:Bind ViewModel.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            Header="{x:Bind ViewModel.LabelText}"
+            TextWrapping="Wrap"
+            AcceptsReturn="True"
+            Margin="0 6 0 6"/>
+ 
+</UserControl>
