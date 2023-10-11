@@ -2,6 +2,7 @@ using Celbridge.Models;
 using Celbridge.Services;
 using Celbridge.Tasks;
 using Celbridge.ViewModels;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge
@@ -46,12 +47,24 @@ namespace Celbridge
                 MainWindow.Content = rootFrame;
             }
 
+            rootFrame.Loaded += (s, e) =>
+            {
+                // XamlRoot is required for displaying content dialogs
+                var dialogService = Host.Services.GetRequiredService<IDialogService>();
+
+                dialogService.XamlRoot = rootFrame.XamlRoot;
+
+                // Start monitoring for save requests
+                var saveDataService = Host.Services.GetRequiredService<ISaveDataService>();
+                _ = saveDataService.StartMonitoringAsync(0.25);
+            };
+
             if (rootFrame.Content == null)
             {
                 // When the navigation stack isn't restored navigate to the first page,
                 // configuring the new page by passing required information as a navigation
                 // parameter
-                rootFrame.Navigate(typeof(MainPage), args.Arguments);
+                rootFrame.Navigate(typeof(Shell), args.Arguments);
             }
             // Ensure the current window is active
             MainWindow.Activate();
