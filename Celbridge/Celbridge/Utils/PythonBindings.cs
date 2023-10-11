@@ -14,36 +14,38 @@ namespace Celbridge.Utils
     {
         public static void ClearHistory()
         {
-            var consoleService = (Application.Current as App).Host.Services.GetService<IConsoleService>();
+            var consoleService = (Application.Current as App)!.Host!.Services.GetRequiredService<IConsoleService>();
             consoleService.ClearHistory();
         }
 
         public static void UpdateResources()
         {
-            var resourceService = (Application.Current as App).Host.Services.GetService<IResourceService>();
-            var projectService = (Application.Current as App).Host.Services.GetService<IProjectService>();
+            var resourceService = (Application.Current as App)!.Host!.Services.GetRequiredService<IResourceService>();
+            var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
 
             var activeProject = projectService.ActiveProject;
+            Guard.IsNotNull(activeProject);
+
             _ = resourceService.UpdateProjectResources(activeProject);
         }
 
         public static void WriteResources()
         {
-            var projectService = (Application.Current as App).Host.Services.GetService<IProjectService>();
+            var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
             var activeProject = projectService.ActiveProject;
 
             if (activeProject != null)
             {
-                var resourceService = (Application.Current as App).Host.Services.GetService<IResourceService>();
+                var resourceService = (Application.Current as App)!.Host!.Services.GetRequiredService<IResourceService>();
                 resourceService.WriteResourceRegistryToLog(activeProject.ResourceRegistry);
             }
         }
 
         public static void StartChat(string textFile)
         {
-            var consoleService = (Application.Current as App).Host.Services.GetService<IConsoleService>();
-            var resourceService = (Application.Current as App).Host.Services.GetService<IResourceService>();
-            var projectService = (Application.Current as App).Host.Services.GetService<IProjectService>();
+            var consoleService = (Application.Current as App)!.Host!.Services.GetRequiredService<IConsoleService>();
+            var resourceService = (Application.Current as App)!.Host!.Services.GetRequiredService<IResourceService>();
+            var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
 
             var project = projectService.ActiveProject;
             if (project == null)
@@ -53,20 +55,19 @@ namespace Celbridge.Utils
             }
 
             var pathResult = resourceService.GetPathForNewResource(project, textFile);
-            if (pathResult.Failure)
+            if (pathResult is ErrorResult<string> error)
             {
-                var error = pathResult as ErrorResult<string>;
                 Log.Error(error.Message);
                 return;
             }
-            var textFilePath = pathResult.Data;
+            var textFilePath = pathResult.Data!;
 
             consoleService.EnterChatMode(textFilePath);
         }
 
         public static void ShowProgressDialog()
         {
-            var dialogService = (Application.Current as App).Host.Services.GetService<IDialogService>();
+            var dialogService = (Application.Current as App)!.Host!.Services.GetRequiredService<IDialogService>();
 
             async Task PresentProgressDialog()
             {
@@ -80,8 +81,8 @@ namespace Celbridge.Utils
 
         public static async void Start()
         {
-            var celScriptService = (Application.Current as App).Host.Services.GetService<ICelScriptService>();
-            var projectService = (Application.Current as App).Host.Services.GetService<IProjectService>();
+            var celScriptService = (Application.Current as App)!.Host!.Services.GetRequiredService<ICelScriptService>();
+            var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
 
             if (celScriptService == null || projectService == null)
             {

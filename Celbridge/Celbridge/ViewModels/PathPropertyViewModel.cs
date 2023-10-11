@@ -14,15 +14,13 @@ namespace Celbridge.ViewModels
         private async Task PickFile_ExecutedAsync()
         {
             var result = await FileUtils.ShowFileOpenPicker();
-            if (result.Success)
+            if (result is ErrorResult<string> error)
             {
-                Value = result.Data;
-            }
-            else
-            {
-                var error = result as ErrorResult<string>;
                 Log.Error(error.Message);
+                return;
             }
+            
+            Value = result.Data;
         }
     }
 }

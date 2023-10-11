@@ -16,7 +16,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<CallArgumentsPropertyViewModel>();
         }
 
@@ -34,7 +34,7 @@ namespace Celbridge.Views
                 return new ErrorResult(createError.Message);
             }
 
-            var views = createResult.Data;
+            var views = createResult.Data!;
             var callArgumentsView = views[0] as RecordPropertyView;
             Guard.IsNotNull(callArgumentsView);
 
@@ -45,7 +45,9 @@ namespace Celbridge.Views
             var viewList = new List<UIElement>();
             foreach (var view in propertyViews)
             {
-                viewList.Add(view as UIElement);
+                var item = view as UIElement;
+                Guard.IsNotNull(item);
+                viewList.Add(item);
             }
 
             foreach (var view in viewList)

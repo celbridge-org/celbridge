@@ -15,12 +15,12 @@ namespace Celbridge.Views
         public LeftNavigationBar()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<LeftNavigationBarViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<LeftNavigationBarViewModel>();
 
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == "Expanded")
             {

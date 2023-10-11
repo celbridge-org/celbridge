@@ -27,7 +27,7 @@ namespace Celbridge.Services
 
     public interface IProjectService
     {
-        Project ActiveProject { get; }
+        Project? ActiveProject { get; }
         Result GetProjectPath(string parentFolder, string projectName);
         Task<Result<string>> CreateProject(string parentFolder, string projectName);
         Result SaveProject();
@@ -36,15 +36,11 @@ namespace Celbridge.Services
         Task<Result> OpenPreviousProject();
     }
 
-    public record ProjectCreatedMessage(Project project);
+    public record ProjectCreatedMessage(Project Project);
 
-    public class ActiveProjectChangedMessage : ValueChangedMessage<Project>
-    {
-        public ActiveProjectChangedMessage(Project project) : base(project)
-        {}
-    }
+    public record ActiveProjectChangedMessage(Project? Project);
 
-    public record PreviouslySelectedEntityMessage(Guid entityId);
+    public record PreviouslySelectedEntityMessage(Guid EntityId);
 
     public class ProjectService : IProjectService, ISaveData
     {
@@ -56,7 +52,7 @@ namespace Celbridge.Services
         private readonly IDialogService _dialogService;
         private readonly IInspectorService _inspectorService;
 
-        public Project ActiveProject { get; private set; }
+        public Project? ActiveProject { get; private set; }
 
         public ProjectService(IMessenger messengerService, 
             ISettingsService settingsService,
@@ -115,7 +111,7 @@ namespace Celbridge.Services
                 if (closeResult.Failure)
                 {
                     var closeError = closeResult as ErrorResult;
-                    return new ErrorResult<string>($"Failed to close active project: {closeError.Message}");
+                    return new ErrorResult<string>($"Failed to close active project: {closeError!.Message}");
                 }
             }
 
@@ -125,12 +121,15 @@ namespace Celbridge.Services
             {
                 return new ErrorResult<string>(error.Message);
             }
-            var projectPath = (projectPathResult as SuccessResult<string>).Data;
+
+
+            var projectPath = (projectPathResult as SuccessResult<string>)!.Data!;
+            Guard.IsNotNull(projectPath);
 
             try
             {
                 // Get the folder and filename from the validated path.
-                string folder = Path.GetDirectoryName(projectPath);
+                string folder = Path.GetDirectoryName(projectPath) ?? string.Empty;
                 string filename = Path.GetFileName(projectPath);
 
                 if (Directory.Exists(folder))
@@ -151,6 +150,7 @@ namespace Celbridge.Services
                 await File.WriteAllTextAsync(projectPath, json);
 
                 // Remember last opened project
+                Guard.IsNotNull(_settingsService.EditorSettings);
                 _settingsService.EditorSettings.PreviousActiveProjectPath = projectPath;
 
                 var message = new ProjectCreatedMessage(project);
@@ -203,6 +203,8 @@ namespace Celbridge.Services
                 return new ErrorResult("Failed to serialize active project.");
             }
 
+            Guard.IsNotNull(ActiveProject);
+
             await File.WriteAllTextAsync(ActiveProject.ProjectPath, jsonResult.Data);
             // Log.Information("Saved Project");
 
@@ -230,7 +232,7 @@ namespace Celbridge.Services
                 if (result.Failure)
                 {
                     var error = result as ErrorResult;
-                    return new ErrorResult($"Failed to close active project: {error.Message}");
+                    return new ErrorResult($"Failed to close active project: {error!.Message}");
                 }
             }
 
@@ -242,7 +244,7 @@ namespace Celbridge.Services
                     return new ErrorResult($"Failed to show progress dialog: {showProgressError.Message}");
                 }
 
-                var services = (Application.Current as App).Host.Services;
+                var services = (Application.Current as App)!.Host!.Services;
                 var loadProjectTask = services.GetRequiredService<LoadProjectTask>();
 
                 var result = await loadProjectTask.Load(projectPath);
@@ -252,7 +254,7 @@ namespace Celbridge.Services
                     return new ErrorResult(loadError.Message);
                 }
 
-                var project = result.Data;
+                var project = result.Data!;
                 Guard.IsNotNull(project);
 
                 ActiveProject = project;
@@ -263,6 +265,7 @@ namespace Celbridge.Services
                 // It probably only works right now because of the delay below
                 OpenPreviousDocuments();
 
+                Guard.IsNotNull(_settingsService.ProjectSettings);
                 var previousSelectedEntity = _settingsService.ProjectSettings.SelectedEntity;
                 if (previousSelectedEntity == Guid.Empty &&
                     forceSelectEntityGuid != Guid.Empty)
@@ -300,6 +303,7 @@ namespace Celbridge.Services
         private void OpenPreviousDocuments()
         {
             Guard.IsNotNull(ActiveProject);
+            Guard.IsNotNull(_settingsService.ProjectSettings);
 
             var previouslyOpenedDocuments = _settingsService.ProjectSettings.OpenDocuments;
             var failedToOpenDocuments = new List<Guid>();
@@ -348,11 +352,13 @@ namespace Celbridge.Services
             if (result.Failure)
             {
                 var error = result as ErrorResult;
-                return new ErrorResult($"Failed to close project. {error.Message}");
+                return new ErrorResult($"Failed to close project. {error!.Message}");
             }
 
             ActiveProject = null;
-            _settingsService.EditorSettings.PreviousActiveProjectPath = null;
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
+            _settingsService.EditorSettings.PreviousActiveProjectPath = string.Empty;
 
             var activeProjectChanged = new ActiveProjectChangedMessage(null);
             _messengerService.Send(activeProjectChanged);
@@ -362,6 +368,8 @@ namespace Celbridge.Services
 
         public async Task<Result> OpenPreviousProject()
         {
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
             var previousProjectPath = _settingsService.EditorSettings.PreviousActiveProjectPath;
             if (string.IsNullOrEmpty(previousProjectPath))
             {

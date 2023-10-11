@@ -22,7 +22,7 @@ namespace Celbridge.Views
         public DocumentsPanel()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<DocumentsViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<DocumentsViewModel>();
             ViewModel.DocumentsPanelView = this;
         }
 
@@ -54,7 +54,7 @@ namespace Celbridge.Views
 
         public void CloseDocumentTab(IDocument document)
         {
-            TabViewItem tabViewItem = null;
+            TabViewItem? tabViewItem = null;
             foreach (var tab in DocumentTabView.TabItems)
             {
                 var documentView = tab as IDocumentView;

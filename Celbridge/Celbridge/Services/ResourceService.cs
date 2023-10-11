@@ -69,7 +69,7 @@ namespace Celbridge.Services
         private readonly SHA256 _hashAlgorithm = SHA256.Create();
         private readonly IMessenger _messengerService;
         private readonly IResourceTypeService _resourceTypeService;
-        private IInspectorService _entityService;
+        private IInspectorService? _inspectorService;
 
         public ResourceService(IMessenger messengerService, IResourceTypeService resourceTypeService)
         {
@@ -81,8 +81,9 @@ namespace Celbridge.Services
         {
             get
             {
-                _entityService ??= (Application.Current as App).Host.Services.GetService<IInspectorService>();
-                return _entityService;
+                _inspectorService ??= (Application.Current as App)!.Host!.Services.GetService<IInspectorService>();
+                Guard.IsNotNull(_inspectorService);
+                return _inspectorService;
             }
         }
 
@@ -101,7 +102,7 @@ namespace Celbridge.Services
                     return new ErrorResult($"Failed to get ResourceTypeInfo for type '{resourceType}'");
                 }
 
-                var typeInfo = typeResult.Data;
+                var typeInfo = typeResult.Data!;
                 Guard.IsTrue(typeInfo.Extensions.Any());
 
                 // Todo: Accept any extension that the user defines that's in the list of supported extensions
@@ -124,9 +125,9 @@ namespace Celbridge.Services
             if (factoryResult.Failure)
             {
                 var error = factoryResult as ErrorResult<Func<string, Result>>;
-                return new ErrorResult(error.Message);
+                return new ErrorResult(error!.Message);
             }
-            var factoryMethod = factoryResult.Data;
+            var factoryMethod = factoryResult.Data!;
 
             var result = factoryMethod.Invoke(newResourcePath);
             if (result == null)
@@ -163,7 +164,7 @@ namespace Celbridge.Services
                     if (deleteFolderResult.Failure)
                     {
                         var error = deleteFolderResult as ErrorResult<string>;
-                        return new ErrorResult(error.Message);
+                        return new ErrorResult(error!.Message);
                     }
                 }
 
@@ -173,7 +174,7 @@ namespace Celbridge.Services
                     if (deleteFileResult.Failure)
                     {
                         var error = deleteFileResult as ErrorResult<string>;
-                        return new ErrorResult(error.Message);
+                        return new ErrorResult(error!.Message);
                     }
                 }
 
@@ -262,11 +263,11 @@ namespace Celbridge.Services
                 if (result.Failure)
                 {
                     var error = result as ErrorResult<ResourceStatus>;
-                    Log.Error(error.Message);
+                    Log.Error(error!.Message);
                     return;
                 }
 
-                var resourceStatus = result.Data;
+                var resourceStatus = result.Data!;
                 summary.AddSummaryEvent(key, resourceStatus);
 
                 await ProcessFolder(key, subfolder, registry, summary);
@@ -310,11 +311,11 @@ namespace Celbridge.Services
                 if (updateResult.Failure)
                 {
                     var error = updateResult as ErrorResult<ResourceStatus>;
-                    Log.Error(error.Message);
+                    Log.Error(error!.Message);
                     return;
                 }
 
-                var resourceState = updateResult.Data;
+                var resourceState = updateResult.Data!;
                 summary.AddSummaryEvent(key, resourceState);
             }
         }
@@ -349,7 +350,7 @@ namespace Celbridge.Services
                     if (searchResult.Success)
                     {
                         // Folder already exists, we're done
-                        var resource = searchResult.Data;
+                        var resource = searchResult.Data!;
                         var status = new ResourceStatus(resource.Id, ResourceState.Static);
                         return new SuccessResult<ResourceStatus>(status);
                     }
@@ -377,7 +378,7 @@ namespace Celbridge.Services
                         // then something has gone very wrong.
                         return new ErrorResult<ResourceStatus>($"Folder '{segment}' not found for resource key '{key}'");
                     }
-                    searchFolder = searchResult.Data;
+                    searchFolder = searchResult.Data!;
                 }
             }
 
@@ -412,7 +413,7 @@ namespace Celbridge.Services
                     {
                         return new ErrorResult<ResourceStatus>($"Failed to add file resource '{filename}' because file extension is not supported.");
                     }
-                    var entityType = result.Data;
+                    var entityType = result.Data!;
 
                     var searchResult = FindFileResource(searchFolder, filename);
                     if (searchResult.Success)
@@ -422,7 +423,7 @@ namespace Celbridge.Services
                         // File resource hashes are NOT persisted between sessions so we're only detecting changes
                         // that occur while the application is running.
 
-                        var existingFile = searchResult.Data;
+                        var existingFile = searchResult.Data!;
                         var isHashInitialized = !string.IsNullOrEmpty(existingFile.Hash);
 
                         if (isHashInitialized)
@@ -468,7 +469,7 @@ namespace Celbridge.Services
                         // Parent folders must always be added first
                         return new ErrorResult<ResourceStatus>($"Folder '{segment}' not found for resource key '{key}'");
                     }
-                    searchFolder = searchResult.Data;
+                    searchFolder = searchResult.Data!;
                 }
             }
 
@@ -506,7 +507,7 @@ namespace Celbridge.Services
                     {
                         return new ErrorResult<ResourceState>($"Folder '{segment}' not found for resource keyPath '{key}'");
                     }
-                    searchFolder = searchResult.Data;
+                    searchFolder = searchResult.Data!;
                 }
             }
 
@@ -632,15 +633,17 @@ namespace Celbridge.Services
             var projectPath = project.ProjectPath;
             var projectFolder = Path.GetDirectoryName(projectPath);
 
+            Guard.IsNotNull(projectFolder);
+
             var result = await UpdateRegistryFromFolder(project.ResourceRegistry, projectFolder);
             if (result.Failure)
             {
                 var error = result as ErrorResult<RegistryUpdateSummary>;
-                Log.Error(error.Message);
+                Log.Error(error!.Message);
                 return new ErrorResult<RegistryUpdateSummary>("Failed to update resource registry.");
             }
 
-            var summary = result.Data;
+            var summary = result.Data!;
             if (summary.WasRegistryModified)
             { 
                 // Notify about all changes at once to make it easier for client code to handle dependencies between changed resources.
@@ -712,6 +715,8 @@ namespace Celbridge.Services
             else
             {
                 var folder = Path.GetDirectoryName(key);
+                Guard.IsNotNull(folder);
+
                 var combined = Path.Combine(project.ProjectFolder, folder, resource.Name);
                 path = Path.GetFullPath(combined);
             }
@@ -723,7 +728,7 @@ namespace Celbridge.Services
         {
             Guard.IsNotNull(project);
 
-            Resource FindResourceMatchingId(FolderResource folderResource, Guid entityId)
+            Resource? FindResourceMatchingId(FolderResource folderResource, Guid entityId)
             {
                 foreach (var resource in folderResource.Children)
                 {
@@ -783,7 +788,10 @@ namespace Celbridge.Services
 
                     if (resourceEntity.GetType().IsAssignableTo(resourceType))
                     {
-                        searchResults.Add(resourceEntity as T);
+                        var r = resourceEntity as T;
+                        Guard.IsNotNull(r);
+
+                        searchResults.Add(r);
                     }
 
                     if (resource is FolderResource folder)

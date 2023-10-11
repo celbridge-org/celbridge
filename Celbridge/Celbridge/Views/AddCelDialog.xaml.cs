@@ -14,7 +14,7 @@ namespace Celbridge.Views
         public AddCelDialog(Models.ICelScript celScript, Vector2 spawnPosition)
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<AddCelViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<AddCelViewModel>();
 
             ViewModel.CelScript = celScript;
             ViewModel.SpawnPosition = spawnPosition;

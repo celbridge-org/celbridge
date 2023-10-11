@@ -14,7 +14,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<TextPropertyViewModel>();
 
             // Fixes a bug when the TextBox initializes where it doesn't accept return even

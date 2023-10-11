@@ -8,6 +8,6 @@ namespace Celbridge.Models
         // modified while the application is running.
         [HideProperty]
         [JsonIgnore]
-        public string Hash { get; set; }
+        public string Hash { get; set; } = string.Empty;
     }
 }

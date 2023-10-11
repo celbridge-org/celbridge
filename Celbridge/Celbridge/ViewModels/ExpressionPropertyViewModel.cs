@@ -1,4 +1,4 @@
-﻿using Celbridge.Models;
+﻿using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -6,9 +6,15 @@ namespace Celbridge.ViewModels
     {
         public string ExpressionValue
         {
-            get => Value.Expression;
+            get
+            {
+                Guard.IsNotNull(Value);
+                return Value.Expression;
+            }
             set
             {
+                Guard.IsNotNull(value);
+                Guard.IsNotNull(Value);
                 Value.Expression = value;
                 OnPropertyChanged(nameof(Value));
             }

@@ -1,4 +1,5 @@
 ﻿using Celbridge.Utils;
+using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Celbridge.Models
@@ -33,7 +34,8 @@ namespace Celbridge.Models
                 {
                     return json;
                 }
-                var content = contentResult.Data;
+                var content = contentResult.Data!;
+                Guard.IsNotNull(content);
 
                 return content;
             }

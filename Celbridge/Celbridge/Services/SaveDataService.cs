@@ -38,7 +38,7 @@ namespace Celbridge.Services
         private readonly IMessenger _messengerService;
         private readonly Queue<ISaveData> _pendingSaves = new ();
         private readonly CancellationTokenSource _cancellationToken = new ();
-        private ISaveData _activeSaveData;
+        private ISaveData? _activeSaveData;
 
         private bool _receivedRecentSaveRequest;
 
@@ -94,7 +94,7 @@ namespace Celbridge.Services
                     if (result.Failure)
                     {
                         var error = result as ErrorResult;
-                        Log.Error(error.Message);
+                        Log.Error(error!.Message);
                     }
                     _activeSaveData = null;
 

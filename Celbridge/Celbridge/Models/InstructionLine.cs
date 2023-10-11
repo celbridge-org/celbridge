@@ -17,9 +17,9 @@
             }
         }
 
-        public string Keyword { get; set; }
+        public string Keyword { get; set; } = string.Empty;
         public IInstruction Instruction { get; set; } = new EmptyInstruction();
 
-        public override string ToString() => Instruction?.ToString();
+        public override string ToString() => Instruction.ToString() ?? string.Empty;
     }
 }

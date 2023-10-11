@@ -7,6 +7,7 @@ using Celbridge.Models;
 using Celbridge.Services;
 using Serilog;
 using Newtonsoft.Json.Serialization;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tasks
 {
@@ -30,21 +31,24 @@ namespace Celbridge.Tasks
 
         public async Task<Result<Project>> Load(string projectPath)
         {
-            if (!File.Exists(projectPath))
+            if (string.IsNullOrEmpty(projectPath) ||
+                !File.Exists(projectPath))
             {
                 return new ErrorResult<Project>($"Project file not found: {projectPath}");
             }
 
             // Generate the Cel Signatures assembly
             // Todo: Use a static function on Project class to do this name lookup consistently
-            string projectFolder = Path.GetDirectoryName(projectPath);
+            string? projectFolder = Path.GetDirectoryName(projectPath);
+            Guard.IsNotNull(projectFolder);
+
             string libraryFolder = Path.Combine(projectFolder, "Library");
             var generateResult = await _celScriptService.GenerateCelSignatures(projectFolder, libraryFolder);
             if (generateResult is ErrorResult<string> generateError)
             {
                 return new ErrorResult<Project>($"Failed to generate Cel Signatures: {projectPath}. {generateError.Message}");
             }
-            var assemblyFile = generateResult.Data;
+            var assemblyFile = generateResult.Data!;
 
             // Load the custom assemblies
             var loadAssembliesResult = _loadCustomAssembliesTask.Load(assemblyFile);
@@ -60,7 +64,7 @@ namespace Celbridge.Tasks
             {
                 return new ErrorResult<Project>($"Failed to load project file: {projectPath}. {deserializeError.Message}");
             }
-            var project = deserializeResult.Data;
+            var project = deserializeResult.Data!;
 
             // Set the path so we know where to save the file later.
             // The path is not serialized with the project data.
@@ -70,6 +74,7 @@ namespace Celbridge.Tasks
             _settingsService.LoadProjectSettings(project.Id);
 
             // Remember this as the last opened project
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.PreviousActiveProjectPath = projectPath;
 
             // Populate the resource registry
@@ -78,7 +83,7 @@ namespace Celbridge.Tasks
             {
                 return new ErrorResult<Project>($"Failed to update resource registry: {projectPath}. {updateRegistryError.Message}");
             }
-            var summary = updateRegistryResult.Data;
+            var summary = updateRegistryResult.Data!;
             if (summary.WasRegistryModified)
             {
                 Log.Information($"Updated resources: Added {summary.Added.Count}, Changed {summary.Changed.Count}, Deleted {summary.Deleted.Count}");
@@ -104,6 +109,8 @@ namespace Celbridge.Tasks
                 };
 
                 var project = JsonConvert.DeserializeObject<Project>(json, settings);
+                Guard.IsNotNull(project);
+
                 return new SuccessResult<Project>(project);
             }
             catch (Exception ex)

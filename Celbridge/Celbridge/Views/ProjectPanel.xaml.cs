@@ -8,9 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Celbridge.Views
 {
@@ -26,18 +23,18 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<ProjectViewModel>();
-            _messengerService = services.GetService<IMessenger>();
-            _inspectorService = services.GetService<IInspectorService>();
-            _documentService = services.GetService<IDocumentService>();
+            _messengerService = services.GetRequiredService<IMessenger>();
+            _inspectorService = services.GetRequiredService<IInspectorService>();
+            _documentService = services.GetRequiredService<IDocumentService>();
 
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
 
             ResourcesTreeView.Loaded += ResourcesTreeView_Loaded;
         }
 
-        private void ResourcesTreeView_Loaded(object sender, RoutedEventArgs e)
+        private void ResourcesTreeView_Loaded(object? sender, RoutedEventArgs e)
         {
             var selectedEntity = _inspectorService.SelectedEntity;
             UpdateSelectedEntity(selectedEntity);
@@ -45,11 +42,11 @@ namespace Celbridge.Views
 
         private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
         {
-            var selectedEntity = m.Value;
+            var selectedEntity = m.Entity;
             UpdateSelectedEntity(selectedEntity);
         }
 
-        private void UpdateSelectedEntity(IEntity selectedEntity)
+        private void UpdateSelectedEntity(IEntity? selectedEntity)
         {
             if (selectedEntity is Resource)
             {
@@ -71,7 +68,7 @@ namespace Celbridge.Views
             }
         }
 
-        private TreeViewNode FindMatchingNode(IEnumerable<TreeViewNode> nodes, IEntity searchEntity)
+        private TreeViewNode? FindMatchingNode(IEnumerable<TreeViewNode> nodes, IEntity searchEntity)
         {
             foreach (TreeViewNode node in nodes)
             {
@@ -84,10 +81,10 @@ namespace Celbridge.Views
                 // If this node has children, recursively search through them
                 if (node.Children != null && node.Children.Any())
                 {
-                    TreeViewNode matchingChildNode = FindMatchingNode(node.Children, searchEntity);
+                    var matchingChildNode = FindMatchingNode(node.Children, searchEntity);
 
                     // If we found a matching node in this child's subtree, return it
-                    if (matchingChildNode != null)
+                    if (matchingChildNode is not null)
                     {
                         return matchingChildNode;
                     }
@@ -98,7 +95,7 @@ namespace Celbridge.Views
             return null;
         }
 
-        private void OpenResource(object sender, RoutedEventArgs e)
+        private void OpenResource(object? sender, RoutedEventArgs e)
         {
             var element = sender as FrameworkElement;
             Guard.IsNotNull(element);
@@ -106,7 +103,7 @@ namespace Celbridge.Views
             OpenDocument(element);
         }
 
-        private void AddResourceToProject(object sender, RoutedEventArgs e)
+        private void AddResourceToProject(object? sender, RoutedEventArgs e)
         {
             var menuFlyoutItem = sender as MenuFlyoutItem;
             Guard.IsNotNull(menuFlyoutItem);
@@ -131,7 +128,7 @@ namespace Celbridge.Views
             ViewModel.AddResourceCommand.ExecuteAsync(null);
         }
 
-        private void DeleteResource(object sender, RoutedEventArgs e)
+        private void DeleteResource(object? sender, RoutedEventArgs e)
         {
             var element = sender as FrameworkElement;
             Guard.IsNotNull(element);
@@ -142,7 +139,7 @@ namespace Celbridge.Views
             ViewModel.DeleteEntity(entity);
         }
 
-        private void DoubleTappedItem(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        private void DoubleTappedItem(object? sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
         {
             var element = sender as FrameworkElement;
             Guard.IsNotNull(element);
@@ -150,7 +147,7 @@ namespace Celbridge.Views
             OpenDocument(element);
         }
 
-        private void OpenProjectFolder(object sender, RoutedEventArgs e)
+        private void OpenProjectFolder(object? sender, RoutedEventArgs e)
         {
             ViewModel.OpenProjectFolderCommand.Execute(null);
         }
@@ -164,9 +161,8 @@ namespace Celbridge.Views
             Guard.IsNotNull(documentEntity);
 
             var result = _documentService.OpenDocument(documentEntity);
-            if (result.Failure)
+            if (result is ErrorResult error)
             {
-                var error = result as ErrorResult;
                 Log.Error(error.Message);
             }
         }

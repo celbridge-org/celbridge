@@ -1,18 +1,10 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
+﻿using Celbridge.Services;
 using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Scripting.Utils;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Serilog;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Windows.Input;
 
 namespace Celbridge.ViewModels
 {
@@ -51,16 +43,16 @@ namespace Celbridge.ViewModels
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
         }
 
-        public ItemCollection ItemCollection { get; set; }
+        public ItemCollection? ItemCollection { get; set; }
 
         [ObservableProperty]
         private bool _hasSelectedEntity;
 
         [ObservableProperty]
-        private IEntity _selectedEntity;
+        private IEntity? _selectedEntity;
 
         [ObservableProperty]
-        private string _typeName;
+        private string? _typeName;
 
         private string _typeIcon = "Help";
         public string TypeIcon
@@ -77,6 +69,8 @@ namespace Celbridge.ViewModels
             {
                 var projectPath = _projectService.ActiveProject.ProjectPath;
                 var projectFolder = Path.GetDirectoryName(projectPath);
+                Guard.IsNotNull(projectFolder);
+
                 _dialogService.OpenFileExplorer(projectFolder);
             }
         }
@@ -99,9 +93,8 @@ namespace Celbridge.ViewModels
                 case Resource resource:
                     {
                         var result = _resourceService.DeleteResource(project, resource);
-                        if (result.Failure)
+                        if (result is ErrorResult error)
                         {
-                            var error = result as ErrorResult;
                             Log.Error(error.Message);
                         }
                     }
@@ -110,9 +103,8 @@ namespace Celbridge.ViewModels
                 case ICelScriptNode cel:
                     {
                         var result = _celScriptService.DeleteCel(cel);
-                        if (result.Failure)
+                        if (result is ErrorResult error)
                         {
-                            var error = result as ErrorResult;
                             Log.Error(error.Message);
                         }
                     }
@@ -122,7 +114,7 @@ namespace Celbridge.ViewModels
 
         private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
         {
-            SelectedEntity = m.Value;
+            SelectedEntity = m.Entity;
             HasSelectedEntity = SelectedEntity != null;
 
             if (SelectedEntity != null)
@@ -137,8 +129,8 @@ namespace Celbridge.ViewModels
                     var typeInfoResult = _resourceTypeService.GetResourceTypeInfo(SelectedEntity.GetType());
                     if (typeInfoResult.Success)
                     {
-                        TypeName = typeInfoResult.Data.Name;
-                        TypeIcon = typeInfoResult.Data.Icon ?? "Help";
+                        TypeName = typeInfoResult.Data!.Name;
+                        TypeIcon = typeInfoResult.Data!.Icon ?? "Help";
                     }
                 }
                 else if (SelectedEntity is ICelScriptNode)
@@ -146,7 +138,7 @@ namespace Celbridge.ViewModels
                     var celTypeResult = _celTypeService.GetCelType(SelectedEntity.GetType());
                     if (celTypeResult.Success)
                     {
-                        var celType = celTypeResult.Data;
+                        var celType = celTypeResult.Data!;
 
                         TypeName = celType.Name;
                         TypeIcon = celType.Icon ?? "Help";
@@ -164,27 +156,31 @@ namespace Celbridge.ViewModels
         private void PopulatePropertyListView()
         {
             // Remove any existing property user controls
+            Guard.IsNotNull(ItemCollection);
             ItemCollection.Clear();
 
+            Guard.IsNotNull(SelectedEntity);
+
             var result = PropertyViewUtils.CreatePropertyViews(SelectedEntity, PropertyContext.Record, OnPropertyChanged);
-            if (result.Failure)
+            if (result is ErrorResult<List<UIElement>> error)
             {
-                var error = result as ErrorResult<List<UIElement>>;
                 Log.Error(error.Message);
                 return;
             }
 
-            var views = result.Data;
+            var views = result.Data!;
             ItemCollection.AddRange(views);
         }
 
-        private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             var property = sender as Property;
             Guard.IsNotNull(property);
 
             var entity = property.Object as IEntity;
             Guard.IsNotNull(entity);
+
+            Guard.IsNotNull(e.PropertyName);
 
             var message = new EntityPropertyChangedMessage(entity, e.PropertyName);
             _messengerService.Send(message);
@@ -194,6 +190,8 @@ namespace Celbridge.ViewModels
 
         private void Collapse_Executed()
         {
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
             // Toggle the left toolbar expanded state
             _settingsService.EditorSettings.RightPanelExpanded = false;
         }

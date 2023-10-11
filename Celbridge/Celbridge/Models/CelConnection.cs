@@ -28,10 +28,10 @@ namespace Celbridge.Models
             }
         }
 
-        public int CompareTo(CelConnection other)
+        public int CompareTo(CelConnection? other)
         {
             // If other is not a valid object reference, this instance is greater.
-            if (other == null)
+            if (other is null)
             {
                 return 1;
             }
@@ -59,9 +59,9 @@ namespace Celbridge.Models
             return operand1.CompareTo(operand2) <= 0;
         }
 
-        public bool Equals(CelConnection other)
+        public bool Equals(CelConnection? other)
         {
-            if (other == null)
+            if (other is null)
             {
                 return false;
             }
@@ -76,15 +76,15 @@ namespace Celbridge.Models
             }
         }
 
-        public override bool Equals(Object obj)
+        public override bool Equals(Object? obj)
         {
-            if (obj == null)
+            if (obj is null)
             { 
                 return false;
             }
 
-            CelConnection other = obj as CelConnection;
-            if (other == null)
+            CelConnection? other = obj as CelConnection;
+            if (other is null)
             {
                 return false;
             }

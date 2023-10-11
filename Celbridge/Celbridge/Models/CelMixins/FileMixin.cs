@@ -14,7 +14,7 @@ namespace Celbridge.Models.CelMixins
 
         public record ReadText : InstructionBase
         {
-            public string Resource { get; set; }
+            public string Resource { get; set; } = string.Empty;
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
@@ -28,7 +28,7 @@ namespace Celbridge.Models.CelMixins
 
         public record WriteText : InstructionBase
         {
-            public string Resource { get; set; }
+            public string Resource { get; set; } = string.Empty;
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 

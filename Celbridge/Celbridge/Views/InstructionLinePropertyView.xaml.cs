@@ -17,7 +17,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<InstructionLinePropertyViewModel>();
 
             ViewModel.KeywordTextBox = KeywordTextBox;
@@ -57,7 +57,7 @@ namespace Celbridge.Views
             return new SuccessResult();
         }
 
-        private void KeywordTextBox_GotFocus(object sender, RoutedEventArgs e)
+        private void KeywordTextBox_GotFocus(object? sender, RoutedEventArgs e)
         {
             ViewModel.OnGotFocus();
         }

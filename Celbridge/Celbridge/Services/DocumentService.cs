@@ -44,7 +44,7 @@ namespace Celbridge.Services
         {
             Guard.IsNotNull(documentEntity);
 
-            IDocument openedDocument = null;
+            IDocument? openedDocument = null;
             foreach (var document in _openDocuments)
             {
                 if (document.DocumentEntity == documentEntity)
@@ -68,7 +68,7 @@ namespace Celbridge.Services
         {
             Guard.IsNotNull(documentEntity);
 
-            IDocument document = null;
+            IDocument? document = null;
             foreach (var d in _openDocuments)
             {
                 if (d.DocumentEntity == documentEntity)

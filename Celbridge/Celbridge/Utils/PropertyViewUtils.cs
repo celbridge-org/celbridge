@@ -53,14 +53,13 @@ namespace Celbridge.Utils
                     if (property.CollectionType != null)
                     {
                         var result = CreatePropertyListView(property, labelText);
-                        if (result.Failure)
+                        if (result is ErrorResult<UIElement> error)
                         {
-                            var error = result as ErrorResult<UIElement>;
                             var message = ($"Failed to create property list view. {error.Message}");
                             return new ErrorResult<List<UIElement>>(message);
                         }
 
-                        view = result.Data;
+                        view = result.Data!;
                     }
                     else
                     {
@@ -68,11 +67,11 @@ namespace Celbridge.Utils
                         if (result.Failure)
                         {
                             var error = result as ErrorResult<UIElement>;
-                            var message = ($"Failed to create property view. {error.Message}");
+                            var message = ($"Failed to create property view. {error!.Message}");
                             return new ErrorResult<List<UIElement>>(message);
                         }
 
-                        view = result.Data;
+                        view = result.Data!;
                     }
 
                     if (propertyEditMode == PropertyEditMode.EditDisabled)
@@ -111,7 +110,7 @@ namespace Celbridge.Utils
         public static Result<UIElement> CreatePropertyView(Property property, int itemIndex, string labelText)
         {
             var viewTypeName = property.PropertyAttribute.ViewName;
-            Type viewType = Type.GetType(viewTypeName);
+            Type? viewType = Type.GetType(viewTypeName);
             if (viewType == null)
             {
                 return new ErrorResult<UIElement>($"Failed to create Property View with type '{viewTypeName}'");
@@ -128,9 +127,8 @@ namespace Celbridge.Utils
             propertyView.ItemIndex = itemIndex;
 
             var result = propertyView.CreateChildViews();
-            if (result.Failure)
+            if (result is ErrorResult error)
             {
-                var error = result as ErrorResult;
                 var message = ($"Failed to create child views. {error.Message}");
                 return new ErrorResult<UIElement>(message);
             }

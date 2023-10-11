@@ -1,9 +1,5 @@
 ﻿using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Localization;
-using System.Threading.Tasks;
-using System.Windows.Input;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -22,6 +18,7 @@ namespace Celbridge.ViewModels
         private void ToggleProject_Executed()
         {
             // Toggle the project panel
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.LeftPanelExpanded = !_settingsService.EditorSettings.LeftPanelExpanded;
         }
 
@@ -29,6 +26,7 @@ namespace Celbridge.ViewModels
         private void ToggleConsole_Executed()
         {
             // Toggle the console panel
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.BottomPanelExpanded = !_settingsService.EditorSettings.BottomPanelExpanded;
         }
 

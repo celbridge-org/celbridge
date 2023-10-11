@@ -80,7 +80,7 @@ namespace Celbridge.Utils
             {
                 return new ErrorResult<string>($"Failed to compile assembly. {compileError.Message}");
             }
-            var assemblyFile = compileResult.Data;
+            var assemblyFile = compileResult.Data!;
 
             return new SuccessResult<string>(assemblyFile);
         }

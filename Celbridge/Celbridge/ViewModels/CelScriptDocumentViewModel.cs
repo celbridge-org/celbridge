@@ -1,21 +1,12 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
+﻿using Celbridge.Services;
 using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Serilog;
-using System;
-using System.Threading.Tasks;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using Microsoft.UI.Xaml.Controls;
 using Celbridge.Views;
-using System.Collections.Generic;
 using System.Numerics;
-using Microsoft.UI.Xaml;
-using System.Linq;
 
 namespace Celbridge.ViewModels
 {
@@ -35,8 +26,8 @@ namespace Celbridge.ViewModels
         private readonly Dictionary<Guid, CelCanvas> _celViews = new();
 
         public List<CelConnection> CelConnections { get; private set; } = new ();
-        public event Action NodePositionChanged;
-        public event Action<Guid> CelConnectionSelected;
+        public event Action? NodePositionChanged;
+        public event Action<Guid>? CelConnectionSelected;
 
         public CelScriptDocumentViewModel(IMessenger messenger, 
             IProjectService projectService,
@@ -103,10 +94,14 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private IDocument _document;
+        private IDocument? _document;
         public IDocument Document
         {
-            get => _document;
+            get
+            {
+                Guard.IsNotNull(_document);
+                return _document;
+            }
             set
             {
                 // Property can only be set once
@@ -115,14 +110,19 @@ namespace Celbridge.ViewModels
             }
         }
 
-        public string Name => Document.DocumentEntity.Name;
+        public string Name => Document!.DocumentEntity.Name;
 
-        private ICelScript _celScript;
+        private ICelScript? _celScript;
         public ICelScript CelScript
         {
-            get => _celScript;
+            get
+            {
+                Guard.IsNotNull(_celScript);
+                return _celScript;
+            }
             set
             {
+                Guard.IsNotNull(value);
                 SetProperty(ref _celScript, value);
             }
         }
@@ -138,7 +138,19 @@ namespace Celbridge.ViewModels
 
         public IAsyncRelayCommand CloseDocumentCommand => new AsyncRelayCommand(OnCloseDocument_ExecutedAsync);
 
-        public Canvas CelCanvas { get; set; }
+        private Canvas? _celCanvas;
+        public Canvas CelCanvas 
+        {
+            get
+            {
+                Guard.IsNotNull(_celCanvas);
+                return _celCanvas;
+            }
+            set
+            {
+                _celCanvas = value;
+            }
+        }
 
         private async Task OnCloseDocument_ExecutedAsync()
         {
@@ -170,7 +182,7 @@ namespace Celbridge.ViewModels
             }
 
             // Close the document and remove it from the auto reload list
-            _documentService.CloseDocument(_document.DocumentEntity, false);
+            _documentService.CloseDocument(Document.DocumentEntity, false);
         }
 
         public async Task<Result> LoadAsync()
@@ -187,11 +199,10 @@ namespace Celbridge.ViewModels
 
                 var loadResult = await _celScriptService.LoadCelScriptAsync(project, fileResource);
 
-                if (loadResult.Failure)
+                if (loadResult is ErrorResult<ICelScript> loadError)
                 {
-                    var error = loadResult as ErrorResult<ICelScript>;
                     _isLoadingContent = false;
-                    return new ErrorResult(error.Message);
+                    return new ErrorResult(loadError.Message);
                 }
                 if (loadResult.Data is null)
                 {
@@ -199,7 +210,7 @@ namespace Celbridge.ViewModels
                     return new ErrorResult($"Failed to load CelScript document '{Document.DocumentEntity}'");
                 }
 
-                CelScript = loadResult.Data;
+                CelScript = loadResult.Data!;
                 foreach (var cel in CelScript.Cels)
                 {
                     cel.CelScript = CelScript;
@@ -208,7 +219,7 @@ namespace Celbridge.ViewModels
                     if (addResult.Failure)
                     {
                         var error = addResult as ErrorResult;
-                        return new ErrorResult($"Failed to load CelScript document '{Document.DocumentEntity}'. {error.Message}");
+                        return new ErrorResult($"Failed to load CelScript document '{Document.DocumentEntity}'. {error!.Message}");
                     }
                 }
 
@@ -237,19 +248,21 @@ namespace Celbridge.ViewModels
             if (saveResult.Failure)
             {
                 var error = saveResult as ErrorResult;
-                Log.Error(error.Message);
+                Log.Error(error!.Message);
             }
             return saveResult;
         }
 
-        private void CelScript_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void CelScript_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
+                    Guard.IsNotNull(e.NewItems);
                     foreach (var item in e.NewItems)
                     {
                         var cel = item as CelScriptNode;
+                        Guard.IsNotNull(cel);
                         cel.PropertyChanged += Cel_PropertyChanged;
 
                         var result = AddCelView(cel);
@@ -261,9 +274,11 @@ namespace Celbridge.ViewModels
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
+                    Guard.IsNotNull(e.OldItems);
                     foreach (var item in e.OldItems)
                     {
                         var cel = item as CelScriptNode;
+                        Guard.IsNotNull(cel);
                         cel.PropertyChanged -= Cel_PropertyChanged;
 
                         var result = RemoveCelView(cel);
@@ -337,10 +352,10 @@ namespace Celbridge.ViewModels
             return new SuccessResult();
         }
 
-        private void Cel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void Cel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {}
 
-        private void CelScriptDocumentViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void CelScriptDocumentViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(CelScript) && !_isLoadingContent)
             {
@@ -380,7 +395,7 @@ namespace Celbridge.ViewModels
                 var celScriptNode = celView.ViewModel.Cel;
                 Guard.IsNotNull(celScriptNode);
 
-                var connectedCelIds = (celScriptNode as ICel).ConnectedCelIds;
+                var connectedCelIds = (celScriptNode as ICel)!.ConnectedCelIds;
                 Guard.IsNotNull(connectedCelIds);
 
                 foreach (var connectedCelId in connectedCelIds)
@@ -388,6 +403,7 @@ namespace Celbridge.ViewModels
                     if (_celViews.TryGetValue(connectedCelId, out var connectedCelView))
                     {
                         var connectedCelScriptNode = connectedCelView.ViewModel.Cel;
+                        Guard.IsNotNull(connectedCelScriptNode);
 
                         var celConnection = new CelConnection(celScriptNode, connectedCelScriptNode);
 

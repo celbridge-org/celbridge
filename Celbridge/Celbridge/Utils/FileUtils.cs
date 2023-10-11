@@ -49,6 +49,8 @@ namespace Celbridge.Utils
                 return false;
             }
 
+            Guard.IsNotNull(directory);
+
             // Check each folder name for invalid characters
             var folders = directory.Split(Path.DirectorySeparatorChar)[1..];
             foreach (var folder in folders)
@@ -99,7 +101,7 @@ namespace Celbridge.Utils
 
 #if WINDOWS
             // For Uno.WinUI-based apps
-            var mainWindow = (Application.Current as App).MainWindow;
+            var mainWindow = (Application.Current as App)!.MainWindow;
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
 #endif
@@ -123,7 +125,7 @@ namespace Celbridge.Utils
 
 #if WINDOWS
             // For Uno.WinUI-based apps
-            var mainWindow = (Application.Current as App).MainWindow;
+            var mainWindow = (Application.Current as App)!.MainWindow;
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(fileOpenPicker, hwnd);
 #endif
@@ -140,7 +142,7 @@ namespace Celbridge.Utils
                 return new ErrorResult<string>("Selected file does not exist");
             }
 
-            var projectService = (Application.Current as App).Host.Services.GetService<IProjectService>();
+            var projectService = (Application.Current as App)!.Host!.Services.GetService<IProjectService>();
             Guard.IsNotNull(projectService);
 
             if (projectService.ActiveProject != null)
@@ -149,11 +151,12 @@ namespace Celbridge.Utils
                 {
                     var projectPath = projectService.ActiveProject.ProjectPath;
                     var projectFolder = Path.GetDirectoryName(projectPath);
+                    Guard.IsNotNull(projectFolder);
 
                     var result = FileUtils.GetRelativePath(projectFolder, file.Path);
                     if (result.Success)
                     {
-                        return new SuccessResult<string>(result.Data);
+                        return new SuccessResult<string>(result.Data!);
                     }
                 }
                 catch (Exception ex)
@@ -164,6 +167,8 @@ namespace Celbridge.Utils
 
             if (relativeOnly)
             {
+                Guard.IsNotNull(projectService.ActiveProject);
+
                 var projectPath = projectService.ActiveProject.ProjectPath;
                 var projectFolder = Path.GetDirectoryName(projectPath);
                 return new ErrorResult<string>($"Selected file is not in the project folder: {projectFolder}");

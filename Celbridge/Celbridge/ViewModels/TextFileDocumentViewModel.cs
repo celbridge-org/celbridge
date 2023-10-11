@@ -25,7 +25,7 @@ namespace Celbridge.ViewModels
         private bool _isSavingContent;
         private bool _isLoadingContent;
 
-        private string _path;
+        private string _path = string.Empty;
 
         public TextFileDocumentViewModel(IMessenger messengerService,
                                          IProjectService projectService,
@@ -72,10 +72,10 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private IDocument _document;
+        private IDocument? _document;
         public IDocument Document 
         {
-            get => _document;
+            get => _document!;
             set
             {
                 // Property can only be set once
@@ -86,10 +86,10 @@ namespace Celbridge.ViewModels
 
         public string Name => Document.DocumentEntity.Name;
 
-        private string _content;
+        private string? _content;
         public string Content
         {
-            get => _content;
+            get => _content!;
             set
             {
                 SetProperty(ref _content, value);
@@ -109,6 +109,7 @@ namespace Celbridge.ViewModels
             }
 
             // Close the document and remove it from the auto reload list
+            Guard.IsNotNull(_document);
             _documentService.CloseDocument(_document.DocumentEntity, false);
         }
 
@@ -121,14 +122,13 @@ namespace Celbridge.ViewModels
             Guard.IsNotNull(project);
 
             var pathResult = _resourceService.GetResourcePath(project, fileResource);
-            if (pathResult.Failure)
+            if (pathResult is ErrorResult<string> error)
             {
-                var error = pathResult as ErrorResult<string>;
                 Log.Error(error.Message);
                 return new ErrorResult(error.Message);
             }
 
-            _path = pathResult.Data;
+            _path = pathResult.Data!;
             if (!File.Exists(_path))
             {
                 return new ErrorResult($"Failed to load content. File '{_path}' does not exist.");
@@ -158,9 +158,8 @@ namespace Celbridge.ViewModels
             Guard.IsNotNull(project);
 
             var pathResult = _resourceService.GetResourcePath(project, fileResource);
-            if (pathResult.Failure)
+            if (pathResult is ErrorResult<string> error)
             {
-                var error = pathResult as ErrorResult<string>;
                 Log.Error(error.Message);
                 return new ErrorResult(error.Message);
             }
@@ -168,7 +167,7 @@ namespace Celbridge.ViewModels
             return await FileUtils.SaveTextAsync(_path, Content);
         }
 
-        private void TextFileDocumentViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void TextFileDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Content) && !_isLoadingContent)
             {

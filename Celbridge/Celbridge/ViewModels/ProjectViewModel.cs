@@ -24,8 +24,8 @@ namespace Celbridge.ViewModels
         private readonly IMessenger _messengerService;
         private readonly ICelScriptService _celScriptService;
 
-        private Project _activeProject;
-        public Project ActiveProject
+        private Project? _activeProject;
+        public Project? ActiveProject
         {
             get => _activeProject;
             set
@@ -47,8 +47,8 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private object _selectedResource;
-        public object SelectedResource
+        private object? _selectedResource;
+        public object? SelectedResource
         {
             get => _selectedResource;
             set
@@ -60,7 +60,7 @@ namespace Celbridge.ViewModels
         [ObservableProperty]
         private bool _isRefreshProjectEnabled;
 
-        private FolderWatcher _folderWatcher;
+        private FolderWatcher? _folderWatcher;
 
         public ProjectViewModel(ISettingsService settingsService, 
                                 IProjectService projectService,
@@ -89,7 +89,7 @@ namespace Celbridge.ViewModels
             _messengerService.Register<CelSignatureChangedMessage>(this, OnCelSignatureChanged);
         }
 
-        private void ProjectViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void ProjectViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(IsProjectSelected))
             {
@@ -123,12 +123,12 @@ namespace Celbridge.ViewModels
         private void OnProjectCreated(object recipient, ProjectCreatedMessage message)
         {
             // This will create the project settings as they don't exist yet
-            _settingsService.SaveProjectSettings(message.project.Id);
+            _settingsService.SaveProjectSettings(message.Project.Id);
         }
 
         private void OnActiveProjectChanged(object recipient, ActiveProjectChangedMessage message)
         {
-            var activeProject = message.Value;
+            var activeProject = message.Project;
 
             if (activeProject == null)
             {
@@ -147,6 +147,7 @@ namespace Celbridge.ViewModels
                 // This needs a redesign to fix properly, but for now we just take a copy of the previously selected entity and 
                 // restore after setting the ActiveProject.
 
+                Guard.IsNotNull(_settingsService.ProjectSettings);
                 Guid previouslySelectedEntity = _settingsService.ProjectSettings.SelectedEntity;
                 ActiveProject = activeProject;
                 _settingsService.ProjectSettings.SelectedEntity = previouslySelectedEntity;
@@ -165,12 +166,16 @@ namespace Celbridge.ViewModels
 
             if (HasActiveProject)
             {
+                Guard.IsNotNull(ActiveProject);
+
                 // Listen for changes in the resource registry
                 ActiveProject.ResourceRegistry.Root.PropertyChanged -= OnResourcePropertyChanged;
                 ActiveProject.ResourceRegistry.Root.PropertyChanged += OnResourcePropertyChanged;
 
                 // Monitor the project folder for changes
                 var projectFolder = Path.GetDirectoryName(ActiveProject.ProjectPath);
+                Guard.IsNotNull(projectFolder);
+
                 _folderWatcher = new FolderWatcher(_messengerService, projectFolder, 0.25f);
             }
         }
@@ -182,7 +187,7 @@ namespace Celbridge.ViewModels
                 return;
             }
 
-            _settingsService.ProjectSettings.SelectedEntity = message.Value == null ? Guid.Empty : message.Value.Id;
+            _settingsService.ProjectSettings.SelectedEntity = message.Entity == null ? Guid.Empty : message.Entity.Id;
         }
 
         private void OnCelSignatureChanged(object recipient, CelSignatureChangedMessage message)
@@ -190,7 +195,7 @@ namespace Celbridge.ViewModels
             IsRefreshProjectEnabled = true;
         }
 
-        private void OnResourcePropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnResourcePropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Entity.Children))
             {
@@ -211,6 +216,8 @@ namespace Celbridge.ViewModels
             {
                 var projectPath = ActiveProject.ProjectPath;
                 var projectFolder = Path.GetDirectoryName(projectPath);
+                Guard.IsNotNull(projectFolder);
+
                 _dialogService.OpenFileExplorer(projectFolder);
             }
         }
@@ -262,6 +269,7 @@ namespace Celbridge.ViewModels
         private void Collapse_Executed()
         {
             // Toggle the left toolbar expanded state
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.LeftPanelExpanded = false;
         }
 
@@ -277,7 +285,7 @@ namespace Celbridge.ViewModels
                 {
                     // Save the project if any assets were added or deleted.
                     // There's no need to save the project for changed assets.
-                    var summary = result.Data;
+                    var summary = result.Data!;
                     if (summary.Added.Count > 0 || summary.Deleted.Count > 0)
                     {
                         _projectService.SaveProject();
@@ -298,7 +306,7 @@ namespace Celbridge.ViewModels
 
         private void OnPreviouslySelectedEntityMessage(object recipient, PreviouslySelectedEntityMessage message)
         {
-            var entityId = message.entityId;
+            var entityId = message.EntityId;
 
             if (ActiveProject != null && ActiveProject.Id == entityId)
             {
@@ -312,7 +320,7 @@ namespace Celbridge.ViewModels
             var result = _resourceService.FindResourceEntity(project, entityId);
             if (result.Success)
             {
-                var resourceEntity = result.Data;
+                var resourceEntity = result.Data!;
                 SelectedResource = resourceEntity;
                 return;
             }

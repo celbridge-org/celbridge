@@ -5,7 +5,7 @@ namespace Celbridge.Models
 {
     public interface ICelScriptNode
     {
-        ICelScript CelScript { get; set; }
+        ICelScript? CelScript { get; set; }
         string Name { get; set; }
         Guid Id { get; set; }
         string Description { get; set; }
@@ -19,7 +19,7 @@ namespace Celbridge.Models
     public abstract class CelScriptNode : Entity, ICelScriptNode
     {
         [JsonIgnore]
-        public ICelScript CelScript { get; set; }
+        public ICelScript? CelScript { get; set; }
 
         private int _x;
         public int X

@@ -4,7 +4,7 @@ namespace Celbridge.Utils
 {
     class ResourceUtils
     {
-        public static T Get<T>(string resourceName)
+        public static T? Get<T>(string resourceName)
         {
             try
             {

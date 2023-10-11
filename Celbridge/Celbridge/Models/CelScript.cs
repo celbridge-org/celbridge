@@ -7,7 +7,7 @@ namespace Celbridge.Models
 {
     public interface ICelScript
     {
-        IEntity Entity { get; set; }
+        IEntity? Entity { get; set; }
         ObservableCollection<ICelScriptNode> Cels { get; }
         Result AddCel(ICelScriptNode cel);
         Result DeleteCel(ICelScriptNode cel);
@@ -29,7 +29,7 @@ namespace Celbridge.Models
         }
 
         [JsonIgnore]
-        public IEntity Entity { get; set; }
+        public IEntity? Entity { get; set; }
 
         public ObservableCollection<ICelScriptNode> Cels { get; set; } = new();
 

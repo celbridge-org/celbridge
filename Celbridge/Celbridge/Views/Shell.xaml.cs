@@ -13,7 +13,7 @@ namespace Celbridge
 {
     public sealed partial class Shell : Page
     {
-        private ISettingsService _settings;
+        private ISettingsService? _settings;
 
         public ShellViewModel ViewModel { get; set; }
 
@@ -21,8 +21,8 @@ namespace Celbridge
         {
             this.InitializeComponent();
 
-            var app = Application.Current as App;
-            ViewModel = app.Host.Services.GetService<ShellViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services!.GetRequiredService<ShellViewModel>();
+
             ViewModel.WindowActivated += Window_Activated;
 
             Loaded += Page_Loaded;
@@ -45,9 +45,10 @@ namespace Celbridge
             UpdateSidePanels();
         }
 
-        private void Page_Loaded(object sender, RoutedEventArgs e)
+        private void Page_Loaded(object? sender, RoutedEventArgs e)
         {
             var app = Application.Current as App;
+            Guard.IsNotNull(app);
 
 #if WINDOWS
             // Todo: Set titlebar content again
@@ -61,7 +62,9 @@ namespace Celbridge
             CenterPanel.Children.Add(new DocumentsPanel());
             RightPanel.Children.Add(new InspectorPanel());
 
-            _settings = app.Host.Services.GetService<ISettingsService>();
+            _settings = app.Host!.Services.GetRequiredService<ISettingsService>();
+
+            Guard.IsNotNull(_settings.EditorSettings);
             _settings.EditorSettings.PropertyChanged += Settings_PropertyChanged;
 
             LeftSplitter.SizeChanged += LeftSplitter_SizeChanged;
@@ -70,7 +73,7 @@ namespace Celbridge
 
             UpdateSidePanels();
 
-            var projectService = app.Host.Services.GetService<IProjectService>();
+            var projectService = app.Host.Services.GetRequiredService<IProjectService>();
             
             async Task OpenPreviousProject()
             {
@@ -84,18 +87,25 @@ namespace Celbridge
             _ = OpenPreviousProject();
         }
 
-        private void LeftSplitter_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void LeftSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
         {
+            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(_settings.EditorSettings);
             _settings.EditorSettings.LeftPanelWidth = (float)e.NewSize.Width;
         }
 
-        private void RightSplitter_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void RightSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
         {
+            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(_settings.EditorSettings);
             _settings.EditorSettings.RightPanelWidth = (float)e.NewSize.Width;
         }
 
-        private void CenterPanelGrid_LayoutUpdated(object sender, object e)
+        private void CenterPanelGrid_LayoutUpdated(object? sender, object e)
         {
+            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(_settings.EditorSettings);
+
             // For some reason, the panels get initialized first with a value of 4.
             // The code here only updates the value stored in settings when the width
             // is greater than the minWidth - using this as a hacky way to tell when we're
@@ -120,8 +130,11 @@ namespace Celbridge
             }
         }
 
-        private void Settings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void Settings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(_settings.EditorSettings);
+
             if (e.PropertyName == "LeftPanelExpanded")
             {
                 if (!_settings.EditorSettings.LeftPanelExpanded)
@@ -153,6 +166,9 @@ namespace Celbridge
 
         private void UpdateSidePanels()
         {
+            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(_settings.EditorSettings);
+
             // The trick here is to set the panel to collapsed _before_ setting the width to 0.
             // This avoids an exception in Skia.Gtk where it tries to perform layout on a 0 sized control.
 

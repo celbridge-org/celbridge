@@ -1,14 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI.Xaml;
-using System;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Celbridge.Utils
 {
     public class FileChangedMessage
     {
-        public string Path { get; set; }
+        public string Path { get; set; } = string.Empty;
     }
 
     public class FolderChangedMessage
@@ -21,7 +17,7 @@ namespace Celbridge.Utils
         private readonly TimeSpan _cooldownTime;
         private readonly DispatcherTimer _updateTimer;
         private readonly IMessenger _messengerService;
-        private FileSystemWatcher _watcher;
+        private FileSystemWatcher? _watcher;
 
         public List<string> _changedFiles  = new ();
 
@@ -114,7 +110,7 @@ namespace Celbridge.Utils
             _modifiedTime = DateTime.Now;
         }
 
-        private void Update(object sender, object e)
+        private void Update(object? sender, object e)
         {
             if (_changeInProgress)
             {

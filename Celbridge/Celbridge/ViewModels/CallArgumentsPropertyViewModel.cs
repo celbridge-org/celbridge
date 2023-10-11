@@ -20,7 +20,7 @@ namespace Celbridge.ViewModels
         private ICelScriptService _celScriptService;
         private IInspectorService _inspectorService;
 
-        public Property Property { get; private set; }
+        public Property? Property { get; private set; }
         public int ItemIndex { get; set; }
 
         public CallArgumentsPropertyViewModel(IMessenger messengerService, IProjectService projectService, ICelScriptService celScriptService, IInspectorService inspectorService)
@@ -60,12 +60,14 @@ namespace Celbridge.ViewModels
         private Result PopulateCelScriptOptions()
         {
             // Get the list of CelScripts and sort by name
-            _celScripts = _celScriptService.CelScripts.Values.OrderBy(c => c.Entity.Name).ToList();
+            _celScripts = _celScriptService.CelScripts.Values.OrderBy(c => c.Entity!.Name).ToList();
 
             // Add CelScript names to display in combobox
             CelScriptNames.Clear();
             foreach (var celScript in _celScripts)
             {
+                Guard.IsNotNull(celScript.Entity);
+
                 var name = celScript.Entity.Name;
                 name = Path.GetFileNameWithoutExtension(name);
                 Guard.IsFalse(string.IsNullOrEmpty(name));
@@ -73,8 +75,10 @@ namespace Celbridge.ViewModels
                 CelScriptNames.Add(name);
             }
 
+            Guard.IsNotNull(Property);
+
             // Get the record object that this property is referencing and create a view for each of its properties.
-            ICallArguments callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
+            var callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
             Guard.IsNotNull(callArguments);
 
             // Select the CelScript in the combobox that matches the CelScriptName property
@@ -174,7 +178,8 @@ namespace Celbridge.ViewModels
             try
             {
                 // Get the record object that this property is referencing and create a view for each of its properties.
-                ICallArguments callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
+                Guard.IsNotNull(Property);
+                var callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
                 Guard.IsNotNull(callArguments);
 
                 var result = PropertyViewUtils.CreatePropertyViews(callArguments, PropertyContext.Record, (s, e) =>
@@ -186,7 +191,7 @@ namespace Celbridge.ViewModels
                     Property.NotifyPropertyChanged();
                 });
 
-                var list = result.Data;
+                var list = result.Data!;
 
                 return result;
             }
@@ -196,12 +201,13 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private void CallArgumentsPropertyViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void CallArgumentsPropertyViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(SelectedCelScriptIndex))
             {
                 // Get the record object that this property is referencing and create a view for each of its properties.
-                ICallArguments callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
+                Guard.IsNotNull(Property);
+                var callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
                 Guard.IsNotNull(callArguments);
 
                 string celScriptName = string.Empty;
@@ -222,7 +228,8 @@ namespace Celbridge.ViewModels
             if (e.PropertyName == nameof(SelectedCelIndex))
             {
                 // Get the record object that this property is referencing and create a view for each of its properties.
-                ICallArguments callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
+                Guard.IsNotNull(Property);
+                var callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
                 Guard.IsNotNull(callArguments);
 
                 var prevName = callArguments.CelName;
@@ -250,10 +257,12 @@ namespace Celbridge.ViewModels
 
         private Result UpdateCallArguments()
         {
+            Guard.IsNotNull(Property);
             var callArguments = Property.PropertyInfo.GetValue(Property.Object) as ICallArguments;
+            Guard.IsNotNull(callArguments);
 
             // Determine which CelScript and Cel this text is referencing
-            ICelScript targetCelScript = null;
+            ICelScript? targetCelScript = null;
             if (string.IsNullOrEmpty(callArguments.CelScriptName))
             {
                 // An empty "Cel Script Name" property indicates a Cel in the parent Cel Script
@@ -275,11 +284,11 @@ namespace Celbridge.ViewModels
                 var getResult = _celScriptService.GetCelScriptByName(activeProject, celScriptName);
                 if (getResult.Success)
                 {
-                    targetCelScript = getResult.Data;
+                    targetCelScript = getResult.Data!;
                 }
             }
 
-            ICel targetCel = null;
+            ICel? targetCel = null;
             if (targetCelScript != null)
             {
                 var celName = callArguments.CelName;
@@ -313,16 +322,18 @@ namespace Celbridge.ViewModels
                 return new SuccessResult();
             }
 
+            Guard.IsNotNull(targetCelScript);
+
             // Create and apply the specified ICelSignature instance
-            var targetCelScriptName = Path.GetFileNameWithoutExtension(targetCelScript.Entity.Name);
+            var targetCelScriptName = Path.GetFileNameWithoutExtension(targetCelScript.Entity!.Name);
             var createResult = _celScriptService.CreateCelSignature(targetCelScriptName, targetCel.Name);
             if (createResult is ErrorResult<ICelSignature> createError)
             {
                 return new ErrorResult($"Failed to create Cel Signature. {createError.Message}");
             }
 
-            callArguments.CelId = (targetCel as ICelScriptNode).Id;
-            callArguments.CelSignature = createResult.Data;
+            callArguments.CelId = (targetCel as ICelScriptNode)!.Id;
+            callArguments.CelSignature = createResult.Data!;
 
             NotifyCelSignatureChanged();
 
@@ -334,7 +345,8 @@ namespace Celbridge.ViewModels
         // Trigger a Detail panel refresh to display the updated CelSignature property
         private void NotifyCelSignatureChanged()
         {
-            ITreeNode callArguments = Property.PropertyInfo.GetValue(Property.Object) as ITreeNode;
+            Guard.IsNotNull(Property);
+            ITreeNode? callArguments = Property.PropertyInfo.GetValue(Property.Object) as ITreeNode;
             Guard.IsNotNull(callArguments);
 
             var instructionLine = ParentNodeRef.FindParent<InstructionLine>(callArguments) as InstructionLine;
@@ -352,6 +364,7 @@ namespace Celbridge.ViewModels
 
         private void UpdateSelectedCelConnection()
         {
+            Guard.IsNotNull(Property);
             var callArgumentsNode = Property.PropertyInfo.GetValue(Property.Object) as ITreeNode;
             Guard.IsNotNull(callArgumentsNode);
 

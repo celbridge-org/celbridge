@@ -1,18 +1,14 @@
 ﻿using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
-using Serilog;
-using System;
-using System.IO;
-using System.Reflection;
 using System.Runtime.Loader;
 
 namespace Celbridge.Tasks
 {
     public class LoadCustomAssembliesTask
     {
-        private AssemblyLoadContext _loadContext;
+        private AssemblyLoadContext? _loadContext;
 
-        public WeakReference CelSignatureAssembly { get; private set; }
+        public WeakReference? CelSignatureAssembly { get; private set; }
 
         public Result Unload()
         {
@@ -20,6 +16,8 @@ namespace Celbridge.Tasks
             {
                 _loadContext.Unload();
                 _loadContext = null;
+
+                Guard.IsNotNull(CelSignatureAssembly);
 
                 for (int i = 0; CelSignatureAssembly.IsAlive && (i < 10); i++)
                 {

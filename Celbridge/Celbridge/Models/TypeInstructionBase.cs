@@ -2,7 +2,7 @@
 {
     public abstract record TypeInstructionBase : InstructionBase, ITypeInstruction, IEditable
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public abstract ExpressionBase GetExpression();
 
         public override InstructionCategory InstructionCategory => InstructionCategory.Declaration;

@@ -1,9 +1,6 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
+﻿using Celbridge.Utils;
+using CommunityToolkit.Diagnostics;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 
 namespace Celbridge.Services
@@ -21,7 +18,7 @@ namespace Celbridge.Services
         private readonly Dictionary<Type, ResourceTypeAttribute> _resourceTypeInfo = new();
         private readonly Dictionary<string, Type> _extensionToResourceType = new();
         private readonly Dictionary<Type, Func<string, Result>> _resourceFactoryMethods = new();
-        public List<Type> ResourceTypes { get; private set; }
+        public List<Type> ResourceTypes { get; private set; } = new();
 
         public ResourceTypeService()
         {
@@ -50,6 +47,8 @@ namespace Celbridge.Services
                         {
                             // Store factory method for the ResourceType
                             var factoryMethodInfo = resourceTypeClass.GetMethod("CreateResource", BindingFlags.Static | BindingFlags.Public);
+                            Guard.IsNotNull(factoryMethodInfo);
+
                             Func<string, Result> factoryMethod = (Func<string, Result>)Delegate.CreateDelegate(typeof(Func<string, Result>), factoryMethodInfo);
                             if (factoryMethod == null)
                             {

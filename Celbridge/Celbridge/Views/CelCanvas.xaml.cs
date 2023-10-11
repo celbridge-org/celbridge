@@ -18,18 +18,18 @@ namespace Celbridge.Views
             // This is a bit of a hack, but we need to set the position of the view at start.
             ViewModel_CelPositionChanged(x, y);
 
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<CelCanvasViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<CelCanvasViewModel>();
             ViewModel.CelPositionChanged += ViewModel_CelPositionChanged;
         }
 
-        private void CelCanvas_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
+        private void CelCanvas_ManipulationStarted(object? sender, ManipulationStartedRoutedEventArgs e)
         {
             // Surpress tooltip until next time the cel is selected.
             // This prevents the tooltip from showing while the cel is moving.
             ToolTipService.SetToolTip(CelGrid, null);
         }
 
-        private void CelCanvas_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
+        private void CelCanvas_ManipulationDelta(object? sender, ManipulationDeltaRoutedEventArgs e)
         {
             ViewModel.SelectCell();
 
@@ -49,7 +49,7 @@ namespace Celbridge.Views
             ViewModel.SetCelPosition(x, y);
         }
 
-        private void CelCanvas_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
+        private void CelCanvas_ManipulationCompleted(object? sender, ManipulationCompletedRoutedEventArgs e)
         {
             // Restore the tooltip once movement has finished.
             ViewModel.UpdateTooltipText();
@@ -61,7 +61,7 @@ namespace Celbridge.Views
             Canvas.SetTop(this, y);
         }
 
-        private void CelCanvas_Tapped(object sender, TappedRoutedEventArgs e)
+        private void CelCanvas_Tapped(object? sender, TappedRoutedEventArgs e)
         {
             ViewModel.SelectCell();
         }

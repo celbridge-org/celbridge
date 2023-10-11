@@ -12,7 +12,7 @@ namespace Celbridge.Views
         public SettingsDialog()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<SettingsViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<SettingsViewModel>();
         }
     }
 

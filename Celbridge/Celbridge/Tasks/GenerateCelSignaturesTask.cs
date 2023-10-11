@@ -1,15 +1,8 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
+﻿using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Scriban;
-using System.IO;
 using Celbridge.Models.CelMixins;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
 using System.Text;
@@ -22,17 +15,17 @@ namespace Celbridge.Tasks
 
         class CelParameterInfo
         {
-            public string Name;
-            public string Type;
+            public string Name = string.Empty;
+            public string Type = string.Empty;
         };
 
         class CelSignatureInfo
         {
-            public string CelScriptName;
-            public string CelName;
-            public List<CelParameterInfo> Parameters;
-            public string ReturnType;
-            public string Summary;
+            public string CelScriptName = string.Empty;
+            public string CelName = string.Empty;
+            public List<CelParameterInfo> Parameters = new();
+            public string ReturnType = string.Empty;
+            public string Summary = string.Empty;
         }
 
         class CelScriptSignatureInfo
@@ -58,7 +51,7 @@ namespace Celbridge.Tasks
                 {
                     return new ErrorResult<string>($"Failed to generate Cel Signatures. {parseError.Message}");
                 }
-                var celScriptSignatureInfo = parseResult.Data;
+                var celScriptSignatureInfo = parseResult.Data!;
 
                 // Generate a source file for each CelScript 
                 foreach (var kv in celScriptSignatureInfo.CelScriptSignatures)
@@ -85,7 +78,7 @@ namespace Celbridge.Tasks
                 {
                     return new ErrorResult<string>($"Failed to compile Cel Signatures assembly. {compileError.Message}");
                 }
-                var assemblyFile = compileResult.Data;
+                var assemblyFile = compileResult.Data!;
 
                 return new SuccessResult<string>(assemblyFile);
             }
@@ -119,7 +112,10 @@ namespace Celbridge.Tasks
                     string fileContents = await File.ReadAllTextAsync(celFile);
                     JObject celScriptData = JObject.Parse(fileContents);
 
-                    JArray celsData = (JArray)celScriptData["Cels"];
+                    var cels = celScriptData["Cels"];
+                    Guard.IsNotNull(cels);
+
+                    JArray celsData = (JArray)cels;
                     if (celsData == null)
                     {
                         // The CelScript does not contain any Cels, so there's no need
@@ -131,15 +127,19 @@ namespace Celbridge.Tasks
                     {
                         // Get the Cel Parameters
                         var celParameters = new List<CelParameterInfo>();
-                        var input = (JArray)celData["Input"];
+
+                        var inputData = celData["Input"];
+                        Guard.IsNotNull(inputData);
+
+                        var input = (JArray)inputData;
                         foreach (var instructionLine in input)
                         {
                             // The parameter type is the keyword with "Expression" appended.
                             // This works for the primitive types, we may need something more
                             // sophisticated for records later on.
 
-                            var parameterName = (string)instructionLine["Instruction"]["Name"];
-                            var parameterType = (string)instructionLine["Keyword"] + "Expression";
+                            var parameterName = (string)instructionLine["Instruction"]!["Name"]!;
+                            var parameterType = (string)instructionLine["Keyword"]! + "Expression";
 
                             var celParameter = new CelParameterInfo()
                             {
@@ -150,19 +150,19 @@ namespace Celbridge.Tasks
                         }
 
                         // Get the Return Type
-                        var output = (JArray)celData["Output"];
+                        var output = (JArray)celData["Output"]!;
                         var returnType = string.Empty;
                         if (output.Count() > 0)
                         {
                             var o = output[0]["Keyword"];
-                            if (o.Type == JTokenType.String)
+                            if (o!.Type == JTokenType.String)
                             {
-                                returnType = (string)o;
+                                returnType = (string)o!;
                             }
                         }
 
                         // Get the Cel Name
-                        var celName = (string)celData["Name"];
+                        var celName = (string)celData["Name"]!;
 
                         // Build a summary string which lists all the parameter & their values
                         bool first = true;
@@ -258,6 +258,8 @@ public record {{ cel_script_name }}
                 });
 
                 var directory = Path.GetDirectoryName(sourceFile);
+                Guard.IsNotNull(directory);
+
                 Directory.CreateDirectory(directory);
 
                 await File.WriteAllTextAsync(sourceFile, result);

@@ -15,7 +15,7 @@ namespace Celbridge.Models
         public Guid Id { get; set; }
 
         [JsonProperty(Order = 2)]
-        private string _name;
+        private string _name = string.Empty;
 
         public string Name
         {
@@ -26,13 +26,13 @@ namespace Celbridge.Models
             }
         }
 
-        public event Action NameChanged;
+        public event Action? NameChanged;
 
         [JsonIgnore]
         public bool IsNameEditable => false;
 
         [JsonProperty(Order = 3)]
-        private string _description;
+        private string _description = string.Empty;
 
         [TextAreaProperty]
         public string Description
@@ -50,15 +50,15 @@ namespace Celbridge.Models
         }
 
         [JsonIgnore]
-        public string ProjectPath { get; set; }
+        public string ProjectPath { get; set; } = string.Empty;
 
         [JsonIgnore]
-        public string ProjectFolder => Path.GetDirectoryName(ProjectPath);
+        public string ProjectFolder => Path.GetDirectoryName(ProjectPath) ?? string.Empty;
 
         [JsonIgnore]
         public string LibraryFolder => Path.Combine(ProjectFolder, "Library");
 
-        private string _tooltip;
+        private string _tooltip = string.Empty;
         [JsonIgnore]
         public string Tooltip
         {
@@ -78,7 +78,7 @@ namespace Celbridge.Models
             PropertyChanged += Project_PropertyChanged;
         }
 
-        private void Project_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void Project_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {

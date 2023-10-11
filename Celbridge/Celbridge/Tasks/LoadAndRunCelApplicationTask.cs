@@ -11,9 +11,9 @@ namespace Celbridge.Tasks
 {
     public class LoadAndRunCelApplicationTask
     {
-        private AssemblyLoadContext _loadContext;
+        private AssemblyLoadContext? _loadContext;
 
-        public WeakReference CelApplicationAssembly { get; private set; }
+        public WeakReference? CelApplicationAssembly { get; private set; }
 
         public Result Unload()
         {
@@ -21,6 +21,8 @@ namespace Celbridge.Tasks
             {
                 _loadContext.Unload();
                 _loadContext = null;
+
+                Guard.IsNotNull(CelApplicationAssembly);
 
                 for (int i = 0; CelApplicationAssembly.IsAlive && (i < 10); i++)
                 {

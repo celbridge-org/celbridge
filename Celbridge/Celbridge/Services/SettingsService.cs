@@ -10,8 +10,8 @@ namespace Celbridge.Services
 {
     public interface ISettingsService
     {
-        EditorSettings EditorSettings { get; }
-        ProjectSettings ProjectSettings { get; }
+        EditorSettings? EditorSettings { get; }
+        ProjectSettings? ProjectSettings { get; }
 
         void SaveEditorSettings();
         void LoadEditorSettings();
@@ -26,8 +26,8 @@ namespace Celbridge.Services
         private const string EditorSettingsKey = "EditorSettings";
         private const string ProjectSettingsKey = "ProjectSettings";
 
-        public EditorSettings EditorSettings { get; private set; }
-        public ProjectSettings ProjectSettings { get; private set; }
+        public EditorSettings? EditorSettings { get; private set; }
+        public ProjectSettings? ProjectSettings { get; private set; }
 
         public SettingsService(IMessenger messengerService)
         {
@@ -46,6 +46,8 @@ namespace Celbridge.Services
                 else
                 {
                     var settingsJson = editorSettings.ToString();
+                    Guard.IsNotNull(settingsJson);
+
                     EditorSettings = JsonConvert.DeserializeObject<EditorSettings>(settingsJson);
                 }
             }
@@ -72,7 +74,7 @@ namespace Celbridge.Services
             EditorSettings.PropertyChanged += EditorSettings_PropertyChanged;
         }
 
-        private void EditorSettings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void EditorSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             Guard.IsNotNull(EditorSettings);
 
@@ -109,6 +111,8 @@ namespace Celbridge.Services
                 else
                 {
                     var settingsJson = projectSettings.ToString();
+                    Guard.IsNotNull(settingsJson);
+
                     ProjectSettings = JsonConvert.DeserializeObject<ProjectSettings>(settingsJson);
                 }
             }
@@ -135,7 +139,7 @@ namespace Celbridge.Services
             ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
         }
 
-        private void ProjectSettings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ProjectSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             Guard.IsNotNull(ProjectSettings);
 

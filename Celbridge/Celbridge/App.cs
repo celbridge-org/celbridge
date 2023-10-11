@@ -51,6 +51,7 @@ namespace Celbridge
             {
                 // XamlRoot is required for displaying content dialogs
                 var dialogService = Host.Services.GetRequiredService<IDialogService>();
+                Guard.IsNotNull(rootFrame.XamlRoot);
 
                 dialogService.XamlRoot = rootFrame.XamlRoot;
 

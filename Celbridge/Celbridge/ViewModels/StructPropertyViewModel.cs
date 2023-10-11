@@ -7,7 +7,7 @@ namespace Celbridge.ViewModels
 {
     public abstract partial class StructPropertyViewModel<T> : ObservableObject where T : struct
     {
-        public Property Property { get; private set; }
+        public Property? Property { get; private set; }
 
         public void SetProperty(Property property, string labelText)
         {
@@ -15,7 +15,7 @@ namespace Celbridge.ViewModels
             LabelText = labelText;
         }
 
-        public string LabelText { get; private set; }
+        public string LabelText { get; private set; } = string.Empty;
         public int ItemIndex { get; set; }
         public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
 
@@ -23,6 +23,7 @@ namespace Celbridge.ViewModels
         {
             get
             {
+                Guard.IsNotNull(Property);
                 var propertyInfo = Property.PropertyInfo;
                 if (Property.CollectionType != null)
                 {
@@ -31,7 +32,7 @@ namespace Celbridge.ViewModels
                     Guard.IsTrue(ItemIndex < list.Count);
                     return list[ItemIndex];
                 }
-                return (T)propertyInfo.GetValue(Property.Object);
+                return (T)propertyInfo.GetValue(Property.Object)!;
             }
 
             set
@@ -41,6 +42,7 @@ namespace Celbridge.ViewModels
                     return;
                 }
 
+                Guard.IsNotNull(Property);
                 var propertyInfo = Property.PropertyInfo;
                 if (Property.CollectionType != null)
                 {
@@ -62,10 +64,11 @@ namespace Celbridge.ViewModels
             PropertyChanged += PropertyViewModel_PropertyChanged;
         }
 
-        private void PropertyViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Value))
             {
+                Guard.IsNotNull(Property);
                 Property.NotifyPropertyChanged();
             }
         }

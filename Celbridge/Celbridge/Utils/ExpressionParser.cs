@@ -10,7 +10,7 @@ namespace Celbridge.Utils
     {
         public List<Tasks.SyntaxToken> Tokens { get; } = new List<Tasks.SyntaxToken>();
         public SyntaxState State { get; init; }
-        public string ErrorMessage { get; init; }
+        public string ErrorMessage { get; init; } = string.Empty;
 
     }
 

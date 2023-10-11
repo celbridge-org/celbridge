@@ -39,12 +39,12 @@ namespace Celbridge.Tasks
     public class SyntaxToken
     {
         public InstructionCategory Category { get; set; }
-        public string Text { get; set; }
+        public string Text { get; set; } = string.Empty;
     }
 
     public class UpdateSyntaxFormatTask : IDisposable
     {
-        private ICel _cel;
+        private ICel? _cel;
 
         private CelSyntaxFormat _celSyntaxFormat = new ();
 
@@ -52,7 +52,7 @@ namespace Celbridge.Tasks
 
         private readonly CancellationTokenSource _cancellationToken = new();
 
-        public event Action<CelSyntaxFormat> CelSyntaxFormatUpdated;
+        public event Action<CelSyntaxFormat>? CelSyntaxFormatUpdated;
 
         public void Dispose()
         {
@@ -87,6 +87,8 @@ namespace Celbridge.Tasks
         {
             // Todo: Use a double buffer here and update syntax on a separate thread. Make Instructions list immutable?
             _celSyntaxFormat.Clear();
+
+            Guard.IsNotNull(_cel);
 
             // Todo: Handle exceptions gracefully when processing instruction lines
             ProcessInstructionLines(_cel.Input, _celSyntaxFormat.InputSyntaxFormat, PropertyContext.CelInput);
@@ -171,7 +173,7 @@ namespace Celbridge.Tasks
 
             var instructionSummary = instruction.GetInstructionSummary(context);
 
-            ExpressionInfo expressionInfo = null;
+            ExpressionInfo? expressionInfo = null;
             if (instructionSummary.SummaryFormat == SummaryFormat.CSharpExpression)
             {
                 expressionInfo = ExpressionParser.Parse(instructionSummary.SummaryText);
