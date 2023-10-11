@@ -19,7 +19,7 @@ namespace Celbridge.Views
         public MainMenu()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<MainMenuViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<MainMenuViewModel>();
         }
     }
 }

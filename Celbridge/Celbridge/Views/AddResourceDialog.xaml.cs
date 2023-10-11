@@ -1,7 +1,4 @@
 ﻿using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Views
 {
@@ -12,7 +9,7 @@ namespace Celbridge.Views
         public AddResourceDialog()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<AddResourceViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<AddResourceViewModel>();
         }
     }
 }

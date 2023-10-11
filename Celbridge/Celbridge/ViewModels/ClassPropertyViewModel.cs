@@ -7,7 +7,20 @@ namespace Celbridge.ViewModels
 {
     public abstract partial class ClassPropertyViewModel<T> : ObservableObject where T : class
     {
-        public Property Property { get; private set; }
+        private Property? _property;
+        public Property Property 
+        {
+            get
+            {
+                Guard.IsNotNull(_property);
+                return _property;
+            }
+            private set
+            {
+                Guard.IsNotNull(value);
+                _property = value;
+            }
+        }
 
         public void SetProperty(Property property, string labelText)
         {
@@ -15,11 +28,11 @@ namespace Celbridge.ViewModels
             LabelText = labelText;
         }
 
-        public string LabelText { get; private set; }
+        public string LabelText { get; private set; } = string.Empty;
         public int ItemIndex { get; set; }
         public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
 
-        public T Value
+        public T? Value
         {
             get
             {
@@ -31,12 +44,14 @@ namespace Celbridge.ViewModels
                     Guard.IsTrue(ItemIndex < list.Count);
                     return list[ItemIndex];
                 }
+
                 return propertyInfo.GetValue(Property.Object) as T;
             }
 
             set
             {
-                if (value.Equals(Value))
+                if (value is null ||
+                    value.Equals(Value))
                 {
                     return;
                 }
@@ -62,7 +77,7 @@ namespace Celbridge.ViewModels
             PropertyChanged += PropertyViewModel_PropertyChanged;
         }
 
-        private void PropertyViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Value))
             {

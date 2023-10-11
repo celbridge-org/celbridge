@@ -19,7 +19,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<RecordPropertyViewModel>();
         }
 
@@ -35,7 +35,7 @@ namespace Celbridge.Views
                 var property = ViewModel.Property;
 
                 // Get the record object that this property is referencing and create a view for each of its properties.
-                IRecord record;
+                IRecord? record;
                 if (property.CollectionType != null)
                 {
                     var list = property.PropertyInfo.GetValue(property.Object) as IList;
@@ -60,13 +60,12 @@ namespace Celbridge.Views
                     property.NotifyPropertyChanged();
                 });
 
-                if (result.Failure)
+                if (result is ErrorResult<List<UIElement>> error)
                 {
-                    var error = result as ErrorResult<List<UIElement>>;
                     return new ErrorResult(error.Message);
                 }
 
-                var views = result.Data;
+                var views = result.Data!;
                 foreach (var view in views)
                 {
                     PropertyViews.Items.Add(view);

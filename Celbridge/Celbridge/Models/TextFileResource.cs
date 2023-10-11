@@ -7,10 +7,10 @@ namespace Celbridge.Models
     [ResourceType("Text File", "A text file resource", "Page2", ".txt")]
     public class TextFileResource : FileResource, IDocumentEntity
     {
-        public string Permissions { get; set; }
+        public string Permissions { get; set; } = string.Empty;
 
         [PathProperty]
-        public string SomePath { get; set; }
+        public string SomePath { get; set; } = string.Empty;
 
         public static Result CreateResource(string path)
         {

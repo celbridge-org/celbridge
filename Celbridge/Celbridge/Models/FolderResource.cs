@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Celbridge.Models
 {
-    [ResourceType("Folder", "Contains file resources", "Folder", null)]
+    [ResourceType("Folder", "Contains file resources", "Folder", "")]
     public class FolderResource : Resource
     {
         [JsonIgnore]

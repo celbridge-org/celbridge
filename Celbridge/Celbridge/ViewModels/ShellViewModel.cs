@@ -13,7 +13,7 @@ namespace Celbridge.ViewModels
         [ObservableProperty]
         private bool _isProjectActive;
 
-        public event Action<bool> WindowActivated;
+        public event Action<bool>? WindowActivated;
 
         public void NotifyWindowActivated(bool active)
         {

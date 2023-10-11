@@ -14,7 +14,7 @@ namespace Celbridge.Views
         public ConsolePanel()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<ConsoleViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<ConsoleViewModel>();
 
             ViewModel.OnWriteMessage += () =>
             {
@@ -32,7 +32,7 @@ namespace Celbridge.Views
             };
         }
 
-        public void CommandTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
         {
             if (e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
             {
@@ -48,7 +48,7 @@ namespace Celbridge.Views
             }
         }
 
-        public void CommandTextBox_KeyUp(object sender, KeyRoutedEventArgs e)
+        public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
         {
             if (e.Key == VirtualKey.Enter)
             {

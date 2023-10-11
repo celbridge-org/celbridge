@@ -50,6 +50,8 @@ namespace Celbridge.ViewModels
                     continue;
                 }
 
+                Guard.IsNotNull(result.Data);
+
                 var typeName = result.Data.Name;
                 ResourceTypeNames.Add(typeName);
                 _resourceTypes.Add(type);
@@ -57,7 +59,7 @@ namespace Celbridge.ViewModels
             SelectedTypeIndex = 0;
         }
 
-        private string _resourceName;
+        private string _resourceName = string.Empty;
         public string ResourceName
         {
             get { return _resourceName; }
@@ -91,13 +93,13 @@ namespace Celbridge.ViewModels
             Guard.IsNotNull(project);
 
             var pathResult = _resourceService.GetPathForNewResource(project, ResourceName);
-            if (pathResult.Failure)
+            if (pathResult is ErrorResult<string> error)
             {
-                var error = pathResult as ErrorResult<string>;
                 Log.Error($"{error.Message}");
                 return;
             }
-            var path = pathResult.Data;
+            var path = pathResult.Data!;
+            Guard.IsNotNull(path);
 
             var resourceType = _resourceTypes[SelectedTypeIndex];
             Guard.IsNotNull(resourceType);

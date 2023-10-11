@@ -1,13 +1,5 @@
 ﻿using Celbridge.Services;
-using Celbridge.Views;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Localization;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using System;
-using System.Threading.Tasks;
-using System.Windows.Input;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -22,13 +14,14 @@ namespace Celbridge.ViewModels
             _localizer = localizer;
         }
 
-        public XamlRoot ShellRoot { get; set; }
+        public XamlRoot? ShellRoot { get; set; }
 
         public ICommand ToggleInspectorCommand => new RelayCommand(ToggleInspector_Executed);
 
         private void ToggleInspector_Executed()
         {
             // Toggle the inspector panel
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.RightPanelExpanded = !_settingsService.EditorSettings.RightPanelExpanded;
         }
     }

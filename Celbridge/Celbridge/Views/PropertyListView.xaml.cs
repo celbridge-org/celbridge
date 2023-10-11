@@ -18,7 +18,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             ViewModel = services.GetRequiredService<PropertyListViewModel>();
             ViewModel.ListView = ItemsListView;
 
@@ -26,13 +26,13 @@ namespace Celbridge.Views
             Unloaded += PropertyListView_Unloaded;
         }
 
-        private void PropertyListView_Loaded(object sender, RoutedEventArgs e)
+        private void PropertyListView_Loaded(object? sender, RoutedEventArgs e)
         {
             // Set the ListView again in case a previous Unload event has cleared it
             ViewModel.OnViewLoaded(ItemsListView);
         }
 
-        private void PropertyListView_Unloaded(object sender, RoutedEventArgs e)
+        private void PropertyListView_Unloaded(object? sender, RoutedEventArgs e)
         {
             ViewModel.OnViewUnloaded();
         }
@@ -59,12 +59,12 @@ namespace Celbridge.Views
             return new SuccessResult();
         }
 
-        private void ItemsListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+        private void ItemsListView_DragItemsStarting(object? sender, DragItemsStartingEventArgs e)
         {
             ViewModel.DragItemsStartingCommand.Execute(e);
         }
 
-        private void ItemsListView_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
+        private void ItemsListView_DragItemsCompleted(object? sender, DragItemsCompletedEventArgs e)
         {
             ViewModel.DragItemsCompletedCommand.Execute(e);
 
@@ -73,7 +73,7 @@ namespace Celbridge.Views
             UpdateSelectedIndex(listView);
         }
 
-        private void ItemsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void ItemsListView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             var listView = sender as ListView;
             Guard.IsNotNull(listView);
@@ -81,7 +81,7 @@ namespace Celbridge.Views
             UpdateSelectedIndex(listView);
         }
 
-        private void ItemsListView_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void ItemsListView_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             UpdateSelectedIndex(ItemsListView);
         }

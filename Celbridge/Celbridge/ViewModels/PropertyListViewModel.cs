@@ -29,10 +29,10 @@ namespace Celbridge.ViewModels
         private IMessenger _messengerService;
         private readonly IInspectorService _inspectorService;
 
-        public ListView ListView { get; set; }
-        public Property Property { get; set; }
+        public ListView? ListView { get; set; }
+        public Property? Property { get; set; }
         public int ItemIndex { get; set; }
-        public string LabelText { get; set; }
+        public string LabelText { get; set; } = string.Empty;
 
         public int MaxLength { get; set; } = -1;
 
@@ -70,24 +70,24 @@ namespace Celbridge.ViewModels
         public ICommand AddItemCommand => new RelayCommand(AddItem_Executed);
         private void AddItem_Executed()
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             var result = AddItem(itemCollection.Count);
-            if (result.Failure)
+            if (result is ErrorResult error)
             {
-                var error = result as ErrorResult;
                 Log.Error($"Failed to add item: {error.Message}");
             }
         }
 
         public ICommand DragItemsStartingCommand => new RelayCommand<DragItemsStartingEventArgs>(DragItemsStarting_Executed);
-        private void DragItemsStarting_Executed(DragItemsStartingEventArgs e)
+        private void DragItemsStarting_Executed(DragItemsStartingEventArgs? e)
         {
             _isDragging = true;
         }
 
         public ICommand DragItemsCompletedCommand => new RelayCommand<DragItemsCompletedEventArgs>(DragItemsCompleted_Executed);
-        private void DragItemsCompleted_Executed(DragItemsCompletedEventArgs e)
+        private void DragItemsCompleted_Executed(DragItemsCompletedEventArgs? e)
         {
             _isDragging = false;
 
@@ -101,9 +101,8 @@ namespace Celbridge.ViewModels
                 _lastInsertedIndex = -1;
 
                 var result = MoveItem(lastRemovedIndex, lastInsertedIndex);
-                if (result.Failure)
+                if (result is ErrorResult error)
                 {
-                    var error = result as ErrorResult;
                     Log.Error($"Failed to add item: {error.Message}");
                 }
             }
@@ -111,23 +110,26 @@ namespace Celbridge.ViewModels
 
         public Result PopulateListView()
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             // Remove the event handler first in case this call is a refresh
             itemCollection.VectorChanged -= ViewItems_VectorChanged;
             itemCollection.Clear();
 
+            Guard.IsNotNull(Property);
             var propInfo = Property.PropertyInfo;
             var entity = Property.Object;
 
             var list = propInfo.GetValue(entity) as IList;
+            Guard.IsNotNull(list);
+
             var count = list.Count;
             for (int i = 0; i < count; i++)
             {
                 var result = CreatePropertyViewAtIndex(i);
-                if (result.Failure)
+                if (result is ErrorResult error)
                 {
-                    var error = result as ErrorResult;
                     var message = ($"Failed to create populate list view. {error.Message}");
                     return new ErrorResult(message);
                 }
@@ -153,6 +155,7 @@ namespace Celbridge.ViewModels
                 return new ErrorResult(message);
             }
 
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             // To match the behaviour of Duplicate and Delete, the new item is inserted at the itemIndex + 1.
@@ -160,13 +163,15 @@ namespace Celbridge.ViewModels
             // Indices greater than or equal to the list count are added at the end of the list.
             Guard.IsTrue(itemIndex >= -1 && itemIndex <= itemCollection.Count);
 
+            Guard.IsNotNull(Property);
             var propInfo = Property.PropertyInfo;
             var entity = Property.Object;
 
             try
             {
                 // Get the current list from the property value
-                var list = (IList)propInfo.GetValue(entity);
+                var list = (IList?)propInfo.GetValue(entity);
+                Guard.IsNotNull(list);
                 Guard.IsTrue(list.Count == itemCollection.Count);
 
                 int newIndex = itemIndex + 1;
@@ -175,7 +180,7 @@ namespace Celbridge.ViewModels
                 var originalType = propInfo.PropertyType.GetGenericArguments()[0];
                 Guard.IsNotNull(originalType);
 
-                object newItem = null;
+                object? newItem = null;
                 if (originalType == typeof(string))
                 {
                     // Strings require special handling because the other two methods 
@@ -226,21 +231,25 @@ namespace Celbridge.ViewModels
                 return new ErrorResult(message);
             }
 
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             Guard.IsTrue(itemIndex >= 0 && itemIndex < itemCollection.Count);
 
+            Guard.IsNotNull(Property);
             var propInfo = Property.PropertyInfo;
             var entity = Property.Object;
 
             try
             {
                 // Get the current list from the property value
-                var list = (IList)propInfo.GetValue(entity);
+                var list = (IList?)propInfo.GetValue(entity);
+                Guard.IsNotNull(list);
                 Guard.IsTrue(list.Count == itemCollection.Count);
 
                 // Get the item at the specified index
                 var originalItem = list[itemIndex];
+                Guard.IsNotNull(originalItem);
 
                 // Special json settings that handles CelSignature types correctly
                 var jsonSettings = CelScriptJsonSettings.Create();
@@ -250,11 +259,13 @@ namespace Celbridge.ViewModels
                 var json = JsonConvert.SerializeObject(originalItem, jsonSettings);
                 var copy = JsonConvert.DeserializeObject(json, originalItem.GetType(), jsonSettings);
 
-                if (originalItem is ITreeNode originalNode)
+                if (originalItem is ITreeNode originalNode &&
+                    originalNode.ParentNode.TreeNode is not null)
                 {
                     // The copy should have the same parent as the original
                     var copyNode = copy as ITreeNode;
                     Guard.IsNotNull(copyNode);
+
                     ParentNodeRef.SetParent(copyNode, originalNode.ParentNode.TreeNode);
                 }
 
@@ -279,17 +290,21 @@ namespace Celbridge.ViewModels
 
         private Result DeleteItem(int itemIndex)
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             Guard.IsTrue(itemIndex >= 0 && itemIndex < itemCollection.Count);
 
+            Guard.IsNotNull(Property);
             var propInfo = Property.PropertyInfo;
             var entity = Property.Object;
 
             try
             {
                 // Get the list object from the entity property
-                var list = (IList)propInfo.GetValue(entity);
+                var list = (IList?)propInfo.GetValue(entity);
+                Guard.IsNotNull(list);
+
                 Guard.IsTrue(list.Count == itemCollection.Count);
                 Guard.IsTrue(itemIndex >= 0 && itemIndex < list.Count);
 
@@ -307,6 +322,7 @@ namespace Celbridge.ViewModels
 
         private Result MoveItem(int fromItemIndex, int toItemIndex)
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             Guard.IsTrue(fromItemIndex >= 0 && fromItemIndex < itemCollection.Count);
@@ -317,16 +333,19 @@ namespace Celbridge.ViewModels
                 return new SuccessResult();
             }
 
+            Guard.IsNotNull(Property);
             var propInfo = Property.PropertyInfo;
             var entity = Property.Object;
 
             try
             {
                 // Get the current list from the property value
-                var list = (IList)propInfo.GetValue(entity);
+                var list = (IList?)propInfo.GetValue(entity);
+                Guard.IsNotNull(list);
                 Guard.IsTrue(list.Count == itemCollection.Count);
 
                 var originalItem = list[fromItemIndex];
+                Guard.IsNotNull(originalItem);
 
                 // Special json settings that handles CelSignature types correctly
                 var jsonSettings = CelScriptJsonSettings.Create();
@@ -334,7 +353,8 @@ namespace Celbridge.ViewModels
                 var json = JsonConvert.SerializeObject(originalItem, jsonSettings);
                 var copy = JsonConvert.DeserializeObject(json, originalItem.GetType(), jsonSettings);
 
-                if (originalItem is ITreeNode originalNode)
+                if (originalItem is ITreeNode originalNode &&
+                    originalNode.ParentNode.TreeNode is not null)
                 {
                     // The copy should have the same parent as the original
                     var copyNode = copy as ITreeNode;
@@ -361,26 +381,30 @@ namespace Celbridge.ViewModels
 
         private Result CreatePropertyViewAtIndex(int itemIndex)
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             Guard.IsTrue(itemIndex <= itemCollection.Count);
 
             try
             {
-                var result = PropertyViewUtils.CreatePropertyView(Property, itemIndex, null);
-                if (result.Failure)
+                Guard.IsNotNull(Property);
+                var result = PropertyViewUtils.CreatePropertyView(Property, itemIndex, string.Empty);
+                if (result is ErrorResult<UIElement> error)
                 {
-                    var error = result as ErrorResult<UIElement>;
                     var message = ($"Failed to create property view. {error.Message}");
                     return new ErrorResult(message);
                 }
-                var propertyView = result.Data;
+                var propertyView = result.Data!;
 
                 // Wrap the listItem inside a container view that appears when the item is hovered over.
                 // This container displays duplicate, delete, etc. buttons for interacting with the item.
 
                 var container = new PropertyListItem();
+
                 container.SetContainedItem(propertyView, AddItem, DuplicateItem, DeleteItem, CanAddItem);
+                Guard.IsNotNull(container.PropertyView);
+
                 container.PropertyView.ItemIndex = itemIndex;
 
                 if (itemIndex == itemCollection.Count)
@@ -403,10 +427,15 @@ namespace Celbridge.ViewModels
             return new SuccessResult();
         }
 
-        private bool CanAddItem() => MaxLength == -1 || ListView.Items.Count < MaxLength;
+        private bool CanAddItem()
+        {
+            Guard.IsNotNull(ListView);
+            return MaxLength == -1 || ListView.Items.Count < MaxLength;
+        }
 
         private Result DeletePropertyViewAtIndex(int itemIndex)
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             try
@@ -437,6 +466,7 @@ namespace Celbridge.ViewModels
 
         private void NotifyPropertyViewMovedToIndex(int itemIndex)
         {
+            Guard.IsNotNull(ListView);
             var itemCollection = ListView.Items;
 
             // Notify the property view that it's index in the list has changed.
@@ -461,6 +491,7 @@ namespace Celbridge.ViewModels
             if (message.Property == Property)
             {
                 // User has started editing the text box for a collection item.
+                Guard.IsNotNull(ListView);
                 ListView.SelectedIndex = message.Index;
             }
         }
@@ -471,14 +502,16 @@ namespace Celbridge.ViewModels
             if (ListView != activeListView)
             {
                 // This PropertyListView is not the currently active one, so deselect any items in it.
+                Guard.IsNotNull(ListView);
                 ListView.SelectedIndex = -1;
             }
         }
 
-        private void PropertyListViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void PropertyListViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ListView))
             {
+                Guard.IsNotNull(ListView);
                 var itemCollection = ListView.Items;
 
                 IsEmpty = itemCollection.Count == 0;
@@ -496,10 +529,12 @@ namespace Celbridge.ViewModels
                     // The item index is actually stored in the property's ViewModel.
                     // The view layers above that simply wrap this value, so we don't have to keep
                     // the value in sync in multiple places.
+                    Guard.IsNotNull(item.PropertyView);
                     item.PropertyView.ItemIndex = i;
                 }
 
                 // Notify observers of the property list object that the list has changed
+                Guard.IsNotNull(Property);
                 Property.NotifyPropertyChanged();
 
                 if (Property == _inspectorService.SelectedCollection)
@@ -529,6 +564,7 @@ namespace Celbridge.ViewModels
 
         public void SetSelectedIndex(int selectedIndex)
         {
+            Guard.IsNotNull(Property);
             if (Property.Attributes.OfType<ShowDetailOnSelectAttribute>().Any())
             {
                 // The [ShowDetailOnSelect] attribute is only valid on collections of IRecord objects.
@@ -553,6 +589,7 @@ namespace Celbridge.ViewModels
             {
                 // Notify the other list views that this is now the active one, so they should
                 // deselect any item they currently have selected.
+                Guard.IsNotNull(ListView);
                 var message = new ListViewIsActiveMessage(ListView);
                 _messengerService.Send(message);
             }

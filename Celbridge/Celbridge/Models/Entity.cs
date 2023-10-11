@@ -1,5 +1,6 @@
 ﻿using Celbridge.Services;
 using Celbridge.Utils;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -41,16 +42,18 @@ namespace Celbridge.Models
 
         protected virtual void UpdateIconAndTooltip()
         {
-            var itemTypeService = (Application.Current as App).Host.Services.GetService<IResourceTypeService>();
+            var itemTypeService = (Application.Current as App)!.Host!.Services.GetService<IResourceTypeService>();
+            Guard.IsNotNull(itemTypeService);
+
             var result = itemTypeService.GetResourceTypeInfo(GetType());
             if (result.Success)
             {
-                Icon = result.Data.Icon;
+                Icon = result.Data!.Icon;
                 Tooltip = result.Data.Description;
             }
         }
 
-        private string _name;
+        private string _name = string.Empty;
 
         public string Name
         {
@@ -65,7 +68,7 @@ namespace Celbridge.Models
         [HideProperty]
         public bool IsNameEditable => true;
 
-        private string _description;
+        private string _description = string.Empty;
 
         [TextAreaProperty]
         public string Description 
@@ -82,9 +85,9 @@ namespace Celbridge.Models
 
         [JsonIgnore]
         [HideProperty]
-        public string Icon { get; private set; }
+        public string Icon { get; private set; } = string.Empty;
         
-        private string _tooltip;
+        private string _tooltip = string.Empty;
         [JsonIgnore]
         [HideProperty]
         public string Tooltip
@@ -97,7 +100,7 @@ namespace Celbridge.Models
         }
 
         [JsonIgnore]
-        public Entity Parent { get; set; }
+        public Entity? Parent { get; set; }
 
 		private ObservableCollection<Entity> _children;
 		public ObservableCollection<Entity> Children
@@ -145,17 +148,19 @@ namespace Celbridge.Models
             return sb.ToString();
         }
 
-        private void Entity_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void Entity_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {
                 case nameof(Description):
                     {
-                        var itemTypeService = (Application.Current as App).Host.Services.GetService<IResourceTypeService>();
+                        var itemTypeService = (Application.Current as App)!.Host!.Services.GetService<IResourceTypeService>();
+                        Guard.IsNotNull(itemTypeService);
+
                         var result = itemTypeService.GetResourceTypeInfo(GetType());
                         if (result.Success)
                         {
-                            Tooltip = !string.IsNullOrEmpty(Description) ? Description : result.Data.Description;
+                            Tooltip = !string.IsNullOrEmpty(Description) ? Description : result.Data!.Description;
                         }
 
                         break;
@@ -165,13 +170,15 @@ namespace Celbridge.Models
             Parent?.OnPropertyChanged(nameof(Children));
         }
 
-        private void Children_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void Children_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
             {
                 foreach (var child in e.OldItems)
                 {
                     var newEntity = child as Entity;
+                    Guard.IsNotNull(newEntity);
+
                     newEntity.Parent = null;
                 }
             }
@@ -181,6 +188,8 @@ namespace Celbridge.Models
                 foreach (var child in e.NewItems)
                 {
                     var newEntity = child as Entity;
+                    Guard.IsNotNull(newEntity);
+
                     newEntity.Parent = this;
                 }
             }

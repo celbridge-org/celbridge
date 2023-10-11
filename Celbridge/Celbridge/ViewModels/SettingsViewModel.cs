@@ -1,9 +1,4 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Celbridge.Services;
 
 namespace Celbridge.ViewModels
 {
@@ -24,11 +19,13 @@ namespace Celbridge.ViewModels
         { 
             get
             {
+                Guard.IsNotNull(_settingsService.EditorSettings);
                 return _settingsService.EditorSettings.ApplicationTheme;
             }
             set 
             {
                 // Wrap model property
+                Guard.IsNotNull(_settingsService.EditorSettings);
                 SetProperty(_settingsService.EditorSettings.ApplicationTheme, 
                     value,    
                     _settingsService.EditorSettings,

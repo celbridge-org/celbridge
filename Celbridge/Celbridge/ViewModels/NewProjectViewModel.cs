@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Serilog;
 using Celbridge.Services;
 using Celbridge.Utils;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -17,7 +18,7 @@ namespace Celbridge.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IProjectService _projectService;
 
-        private string _projectName;
+        private string _projectName = string.Empty;
         public string ProjectName
         {
             get { return _projectName; }
@@ -27,7 +28,7 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private string _projectFolder;
+        private string _projectFolder = string.Empty;
         public string ProjectFolder
         {
             get { return _projectFolder; }
@@ -58,7 +59,7 @@ namespace Celbridge.ViewModels
 
             // There's no cross-platform way to get the path to the documents folder on Uno Platform.
             // The best we can do is persist the most recent folder that the user picked.
-
+            Guard.IsNotNull(_settingsService.EditorSettings);
             ProjectFolder = _settingsService.EditorSettings.PreviousNewProjectFolder;
         }
 
@@ -67,24 +68,24 @@ namespace Celbridge.ViewModels
             var result = await FileUtils.ShowFolderPicker();
             if (result.Success)
             {
-                ProjectFolder = result.Data.Path;
+                ProjectFolder = result.Data!.Path;
             }
         }
 
         private async Task CreateProject_Executed()
         {
             var createResult = await _projectService.CreateProject(ProjectFolder, ProjectName);
-            if (createResult.Failure)
+            if (createResult is ErrorResult<string> error)
             {
-                var error = createResult as ErrorResult<string>;
                 Log.Information($"Failed to create `{ProjectName}` in `{ProjectFolder}. {error.Message}");
                 return;
             }
 
             // Remember project folder for next time
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.PreviousNewProjectFolder = ProjectFolder;
 
-            var projectPath = createResult.Data;
+            var projectPath = createResult.Data!;
 
             var openResult = await _projectService.LoadProject(projectPath);
             if (openResult.Success)

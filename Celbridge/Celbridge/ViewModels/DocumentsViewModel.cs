@@ -16,7 +16,7 @@ namespace Celbridge.ViewModels
         private readonly IDocumentService _documentService;
         private readonly ISettingsService _settingsService;
 
-        public IDocumentsPanelView DocumentsPanelView { get; internal set; }
+        public IDocumentsPanelView? DocumentsPanelView { get; internal set; }
 
         public DocumentsViewModel(IMessenger messengerService, 
             IDocumentService documentService,
@@ -43,6 +43,7 @@ namespace Celbridge.ViewModels
             var document = m.Value;
             Guard.IsNotNull(document);
 
+            Guard.IsNotNull(DocumentsPanelView);
             if (DocumentsPanelView.TryFocusDocumentTab(document))
             {
                 return;
@@ -57,7 +58,7 @@ namespace Celbridge.ViewModels
             var viewTypeName = $"Celbridge.Views.{documentViewName}";
 
             // Instantiate the document view user control
-            Type type = Type.GetType(viewTypeName);
+            var type = Type.GetType(viewTypeName);
             if (type == null)
             {
                 Log.Error($"Failed to create view for document '{document.DocumentEntity.Name}' of type '{viewTypeName}'");
@@ -80,9 +81,8 @@ namespace Celbridge.ViewModels
             async void LoadDocumentAsync()
             {
                 var result = await documentView.LoadDocumentAsync();
-                if (result.Failure)
+                if (result is ErrorResult error)
                 {
-                    var error = result as ErrorResult;
                     Log.Error(error.Message);
 
                     if (document.DocumentEntity != null)
@@ -92,7 +92,10 @@ namespace Celbridge.ViewModels
                     }
                 }
 
+                Guard.IsNotNull(_settingsService.ProjectSettings);
                 var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
+
+                Guard.IsNotNull(document.DocumentEntity);
                 var documentEntityId = document.DocumentEntity.Id;
 
                 if (!openDocuments.Contains(documentEntityId)) 
@@ -108,11 +111,13 @@ namespace Celbridge.ViewModels
         {
             var document = m.Value;
 
+            Guard.IsNotNull(DocumentsPanelView);
             DocumentsPanelView.CloseDocumentTab(document);
 
             if (!m.AutoReload)
             {
                 // Remove this document from the list of documents to auto load when the project opens
+                Guard.IsNotNull(_settingsService.ProjectSettings);
                 var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
                 var documentEntityId = document.DocumentEntity.Id;
                 openDocuments.Remove(documentEntityId);

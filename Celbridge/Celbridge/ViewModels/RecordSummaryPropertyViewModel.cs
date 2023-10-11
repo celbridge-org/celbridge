@@ -13,7 +13,7 @@ namespace Celbridge.ViewModels
     {
         protected IMessenger _messengerService;
 
-        public Property Property { get; private set; }
+        public Property? Property { get; private set; }
 
         public void SetProperty(Property property)
         {
@@ -26,8 +26,9 @@ namespace Celbridge.ViewModels
         {
             get
             {
+                Guard.IsNotNull(Property);
                 var propertyInfo = Property.PropertyInfo;
-                IRecord instructionLine;
+                IRecord? instructionLine;
                 if (Property.CollectionType != null)
                 {
                     // Todo: This should probably be an IEnumerable of IRecords?
@@ -56,6 +57,7 @@ namespace Celbridge.ViewModels
 
         public virtual void OnGotFocus()
         {
+            Guard.IsNotNull(Property);
             var message = new SelectedCollectionItemGotFocusMessage(Property, ItemIndex);
             _messengerService.Send(message);
         }
@@ -78,8 +80,9 @@ namespace Celbridge.ViewModels
             }
         }
 
-        protected virtual void PropertyViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        protected virtual void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            Guard.IsNotNull(Property);
             Property.NotifyPropertyChanged();
         }
     }

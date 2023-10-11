@@ -1,19 +1,9 @@
-using Celbridge.Models;
 using Celbridge.Tasks;
 using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
 using Newtonsoft.Json;
-using Serilog;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace Celbridge.Services
 {
@@ -50,7 +40,7 @@ namespace Celbridge.Services
 
         public Dictionary<Guid, ICelScript> CelScripts { get; private set; } = new ();
 
-        private UpdateSyntaxFormatTask _updateSyntaxFormatTask;
+        private UpdateSyntaxFormatTask? _updateSyntaxFormatTask;
 
         public CelScriptService(IMessenger messengerService,
             ICelTypeService celTypeService,
@@ -70,7 +60,7 @@ namespace Celbridge.Services
 
         private void OnActiveProjectChanged(object recipient, ActiveProjectChangedMessage message)
         {
-            var activeProject = message.Value;
+            var activeProject = message.Project;
             if (activeProject == null)
             {
                 _messengerService.Unregister<ResourcesChangedMessage>(this);
@@ -81,7 +71,7 @@ namespace Celbridge.Services
                 UnloadAllCelScripts();
 
                 // Unload the custom assemblies
-                var services = (Application.Current as App).Host.Services;
+                var services = (Application.Current as App)!.Host!.Services;
                 var loadCustomAssembliesTask = services.GetRequiredService<LoadCustomAssembliesTask>();
                 var unloadResult = loadCustomAssembliesTask.Unload();
                 if (unloadResult is ErrorResult unloadError)
@@ -115,7 +105,7 @@ namespace Celbridge.Services
 
         private void OnSelectedEntityChanged(object recipient, SelectedEntityChangedMessage message)
         {
-            var selectedEntity = message.Value;
+            var selectedEntity = message.Entity;
 
             if (_updateSyntaxFormatTask != null)
             {
@@ -127,7 +117,7 @@ namespace Celbridge.Services
             if (selectedEntity is ICel cel)
             {
                 // Start a new syntax format task
-                var services = (Application.Current as App).Host.Services;
+                var services = (Application.Current as App)!.Host!.Services;
                 _updateSyntaxFormatTask = services.GetRequiredService<UpdateSyntaxFormatTask>();
 
                 _updateSyntaxFormatTask.CelSyntaxFormatUpdated += (celSyntaxFormat) =>
@@ -159,7 +149,7 @@ namespace Celbridge.Services
 
         private Result UpdateCelInstructions(ICel cel)
         {
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             var updateCelInstructions = services.GetRequiredService<UpdateCelInstructionsTask>();
             return updateCelInstructions.Update(cel);
         }
@@ -176,7 +166,7 @@ namespace Celbridge.Services
                 {
                     // Todo: Put this resource into an error state so user can attempt to fix it
                     var error = result as ErrorResult<ICelScript>;
-                    Log.Error($"Failed to load CelScript '{celScriptResource.Name}'. {error.Message}");
+                    Log.Error($"Failed to load CelScript '{celScriptResource.Name}'. {error!.Message}");
                     failed = true;
                 }
             }
@@ -197,7 +187,7 @@ namespace Celbridge.Services
 
         public async Task<Result<string>> GenerateCelSignatures(string projectFolder, string libraryPath)
         {
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             var generateTask = services.GetRequiredService<GenerateCelSignaturesTask>();
 
             var generateResult = await generateTask.Generate(projectFolder, libraryPath);
@@ -208,16 +198,22 @@ namespace Celbridge.Services
                 return new ErrorResult<string>($"Failed to generate Cel Signatures. {generateError.Message}");
             }
 
-            string assemblyFile = generateResult.Data;
+            string assemblyFile = generateResult.Data!;
+
             return new SuccessResult<string>(assemblyFile);
         }
 
         public Result<ICelSignature> CreateCelSignature(string celScriptName, string celName)
         {
             // Get the currently loaded CelSignatures assembly
-            var services = (Application.Current as App).Host.Services;
+            var services = (Application.Current as App)!.Host!.Services;
             var loadCustomAssembliesTask = services.GetRequiredService<LoadCustomAssembliesTask>();
-            var celSignaturesAssembly = loadCustomAssembliesTask.CelSignatureAssembly.Target as Assembly;
+            Guard.IsNotNull(loadCustomAssembliesTask);
+
+            var celSignatureAssembly = loadCustomAssembliesTask.CelSignatureAssembly;
+            Guard.IsNotNull(celSignatureAssembly);
+
+            var celSignaturesAssembly = celSignatureAssembly.Target as Assembly;
 
             // Look for a matching type in the CelSignaturesAssembly
             var findResult = ReflectionUtils.FindTypeInAssembly(celSignaturesAssembly, celScriptName, "Celbridge.Models.CelSignatures");
@@ -226,7 +222,7 @@ namespace Celbridge.Services
                 return new ErrorResult<ICelSignature>($"Failed to find CelSignature container class. {findError.Message}");
             }
 
-            var containerType = findResult.Data;
+            var containerType = findResult.Data!;
             var celSignatureType = containerType.GetNestedType(celName);
             if (celSignatureType == null)
             {
@@ -244,7 +240,7 @@ namespace Celbridge.Services
 
         public async Task<Result<string>> BuildApplication(string libraryPath)
         {
-            var buildApplicationTask = (Application.Current as App).Host.Services.GetService<BuildApplicationTask>();
+            var buildApplicationTask = (Application.Current as App)!.Host!.Services.GetRequiredService<BuildApplicationTask>();
             var celScripts = CelScripts.Values.ToList();
             var buildResult = await buildApplicationTask.BuildApplication(celScripts, libraryPath);
             if (buildResult is ErrorResult<string> buildError)
@@ -271,7 +267,7 @@ namespace Celbridge.Services
                 return new ErrorResult($"Failed to start application. {buildError.Message}");
             }
 
-            var assemblyLocation = buildResult.Data;
+            var assemblyLocation = buildResult.Data!;
 
             // Load the application assembly
             var celApplicationTask = new LoadAndRunCelApplicationTask();
@@ -436,7 +432,12 @@ namespace Celbridge.Services
                 foreach (var message in messages)
                 {
                     _messengerService.Send(message);
-                    Log.Information(message.ToString());
+
+                    var m = message.ToString();
+                    if (m is not null)
+                    {
+                        Log.Information(m);
+                    }
                 }
             }
             catch (Exception ex)
@@ -465,9 +466,9 @@ namespace Celbridge.Services
             if (pathResult.Failure)
             {
                 var error = pathResult as ErrorResult<string>;
-                return new ErrorResult<ICelScript>(error.Message);
+                return new ErrorResult<ICelScript>(error!.Message);
             }
-            var path = pathResult.Data;
+            var path = pathResult.Data!;
 
             try
             {
@@ -476,15 +477,18 @@ namespace Celbridge.Services
                 if (result.Failure)
                 {
                     var error = result as ErrorResult<ICelScript>;
-                    return new ErrorResult<ICelScript>($"Failed to load CelScript. {error.Message}");
+                    return new ErrorResult<ICelScript>($"Failed to load CelScript. {error!.Message}");
                 }
 
-                var celScript = result.Data;
+                var celScript = result.Data!;
 
                 celScript.Entity = fileResource;
 
                 // Set the FileResource entity as the parent of the CelScript
-                ParentNodeRef.SetParent(celScript as ITreeNode, fileResource);
+                var treeNode = celScript as ITreeNode;
+                Guard.IsNotNull(treeNode);
+
+                ParentNodeRef.SetParent(treeNode, fileResource);
 
                 CelScripts.Add(fileResource.Id, celScript);
 
@@ -504,17 +508,17 @@ namespace Celbridge.Services
             if (pathResult.Failure)
             {
                 var error = pathResult as ErrorResult<string>;
-                return new ErrorResult(error.Message);
+                return new ErrorResult(error!.Message);
             }
-            var path = pathResult.Data;
+            var path = pathResult.Data!;
 
             var serializeResult = SerializeCelScript(celScript);
             if (serializeResult.Failure)
             {
                 var error = serializeResult as ErrorResult<string>;
-                return new ErrorResult(error.Message);
+                return new ErrorResult(error!.Message);
             }
-            var serializedData = serializeResult.Data;
+            var serializedData = serializeResult.Data!;
 
             return await FileUtils.SaveTextAsync(path, serializedData);
         }
@@ -532,7 +536,11 @@ namespace Celbridge.Services
             foreach (var kv in CelScripts)
             {
                 var celScript = kv.Value;
-                if (celScript.Entity.Name.Equals(celScriptName, StringComparison.OrdinalIgnoreCase))
+
+                var entity = celScript.Entity;
+                Guard.IsNotNull(entity);
+
+                if (entity.Name.Equals(celScriptName, StringComparison.OrdinalIgnoreCase))
                 {
                     return new SuccessResult<ICelScript>(celScript);
                 }
@@ -564,6 +572,7 @@ namespace Celbridge.Services
                 // Special json settings that handles CelSignature types correctly
                 var jsonSettings = CelScriptJsonSettings.Create();
                 var celScript = JsonConvert.DeserializeObject<CelScript>(json, jsonSettings);
+                Guard.IsNotNull(celScript);
 
                 // Populate the CelType property for all cels, based on the serialized CelTypeName property.
                 foreach (var celScriptNode in celScript.Cels)
@@ -584,8 +593,10 @@ namespace Celbridge.Services
                         continue;
                     }
 
-                    var celType = celTypeResult.Data;
-                    (cel as Cel).CelType = celType;
+                    var celType = celTypeResult.Data!;
+                    var c = (cel as Cel);
+                    Guard.IsNotNull(c);
+                    c.CelType = celType;
 
                     // Ensure the instruction metadata is up to date
                     UpdateCelInstructions(cel);

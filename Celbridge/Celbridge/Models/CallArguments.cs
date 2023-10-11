@@ -22,18 +22,21 @@ namespace Celbridge.Models
         public Guid CelId { get; set; }
 
         [HideProperty]
-        public string CelScriptName { get; set; }
+        public string CelScriptName { get; set; } = string.Empty;
 
         [HideProperty]
-        public string CelName { get; set; }
+        public string CelName { get; set; } = string.Empty;
         public ICelSignature CelSignature { get; set; } = new CelSignature();
 
         public string GetSummary(PropertyContext context)
         {
             var signatureSummary = CelSignature.GetSummary(context);
 
+            Guard.IsNotNull(ParentNode.TreeNode);
+
             var parentCelScript = ParentNodeRef.FindParent<ICelScript>(ParentNode.TreeNode) as ICelScript;
             Guard.IsNotNull(parentCelScript);
+            Guard.IsNotNull(parentCelScript.Entity);
 
             var parentCelScriptName = parentCelScript.Entity.Name;
             parentCelScriptName = Path.GetFileNameWithoutExtension(parentCelScriptName);

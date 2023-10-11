@@ -1,10 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using System.Windows.Input;
-using CommunityToolkit.Mvvm.Input;
-using Serilog;
+﻿using Serilog;
 using Celbridge.Services;
-using Celbridge.Models;
-using System.Collections.Generic;
 using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
 using System.Numerics;
@@ -39,17 +34,19 @@ namespace Celbridge.ViewModels
                     continue;
                 }
 
-                var celType = result.Data;
+                var celType = result.Data!;
+                Guard.IsNotNull(celType);
+
                 CelTypeNames.Add(celTypeName);
                 _celTypes.Add(celType);
             }
             SelectedCelTypeIndex = 0;
         }
 
-        public ICelScript CelScript { get; set; }
+        public ICelScript? CelScript { get; set; }
         public Vector2 SpawnPosition { get; internal set; }
 
-        private string _celName;
+        private string _celName = string.Empty;
         public string CelName
         {
             get { return _celName; }
@@ -82,6 +79,8 @@ namespace Celbridge.ViewModels
         {
             var celType = _celTypes[SelectedCelTypeIndex];
             Guard.IsNotNull(celType);
+
+            Guard.IsNotNull(CelScript);
 
             _celScriptService.CreateCel(CelScript, celType, CelName, SpawnPosition);
         }

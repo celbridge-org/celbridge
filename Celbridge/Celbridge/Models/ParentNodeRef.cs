@@ -14,13 +14,13 @@ namespace Celbridge.Models
 
     public interface ITreeNodeRef
     {
-        ITreeNode TreeNode { get; }
+        ITreeNode? TreeNode { get; }
     }
 
     public class ParentNodeRef : ITreeNodeRef
     {
-        private WeakReference<ITreeNode> _parent;
-        public ITreeNode TreeNode => _parent?.GetTarget();
+        private WeakReference<ITreeNode>? _parent;
+        public ITreeNode? TreeNode => _parent?.GetTarget();
 
         // Create a parent child relationsip between two objects that implement ITreeNode
         public static void SetParent(ITreeNode child, ITreeNode parent)
@@ -29,13 +29,15 @@ namespace Celbridge.Models
             Guard.IsNotNull(parent);
 
             var node = child.ParentNode as ParentNodeRef;
+            Guard.IsNotNull(node);
+
             node._parent = new WeakReference<ITreeNode>(parent);
             child.OnSetParent(parent);
 
             // Serilog.Log.Information($"'{parent.GetType().Name}' is the parent of '{child.GetType().Name}'");
         }
 
-        public static ITreeNode FindParent<T>(ITreeNode treeNode)
+        public static ITreeNode? FindParent<T>(ITreeNode treeNode)
         {
             if (treeNode.ParentNode == null ||
                 treeNode.ParentNode.TreeNode == null)

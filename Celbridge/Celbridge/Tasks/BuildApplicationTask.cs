@@ -88,6 +88,8 @@ namespace Celbridge.Tasks
                 var bodyText = FormatBodyText(bodyLines);
 
                 var directory = Path.GetDirectoryName(sourceFile);
+                Guard.IsNotNull(directory);
+
                 Directory.CreateDirectory(directory);
 
                 await File.WriteAllTextAsync(sourceFile, bodyText);
@@ -112,6 +114,7 @@ namespace Celbridge.Tasks
             foreach (var celScriptNode in cels)
             {
                 var cel = celScriptNode as ICel;
+                Guard.IsNotNull(cel);
 
                 var celName = cel.Name;
                 var returnType = GetReturnType(cel.Output);
@@ -197,6 +200,8 @@ namespace Celbridge.Tasks
             if (outputInstructionLines.Count == 1)
             {
                 var typeInstruction = outputInstructionLines[0].Instruction as ITypeInstruction;
+                Guard.IsNotNull(typeInstruction);
+
                 return ConvertType(typeInstruction);
             }
 
@@ -213,7 +218,7 @@ namespace Celbridge.Tasks
                 var instruction = instructionLine.Instruction;
                 Guard.IsNotNull(instruction);
 
-                IInstruction nextInstruction = null;
+                IInstruction? nextInstruction = null;
                 if (i < instructionsLines.Count - 1)
                 {
                     nextInstruction = instructionsLines[i + 1].Instruction;
@@ -319,7 +324,9 @@ namespace Celbridge.Tasks
             {
                 if (typeof(ExpressionBase).IsAssignableFrom(propertyInfo.PropertyType))
                 {
-                    ExpressionBase expressionMember = (ExpressionBase)propertyInfo.GetValue(celSignature);
+                    var expressionMember = propertyInfo.GetValue(celSignature) as ExpressionBase;
+                    Guard.IsNotNull(expressionMember);
+
                     var memberName = propertyInfo.Name;
 
                     // Using GetSummary here because it correctly formats StringExpression with quotes
@@ -407,6 +414,8 @@ public static class Environment
 }
 ";
                 var directory = Path.GetDirectoryName(sourceFile);
+                Guard.IsNotNull(directory);
+
                 Directory.CreateDirectory(directory);
 
                 await File.WriteAllTextAsync(sourceFile, bodyText);

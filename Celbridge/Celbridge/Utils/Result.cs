@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Celbridge.Utils
+﻿namespace Celbridge.Utils
 {
     // A simple Result type for Railway Oriented Programming.
     // Defining this as a standalone util rather than using some large library like LanguageExt.
@@ -15,14 +12,14 @@ namespace Celbridge.Utils
 
     public abstract class Result<T> : Result
     {
-        private T _data;
+        private T? _data;
 
-        protected Result(T data)
+        protected Result(T? data)
         {
             Data = data;
         }
 
-        public T Data
+        public T? Data
         {
             get => Success ? _data : throw new Exception($"You can't access .{nameof(Data)} when .{nameof(Success)} is false");
             set => _data = value;
@@ -86,14 +83,14 @@ namespace Celbridge.Utils
 
         }
 
-        public Error(string code, string details)
+        public Error(string? code, string? details)
         {
             Code = code;
             Details = details;
         }
 
-        public string Code { get; }
-        public string Details { get; }
+        public string? Code { get; }
+        public string? Details { get; }
     }
 
     internal interface IErrorResult

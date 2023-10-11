@@ -1,26 +1,19 @@
 ﻿using Celbridge.Utils;
 using Serilog;
-using System;
-using System.Diagnostics;
-using System.IO;
 using System.Text;
 using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
-using System.Collections.Generic;
-using Windows.Storage;
 using Newtonsoft.Json;
-using System.Linq;
 using CommunityToolkit.WinUI.Helpers;
-using Microsoft.UI.Xaml;
-using System.Threading.Tasks;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Services
 {
     public interface IConsoleService
     {
-        event Action<string> OnWriteMessage;
-        event Action OnClearMessages;
+        event Action<string>? OnWriteMessage;
+        event Action? OnClearMessages;
 
         void WriteMessage(string message);
         void ClearMessages();
@@ -40,8 +33,8 @@ namespace Celbridge.Services
 
         private readonly IAIService _aiService;
 
-        public event Action<string> OnWriteMessage;
-        public event Action OnClearMessages;
+        public event Action<string>? OnWriteMessage;
+        public event Action? OnClearMessages;
 
         private readonly ScriptEngine _scriptEngine;
         private readonly ScriptScope _scriptScope;
@@ -55,7 +48,7 @@ namespace Celbridge.Services
         private readonly DispatcherTimer _saveTimer;
 
         private bool _isChatModeEnabled;
-        private string _chatFile;
+        private string _chatFile = string.Empty;
 
         public ConsoleService(IAIService aiService)
         {
@@ -97,7 +90,7 @@ namespace Celbridge.Services
             _saveTimer.Start();
         }
 
-        private void OnSaveTimerTick(object sender, object e)
+        private void OnSaveTimerTick(object? sender, object e)
         {
             if (_isSaveRequested && !_isSaving)
             {
@@ -154,7 +147,7 @@ namespace Celbridge.Services
                 var result = ExecuteInternalCommand(commandText);
                 if (result.Success)
                 {
-                    output = result.Data;
+                    output = result.Data!;
                 }
                 else
                 {
@@ -215,12 +208,15 @@ namespace Celbridge.Services
                 var result = await _aiService.AddUserInput(commandText);
                 if (result.Success)
                 {
-                    var response = result.Data;
+                    var response = result.Data!;
                     Log.Information(response);
 
                     try
                     {
-                        Directory.CreateDirectory(Path.GetDirectoryName(_chatFile));
+                        var directory = Path.GetDirectoryName(_chatFile);
+                        Guard.IsNotNull(directory);
+
+                        Directory.CreateDirectory(directory);
                         File.WriteAllText(_chatFile, response);
                     }
                     catch (Exception ex)
@@ -231,7 +227,7 @@ namespace Celbridge.Services
                 else
                 {
                     var error = result as ErrorResult<string>;
-                    Log.Error(error.Message);
+                    Log.Error(error!.Message);
                 }
             }
 

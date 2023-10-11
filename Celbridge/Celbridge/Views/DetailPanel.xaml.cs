@@ -12,7 +12,7 @@ namespace Celbridge.Views
         public DetailPanel()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<DetailViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<DetailViewModel>();
             ViewModel.ItemCollection = DetailPropertyListView.Items;
         }
     }

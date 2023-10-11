@@ -67,7 +67,7 @@ namespace Celbridge.Utils
             _isActionPending = true;
         }
 
-        private void OnSaveTimerTick(object sender, object e)
+        private void OnSaveTimerTick(object? sender, object e)
         {
             if (_isActionPending && !_isExecutingAction)
             {

@@ -18,7 +18,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<TextFileDocumentViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<TextFileDocumentViewModel>();
 
             /*
              We should be able to do this in XAML, but it crashes the app!

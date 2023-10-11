@@ -7,22 +7,18 @@ namespace Celbridge.Services
 {
     public interface IInspectorService
     {
-        IEntity SelectedEntity { get; set; }
-        object SelectedItemUserData { get; set; }
-        IProperty SelectedCollection { get; }
+        IEntity? SelectedEntity { get; set; }
+        object? SelectedItemUserData { get; set; }
+        IProperty? SelectedCollection { get; }
         int SelectedCollectionIndex { get; }
-        void SetSelectedCollection(IProperty selectedCollection, int selectedIndex);
+        void SetSelectedCollection(IProperty? selectedCollection, int selectedIndex);
     }
 
-    public class SelectedEntityChangedMessage : ValueChangedMessage<IEntity>
-    {
-        public SelectedEntityChangedMessage(IEntity entity) : base(entity)
-        {}
-    }
+    public record SelectedEntityChangedMessage(IEntity? Entity);
 
-    public record SelectedItemUserDataChangedMessage(object UserData);
+    public record SelectedItemUserDataChangedMessage(object? UserData);
 
-    public record SelectedCollectionChangedMessage(IProperty Property, int Index);
+    public record SelectedCollectionChangedMessage(IProperty? Property, int Index);
 
     public record SelectedCollectionItemGotFocusMessage(IProperty Property, int Index);
 
@@ -78,7 +74,7 @@ namespace Celbridge.Services
 
         private void OnActiveProjectChanged(object recipient, ActiveProjectChangedMessage message)
         {
-            var activeProject = message.Value;
+            var activeProject = message.Project;
             if (activeProject == null)
             {
                 // Ensure that no entity is selected if there's no project currently loaded
@@ -86,8 +82,8 @@ namespace Celbridge.Services
             }
         }
 
-        private IEntity _selectedEntity;
-        public IEntity SelectedEntity
+        private IEntity? _selectedEntity;
+        public IEntity? SelectedEntity
         {
             get => _selectedEntity;
             set
@@ -113,8 +109,8 @@ namespace Celbridge.Services
         // or collection item. Clients can listen for a message to detect when the User Data is set,
         // or cleared when another entity or collection item is selected in the inspector.
 
-        private object _selectedItemUserData;
-        public object SelectedItemUserData
+        private object? _selectedItemUserData;
+        public object? SelectedItemUserData
         {
             get => _selectedItemUserData;
             set
@@ -130,13 +126,13 @@ namespace Celbridge.Services
             }
         }
 
-        private IProperty _selectedCollection;
-        public IProperty SelectedCollection => _selectedCollection;
+        private IProperty? _selectedCollection;
+        public IProperty? SelectedCollection => _selectedCollection;
 
         private int _selectedCollectionIndex = -1;
         public int SelectedCollectionIndex => _selectedCollectionIndex;
 
-        public void SetSelectedCollection(IProperty selectedCollection, int selectedIndex)
+        public void SetSelectedCollection(IProperty? selectedCollection, int selectedIndex)
         {
             if (_selectedCollection == selectedCollection && _selectedCollectionIndex == selectedIndex)
             {

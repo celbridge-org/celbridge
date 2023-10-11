@@ -11,7 +11,7 @@ namespace Celbridge.Models
     {
         string Name { get; }
         string CelTypeName { get; }
-        ICelType CelType { get; }
+        ICelType? CelType { get; }
         List<InstructionLine> Input { get; set; }
         List<InstructionLine> Output { get; set; }
         List<InstructionLine> Instructions { get; set; }
@@ -26,10 +26,10 @@ namespace Celbridge.Models
         // are managed by the CelTypeService. The CelType reference is populated after deserialization
         // by looking it up in the CelTypeService.
         [HideProperty]
-        public string CelTypeName { get; set; }
+        public string CelTypeName { get; set; } = string.Empty;
 
         [JsonIgnore]
-        public ICelType CelType { get; set; }
+        public ICelType? CelType { get; set; }
 
         [PropertyContext(PropertyContext.CelInput)]
         public List<InstructionLine> Input { get; set; } = new ();

@@ -16,7 +16,7 @@ namespace Celbridge.Views
         public CelConnectionLine()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<CelConnectionLineViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<CelConnectionLineViewModel>();
         }
 
         public void Update()

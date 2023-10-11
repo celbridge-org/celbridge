@@ -21,7 +21,7 @@ namespace Celbridge.Views
         {
             this.InitializeComponent();
 
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<CelScriptDocumentViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<CelScriptDocumentViewModel>();
             ViewModel.CelCanvas = CelCanvas;
 
             ViewModel.NodePositionChanged += ViewModel_NodePositionChanged;
@@ -45,7 +45,7 @@ namespace Celbridge.Views
             return await ViewModel.LoadAsync();
         }
 
-        private void CelCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void CelCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
         {
             var width = CelCanvas.ActualWidth;
             var height = CelCanvas.ActualHeight;
@@ -58,7 +58,7 @@ namespace Celbridge.Views
             ViewModel.SpawnPosition = new Vector2((float)(width / 2), (float)(height / 2));
         }
 
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ViewModel.CelConnections))
             {
@@ -134,7 +134,7 @@ namespace Celbridge.Views
                 var line = celConnectionLine.Value;
 
                 var celConnection = celConnections.Find(c => c.CelConnectionId == celConnectionId);
-                if (celConnection == null)
+                if (celConnection is null)
                 {
                     // Todo: Remove this line from the group because it's no longer connected
                     continue;

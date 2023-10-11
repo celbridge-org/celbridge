@@ -32,40 +32,42 @@ namespace Celbridge.ViewModels
             _messengerService.Register<PreviouslySelectedEntityMessage>(this, OnPreviouslySelectedEntity);
         }
 
-        public ICelScriptNode Cel { get; private set; }
+        public ICelScriptNode? Cel { get; private set; }
 
-        public CelScriptDocumentViewModel CelScriptDocumentViewModel { get; set; }
+        public CelScriptDocumentViewModel? CelScriptDocumentViewModel { get; set; }
 
         [ObservableProperty]
         private bool _isSelected;
 
         [ObservableProperty]
-        private SolidColorBrush _fillColor;
+        private SolidColorBrush? _fillColor;
 
         [ObservableProperty]
-        private SolidColorBrush _strokeColor;
+        private SolidColorBrush? _strokeColor;
 
         [ObservableProperty]
         private float _strokeThickness;
 
         [ObservableProperty]
-        private string _labelText;
+        private string _labelText = string.Empty;
 
         [ObservableProperty]
-        private string _icon;
+        private string _icon = string.Empty;
 
         [ObservableProperty]
-        private string _tooltipText;
+        private string _tooltipText = string.Empty;
 
-        private Windows.UI.Color _cachedFillColor;
+        private Windows.UI.Color? _cachedFillColor;
 
-        public event Action<int,int> CelPositionChanged;
+        public event Action<int,int>? CelPositionChanged;
 
         public void SetCel(ICelScriptNode _cel)
         {
             Cel = _cel;
 
             var cel = _cel as Cel;
+            Guard.IsNotNull(cel);
+
             cel.PropertyChanged += Cel_PropertyChanged;
 
             UpdateAppearance(cel);
@@ -76,6 +78,8 @@ namespace Celbridge.ViewModels
         private void UpdateAppearance(ICel cel)
         {
             var celType = cel.CelType;
+            Guard.IsNotNull(celType);
+
             try 
             {
                 _cachedFillColor = CommunityToolkit.WinUI.Helpers.ColorHelper.ToColor(celType.Color);
@@ -102,6 +106,7 @@ namespace Celbridge.ViewModels
 
         public void SetCelPosition(int x, int y)
         {
+            Guard.IsNotNull(CelScriptDocumentViewModel);
             Guard.IsNotNull(Cel);
 
             CelScriptDocumentViewModel.SetCelPosition(Cel.Id, x, y);
@@ -110,18 +115,20 @@ namespace Celbridge.ViewModels
 
         private void OnSelectedEntityChanged(object recipient, SelectedEntityChangedMessage message)
         {
-            IsSelected = Cel == message.Value;
+            IsSelected = Cel == message.Entity;
         }
 
         private void OnPreviouslySelectedEntity(object recipient, PreviouslySelectedEntityMessage message)
         {
-            if (Cel.Id == message.entityId)
+            Guard.IsNotNull(Cel);
+
+            if (Cel.Id == message.EntityId)
             {
                 SelectCell();
             }
         }
 
-        private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {
@@ -131,7 +138,7 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private void Cel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void Cel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
             {
@@ -146,13 +153,16 @@ namespace Celbridge.ViewModels
 
         private void UpdateFillColor()
         {
-            FillColor = new SolidColorBrush(_cachedFillColor);
+            Guard.IsNotNull(_cachedFillColor);
+
+            FillColor = new SolidColorBrush((Windows.UI.Color)_cachedFillColor);
             StrokeColor = new SolidColorBrush(Colors.White);
             StrokeThickness = IsSelected ? 2 : 0;
         }
 
         private void UpdateLabelText()
         {
+            Guard.IsNotNull(Cel);
             LabelText = Cel.Name;
         }
 
@@ -168,8 +178,9 @@ namespace Celbridge.ViewModels
             Guard.IsNotNull(cel);
 
             sb.Append("Cel Type: ");
-            sb.Append(cel.CelType.Name);
+            sb.Append(cel.CelType!.Name);
 
+            Guard.IsNotNull(Cel);
             if (!string.IsNullOrEmpty(Cel.Description))
             {
                 sb.Append("\n\n");

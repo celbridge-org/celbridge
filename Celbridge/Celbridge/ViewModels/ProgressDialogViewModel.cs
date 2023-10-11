@@ -17,16 +17,16 @@ namespace Celbridge.ViewModels
         }
 
         [ObservableProperty]
-        private string _title;
+        private string _title = string.Empty;
 
-        public ContentDialog ContentDialog { get; set; }
+        public ContentDialog? ContentDialog { get; set; }
 
         public bool IsCancelEnabled => OnCancel != null; 
-        public Action OnCancel { get; set; }
+        public Action? OnCancel { get; set; }
 
         public ICommand CancelCommand => new RelayCommand(Cancel_Executed);
 
-        public IAsyncOperation<ContentDialogResult> AsyncOperation { get; internal set; }
+        public IAsyncOperation<ContentDialogResult>? AsyncOperation { get; set; }
 
         private void Cancel_Executed()
         {

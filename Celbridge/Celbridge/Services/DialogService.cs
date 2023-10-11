@@ -12,14 +12,14 @@ namespace Celbridge.Services
 {
     public interface IDialogService
     {
-        XamlRoot XamlRoot { get; set; }
+        XamlRoot? XamlRoot { get; set; }
 
         Task ShowNewProjectDialogAsync();
         Task ShowSettingsDialogAsync();
         Task ShowAddResourceDialogAsync();
         Task ShowAddCelDialogAsync(ICelScript celScript, Vector2 spawnPosition);
         bool IsProgressDialogActive { get; }
-        Result ShowProgressDialog(string title, Action onCancel);
+        Result ShowProgressDialog(string title, Action? onCancel);
         Result HideProgressDialog();
         void OpenFileExplorer(string folder);
     }
@@ -30,7 +30,7 @@ namespace Celbridge.Services
     {
         private IMessenger _messengerService;
 
-        public XamlRoot XamlRoot { get; set; }
+        public XamlRoot? XamlRoot { get; set; }
 
         public DialogService(IMessenger messengerService)
         {
@@ -71,7 +71,7 @@ namespace Celbridge.Services
 
         public bool IsProgressDialogActive { get; private set; }
 
-        public Result ShowProgressDialog(string title, Action onCancel)
+        public Result ShowProgressDialog(string title, Action? onCancel)
         {
             if (IsProgressDialogActive)
             {

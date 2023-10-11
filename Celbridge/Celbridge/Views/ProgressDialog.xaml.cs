@@ -10,10 +10,10 @@ namespace Celbridge.Views
     {
         public ProgressDialogViewModel ViewModel { get; private set; }
 
-        public ProgressDialog(Action onCancel)
+        public ProgressDialog(Action? onCancel)
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<ProgressDialogViewModel>();
+            ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<ProgressDialogViewModel>();
             ViewModel.ContentDialog = this;
             
             if (onCancel != null)

@@ -1,17 +1,20 @@
-﻿using Celbridge.Models;
+﻿using CommunityToolkit.Diagnostics;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 
 namespace Celbridge.Utils
 {
     public static class ReflectionUtils
     {
-        public static TReturn CallStaticMethod<TReturn>(this Type t, string method, object obj = null, params object[] parameters)
+        public static TReturn CallStaticMethod<TReturn>(this Type t, string method, object? obj = null, params object[] parameters)
         {
-            return (TReturn)t.GetMethod(method)?.Invoke(obj, parameters);
+            var m = t.GetMethod(method);
+            Guard.IsNotNull(m);
+
+            var r = m.Invoke(obj, parameters);
+            Guard.IsNotNull(r);
+
+            return (TReturn)r;
         }
 
         // Returns a list of attributes declared on the property.
@@ -92,7 +95,7 @@ namespace Celbridge.Utils
                     var result = GetDefaultPropertyAttribute(propertyType);
                     if (result.Success)
                     {
-                        propertyAttribute = result.Data;
+                        propertyAttribute = result.Data!;
                     }
                 }
 
@@ -146,7 +149,7 @@ namespace Celbridge.Utils
                 typeA.IsAssignableTo(typeB);
         }
 
-        private static Type GetRecordType(Type propertyType)
+        private static Type? GetRecordType(Type propertyType)
         {
             // Look for a RecordPropertyAttribute (or a derived attribute) declared on the propertyType
             bool isRecord = AreTypesCompatible(propertyType, typeof(IRecord));
@@ -172,7 +175,7 @@ namespace Celbridge.Utils
                 return (AreTypesCompatible(typeA, typeB) || IsListOfElementType(typeA, typeB));
             }
 
-            PropertyAttribute propertyAttribute = null; ;
+            PropertyAttribute? propertyAttribute = null;
             if (MatchType(propertyType, typeof(string)))
             {
                 propertyAttribute = new TextPropertyAttribute();
@@ -202,8 +205,10 @@ namespace Celbridge.Utils
             return new SuccessResult<PropertyAttribute>(propertyAttribute);
         }
 
-        public static Result<Type> FindTypeInAssembly(Assembly assembly, string className, string @namespace)
+        public static Result<Type> FindTypeInAssembly(Assembly? assembly, string className, string @namespace)
         {
+            Guard.IsNotNull(assembly);
+
             Type[] types = assembly.GetTypes();
             foreach (Type type in types)
             {

@@ -2,10 +2,8 @@
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Configuration;
-using System;
 using Celbridge.Services;
-using Microsoft.UI.Xaml;
-using Microsoft.Extensions.DependencyInjection;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Utils
 {
@@ -32,9 +30,9 @@ namespace Celbridge.Utils
         public static LoggerConfiguration ConsoleService(
             this LoggerSinkConfiguration loggerConfiguration,
             ConsoleService consoleService,
-            IFormatProvider formatProvider = null)
+            IFormatProvider? formatProvider = null)
         {
-            return loggerConfiguration.Sink(new ConsoleServiceEventSink(formatProvider, consoleService));
+            return loggerConfiguration.Sink(new ConsoleServiceEventSink(formatProvider!, consoleService));
         }
     }
 }

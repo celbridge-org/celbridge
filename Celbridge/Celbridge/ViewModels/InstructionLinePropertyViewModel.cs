@@ -1,18 +1,10 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
+﻿using Celbridge.Services;
 using Celbridge.Tasks;
 using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Media;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using Windows.UI;
 
 namespace Celbridge.ViewModels
@@ -23,7 +15,7 @@ namespace Celbridge.ViewModels
 
         private ICelScriptService _celScriptService;
 
-        private InstructionLine _instructionLine;
+        private InstructionLine? _instructionLine;
         private InstructionLine InstructionLine
         {
             get
@@ -33,8 +25,8 @@ namespace Celbridge.ViewModels
                     return _instructionLine;
                 }
 
-                var propertyInfo = Property.PropertyInfo;
                 Guard.IsNotNull(Property);
+                var propertyInfo = Property.PropertyInfo;
 
                 if (Property.CollectionType != null)
                 {
@@ -81,11 +73,11 @@ namespace Celbridge.ViewModels
         private SolidColorBrush _keywordColor = new SolidColorBrush(Colors.White);
 
         [ObservableProperty]
-        private string _tooltip;
+        private string _tooltip = string.Empty;
 
         private int _cachedinstructionHash;
 
-        private string _previousInstructionJson;
+        private string? _previousInstructionJson;
 
         public InstructionLinePropertyViewModel(IMessenger messengerService, ICelScriptService celScriptService) : base(messengerService)
         {
@@ -100,6 +92,8 @@ namespace Celbridge.ViewModels
 
             // Use the appropriate syntax format list for InputValues, OutputValues, Instructions, etc.
             List<SyntaxFormat> syntaxFormatList;
+
+            Guard.IsNotNull(Property);
             if (Property.PropertyInfo.Name == nameof(ICel.Instructions))
             {
                 syntaxFormatList = celSyntaxFormat.InstructionSyntaxFormat;
@@ -153,7 +147,8 @@ namespace Celbridge.ViewModels
             {
                 // Only regenerate the description text Run objects if the instruction has changed
                 _cachedinstructionHash = instructionHash;
- 
+
+                Guard.IsNotNull(DescriptionTextBlock);
                 DescriptionTextBlock.Inlines.Clear();
 
                 List<SyntaxToken> syntaxTokens;
@@ -186,7 +181,7 @@ namespace Celbridge.ViewModels
                     var descColorResult = _celScriptService.SyntaxColors.GetColor(syntaxCategory);
                     if (descColorResult.Success)
                     {
-                        var descSyntaxColor = descColorResult.Data;
+                        var descSyntaxColor = descColorResult.Data!;
                         run.Foreground = new SolidColorBrush(descSyntaxColor);
                     }
                     else
@@ -199,13 +194,14 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private Dictionary<string, Type> _cachedInstructionTypes { get; set; }
+        private Dictionary<string, Type>? _cachedInstructionTypes { get; set; }
 
-        public TextBox KeywordTextBox { get; set; }
-        public TextBlock DescriptionTextBlock { get; set; }
+        public TextBox? KeywordTextBox { get; set; }
+        public TextBlock? DescriptionTextBlock { get; set; }
 
         private void PopulateInstructionTypes()
         {
+            Guard.IsNotNull(Property);
             bool isInstructionsProperty = Property.PropertyInfo.Name == nameof(ICel.Instructions);
 
             _cachedInstructionTypes = new Dictionary<string, Type>();
@@ -246,25 +242,28 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Keyword))
             {
                 var keyword = Keyword;
 
                 // Lookup the instruction types for the Cel's CelType
+                Guard.IsNotNull(Property);
                 var cel = Property.Object as Cel;
                 Guard.IsNotNull(cel);
 
-                if (_cachedInstructionTypes == null)
+                if (_cachedInstructionTypes is null)
                 {
                     // This is populated as late as possible to ensure we're accessing the authoritative
                     // list of Instructions for this CelType.
                     PopulateInstructionTypes();
                 }
 
-                string newInstructionKeyword = null;
-                Type newInstructionType = null;
+                Guard.IsNotNull(_cachedInstructionTypes);
+
+                string? newInstructionKeyword = null;
+                Type? newInstructionType = null;
                 foreach (var kv in _cachedInstructionTypes)
                 {
                     var instructionKeyword = kv.Key;
@@ -281,6 +280,8 @@ namespace Celbridge.ViewModels
                 if (!string.IsNullOrEmpty(newInstructionKeyword) && 
                     keyword != newInstructionKeyword)
                 {
+                    Guard.IsNotNull(KeywordTextBox);
+
                     int caretPos = KeywordTextBox.SelectionStart;
                     InstructionLine.Keyword = newInstructionKeyword;
 
@@ -322,6 +323,8 @@ namespace Celbridge.ViewModels
                     {
                         // Create a new instruction of the matched type
                         var instruction = Activator.CreateInstance(newInstructionType) as IInstruction;
+                        Guard.IsNotNull(instruction);
+
                         InstructionLine.Instruction = instruction;
 
                         // Try to recycle any matching properties from the previous instruction
@@ -360,7 +363,7 @@ namespace Celbridge.ViewModels
             }
         }
 
-        protected override void PropertyViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        protected override void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(IndentWidth) ||
                 e.PropertyName == nameof(KeywordColor) ||
@@ -386,6 +389,7 @@ namespace Celbridge.ViewModels
 
         private bool IsSignatureContext()
         {
+            Guard.IsNotNull(Property);
             return Property.Context == PropertyContext.CelInput || Property.Context == PropertyContext.CelOutput;
         }
 
@@ -407,6 +411,7 @@ namespace Celbridge.ViewModels
 
         private void NotifySignatureChanged()
         {
+            Guard.IsNotNull(Property);
             var cel = Property.Object as ICel;
             Guard.IsNotNull(cel);
 

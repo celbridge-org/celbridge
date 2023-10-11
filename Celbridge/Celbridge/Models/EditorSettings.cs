@@ -9,7 +9,7 @@ namespace Celbridge.Models
         private ApplicationTheme _applicationTheme;
 
         [ObservableProperty]
-        private string _lastEditedCelScript;
+        private string _lastEditedCelScript = string.Empty;
 
         [ObservableProperty]
         private bool _leftPanelExpanded = true;
@@ -33,13 +33,13 @@ namespace Celbridge.Models
         private float _detailPanelHeight = 200;
 
         [ObservableProperty]
-        private string _previousNewProjectFolder;
+        private string _previousNewProjectFolder = string.Empty;
 
         [ObservableProperty]
-        private string _previousActiveProjectPath;
+        private string _previousActiveProjectPath = string.Empty;
 
         [ObservableProperty]
-        private List<string> _previousOpenDocuments;
+        private List<string> _previousOpenDocuments = new();
 
         public EditorSettings()
         {

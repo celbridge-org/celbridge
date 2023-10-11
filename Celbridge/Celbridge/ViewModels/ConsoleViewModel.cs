@@ -1,9 +1,5 @@
 ﻿using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using Uno.Extensions;
-using CommunityToolkit.Mvvm.Input;
-using System.Windows.Input;
-using System;
+using CommunityToolkit.Diagnostics;
 using Serilog;
 
 namespace Celbridge.ViewModels
@@ -14,7 +10,7 @@ namespace Celbridge.ViewModels
         private readonly IConsoleService _consoleService;
 
         // [ObservableProperty] causes a compile error on Skia.Gtk when using Mode=TwoWay
-        private string _outputText;
+        private string _outputText = string.Empty;
         public string OutputText
         {
             get { return _outputText; }
@@ -24,7 +20,7 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private string _inputText;
+        private string _inputText = string.Empty;
         public string InputText
         {
             get { return _inputText; }
@@ -45,7 +41,7 @@ namespace Celbridge.ViewModels
             Log.Information("Celbridge v0.00000001\n");
         }
 
-        public event Action OnWriteMessage;
+        public event Action? OnWriteMessage;
 
         private void ConsoleService_OnWriteMessage(string message)
         {
@@ -57,6 +53,7 @@ namespace Celbridge.ViewModels
         private void Collapse_Executed()
         {
             // Toggle the bottom toolbar expanded state
+            Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.BottomPanelExpanded = false;
         }
 
@@ -66,7 +63,7 @@ namespace Celbridge.ViewModels
             _consoleService.ClearMessages();
         }
 
-        public event Action OnCommandEntered;
+        public event Action? OnCommandEntered;
 
         public ICommand SubmitCommand => new RelayCommand(Submit_Executed);
         private void Submit_Executed()
@@ -83,7 +80,7 @@ namespace Celbridge.ViewModels
             OnCommandEntered?.Invoke();
         }
 
-        public event Action OnHistoryCycled;
+        public event Action? OnHistoryCycled;
 
         public ICommand CycleHistoryCommand => new RelayCommand<bool>(CycleHistory_Executed);
         private void CycleHistory_Executed(bool forwards)
@@ -91,7 +88,7 @@ namespace Celbridge.ViewModels
             var result = _consoleService.CycleHistory(forwards);
             if (result.Success)
             {
-                InputText = result.Data;
+                InputText = result.Data!;
                 OnHistoryCycled?.Invoke();
             }
         }

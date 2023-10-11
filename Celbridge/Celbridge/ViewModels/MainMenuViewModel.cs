@@ -40,7 +40,7 @@ namespace Celbridge.ViewModels
 
 #if WINDOWS
             // For Uno.WinUI-based apps
-            var mainWindow = (Application.Current as App).MainWindow;
+            var mainWindow = (Application.Current as App)!.MainWindow;
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
 #endif

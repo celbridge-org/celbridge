@@ -1,10 +1,8 @@
 using Celbridge.Utils;
+using CommunityToolkit.Diagnostics;
 using OpenAI_API;
 using OpenAI_API.Chat;
 using Serilog;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Celbridge.Services
 {
@@ -18,8 +16,8 @@ namespace Celbridge.Services
 
     public class AIService : IAIService
     {
-        private OpenAIAPI _api;
-        private Conversation _chat;
+        private OpenAIAPI? _api;
+        private Conversation? _chat;
 
         private bool _isWaitingForResponse;
 
@@ -42,6 +40,8 @@ namespace Celbridge.Services
 
         public Result StartChat()
         {
+            Guard.IsNotNull(_api);
+
             _chat = _api.Chat.CreateConversation();
             if (_chat == null)
             {
@@ -69,6 +69,8 @@ namespace Celbridge.Services
 
             try
             {
+                Guard.IsNotNull(_chat);
+
                 _chat.AppendUserInput(userInput);
                 _isWaitingForResponse = true;
                 response = await _chat.GetResponseFromChatbotAsync();

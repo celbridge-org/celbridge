@@ -1,9 +1,4 @@
-﻿using Celbridge.ViewModels;
-using Microsoft.Extensions.Hosting;
-using Microsoft.UI.Xaml;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Services
 {
@@ -24,6 +19,8 @@ namespace Celbridge.Services
         public void ApplyTheme()
         {
             // WinUI/Uno only supports setting the theme at application startup time.
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
             var applicationTheme = _settingsService.EditorSettings.ApplicationTheme;
 #if HAS_UNO
             switch (applicationTheme)

@@ -19,10 +19,10 @@ namespace Celbridge.ViewModels
         private readonly IMessenger _messengerService;
         private readonly IInspectorService _inspectorService;
 
-        public ItemCollection ItemCollection { get; set; }
+        public ItemCollection? ItemCollection { get; set; }
 
         [ObservableProperty]
-        private string _labelText;
+        private string _labelText = string.Empty;
 
         public DetailViewModel(IMessenger messengerService,
             IInspectorService inspectorService)
@@ -56,6 +56,8 @@ namespace Celbridge.ViewModels
             var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
 
             LabelText = string.Empty;
+
+            Guard.IsNotNull(ItemCollection);
             ItemCollection.Clear();
 
             if (selectedCollection == null || selectedCollectionIndex == -1)
@@ -93,24 +95,26 @@ namespace Celbridge.ViewModels
             */
 
             var result = PropertyViewUtils.CreatePropertyViews(instruction, selectedCollection.Context, OnDetailPropertyChanged);
-            if (result.Failure)
+            if (result is ErrorResult<List<UIElement>> error)
             {
-                var error = result as ErrorResult<List<UIElement>>;
                 Log.Error(error.Message);
                 return;
             }
 
-            var views = result.Data;
+            var views = result.Data!;
             ItemCollection.AddRange(views);
 
             LabelText = instruction.GetType() == typeof(EmptyInstruction) ? string.Empty : instructionLine.Keyword;
         }
 
-        private void OnDetailPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnDetailPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             var selectedCollection = _inspectorService.SelectedCollection as Property;
+            Guard.IsNotNull(selectedCollection);
+
             var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
             var propertyName = e.PropertyName;
+            Guard.IsNotNull(propertyName);
 
             var message = new DetailPropertyChangedMessage(selectedCollection, selectedCollectionIndex, propertyName);
             _messengerService.Send(message);

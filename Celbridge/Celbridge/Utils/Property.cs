@@ -1,7 +1,4 @@
-﻿using Celbridge.Models;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System;
-using System.Collections.Generic;
+﻿using CommunityToolkit.Diagnostics;
 using System.Reflection;
 
 namespace Celbridge.Utils
@@ -14,13 +11,15 @@ namespace Celbridge.Utils
         public object Object { get; private set; }
         public PropertyAttribute PropertyAttribute { get; private set; }
 
-        private List<Attribute> _attributes;
+        private List<Attribute>? _attributes;
         public List<Attribute> Attributes
         {
             get
             {
-                if (_attributes == null)
+                if (_attributes is null)
                 {
+                    Guard.IsNotNull(CollectionType);
+
                     // Lazily allocate the attributes list.
                     _attributes = ReflectionUtils.GetCustomAttributes(PropertyInfo, CollectionType);
 
@@ -35,11 +34,11 @@ namespace Celbridge.Utils
         public PropertyInfo PropertyInfo { get; private set; }
         
         // The type contained in the collection, or null if the property is not a collection.
-        public Type CollectionType { get; private set; }
+        public Type? CollectionType { get; private set; }
 
         public PropertyContext Context { get; private set; }
 
-        public Property(object obj, PropertyAttribute propertyAttribute, PropertyInfo propertyInfo, Type collectionType, PropertyContext context)
+        public Property(object obj, PropertyAttribute propertyAttribute, PropertyInfo propertyInfo, Type? collectionType, PropertyContext context)
         {
             Object = obj;
             PropertyInfo = propertyInfo;

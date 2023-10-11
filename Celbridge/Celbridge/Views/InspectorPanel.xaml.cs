@@ -17,28 +17,32 @@ namespace Celbridge.Views
         public InspectorPanel()
         {
             this.InitializeComponent();
-            ViewModel = (Application.Current as App).Host.Services.GetRequiredService<InspectorViewModel>();
-            ViewModel.ItemCollection = PropertyListView.Items;
 
             var app = Application.Current as App;
-            _settings = app.Host.Services.GetService<ISettingsService>();
-            Guard.IsNotNull(_settings);
+            Guard.IsNotNull(app);
+
+            ViewModel = app.Host!.Services.GetRequiredService<InspectorViewModel>();
+            ViewModel.ItemCollection = PropertyListView.Items;
+
+            _settings = app.Host!.Services.GetRequiredService<ISettingsService>();
 
             Loaded += InspectorPanel_Loaded;
         }
 
-        private void InspectorPanel_Loaded(object sender, RoutedEventArgs e)
+        private void InspectorPanel_Loaded(object? sender, RoutedEventArgs e)
         {
+            Guard.IsNotNull(_settings.EditorSettings);
             var height = _settings.EditorSettings.DetailPanelHeight;
             DetailPanelRow.Height = new GridLength(height);
         }
 
-        private void InspectorPanel_LayoutUpdated(object sender, object e)
+        private void InspectorPanel_LayoutUpdated(object? sender, object e)
         {
             var height = (float)DetailPanelRow.Height.Value;
 
             // This gets called frequently so we're relying on the equality 
             // check in the setter to avoid unnecessary writes to the settings.
+            Guard.IsNotNull(_settings.EditorSettings);
             _settings.EditorSettings.DetailPanelHeight = height;
         }
     }
