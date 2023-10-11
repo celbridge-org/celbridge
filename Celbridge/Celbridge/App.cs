@@ -1,4 +1,8 @@
 using Celbridge.Models;
+using Celbridge.Services;
+using Celbridge.Tasks;
+using Celbridge.ViewModels;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge
 {
@@ -24,8 +28,7 @@ namespace Celbridge
                     .UseLocalization()
                     .ConfigureServices((context, services) =>
                     {
-                        // TODO: Register your services
-                        //services.AddSingleton<IMyService, MyService>();
+                        RegisterServices(services);
                     })
                 );
             MainWindow = builder.Window;
@@ -52,6 +55,74 @@ namespace Celbridge
             }
             // Ensure the current window is active
             MainWindow.Activate();
+        }
+
+        private void RegisterServices(IServiceCollection services)
+        {
+            IMessenger messengerService = WeakReferenceMessenger.Default;
+            ISettingsService settingsService = new SettingsService(messengerService);
+            IResourceTypeService resourceTypeService = new ResourceTypeService();
+            IResourceService resourceService = new ResourceService(messengerService, resourceTypeService);
+            IInspectorService inspectorService = new InspectorService(messengerService);
+            ISaveDataService saveDataService = new SaveDataService(messengerService);
+            IDocumentService documentService = new DocumentService(messengerService);
+            IDialogService dialogService = new DialogService(messengerService);
+            IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
+            IAppThemeService appThemeService = new AppThemeService(settingsService);
+            IAIService aiService = new AIService();
+            IConsoleService consoleService = new ConsoleService(aiService);
+            ICelTypeService celTypeService = new CelTypeService();
+            ICelScriptService celScriptService = new CelScriptService(messengerService, celTypeService, resourceService, projectService, dialogService);
+
+            services.AddSingleton(messengerService);
+            services.AddSingleton(settingsService);
+            services.AddSingleton(resourceTypeService);
+            services.AddSingleton(celTypeService);
+            services.AddSingleton(resourceService);
+            services.AddSingleton(saveDataService);
+            services.AddSingleton(dialogService);
+            services.AddSingleton(projectService);
+            services.AddSingleton(appThemeService);
+            services.AddSingleton(consoleService);
+            services.AddSingleton(inspectorService);
+            services.AddSingleton(documentService);
+            services.AddSingleton(aiService);
+            services.AddSingleton(celScriptService);
+            services.AddSingleton<ShellViewModel>();
+            services.AddSingleton<ConsoleViewModel>();
+            services.AddSingleton<ProjectViewModel>();
+            services.AddSingleton<LeftNavigationBarViewModel>();
+            services.AddSingleton<RightNavigationBarViewModel>();
+            services.AddSingleton<StatusBarViewModel>();
+            services.AddSingleton<DocumentsViewModel>();
+            services.AddSingleton<InspectorViewModel>();
+            services.AddSingleton<DetailViewModel>();
+            services.AddSingleton<MainMenuViewModel>();
+            services.AddTransient<NewProjectViewModel>();
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<AddResourceViewModel>();
+            services.AddTransient<AddCelViewModel>();
+            services.AddTransient<ProgressDialogViewModel>();
+            services.AddTransient<CelCanvasViewModel>();
+            services.AddTransient<TextFileDocumentViewModel>();
+            services.AddTransient<CelScriptDocumentViewModel>();
+            services.AddTransient<PropertyListViewModel>();
+            services.AddTransient<NumberPropertyViewModel>();
+            services.AddTransient<TextPropertyViewModel>();
+            services.AddTransient<BooleanPropertyViewModel>();
+            services.AddTransient<ExpressionPropertyViewModel>();
+            services.AddTransient<PathPropertyViewModel>();
+            services.AddTransient<RecordPropertyViewModel>();
+            services.AddTransient<RecordSummaryPropertyViewModel>();
+            services.AddTransient<InstructionLinePropertyViewModel>();
+            services.AddTransient<CallArgumentsPropertyViewModel>();
+            services.AddTransient<CelConnectionLineViewModel>();
+            services.AddTransient<LoadProjectTask>();
+            services.AddTransient<UpdateSyntaxFormatTask>();
+            services.AddTransient<GenerateCelSignaturesTask>();
+            services.AddTransient<UpdateCelInstructionsTask>();
+            services.AddSingleton<LoadCustomAssembliesTask>();
+            services.AddTransient<BuildApplicationTask>();
         }
     }
 }
