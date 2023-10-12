@@ -51,8 +51,11 @@ namespace Celbridge
             Guard.IsNotNull(app);
 
 #if WINDOWS
-            // Todo: Set titlebar content again
-            // app.SetTitleBarContent(TitleBar);
+            var mainWindow = app.MainWindow;
+            Guard.IsNotNull(mainWindow);
+
+            mainWindow.ExtendsContentIntoTitleBar = true;
+            mainWindow.SetTitleBar(TitleBar);
 #endif
             BottomPanel.Children.Add(new ConsolePanel());
             LeftPanel.Children.Add(new ProjectPanel());
