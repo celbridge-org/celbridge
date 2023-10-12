@@ -79,6 +79,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\CelStandardLibrary\CelStandardLibrary.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <Content Update="Assets\Icons\logo.png">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>

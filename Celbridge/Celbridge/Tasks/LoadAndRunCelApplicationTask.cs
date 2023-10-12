@@ -67,6 +67,10 @@ namespace Celbridge.Tasks
 
                 CelApplicationAssembly = new WeakReference(assembly);
 
+                // Load the Cel Standard Library assembly
+                var assemblyName = typeof(CelStandardLibrary.Environment).Assembly.GetName();
+                _loadContext.LoadFromAssemblyName(assemblyName);
+
                 return new SuccessResult();
             }
             catch (Exception ex)

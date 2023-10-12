@@ -37,7 +37,8 @@ namespace Celbridge.Utils
                         Assembly.Load("System.Runtime").Location,
                         typeof(object).Assembly.Location,
                         typeof(SyntaxTree).Assembly.Location,
-                        typeof(CSharpSyntaxTree).Assembly.Location
+                        typeof(CSharpSyntaxTree).Assembly.Location,
+                        typeof(CelStandardLibrary.Environment).Assembly.Location,
                     };
                     assemblyLocations.AddRange(assemblies);
 
