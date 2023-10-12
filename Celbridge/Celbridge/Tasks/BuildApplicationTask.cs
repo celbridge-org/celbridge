@@ -247,13 +247,19 @@ namespace Celbridge.Tasks
                     }
                     else
                     {
-                        var call = nextInstruction as BasicMixin.Call;
-                        Guard.IsNotNull(call);
+                        if (nextInstruction is BasicMixin.Call call)
+                        {
+                            var functionCall = GetFunctionCall(call);
+                            body.Add($"{lhsType} {typeInstruction.Name} = {functionCall};");
 
-                        var functionCall = GetFunctionCall(call);
-                        body.Add($"{lhsType} {typeInstruction.Name} = {functionCall};");
+                            i++; // Skip the next instruction
+                        }
+                        else if (nextInstruction is FileMixin.Read read)
+                        {
+                            body.Add($"{lhsType} {typeInstruction.Name} = \"{read.Resource}\";");
 
-                        i++; // Skip the next instruction
+                            i++; // Skip the next instruction
+                        }
                     }
                 } 
                 else if (instruction is BasicMixin.Call call)

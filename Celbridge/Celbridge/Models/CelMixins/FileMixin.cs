@@ -1,18 +1,14 @@
-﻿using Celbridge.Utils;
-using System;
-using System.Collections.Generic;
-
-namespace Celbridge.Models.CelMixins
+﻿namespace Celbridge.Models.CelMixins
 {
     public class FileMixin : ICelMixin
     {
         public Dictionary<string, Type> InstructionTypes { get; } = new()
         {
-            { nameof(ReadText), typeof(ReadText) },
-            { nameof(WriteText), typeof(WriteText) },
+            { nameof(Read), typeof(Read) },
+            { nameof(Write), typeof(Write) },
         };
 
-        public record ReadText : InstructionBase
+        public record Read : InstructionBase
         {
             public string Resource { get; set; } = string.Empty;
 
@@ -26,9 +22,11 @@ namespace Celbridge.Models.CelMixins
             }
         }
 
-        public record WriteText : InstructionBase
+        public record Write : InstructionBase
         {
             public string Resource { get; set; } = string.Empty;
+
+            public StringExpression Text { get; set; } = new();
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
@@ -36,7 +34,7 @@ namespace Celbridge.Models.CelMixins
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: Resource);
+                    SummaryText: $"{Resource} : {Text.Expression}");
             }
         }
     }
