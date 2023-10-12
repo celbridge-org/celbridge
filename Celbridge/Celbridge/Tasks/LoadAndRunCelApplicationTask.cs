@@ -1,9 +1,4 @@
 ﻿using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using Serilog;
-using System;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -14,6 +9,7 @@ namespace Celbridge.Tasks
         private AssemblyLoadContext? _loadContext;
 
         public WeakReference? CelApplicationAssembly { get; private set; }
+        public WeakReference? CelStandardLibraryAssembly { get; private set; }
 
         public Result Unload()
         {
@@ -43,33 +39,35 @@ namespace Celbridge.Tasks
 #endif
 
                 CelApplicationAssembly = null;
+                CelStandardLibraryAssembly = null;
             }
 
             return new SuccessResult();
         }
 
-        public Result Load(string celApplicationAssembly)
+        public Result Load(string celApplicationAssemblyPath)
         {
             try
             {
-                Guard.IsTrue(File.Exists(celApplicationAssembly));
+                Guard.IsTrue(File.Exists(celApplicationAssemblyPath));
 
                 Guard.IsNull(_loadContext);
                 _loadContext = new AssemblyLoadContext("CelApplications", true);
 
                 // Doing it this way prevents the assembly file from being locked by the file system
                 // Todo: Generate and load debug symbols for the CelSignatures assembly
-                byte[] dllBytes = File.ReadAllBytes(celApplicationAssembly);
+                byte[] dllBytes = File.ReadAllBytes(celApplicationAssemblyPath);
                 //byte[] pdbBytes = File.ReadAllBytes("./Server.Hotfix.pdb");
 
-                var assembly = _loadContext.LoadFromStream(new MemoryStream(dllBytes));
-                Guard.IsNotNull(assembly);
-
-                CelApplicationAssembly = new WeakReference(assembly);
+                var celApplication = _loadContext.LoadFromStream(new MemoryStream(dllBytes));
+                Guard.IsNotNull(celApplication);
+                CelApplicationAssembly = new WeakReference(celApplication);
 
                 // Load the Cel Standard Library assembly
                 var assemblyName = typeof(CelStandardLibrary.Environment).Assembly.GetName();
-                _loadContext.LoadFromAssemblyName(assemblyName);
+                var celStandardLibrary = _loadContext.LoadFromAssemblyName(assemblyName);
+                Guard.IsNotNull(celStandardLibrary);
+                CelStandardLibraryAssembly = new WeakReference(celStandardLibrary);
 
                 return new SuccessResult();
             }
@@ -81,18 +79,16 @@ namespace Celbridge.Tasks
 
         public Result Run(Action<string> onPrint)
         {
-            if (CelApplicationAssembly == null)
+            if (CelApplicationAssembly == null ||
+                CelStandardLibraryAssembly == null)
             {
                 return new ErrorResult("Failed to run cel application. Assembly is not loaded.");
             }
 
-            var assembly = CelApplicationAssembly.Target as Assembly;
-            if (assembly == null)
-            {
-                return new ErrorResult("Failed to run cel application. Assembly is not loaded.");                
-            }
+            var celStandardLibrary = CelStandardLibraryAssembly.Target as Assembly;
+            Guard.IsNotNull(celStandardLibrary);
 
-            var environmentType = assembly.GetType("CelApplication.Environment");
+            var environmentType = celStandardLibrary.GetType("CelStandardLibrary.Environment");
             Guard.IsNotNull(environmentType);
 
             // Inject the print delegate
@@ -100,6 +96,12 @@ namespace Celbridge.Tasks
             Guard.IsNotNull(onPrintProperty);
             var printDelegate = new Action<string>(onPrint);
             onPrintProperty.SetValue(null, printDelegate);
+
+            var assembly = CelApplicationAssembly.Target as Assembly;
+            if (assembly == null)
+            {
+                return new ErrorResult("Failed to run cel application. Assembly is not loaded.");
+            }
 
             // Find every public Start() method
             var methods = assembly.GetTypes()

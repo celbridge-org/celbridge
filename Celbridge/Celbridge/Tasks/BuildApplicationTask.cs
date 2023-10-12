@@ -1,11 +1,4 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.IO;
-using System.Linq;
+﻿using Celbridge.Utils;
 using System.Text;
 using Celbridge.Models.CelMixins;
 
@@ -27,19 +20,13 @@ namespace Celbridge.Tasks
                 }
                 Directory.CreateDirectory(applicationFolder);
 
-                var environmentResult = await GenerateEnvironmentFile(applicationFolder);
-                if (environmentResult is ErrorResult environmentError)
-                {
-                    return new ErrorResult<string>($"Failed to build application. {environmentError.Message}");
-                }
-
                 var generateResult = await GenerateSourceFiles(celScripts, applicationFolder);
                 if (generateResult is ErrorResult generateError)
                 {
                     return new ErrorResult<string>($"Failed to build application. {generateError.Message}");
                 }
 
-                var compileResult = await AssemblyUtils.CompileAssembly(applicationFolder, "CelEnvironment", new List<String>());
+                var compileResult = await AssemblyUtils.CompileAssembly(applicationFolder, "CelApplication", new List<String>());
                 if (compileResult is ErrorResult<string> compileError)
                 {
                     return new ErrorResult<string>($"Failed to build application. {compileError.Message}");
@@ -105,6 +92,8 @@ namespace Celbridge.Tasks
         private List<string> GetBodyLines(string celScriptName, List<ICelScriptNode> cels)
         {
             var body = new List<string>();
+            body.Add("using CelStandardLibrary;");
+            body.Add("");
             body.Add("namespace CelApplication;");
             body.Add(string.Empty);
             body.Add($"public static class {celScriptName}");
@@ -396,42 +385,6 @@ namespace Celbridge.Tasks
             }
 
             return sb.ToString();
-        }
-
-        private async Task<Result> GenerateEnvironmentFile(string applicationFolder)
-        {
-            try
-            {
-                var sourceFile = Path.Combine(applicationFolder, $"Environment.cs");
-
-                var bodyText =
-@"using System;
-
-namespace CelApplication;
-
-public static class Environment
-{
-    public static Action<string> OnPrint;
-
-    public static void Print(string message)
-    {
-        OnPrint?.Invoke(message);
-    }
-}
-";
-                var directory = Path.GetDirectoryName(sourceFile);
-                Guard.IsNotNull(directory);
-
-                Directory.CreateDirectory(directory);
-
-                await File.WriteAllTextAsync(sourceFile, bodyText);
-            }
-            catch (Exception ex)
-            {
-                return new ErrorResult($"Failed to generate source file. {ex.Message}");
-            }
-
-            return new SuccessResult();
         }
     }
 }
