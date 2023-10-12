@@ -91,7 +91,7 @@ namespace Celbridge.Services
         {
             // Speculative fix for an exception crash on exit.
             // The exception happens in InstructionLinePropertyViewModel when handling the
-            // CelSyntaxFormatUpdatedMessage and attempting to access the KeyworkColor.Color property.
+            // CelSyntaxFormatUpdatedMessage and attempting to access the KeywordColor.Color property.
             // It's a weird COM/Native code error that suggests that the data structure isn't valid any more,
             // presumably because the app is in the process of shutting down.
             // The fix here is to stop updating syntax format during shutdown.

@@ -1,14 +1,29 @@
-using Celbridge.Models;
 using Celbridge.Services;
 using Celbridge.Tasks;
 using Celbridge.ViewModels;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge
 {
-    public class App : Application
+    public partial class App : Application
     {
+        public App()
+        {
+            var settingsService = new SettingsService(WeakReferenceMessenger.Default);
+            ApplicationTheme theme = ApplicationTheme.Light;
+            if (settingsService.EditorSettings is not null)
+            {
+                theme = settingsService.EditorSettings.ApplicationTheme;
+            }
+
+#if HAS_UNO
+            var themeName = theme.ToString();
+            Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
+#else
+	        this.RequestedTheme = theme;
+#endif
+        }
+
         public Window? MainWindow { get; private set; }
         public IHost? Host { get; private set; }
 
@@ -50,6 +65,14 @@ namespace Celbridge
                 MainWindow.Title = localizer["ApplicationName.Text"];
             }
 
+            MainWindow.Closed += (s, e) =>
+            {
+                var messengerService = Host!.Services.GetRequiredService<IMessenger>();
+                var message = new ApplicationClosingMessage();
+                messengerService.Send(message);
+            };
+
+
             rootFrame.Loaded += (s, e) =>
             {
                 // XamlRoot is required for displaying content dialogs
@@ -85,9 +108,8 @@ namespace Celbridge
             IDocumentService documentService = new DocumentService(messengerService);
             IDialogService dialogService = new DialogService(messengerService);
             IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
-            IAppThemeService appThemeService = new AppThemeService(settingsService);
             IAIService aiService = new AIService();
-            IConsoleService consoleService = new ConsoleService(aiService);
+            IConsoleService consoleService = new ConsoleService(messengerService, aiService);
             ICelTypeService celTypeService = new CelTypeService();
             ICelScriptService celScriptService = new CelScriptService(messengerService, celTypeService, resourceService, projectService, dialogService);
 
@@ -99,7 +121,6 @@ namespace Celbridge
             services.AddSingleton(saveDataService);
             services.AddSingleton(dialogService);
             services.AddSingleton(projectService);
-            services.AddSingleton(appThemeService);
             services.AddSingleton(consoleService);
             services.AddSingleton(inspectorService);
             services.AddSingleton(documentService);
