@@ -2,7 +2,7 @@
 
 namespace Celbridge.ViewModels
 {
-    public class SettingsViewModel : ObservableObject
+    public partial class SettingsViewModel : ObservableObject
     {
         private readonly ISettingsService _settingsService;
 
@@ -10,26 +10,26 @@ namespace Celbridge.ViewModels
         {
             _settingsService = settingsService;
 
-            ThemeValues = Enum.GetValues(typeof(ApplicationTheme)).Cast<ApplicationTheme>();
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
+            ThemeIndex = (int)_settingsService.EditorSettings.ApplicationTheme;
+
+            PropertyChanged += SettingsViewModel_PropertyChanged;
         }
 
-        public IEnumerable<ApplicationTheme> ThemeValues { get; }
+        [ObservableProperty]
+        private int _themeIndex;
 
-        public ApplicationTheme Theme 
-        { 
-            get
+        public List<string> ThemeValues { get; } = new() { "Light", "Dark" };
+
+        private void SettingsViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ThemeIndex))
             {
                 Guard.IsNotNull(_settingsService.EditorSettings);
-                return _settingsService.EditorSettings.ApplicationTheme;
-            }
-            set 
-            {
-                // Wrap model property
-                Guard.IsNotNull(_settingsService.EditorSettings);
-                SetProperty(_settingsService.EditorSettings.ApplicationTheme, 
-                    value,    
-                    _settingsService.EditorSettings,
-                    (s, t) => s.ApplicationTheme = t);
+
+                var theme = ThemeIndex == 0 ? ApplicationTheme.Light : ApplicationTheme.Dark;
+                _settingsService.EditorSettings.ApplicationTheme = theme;
             }
         }
     }

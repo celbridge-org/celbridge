@@ -7,6 +7,7 @@ using System.Reflection;
 using Newtonsoft.Json;
 using CommunityToolkit.WinUI.Helpers;
 using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Services
 {
@@ -17,8 +18,6 @@ namespace Celbridge.Services
 
         void WriteMessage(string message);
         void ClearMessages();
-
-        void Close();
         Result ExecuteCommand(string commandText);
         Result<string> CycleHistory(bool forwards);
         void ClearHistory();
@@ -50,7 +49,7 @@ namespace Celbridge.Services
         private bool _isChatModeEnabled;
         private string _chatFile = string.Empty;
 
-        public ConsoleService(IAIService aiService)
+        public ConsoleService(IMessenger messengerService, IAIService aiService)
         {
             _aiService = aiService;
 
@@ -58,6 +57,8 @@ namespace Celbridge.Services
             // I ended up using Serilog to implement logging because I couldn't figure out
             // how to use the built in Uno logging stuff. This approach means we don't get any
             // logs prior to the ConsoleService init.
+
+            messengerService.Register<ApplicationClosingMessage>(this, OnApplicationClosing);
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.ConsoleService(this) // Our custom sink that writes to the Console panel in the app
@@ -90,6 +91,12 @@ namespace Celbridge.Services
             _saveTimer.Start();
         }
 
+        private void OnApplicationClosing(object recipient, ApplicationClosingMessage message)
+        {
+            // Flush the console log before closing
+            Close();
+        }
+
         private void OnSaveTimerTick(object? sender, object e)
         {
             if (_isSaveRequested && !_isSaving)
@@ -107,11 +114,6 @@ namespace Celbridge.Services
         public void ClearMessages()
         {
             OnClearMessages?.Invoke();
-        }
-
-        public void Close()
-        {
-            Log.CloseAndFlush();
         }
 
         public Result ExecuteCommand(string commandText)
@@ -359,6 +361,11 @@ namespace Celbridge.Services
             _chatFile = string.Empty;
 
             return new SuccessResult();
+        }
+
+        private void Close()
+        {
+            Log.CloseAndFlush();
         }
     }
 }
