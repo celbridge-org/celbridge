@@ -27,10 +27,6 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <not_win:Grid x:Name="MacTitleBarSpace"
-              toolkit:VisibleBoundsPadding.PaddingMask="All">
-        </not_win:Grid>
-
         <!-- Title bar -->
         <win:Grid x:Name="TitleBar" 
               HorizontalAlignment="Stretch"
@@ -50,7 +46,7 @@
 
             <Image Grid.Row="0"
                    Grid.Column="0"
-                   Source="ms-appx:///Assets/Logo.png"
+                   Source="ms-appx:///Assets/Icons/Logo.png"
                    Height="28"
                    Width="28"
                    Margin="0"
@@ -58,7 +54,7 @@
                    VerticalAlignment="Center" />
             <TextBlock Grid.Row="0" 
                        Grid.Column="1" 
-                       Text="Celbridge" 
+                       x:Uid="ApplicationName" 
                        Padding="2"
                        VerticalAlignment="Center"/>
         </win:Grid>
