@@ -13,7 +13,7 @@
     <StackPanel VerticalAlignment="Stretch" 
                 HorizontalAlignment="Stretch">
         <ComboBox ItemsSource="{x:Bind ViewModel.ThemeValues}"
-                  SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}"
+                  SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}"
                   Header="Theme" 
                   PlaceholderText="Application theme" Width="200"/>
     </StackPanel>
