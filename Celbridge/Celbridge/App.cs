@@ -45,6 +45,12 @@ namespace Celbridge
 
                 // Place the frame in the current Window
                 MainWindow.Content = rootFrame;
+#if !HAS_UNO
+                // Extending the content into the titlebar is only supported on Windows
+                MainWindow.ExtendsContentIntoTitleBar = true;
+#endif
+                var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
+                MainWindow.Title = localizer["ApplicationName.Text"];
             }
 
             rootFrame.Loaded += (s, e) =>
