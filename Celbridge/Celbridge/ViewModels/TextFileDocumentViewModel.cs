@@ -1,16 +1,6 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
+﻿using Celbridge.Services;
 using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Serilog;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Celbridge.ViewModels
 {
@@ -164,7 +154,9 @@ namespace Celbridge.ViewModels
                 return new ErrorResult(error.Message);
             }
 
-            return await FileUtils.SaveTextAsync(_path, Content);
+            _isSavingContent = true;
+
+           return await FileUtils.SaveTextAsync(_path, Content);
         }
 
         private void TextFileDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
