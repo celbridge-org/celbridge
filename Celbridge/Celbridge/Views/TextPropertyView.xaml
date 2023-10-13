@@ -26,6 +26,7 @@
         <TextBox Grid.Column="1" 
                  x:Name="ValueTextBox"
                  Text="{x:Bind ViewModel.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 IsSpellCheckEnabled="False"
                  Margin="6 0 0 0"/>
     </Grid>
    

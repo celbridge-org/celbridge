@@ -40,20 +40,29 @@ namespace Celbridge.Tasks
                 var prevInstruction = prevInstructionLine != null ? prevInstructionLine.Instruction : null;
                 var nextInstruction = nextInstructionLine != null ? nextInstructionLine.Instruction : null;
 
-                if (instruction is TypeInstructionBase typeInstruction &&
-                    nextInstruction is BasicMixin.Call callInstruction)
+                if (instruction is TypeInstructionBase typeInstruction)
                 {
-                    // Todo: We don't need to update this on every keypress, can use a timer as long we don't build the code until it updates
-                    // Todo: Can we use a c# type instead of a string for the return type? Seems a bit flaky.
+                    var consumerTypeName = typeInstruction.GetType().Name;
+                    string producerTypeName = string.Empty;
 
-                    var typeName = typeInstruction.GetType().Name;
-                    var returnTypeName = callInstruction.Arguments.CelSignature.ReturnType;
+                    if (nextInstruction is BasicMixin.Call callInstruction)
+                    {
+                        // Todo: We don't need to update this on every keypress, can use a timer as long we don't build the code until it updates
+                        // Todo: Can we use a c# type instead of a string for the return type? This seems a bit flaky.
+                        producerTypeName = callInstruction.Arguments.CelSignature.ReturnType;
+                    }
+                    else if (nextInstruction is FileMixin.Read readInstruction)
+                    {
+                        // Todo: This is very hard coded, replace with a generic mechanism that works for any instruction
+                        // A PipeProducerType property would do the trick
+                        producerTypeName = nameof(PrimitivesMixin.String);
+                    }
 
                     // Check if the type of the current instruction matches the Output type of the called Cel
-                    if (typeName == returnTypeName)
+                    if (consumerTypeName == producerTypeName)
                     {
-                        typeInstruction.PipeState = PipeState.PipeConsumer;
-                        callInstruction.PipeState = PipeState.PipeProducer;
+                        instruction.PipeState = PipeState.PipeConsumer;
+                        nextInstruction!.PipeState = PipeState.PipeProducer;
                     }
                 }
             }
