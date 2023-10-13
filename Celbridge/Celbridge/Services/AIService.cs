@@ -1,8 +1,6 @@
 using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
 using OpenAI_API;
 using OpenAI_API.Chat;
-using Serilog;
 
 namespace Celbridge.Services
 {
@@ -16,21 +14,35 @@ namespace Celbridge.Services
 
     public class AIService : IAIService
     {
+        private ISettingsService _settingsService;
+
         private OpenAIAPI? _api;
         private Conversation? _chat;
 
         private bool _isWaitingForResponse;
 
-        public AIService()
+        public AIService(ISettingsService settingsService)
         {
-            // https://github.com/OkGoDoIt/OpenAI-API-dotnet
-            InitChatAPI();
+            _settingsService = settingsService;
         }
 
         private Result InitChatAPI()
         {
-            _api = new OpenAIAPI("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");
-            if (_api == null)
+            if (_api is not null)
+            {
+                return new SuccessResult();
+            }
+
+            Guard.IsNotNull(_settingsService.EditorSettings);
+            var apiKey = _settingsService.EditorSettings.OpenAIKey;
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                return new ErrorResult("Failed to create Chat API. API key not found.");
+            }
+
+            // https://github.com/OkGoDoIt/OpenAI-API-dotnet
+            _api = new OpenAIAPI(apiKey);
+            if (_api is null)
             {
                 return new ErrorResult("Failed to create Chat AI API");
             }
@@ -40,6 +52,11 @@ namespace Celbridge.Services
 
         public Result StartChat()
         {
+            var initResult = InitChatAPI();
+            if (initResult is ErrorResult error)
+            {
+                return error;
+            }
             Guard.IsNotNull(_api);
 
             _chat = _api.Chat.CreateConversation();
