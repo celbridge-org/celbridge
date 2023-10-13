@@ -41,6 +41,9 @@ namespace Celbridge.Models
         [ObservableProperty]
         private List<string> _previousOpenDocuments = new();
 
+        [ObservableProperty]
+        private string _openAIKey = string.Empty;
+
         public EditorSettings()
         {
             // Required for serialization.

@@ -108,7 +108,7 @@ namespace Celbridge
             IDocumentService documentService = new DocumentService(messengerService);
             IDialogService dialogService = new DialogService(messengerService);
             IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
-            IAIService aiService = new AIService();
+            IAIService aiService = new AIService(settingsService);
             IConsoleService consoleService = new ConsoleService(messengerService, aiService);
             ICelTypeService celTypeService = new CelTypeService();
             ICelScriptService celScriptService = new CelScriptService(messengerService, celTypeService, resourceService, projectService, dialogService);
