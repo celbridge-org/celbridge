@@ -245,12 +245,19 @@ namespace Celbridge.Tasks
                         }
                         else if (nextInstruction is FileMixin.Read read)
                         {
-                            body.Add($"{lhsType} {typeInstruction.Name} = \"{read.Resource}\";");
+                            body.Add($"{lhsType} {typeInstruction.Name} = TextFile.ReadText(\"{read.Resource}\");");
 
                             i++; // Skip the next instruction
                         }
                     }
-                } 
+                }
+                else if (instruction is FileMixin.Write write)
+                {
+                    // Todo: Call a method on Instruction to generate this code? Or a helper class? Hard to generalize yet....
+                    var resource = write.Resource.GetSummary();
+                    var text = write.Text.GetSummary();
+                    body.Add($"TextFile.WriteText({resource}, {text});");
+                }
                 else if (instruction is BasicMixin.Call call)
                 {
                     var functionCall = GetFunctionCall(call);

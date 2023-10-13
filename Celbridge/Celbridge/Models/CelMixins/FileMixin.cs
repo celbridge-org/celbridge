@@ -18,13 +18,13 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: Resource);
+                    SummaryText: $"Resource: {Resource}");
             }
         }
 
         public record Write : InstructionBase
         {
-            public string Resource { get; set; } = string.Empty;
+            public StringExpression Resource { get; set; } = new();
 
             public StringExpression Text { get; set; } = new();
 
@@ -34,7 +34,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"{Resource} : {Text.Expression}");
+                    SummaryText: $"Resource : {Resource.GetSummary()}, Text: {Text.GetSummary()}");
             }
         }
     }
