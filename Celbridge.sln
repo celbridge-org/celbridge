@@ -29,6 +29,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A13B9DDB-364C-4EB7-A100-B243618EEF76}"
 	ProjectSection(SolutionItems) = preProject
 		Docs\UnoPlatformNotes.md = Docs\UnoPlatformNotes.md
+		StoringSecrets.md = StoringSecrets.md
+		Docs\UsingGithub.md = Docs\UsingGithub.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CelStandardLibrary", "CelStandardLibrary\CelStandardLibrary.csproj", "{C17A6B9B-7C07-4ACA-BF6B-562FBF0B290E}"

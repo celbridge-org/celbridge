@@ -22,6 +22,23 @@ namespace Celbridge.ViewModels
 
         public List<string> ThemeValues { get; } = new() { "Light", "Dark" };
 
+
+        public string OpenAIKey
+        {
+            get
+            {
+                Guard.IsNotNull(_settingsService.EditorSettings);
+                return _settingsService.EditorSettings.OpenAIKey;
+            }
+
+            set
+            {
+                Guard.IsNotNull(_settingsService.EditorSettings);
+                _settingsService.EditorSettings.OpenAIKey = value;
+                OnPropertyChanged(nameof(OpenAIKey));
+            }
+        }
+
         private void SettingsViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ThemeIndex))
