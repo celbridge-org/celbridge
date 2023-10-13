@@ -4,7 +4,6 @@ global using CommunityToolkit.Mvvm.Input;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Localization;
-global using Microsoft.Extensions.Options;
 global using Microsoft.UI.Xaml;
 global using Microsoft.UI.Xaml.Controls;
 global using Microsoft.UI.Xaml.Media;
@@ -12,5 +11,5 @@ global using System.Windows.Input;
 global using Windows.Storage;
 global using CommunityToolkit.Diagnostics;
 global using Serilog;
-
-global using ApplicationExecutionState = Windows.ApplicationModel.Activation.ApplicationExecutionState;
+global using CelbridgeStandardLibrary.Utils;
+global using CelStandardLibrary.Interfaces;

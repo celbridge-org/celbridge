@@ -1,12 +1,10 @@
 ﻿using Celbridge.Utils;
-using Serilog;
 using System.Text;
 using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
 using Newtonsoft.Json;
 using CommunityToolkit.WinUI.Helpers;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Services
@@ -21,7 +19,7 @@ namespace Celbridge.Services
         Result ExecuteCommand(string commandText);
         Result<string> CycleHistory(bool forwards);
         void ClearHistory();
-        public Result EnterChatMode(string textFile);
+        public Result EnterChatMode(string textFile, string context);
         public Result ExitChatMode();
     }
 
@@ -207,10 +205,9 @@ namespace Celbridge.Services
 
             async Task AddChatUserInput()
             {
-                var result = await _chatService.Ask(commandText);
-                if (result.Success)
+                var response = await _chatService.Ask(commandText);
+                if (string.IsNullOrEmpty(response))
                 {
-                    var response = result.Data!;
                     Log.Information(response);
 
                     try
@@ -225,11 +222,6 @@ namespace Celbridge.Services
                     {
                         Log.Error(ex.Message);
                     }
-                }
-                else
-                {
-                    var error = result as ErrorResult<string>;
-                    Log.Error(error!.Message);
                 }
             }
 
@@ -337,7 +329,7 @@ namespace Celbridge.Services
             _isSaveRequested = true;
         }
 
-        public Result EnterChatMode(string chatFile)
+        public Result EnterChatMode(string chatFile, string context)
         {
             if (_isChatModeEnabled)
             {
@@ -346,7 +338,7 @@ namespace Celbridge.Services
             _isChatModeEnabled = true;
             _chatFile = chatFile;
 
-            _chatService.StartChat();
+            _chatService.StartChat(context);
 
             return new SuccessResult();
         }

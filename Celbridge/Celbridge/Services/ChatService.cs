@@ -1,16 +1,8 @@
-using Celbridge.Utils;
 using OpenAI_API;
 using OpenAI_API.Chat;
 
 namespace Celbridge.Services
 {
-    public interface IChatService
-    {
-        public Result StartChat();
-        Task<Result<string>> Ask(string question);
-        public Result EndChat();
-    }
-
     public class ChatService : IChatService
     {
         private ISettingsService _settingsService;
@@ -25,55 +17,58 @@ namespace Celbridge.Services
             _settingsService = settingsService;
         }
 
-        private Result InitChatAPI()
+        private bool InitChatAPI()
         {
             if (_api is not null)
             {
-                return new SuccessResult();
+                return true;
             }
 
             Guard.IsNotNull(_settingsService.EditorSettings);
             var apiKey = _settingsService.EditorSettings.OpenAIKey;
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new ErrorResult("Failed to create Chat API. API key not found.");
+                Log.Error("Failed to create Chat API. API key not found.");
+                return false;
             }
 
             // https://github.com/OkGoDoIt/OpenAI-API-dotnet
             _api = new OpenAIAPI(apiKey);
             if (_api is null)
             {
-                return new ErrorResult("Failed to create Chat AI API");
+                Log.Error("Failed to create Chat API");
+                return false;
             }
 
-            return new SuccessResult();
+            return true;
         }
 
-        public Result StartChat()
+        public bool StartChat(string context)
         {
-            var initResult = InitChatAPI();
-            if (initResult is ErrorResult error)
+            if (!InitChatAPI())
             {
-                return error;
+                return false;
             }
             Guard.IsNotNull(_api);
 
             _chat = _api.Chat.CreateConversation();
             if (_chat == null)
             {
-                return new ErrorResult("Failed to create Chat AI conversation");
+                Log.Error("Failed to create Chat AI conversation");
+                return false;
             }
 
-            return new SuccessResult();
+            _chat.AppendSystemMessage(context);
+
+            return true;
         }
 
-        public Result EndChat()
+        public void EndChat()
         {
             _chat = null;
-            return new SuccessResult();
         }
 
-        public async Task<Result<string>> Ask(string question)
+        public async Task<string> Ask(string question)
         {
             // Wait for the previous response to be received
             while (_isWaitingForResponse)
@@ -93,17 +88,18 @@ namespace Celbridge.Services
                 _isWaitingForResponse = false;
                 if (response == null)
                 {
-                    return new ErrorResult<string>("Failed to get response from Chat AI");
+                    Log.Error("Failed to get response from Chat AI");
+                    return string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _isWaitingForResponse = false;
                 Log.Error(ex.Message);
-                return new ErrorResult<string>(ex.Message);
+                return string.Empty;
             }
 
-            return new SuccessResult<string>(response);
+            return response;
         }
     }
 }

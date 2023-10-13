@@ -57,6 +57,10 @@ namespace Celbridge.Tasks
                         // A PipeProducerType property would do the trick
                         producerTypeName = nameof(PrimitivesMixin.String);
                     }
+                    else if (nextInstruction is ChatMixin.Ask askInstruction)
+                    {
+                        producerTypeName = nameof(PrimitivesMixin.String);
+                    }
 
                     // Check if the type of the current instruction matches the Output type of the called Cel
                     if (consumerTypeName == producerTypeName)

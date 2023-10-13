@@ -93,6 +93,7 @@ namespace Celbridge.Tasks
         {
             var body = new List<string>();
             body.Add("using CelStandardLibrary;");
+            body.Add("using System.Threading.Tasks;");
             body.Add("");
             body.Add("namespace CelApplication;");
             body.Add(string.Empty);
@@ -117,8 +118,15 @@ namespace Celbridge.Tasks
                 {
                     body.Add(string.Empty);
                 }
+                if (returnType == "void")
+                {
+                    body.Add($"public static async Task {celName}({parameters})");
+                }
+                else
+                {
+                    body.Add($"public static async Task<{returnType}> {celName}({parameters})");
+                }
 
-                body.Add($"public static {returnType} {celName}({parameters})");
                 body.Add("{");
 
                 var functionBodyLines = GetFunctionBodyLines(cel.Instructions, returnType);
@@ -127,6 +135,7 @@ namespace Celbridge.Tasks
                     body.Add(functionBodyLine);
                 }
 
+                body.Add("await Environment.NoOpAsync();");
                 body.Add("}");
             }
 
@@ -249,19 +258,33 @@ namespace Celbridge.Tasks
 
                             i++; // Skip the next instruction
                         }
+                        else if (nextInstruction is ChatMixin.Ask ask)
+                        {
+                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.ChatService.Ask({ask.Question.GetSummary()});");
+
+                            i++; // Skip the next instruction
+                        }
                     }
                 }
                 else if (instruction is FileMixin.Write write)
                 {
-                    // Todo: Call a method on Instruction to generate this code? Or a helper class? Hard to generalize yet....
                     var resource = write.Resource.GetSummary();
                     var text = write.Text.GetSummary();
                     body.Add($"TextFile.WriteText({resource}, {text});");
                 }
+                else if (instruction is ChatMixin.StartChat startChat)
+                {
+                    var context = startChat.Context.GetSummary();
+                    body.Add($"Environment.ChatService.StartChat({context});");
+                }
+                else if (instruction is ChatMixin.EndChat endChat)
+                {
+                    body.Add($"Environment.ChatService.EndChat();");
+                }
                 else if (instruction is BasicMixin.Call call)
                 {
                     var functionCall = GetFunctionCall(call);
-                    body.Add($"{functionCall};");
+                    body.Add($"await {functionCall};");
                 }
                 else if (instruction is BasicMixin.Return @return)
                 {
