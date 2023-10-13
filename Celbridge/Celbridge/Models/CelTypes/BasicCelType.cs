@@ -13,7 +13,8 @@ namespace Celbridge.Models.CelTypes
         public List<ICelMixin> CelMixins { get; } = new()
         {
             new PrimitivesMixin(),
-            new BasicMixin()
+            new BasicMixin(),
+            new FileMixin()
         };
     }
 }

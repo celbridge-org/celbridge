@@ -21,7 +21,7 @@ namespace Celbridge.Services
         Task<Result<string>> GenerateCelSignatures(string projectFolder, string libraryPath);
         Result<ICelSignature> CreateCelSignature(string celScriptName, string celName);
         Task<Result<string>> BuildApplication(string libraryPath);
-        Task<Result> StartApplication(string libraryPath);
+        Task<Result> StartApplication(string projectFolder, string libraryFolder);
     }
 
     public record CelScriptAddedMessage(Guid ResourceId);
@@ -252,7 +252,7 @@ namespace Celbridge.Services
             return buildResult;
         }
 
-        public async Task<Result> StartApplication(string libraryPath)
+        public async Task<Result> StartApplication(string projectFolder, string libraryPath)
         {
             var activeProject = _projectService.ActiveProject;
             if (activeProject == null)
@@ -282,7 +282,7 @@ namespace Celbridge.Services
                 Log.Information(message);
             };
 
-            var runResult = celApplicationTask.Run(print);
+            var runResult = celApplicationTask.Run(projectFolder, print);
             if (runResult is ErrorResult runError)
             {
                 celApplicationTask.Unload();
