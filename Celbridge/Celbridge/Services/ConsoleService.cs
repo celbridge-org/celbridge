@@ -207,7 +207,7 @@ namespace Celbridge.Services
 
             async Task AddChatUserInput()
             {
-                var result = await _aiService.AddUserInput(commandText);
+                var result = await _aiService.Ask(commandText);
                 if (result.Success)
                 {
                     var response = result.Data!;
