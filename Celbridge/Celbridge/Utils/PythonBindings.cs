@@ -89,14 +89,17 @@ namespace Celbridge.Utils
                 return;
             }
 
+
             var activeProject = projectService.ActiveProject;
             if (activeProject == null)
             {
                 return;
             }
 
+            var projectFolder = activeProject.ProjectFolder;
             var libraryFolder = activeProject.LibraryFolder;
-            var buildResult = await celScriptService.StartApplication(libraryFolder);
+
+            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder);
             if (buildResult is ErrorResult<string> buildError)
             {
                 Log.Error(buildError.Message);

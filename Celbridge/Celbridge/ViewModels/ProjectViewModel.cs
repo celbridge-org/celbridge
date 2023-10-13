@@ -256,8 +256,9 @@ namespace Celbridge.ViewModels
                 return;
             }
 
+            var projectFolder = ActiveProject.ProjectFolder;
             var libraryFolder = ActiveProject.LibraryFolder;
-            var startResult = await _celScriptService.StartApplication(libraryFolder);
+            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder);
             if (startResult is ErrorResult startError)
             {
                 Log.Error($"Failed to start application. {startError.Message}");

@@ -77,7 +77,7 @@ namespace Celbridge.Tasks
             }
         }
 
-        public Result Run(Action<string> onPrint)
+        public Result Run(string projectFolder, Action<string> onPrint)
         {
             if (CelApplicationAssembly == null ||
                 CelStandardLibraryAssembly == null)
@@ -97,13 +97,19 @@ namespace Celbridge.Tasks
             var printDelegate = new Action<string>(onPrint);
             onPrintProperty.SetValue(null, printDelegate);
 
+            // Inject the project folder
+            var projectFolderProperty = environmentType.GetProperty("ProjectFolder", BindingFlags.Static | BindingFlags.Public);
+            Guard.IsNotNull(projectFolderProperty);
+            projectFolderProperty.SetValue(null, projectFolder);
+
+            // Find every public Start() method
+
             var assembly = CelApplicationAssembly.Target as Assembly;
             if (assembly == null)
             {
                 return new ErrorResult("Failed to run cel application. Assembly is not loaded.");
             }
 
-            // Find every public Start() method
             var methods = assembly.GetTypes()
                 .Where(type => type.IsClass && type.IsAbstract && type.IsSealed) // Filter static classes
                 .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))

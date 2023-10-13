@@ -7,7 +7,7 @@ namespace Celbridge.Models
     {
         public string Expression { get; set; } = string.Empty;
 
-        public virtual string GetSummary(PropertyContext context) => Expression;
+        public virtual string GetSummary(PropertyContext context = PropertyContext.CelInstructions) => Expression;
 
         public override string ToString()
         {
@@ -18,7 +18,7 @@ namespace Celbridge.Models
     // Expression must evaluate to a Number literal or variable
     public record NumberExpression : ExpressionBase
     {
-        public override string GetSummary(PropertyContext context)
+        public override string GetSummary(PropertyContext context = PropertyContext.CelInstructions)
         {
             // Single words are assumed to be identifiers (if valid)
             if (StringUtils.IsValidCSharpExpression(Expression))
@@ -33,7 +33,7 @@ namespace Celbridge.Models
     // Expression must evaluate to a Boolean literal or variable
     public record BooleanExpression : ExpressionBase
     {
-        public override string GetSummary(PropertyContext context)
+        public override string GetSummary(PropertyContext context = PropertyContext.CelInstructions)
         {
             // Single words are assumed to be identifiers (if valid)
             if (StringUtils.IsValidCSharpExpression(Expression))
@@ -48,7 +48,7 @@ namespace Celbridge.Models
     // Expression must evaluate to a string literal or variable
     public record StringExpression : ExpressionBase
     {
-        public override string GetSummary(PropertyContext context)
+        public override string GetSummary(PropertyContext context = PropertyContext.CelInstructions)
         {
             // Single words are assumed to be identifiers (if valid)
             if (StringUtils.IsValidCSharpIdentifier(Expression))
