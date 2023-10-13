@@ -1,16 +1,17 @@
 ﻿namespace Celbridge.Models.CelMixins
 {
-    public class FileMixin : ICelMixin
+    public class ChatMixin : ICelMixin
     {
         public Dictionary<string, Type> InstructionTypes { get; } = new()
         {
-            { nameof(Read), typeof(Read) },
-            { nameof(Write), typeof(Write) },
+            { nameof(StartChat), typeof(StartChat) },
+            { nameof(Ask), typeof(Ask) },
+            { nameof(EndChat), typeof(EndChat) },
         };
 
-        public record Read : InstructionBase
+        public record StartChat : InstructionBase
         {
-            public StringExpression Resource { get; set; } = new();
+            public StringExpression Context { get; set; } = new();
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
@@ -18,15 +19,13 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"Resource: {Resource}");
+                    SummaryText: $"{Context.GetSummary()}");
             }
         }
 
-        public record Write : InstructionBase
+        public record Ask : InstructionBase
         {
-            public StringExpression Resource { get; set; } = new();
-
-            public StringExpression Text { get; set; } = new();
+            public StringExpression Question { get; set; } = new();
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
@@ -34,8 +33,13 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"Resource : {Resource.GetSummary()}, Text: {Text.GetSummary()}");
+                    SummaryText: $"{Question.GetSummary()}");
             }
+        }
+
+        public record EndChat : InstructionBase
+        {
+            public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
         }
     }
 }

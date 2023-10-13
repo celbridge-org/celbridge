@@ -1,5 +1,4 @@
-﻿using Celbridge.Utils;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.Loader;
 
 namespace Celbridge.Tasks
@@ -77,7 +76,7 @@ namespace Celbridge.Tasks
             }
         }
 
-        public Result Run(string projectFolder, Action<string> onPrint)
+        public async Task<Result> Run(string projectFolder, Action<string> onPrint, IChatService chatService)
         {
             if (CelApplicationAssembly == null ||
                 CelStandardLibraryAssembly == null)
@@ -101,6 +100,11 @@ namespace Celbridge.Tasks
             var projectFolderProperty = environmentType.GetProperty("ProjectFolder", BindingFlags.Static | BindingFlags.Public);
             Guard.IsNotNull(projectFolderProperty);
             projectFolderProperty.SetValue(null, projectFolder);
+
+            // Inject the chat service
+            var chatServiceProperty = environmentType.GetProperty("ChatService", BindingFlags.Static | BindingFlags.Public);
+            Guard.IsNotNull(chatServiceProperty);
+            chatServiceProperty.SetValue(null, chatService);
 
             // Find every public Start() method
 
@@ -126,7 +130,11 @@ namespace Celbridge.Tasks
 
                 foreach (var method in methods)
                 {
-                    method.Invoke(null, null);
+                    var task = (Task?)method.Invoke(null, null);
+                    if (task is not null)
+                    {
+                        await task;
+                    }
                 }
             }
             catch (Exception ex)

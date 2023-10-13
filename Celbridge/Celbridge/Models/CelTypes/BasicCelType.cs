@@ -14,7 +14,8 @@ namespace Celbridge.Models.CelTypes
         {
             new PrimitivesMixin(),
             new BasicMixin(),
-            new FileMixin()
+            new FileMixin(),
+            new ChatMixin(),
         };
     }
 }

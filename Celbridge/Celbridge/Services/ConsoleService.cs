@@ -1,12 +1,10 @@
 ﻿using Celbridge.Utils;
-using Serilog;
 using System.Text;
 using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
 using Newtonsoft.Json;
 using CommunityToolkit.WinUI.Helpers;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Services
@@ -21,7 +19,7 @@ namespace Celbridge.Services
         Result ExecuteCommand(string commandText);
         Result<string> CycleHistory(bool forwards);
         void ClearHistory();
-        public Result EnterChatMode(string textFile);
+        public Result EnterChatMode(string textFile, string context);
         public Result ExitChatMode();
     }
 
@@ -30,7 +28,7 @@ namespace Celbridge.Services
         const string HistoryFile = "ConsoleHistory.json";
         const int HistoryLinesMax = 200;
 
-        private readonly IAIService _aiService;
+        private readonly IChatService _chatService;
 
         public event Action<string>? OnWriteMessage;
         public event Action? OnClearMessages;
@@ -49,9 +47,9 @@ namespace Celbridge.Services
         private bool _isChatModeEnabled;
         private string _chatFile = string.Empty;
 
-        public ConsoleService(IMessenger messengerService, IAIService aiService)
+        public ConsoleService(IMessenger messengerService, IChatService chatService)
         {
-            _aiService = aiService;
+            _chatService = chatService;
 
             // Todo: Get UNO logging working.
             // I ended up using Serilog to implement logging because I couldn't figure out
@@ -207,10 +205,9 @@ namespace Celbridge.Services
 
             async Task AddChatUserInput()
             {
-                var result = await _aiService.AddUserInput(commandText);
-                if (result.Success)
+                var response = await _chatService.Ask(commandText);
+                if (string.IsNullOrEmpty(response))
                 {
-                    var response = result.Data!;
                     Log.Information(response);
 
                     try
@@ -225,11 +222,6 @@ namespace Celbridge.Services
                     {
                         Log.Error(ex.Message);
                     }
-                }
-                else
-                {
-                    var error = result as ErrorResult<string>;
-                    Log.Error(error!.Message);
                 }
             }
 
@@ -337,7 +329,7 @@ namespace Celbridge.Services
             _isSaveRequested = true;
         }
 
-        public Result EnterChatMode(string chatFile)
+        public Result EnterChatMode(string chatFile, string context)
         {
             if (_isChatModeEnabled)
             {
@@ -346,7 +338,7 @@ namespace Celbridge.Services
             _isChatModeEnabled = true;
             _chatFile = chatFile;
 
-            _aiService.StartChat();
+            _chatService.StartChat(context);
 
             return new SuccessResult();
         }
@@ -360,7 +352,7 @@ namespace Celbridge.Services
             _isChatModeEnabled = false;
             _chatFile = string.Empty;
 
-            _aiService.EndChat();
+            _chatService.EndChat();
 
             return new SuccessResult();
         }
