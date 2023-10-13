@@ -199,7 +199,7 @@ namespace Celbridge.Services
 
         private void DoChatInput(string commandText)
         {
-            if (commandText.Trim().StartsWith("EndChat()"))
+            if (commandText.Trim().EndsWith("EndChat()"))
             {
                 ExitChatMode();
                 return;
@@ -359,6 +359,8 @@ namespace Celbridge.Services
             }
             _isChatModeEnabled = false;
             _chatFile = string.Empty;
+
+            _aiService.EndChat();
 
             return new SuccessResult();
         }

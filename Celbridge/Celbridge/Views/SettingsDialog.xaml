@@ -12,9 +12,14 @@
 
     <StackPanel VerticalAlignment="Stretch" 
                 HorizontalAlignment="Stretch">
-        <ComboBox ItemsSource="{x:Bind ViewModel.ThemeValues}"
+        <ComboBox Header="Theme" 
+                  ItemsSource="{x:Bind ViewModel.ThemeValues}"
                   SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}"
-                  Header="Theme" 
-                  PlaceholderText="Application theme" Width="200"/>
+                  PlaceholderText="Application theme" Width="200"
+                  Margin="6"/>
+
+        <TextBox Header="Open AI Key"
+                 Text="{x:Bind ViewModel.OpenAIKey, Mode=TwoWay}"
+                 Margin="6"/>
     </StackPanel>
 </ContentDialog>
