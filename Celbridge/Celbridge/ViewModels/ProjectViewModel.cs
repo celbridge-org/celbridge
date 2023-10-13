@@ -258,7 +258,10 @@ namespace Celbridge.ViewModels
 
             var projectFolder = ActiveProject.ProjectFolder;
             var libraryFolder = ActiveProject.LibraryFolder;
-            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder);
+
+            var chatService = (Application.Current as App)!.Host!.Services.GetRequiredService<IChatService>();
+
+            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatService);
             if (startResult is ErrorResult startError)
             {
                 Log.Error($"Failed to start application. {startError.Message}");

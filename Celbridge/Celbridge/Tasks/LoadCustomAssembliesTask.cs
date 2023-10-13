@@ -1,5 +1,6 @@
 ﻿using Celbridge.Utils;
 using CommunityToolkit.Diagnostics;
+using System.Reflection;
 using System.Runtime.Loader;
 
 namespace Celbridge.Tasks
