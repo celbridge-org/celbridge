@@ -1,12 +1,4 @@
 ﻿using Celbridge.Services;
-using Celbridge.Tasks;
-using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Serilog;
-using System;
-using System.Reflection;
-using System.Threading.Tasks;
 
 namespace Celbridge.Utils
 {
@@ -41,7 +33,7 @@ namespace Celbridge.Utils
             }
         }
 
-        public static void StartChat(string textFile)
+        public static void StartChat(string textFile, string context)
         {
             var consoleService = (Application.Current as App)!.Host!.Services.GetRequiredService<IConsoleService>();
             var resourceService = (Application.Current as App)!.Host!.Services.GetRequiredService<IResourceService>();
@@ -62,7 +54,7 @@ namespace Celbridge.Utils
             }
             var textFilePath = pathResult.Data!;
 
-            consoleService.EnterChatMode(textFilePath);
+            consoleService.EnterChatMode(textFilePath, context);
         }
 
         public static void ShowProgressDialog()
@@ -83,6 +75,7 @@ namespace Celbridge.Utils
         {
             var celScriptService = (Application.Current as App)!.Host!.Services.GetRequiredService<ICelScriptService>();
             var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
+            var chatService = (Application.Current as App)!.Host!.Services.GetRequiredService<IChatService>();
 
             if (celScriptService == null || projectService == null)
             {
@@ -99,7 +92,7 @@ namespace Celbridge.Utils
             var projectFolder = activeProject.ProjectFolder;
             var libraryFolder = activeProject.LibraryFolder;
 
-            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder);
+            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder, chatService);
             if (buildResult is ErrorResult<string> buildError)
             {
                 Log.Error(buildError.Message);

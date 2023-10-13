@@ -56,8 +56,15 @@ namespace Celbridge.Models
                 return Expression;
             }
 
+            var escaped = JsonConvert.ToString(Expression);
+            if (escaped.IndexOf('{') != -1)
+            {
+                // String is probably interpolated so prepend $
+                escaped = "$" + escaped;
+            }
+
             // Always returns a quoted string.
-            return JsonConvert.ToString(Expression);
+            return escaped;
         }
     }
 
