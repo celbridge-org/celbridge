@@ -4,15 +4,14 @@ using OpenAI_API.Chat;
 
 namespace Celbridge.Services
 {
-    public interface IAIService
+    public interface IChatService
     {
         public Result StartChat();
-        public Result EndChat();
-
         Task<Result<string>> Ask(string question);
+        public Result EndChat();
     }
 
-    public class AIService : IAIService
+    public class ChatService : IChatService
     {
         private ISettingsService _settingsService;
 
@@ -21,7 +20,7 @@ namespace Celbridge.Services
 
         private bool _isWaitingForResponse;
 
-        public AIService(ISettingsService settingsService)
+        public ChatService(ISettingsService settingsService)
         {
             _settingsService = settingsService;
         }

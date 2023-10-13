@@ -108,8 +108,8 @@ namespace Celbridge
             IDocumentService documentService = new DocumentService(messengerService);
             IDialogService dialogService = new DialogService(messengerService);
             IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
-            IAIService aiService = new AIService(settingsService);
-            IConsoleService consoleService = new ConsoleService(messengerService, aiService);
+            IChatService chatService = new ChatService(settingsService);
+            IConsoleService consoleService = new ConsoleService(messengerService, chatService);
             ICelTypeService celTypeService = new CelTypeService();
             ICelScriptService celScriptService = new CelScriptService(messengerService, celTypeService, resourceService, projectService, dialogService);
 
@@ -124,7 +124,7 @@ namespace Celbridge
             services.AddSingleton(consoleService);
             services.AddSingleton(inspectorService);
             services.AddSingleton(documentService);
-            services.AddSingleton(aiService);
+            services.AddSingleton(chatService);
             services.AddSingleton(celScriptService);
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<ConsoleViewModel>();

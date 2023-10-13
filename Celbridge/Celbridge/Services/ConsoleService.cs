@@ -30,7 +30,7 @@ namespace Celbridge.Services
         const string HistoryFile = "ConsoleHistory.json";
         const int HistoryLinesMax = 200;
 
-        private readonly IAIService _aiService;
+        private readonly IChatService _chatService;
 
         public event Action<string>? OnWriteMessage;
         public event Action? OnClearMessages;
@@ -49,9 +49,9 @@ namespace Celbridge.Services
         private bool _isChatModeEnabled;
         private string _chatFile = string.Empty;
 
-        public ConsoleService(IMessenger messengerService, IAIService aiService)
+        public ConsoleService(IMessenger messengerService, IChatService chatService)
         {
-            _aiService = aiService;
+            _chatService = chatService;
 
             // Todo: Get UNO logging working.
             // I ended up using Serilog to implement logging because I couldn't figure out
@@ -207,7 +207,7 @@ namespace Celbridge.Services
 
             async Task AddChatUserInput()
             {
-                var result = await _aiService.Ask(commandText);
+                var result = await _chatService.Ask(commandText);
                 if (result.Success)
                 {
                     var response = result.Data!;
@@ -346,7 +346,7 @@ namespace Celbridge.Services
             _isChatModeEnabled = true;
             _chatFile = chatFile;
 
-            _aiService.StartChat();
+            _chatService.StartChat();
 
             return new SuccessResult();
         }
@@ -360,7 +360,7 @@ namespace Celbridge.Services
             _isChatModeEnabled = false;
             _chatFile = string.Empty;
 
-            _aiService.EndChat();
+            _chatService.EndChat();
 
             return new SuccessResult();
         }
