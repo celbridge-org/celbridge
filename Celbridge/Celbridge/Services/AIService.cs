@@ -9,7 +9,7 @@ namespace Celbridge.Services
         public Result StartChat();
         public Result EndChat();
 
-        Task<Result<string>> AddUserInput(string question);
+        Task<Result<string>> Ask(string question);
     }
 
     public class AIService : IAIService
@@ -74,7 +74,7 @@ namespace Celbridge.Services
             return new SuccessResult();
         }
 
-        public async Task<Result<string>> AddUserInput(string userInput)
+        public async Task<Result<string>> Ask(string question)
         {
             // Wait for the previous response to be received
             while (_isWaitingForResponse)
@@ -88,7 +88,7 @@ namespace Celbridge.Services
             {
                 Guard.IsNotNull(_chat);
 
-                _chat.AppendUserInput(userInput);
+                _chat.AppendUserInput(question);
                 _isWaitingForResponse = true;
                 response = await _chat.GetResponseFromChatbotAsync();
                 _isWaitingForResponse = false;
