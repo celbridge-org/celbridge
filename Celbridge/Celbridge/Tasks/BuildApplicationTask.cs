@@ -241,14 +241,28 @@ namespace Celbridge.Tasks
                             expressionValue = "false";
                         }
 
-                        body.Add($"{lhsType} {typeInstruction.Name} = {expressionValue};");
+                        if (typeInstruction is BasicMixin.Set)
+                        {
+                            body.Add($"{typeInstruction.Name} = {expressionValue};");
+                        }
+                        else
+                        {                        
+                            body.Add($"{lhsType} {typeInstruction.Name} = {expressionValue};");
+                        }
                     }
                     else
                     {
                         if (nextInstruction is BasicMixin.Call call)
                         {
                             var functionCall = GetFunctionCall(call);
-                            body.Add($"{lhsType} {typeInstruction.Name} = {functionCall};");
+                            if (typeInstruction is BasicMixin.Set)
+                            {
+                                body.Add($"{typeInstruction.Name} = await {functionCall};");
+                            }
+                            else
+                            {
+                                body.Add($"{lhsType} {typeInstruction.Name} = await {functionCall};");
+                            }
 
                             i++; // Skip the next instruction
                         }
