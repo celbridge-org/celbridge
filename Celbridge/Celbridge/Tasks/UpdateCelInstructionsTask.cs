@@ -40,7 +40,7 @@ namespace Celbridge.Tasks
                 var prevInstruction = prevInstructionLine != null ? prevInstructionLine.Instruction : null;
                 var nextInstruction = nextInstructionLine != null ? nextInstructionLine.Instruction : null;
 
-                if (instruction is TypeInstructionBase typeInstruction)
+                if (instruction is ITypeInstruction typeInstruction)
                 {
                     var consumerTypeName = typeInstruction.GetType().Name;
                     string producerTypeName = string.Empty;
@@ -62,8 +62,15 @@ namespace Celbridge.Tasks
                         producerTypeName = nameof(PrimitivesMixin.String);
                     }
 
-                    // Check if the type of the current instruction matches the Output type of the called Cel
-                    if (consumerTypeName == producerTypeName)
+                    // Check if the type of the consuming instruction matches the type of the producing instruction
+                    bool canConsumeType = consumerTypeName == producerTypeName;
+                    if (!canConsumeType)
+                    {
+                        // The Set instruction is a special case, it can consume any type
+                        canConsumeType = consumerTypeName == nameof(BasicMixin.Set) && !string.IsNullOrEmpty(producerTypeName);
+                    }
+
+                    if (canConsumeType)
                     {
                         instruction.PipeState = PipeState.PipeConsumer;
                         nextInstruction!.PipeState = PipeState.PipeProducer;

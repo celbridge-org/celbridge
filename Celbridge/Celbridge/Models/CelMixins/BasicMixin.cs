@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Celbridge.Models.CelMixins
+﻿namespace Celbridge.Models.CelMixins
 {
     public class BasicMixin : ICelMixin
     {
@@ -12,8 +9,9 @@ namespace Celbridge.Models.CelMixins
             { nameof(Else), typeof(Else) },
             { nameof(End), typeof(End) },
             { nameof(Return), typeof(Return) },
-            { nameof(Call), typeof(Call) },
             { nameof(While), typeof(While) },
+            { nameof(Set), typeof(Set) },
+            { nameof(Call), typeof(Call) },
         };
 
         public record Print : InstructionBase
@@ -45,21 +43,6 @@ namespace Celbridge.Models.CelMixins
             }
         }
 
-        public record While : InstructionBase
-        {
-            public BooleanExpression Condition { get; set; } = new();
-
-            public override InstructionCategory InstructionCategory => InstructionCategory.ControlFlow;
-            public override IndentModifier IndentModifier => IndentModifier.PostIncrement;
-
-            public override InstructionSummary GetInstructionSummary(PropertyContext Context)
-            {
-                return new InstructionSummary(
-                    SummaryFormat: SummaryFormat.CSharpExpression,
-                    SummaryText: Condition.Expression);
-            }
-        }
-
         public record Else : InstructionBase
         {
             public override InstructionCategory InstructionCategory => InstructionCategory.ControlFlow;
@@ -83,6 +66,53 @@ namespace Celbridge.Models.CelMixins
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.CSharpExpression, 
                     SummaryText: Result.Expression);
+            }
+        }
+
+        public record While : InstructionBase
+        {
+            public BooleanExpression Condition { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.ControlFlow;
+            public override IndentModifier IndentModifier => IndentModifier.PostIncrement;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext Context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.CSharpExpression,
+                    SummaryText: Condition.Expression);
+            }
+        }
+
+        public record Set : InstructionBase, ITypeInstruction
+        {
+            public string Name { get; set; } = string.Empty;
+            public AnyExpression Expression { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.Declaration;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                if (context == PropertyContext.CelInstructions)
+                {
+                    if (PipeState == PipeState.PipeConsumer)
+                    {
+                        return new InstructionSummary(
+                                SummaryFormat: SummaryFormat.PlainText,
+                                SummaryText: $"{Name} =");
+                    }
+
+                    var expressionSummary = Expression.GetSummary(context);
+                    return new InstructionSummary(
+                            SummaryFormat: SummaryFormat.CSharpExpression,
+                            SummaryText: $"{Name} = {expressionSummary}");
+                }
+                return base.GetInstructionSummary(context);
+            }
+
+            public ExpressionBase GetExpression()
+            {
+                return Expression;
             }
         }
 
