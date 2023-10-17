@@ -295,6 +295,13 @@ namespace Celbridge.Tasks
                 {
                     body.Add($"Environment.ChatService.EndChat();");
                 }
+                else if (instruction is BasicMixin.StartProcess startProcess)
+                {
+                    var executable = startProcess.Executable.GetSummary();
+                    var arguments = startProcess.Arguments.GetSummary();
+
+                    body.Add($"Environment.StartProcess({executable},{arguments});");
+                }
                 else if (instruction is BasicMixin.Call call)
                 {
                     var functionCall = GetFunctionCall(call);
