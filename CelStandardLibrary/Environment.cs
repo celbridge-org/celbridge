@@ -1,5 +1,8 @@
 ﻿using CelStandardLibrary.Interfaces;
+using CliWrap;
+using CliWrap.Buffered;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -25,6 +28,31 @@ namespace CelStandardLibrary
         public static async Task NoOpAsync()
         {
             await Task.CompletedTask;
+        }
+
+        public static async Task<string> StartProcess(string executable, string arguments)
+        {
+            try
+            {
+                var result = await Cli.Wrap(executable)
+                    .WithArguments(arguments)
+                    .WithWorkingDirectory(ProjectFolder)
+                    .ExecuteBufferedAsync();
+
+                if (result.ExitCode != 0)
+                {
+                    OnPrint?.Invoke($"Error: {result.StandardError}");
+                }
+
+                OnPrint?.Invoke(result.StandardOutput);
+
+                return result.StandardOutput;
+            }
+            catch (Exception ex)
+            {
+                OnPrint?.Invoke(ex.Message);
+            }
+            return string.Empty;
         }
     }
 }

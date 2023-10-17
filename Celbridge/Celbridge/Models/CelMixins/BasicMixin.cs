@@ -12,6 +12,7 @@
             { nameof(While), typeof(While) },
             { nameof(Set), typeof(Set) },
             { nameof(Call), typeof(Call) },
+            { nameof(StartProcess), typeof(StartProcess) },
         };
 
         public record Print : InstructionBase
@@ -23,7 +24,7 @@
             public override InstructionSummary GetInstructionSummary(PropertyContext context)
             {
                 return new InstructionSummary(
-                    SummaryFormat: SummaryFormat.PlainText, 
+                    SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"\"{Message.Expression}\"");
             }
         }
@@ -38,7 +39,7 @@
             public override InstructionSummary GetInstructionSummary(PropertyContext Context)
             {
                 return new InstructionSummary(
-                    SummaryFormat: SummaryFormat.CSharpExpression, 
+                    SummaryFormat: SummaryFormat.CSharpExpression,
                     SummaryText: Condition.Expression);
             }
         }
@@ -64,7 +65,7 @@
             public override InstructionSummary GetInstructionSummary(PropertyContext context)
             {
                 return new InstructionSummary(
-                    SummaryFormat: SummaryFormat.CSharpExpression, 
+                    SummaryFormat: SummaryFormat.CSharpExpression,
                     SummaryText: Result.Expression);
             }
         }
@@ -184,6 +185,23 @@
                 }
             }
             */
+        }
+
+        public record StartProcess : InstructionBase
+        {
+            public StringExpression Executable { get; set; } = new();
+
+            // Todo: Support a list of arguments
+            public StringExpression Arguments { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.PlainText,
+                    SummaryText: $"{Executable.GetSummary(context)} {Arguments.GetSummary(context)}".Trim());
+            }
         }
     }
 }
