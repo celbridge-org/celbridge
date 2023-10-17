@@ -130,12 +130,22 @@ namespace Celbridge.Tasks
                 body.Add("{");
 
                 var functionBodyLines = GetFunctionBodyLines(cel.Instructions, returnType);
+
+                bool hasAwait = false;
                 foreach (var functionBodyLine in functionBodyLines)
                 {
+                    if (functionBodyLine.Contains("await"))
+                    {
+                        hasAwait = true;
+                    }
+
                     body.Add(functionBodyLine);
                 }
-
-                body.Add("await Environment.NoOpAsync();");
+                if (!hasAwait)
+                {
+                    // Add a dummy await call 
+                    body.Add("await Environment.NoOpAsync();");
+                }
                 body.Add("}");
             }
 
