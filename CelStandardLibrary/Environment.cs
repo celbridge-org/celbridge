@@ -2,7 +2,6 @@
 using CliWrap;
 using CliWrap.Buffered;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -15,9 +14,10 @@ namespace CelStandardLibrary
         public static Action<string> OnPrint;
         public static IChatService ChatService { get; set; }
 
-        public static void Print(string message)
+        public static void Print(object message)
         {
-            OnPrint?.Invoke(message);
+            var text = message.ToString();
+            OnPrint?.Invoke(text);
         }
 
         public static string GetPath(string file)
