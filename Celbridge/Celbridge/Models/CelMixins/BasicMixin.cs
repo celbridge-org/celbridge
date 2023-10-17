@@ -25,7 +25,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"\"{Message.Expression}\"");
+                    SummaryText: $"{Message.GetSummary()}");
             }
         }
 
