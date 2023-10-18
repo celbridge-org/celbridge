@@ -61,6 +61,10 @@ namespace Celbridge.Tasks
                     {
                         producerTypeName = nameof(PrimitivesMixin.String);
                     }
+                    else if (nextInstruction is BasicMixin.StartProcess startProcess)
+                    {
+                        producerTypeName = nameof(PrimitivesMixin.String);
+                    }
 
                     // Check if the type of the consuming instruction matches the type of the producing instruction
                     bool canConsumeType = consumerTypeName == producerTypeName;

@@ -288,6 +288,14 @@ namespace Celbridge.Tasks
 
                             i++; // Skip the next instruction
                         }
+                        else if (nextInstruction is BasicMixin.StartProcess startProcess)
+                        {
+                            var executable = startProcess.Executable.GetSummary();
+                            var arguments = startProcess.Arguments.GetSummary();
+                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.StartProcess({executable},{arguments});");
+
+                            i++; // Skip the next instruction
+                        }
                     }
                 }
                 else if (instruction is FileMixin.Write write)
@@ -309,7 +317,6 @@ namespace Celbridge.Tasks
                 {
                     var executable = startProcess.Executable.GetSummary();
                     var arguments = startProcess.Arguments.GetSummary();
-
                     body.Add($"Environment.StartProcess({executable},{arguments});");
                 }
                 else if (instruction is BasicMixin.Call call)
