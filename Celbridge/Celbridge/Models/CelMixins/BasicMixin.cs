@@ -200,7 +200,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"{Executable.GetSummary(context)} {Arguments.GetSummary(context)}".Trim());
+                    SummaryText: $"{Executable.Expression} {Arguments.Expression}");
             }
         }
     }
