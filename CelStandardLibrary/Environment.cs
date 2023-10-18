@@ -44,8 +44,6 @@ namespace CelStandardLibrary
                     OnPrint?.Invoke($"Error: {result.StandardError}");
                 }
 
-                OnPrint?.Invoke(result.StandardOutput);
-
                 return result.StandardOutput;
             }
             catch (Exception ex)
