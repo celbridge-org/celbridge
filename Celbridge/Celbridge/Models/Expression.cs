@@ -50,10 +50,17 @@ namespace Celbridge.Models
     {
         public override string GetSummary(PropertyContext context = PropertyContext.CelInstructions)
         {
-            // Single words are assumed to be identifiers (if valid)
-            if (StringUtils.IsValidCSharpIdentifier(Expression))
+            // An string expression may reference a single (valid) identifier by enclosing it in braces
+            var input = Expression.Trim();
+            if (input.Length >= 2 && input[0] == '{' && input[input.Length - 1] == '}')
             {
-                return Expression;
+                // Extract the token inside the braces
+                var identifier = input.Substring(1, input.Length - 2);
+
+                if (StringUtils.IsValidCSharpIdentifier(identifier))
+                {
+                    return identifier;
+                }
             }
 
             var escaped = JsonConvert.ToString(Expression);
