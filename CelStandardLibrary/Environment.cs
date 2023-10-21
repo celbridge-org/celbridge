@@ -30,21 +30,41 @@ namespace CelStandardLibrary
             await Task.CompletedTask;
         }
 
-        public static async Task<string> StartProcess(string executable, string arguments)
+        public static async Task<string> StartProcess(string target, string arguments)
         {
             try
             {
-                var result = await Cli.Wrap(executable)
-                    .WithArguments(arguments)
-                    .WithWorkingDirectory(ProjectFolder)
-                    .ExecuteBufferedAsync();
-
-                if (result.ExitCode != 0)
+                if (target.EndsWith(".ps1"))
                 {
-                    OnPrint?.Invoke($"Error: {result.StandardError}");
-                }
+                    // Execute a powershell script
+                    var args = new string[] { target, arguments };
+                    var result = await Cli.Wrap("powershell")
+                        .WithArguments(args)
+                        .WithWorkingDirectory(ProjectFolder)
+                        .ExecuteBufferedAsync();
 
-                return result.StandardOutput;
+                    if (result.ExitCode != 0)
+                    {
+                        OnPrint?.Invoke($"Error: {result.StandardError}");
+                    }
+
+                    return result.StandardOutput;
+                }
+                else
+                {
+                    // Execute a regular command line tool
+                    var result = await Cli.Wrap(target)
+                        .WithArguments(arguments)
+                        .WithWorkingDirectory(ProjectFolder)
+                        .ExecuteBufferedAsync();
+
+                    if (result.ExitCode != 0)
+                    {
+                        OnPrint?.Invoke($"Error: {result.StandardError}");
+                    }
+
+                    return result.StandardOutput;
+                }
             }
             catch (Exception ex)
             {
