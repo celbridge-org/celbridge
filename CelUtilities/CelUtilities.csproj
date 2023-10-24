@@ -1,10 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);net7.0-windows10.0.19041</TargetFrameworks>
-    <TargetFrameworks>$(TargetFrameworks);net7.0</TargetFrameworks>
+    <TargetFrameworks>$(TargetFrameworks);net7.0;</TargetFrameworks>
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Uno.WinUI" Version="4.10.26" />
+  </ItemGroup>
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
@@ -39,11 +42,5 @@
   </Choose>
   <ItemGroup>
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="CliWrap" Version="3.6.4" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\CelUtilities\CelUtilities.csproj" />
   </ItemGroup>
 </Project>

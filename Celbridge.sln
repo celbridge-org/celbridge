@@ -28,12 +28,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A13B9DDB-364C-4EB7-A100-B243618EEF76}"
 	ProjectSection(SolutionItems) = preProject
-		StoringSecrets.md = StoringSecrets.md
+		Docs\CelRuntime.md = Docs\CelRuntime.md
+		Docs\CelUtilities.md = Docs\CelUtilities.md
+		Docs\StoringSecrets.md = Docs\StoringSecrets.md
+		Docs\UnoPlatformLibrary.md = Docs\UnoPlatformLibrary.md
 		Docs\UnoPlatformNotes.md = Docs\UnoPlatformNotes.md
 		Docs\UsingGithub.md = Docs\UsingGithub.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CelRuntime", "CelRuntime\CelRuntime.csproj", "{4DEC18FA-606F-4B82-BB0D-DCE1DF6AF341}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CelUtilities", "CelUtilities\CelUtilities.csproj", "{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -151,6 +156,22 @@ Global
 		{4DEC18FA-606F-4B82-BB0D-DCE1DF6AF341}.Release|x64.Build.0 = Release|Any CPU
 		{4DEC18FA-606F-4B82-BB0D-DCE1DF6AF341}.Release|x86.ActiveCfg = Release|Any CPU
 		{4DEC18FA-606F-4B82-BB0D-DCE1DF6AF341}.Release|x86.Build.0 = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|arm64.Build.0 = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|x64.Build.0 = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Debug|x86.Build.0 = Debug|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|arm64.ActiveCfg = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|arm64.Build.0 = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|x64.ActiveCfg = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|x64.Build.0 = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|x86.ActiveCfg = Release|Any CPU
+		{BECC6D5A-7294-4B15-BB32-AF29EAF71C30}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
