@@ -292,7 +292,7 @@ namespace Celbridge.Tasks
                         {
                             var executable = startProcess.Executable.GetSummary();
                             var arguments = startProcess.Arguments.GetSummary();
-                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.StartProcess({executable},{arguments});");
+                            body.Add($"{lhsType} {typeInstruction.Name} = await Process.StartProcess({executable},{arguments});");
 
                             i++; // Skip the next instruction
                         }
@@ -317,7 +317,7 @@ namespace Celbridge.Tasks
                 {
                     var executable = startProcess.Executable.GetSummary();
                     var arguments = startProcess.Arguments.GetSummary();
-                    body.Add($"Environment.StartProcess({executable},{arguments});");
+                    body.Add($"Process.StartProcess({executable},{arguments});");
                 }
                 else if (instruction is BasicMixin.Call call)
                 {
