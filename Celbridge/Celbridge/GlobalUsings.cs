@@ -12,4 +12,4 @@ global using Windows.Storage;
 global using CommunityToolkit.Diagnostics;
 global using Serilog;
 global using CelbridgeStandardLibrary.Utils;
-global using CelStandardLibrary.Interfaces;
+global using CelRuntime.Interfaces;
