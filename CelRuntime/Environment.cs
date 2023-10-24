@@ -24,48 +24,5 @@ namespace CelRuntime
         {
             return Path.Combine(ProjectFolder, file);
         }
-
-        public static async Task<string> StartProcess(string target, string arguments)
-        {
-            try
-            {
-                if (target.EndsWith(".ps1"))
-                {
-                    // Execute a powershell script
-                    var args = new string[] { target, arguments };
-                    var result = await Cli.Wrap("powershell")
-                        .WithArguments(args)
-                        .WithWorkingDirectory(ProjectFolder)
-                        .ExecuteBufferedAsync();
-
-                    if (result.ExitCode != 0)
-                    {
-                        OnPrint?.Invoke($"Error: {result.StandardError}");
-                    }
-
-                    return result.StandardOutput;
-                }
-                else
-                {
-                    // Execute a regular command line tool
-                    var result = await Cli.Wrap(target)
-                        .WithArguments(arguments)
-                        .WithWorkingDirectory(ProjectFolder)
-                        .ExecuteBufferedAsync();
-
-                    if (result.ExitCode != 0)
-                    {
-                        OnPrint?.Invoke($"Error: {result.StandardError}");
-                    }
-
-                    return result.StandardOutput;
-                }
-            }
-            catch (Exception ex)
-            {
-                OnPrint?.Invoke(ex.Message);
-            }
-            return string.Empty;
-        }
     }
 }
