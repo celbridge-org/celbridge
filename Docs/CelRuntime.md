@@ -1,10 +1,10 @@
 # Cel Runtime
 
-<!-- Q: What is the Cel Runtime -->
+<!-- Q: What is the Cel Runtime library? -->
 
 - Assembly shared between the `Celbridge Editor` and generated `Cel Application`
 - Provides the built-in functionality that generated `Cel Script` code calls (e.g. `Print`)
-- Organized into multiple functionality providers
+- Organized into multiple functionality provider classes
 
 <!-- Q: What is the relationship between the Celbridge Editor and the Cel Runtime? -->
 

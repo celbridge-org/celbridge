@@ -80,6 +80,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\CelRuntime\CelRuntime.csproj" />
+	  <ProjectReference Include="..\..\CelUtilities\CelUtilities.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
