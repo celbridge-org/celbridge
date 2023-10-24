@@ -25,11 +25,6 @@ namespace CelRuntime
             return Path.Combine(ProjectFolder, file);
         }
 
-        public static async Task NoOpAsync()
-        {
-            await Task.CompletedTask;
-        }
-
         public static async Task<string> StartProcess(string target, string arguments)
         {
             try
