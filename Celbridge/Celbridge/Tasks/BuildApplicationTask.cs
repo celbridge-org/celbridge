@@ -92,7 +92,7 @@ namespace Celbridge.Tasks
         private List<string> GetBodyLines(string celScriptName, List<ICelScriptNode> cels)
         {
             var body = new List<string>();
-            body.Add("using CelStandardLibrary;");
+            body.Add("using CelRuntime;");
             body.Add("using System.Threading.Tasks;");
             body.Add("");
             body.Add("namespace CelApplication;");

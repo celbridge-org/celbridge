@@ -1,11 +1,11 @@
-﻿using CelStandardLibrary.Interfaces;
+﻿using CelRuntime.Interfaces;
 using CliWrap;
 using CliWrap.Buffered;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace CelStandardLibrary
+namespace CelRuntime
 {
     public static class Environment
     {
