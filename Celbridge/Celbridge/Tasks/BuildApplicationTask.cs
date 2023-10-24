@@ -144,7 +144,7 @@ namespace Celbridge.Tasks
                 if (!hasAwait)
                 {
                     // Add a dummy await call 
-                    body.Add("await Environment.NoOpAsync();");
+                    body.Add("await Task.CompletedTask;");
                 }
                 body.Add("}");
             }
