@@ -92,8 +92,8 @@ namespace Celbridge.Tasks
         private List<string> GetBodyLines(string celScriptName, List<ICelScriptNode> cels)
         {
             var body = new List<string>();
-            body.Add("using CelStandardLibrary;");
             body.Add("using System.Threading.Tasks;");
+            body.Add("using _env = CelRuntime.Environment;");
             body.Add("");
             body.Add("namespace CelApplication;");
             body.Add(string.Empty);
@@ -144,7 +144,7 @@ namespace Celbridge.Tasks
                 if (!hasAwait)
                 {
                     // Add a dummy await call 
-                    body.Add("await Environment.NoOpAsync();");
+                    body.Add("await Task.CompletedTask;");
                 }
                 body.Add("}");
             }
@@ -278,13 +278,13 @@ namespace Celbridge.Tasks
                         }
                         else if (nextInstruction is FileMixin.Read read)
                         {
-                            body.Add($"{lhsType} {typeInstruction.Name} = TextFile.ReadText(\"{read.Resource}\");");
+                            body.Add($"{lhsType} {typeInstruction.Name} = _env.TextFile.ReadText(\"{read.Resource}\");");
 
                             i++; // Skip the next instruction
                         }
                         else if (nextInstruction is ChatMixin.Ask ask)
                         {
-                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.ChatService.Ask({ask.Question.GetSummary()});");
+                            body.Add($"{lhsType} {typeInstruction.Name} = await _env.Chat.Ask({ask.Question.GetSummary()});");
 
                             i++; // Skip the next instruction
                         }
@@ -292,7 +292,7 @@ namespace Celbridge.Tasks
                         {
                             var executable = startProcess.Executable.GetSummary();
                             var arguments = startProcess.Arguments.GetSummary();
-                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.StartProcess({executable},{arguments});");
+                            body.Add($"{lhsType} {typeInstruction.Name} = await _env.Process.StartProcess({executable},{arguments});");
 
                             i++; // Skip the next instruction
                         }
@@ -302,22 +302,22 @@ namespace Celbridge.Tasks
                 {
                     var resource = write.Resource.GetSummary();
                     var text = write.Text.GetSummary();
-                    body.Add($"TextFile.WriteText({resource}, {text});");
+                    body.Add($"_env.TextFile.WriteText({resource}, {text});");
                 }
                 else if (instruction is ChatMixin.StartChat startChat)
                 {
                     var context = startChat.Context.GetSummary();
-                    body.Add($"Environment.ChatService.StartChat({context});");
+                    body.Add($"_env.Chat.StartChat({context});");
                 }
                 else if (instruction is ChatMixin.EndChat endChat)
                 {
-                    body.Add($"Environment.ChatService.EndChat();");
+                    body.Add($"_env.Chat.EndChat();");
                 }
                 else if (instruction is BasicMixin.StartProcess startProcess)
                 {
                     var executable = startProcess.Executable.GetSummary();
                     var arguments = startProcess.Arguments.GetSummary();
-                    body.Add($"Environment.StartProcess({executable},{arguments});");
+                    body.Add($"_env.Process.StartProcess({executable},{arguments});");
                 }
                 else if (instruction is BasicMixin.Call call)
                 {
@@ -340,7 +340,7 @@ namespace Celbridge.Tasks
                 {
                     var text = print.Message.GetSummary(PropertyContext.CelInstructions);
                     text = GetInterpolatedString(text);
-                    body.Add($"Environment.Print({text});");
+                    body.Add($"_env.Print({text});");
                 }
                 else if (instruction is BasicMixin.If @if)
                 {

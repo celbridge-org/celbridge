@@ -79,7 +79,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\CelStandardLibrary\CelStandardLibrary.csproj" />
+	  <ProjectReference Include="..\..\CelRuntime\CelRuntime.csproj" />
+	  <ProjectReference Include="..\..\CelUtilities\CelUtilities.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

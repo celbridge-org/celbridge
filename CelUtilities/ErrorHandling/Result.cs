@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CelbridgeStandardLibrary.Utils;
+namespace CelUtilities.ErrorHandling;
 
 // A simple Result type for Railway Oriented Programming.
 // Defining this as a standalone util rather than using some large library like LanguageExt.
