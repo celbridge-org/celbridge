@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
 
-namespace CelStandardLibrary
+namespace CelRuntime
 {
-    public static class TextFile
+    public class TextFile
     {
-        public static string ReadText(string resourceFile)
+        public string ReadText(string resourceFile)
         {
             try
             {
@@ -15,14 +15,13 @@ namespace CelStandardLibrary
             }
             catch (Exception ex)
             {
-                // Todo: Log errors using the Environment.Log thingy
-                Environment.Print(ex.ToString());
+                Environment.PrintError(ex.ToString());
             }
 
             return string.Empty;
         }
 
-        public static void WriteText(string resourceFile, string text)
+        public void WriteText(string resourceFile, string text)
         {
             try
             {
@@ -32,7 +31,7 @@ namespace CelStandardLibrary
             catch (Exception ex)
             {
                 // Todo: Log errors using the Environment.Log thingy
-                Environment.Print(ex.ToString());
+                Environment.PrintError(ex.ToString());
             }
         }
     }

@@ -1,36 +1,13 @@
-﻿using CelStandardLibrary.Interfaces;
+﻿using System.Threading.Tasks;
+using System;
 using CliWrap;
 using CliWrap.Buffered;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 
-namespace CelStandardLibrary
+namespace CelRuntime
 {
-    public static class Environment
+    public class Process
     {
-        public static string ProjectFolder { get; set; }
-
-        public static Action<string> OnPrint;
-        public static IChatService ChatService { get; set; }
-
-        public static void Print(object message)
-        {
-            var text = message.ToString();
-            OnPrint?.Invoke(text);
-        }
-
-        public static string GetPath(string file)
-        {
-            return Path.Combine(ProjectFolder, file);
-        }
-
-        public static async Task NoOpAsync()
-        {
-            await Task.CompletedTask;
-        }
-
-        public static async Task<string> StartProcess(string target, string arguments)
+        public async Task<string> StartProcess(string target, string arguments)
         {
             try
             {
@@ -40,12 +17,12 @@ namespace CelStandardLibrary
                     var args = new string[] { target, arguments };
                     var result = await Cli.Wrap("powershell")
                         .WithArguments(args)
-                        .WithWorkingDirectory(ProjectFolder)
+                        .WithWorkingDirectory(Environment.ProjectFolder)
                         .ExecuteBufferedAsync();
 
                     if (result.ExitCode != 0)
                     {
-                        OnPrint?.Invoke($"Error: {result.StandardError}");
+                        Environment.PrintError(result.StandardError);
                     }
 
                     return result.StandardOutput;
@@ -55,12 +32,12 @@ namespace CelStandardLibrary
                     // Execute a regular command line tool
                     var result = await Cli.Wrap(target)
                         .WithArguments(arguments)
-                        .WithWorkingDirectory(ProjectFolder)
+                        .WithWorkingDirectory(Environment.ProjectFolder)
                         .ExecuteBufferedAsync();
 
                     if (result.ExitCode != 0)
                     {
-                        OnPrint?.Invoke($"Error: {result.StandardError}");
+                        Environment.PrintError(result.StandardError);
                     }
 
                     return result.StandardOutput;
@@ -68,7 +45,7 @@ namespace CelStandardLibrary
             }
             catch (Exception ex)
             {
-                OnPrint?.Invoke(ex.Message);
+                Environment.Print(ex.Message);
             }
             return string.Empty;
         }

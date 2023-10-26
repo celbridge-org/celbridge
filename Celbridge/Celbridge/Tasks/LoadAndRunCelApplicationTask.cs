@@ -8,7 +8,7 @@ namespace Celbridge.Tasks
         private AssemblyLoadContext? _loadContext;
 
         public WeakReference? CelApplicationAssembly { get; private set; }
-        public WeakReference? CelStandardLibraryAssembly { get; private set; }
+        public WeakReference? CelRuntimeAssembly { get; private set; }
 
         public Result Unload()
         {
@@ -38,7 +38,7 @@ namespace Celbridge.Tasks
 #endif
 
                 CelApplicationAssembly = null;
-                CelStandardLibraryAssembly = null;
+                CelRuntimeAssembly = null;
             }
 
             return new SuccessResult();
@@ -63,10 +63,10 @@ namespace Celbridge.Tasks
                 CelApplicationAssembly = new WeakReference(celApplication);
 
                 // Load the Cel Standard Library assembly
-                var assemblyName = typeof(CelStandardLibrary.Environment).Assembly.GetName();
-                var celStandardLibrary = _loadContext.LoadFromAssemblyName(assemblyName);
-                Guard.IsNotNull(celStandardLibrary);
-                CelStandardLibraryAssembly = new WeakReference(celStandardLibrary);
+                var assemblyName = typeof(CelRuntime.Environment).Assembly.GetName();
+                var celRuntimeAssembly = _loadContext.LoadFromAssemblyName(assemblyName);
+                Guard.IsNotNull(celRuntimeAssembly);
+                CelRuntimeAssembly = new WeakReference(celRuntimeAssembly);
 
                 return new SuccessResult();
             }
@@ -76,35 +76,36 @@ namespace Celbridge.Tasks
             }
         }
 
-        public async Task<Result> Run(string projectFolder, Action<string> onPrint, IChatService chatService)
+        public async Task<Result> Run(string projectFolder, Action<string> onPrint, string chatAPIKey)
         {
             if (CelApplicationAssembly == null ||
-                CelStandardLibraryAssembly == null)
+                CelRuntimeAssembly == null)
             {
                 return new ErrorResult("Failed to run cel application. Assembly is not loaded.");
             }
 
-            var celStandardLibrary = CelStandardLibraryAssembly.Target as Assembly;
-            Guard.IsNotNull(celStandardLibrary);
+            var celRuntimeAssembly = CelRuntimeAssembly.Target as Assembly;
+            Guard.IsNotNull(celRuntimeAssembly);
 
-            var environmentType = celStandardLibrary.GetType("CelStandardLibrary.Environment");
+            // Initialize the Environment
+            var environmentType = celRuntimeAssembly.GetType("CelRuntime.Environment");
             Guard.IsNotNull(environmentType);
+            {
+                var initMethod = environmentType.GetMethod("Init", BindingFlags.Static | BindingFlags.Public);
+                Guard.IsNotNull(initMethod);
 
-            // Inject the print delegate
-            var onPrintProperty = environmentType.GetField("OnPrint", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(onPrintProperty);
-            var printDelegate = new Action<string>(onPrint);
-            onPrintProperty.SetValue(null, printDelegate);
+                var result = initMethod.Invoke(null, new object[]
+                {
+                    projectFolder,
+                    onPrint,
+                    chatAPIKey
+                });
 
-            // Inject the project folder
-            var projectFolderProperty = environmentType.GetProperty("ProjectFolder", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(projectFolderProperty);
-            projectFolderProperty.SetValue(null, projectFolder);
-
-            // Inject the chat service
-            var chatServiceProperty = environmentType.GetProperty("ChatService", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(chatServiceProperty);
-            chatServiceProperty.SetValue(null, chatService);
+                if ((bool?)result == false)
+                {
+                    return new ErrorResult("Failed to initialize cel application environment.");
+                }
+            }
 
             // Find every public Start() method
 
