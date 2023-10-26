@@ -259,9 +259,10 @@ namespace Celbridge.ViewModels
             var projectFolder = ActiveProject.ProjectFolder;
             var libraryFolder = ActiveProject.LibraryFolder;
 
-            var chatService = (Application.Current as App)!.Host!.Services.GetRequiredService<IChatService>();
+            Guard.IsNotNull(_settingsService.EditorSettings);
+            var chatAPIKey = _settingsService.EditorSettings.OpenAIKey;
 
-            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatService);
+            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey);
             if (startResult is ErrorResult startError)
             {
                 Log.Error($"Failed to start application. {startError.Message}");

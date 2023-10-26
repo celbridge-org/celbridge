@@ -284,7 +284,7 @@ namespace Celbridge.Tasks
                         }
                         else if (nextInstruction is ChatMixin.Ask ask)
                         {
-                            body.Add($"{lhsType} {typeInstruction.Name} = await Environment.ChatService.Ask({ask.Question.GetSummary()});");
+                            body.Add($"{lhsType} {typeInstruction.Name} = await Chat.Ask({ask.Question.GetSummary()});");
 
                             i++; // Skip the next instruction
                         }
@@ -307,11 +307,11 @@ namespace Celbridge.Tasks
                 else if (instruction is ChatMixin.StartChat startChat)
                 {
                     var context = startChat.Context.GetSummary();
-                    body.Add($"Environment.ChatService.StartChat({context});");
+                    body.Add($"Chat.StartChat({context});");
                 }
                 else if (instruction is ChatMixin.EndChat endChat)
                 {
-                    body.Add($"Environment.ChatService.EndChat();");
+                    body.Add($"Chat.EndChat();");
                 }
                 else if (instruction is BasicMixin.StartProcess startProcess)
                 {
