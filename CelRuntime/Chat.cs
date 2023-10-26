@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace CelRuntime
 {
-    public static class Chat
+    public class Chat
     {
-        private static OpenAIAPI? _api;
-        private static Conversation? _chat;
+        private OpenAIAPI? _api;
+        private Conversation? _chat;
 
-        private static bool _isWaitingForResponse;
+        private bool _isWaitingForResponse;
 
-        public static bool Init(string apiKey)
+        public bool Init(string apiKey)
         {
             if (_api is not null)
             {
@@ -24,7 +24,7 @@ namespace CelRuntime
 
             if (string.IsNullOrEmpty(apiKey))
             {
-                Environment.Print("Error: Failed to create Chat API. API key not found.");
+                Environment.PrintError("Failed to create Chat API. API key not found.");
                 return false;
             }
 
@@ -32,21 +32,21 @@ namespace CelRuntime
             _api = new OpenAIAPI(apiKey);
             if (_api is null)
             {
-                Environment.Print("Error: Failed to create Chat API. API key not found.");
+                Environment.PrintError("Failed to create Chat API. API key not found.");
                 return false;
             }
 
             return true;
         }
 
-        public static bool StartChat(string context)
+        public bool StartChat(string context)
         {
             Guard.IsNotNull(_api);
 
             _chat = _api.Chat.CreateConversation();
             if (_chat == null)
             {
-                Environment.Print("Error: Failed to create Chat API. API key not found.");
+                Environment.PrintError("Failed to create Chat API. API key not found.");
                 return false;
             }
 
@@ -55,12 +55,12 @@ namespace CelRuntime
             return true;
         }
 
-        public static void EndChat()
+        public void EndChat()
         {
             _chat = null;
         }
 
-        public static async Task<string> Ask(string question)
+        public async Task<string> Ask(string question)
         {
             // Wait for the previous response to be received
             while (_isWaitingForResponse)
@@ -80,14 +80,14 @@ namespace CelRuntime
                 _isWaitingForResponse = false;
                 if (response == null)
                 {
-                    Environment.Print("Error: Failed to create Chat API. API key not found.");
+                    Environment.PrintError("Failed to create Chat API. API key not found.");
                     return string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _isWaitingForResponse = false;
-                Environment.Print($"Error: {ex.Message}");
+                Environment.PrintError(ex.Message);
                 return string.Empty;
             }
 

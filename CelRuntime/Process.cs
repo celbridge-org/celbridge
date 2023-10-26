@@ -5,9 +5,9 @@ using CliWrap.Buffered;
 
 namespace CelRuntime
 {
-    public static class Process
+    public class Process
     {
-        public static async Task<string> StartProcess(string target, string arguments)
+        public async Task<string> StartProcess(string target, string arguments)
         {
             try
             {
@@ -22,7 +22,7 @@ namespace CelRuntime
 
                     if (result.ExitCode != 0)
                     {
-                        Environment.OnPrint?.Invoke($"Error: {result.StandardError}");
+                        Environment.PrintError(result.StandardError);
                     }
 
                     return result.StandardOutput;
@@ -37,7 +37,7 @@ namespace CelRuntime
 
                     if (result.ExitCode != 0)
                     {
-                        Environment.OnPrint?.Invoke($"Error: {result.StandardError}");
+                        Environment.PrintError(result.StandardError);
                     }
 
                     return result.StandardOutput;
@@ -45,7 +45,7 @@ namespace CelRuntime
             }
             catch (Exception ex)
             {
-                Environment.OnPrint?.Invoke(ex.Message);
+                Environment.Print(ex.Message);
             }
             return string.Empty;
         }
