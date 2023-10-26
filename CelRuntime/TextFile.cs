@@ -3,9 +3,9 @@ using System.IO;
 
 namespace CelRuntime
 {
-    public static class TextFile
+    public class TextFile
     {
-        public static string ReadText(string resourceFile)
+        public string ReadText(string resourceFile)
         {
             try
             {
@@ -15,14 +15,13 @@ namespace CelRuntime
             }
             catch (Exception ex)
             {
-                // Todo: Log errors using the Environment.Log thingy
-                Environment.Print(ex.ToString());
+                Environment.PrintError(ex.ToString());
             }
 
             return string.Empty;
         }
 
-        public static void WriteText(string resourceFile, string text)
+        public void WriteText(string resourceFile, string text)
         {
             try
             {
@@ -32,7 +31,7 @@ namespace CelRuntime
             catch (Exception ex)
             {
                 // Todo: Log errors using the Environment.Log thingy
-                Environment.Print(ex.ToString());
+                Environment.PrintError(ex.ToString());
             }
         }
     }

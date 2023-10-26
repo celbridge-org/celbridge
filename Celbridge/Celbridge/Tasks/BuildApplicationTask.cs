@@ -92,8 +92,8 @@ namespace Celbridge.Tasks
         private List<string> GetBodyLines(string celScriptName, List<ICelScriptNode> cels)
         {
             var body = new List<string>();
-            body.Add("using CelRuntime;");
             body.Add("using System.Threading.Tasks;");
+            body.Add("using static CelRuntime.Environment;");
             body.Add("");
             body.Add("namespace CelApplication;");
             body.Add(string.Empty);
@@ -340,7 +340,7 @@ namespace Celbridge.Tasks
                 {
                     var text = print.Message.GetSummary(PropertyContext.CelInstructions);
                     text = GetInterpolatedString(text);
-                    body.Add($"Environment.Print({text});");
+                    body.Add($"Print({text});");
                 }
                 else if (instruction is BasicMixin.If @if)
                 {
