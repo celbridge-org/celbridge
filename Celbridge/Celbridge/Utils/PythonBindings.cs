@@ -75,7 +75,7 @@ namespace Celbridge.Utils
         {
             var celScriptService = (Application.Current as App)!.Host!.Services.GetRequiredService<ICelScriptService>();
             var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
-            var chatService = (Application.Current as App)!.Host!.Services.GetRequiredService<IChatService>();
+            var settingsService = (Application.Current as App)!.Host!.Services.GetRequiredService<ISettingsService>();
 
             if (celScriptService == null || projectService == null)
             {
@@ -92,7 +92,10 @@ namespace Celbridge.Utils
             var projectFolder = activeProject.ProjectFolder;
             var libraryFolder = activeProject.LibraryFolder;
 
-            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder, chatService);
+            Guard.IsNotNull(settingsService.EditorSettings);
+            var chatAPIKey = settingsService.EditorSettings.OpenAIKey;
+
+            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey);
             if (buildResult is ErrorResult<string> buildError)
             {
                 Log.Error(buildError.Message);

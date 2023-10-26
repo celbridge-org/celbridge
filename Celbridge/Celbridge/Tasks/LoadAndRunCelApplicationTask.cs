@@ -76,7 +76,7 @@ namespace Celbridge.Tasks
             }
         }
 
-        public async Task<Result> Run(string projectFolder, Action<string> onPrint, IChatService chatService)
+        public async Task<Result> Run(string projectFolder, Action<string> onPrint, string chatAPIKey)
         {
             if (CelApplicationAssembly == null ||
                 CelRuntimeAssembly == null)
@@ -89,22 +89,33 @@ namespace Celbridge.Tasks
 
             var environmentType = celRuntimeAssembly.GetType("CelRuntime.Environment");
             Guard.IsNotNull(environmentType);
+            {
+                // Inject the print delegate
+                var onPrintProperty = environmentType.GetField("OnPrint", BindingFlags.Static | BindingFlags.Public);
+                Guard.IsNotNull(onPrintProperty);
+                var printDelegate = new Action<string>(onPrint);
+                onPrintProperty.SetValue(null, printDelegate);
 
-            // Inject the print delegate
-            var onPrintProperty = environmentType.GetField("OnPrint", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(onPrintProperty);
-            var printDelegate = new Action<string>(onPrint);
-            onPrintProperty.SetValue(null, printDelegate);
+                // Inject the project folder
+                var projectFolderProperty = environmentType.GetProperty("ProjectFolder", BindingFlags.Static | BindingFlags.Public);
+                Guard.IsNotNull(projectFolderProperty);
+                projectFolderProperty.SetValue(null, projectFolder);
+            }
 
-            // Inject the project folder
-            var projectFolderProperty = environmentType.GetProperty("ProjectFolder", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(projectFolderProperty);
-            projectFolderProperty.SetValue(null, projectFolder);
 
-            // Inject the chat service
-            var chatServiceProperty = environmentType.GetProperty("ChatService", BindingFlags.Static | BindingFlags.Public);
-            Guard.IsNotNull(chatServiceProperty);
-            chatServiceProperty.SetValue(null, chatService);
+            // Inject the OpenAI API key
+            var chatType = celRuntimeAssembly.GetType("CelRuntime.Chat");
+            Guard.IsNotNull(chatType);
+            { 
+                var initMethod = chatType.GetMethod("Init", BindingFlags.Static | BindingFlags.Public);
+                Guard.IsNotNull(initMethod);
+
+                var result = initMethod.Invoke(null, new object[] { chatAPIKey }) as bool?;
+                if (result != true)
+                {
+                    return new ErrorResult("Failed to initialize OpenAI API.");
+                }
+            }
 
             // Find every public Start() method
 
