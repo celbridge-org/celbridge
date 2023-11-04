@@ -2,6 +2,7 @@
 using System;
 using CliWrap;
 using CliWrap.Buffered;
+using System.IO;
 
 namespace CelRuntime
 {
@@ -29,8 +30,17 @@ namespace CelRuntime
                 }
                 else
                 {
+
+                    string targetPath = target;
+                    if (target.StartsWith("/"))
+                    {
+                        // Target is an executable in the project
+                        targetPath = Path.Combine(Environment.ProjectFolder, target.Substring(1));
+                        targetPath = Path.GetFullPath(targetPath);
+                    }
+
                     // Execute a regular command line tool
-                    var result = await Cli.Wrap(target)
+                    var result = await Cli.Wrap(targetPath)
                         .WithArguments(arguments)
                         .WithWorkingDirectory(Environment.ProjectFolder)
                         .ExecuteBufferedAsync();
