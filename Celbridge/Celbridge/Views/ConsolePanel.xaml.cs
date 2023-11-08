@@ -1,7 +1,9 @@
 ﻿using Celbridge.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
@@ -16,14 +18,36 @@ namespace Celbridge.Views
             this.InitializeComponent();
             ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<ConsoleViewModel>();
 
-            ViewModel.OnWriteMessage += () =>
+            ViewModel.OnWriteMessage += (message, logType) =>
             {
+                var run = new Run();
+                run.Text = message;
+                switch (logType)
+                {
+                    case Services.ConsoleLogType.Ok:
+                        run.Foreground = new SolidColorBrush(Colors.LightGreen);
+                        break;
+                    case Services.ConsoleLogType.Error:
+                        run.Foreground = new SolidColorBrush(Colors.Red);
+                        break;
+                    case Services.ConsoleLogType.Warn:
+                        run.Foreground = new SolidColorBrush(Colors.Yellow);
+                        break;
+                    case Services.ConsoleLogType.Info:
+                    default:
+                        break;
+                }
+
+                var paragraph = new Paragraph();
+                paragraph.Inlines.Add(run);
+                ConsoleLogText.Blocks.Add(paragraph);
+
                 // Update the textblock so the scroll height is up to date
                 ConsoleLogText.UpdateLayout();
 
                 // Scroll to the bottom
                 ConsoleScrollViewer.ChangeView(null, ConsoleScrollViewer.ScrollableHeight, null);
-            };
+        };
 
             ViewModel.OnCommandEntered += () =>
             {

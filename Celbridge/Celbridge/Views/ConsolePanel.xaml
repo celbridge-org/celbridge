@@ -49,9 +49,8 @@
                       x:Name="ConsoleScrollViewer"
                       Background="{StaticResource PanelBackgroundABrush}"
                       Padding="6">
-            <TextBlock x:Name="ConsoleLogText"
+            <RichTextBlock x:Name="ConsoleLogText"
                        TextWrapping="Wrap"
-                       Text="{x:Bind ViewModel.OutputText, Mode=OneWay}"
                        VerticalAlignment="Bottom" 
                        HorizontalAlignment="Stretch"
                        IsTextSelectionEnabled="True"/>
