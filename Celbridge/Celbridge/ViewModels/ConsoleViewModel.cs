@@ -41,15 +41,15 @@ namespace Celbridge.ViewModels
             Log.Information("Celbridge v0.00000001\n");
         }
 
-        public event Action? OnWriteMessage;
+        public event Action<string, ConsoleLogType>? OnWriteMessage;
 
-        private void ConsoleService_OnWriteMessage(string message)
+        private void ConsoleService_OnWriteMessage(string message, ConsoleLogType logType)
         {
             // Avoid double newlines
             string trimmed = message.TrimEnd('\r', '\n');
             OutputText += "\n" + trimmed;     
 
-            OnWriteMessage?.Invoke();
+            OnWriteMessage?.Invoke(message, logType);
         }
 
         public ICommand CollapseCommand => new RelayCommand(Collapse_Executed);
