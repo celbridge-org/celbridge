@@ -237,9 +237,9 @@ namespace Celbridge.Services
                     continue;
                 }
 
-                if (subfolder.Name.StartsWith('_'))
+                if (subfolder.Name.StartsWith('_') || subfolder.Name.StartsWith('.'))
                 {
-                    // Ignore folders that start with a _
+                    // Ignore folders that start with a _ or .
                     continue;
                 }
 
