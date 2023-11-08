@@ -11,16 +11,24 @@ namespace Celbridge.Services
 {
     public interface IConsoleService
     {
-        event Action<string>? OnWriteMessage;
+        event Action<string, ConsoleLogType>? OnWriteMessage;
         event Action? OnClearMessages;
 
-        void WriteMessage(string message);
+        void WriteMessage(string message, ConsoleLogType logType);
         void ClearMessages();
         Result ExecuteCommand(string commandText);
         Result<string> CycleHistory(bool forwards);
         void ClearHistory();
         public Result EnterChatMode(string textFile, string context);
         public Result ExitChatMode();
+    }
+
+    public enum ConsoleLogType
+    {
+        Info,
+        Ok,
+        Error,
+        Warn
     }
 
     public class ConsoleService : IConsoleService
@@ -30,7 +38,7 @@ namespace Celbridge.Services
 
         private readonly IChatService _chatService;
 
-        public event Action<string>? OnWriteMessage;
+        public event Action<string, ConsoleLogType>? OnWriteMessage;
         public event Action? OnClearMessages;
 
         private readonly ScriptEngine _scriptEngine;
@@ -110,9 +118,9 @@ namespace Celbridge.Services
             }
         }
 
-        public void WriteMessage(string message)
+        public void WriteMessage(string message, ConsoleLogType logType)
         {
-            OnWriteMessage?.Invoke(message);
+            OnWriteMessage?.Invoke(message, logType);
         }
 
         public void ClearMessages()

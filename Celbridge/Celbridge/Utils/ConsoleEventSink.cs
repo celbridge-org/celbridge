@@ -1,9 +1,7 @@
-﻿using Serilog;
-using Serilog.Core;
+﻿using Serilog.Core;
 using Serilog.Events;
 using Serilog.Configuration;
 using Celbridge.Services;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Utils
 {
@@ -21,7 +19,30 @@ namespace Celbridge.Utils
         public void Emit(LogEvent logEvent)
         {
             var message = logEvent.RenderMessage(_formatProvider);
-            _consoleService.WriteMessage(message);
+
+            // Todo: Select the log type from a dropdown in the Print instruction
+            var logType = ConsoleLogType.Info;
+            var colonPos = message.IndexOf(':');
+            if (colonPos != -1)
+            {
+                if (message.StartsWith("ok:"))
+                {
+                    message = message[3..].TrimStart();
+                    logType = ConsoleLogType.Ok;
+                }
+                else if (message.StartsWith("error:"))
+                {
+                    message = message[6..].TrimStart();
+                    logType = ConsoleLogType.Error;
+                }
+                else if (message.StartsWith("warn:"))
+                {
+                    message = message[5..].TrimStart();
+                    logType = ConsoleLogType.Warn;
+                }
+            }
+
+            _consoleService.WriteMessage(message, logType);
         }
     }
 
