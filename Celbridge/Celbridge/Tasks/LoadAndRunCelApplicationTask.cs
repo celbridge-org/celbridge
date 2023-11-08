@@ -131,6 +131,7 @@ namespace Celbridge.Tasks
 
                 foreach (var method in methods)
                 {
+                    Log.Information($"> Calling `{method.DeclaringType!.Name}.{method.Name}` at {DateTime.Now.ToString("HH:mm:ss")}");
                     var task = (Task?)method.Invoke(null, null);
                     if (task is not null)
                     {
