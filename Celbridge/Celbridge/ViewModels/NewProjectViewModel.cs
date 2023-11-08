@@ -88,11 +88,7 @@ namespace Celbridge.ViewModels
             var projectPath = createResult.Data!;
 
             var openResult = await _projectService.LoadProject(projectPath);
-            if (openResult.Success)
-            {
-                Log.Information($"Created `{ProjectName}` at `{projectPath}");
-            }
-            else
+            if (openResult.Failure)
             {
                 throw new InvalidOperationException($"Failed to open newly created project at: {projectPath}");
             }
