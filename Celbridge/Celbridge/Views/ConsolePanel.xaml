@@ -17,7 +17,7 @@
 
         <Border Grid.Row="0"
                 BorderBrush="{StaticResource PanelBorderBrush}" 
-                BorderThickness="0 1 0 0">
+                BorderThickness="0 1 0 1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -47,13 +47,14 @@
 
         <ScrollViewer Grid.Row="1"
                       x:Name="ConsoleScrollViewer"
-                      Background="{StaticResource PanelBackgroundBBrush}">
-            <TextBox Margin="0 1 0 0"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     Text="{x:Bind ViewModel.OutputText, Mode=OneWay}"
-                     VerticalAlignment="Stretch" 
-                     HorizontalAlignment="Stretch"/>
+                      Background="{StaticResource PanelBackgroundABrush}"
+                      Padding="6">
+            <TextBlock x:Name="ConsoleLogText"
+                       TextWrapping="Wrap"
+                       Text="{x:Bind ViewModel.OutputText, Mode=OneWay}"
+                       VerticalAlignment="Bottom" 
+                       HorizontalAlignment="Stretch"
+                       IsTextSelectionEnabled="True"/>
         </ScrollViewer>
 
         <TextBox x:Name="CommandTextBox" 
