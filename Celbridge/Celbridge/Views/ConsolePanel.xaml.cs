@@ -18,7 +18,11 @@ namespace Celbridge.Views
 
             ViewModel.OnWriteMessage += () =>
             {
-                ConsoleScrollViewer.ScrollToVerticalOffset(ConsoleScrollViewer.ScrollableHeight);
+                // Update the textblock so the scroll height is up to date
+                ConsoleLogText.UpdateLayout();
+
+                // Scroll to the bottom
+                ConsoleScrollViewer.ChangeView(null, ConsoleScrollViewer.ScrollableHeight, null);
             };
 
             ViewModel.OnCommandEntered += () =>
