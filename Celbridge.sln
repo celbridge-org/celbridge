@@ -29,6 +29,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A13B9DDB-364C-4EB7-A100-B243618EEF76}"
 	ProjectSection(SolutionItems) = preProject
 		Docs\CelRuntime.md = Docs\CelRuntime.md
+		BuildInstructions.md = BuildInstructions.md
 		Docs\CelUtilities.md = Docs\CelUtilities.md
 		Docs\StoringSecrets.md = Docs\StoringSecrets.md
 		Docs\UnoPlatformLibrary.md = Docs\UnoPlatformLibrary.md

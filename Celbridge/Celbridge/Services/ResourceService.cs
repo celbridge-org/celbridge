@@ -237,9 +237,9 @@ namespace Celbridge.Services
                     continue;
                 }
 
-                if (subfolder.Name.StartsWith('_'))
+                if (subfolder.Name.StartsWith('_') || subfolder.Name.StartsWith('.'))
                 {
-                    // Ignore folders that start with a _
+                    // Ignore folders that start with a _ or .
                     continue;
                 }
 
@@ -281,9 +281,9 @@ namespace Celbridge.Services
                     continue;
                 }
 
-                if (fileInfo.Name.StartsWith('_'))
+                if (fileInfo.Name.StartsWith('_') || fileInfo.Name.StartsWith('.'))
                 {
-                    // Ignore folders that start with a _
+                    // Ignore folders that start with a _ or .
                     continue;
                 }
 
