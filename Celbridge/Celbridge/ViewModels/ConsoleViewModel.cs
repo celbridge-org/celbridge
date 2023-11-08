@@ -45,7 +45,10 @@ namespace Celbridge.ViewModels
 
         private void ConsoleService_OnWriteMessage(string message)
         {
-            OutputText += $"{message}\n";
+            // Avoid double newlines
+            string trimmed = message.TrimEnd('\r', '\n');
+            OutputText += "\n" + trimmed;     
+
             OnWriteMessage?.Invoke();
         }
 
