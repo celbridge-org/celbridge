@@ -57,6 +57,7 @@ namespace Celbridge.Services
             // logs prior to the ConsoleService init.
 
             messengerService.Register<ApplicationClosingMessage>(this, OnApplicationClosing);
+            messengerService.Register<ActiveProjectChangedMessage>(this, OnActiveProjectChanged);
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.ConsoleService(this) // Our custom sink that writes to the Console panel in the app
@@ -93,6 +94,11 @@ namespace Celbridge.Services
         {
             // Flush the console log before closing
             Close();
+        }
+
+        private void OnActiveProjectChanged(object recipient, ActiveProjectChangedMessage message)
+        {
+            ClearMessages();
         }
 
         private void OnSaveTimerTick(object? sender, object e)

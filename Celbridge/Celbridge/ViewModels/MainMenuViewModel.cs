@@ -52,7 +52,6 @@ namespace Celbridge.ViewModels
             {
                 var projectPath = projectFile.Path;
                 await _projectService.LoadProject(projectPath);
-                Log.Information($"Opened project: {projectPath}");
             }
         }
 
