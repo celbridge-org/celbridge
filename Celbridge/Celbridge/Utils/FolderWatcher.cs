@@ -48,6 +48,13 @@ namespace Celbridge.Utils
                     return;
                 }
 
+                Guard.IsNotNull(e.Name);
+                if (e.Name.StartsWith("."))
+                {
+                    // Ignore hidden files
+                    return;
+                }
+
                 // Todo: Check extension against list of supported extensions
 
                 // Todo: Check why this is being called twice for each file change
