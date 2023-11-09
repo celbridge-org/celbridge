@@ -7,14 +7,21 @@ namespace Celbridge.Views
     {
         public CelNodeViewModel ViewModel { get; set; }
 
+        public CelNodeLabel CelNodeLabel { get; set; }
+
         public CelNode(int x, int y)
         {
             InitializeComponent();
 
-            // This is a bit of a hack, but we need to set the position of the view at start.
-            ViewModel_CelPositionChanged(x, y);
-
             ViewModel = (Application.Current as App)!.Host!.Services.GetRequiredService<CelNodeViewModel>();
+
+            // We manage the node and labels as separate canvases.
+            // There must be a way to do this with a single canvas, but it's easy to control the layout this way.
+            CelNodeLabel = new CelNodeLabel();
+            CelNodeLabel.ViewModel = ViewModel;
+
+            // Order is important here because we need to set the position of the node before we start listening for position changes.
+            ViewModel_CelPositionChanged(x, y);
             ViewModel.CelPositionChanged += ViewModel_CelPositionChanged;
         }
 
@@ -55,6 +62,8 @@ namespace Celbridge.Views
         {
             Canvas.SetLeft(this, x);
             Canvas.SetTop(this, y);
+
+            CelNodeLabel.OnCelPositionChanged(x, y);
         }
 
         private void CelNode_Tapped(object? sender, TappedRoutedEventArgs e)
