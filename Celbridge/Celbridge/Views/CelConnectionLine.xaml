@@ -4,9 +4,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     DataContext="{x:Bind ViewModel}">
 
-    <Path Fill="DarkSlateGray"
-          Stroke="White"
-          StrokeThickness="{x:Bind ViewModel.StrokeThickness, Mode=OneWay}">
+    <Path Opacity="0.8">
+        <Path.Fill>
+            <SolidColorBrush Color="{x:Bind ViewModel.LineColor, Mode=OneWay}" />
+        </Path.Fill>
         <Path.Data>
             <PathGeometry>
                 <PathFigure x:Name="CelConnectionFigure" />                

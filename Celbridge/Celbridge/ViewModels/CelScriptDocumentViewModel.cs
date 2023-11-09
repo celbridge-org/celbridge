@@ -307,6 +307,7 @@ namespace Celbridge.ViewModels
 
                 // Attach to parent cel canvas
                 CelCanvas.Children.Add(celNode);
+                CelCanvas.Children.Add(celNode.CelNodeLabel);
 
                 // Associate cel with view
                 var guid = cel.Id;
@@ -337,6 +338,11 @@ namespace Celbridge.ViewModels
                 if (!CelCanvas.Children.Remove(celNode))
                 {
                     return new ErrorResult($"Failed to remove CelNode. Cel Canvas does not have a registered child '{cel.Name}'");
+                }
+
+                if (!CelCanvas.Children.Remove(celNode.CelNodeLabel))
+                {
+                    return new ErrorResult($"Failed to remove CelNodeLabel. Cel Canvas does not have a registered child '{cel.Name}'");
                 }
 
                 _cels.Remove(cel.Id);

@@ -2,8 +2,6 @@
     x:Class="Celbridge.Views.CelNode"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.UI"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     ManipulationMode="TranslateX, TranslateY"
     DataContext="{x:Bind ViewModel}"
     ManipulationStarted="CelNode_ManipulationStarted"
@@ -11,7 +9,7 @@
     ManipulationCompleted="CelNode_ManipulationCompleted"
     Tapped="CelNode_Tapped">
 
-    <Canvas toolkit:UIElementExtensions.ClipToBounds="False">
+    <Canvas>
         <Grid x:Name="CelGrid" 
               ToolTipService.ToolTip="{x:Bind ViewModel.TooltipText, Mode=OneWay}"
               ToolTipService.Placement="Bottom">
