@@ -15,6 +15,8 @@ namespace Celbridge.Views
 {
     public partial class CelScriptDocumentView : TabViewItem, IDocumentView
     {
+        const int NodeHalfSize = 38 / 2;
+
         public CelScriptDocumentViewModel ViewModel { get; }
 
         public CelScriptDocumentView()
@@ -112,8 +114,8 @@ namespace Celbridge.Views
                 // Todo: Offset using the actual width and height of the node
 
                 var line = new CelConnectionLine();
-                line.Start = new Point(celConnection.CelScriptNodeA.X + 40, celConnection.CelScriptNodeA.Y + 40);
-                line.End = new Point(celConnection.CelScriptNodeB.X + 40, celConnection.CelScriptNodeB.Y + 40);
+                line.Start = new Point(celConnection.CelScriptNodeA.X + NodeHalfSize, celConnection.CelScriptNodeA.Y + NodeHalfSize);
+                line.End = new Point(celConnection.CelScriptNodeB.X + NodeHalfSize, celConnection.CelScriptNodeB.Y + NodeHalfSize);
                 line.Update();
 
                 CelConnectionGroup.Children.Add(line);
@@ -142,8 +144,8 @@ namespace Celbridge.Views
 
                 // Todo: Offset using the actual width and height of the node
 
-                line.Start = new Point(celConnection.CelScriptNodeA.X + 40, celConnection.CelScriptNodeA.Y + 40);
-                line.End = new Point(celConnection.CelScriptNodeB.X + 40, celConnection.CelScriptNodeB.Y + 40);
+                line.Start = new Point(celConnection.CelScriptNodeA.X + NodeHalfSize, celConnection.CelScriptNodeA.Y + NodeHalfSize);
+                line.End = new Point(celConnection.CelScriptNodeB.X + NodeHalfSize, celConnection.CelScriptNodeB.Y + NodeHalfSize);
                 line.Update();
             }
         }

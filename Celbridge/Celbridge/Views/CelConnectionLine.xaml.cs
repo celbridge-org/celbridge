@@ -8,8 +8,8 @@ namespace Celbridge.Views
     {
         public CelConnectionLineViewModel ViewModel { get; private set; }
 
-        public float Thickness { get; set; } = 60;
-        public float Curvature { get; set; } = -0.1f;
+        public float Thickness { get; set; } = 38;
+        public float Curvature { get; set; } = -0.2f;
         public Point Start { get; set; }
         public Point End { get; set; }
 
