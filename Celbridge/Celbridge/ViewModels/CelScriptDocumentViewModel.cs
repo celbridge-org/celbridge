@@ -23,7 +23,7 @@ namespace Celbridge.ViewModels
         private bool _isLoadingContent;
 
         private readonly Dictionary<Guid, ICelScriptNode> _cels = new();
-        private readonly Dictionary<Guid, CelCanvas> _celViews = new();
+        private readonly Dictionary<Guid, CelNode> _celNodes = new();
 
         public List<CelConnection> CelConnections { get; private set; } = new ();
         public event Action? NodePositionChanged;
@@ -215,7 +215,7 @@ namespace Celbridge.ViewModels
                 {
                     cel.CelScript = CelScript;
 
-                    var addResult = AddCelView(cel);
+                    var addResult = AddCelNode(cel);
                     if (addResult.Failure)
                     {
                         var error = addResult as ErrorResult;
@@ -265,7 +265,7 @@ namespace Celbridge.ViewModels
                         Guard.IsNotNull(cel);
                         cel.PropertyChanged += Cel_PropertyChanged;
 
-                        var result = AddCelView(cel);
+                        var result = AddCelNode(cel);
                         if (result.Success)
                         {
                             _saveDataService.RequestSave(this);
@@ -291,27 +291,27 @@ namespace Celbridge.ViewModels
             }
         }
 
-        private Result AddCelView(ICelScriptNode cel)
+        private Result AddCelNode(ICelScriptNode cel)
         {
             Guard.IsNotNull(cel);
 
             try
             {
                 // Instantiate cel view
-                var celCanvas = new CelCanvas(cel.X, cel.Y)
+                var celNode = new CelNode(cel.X, cel.Y)
                 {
                     Name = cel.Name
                 };
-                celCanvas.ViewModel.SetCel(cel);
-                celCanvas.ViewModel.CelScriptDocumentViewModel = this; // Todo: Can we decouple these with events?
+                celNode.ViewModel.SetCel(cel);
+                celNode.ViewModel.CelScriptDocumentViewModel = this; // Todo: Can we decouple these with events?
 
                 // Attach to parent cel canvas
-                CelCanvas.Children.Add((UIElement)celCanvas);
+                CelCanvas.Children.Add(celNode);
 
                 // Associate cel with view
                 var guid = cel.Id;
                 _cels.Add(guid, cel);
-                _celViews.Add(guid, celCanvas);
+                _celNodes.Add(guid, celNode);
 
                 UpdateCelConnections();
             }
@@ -329,24 +329,24 @@ namespace Celbridge.ViewModels
 
             try
             {
-                if (!_celViews.TryGetValue(cel.Id, out var celView))
+                if (!_celNodes.TryGetValue(cel.Id, out var celNode))
                 {
-                    return new ErrorResult($"Failed to remove Cel View. Cel '{cel.Name}' does not have a registered Cel View");
+                    return new ErrorResult($"Failed to remove Cel View. Cel '{cel.Name}' does not have a registered CelNode");
                 }
 
-                if (!CelCanvas.Children.Remove(celView))
+                if (!CelCanvas.Children.Remove(celNode))
                 {
-                    return new ErrorResult($"Failed to remove Cel View. Cel Canvas does not have a registered child '{cel.Name}'");
+                    return new ErrorResult($"Failed to remove CelNode. Cel Canvas does not have a registered child '{cel.Name}'");
                 }
 
                 _cels.Remove(cel.Id);
-                _celViews.Remove(cel.Id);
+                _celNodes.Remove(cel.Id);
 
                 UpdateCelConnections();
             }
             catch (Exception ex)
             {
-                return new ErrorResult($"Failed to remove Cel View. {ex.Message}");
+                return new ErrorResult($"Failed to remove CelNode. {ex.Message}");
             }
 
             return new SuccessResult();
@@ -387,7 +387,7 @@ namespace Celbridge.ViewModels
         private void UpdateCelConnections()
         {
             CelConnections.Clear();
-            foreach (var kv in _celViews)
+            foreach (var kv in _celNodes)
             {
                 var celId = kv.Key;
                 var celView = kv.Value;
@@ -400,7 +400,7 @@ namespace Celbridge.ViewModels
 
                 foreach (var connectedCelId in connectedCelIds)
                 {
-                    if (_celViews.TryGetValue(connectedCelId, out var connectedCelView))
+                    if (_celNodes.TryGetValue(connectedCelId, out var connectedCelView))
                     {
                         var connectedCelScriptNode = connectedCelView.ViewModel.Cel;
                         Guard.IsNotNull(connectedCelScriptNode);
