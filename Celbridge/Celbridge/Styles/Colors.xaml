@@ -77,4 +77,7 @@
     <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
     <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>
 
+    <Color x:Key="CelConnectionInactiveColor">DarkSlateGray</Color>
+    <Color x:Key="CelConnectionActiveColor">Teal</Color>
+
 </ResourceDictionary>

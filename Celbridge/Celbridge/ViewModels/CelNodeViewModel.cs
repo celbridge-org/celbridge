@@ -1,24 +1,17 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
-using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Celbridge.Services;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
-using Microsoft.UI.Xaml.Media;
-using Serilog;
-using System;
 using System.ComponentModel;
 using System.Text;
 
 namespace Celbridge.ViewModels
 {
-    public partial class CelCanvasViewModel : ObservableObject
+    public partial class CelNodeViewModel : ObservableObject
     {
         private readonly IMessenger _messengerService;
         private readonly IInspectorService _entityService;
 
-        public CelCanvasViewModel(IMessenger messengerService,
+        public CelNodeViewModel(IMessenger messengerService,
             IInspectorService entityService)
         {
             _messengerService = messengerService;
@@ -158,7 +151,7 @@ namespace Celbridge.ViewModels
 
             FillColor = new SolidColorBrush((Windows.UI.Color)_cachedFillColor);
             StrokeColor = new SolidColorBrush(Colors.White);
-            StrokeThickness = IsSelected ? 2 : 0;
+            StrokeThickness = IsSelected ? 4 : 0;
         }
 
         private void UpdateLabelText()
