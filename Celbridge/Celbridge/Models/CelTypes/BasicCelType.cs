@@ -1,21 +1,25 @@
 ﻿using Celbridge.Models.CelMixins;
-using System.Collections.Generic;
 
 namespace Celbridge.Models.CelTypes
-{
+{   
     public class BasicCelType : ICelType
     {
         public string Name => "Basic";
         public string Description => "General purpose instructions";
         public string Icon => "PostUpdate";
-        public string Color => "#366854";
+        public string Color => "#E0B152";
 
-        public List<ICelMixin> CelMixins { get; } = new()
+        public List<ICelMixin> CelMixins { get; } = CreateStandardMixins();
+
+        public static List<ICelMixin> CreateStandardMixins()
         {
-            new PrimitivesMixin(),
-            new BasicMixin(),
-            new FileMixin(),
-            new ChatMixin(),
-        };
+            return new()
+            {
+                new PrimitivesMixin(),
+                new BasicMixin(),
+                new FileMixin(),
+                new ChatMixin(),
+            };
+        }
     }
 }
