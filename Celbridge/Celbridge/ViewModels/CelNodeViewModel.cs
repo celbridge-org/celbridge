@@ -151,7 +151,7 @@ namespace Celbridge.ViewModels
 
             FillColor = new SolidColorBrush((Windows.UI.Color)_cachedFillColor);
             StrokeColor = new SolidColorBrush(Colors.White);
-            StrokeThickness = IsSelected ? 2 : 0;
+            StrokeThickness = IsSelected ? 4 : 0;
         }
 
         private void UpdateLabelText()
