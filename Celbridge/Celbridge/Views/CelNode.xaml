@@ -13,19 +13,15 @@
         <Grid x:Name="CelGrid" 
               ToolTipService.ToolTip="{x:Bind ViewModel.TooltipText, Mode=OneWay}"
               ToolTipService.Placement="Bottom">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="auto"/>
-                <RowDefinition Height="auto"/>
-                <RowDefinition Height="auto"/>
-            </Grid.RowDefinitions>
-
-            <Ellipse Grid.Row="0" 
-                     Width="38"
+            <Ellipse Width="38"
                      Height="38"
                      Fill="{x:Bind ViewModel.FillColor, Mode=OneWay}"
                      Stroke="{x:Bind ViewModel.StrokeColor, Mode=OneWay}"
                      StrokeThickness="{x:Bind ViewModel.StrokeThickness, Mode=OneWay}">
             </Ellipse>
+            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                      Glyph="{x:Bind ViewModel.Icon}" 
+                      FontSize="18" />
         </Grid>
     </Canvas>
 </UserControl>
