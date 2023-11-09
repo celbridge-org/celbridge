@@ -2,6 +2,7 @@
     x:Class="Celbridge.Views.CelCanvas"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.UI"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     ManipulationMode="TranslateX, TranslateY"
     DataContext="{x:Bind ViewModel}"
@@ -10,36 +11,23 @@
     ManipulationCompleted="CelCanvas_ManipulationCompleted"
     Tapped="CelCanvas_Tapped">
 
-    <Canvas>
+    <Canvas toolkit:UIElementExtensions.ClipToBounds="False">
         <Grid x:Name="CelGrid" 
-              Width="auto"
-              Height="auto"
               ToolTipService.ToolTip="{x:Bind ViewModel.TooltipText, Mode=OneWay}"
               ToolTipService.Placement="Bottom">
-            <Ellipse Width="auto" MinWidth="80"
-                     Height="auto" MinHeight="80"
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+            </Grid.RowDefinitions>
+
+            <Ellipse Grid.Row="0" 
+                     Width="38"
+                     Height="38"
                      Fill="{x:Bind ViewModel.FillColor, Mode=OneWay}"
                      Stroke="{x:Bind ViewModel.StrokeColor, Mode=OneWay}"
                      StrokeThickness="{x:Bind ViewModel.StrokeThickness, Mode=OneWay}">
             </Ellipse>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="auto"/>
-                    <RowDefinition Height="auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="1" 
-                           Text="{x:Bind ViewModel.LabelText, Mode=OneWay}" 
-                           Foreground="Ivory"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Margin="18 6 18 0"/>
-                <SymbolIcon Grid.Row="2" 
-                            Symbol="{x:Bind ViewModel.Icon}"
-                            Margin="0 4 0 0"/>
-            </Grid>
         </Grid>
     </Canvas>
 </UserControl>

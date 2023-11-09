@@ -17,15 +17,12 @@ namespace Celbridge.ViewModels
     {
         private readonly IMessenger _messengerService;
         private readonly IInspectorService _entityService;
-        private readonly ICelTypeService _celTypeService;
 
         public CelCanvasViewModel(IMessenger messengerService,
-            IInspectorService entityService,
-            ICelTypeService celTypeService)
+            IInspectorService entityService)
         {
             _messengerService = messengerService;
             _entityService = entityService;
-            _celTypeService = celTypeService;
 
             PropertyChanged += ViewModel_PropertyChanged;
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
@@ -49,7 +46,10 @@ namespace Celbridge.ViewModels
         private float _strokeThickness;
 
         [ObservableProperty]
-        private string _labelText = string.Empty;
+        private string _nameText = string.Empty;
+
+        [ObservableProperty]
+        private string _descriptionText = string.Empty;
 
         [ObservableProperty]
         private string _icon = string.Empty;
@@ -146,6 +146,7 @@ namespace Celbridge.ViewModels
                     UpdateLabelText();
                     break;
                 case nameof(CelScriptNode.Description):
+                    UpdateLabelText();
                     UpdateTooltipText();
                     break;
             }
@@ -163,7 +164,8 @@ namespace Celbridge.ViewModels
         private void UpdateLabelText()
         {
             Guard.IsNotNull(Cel);
-            LabelText = Cel.Name;
+            NameText = Cel.Name;
+            DescriptionText = Cel.Description;
         }
 
         public void UpdateTooltipText()
