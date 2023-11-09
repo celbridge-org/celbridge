@@ -305,7 +305,9 @@ namespace Celbridge.Services
             Guard.IsNotNull(ActiveProject);
             Guard.IsNotNull(_settingsService.ProjectSettings);
 
-            var previouslyOpenedDocuments = _settingsService.ProjectSettings.OpenDocuments;
+            // Opening a document can modify the ProjectSettings.OpenDocuments list, triggering a collection modified exception.
+            // We make a copy of the list to avoid this issue.
+            var previouslyOpenedDocuments = _settingsService.ProjectSettings.OpenDocuments.ToList();
             var failedToOpenDocuments = new List<Guid>();
             foreach (var entityId in previouslyOpenedDocuments)
             {
