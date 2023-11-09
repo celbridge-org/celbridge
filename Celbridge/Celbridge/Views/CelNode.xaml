@@ -1,15 +1,15 @@
 ﻿<UserControl
-    x:Class="Celbridge.Views.CelCanvas"
+    x:Class="Celbridge.Views.CelNode"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     ManipulationMode="TranslateX, TranslateY"
     DataContext="{x:Bind ViewModel}"
-    ManipulationStarted="CelCanvas_ManipulationStarted"
-    ManipulationDelta="CelCanvas_ManipulationDelta"
-    ManipulationCompleted="CelCanvas_ManipulationCompleted"
-    Tapped="CelCanvas_Tapped">
+    ManipulationStarted="CelNode_ManipulationStarted"
+    ManipulationDelta="CelNode_ManipulationDelta"
+    ManipulationCompleted="CelNode_ManipulationCompleted"
+    Tapped="CelNode_Tapped">
 
     <Canvas toolkit:UIElementExtensions.ClipToBounds="False">
         <Grid x:Name="CelGrid" 

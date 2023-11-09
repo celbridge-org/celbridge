@@ -141,7 +141,7 @@ namespace Celbridge
             services.AddTransient<AddResourceViewModel>();
             services.AddTransient<AddCelViewModel>();
             services.AddTransient<ProgressDialogViewModel>();
-            services.AddTransient<CelCanvasViewModel>();
+            services.AddTransient<CelNodeViewModel>();
             services.AddTransient<TextFileDocumentViewModel>();
             services.AddTransient<CelScriptDocumentViewModel>();
             services.AddTransient<PropertyListViewModel>();
