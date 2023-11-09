@@ -161,12 +161,12 @@ namespace Celbridge.Views
                 {
                     // Highlight exactly one connection if the id matches
                     // This means the call instruction corresponding to this line is selected.
-                    line.ViewModel.StrokeThickness = 2;
+                    line.ViewModel.IsHighlighted = true;
                 }
                 else
                 {
                     // All other lines are not highlighted
-                    line.ViewModel.StrokeThickness = 0;
+                    line.ViewModel.IsHighlighted = false;
                 }
             }
         }
