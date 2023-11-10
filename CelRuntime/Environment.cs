@@ -6,10 +6,6 @@ namespace CelRuntime
     public static class Environment
     {
         public static string ProjectFolder { get; private set; }
-        public static string GetPath(string file)
-        {
-            return Path.Combine(ProjectFolder, file);
-        }
 
         private static Action<string> _onPrint;
         public static void Print(object message)
@@ -26,6 +22,7 @@ namespace CelRuntime
         public static TextFile TextFile { get; private set; }
         public static Process Process { get; private set; }
         public static Chat Chat { get; private set; }
+        public static Markdown Markdown { get; private set; }
 
         public static bool Init(string projectFolder, Action<string> onPrint, string chatAPIKey)
         {
@@ -57,6 +54,7 @@ namespace CelRuntime
                 PrintError("Failed to init Chat API");
                 return false;
             }
+            Markdown = new Markdown();
 
             return true;
         }
