@@ -14,6 +14,8 @@
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
+            public override string ReturnType => nameof(PrimitivesMixin.String);
+
             public override InstructionSummary GetInstructionSummary(PropertyContext context)
             {
                 return new InstructionSummary(
@@ -23,6 +25,7 @@
 
             public override Result<string> GenerateCode()
             {
+                var resource = Resource.GetSummary();
                 var code = $"_env.TextFile.ReadText(\"{Resource}\");";
                 return new SuccessResult<string>(code);
             }

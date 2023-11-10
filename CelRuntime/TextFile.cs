@@ -1,15 +1,24 @@
-﻿using System;
+﻿using CelUtilities.ErrorHandling;
+using CelUtilities.Resources;
+using System;
 using System.IO;
 
 namespace CelRuntime
 {
     public class TextFile
     {
-        public string ReadText(string resourceFile)
+        public string ReadText(string resourceKey)
         {
             try
             {
-                var path = Environment.GetPath(resourceFile);
+                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder, false);
+                if (pathResult is ErrorResult<string> pathError)
+                {
+                    Environment.PrintError(pathError.Message);
+                    return string.Empty;
+                }
+                var path = pathResult.Data;
+
                 var text = File.ReadAllText(path);
                 return text;
             }
@@ -21,16 +30,25 @@ namespace CelRuntime
             return string.Empty;
         }
 
-        public void WriteText(string resourceFile, string text)
+        public void WriteText(string resourceKey, string text)
         {
             try
             {
-                var path = Environment.GetPath(resourceFile);
+                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder, false);
+                if (pathResult is ErrorResult<string> pathError)
+                {
+                    Environment.PrintError(pathError.Message);
+                    return;
+                }
+                var path = pathResult.Data;
+
+                var folder = Path.GetDirectoryName(path);
+                Directory.CreateDirectory(folder);
+
                 File.WriteAllText(path, text);
             }
             catch (Exception ex)
             {
-                // Todo: Log errors using the Environment.Log thingy
                 Environment.PrintError(ex.ToString());
             }
         }

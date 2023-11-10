@@ -1,5 +1,4 @@
 ﻿using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Celbridge.Models
@@ -15,6 +14,8 @@ namespace Celbridge.Models
         public virtual IndentModifier IndentModifier => IndentModifier.NoChange;
 
         public virtual PipeState PipeState { get; set; }
+
+        public virtual string ReturnType => string.Empty;
 
         public virtual string Description
         {
