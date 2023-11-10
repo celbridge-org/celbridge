@@ -9,17 +9,6 @@ namespace Celbridge.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IConsoleService _consoleService;
 
-        // [ObservableProperty] causes a compile error on Skia.Gtk when using Mode=TwoWay
-        private string _outputText = string.Empty;
-        public string OutputText
-        {
-            get { return _outputText; }
-            set
-            {
-                SetProperty(ref _outputText, value);
-            }
-        }
-
         private string _inputText = string.Empty;
         public string InputText
         {
@@ -36,19 +25,15 @@ namespace Celbridge.ViewModels
             _consoleService = consoleService;
 
             _consoleService.OnWriteMessage += ConsoleService_OnWriteMessage;
-            _consoleService.OnClearMessages += () => OutputText = string.Empty;
+            _consoleService.OnClearMessages += ConsoleService_OnClearMessages;
 
-            Log.Information("Celbridge v0.00000001\n");
+            Log.Information("Celbridge v0.00000002\n");
         }
 
         public event Action<string, ConsoleLogType>? OnWriteMessage;
 
         private void ConsoleService_OnWriteMessage(string message, ConsoleLogType logType)
         {
-            // Avoid double newlines
-            string trimmed = message.TrimEnd('\r', '\n');
-            OutputText += "\n" + trimmed;     
-
             OnWriteMessage?.Invoke(message, logType);
         }
 
@@ -58,6 +43,12 @@ namespace Celbridge.ViewModels
             // Toggle the bottom toolbar expanded state
             Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.BottomPanelExpanded = false;
+        }
+
+        public event Action? OnClearMessages;
+        private void ConsoleService_OnClearMessages()
+        {
+            OnClearMessages?.Invoke();
         }
 
         public ICommand ClearCommand => new RelayCommand(Clear_Executed);
