@@ -202,6 +202,14 @@
                     SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"{Executable.Expression} {Arguments.Expression}");
             }
+
+            public override Result<string> GenerateCode()
+            {
+                var executable = Executable.GetSummary();
+                var arguments = Arguments.GetSummary();
+                var code = $"await _env.Process.StartProcess({executable},{arguments});";
+                return new SuccessResult<string>(code);
+            }
         }
     }
 }

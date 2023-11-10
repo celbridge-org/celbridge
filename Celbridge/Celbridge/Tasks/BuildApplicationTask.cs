@@ -1,6 +1,7 @@
 ﻿using Celbridge.Utils;
 using System.Text;
 using Celbridge.Models.CelMixins;
+using System.Runtime.InteropServices.JavaScript;
 
 namespace Celbridge.Tasks
 {
@@ -253,71 +254,52 @@ namespace Celbridge.Tasks
 
                         if (typeInstruction is BasicMixin.Set)
                         {
+                            // Variable assignment
                             body.Add($"{typeInstruction.Name} = {expressionValue};");
                         }
                         else
                         {                        
+                            // Variable declaration
                             body.Add($"{lhsType} {typeInstruction.Name} = {expressionValue};");
                         }
                     }
                     else
                     {
+                        // Instruction is Piped
+
                         if (nextInstruction is BasicMixin.Call call)
                         {
+                            // Calls to Cels are always async
+
                             var functionCall = GetFunctionCall(call);
                             if (typeInstruction is BasicMixin.Set)
                             {
+                                // Variable assignment to result of function call
                                 body.Add($"{typeInstruction.Name} = await {functionCall};");
                             }
                             else
                             {
+                                // Variable declaration and assignment to result of function call
                                 body.Add($"{lhsType} {typeInstruction.Name} = await {functionCall};");
                             }
 
                             i++; // Skip the next instruction
                         }
-                        else if (nextInstruction is FileMixin.Read read)
+                        else
                         {
-                            body.Add($"{lhsType} {typeInstruction.Name} = _env.TextFile.ReadText(\"{read.Resource}\");");
+                            Guard.IsNotNull(nextInstruction);
 
-                            i++; // Skip the next instruction
-                        }
-                        else if (nextInstruction is ChatMixin.Ask ask)
-                        {
-                            body.Add($"{lhsType} {typeInstruction.Name} = await _env.Chat.Ask({ask.Question.GetSummary()});");
-
-                            i++; // Skip the next instruction
-                        }
-                        else if (nextInstruction is BasicMixin.StartProcess startProcess)
-                        {
-                            var executable = startProcess.Executable.GetSummary();
-                            var arguments = startProcess.Arguments.GetSummary();
-                            body.Add($"{lhsType} {typeInstruction.Name} = await _env.Process.StartProcess({executable},{arguments});");
+                            var generateResult = nextInstruction.GenerateCode();
+                            if (generateResult.Failure)
+                            {
+                                throw new Exception($"Failed to generate code for piped instruction '{nextInstruction}', at line {i}");
+                            }
+                            var code = generateResult.Data;
+                            body.Add($"{lhsType} {typeInstruction.Name} = {code}");
 
                             i++; // Skip the next instruction
                         }
                     }
-                }
-                else if (instruction is FileMixin.Write write)
-                {
-                    var resource = write.Resource.GetSummary();
-                    var text = write.Text.GetSummary();
-                    body.Add($"_env.TextFile.WriteText({resource}, {text});");
-                }
-                else if (instruction is ChatMixin.StartChat startChat)
-                {
-                    var context = startChat.Context.GetSummary();
-                    body.Add($"_env.Chat.StartChat({context});");
-                }
-                else if (instruction is ChatMixin.EndChat endChat)
-                {
-                    body.Add($"_env.Chat.EndChat();");
-                }
-                else if (instruction is BasicMixin.StartProcess startProcess)
-                {
-                    var executable = startProcess.Executable.GetSummary();
-                    var arguments = startProcess.Arguments.GetSummary();
-                    body.Add($"_env.Process.StartProcess({executable},{arguments});");
                 }
                 else if (instruction is BasicMixin.Call call)
                 {
@@ -357,6 +339,19 @@ namespace Celbridge.Tasks
                 else if (instruction is BasicMixin.End _)
                 {
                     body.Add("}");
+                }
+                else if (instruction is not EmptyInstruction)
+                {
+                    // All other instructions use the GenerateCode() method
+
+                    var generateResult = instruction.GenerateCode();
+                    if (generateResult.Failure)
+                    {
+                        throw new Exception($"Failed to generate code for instruction '{instruction}', at line {i}");
+                    }
+                    var code = generateResult.Data;
+                    Guard.IsNotNull(code);
+                    body.Add(code);
                 }
             }
 
