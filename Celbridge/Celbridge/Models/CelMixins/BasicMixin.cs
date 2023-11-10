@@ -196,6 +196,8 @@
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
 
+            public override string ReturnType => nameof(PrimitivesMixin.String);
+
             public override InstructionSummary GetInstructionSummary(PropertyContext context)
             {
                 return new InstructionSummary(

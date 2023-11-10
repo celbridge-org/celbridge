@@ -29,6 +29,9 @@ namespace Celbridge.Models
         [JsonIgnore]
         PipeState PipeState { get; set; }
 
+        [JsonIgnore]
+        string ReturnType { get; }
+
         InstructionSummary GetInstructionSummary(PropertyContext Context);
 
         Result<string> GenerateCode();
