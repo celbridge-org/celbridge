@@ -21,6 +21,13 @@
                     SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"{Context.GetSummary()}");
             }
+
+            public override Result<string> GenerateCode()
+            {
+                var context = Context.GetSummary();
+                var code = $"_env.Chat.StartChat({context});";
+                return new SuccessResult<string>(code);
+            }
         }
 
         public record Ask : InstructionBase
@@ -35,11 +42,24 @@
                     SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"{Question.GetSummary()}");
             }
+
+            public override Result<string> GenerateCode()
+            {
+                var summary = Question.GetSummary();
+                var code = $"await _env.Chat.Ask({summary});";
+                return new SuccessResult<string>(code);
+            }
         }
 
         public record EndChat : InstructionBase
         {
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
+
+            public override Result<string> GenerateCode()
+            {
+                var code = $"_env.Chat.EndChat();";
+                return new SuccessResult<string>(code);
+            }
         }
     }
 }
