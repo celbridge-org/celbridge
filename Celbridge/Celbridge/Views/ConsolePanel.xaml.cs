@@ -1,8 +1,5 @@
 ﻿using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
@@ -20,8 +17,11 @@ namespace Celbridge.Views
 
             ViewModel.OnWriteMessage += (message, logType) =>
             {
+                // Avoid double newlines
+                //string trimmed = message.TrimEnd('\r', '\n');
+
                 var run = new Run();
-                run.Text = message;
+                run.Text = message.Trim();
                 switch (logType)
                 {
                     case Services.ConsoleLogType.Ok:
@@ -47,7 +47,12 @@ namespace Celbridge.Views
 
                 // Scroll to the bottom
                 ConsoleScrollViewer.ChangeView(null, ConsoleScrollViewer.ScrollableHeight, null);
-        };
+            };
+
+            ViewModel.OnClearMessages += () =>
+            {
+                ConsoleLogText.Blocks.Clear();
+            };
 
             ViewModel.OnCommandEntered += () =>
             {

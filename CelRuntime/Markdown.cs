@@ -4,8 +4,8 @@ namespace CelRuntime
 {
     public class Markdown
     {
-        private static StringBuilder _markdownBuilder = new StringBuilder();
-        private static int _sectionCount;
+        private StringBuilder _markdownBuilder = new StringBuilder();
+        private int _sectionCount;
 
         public void ClearMarkdown()
         {
