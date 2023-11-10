@@ -11,7 +11,7 @@ namespace CelRuntime
         {
             try
             {
-                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder, false);
+                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder);
                 if (pathResult is ErrorResult<string> pathError)
                 {
                     Environment.PrintError(pathError.Message);
@@ -34,7 +34,7 @@ namespace CelRuntime
         {
             try
             {
-                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder, false);
+                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder);
                 if (pathResult is ErrorResult<string> pathError)
                 {
                     Environment.PrintError(pathError.Message);

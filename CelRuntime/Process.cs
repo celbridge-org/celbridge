@@ -3,6 +3,9 @@ using System;
 using CliWrap;
 using CliWrap.Buffered;
 using System.IO;
+using System.Text.RegularExpressions;
+using CelUtilities.Resources;
+using CelUtilities.ErrorHandling;
 
 namespace CelRuntime
 {
@@ -10,12 +13,33 @@ namespace CelRuntime
     {
         public async Task<string> StartProcess(string target, string arguments)
         {
+            target = target.Trim();
+            string expandedTarget = target;
+            if (target.StartsWith("@"))
+            {
+                var targetResult = ResourceUtils.GetResourcePath(target, Environment.ProjectFolder);
+                if (targetResult is ErrorResult<string> targetError)
+                {
+                    Environment.PrintError(targetError.Message);
+                    return string.Empty;
+                }
+                expandedTarget = targetResult.Data;
+            }
+
+            var argumentsResult = ResourceUtils.ExpandResourceKeys(arguments, Environment.ProjectFolder);
+            if (argumentsResult is ErrorResult<string> argumentsError)
+            {
+                Environment.PrintError(argumentsError.Message);
+                return string.Empty;
+            }
+            var expandedArguments = argumentsResult.Data;
+
             try
             {
-                if (target.EndsWith(".ps1"))
+                if (expandedTarget.EndsWith(".ps1"))
                 {
                     // Execute a powershell script
-                    var args = new string[] { target, arguments };
+                    var args = new string[] { expandedTarget, expandedArguments };
                     var result = await Cli.Wrap("powershell")
                         .WithArguments(args)
                         .WithWorkingDirectory(Environment.ProjectFolder)
@@ -30,18 +54,9 @@ namespace CelRuntime
                 }
                 else
                 {
-
-                    string targetPath = target;
-                    if (target.StartsWith("/"))
-                    {
-                        // Target is an executable in the project
-                        targetPath = Path.Combine(Environment.ProjectFolder, target.Substring(1));
-                        targetPath = Path.GetFullPath(targetPath);
-                    }
-
                     // Execute a regular command line tool
-                    var result = await Cli.Wrap(targetPath)
-                        .WithArguments(arguments)
+                    var result = await Cli.Wrap(expandedTarget)
+                        .WithArguments(expandedArguments)
                         .WithWorkingDirectory(Environment.ProjectFolder)
                         .ExecuteBufferedAsync();
 
@@ -55,7 +70,7 @@ namespace CelRuntime
             }
             catch (Exception ex)
             {
-                Environment.Print(ex.Message);
+                Environment.PrintError(ex.Message);
             }
             return string.Empty;
         }

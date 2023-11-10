@@ -1,6 +1,7 @@
 ﻿using CelUtilities.ErrorHandling;
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace CelUtilities.Resources
 {
@@ -12,7 +13,7 @@ namespace CelUtilities.Resources
         ///   '@' : Project folder resource
         ///   '#' : Relative or absolute path
         /// </summary>
-        public static Result<string> GetResourcePath(string resourceKey, string projectFolder, bool mustExist)
+        public static Result<string> GetResourcePath(string resourceKey, string projectFolder)
         {
             if (string.IsNullOrEmpty(resourceKey))
             {
@@ -53,12 +54,41 @@ namespace CelUtilities.Resources
                 return new ErrorResult<string>($"Failed to get path for resource key: {resourceKey}");
             }
 
-            if (mustExist && !Path.Exists(path))
+            return new SuccessResult<string>(path);
+        }
+
+        public static Result<string> ExpandResourceKeys(string input, string projectFolder)
+        {
+            if (input.IndexOf('@') == -1 && 
+                input.IndexOf('#') == -1)
             {
-                return new ErrorResult<string>($"Failed to get path for resource '{resourceKey}'. Resource does not exist at '{path}'");
+                return new SuccessResult<string>(input);
             }
 
-            return new SuccessResult<string>(path);
+            // Input string
+            // string inputString = "\"@Slides/Slide.md\" -o \"@Slides/Slides.html\" --theme gaia --allow-local-files";
+
+            // Extract "@Some/Path" or "#Some/Path" parts from the string
+            var matches = Regex.Matches(input, @"\""[@#].*?\"""); // Match quoted strings starting with @ or #
+
+            // Replace '@' or '#' with 'Path/' and update the original string
+            var output = input;
+            foreach (Match match in matches)
+            {
+                string token = match.Value;
+                string resourceKey = token.Trim('\"');
+
+                var pathResult = GetResourcePath(resourceKey, projectFolder);
+                if (pathResult is ErrorResult<string> pathError)
+                {
+                    return pathError;
+                }
+                var path = pathResult.Data;
+
+                output = output.Replace(token, $"\"{path}\"");
+            }
+
+            return new SuccessResult<string>(output);
         }
     }
 }
