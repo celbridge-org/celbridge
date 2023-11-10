@@ -47,5 +47,10 @@ namespace Celbridge.Models
                 SummaryFormat: SummaryFormat.PlainText,
                 SummaryText: string.Empty);
         }
+
+        public virtual Result<string> GenerateCode()
+        {
+            return new ErrorResult<string>(string.Empty);
+        }
     }
 }

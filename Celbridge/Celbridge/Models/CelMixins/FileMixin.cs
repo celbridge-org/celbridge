@@ -20,6 +20,12 @@
                     SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"Resource: {Resource}");
             }
+
+            public override Result<string> GenerateCode()
+            {
+                var code = $"_env.TextFile.ReadText(\"{Resource}\");";
+                return new SuccessResult<string>(code);
+            }
         }
 
         public record Write : InstructionBase
@@ -35,6 +41,14 @@
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
                     SummaryText: $"Resource : {Resource.GetSummary()}, Text: {Text.GetSummary()}");
+            }
+
+            public override Result<string> GenerateCode()
+            {
+                var resource = Resource.GetSummary();
+                var text = Text.GetSummary();
+                var code = $"_env.TextFile.WriteText({resource}, {text});";
+                return new SuccessResult<string>(code);
             }
         }
     }
