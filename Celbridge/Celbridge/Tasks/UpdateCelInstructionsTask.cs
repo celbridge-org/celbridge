@@ -51,19 +51,9 @@ namespace Celbridge.Tasks
                         // Todo: Can we use a c# type instead of a string for the return type? This seems a bit flaky.
                         producerTypeName = callInstruction.Arguments.CelSignature.ReturnType;
                     }
-                    else if (nextInstruction is FileMixin.Read readInstruction)
-                    {
-                        // Todo: This is very hard coded, replace with a generic mechanism that works for any instruction
-                        // A PipeProducerType property would do the trick
-                        producerTypeName = nameof(PrimitivesMixin.String);
-                    }
-                    else if (nextInstruction is ChatMixin.Ask askInstruction)
-                    {
-                        producerTypeName = nameof(PrimitivesMixin.String);
-                    }
-                    else if (nextInstruction is BasicMixin.StartProcess startProcess)
-                    {
-                        producerTypeName = nameof(PrimitivesMixin.String);
+                    else if (nextInstruction is not null)
+                    { 
+                        producerTypeName = nextInstruction.ReturnType;
                     }
 
                     // Check if the type of the consuming instruction matches the type of the producing instruction
