@@ -30,6 +30,8 @@ namespace Celbridge.Models
         PipeState PipeState { get; set; }
 
         InstructionSummary GetInstructionSummary(PropertyContext Context);
+
+        Result<string> GenerateCode();
     }
 
     // An instruction that can be used as a type in Celbridge 
