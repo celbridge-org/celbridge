@@ -221,6 +221,19 @@ namespace Celbridge.ViewModels
                 _dialogService.OpenFileExplorer(projectFolder);
             }
         }
+        
+        public IRelayCommand OpenFolderCommand => new RelayCommand(OpenFolder_Executed);
+        private void OpenFolder_Executed()
+        {
+            if (_projectService.ActiveProject != null)
+            {
+                var projectPath = _projectService.ActiveProject.ProjectPath;
+                var projectFolder = Path.GetDirectoryName(projectPath);
+                Guard.IsNotNull(projectFolder);
+
+                _dialogService.OpenFileExplorer(projectFolder);
+            }
+        }
 
         public IAsyncRelayCommand AddResourceCommand => new AsyncRelayCommand(AddResource_Executed);
         private async Task AddResource_Executed()

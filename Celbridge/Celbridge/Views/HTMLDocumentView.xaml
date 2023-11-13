@@ -17,11 +17,17 @@
           VerticalAlignment="Stretch">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*" />
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBox Grid.Row="0" 
+        <WebView2 Grid.Row="0" 
+                  x:Name="HTMLView" 
+                  Source="{x:Bind ViewModel.Source, Mode=TwoWay}" 
+                  NavigationStarting="OnNavigationStarting"
+                  NavigationCompleted="OnNavigationCompleted"/>
+
+        <TextBox Grid.Row="1" 
                  x:Name="ContentTextBox"
                  BorderBrush="{StaticResource PanelBorderBrush}" 
                  BorderThickness="0 1 0 1"
@@ -29,11 +35,5 @@
                  IsSpellCheckEnabled="False"
                  Background="{StaticResource PanelBackgroundABrush}">
         </TextBox>
-
-        <WebView2 Grid.Row="1" 
-                  x:Name="HTMLView" 
-                  Source="{x:Bind ViewModel.Source, Mode=TwoWay}" 
-                  NavigationStarting="OnNavigationStarting"
-                  NavigationCompleted="OnNavigationCompleted"/>
     </Grid>
 </muxc:TabViewItem>
