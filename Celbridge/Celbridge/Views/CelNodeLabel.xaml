@@ -21,7 +21,8 @@
                        Foreground="Ivory"
                        HorizontalAlignment="Left"
                        VerticalAlignment="Center"
-                       Margin="44 0"/>
+                       Margin="44 0"
+                       Tapped="CelLabel_Tapped"/>
 
             <TextBlock Grid.Row="1" 
                        Text="{x:Bind ViewModel.DescriptionText, Mode=OneWay}" 
