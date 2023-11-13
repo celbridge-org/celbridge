@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using CelUtilities.ErrorHandling;
+using CelUtilities.Resources;
+using System.Text;
 
 namespace CelRuntime
 {
@@ -35,10 +37,17 @@ namespace CelRuntime
             _markdownBuilder.AppendLine();
         }
 
-        public void SetBackground(string imageResource)
+        public void SetBackground(string color, string imageFile)
         {
-            _markdownBuilder.AppendLine($"![bg]({imageResource})");
-            _markdownBuilder.AppendLine();
+            if (!string.IsNullOrEmpty(color))
+            {
+                _markdownBuilder.AppendLine($"<!-- _backgroundColor: {color} -->");
+            }
+
+            if (!string.IsNullOrEmpty(imageFile))
+            {
+                _markdownBuilder.AppendLine($"![bg contain]({imageFile})");
+            }
         }
 
         public void AddComment(string comment)
