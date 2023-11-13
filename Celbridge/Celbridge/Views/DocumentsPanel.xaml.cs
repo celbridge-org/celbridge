@@ -46,8 +46,15 @@ namespace Celbridge.Views
         {
             Guard.IsNotNull(tabItem);
 
-            DocumentTabView.TabItems.Add(tabItem);
-            DocumentTabView.SelectedItem = tabItem;
+            try
+            {
+                DocumentTabView.TabItems.Add(tabItem);
+                DocumentTabView.SelectedItem = tabItem;
+            }
+            catch (Exception ex)
+            {
+                return new ErrorResult($"Failed to open document tab. {ex.Message}");
+            }
 
             return new SuccessResult();
         }
