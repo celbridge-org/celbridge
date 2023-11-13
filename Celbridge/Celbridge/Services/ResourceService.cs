@@ -105,9 +105,20 @@ namespace Celbridge.Services
                 var typeInfo = typeResult.Data!;
                 Guard.IsTrue(typeInfo.Extensions.Any());
 
-                // Todo: Accept any extension that the user defines that's in the list of supported extensions
-                // Todo: If the extension is not specified, then use the default.
-                var extension = typeInfo.Extensions[0];
+                var extension = string.Empty;
+                var requestedExtension = Path.GetExtension(path).ToLower();
+                if (!string.IsNullOrEmpty(requestedExtension))
+                {
+                    // Use the extension the user specified, if it's a supported extension
+                    extension = typeInfo.Extensions.Find(ext => string.Equals(ext, requestedExtension, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (string.IsNullOrEmpty(extension))
+                {
+                    // No supported extension specified, use the default (first item in the list).
+                    extension = typeInfo.Extensions[0];
+                }
+
                 newResourcePath = Path.ChangeExtension(path, extension);
             }
 
