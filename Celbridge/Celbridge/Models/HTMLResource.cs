@@ -1,6 +1,6 @@
 ﻿namespace Celbridge.Models
 {
-    [ResourceType("HTML File", "A HTML file resource", "Page2", ".html")]
+    [ResourceType("HTML File", "A HTML file resource", "Page2", ".html,.png,.jpg,.webp,.pdf")]
     public class HTMLResource : FileResource, IDocumentEntity
     {
         public string StartURL { get; set; } = string.Empty;
