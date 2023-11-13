@@ -16,5 +16,11 @@ namespace Celbridge.Views
             Canvas.SetLeft(this, x);
             Canvas.SetTop(this, y);
         }
+
+        private void CelLabel_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+        {
+            Guard.IsNotNull(ViewModel);
+            ViewModel.SelectCell();
+        }
     }
 }
