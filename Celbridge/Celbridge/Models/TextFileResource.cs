@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Celbridge.Models
 {
-    [ResourceType("Text File", "A text file resource", "Page2", ".txt")]
+    [ResourceType("Text File", "A text file resource", "Page2", ".txt,.md")]
     public class TextFileResource : FileResource, IDocumentEntity
     {
         public string Permissions { get; set; } = string.Empty;
