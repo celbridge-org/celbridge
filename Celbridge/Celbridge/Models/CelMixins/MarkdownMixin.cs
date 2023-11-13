@@ -114,6 +114,7 @@
 
         public record SetBackground : InstructionBase
         {
+            public StringExpression Color { get; set; } = new();
             public StringExpression ImageResource { get; set; } = new();
 
             public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
@@ -122,13 +123,24 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"{ImageResource.GetSummary()}");
+                    SummaryText: $"Color:{Color.GetSummary()}, Image:{ImageResource.GetSummary()}");
             }
 
             public override Result<string> GenerateCode()
             {
+                var color = Color.GetSummary();
+                if (string.IsNullOrEmpty(color))
+                {
+                    color = "string.Empty";
+                }
+
                 var imageResource = ImageResource.GetSummary();
-                var code = $"_env.Markdown.SetBackground({imageResource});";
+                if (string.IsNullOrEmpty(imageResource))
+                {
+                    imageResource = "string.Empty";
+                }
+
+                var code = $"_env.Markdown.SetBackground({color}, {imageResource});";
                 return new SuccessResult<string>(code);
             }
         }
