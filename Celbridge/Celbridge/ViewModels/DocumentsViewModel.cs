@@ -75,9 +75,6 @@ namespace Celbridge.ViewModels
             // Let the document view know which document & resource to operate on
             documentView.Document = document;
 
-            // Add the tab to the DocumentsPanel
-            DocumentsPanelView.OpenDocumentTab(userControl);
-
             async void LoadDocumentAsync()
             {
                 var result = await documentView.LoadDocumentAsync();
@@ -102,6 +99,9 @@ namespace Celbridge.ViewModels
                 { 
                     openDocuments.Add(documentEntityId);
                 }
+
+                // Add the tab to the DocumentsPanel
+                DocumentsPanelView.OpenDocumentTab(userControl);
             }
 
             LoadDocumentAsync();
