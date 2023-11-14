@@ -23,8 +23,9 @@ namespace CelRuntime
         public static Process Process { get; private set; }
         public static Chat Chat { get; private set; }
         public static Markdown Markdown { get; private set; }
+        public static Sheet Sheet { get; private set; }
 
-        public static bool Init(string projectFolder, Action<string> onPrint, string chatAPIKey)
+        public static bool Init(string projectFolder, Action<string> onPrint, string chatAPIKey, string sheetAPIKey)
         {
             if (string.IsNullOrEmpty(projectFolder))
             {
@@ -55,6 +56,13 @@ namespace CelRuntime
                 return false;
             }
             Markdown = new Markdown();
+
+            Sheet = new Sheet();
+            if (!Sheet.Init(sheetAPIKey))
+            {
+                PrintError("Failed to init Sheet API");
+                return false;
+            }
 
             return true;
         }

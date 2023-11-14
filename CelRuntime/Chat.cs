@@ -5,6 +5,7 @@ using CelUtilities.Resources;
 using CommunityToolkit.Diagnostics;
 using OpenAI_API;
 using OpenAI_API.Chat;
+using OpenAI_API.Images;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -120,7 +121,10 @@ namespace CelRuntime
                 Guard.IsNotNull(downloadPath);
 
                 _isWaitingForResponse = true;
-                var result = await _api.ImageGenerations.CreateImageAsync(prompt);
+
+                var request = new ImageGenerationRequest(prompt, 1, ImageSize._1024);
+
+                var result = await _api.ImageGenerations.CreateImageAsync(request);
 
                 _isWaitingForResponse = false;
                 if (result == null || result.Data.Count == 0)
@@ -164,6 +168,10 @@ namespace CelRuntime
 
                 // Read the response content as a byte array
                 byte[] imageData = await response.Content.ReadAsByteArrayAsync();
+
+                var directory = Path.GetDirectoryName(savePath);
+                Guard.IsNotNull(directory);
+                Directory.CreateDirectory(directory);
 
                 // Write the image byte array to a file
                 await File.WriteAllBytesAsync(savePath, imageData);

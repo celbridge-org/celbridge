@@ -20,6 +20,7 @@ namespace Celbridge.Models.CelTypes
                 new FileMixin(),
                 new ChatMixin(),
                 new MarkdownMixin(),
+                new SheetMixin(),
             };
         }
     }

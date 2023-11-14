@@ -39,6 +39,23 @@ namespace Celbridge.ViewModels
             }
         }
 
+        public string SheetsAPIKey
+        {
+            get
+            {
+                Guard.IsNotNull(_settingsService.EditorSettings);
+                return _settingsService.EditorSettings.SheetsAPIKey;
+            }
+
+            set
+            {
+                Guard.IsNotNull(_settingsService.EditorSettings);
+                _settingsService.EditorSettings.SheetsAPIKey = value;
+                OnPropertyChanged(nameof(SheetsAPIKey));
+            }
+        }
+
+
         private void SettingsViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ThemeIndex))
