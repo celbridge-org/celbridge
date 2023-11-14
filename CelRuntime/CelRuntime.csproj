@@ -43,6 +43,7 @@
   <ItemGroup>
     <PackageReference Include="CliWrap" Version="3.6.4" />
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.2.1" />
+    <PackageReference Include="OpenAI" Version="1.7.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CelUtilities\CelUtilities.csproj" />
