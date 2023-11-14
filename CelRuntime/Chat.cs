@@ -1,9 +1,13 @@
 ﻿#nullable enable
 
+using CelUtilities.ErrorHandling;
+using CelUtilities.Resources;
 using CommunityToolkit.Diagnostics;
 using OpenAI_API;
 using OpenAI_API.Chat;
 using System;
+using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace CelRuntime
@@ -92,6 +96,84 @@ namespace CelRuntime
             }
 
             return response;
+        }
+
+        public async Task<bool> CreateImageAsync(string resourceKey, string prompt)
+        {
+            Guard.IsNotNull(_api);
+
+            // Wait for the previous response to be received
+            while (_isWaitingForResponse)
+            {
+                await Task.Delay(100);
+            }
+
+            try
+            {
+                var pathResult = ResourceUtils.GetResourcePath(resourceKey, Environment.ProjectFolder);
+                if (pathResult is ErrorResult<string> errorResult)
+                {
+                    Environment.PrintError("Failed to create image. Invalid resource key.");
+                    return false;
+                }
+                var downloadPath = pathResult.Data;
+                Guard.IsNotNull(downloadPath);
+
+                _isWaitingForResponse = true;
+                var result = await _api.ImageGenerations.CreateImageAsync(prompt);
+
+                _isWaitingForResponse = false;
+                if (result == null || result.Data.Count == 0)
+                {
+                    Environment.PrintError("Failed to create image. API key not found.");
+                    return false;
+                }
+
+                var imageUrl = result.Data[0].Url;
+
+                var downloadResult = await DownloadImageAsync(imageUrl, downloadPath);
+                if (downloadResult is ErrorResult downloadError)
+                {
+                    Environment.PrintError(downloadError.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                _isWaitingForResponse = false;
+                Environment.PrintError(ex.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        public static async Task<Result> DownloadImageAsync(string imageUrl, string savePath)
+        {
+            try
+            {
+                var client = new HttpClient();
+
+                // Send asynchronous GET request to the specified URL
+                HttpResponseMessage response = await client.GetAsync(imageUrl);
+
+                // Ensure we received a successful response
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception("Error: " + response.StatusCode);
+                }
+
+                // Read the response content as a byte array
+                byte[] imageData = await response.Content.ReadAsByteArrayAsync();
+
+                // Write the image byte array to a file
+                await File.WriteAllBytesAsync(savePath, imageData);
+
+                return new SuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return new ErrorResult($"Failed to download image. {ex.Message}");
+            }
         }
     }
 }
