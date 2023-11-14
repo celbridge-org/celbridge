@@ -44,6 +44,9 @@ namespace Celbridge.Models
         [ObservableProperty]
         private string _openAIKey = string.Empty;
 
+        [ObservableProperty]
+        private string _sheetsAPIKey = string.Empty;
+
         public EditorSettings()
         {
             // Required for serialization.

@@ -76,7 +76,7 @@ namespace Celbridge.Tasks
             }
         }
 
-        public async Task<Result> Run(string projectFolder, Action<string> onPrint, string chatAPIKey)
+        public async Task<Result> Run(string projectFolder, Action<string> onPrint, string chatAPIKey, string sheetsAPIKey)
         {
             if (CelApplicationAssembly == null ||
                 CelRuntimeAssembly == null)
@@ -98,7 +98,8 @@ namespace Celbridge.Tasks
                 {
                     projectFolder,
                     onPrint,
-                    chatAPIKey
+                    chatAPIKey,
+                    sheetsAPIKey
                 });
 
                 if ((bool?)result == false)

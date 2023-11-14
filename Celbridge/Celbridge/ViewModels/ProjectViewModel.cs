@@ -274,8 +274,9 @@ namespace Celbridge.ViewModels
 
             Guard.IsNotNull(_settingsService.EditorSettings);
             var chatAPIKey = _settingsService.EditorSettings.OpenAIKey;
+            var sheetsAPIKey = _settingsService.EditorSettings.SheetsAPIKey;
 
-            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey);
+            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
             if (startResult is ErrorResult startError)
             {
                 Log.Error($"Failed to start application. {startError.Message}");

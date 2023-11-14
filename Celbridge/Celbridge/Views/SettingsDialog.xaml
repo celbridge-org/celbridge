@@ -21,5 +21,14 @@
         <TextBox Header="Open AI Key"
                  Text="{x:Bind ViewModel.OpenAIKey, Mode=TwoWay}"
                  Margin="6"/>
+
+        <TextBox Header="Google Sheets API Key"
+                 Text="{x:Bind ViewModel.SheetsAPIKey, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 MinHeight="120" 
+                 MaxHeight="120" 
+                 Margin="6"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"/>
     </StackPanel>
 </ContentDialog>
