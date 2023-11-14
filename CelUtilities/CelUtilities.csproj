@@ -6,7 +6,6 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="OpenAI" Version="1.7.2" />
     <PackageReference Include="Uno.WinUI" Version="4.10.26" />
   </ItemGroup>
   <Choose>
