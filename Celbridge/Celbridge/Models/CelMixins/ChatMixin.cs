@@ -6,6 +6,7 @@
         {
             { nameof(StartChat), typeof(StartChat) },
             { nameof(Ask), typeof(Ask) },
+            { nameof(CreateImage), typeof(CreateImage) },
             { nameof(EndChat), typeof(EndChat) },
         };
 
@@ -50,6 +51,30 @@
             {
                 var summary = Question.GetSummary();
                 var code = $"await _env.Chat.Ask({summary});";
+                return new SuccessResult<string>(code);
+            }
+        }
+
+        public record CreateImage : InstructionBase
+        {
+            public StringExpression ImageResource { get; set; } = new();
+            public StringExpression Prompt { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
+
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.PlainText,
+                    SummaryText: $"ImageResource: {ImageResource.GetSummary()}, Prompt: {Prompt.GetSummary()}");
+            }
+
+            public override Result<string> GenerateCode()
+            {
+                var prompt = Prompt.GetSummary();
+                var imageResource = ImageResource.GetSummary();
+                var code = $"await _env.Chat.CreateImageAsync({imageResource}, {prompt});";
                 return new SuccessResult<string>(code);
             }
         }
