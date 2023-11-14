@@ -29,6 +29,9 @@
 
         <TextBox Grid.Row="1" 
                  BorderBrush="{StaticResource PanelBorderBrush}" 
+                 MinHeight="20"
+                 Padding="2"
+                 FontSize="12"
                  BorderThickness="0 1 0 1"
                  Text="{x:Bind ViewModel.Source}"
                  IsSpellCheckEnabled="False"
