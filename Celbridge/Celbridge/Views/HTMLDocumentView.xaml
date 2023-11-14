@@ -28,12 +28,11 @@
                   NavigationCompleted="OnNavigationCompleted"/>
 
         <TextBox Grid.Row="1" 
-                 x:Name="ContentTextBox"
                  BorderBrush="{StaticResource PanelBorderBrush}" 
                  BorderThickness="0 1 0 1"
-                 Text="{x:Bind ViewModel.Source, Mode=TwoWay}"
+                 Text="{x:Bind ViewModel.Source}"
                  IsSpellCheckEnabled="False"
-                 Background="{StaticResource PanelBackgroundABrush}">
+                 IsEnabled="False">
         </TextBox>
     </Grid>
 </muxc:TabViewItem>
