@@ -250,6 +250,7 @@ namespace Celbridge.Services
                 var result = await loadProjectTask.Load(projectPath);
                 if (result is ErrorResult<Project> loadError)
                 {
+                    Log.Error(loadError.Message);
                     _dialogService.HideProgressDialog();
                     return new ErrorResult(loadError.Message);
                 }
