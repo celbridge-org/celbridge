@@ -41,6 +41,19 @@ namespace Celbridge.Utils
                     logType = ConsoleLogType.Warn;
                 }
             }
+            else
+            {
+                switch (logEvent.Level)
+                {
+                    case LogEventLevel.Warning:
+                        logType = ConsoleLogType.Warn;
+                        break;
+                    case LogEventLevel.Error:
+                    case LogEventLevel.Fatal:
+                        logType = ConsoleLogType.Error;
+                        break;
+                }
+            }
 
             _consoleService.WriteMessage(message, logType);
         }
