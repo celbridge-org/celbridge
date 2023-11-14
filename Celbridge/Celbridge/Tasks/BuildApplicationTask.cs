@@ -336,6 +336,12 @@ namespace Celbridge.Tasks
                     body.Add("else");
                     body.Add("{");
                 }
+                else if (instruction is BasicMixin.While @while)
+                {
+                    var condition = @while.Condition;
+                    body.Add($"while ({condition.Expression})");
+                    body.Add("{");
+                }
                 else if (instruction is BasicMixin.End _)
                 {
                     body.Add("}");
