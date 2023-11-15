@@ -83,7 +83,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"RowIndex: {RowIndex.GetSummary()}, ColumnIndex: {ColumnIndex.GetSummary()}");
+                    SummaryText: $"{RowIndex.GetSummary()}, {ColumnIndex.GetSummary()}");
             }
 
             public override Result<string> GenerateCode()
@@ -107,7 +107,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"RowIndex: {RowIndex.GetSummary()}, ColumnIndex: {ColumnIndex.GetSummary()}");
+                    SummaryText: $"{RowIndex.GetSummary()}, {ColumnIndex.GetSummary()}");
             }
 
             public override Result<string> GenerateCode()
