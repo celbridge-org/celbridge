@@ -180,8 +180,6 @@ namespace Celbridge.Tasks
                                 sb.Append(", ");
                             }
 
-                            sb.Append(celParameter.Name);
-                            sb.Append(": ");
                             sb.Append("{");
                             sb.Append(celParameter.Name);
                             sb.Append(".GetSummary(context)");

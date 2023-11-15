@@ -67,7 +67,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"ImageResource: {ImageResource.GetSummary()}, Prompt: {Prompt.GetSummary()}");
+                    SummaryText: $"{ImageResource.GetSummary()}, {Prompt.GetSummary()}");
             }
 
             public override Result<string> GenerateCode()

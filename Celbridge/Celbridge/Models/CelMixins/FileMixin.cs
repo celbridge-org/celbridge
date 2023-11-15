@@ -20,7 +20,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"Resource: {Resource}");
+                    SummaryText: $"{Resource}");
             }
 
             public override Result<string> GenerateCode()
@@ -43,7 +43,7 @@
             {
                 return new InstructionSummary(
                     SummaryFormat: SummaryFormat.PlainText,
-                    SummaryText: $"Resource : {Resource.GetSummary()}, Text: {Text.GetSummary()}");
+                    SummaryText: $"{Resource.GetSummary()}, {Text.GetSummary()}");
             }
 
             public override Result<string> GenerateCode()
