@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     DataContext="{x:Bind ViewModel}">
 
-	<muxc:TabViewItem.Header>
+    <muxc:TabViewItem.Header>
 		<TextBlock Text="{x:Bind ViewModel.Name, Mode=OneWay}" />
 	</muxc:TabViewItem.Header>
 

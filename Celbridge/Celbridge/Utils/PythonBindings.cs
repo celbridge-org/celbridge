@@ -96,7 +96,7 @@ namespace Celbridge.Utils
             var chatAPIKey = settingsService.EditorSettings.OpenAIKey;
             var sheetsAPIKey = settingsService.EditorSettings.SheetsAPIKey;
 
-            var buildResult = await celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
+            var buildResult = await celScriptService.StartApplication("Project", "Start", projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
             if (buildResult is ErrorResult<string> buildError)
             {
                 Log.Error(buildError.Message);

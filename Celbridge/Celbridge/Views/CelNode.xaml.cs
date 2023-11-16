@@ -70,5 +70,20 @@ namespace Celbridge.Views
         {
             ViewModel.SelectCell();
         }
+
+        private void CelNode_DoubleTapped(object? sender, DoubleTappedRoutedEventArgs e)
+        {
+            ViewModel.PlayCel();
+        }
+
+        private void PlayCel(object? sender, RoutedEventArgs e)
+        {
+            ViewModel.PlayCel();
+        }
+
+        private void DeleteCel(object? sender, RoutedEventArgs e)
+        {
+            ViewModel.DeleteCel();
+        }
     }
 }

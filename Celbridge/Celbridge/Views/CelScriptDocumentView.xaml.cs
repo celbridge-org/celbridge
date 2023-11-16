@@ -1,14 +1,5 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
-using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using System;
-using System.Collections.Generic;
+﻿using Celbridge.ViewModels;
 using System.Numerics;
-using System.Threading.Tasks;
 using Windows.Foundation;
 
 namespace Celbridge.Views
