@@ -1,4 +1,5 @@
 ﻿using Celbridge.Services;
+using Celbridge.Tasks;
 using Celbridge.Utils;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
@@ -11,12 +12,15 @@ namespace Celbridge.ViewModels
     {
         private readonly IMessenger _messengerService;
         private readonly IInspectorService _entityService;
+        private readonly ICelScriptService _celScriptService;
 
         public CelNodeViewModel(IMessenger messengerService,
-            IInspectorService entityService)
+                                IInspectorService entityService,
+                                ICelScriptService celScriptService)
         {
             _messengerService = messengerService;
             _entityService = entityService;
+            _celScriptService = celScriptService;
 
             PropertyChanged += ViewModel_PropertyChanged;
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
@@ -96,6 +100,42 @@ namespace Celbridge.ViewModels
         public void SelectCell()
         {
             _entityService.SelectedEntity = Cel as IEntity;
+        }
+
+        public void PlayCel()
+        {
+            Guard.IsNotNull(Cel);
+
+            async Task PlayCelAsync()
+            {
+                try
+                {
+                    var celScriptName = Cel!.CelScript!.Entity!.Name;
+                    celScriptName = Path.GetFileNameWithoutExtension(celScriptName);
+
+                    var celName = Cel.Name;
+
+                    var playCelTask = (Application.Current as App)!.Host!.Services.GetRequiredService<PlayCelTask>();
+                    var playResult = await playCelTask.PlayCel(celScriptName, celName);
+                    if (playResult is ErrorResult playError)
+                    {
+                        Log.Error(playError.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"Failed to play Cel. {ex.Message}");
+                }
+            }
+
+            // Todo: Prevent playing if already in progress
+            _ = PlayCelAsync();
+        }
+
+        public void DeleteCel()
+        {
+            Guard.IsNotNull(Cel);
+            _celScriptService.DeleteCel(Cel);
         }
 
         public void SetCelPosition(int x, int y)

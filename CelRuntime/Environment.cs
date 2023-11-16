@@ -16,7 +16,7 @@ namespace CelRuntime
         public static void PrintError(object message)
         {
             var text = message.ToString();
-            _onPrint?.Invoke($"Error: {text}");
+            _onPrint?.Invoke($"error:{text}");
         }
 
         public static TextFile TextFile { get; private set; }

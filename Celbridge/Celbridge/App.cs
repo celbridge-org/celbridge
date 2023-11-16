@@ -162,6 +162,7 @@ namespace Celbridge
             services.AddTransient<UpdateCelInstructionsTask>();
             services.AddSingleton<LoadCustomAssembliesTask>();
             services.AddTransient<BuildApplicationTask>();
+            services.AddTransient<PlayCelTask>();
         }
     }
 }

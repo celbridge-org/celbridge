@@ -7,12 +7,26 @@
     ManipulationStarted="CelNode_ManipulationStarted"
     ManipulationDelta="CelNode_ManipulationDelta"
     ManipulationCompleted="CelNode_ManipulationCompleted"
-    Tapped="CelNode_Tapped">
+    Tapped="CelNode_Tapped"
+    DoubleTapped="CelNode_DoubleTapped">
+
+    <UserControl.Resources>
+        <MenuFlyout x:Name="CelNodeContextMenu"
+                    Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Play" 
+                            Icon="Play"
+                            Click="PlayCel"/>
+            <MenuFlyoutItem Text="Delete" 
+                            Icon="Delete"
+                            Click="DeleteCel"/>
+        </MenuFlyout>
+    </UserControl.Resources>
 
     <Canvas>
         <Grid x:Name="CelGrid" 
               ToolTipService.ToolTip="{x:Bind ViewModel.TooltipText, Mode=OneWay}"
-              ToolTipService.Placement="Bottom">
+              ToolTipService.Placement="Bottom"
+              ContextFlyout="{StaticResource CelNodeContextMenu}">
             <Ellipse Width="38"
                      Height="38"
                      Fill="{x:Bind ViewModel.FillColor, Mode=OneWay}"

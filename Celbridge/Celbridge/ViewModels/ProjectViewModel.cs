@@ -1,16 +1,7 @@
 ﻿using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using System.Windows.Input;
-using Celbridge.Models;
 using System.ComponentModel;
-using System.Threading.Tasks;
-using System.IO;
 using Celbridge.Utils;
 using CommunityToolkit.Mvvm.Messaging;
-using System;
-using Serilog;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -276,7 +267,7 @@ namespace Celbridge.ViewModels
             var chatAPIKey = _settingsService.EditorSettings.OpenAIKey;
             var sheetsAPIKey = _settingsService.EditorSettings.SheetsAPIKey;
 
-            var startResult = await _celScriptService.StartApplication(projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
+            var startResult = await _celScriptService.StartApplication("Project", "Start", projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
             if (startResult is ErrorResult startError)
             {
                 Log.Error($"Failed to start application. {startError.Message}");

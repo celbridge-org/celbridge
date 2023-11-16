@@ -76,8 +76,13 @@ namespace Celbridge.Tasks
             }
         }
 
-        public async Task<Result> Run(string projectFolder, Action<string> onPrint, string chatAPIKey, string sheetsAPIKey)
+        public async Task<Result> Run(string celScriptName, string celName, string projectFolder, Action<string> onPrint, string chatAPIKey, string sheetsAPIKey)
         {
+            if (string.IsNullOrEmpty(celScriptName) || string.IsNullOrEmpty(celName))
+            {
+                return new ErrorResult($"Failed to play Cel, '{celScriptName}.{celName}'");
+            }
+
             if (CelApplicationAssembly == null ||
                 CelRuntimeAssembly == null)
             {
@@ -116,29 +121,31 @@ namespace Celbridge.Tasks
                 return new ErrorResult("Failed to run cel application. Assembly is not loaded.");
             }
 
-            var methods = assembly.GetTypes()
-                .Where(type => type.IsClass && type.IsAbstract && type.IsSealed) // Filter static classes
-                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                .Where(method =>
-                    method.Name == "Start" &&                   // Method name is "Start"
-                    method.GetParameters().Length == 0);        // No parameters
+            var type = assembly.GetType($"CelApplication.{celScriptName}");
+            if (type == null)
+            {
+                return new ErrorResult($"Failed to play Cel '{celScriptName}.{celName}'. No matching Cel class found in application.");
+            }
+
+            var methodInfo = type.GetMethod(celName, BindingFlags.Static | BindingFlags.Public);
+            if (methodInfo == null)
+            {
+                return new ErrorResult($"Failed to play Cel '{celScriptName}.{celName}'. No matching method found in Cel class.");
+            }
 
             try
             {
-                // Execute each start method
+                Log.Information($"> Playing `{celScriptName}.{celName}` at {DateTime.Now.ToString("HH:mm:ss")}");
+
+                var task = (Task?)methodInfo.Invoke(null, null);
+                if (task is not null)
+                {
+                    await task;
+                }
 
                 // Note: .NET doesn't supporting catch a StackOverflow exception, it will just kill the process.
                 // The best way around this seems to be to compile an executable assembly and run it in a new process.
 
-                foreach (var method in methods)
-                {
-                    Log.Information($"> Calling `{method.DeclaringType!.Name}.{method.Name}` at {DateTime.Now.ToString("HH:mm:ss")}");
-                    var task = (Task?)method.Invoke(null, null);
-                    if (task is not null)
-                    {
-                        await task;
-                    }
-                }
             }
             catch (Exception ex)
             {
