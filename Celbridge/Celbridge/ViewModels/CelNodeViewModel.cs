@@ -1,4 +1,5 @@
 ﻿using Celbridge.Services;
+using Celbridge.Utils;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
 using System.ComponentModel;
@@ -157,7 +158,7 @@ namespace Celbridge.ViewModels
         private void UpdateLabelText()
         {
             Guard.IsNotNull(Cel);
-            NameText = Cel.Name;
+            NameText = StringUtils.ToHumanFromPascal(Cel.Name);
             DescriptionText = Cel.Description;
         }
 
