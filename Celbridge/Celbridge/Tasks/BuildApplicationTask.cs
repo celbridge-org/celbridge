@@ -368,7 +368,15 @@ namespace Celbridge.Tasks
             Guard.IsNotNull(call);
 
             var functionArguments = GetFunctionArguments(call.Arguments);
-            var functionCall = $"{call.Arguments.CelName}({functionArguments})";
+            string functionCall;
+            if (string.IsNullOrEmpty(call.Arguments.CelScriptName))
+            {
+                functionCall = $"{call.Arguments.CelName}({functionArguments})";
+            }
+            else
+            {
+                functionCall = $"{call.Arguments.CelScriptName}.{call.Arguments.CelName}({functionArguments})";
+            }
 
             return functionCall;
         }
