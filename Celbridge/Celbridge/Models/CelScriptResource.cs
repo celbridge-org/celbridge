@@ -1,10 +1,6 @@
-using Celbridge.Utils;
-using System;
-using System.IO;
-
 namespace Celbridge.Models
 {
-    [ResourceType("CelScript", "A Cel Script resource", "Page2", ".cel")]
+    [ResourceType("CelScript", "A Cel Script resource", "\uE81D", ".cel")] // Location icon
     public class CelScriptResource : FileResource, IDocumentEntity
     {
         public static Result CreateResource(string path)

@@ -135,13 +135,15 @@ namespace Celbridge.ViewModels
                 }
                 else if (SelectedEntity is ICelScriptNode)
                 {
-                    var celTypeResult = _celTypeService.GetCelType(SelectedEntity.GetType());
-                    if (celTypeResult.Success)
+                    var cel = SelectedEntity as ICel;
+                    if (cel != null)
                     {
-                        var celType = celTypeResult.Data!;
-
-                        TypeName = celType.Name;
-                        TypeIcon = celType.Icon ?? "Help";
+                        var celType = cel.CelType;
+                        if (celType != null)
+                        {
+                            TypeName = celType.Name;
+                            TypeIcon = celType.Icon ?? "Help";
+                        }
                     }
                 }
 

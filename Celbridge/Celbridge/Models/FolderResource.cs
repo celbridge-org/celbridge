@@ -1,13 +1,9 @@
 ﻿using Celbridge.Utils;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace Celbridge.Models
 {
-    [ResourceType("Folder", "Contains file resources", "Folder", "")]
+    [ResourceType("Folder", "Contains file resources", "\uE188", "")] // Folder icon
     public class FolderResource : Resource
     {
         [JsonIgnore]
