@@ -100,7 +100,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="40" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Left Navigation Bar -->
@@ -224,16 +223,6 @@
                             </toolkit:GridSplitter.Element>
                         </toolkit:GridSplitter>
                     </Grid>
-                </Grid>
-
-                <!-- Right Navigation Bar -->
-                <Grid Grid.Row="0"
-                      Grid.Column="2"
-                      Background="{StaticResource PanelBackgroundABrush}"
-                      BorderBrush="{StaticResource PanelBorderBrush}"
-                      BorderThickness="1 0 0 0"
-                      Visibility="{x:Bind ViewModel.IsProjectActive, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Grid x:Name="RightNavigationBar"/>
                 </Grid>
 
                 <!-- Status bar -->

@@ -30,18 +30,11 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Margin="6 0 6 0" 
                            Text="Inspector"
                            VerticalAlignment="Center"/>
-                <Button Grid.Column="2" 
-                        Command="{x:Bind ViewModel.CollapseCommand, Mode=OneWay}"
-                        ToolTipService.ToolTip="Close"
-                        ToolTipService.Placement="Bottom">
-                    <SymbolIcon Symbol="ClosePane"/>
-                </Button>
             </Grid>
         </Border>
 

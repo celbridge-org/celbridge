@@ -1,5 +1,4 @@
 ﻿using Celbridge.Services;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels
 {
@@ -14,18 +13,23 @@ namespace Celbridge.ViewModels
             _dialogService = dialogService;
         }
 
-        public ICommand ToggleProjectCommand => new RelayCommand(ToggleProject_Executed);
-        private void ToggleProject_Executed()
+        public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
+        private void ToggleLeftPanel_Executed()
         {
-            // Toggle the project panel
             Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.LeftPanelExpanded = !_settingsService.EditorSettings.LeftPanelExpanded;
         }
 
-        public ICommand ToggleConsoleCommand => new RelayCommand(ToggleConsole_Executed);
-        private void ToggleConsole_Executed()
+        public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
+        private void ToggleRightPanel_Executed()
         {
-            // Toggle the console panel
+            Guard.IsNotNull(_settingsService.EditorSettings);
+            _settingsService.EditorSettings.RightPanelExpanded = !_settingsService.EditorSettings.RightPanelExpanded;
+        }
+
+        public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
+        private void ToggleBottomPanel_Executed()
+        {
             Guard.IsNotNull(_settingsService.EditorSettings);
             _settingsService.EditorSettings.BottomPanelExpanded = !_settingsService.EditorSettings.BottomPanelExpanded;
         }
