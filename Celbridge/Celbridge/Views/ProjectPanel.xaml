@@ -93,78 +93,12 @@
           BorderThickness="0 0 1 0">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="40" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
-                BorderBrush="{StaticResource PanelBorderBrush}" 
-                BorderThickness="0 0 0 1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="Project"
-                           Margin="6 0 0 0"
-                           VerticalAlignment="Center"/>
-                <Button Grid.Column="3" 
-                        Command="{x:Bind ViewModel.CollapseCommand, Mode=OneWay}"
-                        ToolTipService.ToolTip="Close"
-                        ToolTipService.Placement="Bottom">
-                    <SymbolIcon Symbol="ClosePane"/>
-                </Button>
-            </Grid>
-        </Border>
-
-        <Grid Grid.Row="1"
-              Visibility="{x:Bind ViewModel.HasActiveProject, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="7"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <Rectangle Grid.Column="0"
-                       x:Name="SelectionIndicator"                            
-                       Width="3"
-                       Height="16"
-                       Margin="4 0 0 0"
-                       Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       RadiusX="2"
-                       RadiusY="2"
-                       Visibility="{x:Bind ViewModel.IsProjectSelected, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-            <Grid Grid.Column="1" 
-                  ContextFlyout="{StaticResource ProjectContextMenu}"
-                  HorizontalAlignment="Stretch">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <SymbolIcon Grid.Column="0" 
-                            Symbol="PreviewLink"
-                            Margin="6 0 6 0"/>
-                <Button Grid.Column="1" 
-                        Command="{x:Bind ViewModel.SelectProjectCommand}"
-                        ToolTipService.ToolTip="{x:Bind ViewModel.ActiveProject.Tooltip, Mode=OneWay}"
-                        ToolTipService.Placement="Bottom"
-                        HorizontalAlignment="Stretch"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        HorizontalContentAlignment="Left">
-                    <TextBlock Text="{x:Bind ViewModel.ActiveProject.Name, Mode=OneWay}" />
-                </Button>
-            </Grid>
-        </Grid>
-
-        <Grid Grid.Row="2"
+        <Grid Grid.Row="0"
               Height="40"
               BorderBrush="{StaticResource PanelBorderBrush}" 
               BorderThickness="0 0 0 1"
@@ -226,6 +160,48 @@
             </Button>
         </Grid>
 
+        <Grid Grid.Row="1"
+              Visibility="{x:Bind ViewModel.HasActiveProject, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Rectangle Grid.Column="0"
+                       x:Name="SelectionIndicator"                            
+                       Width="3"
+                       Height="16"
+                       Margin="4 0 0 0"
+                       Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       RadiusX="2"
+                       RadiusY="2"
+                       Visibility="{x:Bind ViewModel.IsProjectSelected, Mode=OneWay,Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <Grid Grid.Column="1" 
+                  ContextFlyout="{StaticResource ProjectContextMenu}"
+                  HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <SymbolIcon Grid.Column="0" 
+                            Symbol="PreviewLink"
+                            Margin="6 0 6 0"/>
+                <Button Grid.Column="1" 
+                        Command="{x:Bind ViewModel.SelectProjectCommand}"
+                        ToolTipService.ToolTip="{x:Bind ViewModel.ActiveProject.Tooltip, Mode=OneWay}"
+                        ToolTipService.Placement="Bottom"
+                        HorizontalAlignment="Stretch"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalContentAlignment="Left">
+                    <TextBlock Text="{x:Bind ViewModel.ActiveProject.Name, Mode=OneWay}" />
+                </Button>
+            </Grid>
+        </Grid>
 
         <muxc:TreeView x:Name="ResourcesTreeView"
                        Grid.Row="3" 

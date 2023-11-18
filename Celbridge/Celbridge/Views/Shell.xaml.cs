@@ -60,7 +60,6 @@ namespace Celbridge
             BottomPanel.Children.Add(new ConsolePanel());
             LeftPanel.Children.Add(new ProjectPanel());
             LeftNavigationBar.Children.Add(new LeftNavigationBar());
-            RightNavigationBar.Children.Add(new RightNavigationBar());
             StatusBar.Children.Add(new StatusBar());
             CenterPanel.Children.Add(new DocumentsPanel());
             RightPanel.Children.Add(new InspectorPanel());

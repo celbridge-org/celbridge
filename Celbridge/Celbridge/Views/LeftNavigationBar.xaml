@@ -9,38 +9,55 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
-            <RowDefinition Height="40"/>
-            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="40"/>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="6"/>
+            <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
 
-        <Grid x:Name="Output" 
+        <Grid Grid.Row="0"
+              x:Name="Output" 
               HorizontalAlignment="Left" 
-              VerticalAlignment="Top" 
-              Grid.Row="0">
+              VerticalAlignment="Top">
             <views:MainMenu/>
         </Grid>
 
-        <Button Grid.Row="1"
-                Command="{x:Bind ViewModel.ToggleProjectCommand, Mode=OneWay}" 
-                ToolTipService.ToolTip="Project"
+        <Button Grid.Row="2"
+                Command="{x:Bind ViewModel.ToggleLeftPanelCommand, Mode=OneWay}" 
+                ToolTipService.ToolTip="Toggle left panel"
                 ToolTipService.Placement="Right"
+                HorizontalAlignment="Stretch"
                 Padding="8">
-            <SymbolIcon Symbol="Document"/>
+            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                      Glyph="&#xE145;" 
+                      FontSize="16" />
         </Button>
 
+        <Button Grid.Row="3"
+                Command="{x:Bind ViewModel.ToggleRightPanelCommand, Mode=OneWay}" 
+                ToolTipService.ToolTip="Toggle right panel"
+                ToolTipService.Placement="Right"
+                HorizontalAlignment="Stretch"
+                Padding="8">
+            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                      Glyph="&#xE146;" 
+                      FontSize="16" />
+        </Button>
 
         <Button Grid.Row="4"
-                Command="{x:Bind ViewModel.ToggleConsoleCommand, Mode=OneWay}"
-                ToolTipService.ToolTip="Console"
+                Command="{x:Bind ViewModel.ToggleBottomPanelCommand, Mode=OneWay}"
+                ToolTipService.ToolTip="Toggle bottom panel"
                 ToolTipService.Placement="Right"
+                HorizontalAlignment="Stretch"
                 Padding="8">
-            <SymbolIcon Symbol="DockBottom"/>
+            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                      Glyph="&#xE147;" 
+                      FontSize="16" />
         </Button>
 
-        <Button Grid.Row="5"
+        <Button Grid.Row="6"
                 Command="{x:Bind ViewModel.ShowSettingsCommand, Mode=OneWay}"
                 ToolTipService.ToolTip="Settings"
                 ToolTipService.Placement="Right"
