@@ -1,10 +1,6 @@
-﻿using Celbridge.Utils;
-using System;
-using System.IO;
-
-namespace Celbridge.Models
+﻿namespace Celbridge.Models
 {
-    [ResourceType("Text File", "A text file resource", "Page2", ".txt,.md")]
+    [ResourceType("Text File", "A text file resource", "\uE8E9", ".txt,.md")] // FontSize icon
     public class TextFileResource : FileResource, IDocumentEntity
     {
         public string Permissions { get; set; } = string.Empty;

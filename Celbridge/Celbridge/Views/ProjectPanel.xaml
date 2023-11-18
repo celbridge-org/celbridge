@@ -73,7 +73,6 @@
                 <StackPanel Orientation="Horizontal"
                             ToolTipService.Placement="Bottom"
                             ToolTipService.ToolTip="{x:Bind Tooltip, Mode=OneWay}">
-                    <SymbolIcon Symbol="{x:Bind Icon}"/>
                     <TextBlock Margin="0,0,6,0" />
                     <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>

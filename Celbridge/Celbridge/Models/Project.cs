@@ -1,14 +1,11 @@
 ﻿using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
 using Newtonsoft.Json;
-using System;
-using System.IO;
 
 namespace Celbridge.Models
 {
     // Todo: A project should be an Object, but not a Resource because a Project can't contain another Project file directly.
     // Todo: A project _can_ contain a Project Reference file which links to another Project.
-    [ResourceType("Project", "A Celbridge project", "PreviewLink", ".celbridge")]
+    [ResourceType("Project", "A Celbridge project", "\uE8A1", ".celbridge")] // PreviewLink icon
     public partial class Project : ObservableObject, IProject, IEntity
     {
         [JsonProperty(Order = 1)]

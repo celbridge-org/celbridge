@@ -41,9 +41,10 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <SymbolIcon Grid.Column="0"
-                            Symbol="{x:Bind ViewModel.TypeIcon, Mode=OneWay}"
-                            Margin="6"/>
+                <FontIcon Grid.Column="0"
+                          FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                          Glyph="{x:Bind ViewModel.TypeIcon, Mode=OneWay}"
+                          Margin="6"/>
                 <TextBlock Grid.Column="1"
                             x:Name="ItemType"
                             VerticalAlignment="Center"
