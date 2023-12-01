@@ -14,6 +14,7 @@
             { nameof(Call), typeof(Call) },
             { nameof(StartProcess), typeof(StartProcess) },
             { nameof(Check), typeof(Check) },
+            { nameof(Note), typeof(Note) },
         };
 
         public record Print : InstructionBase
@@ -235,6 +236,27 @@
                 var expression = Expression.Expression;
                 var errorMessage = ErrorMessage.GetSummary();
                 var code = $"if (!({expression})) throw new System.ArgumentOutOfRangeException({errorMessage});";
+                return new SuccessResult<string>(code);
+            }
+        }
+
+        public record Note : InstructionBase
+        {
+            public StringExpression Comment { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.Comment;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.PlainText,
+                    SummaryText: $"{Comment.Expression}");
+            }
+
+            public override Result<string> GenerateCode()
+            {
+                var comment = Comment.Expression;
+                var code = $"// {comment}";
                 return new SuccessResult<string>(code);
             }
         }
