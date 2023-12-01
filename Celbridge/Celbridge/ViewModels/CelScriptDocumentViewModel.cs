@@ -7,6 +7,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using Celbridge.Views;
 using System.Numerics;
+using System.Text;
 
 namespace Celbridge.ViewModels
 {
@@ -19,6 +20,7 @@ namespace Celbridge.ViewModels
         private readonly ICelScriptService _celScriptService;
         private readonly IDialogService _dialogService;
         private readonly ISaveDataService _saveDataService;
+        private readonly IChatService _chatService;
 
         private bool _isLoadingContent;
 
@@ -35,7 +37,8 @@ namespace Celbridge.ViewModels
             IInspectorService inspectorService,
             ICelScriptService celScriptService,
             IDialogService dialogService,
-            ISaveDataService saveDataService)
+            ISaveDataService saveDataService,
+            IChatService chatService)
         {
             _messengerService = messenger;
             _projectService = projectService;
@@ -44,6 +47,7 @@ namespace Celbridge.ViewModels
             _celScriptService = celScriptService;
             _dialogService = dialogService;
             _saveDataService = saveDataService;
+            _chatService = chatService;
 
             _messengerService.Register<CelScriptDeletedMessage>(this, OnCelScriptDeleted);
             _messengerService.Register<EntityPropertyChangedMessage>(this, OnEntityPropertyChanged);
@@ -134,6 +138,43 @@ namespace Celbridge.ViewModels
         {
             Guard.IsNotNull(CelScript);
             await _dialogService.ShowAddCelDialogAsync(CelScript, SpawnPosition);
+        }
+
+        public IAsyncRelayCommand DescribeCelScriptCommand => new AsyncRelayCommand(OnDescribeCelScript_Executed);
+        private async Task OnDescribeCelScript_Executed()
+        {
+            Guard.IsNotNull(CelScript);
+
+            var sb = new StringBuilder();
+
+            sb.Append($"Script: {CelScript!.Entity!.Description}\n\n");
+            foreach (var cel in CelScript.Cels)
+            {
+                var celName = cel.Name;
+                var celDescription = cel.Description;
+                sb.Append($"Function: {celName}\n{celDescription}\n\n");
+            }
+
+            var prompt = "The text which I will supply describes each function node in a visual programming script. Provide a simple 25 word explanation of what the script does. Start your answer with 'This script ...'";
+            var celScriptDescription = sb.ToString();
+
+            _chatService.StartChat(prompt);
+            var answer = await _chatService.Ask(celScriptDescription);
+            if (answer is null)
+            {
+                Log.Error("Failed to generate description of CelScript.");
+                return;
+            }
+
+            Log.Information($"ok:{answer}");
+            _chatService.EndChat();
+
+            var resultSpeech = await _chatService.TextToSpeech(answer);
+            if (resultSpeech is ErrorResult<byte[]> speechError)
+            {
+                Log.Error($"TextToSpeech failed. {speechError.Message}");
+                return;
+            }
         }
 
         public IAsyncRelayCommand CloseDocumentCommand => new AsyncRelayCommand(OnCloseDocument_ExecutedAsync);
