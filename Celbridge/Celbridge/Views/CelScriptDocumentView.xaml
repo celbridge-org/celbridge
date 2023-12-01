@@ -24,12 +24,23 @@
         <Grid Grid.Row="0" 
               BorderBrush="{StaticResource PanelBorderBrush}" 
               BorderThickness="0 1 0 1">
-            <Button x:Name="AddCelButton"
+
+            <StackPanel Orientation="Horizontal"
+                        Margin="6">
+                <Button x:Name="AddCelButton"
                     ToolTipService.ToolTip="Add a cel"
                     ToolTipService.Placement="Bottom"
                     Command="{x:Bind ViewModel.AddCelCommand}">
-                <SymbolIcon Symbol="Add"/>
-            </Button>
+                    <SymbolIcon Symbol="Add"/>
+                </Button>
+               <Button x:Name="DescribeCelScriptButton"
+                    ToolTipService.ToolTip="Add a cel"
+                    ToolTipService.Placement="Bottom"
+                    Command="{x:Bind ViewModel.DescribeCelScriptCommand}">
+                    <SymbolIcon Symbol="Volume"/>
+                </Button>
+            </StackPanel>
+            
         </Grid>
 
         <Canvas Grid.Row="1"

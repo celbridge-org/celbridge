@@ -1,3 +1,4 @@
+using Celbridge.Utils;
 using OpenAI_API;
 using OpenAI_API.Chat;
 
@@ -100,6 +101,42 @@ namespace Celbridge.Services
             }
 
             return response;
+        }
+
+        public async Task<Result> TextToSpeech(string text)
+        {
+            Guard.IsNotNull(_settingsService.EditorSettings);
+            var apiKey = _settingsService.EditorSettings.OpenAIKey;
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                return new ErrorResult("API key not found.");
+            }
+
+            try
+            {
+                var openAI = new OpenAIUtilities();
+                var byteData = await openAI.ConvertTextToSpeechAsync(apiKey, text);
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    return new ErrorResult<byte[]>("Failed to convert text to speech");
+                }
+
+                var writeResult = await MediaUtils.WriteMediaFile(byteData, "textToSpeech.mp3");
+                if (writeResult is ErrorResult<string> writeError)
+                {
+                    return new ErrorResult($"TextToVoice failed. {writeError.Message}");
+                }
+                var tempFile = writeResult.Data;
+                Guard.IsNotNull(tempFile);
+
+                await MediaUtils.OpenMediaFile(tempFile);
+
+                return new SuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return new ErrorResult($"Failed to convert text to speech. {ex.Message}");
+            }
         }
     }
 }
