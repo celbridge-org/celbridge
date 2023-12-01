@@ -82,7 +82,15 @@ namespace Celbridge.ViewModels
 
             Guard.IsNotNull(CelScript);
 
-            _celScriptService.CreateCel(CelScript, celType, CelName, SpawnPosition);
+            // No whitespace allowed
+            var trimmed = CelName.Trim().Replace(" ", "");
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                Log.Error("Failed to add CelName. Name is empty.");
+                return;
+            }
+
+            _celScriptService.CreateCel(CelScript, celType, trimmed, SpawnPosition);
         }
     }
 }
