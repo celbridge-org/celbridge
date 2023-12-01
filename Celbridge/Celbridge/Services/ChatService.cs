@@ -1,4 +1,5 @@
 using Celbridge.Utils;
+using CelUtilities.OpenAI;
 using OpenAI_API;
 using OpenAI_API.Chat;
 
@@ -116,7 +117,7 @@ namespace Celbridge.Services
             {
                 var openAI = new OpenAIUtilities();
                 var byteData = await openAI.ConvertTextToSpeechAsync(apiKey, text);
-                if (string.IsNullOrEmpty(apiKey))
+                if (byteData == null)
                 {
                     return new ErrorResult<byte[]>("Failed to convert text to speech");
                 }

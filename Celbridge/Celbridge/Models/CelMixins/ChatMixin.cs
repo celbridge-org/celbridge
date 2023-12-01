@@ -8,6 +8,7 @@
             { nameof(Ask), typeof(Ask) },
             { nameof(CreateImage), typeof(CreateImage) },
             { nameof(EndChat), typeof(EndChat) },
+            { nameof(Speak), typeof(Speak) }
         };
 
         public record StartChat : InstructionBase
@@ -86,6 +87,27 @@
             public override Result<string> GenerateCode()
             {
                 var code = $"_env.Chat.EndChat();";
+                return new SuccessResult<string>(code);
+            }
+        }
+
+        public record Speak : InstructionBase
+        {
+            public StringExpression Text { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.PlainText,
+                    SummaryText: $"{Text.GetSummary()}");
+            }
+
+            public override Result<string> GenerateCode()
+            {
+                var summary = Text.GetSummary();
+                var code = $"await _env.Chat.TextToSpeech({summary});";
                 return new SuccessResult<string>(code);
             }
         }

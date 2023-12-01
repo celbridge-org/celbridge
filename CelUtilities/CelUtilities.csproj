@@ -6,6 +6,7 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Uno.WinUI" Version="4.10.26" />
   </ItemGroup>
   <Choose>

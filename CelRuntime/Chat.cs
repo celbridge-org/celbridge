@@ -1,6 +1,8 @@
 ﻿#nullable enable
 
+using Celbridge.Utils;
 using CelUtilities.ErrorHandling;
+using CelUtilities.OpenAI;
 using CelUtilities.Resources;
 using CommunityToolkit.Diagnostics;
 using OpenAI_API;
@@ -19,6 +21,7 @@ namespace CelRuntime
         private Conversation? _chat;
 
         private bool _isWaitingForResponse;
+        private string _apiKey;
 
         public bool Init(string apiKey)
         {
@@ -32,6 +35,8 @@ namespace CelRuntime
                 Environment.PrintError("Failed to create Chat API. API key not found.");
                 return false;
             }
+
+            _apiKey = apiKey;
 
             // https://github.com/OkGoDoIt/OpenAI-API-dotnet
             _api = new OpenAIAPI(apiKey);
@@ -181,6 +186,40 @@ namespace CelRuntime
             catch (Exception ex)
             {
                 return new ErrorResult($"Failed to download image. {ex.Message}");
+            }
+        }
+
+        public async Task<bool> TextToSpeech(string text)
+        {
+            Guard.IsNotNull(_api);
+
+            try
+            {
+                var openAI = new OpenAIUtilities();
+                var byteData = await openAI.ConvertTextToSpeechAsync(_apiKey, text);
+                if (byteData == null)
+                {
+                    Environment.PrintError("Failed to convert text to speech");
+                    return false;
+                }
+
+                var writeResult = await MediaUtils.WriteMediaFile(byteData, "textToSpeech.mp3");
+                if (writeResult is ErrorResult<string> writeError)
+                {
+                    Environment.PrintError($"TextToVoice failed. {writeError.Message}");
+                    return false;
+                }
+                var tempFile = writeResult.Data;
+                Guard.IsNotNull(tempFile);
+
+                await MediaUtils.OpenMediaFile(tempFile);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Environment.PrintError($"Failed to convert text to speech. {ex.Message}");
+                return false;
             }
         }
     }
