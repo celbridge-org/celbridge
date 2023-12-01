@@ -1,7 +1,10 @@
-﻿using System.Text;
+﻿using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.Utils
+namespace CelUtilities.OpenAI
 {
     public class OpenAIUtilities
     {
