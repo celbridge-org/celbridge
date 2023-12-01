@@ -1,5 +1,4 @@
 ﻿using Celbridge.ViewModels;
-using ColorCode.Compilation.Languages;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Views
@@ -33,6 +32,7 @@ namespace Celbridge.Views
 
         public void CloseDocument()
         {
+            HTMLView.Source = new Uri("https://google.com");
             ViewModel.CloseDocumentCommand.Execute(null);
         }
 

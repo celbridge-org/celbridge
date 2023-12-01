@@ -2,8 +2,6 @@
 using System;
 using CliWrap;
 using CliWrap.Buffered;
-using System.IO;
-using System.Text.RegularExpressions;
 using CelUtilities.Resources;
 using CelUtilities.ErrorHandling;
 
