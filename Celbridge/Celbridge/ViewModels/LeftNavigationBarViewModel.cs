@@ -34,6 +34,19 @@ namespace Celbridge.ViewModels
             _settingsService.EditorSettings.BottomPanelExpanded = !_settingsService.EditorSettings.BottomPanelExpanded;
         }
 
+        public ICommand ToggleAllPanelsCommand => new RelayCommand(ToggleAllPanels_Executed);
+        private void ToggleAllPanels_Executed()
+        {
+            Guard.IsNotNull(_settingsService.EditorSettings);
+
+            bool newState = !_settingsService.EditorSettings.LeftPanelExpanded;
+
+            _settingsService.EditorSettings.LeftPanelExpanded = newState;
+            _settingsService.EditorSettings.RightPanelExpanded = newState;
+            _settingsService.EditorSettings.BottomPanelExpanded = newState;
+        }
+
+
         public ICommand ShowSettingsCommand => new AsyncRelayCommand(ShowSettings_Executed);
         private async Task ShowSettings_Executed()
         {

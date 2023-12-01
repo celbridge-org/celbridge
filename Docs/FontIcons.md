@@ -21,3 +21,5 @@ To specify the icon directly from C#, reference the unicode value in a string li
 public string Icon => "\uE10B"; // Accept icon
 ```
 
+List of MDL2 Font Icons:
+http://modernicons.io/segoe-mdl2/cheatsheet/

@@ -30,6 +30,10 @@
                 ToolTipService.Placement="Right"
                 HorizontalAlignment="Stretch"
                 Padding="8">
+            <Button.KeyboardAccelerators>
+                <KeyboardAccelerator Key="F1"/>
+            </Button.KeyboardAccelerators>
+
             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                       Glyph="&#xE145;" 
                       FontSize="16" />
@@ -41,6 +45,10 @@
                 ToolTipService.Placement="Right"
                 HorizontalAlignment="Stretch"
                 Padding="8">
+            <Button.KeyboardAccelerators>
+                <KeyboardAccelerator Key="F2"/>
+            </Button.KeyboardAccelerators>
+
             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                       Glyph="&#xE146;" 
                       FontSize="16" />
@@ -52,9 +60,26 @@
                 ToolTipService.Placement="Right"
                 HorizontalAlignment="Stretch"
                 Padding="8">
+            <Button.KeyboardAccelerators>
+                <KeyboardAccelerator Key="F3"/>
+            </Button.KeyboardAccelerators>
+
             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                       Glyph="&#xE147;" 
                       FontSize="16" />
+        </Button>
+
+
+        <Button Command="{x:Bind ViewModel.ToggleAllPanelsCommand, Mode=OneWay}"
+                Opacity="0"
+                IsHitTestVisible="False"
+                Width="0"
+                Height="0"
+                Padding="0"
+                BorderThickness="0">
+            <Button.KeyboardAccelerators>
+                <KeyboardAccelerator Key="F4"/>
+            </Button.KeyboardAccelerators>
         </Button>
 
         <Button Grid.Row="6"
@@ -62,6 +87,7 @@
                 ToolTipService.ToolTip="Settings"
                 ToolTipService.Placement="Right"
                 Padding="8">
+
             <SymbolIcon Symbol="Setting"/>
         </Button>
     </Grid>
