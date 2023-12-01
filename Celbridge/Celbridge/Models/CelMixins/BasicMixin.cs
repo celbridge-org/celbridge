@@ -13,6 +13,7 @@
             { nameof(Set), typeof(Set) },
             { nameof(Call), typeof(Call) },
             { nameof(StartProcess), typeof(StartProcess) },
+            { nameof(Check), typeof(Check) },
         };
 
         public record Print : InstructionBase
@@ -210,6 +211,30 @@
                 var executable = Executable.GetSummary();
                 var arguments = Arguments.GetSummary();
                 var code = $"await _env.Process.StartProcess({executable},{arguments});";
+                return new SuccessResult<string>(code);
+            }
+        }
+
+        public record Check: InstructionBase
+        {
+            public StringExpression Expression { get; set; } = new();
+
+            public StringExpression ErrorMessage { get; set; } = new();
+
+            public override InstructionCategory InstructionCategory => InstructionCategory.FunctionCall;
+
+            public override InstructionSummary GetInstructionSummary(PropertyContext context)
+            {
+                return new InstructionSummary(
+                    SummaryFormat: SummaryFormat.PlainText,
+                    SummaryText: $"{Expression.Expression}");
+            }
+
+            public override Result<string> GenerateCode()
+            {
+                var expression = Expression.Expression;
+                var errorMessage = ErrorMessage.GetSummary();
+                var code = $"if (!({expression})) throw new System.ArgumentOutOfRangeException({errorMessage});";
                 return new SuccessResult<string>(code);
             }
         }

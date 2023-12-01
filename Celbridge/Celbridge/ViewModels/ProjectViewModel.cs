@@ -270,7 +270,7 @@ namespace Celbridge.ViewModels
             var startResult = await _celScriptService.StartApplication("Project", "Start", projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
             if (startResult is ErrorResult startError)
             {
-                Log.Error($"Failed to start application. {startError.Message}");
+                Log.Error($"{startError.Message}");
                 return;
             }
         }

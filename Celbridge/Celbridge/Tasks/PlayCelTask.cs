@@ -37,7 +37,7 @@ namespace Celbridge.Tasks
                 var startResult = await _celScriptService.StartApplication(celScriptName, celName, projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
                 if (startResult is ErrorResult startError)
                 {
-                    return new ErrorResult($"Failed to start application. {startError.Message}");
+                    return new ErrorResult($"{startError.Message}");
                 }
 
                 return new SuccessResult();

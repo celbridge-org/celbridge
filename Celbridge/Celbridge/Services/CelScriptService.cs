@@ -286,8 +286,7 @@ namespace Celbridge.Services
             if (runResult is ErrorResult runError)
             {
                 celApplicationTask.Unload();
-                Log.Error(runError.Message);
-                return new ErrorResult($"Failed to run application. {runError.Message}");
+                return new ErrorResult($"{runError.Message}");
             }
 
             celApplicationTask.Unload();
