@@ -145,7 +145,10 @@ namespace Celbridge.Tasks
 
                 // Note: .NET doesn't supporting catch a StackOverflow exception, it will just kill the process.
                 // The best way around this seems to be to compile an executable assembly and run it in a new process.
-
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return new ErrorResult($"error:{ex.ParamName}");
             }
             catch (Exception ex)
             {
