@@ -18,8 +18,7 @@
                             Click="PlayCel"/>
             <MenuFlyoutItem Text="Delete" 
                             Icon="Delete"
-                            Click="DeleteCel"
-                            IsEnabled="False"/>
+                            Click="DeleteCel"/>
         </MenuFlyout>
     </UserControl.Resources>
 
