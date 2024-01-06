@@ -139,17 +139,6 @@
                 </Grid>
             </Button>
 
-            <Button x:Name="StartProject"
-                    Grid.Column="3" 
-                    Command="{x:Bind ViewModel.StartProjectCommand}"
-                    ToolTipService.ToolTip="Start the project"
-                    ToolTipService.Placement="Bottom"
-                    Margin="0 0 6 0">
-                <Grid>
-                    <SymbolIcon Symbol="Play"/>
-                </Grid>
-            </Button>
-
             <Button x:Name="AddResourceButton"
                     Grid.Column="4" 
                     Command="{x:Bind ViewModel.AddResourceCommand}"

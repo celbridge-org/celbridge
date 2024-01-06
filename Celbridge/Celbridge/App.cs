@@ -110,13 +110,10 @@ namespace Celbridge
             IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
             IChatService chatService = new ChatService(settingsService);
             IConsoleService consoleService = new ConsoleService(messengerService, chatService);
-            ICelTypeService celTypeService = new CelTypeService();
-            ICelScriptService celScriptService = new CelScriptService(messengerService, celTypeService, resourceService, projectService, dialogService);
 
             services.AddSingleton(messengerService);
             services.AddSingleton(settingsService);
             services.AddSingleton(resourceTypeService);
-            services.AddSingleton(celTypeService);
             services.AddSingleton(resourceService);
             services.AddSingleton(saveDataService);
             services.AddSingleton(dialogService);
@@ -125,7 +122,6 @@ namespace Celbridge
             services.AddSingleton(inspectorService);
             services.AddSingleton(documentService);
             services.AddSingleton(chatService);
-            services.AddSingleton(celScriptService);
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<ConsoleViewModel>();
             services.AddSingleton<ProjectViewModel>();
@@ -140,10 +136,8 @@ namespace Celbridge
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<AddResourceViewModel>();
             services.AddTransient<ProgressDialogViewModel>();
-            services.AddTransient<CelNodeViewModel>();
             services.AddTransient<TextFileDocumentViewModel>();
             services.AddTransient<HTMLDocumentViewModel>();
-            services.AddTransient<CelScriptDocumentViewModel>();
             services.AddTransient<PropertyListViewModel>();
             services.AddTransient<NumberPropertyViewModel>();
             services.AddTransient<TextPropertyViewModel>();
@@ -152,16 +146,12 @@ namespace Celbridge
             services.AddTransient<PathPropertyViewModel>();
             services.AddTransient<RecordPropertyViewModel>();
             services.AddTransient<RecordSummaryPropertyViewModel>();
-            services.AddTransient<InstructionLinePropertyViewModel>();
-            services.AddTransient<CallArgumentsPropertyViewModel>();
-            services.AddTransient<CelConnectionLineViewModel>();
             services.AddTransient<LoadProjectTask>();
             services.AddTransient<UpdateSyntaxFormatTask>();
             services.AddTransient<GenerateCelSignaturesTask>();
             services.AddTransient<UpdateCelInstructionsTask>();
             services.AddSingleton<LoadCustomAssembliesTask>();
             services.AddTransient<BuildApplicationTask>();
-            services.AddTransient<PlayCelTask>();
         }
     }
 }
