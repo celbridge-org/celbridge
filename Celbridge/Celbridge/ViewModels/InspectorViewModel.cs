@@ -117,19 +117,6 @@ namespace Celbridge.ViewModels
                         TypeIcon = typeInfoResult.Data!.Icon ?? "Help";
                     }
                 }
-                else if (SelectedEntity is ICelScriptNode)
-                {
-                    var cel = SelectedEntity as ICel;
-                    if (cel != null)
-                    {
-                        var celType = cel.CelType;
-                        if (celType != null)
-                        {
-                            TypeName = celType.Name;
-                            TypeIcon = celType.Icon ?? "Help";
-                        }
-                    }
-                }
 
                 PopulatePropertyListView();
             }

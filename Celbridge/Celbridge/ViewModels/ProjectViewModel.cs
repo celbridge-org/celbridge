@@ -74,7 +74,6 @@ namespace Celbridge.ViewModels
             _messengerService.Register<EntityPropertyChangedMessage>(this, OnEntityPropertyChanged);
             _messengerService.Register<PreviouslySelectedEntityMessage>(this, OnPreviouslySelectedEntityMessage);
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
-            _messengerService.Register<CelSignatureChangedMessage>(this, OnCelSignatureChanged);
         }
 
         private void ProjectViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -176,11 +175,6 @@ namespace Celbridge.ViewModels
             }
 
             _settingsService.ProjectSettings.SelectedEntity = message.Entity == null ? Guid.Empty : message.Entity.Id;
-        }
-
-        private void OnCelSignatureChanged(object recipient, CelSignatureChangedMessage message)
-        {
-            IsRefreshProjectEnabled = true;
         }
 
         private void OnResourcePropertyChanged(object? sender, PropertyChangedEventArgs e)
