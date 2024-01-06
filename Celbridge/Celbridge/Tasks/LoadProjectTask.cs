@@ -31,7 +31,6 @@ namespace Celbridge.Tasks
                 return new ErrorResult<Project>($"Project file not found: {projectPath}");
             }
 
-            // Generate the Cel Signatures assembly
             // Todo: Use a static function on Project class to do this name lookup consistently
             string? projectFolder = Path.GetDirectoryName(projectPath);
             Guard.IsNotNull(projectFolder);

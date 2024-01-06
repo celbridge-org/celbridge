@@ -15,7 +15,6 @@ namespace Celbridge.Utils
         {
             void OnError(object? sender, Newtonsoft.Json.Serialization.ErrorEventArgs e)
             {
-                // Todo: Attempt to remap missing ICelSignature classes
                 e.ErrorContext.Handled = true;
             }
 

@@ -251,7 +251,6 @@ namespace Celbridge.ViewModels
                 var originalItem = list[itemIndex];
                 Guard.IsNotNull(originalItem);
 
-                // Special json settings that handles CelSignature types correctly
                 var jsonSettings = JsonSettings.Create();
 
                 // Lists may only contain types that are serializable to Json, so the most robust way to 
@@ -347,7 +346,6 @@ namespace Celbridge.ViewModels
                 var originalItem = list[fromItemIndex];
                 Guard.IsNotNull(originalItem);
 
-                // Special json settings that handles CelSignature types correctly
                 var jsonSettings = JsonSettings.Create();
 
                 var json = JsonConvert.SerializeObject(originalItem, jsonSettings);
