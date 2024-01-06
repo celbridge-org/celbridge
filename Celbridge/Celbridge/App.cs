@@ -142,7 +142,6 @@ namespace Celbridge
             services.AddTransient<NumberPropertyViewModel>();
             services.AddTransient<TextPropertyViewModel>();
             services.AddTransient<BooleanPropertyViewModel>();
-            services.AddTransient<ExpressionPropertyViewModel>();
             services.AddTransient<PathPropertyViewModel>();
             services.AddTransient<RecordPropertyViewModel>();
             services.AddTransient<LoadProjectTask>();
