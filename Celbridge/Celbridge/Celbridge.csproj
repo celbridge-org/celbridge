@@ -79,8 +79,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\CelLegacy\CelLegacy.csproj" />
-	  <ProjectReference Include="..\..\CelUtilities\CelUtilities.csproj" />
+	  <ProjectReference Include="..\..\CelUtilities\CelLegacy.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
