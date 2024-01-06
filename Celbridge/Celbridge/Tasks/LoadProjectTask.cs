@@ -15,15 +15,12 @@ namespace Celbridge.Tasks
     {
         private readonly ISettingsService _settingsService;
         private readonly IResourceService _resourceService;
-        private readonly LoadCustomAssembliesTask _loadCustomAssembliesTask;
 
         public LoadProjectTask(ISettingsService settingsService,
-                               IResourceService resourceService,
-                               LoadCustomAssembliesTask loadCustomAssembliesTask)
+                               IResourceService resourceService)
         {
             _settingsService = settingsService;
             _resourceService = resourceService;
-            _loadCustomAssembliesTask = loadCustomAssembliesTask;
         }
 
         public async Task<Result<Project>> Load(string projectPath)

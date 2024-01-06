@@ -9,9 +9,6 @@ namespace Celbridge.Models
         private ApplicationTheme _applicationTheme;
 
         [ObservableProperty]
-        private string _lastEditedCelScript = string.Empty;
-
-        [ObservableProperty]
         private bool _leftPanelExpanded = true;
 
         [ObservableProperty]

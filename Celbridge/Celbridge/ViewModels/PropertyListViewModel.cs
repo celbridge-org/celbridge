@@ -252,7 +252,7 @@ namespace Celbridge.ViewModels
                 Guard.IsNotNull(originalItem);
 
                 // Special json settings that handles CelSignature types correctly
-                var jsonSettings = CelScriptJsonSettings.Create();
+                var jsonSettings = JsonSettings.Create();
 
                 // Lists may only contain types that are serializable to Json, so the most robust way to 
                 // deep copy an item is to serialize it to Json and then deserialize it back into a new object.
@@ -348,7 +348,7 @@ namespace Celbridge.ViewModels
                 Guard.IsNotNull(originalItem);
 
                 // Special json settings that handles CelSignature types correctly
-                var jsonSettings = CelScriptJsonSettings.Create();
+                var jsonSettings = JsonSettings.Create();
 
                 var json = JsonConvert.SerializeObject(originalItem, jsonSettings);
                 var copy = JsonConvert.DeserializeObject(json, originalItem.GetType(), jsonSettings);

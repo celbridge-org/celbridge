@@ -145,13 +145,7 @@ namespace Celbridge
             services.AddTransient<ExpressionPropertyViewModel>();
             services.AddTransient<PathPropertyViewModel>();
             services.AddTransient<RecordPropertyViewModel>();
-            services.AddTransient<RecordSummaryPropertyViewModel>();
             services.AddTransient<LoadProjectTask>();
-            services.AddTransient<UpdateSyntaxFormatTask>();
-            services.AddTransient<GenerateCelSignaturesTask>();
-            services.AddTransient<UpdateCelInstructionsTask>();
-            services.AddSingleton<LoadCustomAssembliesTask>();
-            services.AddTransient<BuildApplicationTask>();
         }
     }
 }

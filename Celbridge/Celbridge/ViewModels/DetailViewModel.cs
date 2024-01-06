@@ -32,7 +32,6 @@ namespace Celbridge.ViewModels
 
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
             _messengerService.Register<SelectedCollectionChangedMessage>(this, OnSelectedCollectionChanged);
-            _messengerService.Register<InstructionDetailsChangedMessage>(this, OnInstructionKeywordChanged);
         }
 
         private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
@@ -41,11 +40,6 @@ namespace Celbridge.ViewModels
         }
 
         private void OnSelectedCollectionChanged(object recipient, SelectedCollectionChangedMessage message)
-        {
-            PopulateUIElements();
-        }
-
-        private void OnInstructionKeywordChanged(object recipient, InstructionDetailsChangedMessage message)
         {
             PopulateUIElements();
         }
@@ -71,12 +65,6 @@ namespace Celbridge.ViewModels
             var collection = selectedCollection.PropertyInfo.GetValue(selectedCollection.Object) as IList;
             Guard.IsNotNull(collection);
 
-            var instructionLine = collection[selectedCollectionIndex] as InstructionLine;
-            Guard.IsNotNull(instructionLine);
-
-            var instruction = instructionLine.Instruction;
-            Guard.IsNotNull(instruction);
-
             /*
             // Log the items and show the selected index
             var sb = new System.Text.StringBuilder();
@@ -94,6 +82,7 @@ namespace Celbridge.ViewModels
             Log.Information(sb.ToString());
             */
 
+            /*
             var result = PropertyViewUtils.CreatePropertyViews(instruction, selectedCollection.Context, OnDetailPropertyChanged);
             if (result is ErrorResult<List<UIElement>> error)
             {
@@ -105,6 +94,7 @@ namespace Celbridge.ViewModels
             ItemCollection.AddRange(views);
 
             LabelText = instruction.GetType() == typeof(EmptyInstruction) ? string.Empty : instructionLine.Keyword;
+            */
         }
 
         private void OnDetailPropertyChanged(object? sender, PropertyChangedEventArgs e)
