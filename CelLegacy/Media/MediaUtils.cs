@@ -1,4 +1,4 @@
-﻿using CelUtilities.ErrorHandling;
+﻿using CelLegacy.ErrorHandling;
 using System;
 using System.Diagnostics;
 using System.IO;
