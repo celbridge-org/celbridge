@@ -27,12 +27,6 @@
 
             <StackPanel Orientation="Horizontal"
                         Margin="6">
-                <Button x:Name="AddCelButton"
-                    ToolTipService.ToolTip="Add a cel"
-                    ToolTipService.Placement="Bottom"
-                    Command="{x:Bind ViewModel.AddCelCommand}">
-                    <SymbolIcon Symbol="Add"/>
-                </Button>
                <Button x:Name="DescribeCelScriptButton"
                     ToolTipService.ToolTip="Add a cel"
                     ToolTipService.Placement="Bottom"

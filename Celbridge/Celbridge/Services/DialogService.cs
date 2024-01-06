@@ -17,7 +17,6 @@ namespace Celbridge.Services
         Task ShowNewProjectDialogAsync();
         Task ShowSettingsDialogAsync();
         Task ShowAddResourceDialogAsync();
-        Task ShowAddCelDialogAsync(ICelScript celScript, Vector2 spawnPosition);
         bool IsProgressDialogActive { get; }
         Result ShowProgressDialog(string title, Action? onCancel);
         Result HideProgressDialog();
@@ -60,15 +59,6 @@ namespace Celbridge.Services
 
             await dialog.ShowAsync();
         }
-
-        public async Task ShowAddCelDialogAsync(ICelScript celScript, Vector2 spawnPosition)
-        {
-            var dialog = new AddCelDialog(celScript, spawnPosition);
-            dialog.XamlRoot = XamlRoot;
-
-            await dialog.ShowAsync();
-        }
-
         public bool IsProgressDialogActive { get; private set; }
 
         public Result ShowProgressDialog(string title, Action? onCancel)

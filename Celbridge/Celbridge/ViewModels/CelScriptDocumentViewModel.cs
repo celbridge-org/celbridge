@@ -133,13 +133,6 @@ namespace Celbridge.ViewModels
 
         public Vector2 SpawnPosition { get; set; }
 
-        public IAsyncRelayCommand AddCelCommand => new AsyncRelayCommand(OnAddCel_Executed);
-        private async Task OnAddCel_Executed()
-        {
-            Guard.IsNotNull(CelScript);
-            await _dialogService.ShowAddCelDialogAsync(CelScript, SpawnPosition);
-        }
-
         public IAsyncRelayCommand DescribeCelScriptCommand => new AsyncRelayCommand(OnDescribeCelScript_Executed);
         private async Task OnDescribeCelScript_Executed()
         {
