@@ -15,17 +15,14 @@ namespace Celbridge.Tasks
     {
         private readonly ISettingsService _settingsService;
         private readonly IResourceService _resourceService;
-        private readonly ICelScriptService _celScriptService;
         private readonly LoadCustomAssembliesTask _loadCustomAssembliesTask;
 
         public LoadProjectTask(ISettingsService settingsService,
                                IResourceService resourceService,
-                               ICelScriptService celScriptService,
                                LoadCustomAssembliesTask loadCustomAssembliesTask)
         {
             _settingsService = settingsService;
             _resourceService = resourceService;
-            _celScriptService = celScriptService;
             _loadCustomAssembliesTask = loadCustomAssembliesTask;
         }
 
@@ -43,19 +40,6 @@ namespace Celbridge.Tasks
             Guard.IsNotNull(projectFolder);
 
             string libraryFolder = Path.Combine(projectFolder, "Library");
-            var generateResult = await _celScriptService.GenerateCelSignatures(projectFolder, libraryFolder);
-            if (generateResult is ErrorResult<string> generateError)
-            {
-                return new ErrorResult<Project>($"Failed to generate Cel Signatures: {projectPath}. {generateError.Message}");
-            }
-            var assemblyFile = generateResult.Data!;
-
-            // Load the custom assemblies
-            var loadAssembliesResult = _loadCustomAssembliesTask.Load(assemblyFile);
-            if (loadAssembliesResult is ErrorResult loadAssembliesError)
-            {
-                return new ErrorResult<Project>($"Failed to load custom assemblies: {projectPath}. {loadAssembliesError.Message}");
-            }
 
             // Load and deserialize the project file data
             string json = await File.ReadAllTextAsync(projectPath);
@@ -87,13 +71,6 @@ namespace Celbridge.Tasks
             if (summary.WasRegistryModified)
             {
                 Log.Information($"Updated resources: Added {summary.Added.Count}, Changed {summary.Changed.Count}, Deleted {summary.Deleted.Count}");
-            }
-
-            // Load all Cel Scripts in the project
-            var loadCelScriptsResult = await _celScriptService.LoadAllCelScripts(project);
-            if (loadCelScriptsResult is ErrorResult loadCelScriptsError)
-            {
-                return new ErrorResult<Project>($"Failed to load Cel Scripts for project: {projectPath}. {loadCelScriptsError.Message}");
             }
 
             return new SuccessResult<Project>(project);

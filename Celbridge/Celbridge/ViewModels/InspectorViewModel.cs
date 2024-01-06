@@ -16,8 +16,6 @@ namespace Celbridge.ViewModels
         private readonly IProjectService _projectService;
         private readonly IResourceService _resourceService;
         private readonly IResourceTypeService _resourceTypeService;
-        private readonly ICelTypeService _celTypeService;
-        private readonly ICelScriptService _celScriptService;
         private readonly IDialogService _dialogService;
 
         public InspectorViewModel(IMessenger messengerService,
@@ -26,8 +24,6 @@ namespace Celbridge.ViewModels
             IProjectService projectService,
             IResourceService resourceService,
             IResourceTypeService resourceTypeService,
-            ICelTypeService celTypeService,
-            ICelScriptService celScriptService,
             IDialogService dialogService)
         {
             _messengerService = messengerService;
@@ -36,8 +32,6 @@ namespace Celbridge.ViewModels
             _projectService = projectService;
             _resourceService = resourceService;
             _resourceTypeService = resourceTypeService;
-            _celTypeService = celTypeService;
-            _celScriptService = celScriptService;
             _dialogService = dialogService;
 
             _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
@@ -93,16 +87,6 @@ namespace Celbridge.ViewModels
                 case Resource resource:
                     {
                         var result = _resourceService.DeleteResource(project, resource);
-                        if (result is ErrorResult error)
-                        {
-                            Log.Error(error.Message);
-                        }
-                    }
-                    break;
-
-                case ICelScriptNode cel:
-                    {
-                        var result = _celScriptService.DeleteCel(cel);
                         if (result is ErrorResult error)
                         {
                             Log.Error(error.Message);

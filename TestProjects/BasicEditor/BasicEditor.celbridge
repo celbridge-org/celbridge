@@ -1,0 +1,25 @@
+{
+  "Name": "BasicEditor",
+  "Description": "",
+  "Id": "c9340181-2681-4807-b744-6fb4f69ccd6b",
+  "_name": "BasicEditor",
+  "_description": "",
+  "ResourceRegistry": {
+    "Root": {
+      "Name": "Root",
+      "Description": "",
+      "Id": "00000000-0000-0000-0000-000000000000",
+      "Children": [
+        {
+          "$type": "Celbridge.Models.TextFileResource, Celbridge",
+          "Permissions": "",
+          "SomePath": "some data",
+          "Name": "Intro.md",
+          "Description": "",
+          "Id": "6d6dd587-c66e-4651-82c2-cda0adef2fcf",
+          "Children": []
+        }
+      ]
+    }
+  }
+}

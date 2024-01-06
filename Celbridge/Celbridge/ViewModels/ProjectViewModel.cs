@@ -13,7 +13,6 @@ namespace Celbridge.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IInspectorService _inspectorService;
         private readonly IMessenger _messengerService;
-        private readonly ICelScriptService _celScriptService;
 
         private Project? _activeProject;
         public Project? ActiveProject
@@ -58,8 +57,7 @@ namespace Celbridge.ViewModels
                                 IResourceService resourceService,
                                 IDialogService dialogService,
                                 IInspectorService inspectorService,
-                                IMessenger messengerService,
-                                ICelScriptService celScriptService)
+                                IMessenger messengerService)
         {
             _settingsService = settingsService;
             _projectService = projectService;
@@ -67,7 +65,6 @@ namespace Celbridge.ViewModels
             _dialogService = dialogService;
             _inspectorService = inspectorService;
             _messengerService = messengerService;
-            _celScriptService = celScriptService;
 
             PropertyChanged += ProjectViewModel_PropertyChanged;
 
@@ -248,29 +245,6 @@ namespace Celbridge.ViewModels
             if (loadResult is ErrorResult loadError) 
             {
                 Log.Error($"Failed to refresh project. {loadError.Message}");
-                return;
-            }
-        }
-
-        public IAsyncRelayCommand StartProjectCommand => new AsyncRelayCommand(StartProject_Executed);
-        private async Task StartProject_Executed()
-        {
-            if (ActiveProject == null)
-            {
-                return;
-            }
-
-            var projectFolder = ActiveProject.ProjectFolder;
-            var libraryFolder = ActiveProject.LibraryFolder;
-
-            Guard.IsNotNull(_settingsService.EditorSettings);
-            var chatAPIKey = _settingsService.EditorSettings.OpenAIKey;
-            var sheetsAPIKey = _settingsService.EditorSettings.SheetsAPIKey;
-
-            var startResult = await _celScriptService.StartApplication("Project", "Start", projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
-            if (startResult is ErrorResult startError)
-            {
-                Log.Error($"{startError.Message}");
                 return;
             }
         }

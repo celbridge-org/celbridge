@@ -70,38 +70,5 @@ namespace Celbridge.Utils
 
             _ = PresentProgressDialog();
         }
-
-        public static async void Start()
-        {
-            var celScriptService = (Application.Current as App)!.Host!.Services.GetRequiredService<ICelScriptService>();
-            var projectService = (Application.Current as App)!.Host!.Services.GetRequiredService<IProjectService>();
-            var settingsService = (Application.Current as App)!.Host!.Services.GetRequiredService<ISettingsService>();
-
-            if (celScriptService == null || projectService == null)
-            {
-                return;
-            }
-
-
-            var activeProject = projectService.ActiveProject;
-            if (activeProject == null)
-            {
-                return;
-            }
-
-            var projectFolder = activeProject.ProjectFolder;
-            var libraryFolder = activeProject.LibraryFolder;
-
-            Guard.IsNotNull(settingsService.EditorSettings);
-            var chatAPIKey = settingsService.EditorSettings.OpenAIKey;
-            var sheetsAPIKey = settingsService.EditorSettings.SheetsAPIKey;
-
-            var buildResult = await celScriptService.StartApplication("Project", "Start", projectFolder, libraryFolder, chatAPIKey, sheetsAPIKey);
-            if (buildResult is ErrorResult<string> buildError)
-            {
-                Log.Error(buildError.Message);
-                return;
-            }
-        }
     }
 }
