@@ -1,5 +1,4 @@
-﻿using Celbridge.Services;
-using Celbridge.Utils;
+﻿using Celbridge.Utils;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.ViewModels

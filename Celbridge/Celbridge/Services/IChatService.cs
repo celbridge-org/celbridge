@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace CelRuntime.Interfaces
+namespace Celbridge.Services
 {
     public interface IChatService
     {

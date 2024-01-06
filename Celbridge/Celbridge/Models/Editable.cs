@@ -10,9 +10,6 @@
     public enum PropertyContext
     {
         Record,
-        CelInput,
-        CelOutput,
-        CelInstructions
     }
 
     public interface IEditable

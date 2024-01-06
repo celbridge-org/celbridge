@@ -188,10 +188,6 @@ namespace Celbridge.Utils
             {
                 propertyAttribute = new BooleanPropertyAttribute();
             }
-            else if (MatchType(propertyType, typeof(ExpressionBase)))
-            {
-                propertyAttribute = new ExpressionPropertyAttribute();
-            }
             else if (MatchType(propertyType, typeof(IRecord)))
             {
                 propertyAttribute = new RecordPropertyAttribute();
