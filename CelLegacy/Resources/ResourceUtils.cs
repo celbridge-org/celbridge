@@ -1,9 +1,9 @@
-﻿using CelUtilities.ErrorHandling;
+﻿using CelLegacy.ErrorHandling;
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace CelUtilities.Resources
+namespace CelLegacy.Resources
 {
     public static class ResourceUtils
     {

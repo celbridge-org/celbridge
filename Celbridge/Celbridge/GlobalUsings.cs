@@ -11,5 +11,5 @@ global using System.Windows.Input;
 global using Windows.Storage;
 global using CommunityToolkit.Diagnostics;
 global using Serilog;
-global using CelUtilities.ErrorHandling;
+global using CelLegacy.ErrorHandling;
 global using Celbridge.Services;

@@ -1,5 +1,5 @@
 using Celbridge.Utils;
-using CelUtilities.OpenAI;
+using CelLegacy.OpenAI;
 using OpenAI_API;
 using OpenAI_API.Chat;
 
