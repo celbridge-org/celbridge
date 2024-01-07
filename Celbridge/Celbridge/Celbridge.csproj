@@ -78,15 +78,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-100.png" />
-	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-150.png" />
-	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-200.png" />
-	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-300.png" />
-	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-400.png" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <ProjectReference Include="..\CelLegacy\CelLegacy.csproj" />
 	</ItemGroup>
-
 </Project>
