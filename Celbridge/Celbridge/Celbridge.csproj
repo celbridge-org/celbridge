@@ -72,20 +72,21 @@
 	</Choose>
 
 	<ItemGroup>
-		<UnoImage Include="Assets\**\*.svg" />
 		<EmbeddedResource Include="appsettings.json" />
 		<EmbeddedResource Include="appsettings.*.json" DependentUpon="appsettings.json" />
 		<UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\CelLegacy\CelLegacy.csproj" />
+	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-100.png" />
+	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-150.png" />
+	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-200.png" />
+	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-300.png" />
+	  <Content Remove="C:\Users\Chris Gregan\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-400.png" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Update="Assets\Icons\logo.png">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
+	  <ProjectReference Include="..\CelLegacy\CelLegacy.csproj" />
 	</ItemGroup>
 
 </Project>
