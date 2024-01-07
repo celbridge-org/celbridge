@@ -1,113 +1,102 @@
-﻿using Celbridge.Models;
-using Celbridge.Services;
-using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Serilog;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.ComponentModel;
-using Microsoft.Scripting.Utils;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace Celbridge.ViewModels
+namespace CelLegacy.ViewModels;
+
+public partial class DetailViewModel : ObservableObject
 {
-    public partial class DetailViewModel : ObservableObject
+    private readonly IMessenger _messengerService;
+    private readonly IInspectorService _inspectorService;
+
+    public ItemCollection? ItemCollection { get; set; }
+
+    [ObservableProperty]
+    private string _labelText = string.Empty;
+
+    public DetailViewModel(IMessenger messengerService,
+        IInspectorService inspectorService)
     {
-        private readonly IMessenger _messengerService;
-        private readonly IInspectorService _inspectorService;
+        _messengerService = messengerService;
+        _inspectorService = inspectorService;
 
-        public ItemCollection? ItemCollection { get; set; }
+        _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
+        _messengerService.Register<SelectedCollectionChangedMessage>(this, OnSelectedCollectionChanged);
+    }
 
-        [ObservableProperty]
-        private string _labelText = string.Empty;
+    private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
+    {
+        PopulateUIElements();
+    }
 
-        public DetailViewModel(IMessenger messengerService,
-            IInspectorService inspectorService)
+    private void OnSelectedCollectionChanged(object recipient, SelectedCollectionChangedMessage message)
+    {
+        PopulateUIElements();
+    }
+
+    private void PopulateUIElements()
+    {
+        var selectedCollection = _inspectorService.SelectedCollection as Property;
+        var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
+
+        LabelText = string.Empty;
+
+        Guard.IsNotNull(ItemCollection);
+        ItemCollection.Clear();
+
+        if (selectedCollection == null || selectedCollectionIndex == -1)
         {
-            _messengerService = messengerService;
-            _inspectorService = inspectorService;
-
-            _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
-            _messengerService.Register<SelectedCollectionChangedMessage>(this, OnSelectedCollectionChanged);
+            return;
         }
 
-        private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
+        // Todo: Make this work generically
+        // Requires the IRecord to provide the record object for the ItemCollection - defaults to "this" record.
+
+        var collection = selectedCollection.PropertyInfo.GetValue(selectedCollection.Object) as IList;
+        Guard.IsNotNull(collection);
+
+        /*
+        // Log the items and show the selected index
+        var sb = new System.Text.StringBuilder();
+        var i = 0;
+        foreach (var o in collection)
         {
-            PopulateUIElements();
-        }
-
-        private void OnSelectedCollectionChanged(object recipient, SelectedCollectionChangedMessage message)
-        {
-            PopulateUIElements();
-        }
-
-        private void PopulateUIElements()
-        {
-            var selectedCollection = _inspectorService.SelectedCollection as Property;
-            var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
-
-            LabelText = string.Empty;
-
-            Guard.IsNotNull(ItemCollection);
-            ItemCollection.Clear();
-
-            if (selectedCollection == null || selectedCollectionIndex == -1)
+            var ins = o as InstructionLine;
+            if (i == selectedCollectionIndex)
             {
-                return;
+                sb.Append("> ");
             }
-
-            // Todo: Make this work generically
-            // Requires the IRecord to provide the record object for the ItemCollection - defaults to "this" record.
-
-            var collection = selectedCollection.PropertyInfo.GetValue(selectedCollection.Object) as IList;
-            Guard.IsNotNull(collection);
-
-            /*
-            // Log the items and show the selected index
-            var sb = new System.Text.StringBuilder();
-            var i = 0;
-            foreach (var o in collection)
-            {
-                var ins = o as InstructionLine;
-                if (i == selectedCollectionIndex)
-                {
-                    sb.Append("> ");
-                }
-                sb.AppendLine($"{i},{ins.Description}");
-                i++;
-            }
-            Log.Information(sb.ToString());
-            */
-
-            /*
-            var result = PropertyViewUtils.CreatePropertyViews(instruction, selectedCollection.Context, OnDetailPropertyChanged);
-            if (result is ErrorResult<List<UIElement>> error)
-            {
-                Log.Error(error.Message);
-                return;
-            }
-
-            var views = result.Data!;
-            ItemCollection.AddRange(views);
-
-            LabelText = instruction.GetType() == typeof(EmptyInstruction) ? string.Empty : instructionLine.Keyword;
-            */
+            sb.AppendLine($"{i},{ins.Description}");
+            i++;
         }
+        Log.Information(sb.ToString());
+        */
 
-        private void OnDetailPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        /*
+        var result = PropertyViewUtils.CreatePropertyViews(instruction, selectedCollection.Context, OnDetailPropertyChanged);
+        if (result is ErrorResult<List<UIElement>> error)
         {
-            var selectedCollection = _inspectorService.SelectedCollection as Property;
-            Guard.IsNotNull(selectedCollection);
-
-            var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
-            var propertyName = e.PropertyName;
-            Guard.IsNotNull(propertyName);
-
-            var message = new DetailPropertyChangedMessage(selectedCollection, selectedCollectionIndex, propertyName);
-            _messengerService.Send(message);
+            Log.Error(error.Message);
+            return;
         }
+
+        var views = result.Data!;
+        ItemCollection.AddRange(views);
+
+        LabelText = instruction.GetType() == typeof(EmptyInstruction) ? string.Empty : instructionLine.Keyword;
+        */
+    }
+
+    private void OnDetailPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        var selectedCollection = _inspectorService.SelectedCollection as Property;
+        Guard.IsNotNull(selectedCollection);
+
+        var selectedCollectionIndex = _inspectorService.SelectedCollectionIndex;
+        var propertyName = e.PropertyName;
+        Guard.IsNotNull(propertyName);
+
+        var message = new DetailPropertyChangedMessage(selectedCollection, selectedCollectionIndex, propertyName);
+        _messengerService.Send(message);
     }
 }

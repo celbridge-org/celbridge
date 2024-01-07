@@ -1,5 +1,4 @@
-﻿namespace Celbridge.ViewModels
-{
-    public partial class TextPropertyViewModel : ClassPropertyViewModel<string>
-    {}
-}
+﻿namespace CelLegacy.ViewModels;
+
+public partial class TextPropertyViewModel : ClassPropertyViewModel<string>
+{}

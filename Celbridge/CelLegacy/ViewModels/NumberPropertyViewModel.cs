@@ -1,5 +1,4 @@
-﻿namespace Celbridge.ViewModels
-{
-    public partial class NumberPropertyViewModel : StructPropertyViewModel<double>
-    {}
-}
+﻿namespace CelLegacy.ViewModels;
+
+public partial class NumberPropertyViewModel : StructPropertyViewModel<double>
+{}

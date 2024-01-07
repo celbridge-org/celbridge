@@ -1,103 +1,99 @@
-﻿using Celbridge.Services;
-using Newtonsoft.Json;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
+// Todo: A project should be an Object, but not a Resource because a Project can't contain another Project file directly.
+// Todo: A project _can_ contain a Project Reference file which links to another Project.
+[ResourceType("Project", "A Celbridge project", "\uE8A1", ".celbridge")] // PreviewLink icon
+public partial class Project : ObservableObject, IProject, IEntity
 {
-    // Todo: A project should be an Object, but not a Resource because a Project can't contain another Project file directly.
-    // Todo: A project _can_ contain a Project Reference file which links to another Project.
-    [ResourceType("Project", "A Celbridge project", "\uE8A1", ".celbridge")] // PreviewLink icon
-    public partial class Project : ObservableObject, IProject, IEntity
+    [JsonProperty(Order = 1)]
+    public Guid Id { get; set; }
+
+    [JsonProperty(Order = 2)]
+    private string _name = string.Empty;
+
+    public string Name
     {
-        [JsonProperty(Order = 1)]
-        public Guid Id { get; set; }
-
-        [JsonProperty(Order = 2)]
-        private string _name = string.Empty;
-
-        public string Name
+        get => _name;
+        set
         {
-            get => _name;
-            set
-            {
-                SetProperty(ref _name, value);
-            }
+            SetProperty(ref _name, value);
         }
+    }
 
-        public event Action? NameChanged;
+    public event Action? NameChanged;
 
-        [JsonIgnore]
-        public bool IsNameEditable => false;
+    [JsonIgnore]
+    public bool IsNameEditable => false;
 
-        [JsonProperty(Order = 3)]
-        private string _description = string.Empty;
+    [JsonProperty(Order = 3)]
+    private string _description = string.Empty;
 
-        [TextAreaProperty]
-        public string Description
+    [TextAreaProperty]
+    public string Description
+    {
+        get => _description;
+        set
         {
-            get => _description;
-            set
-            {
-                SetProperty(ref _description, value);
-            }
+            SetProperty(ref _description, value);
         }
+    }
 
-        public string GetKey()
+    public string GetKey()
+    {
+        return string.Empty;
+    }
+
+    [JsonIgnore]
+    public string ProjectPath { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string ProjectFolder => Path.GetDirectoryName(ProjectPath) ?? string.Empty;
+
+    [JsonIgnore]
+    public string LibraryFolder => Path.Combine(ProjectFolder, "Library");
+
+    private string _tooltip = string.Empty;
+    [JsonIgnore]
+    public string Tooltip
+    {
+        get => _tooltip;
+        set
         {
-            return string.Empty;
+            SetProperty(ref _tooltip, value);
         }
+    }
 
-        [JsonIgnore]
-        public string ProjectPath { get; set; } = string.Empty;
+    [JsonProperty(Order = 4)]
+    public ResourceRegistry ResourceRegistry { get; set; } = new ResourceRegistry();
 
-        [JsonIgnore]
-        public string ProjectFolder => Path.GetDirectoryName(ProjectPath) ?? string.Empty;
+    public Project()
+    {
+        UpdateTooltip();
+        PropertyChanged += Project_PropertyChanged;
+    }
 
-        [JsonIgnore]
-        public string LibraryFolder => Path.Combine(ProjectFolder, "Library");
-
-        private string _tooltip = string.Empty;
-        [JsonIgnore]
-        public string Tooltip
+    private void Project_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            get => _tooltip;
-            set
-            {
-                SetProperty(ref _tooltip, value);
-            }
+            case nameof(Name):
+                NameChanged?.Invoke();
+                break;
+            case nameof(Description):
+                UpdateTooltip();
+                break;
         }
+    }
 
-        [JsonProperty(Order = 4)]
-        public ResourceRegistry ResourceRegistry { get; set; } = new ResourceRegistry();
-
-        public Project()
+    private void UpdateTooltip()
+    {
+        if (string.IsNullOrEmpty(Description))
         {
-            UpdateTooltip();
-            PropertyChanged += Project_PropertyChanged;
+            Tooltip = "Select project";
         }
-
-        private void Project_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        else
         {
-            switch (e.PropertyName)
-            {
-                case nameof(Name):
-                    NameChanged?.Invoke();
-                    break;
-                case nameof(Description):
-                    UpdateTooltip();
-                    break;
-            }
-        }
-
-        private void UpdateTooltip()
-        {
-            if (string.IsNullOrEmpty(Description))
-            {
-                Tooltip = "Select project";
-            }
-            else
-            {
-                Tooltip = $"{Description}";
-            }
+            Tooltip = $"{Description}";
         }
     }
 }

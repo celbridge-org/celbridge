@@ -1,12 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿namespace CelLegacy.Services;
 
-namespace Celbridge.Services
+public interface IChatService
 {
-    public interface IChatService
-    {
-        public bool StartChat(string context);
-        Task<string> Ask(string question);
-        public void EndChat();
-        public Task<Result> TextToSpeech(string text);
-    }
+    public bool StartChat(string context);
+    Task<string> Ask(string question);
+    public void EndChat();
+    public Task<Result> TextToSpeech(string text);
 }

@@ -1,7 +1,4 @@
-﻿using Celbridge.Models;
+﻿namespace CelLegacy.ViewModels;
 
-namespace Celbridge.ViewModels
-{
-    public partial class RecordPropertyViewModel : ClassPropertyViewModel<IRecord>
-    {}
-}
+public partial class RecordPropertyViewModel : ClassPropertyViewModel<IRecord>
+{}

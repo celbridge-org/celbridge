@@ -1,46 +1,37 @@
-﻿using Celbridge.Services;
-using Celbridge.ViewModels;
-using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using System;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class InspectorPanel : UserControl
 {
-    public sealed partial class InspectorPanel : UserControl
+    private readonly ISettingsService _settings;
+
+    public InspectorViewModel ViewModel { get; set; }
+
+    public InspectorPanel()
     {
-        private readonly ISettingsService _settings;
+        this.InitializeComponent();
 
-        public InspectorViewModel ViewModel { get; set; }
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<InspectorViewModel>();
+        ViewModel.ItemCollection = PropertyListView.Items;
 
-        public InspectorPanel()
-        {
-            this.InitializeComponent();
+        _settings = LegacyServiceProvider.Services!.GetRequiredService<ISettingsService>();
 
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<InspectorViewModel>();
-            ViewModel.ItemCollection = PropertyListView.Items;
+        Loaded += InspectorPanel_Loaded;
+    }
 
-            _settings = LegacyServiceProvider.Services!.GetRequiredService<ISettingsService>();
+    private void InspectorPanel_Loaded(object? sender, RoutedEventArgs e)
+    {
+        Guard.IsNotNull(_settings.EditorSettings);
+        var height = _settings.EditorSettings.DetailPanelHeight;
+        DetailPanelRow.Height = new GridLength(height);
+    }
 
-            Loaded += InspectorPanel_Loaded;
-        }
+    private void InspectorPanel_LayoutUpdated(object? sender, object e)
+    {
+        var height = (float)DetailPanelRow.Height.Value;
 
-        private void InspectorPanel_Loaded(object? sender, RoutedEventArgs e)
-        {
-            Guard.IsNotNull(_settings.EditorSettings);
-            var height = _settings.EditorSettings.DetailPanelHeight;
-            DetailPanelRow.Height = new GridLength(height);
-        }
-
-        private void InspectorPanel_LayoutUpdated(object? sender, object e)
-        {
-            var height = (float)DetailPanelRow.Height.Value;
-
-            // This gets called frequently so we're relying on the equality 
-            // check in the setter to avoid unnecessary writes to the settings.
-            Guard.IsNotNull(_settings.EditorSettings);
-            _settings.EditorSettings.DetailPanelHeight = height;
-        }
+        // This gets called frequently so we're relying on the equality 
+        // check in the setter to avoid unnecessary writes to the settings.
+        Guard.IsNotNull(_settings.EditorSettings);
+        _settings.EditorSettings.DetailPanelHeight = height;
     }
 }

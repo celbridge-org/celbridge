@@ -1,9 +1,8 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+public class PathPropertyAttribute : PropertyAttribute
 {
-    public class PathPropertyAttribute : PropertyAttribute
-    {
-        public PathPropertyAttribute()
-            : base("Celbridge.Views.PathPropertyView", typeof(string))
-        {}
-    }
+    public PathPropertyAttribute()
+        : base("CelLegacy.Views.PathPropertyView", typeof(string))
+    {}
 }

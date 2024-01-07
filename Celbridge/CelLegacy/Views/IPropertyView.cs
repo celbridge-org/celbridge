@@ -1,13 +1,10 @@
-﻿using Celbridge.Utils;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public interface IPropertyView
 {
-    public interface IPropertyView
-    {
-        void SetProperty(Property property, string labelText);
-        int ItemIndex { set; get; }
-        Result CreateChildViews();
-        void NotifyWillDelete() {}
-        void NotifyIndexChanged(int newIndex) {}
-    }
+    void SetProperty(Property property, string labelText);
+    int ItemIndex { set; get; }
+    Result CreateChildViews();
+    void NotifyWillDelete() {}
+    void NotifyIndexChanged(int newIndex) {}
 }

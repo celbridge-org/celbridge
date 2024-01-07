@@ -1,19 +1,18 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+public class ResourceRegistry
 {
-    public class ResourceRegistry
+    public FolderResource Root { get; private set; }
+
+    public ResourceRegistry()
     {
-        public FolderResource Root { get; private set; }
+        Root = new FolderResource();
+        Root.Name = "Root";
+    }
 
-        public ResourceRegistry()
-        {
-            Root = new FolderResource();
-            Root.Name = "Root";
-        }
-
-        public ResourceRegistry(FolderResource root)
-        {
-            Root = root;
-            Root.Name = "Root";
-        }
+    public ResourceRegistry(FolderResource root)
+    {
+        Root = root;
+        Root.Name = "Root";
     }
 }

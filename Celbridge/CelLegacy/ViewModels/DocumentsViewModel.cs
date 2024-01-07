@@ -1,127 +1,118 @@
-﻿using Celbridge.Services;
-using Celbridge.Utils;
-using Celbridge.Views;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.UI.Xaml.Controls;
-using Serilog;
-using System;
+﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace Celbridge.ViewModels
+namespace CelLegacy.ViewModels;
+
+public partial class DocumentsViewModel : ObservableRecipient
 {
-    public partial class DocumentsViewModel : ObservableRecipient
+    private readonly IMessenger _messengerService;
+    private readonly IDocumentService _documentService;
+    private readonly ISettingsService _settingsService;
+
+    public IDocumentsPanelView? DocumentsPanelView { get; internal set; }
+
+    public DocumentsViewModel(IMessenger messengerService, 
+        IDocumentService documentService,
+        ISettingsService settingsService)
     {
-        private readonly IMessenger _messengerService;
-        private readonly IDocumentService _documentService;
-        private readonly ISettingsService _settingsService;
+        _messengerService = messengerService;
+        _documentService = documentService;
+        _settingsService = settingsService;
 
-        public IDocumentsPanelView? DocumentsPanelView { get; internal set; }
+        // You have to manually tell the ObservableRecepient to start receiving messages.
+        // It's cool being able to switch listening on/off like this but it should default
+        // to true as it doesn't work without it and the documentation doesn't mention it.
+        IsActive = true;
+    }
 
-        public DocumentsViewModel(IMessenger messengerService, 
-            IDocumentService documentService,
-            ISettingsService settingsService)
+    protected override void OnActivated()
+    {
+        _messengerService.Register<DocumentOpenedMessage>(this, OnDocumentOpened);
+        _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);
+    }
+
+    private void OnDocumentOpened(object r, DocumentOpenedMessage m)
+    {
+        var document = m.Value;
+        Guard.IsNotNull(document);
+
+        Guard.IsNotNull(DocumentsPanelView);
+        if (DocumentsPanelView.TryFocusDocumentTab(document))
         {
-            _messengerService = messengerService;
-            _documentService = documentService;
-            _settingsService = settingsService;
-
-            // You have to manually tell the ObservableRecepient to start receiving messages.
-            // It's cool being able to switch listening on/off like this but it should default
-            // to true as it doesn't work without it and the documentation doesn't mention it.
-            IsActive = true;
+            return;
         }
 
-        protected override void OnActivated()
+        // Log.Information($"Opened document {document.DocumentEntity.Name}");
+
+        // Find the class name of document view
+        var resourceTypeName = document.DocumentEntity.GetType().Name;
+        var documentTypeName = resourceTypeName.Replace("Resource", string.Empty, StringComparison.InvariantCultureIgnoreCase);
+        var documentViewName = $"{documentTypeName}DocumentView";
+        var viewTypeName = $"CelLegacy.Views.{documentViewName}";
+
+        // Instantiate the document view user control
+        var type = Type.GetType(viewTypeName);
+        if (type == null)
         {
-            _messengerService.Register<DocumentOpenedMessage>(this, OnDocumentOpened);
-            _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);
+            Log.Error($"Failed to create view for document '{document.DocumentEntity.Name}' of type '{viewTypeName}'");
+            return;
         }
 
-        private void OnDocumentOpened(object r, DocumentOpenedMessage m)
+        // Instantiate the control for this ViewName
+        var userControl = Activator.CreateInstance(type) as TabViewItem; // create a userControl of the class
+        Guard.IsNotNull(userControl);
+
+        var documentView = userControl as IDocumentView;
+        Guard.IsNotNull(documentView);
+
+        // Let the document view know which document & resource to operate on
+        documentView.Document = document;
+
+        async void LoadDocumentAsync()
         {
-            var document = m.Value;
-            Guard.IsNotNull(document);
-
-            Guard.IsNotNull(DocumentsPanelView);
-            if (DocumentsPanelView.TryFocusDocumentTab(document))
+            var result = await documentView.LoadDocumentAsync();
+            if (result is ErrorResult error)
             {
-                return;
-            }
+                Log.Error(error.Message);
 
-            // Log.Information($"Opened document {document.DocumentEntity.Name}");
-
-            // Find the class name of document view
-            var resourceTypeName = document.DocumentEntity.GetType().Name;
-            var documentTypeName = resourceTypeName.Replace("Resource", string.Empty, StringComparison.InvariantCultureIgnoreCase);
-            var documentViewName = $"{documentTypeName}DocumentView";
-            var viewTypeName = $"Celbridge.Views.{documentViewName}";
-
-            // Instantiate the document view user control
-            var type = Type.GetType(viewTypeName);
-            if (type == null)
-            {
-                Log.Error($"Failed to create view for document '{document.DocumentEntity.Name}' of type '{viewTypeName}'");
-                return;
-            }
-
-            // Instantiate the control for this ViewName
-            var userControl = Activator.CreateInstance(type) as TabViewItem; // create a userControl of the class
-            Guard.IsNotNull(userControl);
-
-            var documentView = userControl as IDocumentView;
-            Guard.IsNotNull(documentView);
-
-            // Let the document view know which document & resource to operate on
-            documentView.Document = document;
-
-            async void LoadDocumentAsync()
-            {
-                var result = await documentView.LoadDocumentAsync();
-                if (result is ErrorResult error)
+                if (document.DocumentEntity != null)
                 {
-                    Log.Error(error.Message);
-
-                    if (document.DocumentEntity != null)
-                    {
-                        // Close the document and remove it from the auto reload list
-                        _documentService.CloseDocument(document.DocumentEntity, false);
-                    }
+                    // Close the document and remove it from the auto reload list
+                    _documentService.CloseDocument(document.DocumentEntity, false);
                 }
-
-                Guard.IsNotNull(_settingsService.ProjectSettings);
-                var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
-
-                Guard.IsNotNull(document.DocumentEntity);
-                var documentEntityId = document.DocumentEntity.Id;
-
-                if (!openDocuments.Contains(documentEntityId)) 
-                { 
-                    openDocuments.Add(documentEntityId);
-                }
-
-                // Add the tab to the DocumentsPanel
-                DocumentsPanelView.OpenDocumentTab(userControl);
             }
 
-            LoadDocumentAsync();
+            Guard.IsNotNull(_settingsService.ProjectSettings);
+            var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
+
+            Guard.IsNotNull(document.DocumentEntity);
+            var documentEntityId = document.DocumentEntity.Id;
+
+            if (!openDocuments.Contains(documentEntityId)) 
+            { 
+                openDocuments.Add(documentEntityId);
+            }
+
+            // Add the tab to the DocumentsPanel
+            DocumentsPanelView.OpenDocumentTab(userControl);
         }
 
-        private void OnDocumentClosed(object r, DocumentClosedMessage m)
+        LoadDocumentAsync();
+    }
+
+    private void OnDocumentClosed(object r, DocumentClosedMessage m)
+    {
+        var document = m.Value;
+
+        Guard.IsNotNull(DocumentsPanelView);
+        DocumentsPanelView.CloseDocumentTab(document);
+
+        if (!m.AutoReload)
         {
-            var document = m.Value;
-
-            Guard.IsNotNull(DocumentsPanelView);
-            DocumentsPanelView.CloseDocumentTab(document);
-
-            if (!m.AutoReload)
-            {
-                // Remove this document from the list of documents to auto load when the project opens
-                Guard.IsNotNull(_settingsService.ProjectSettings);
-                var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
-                var documentEntityId = document.DocumentEntity.Id;
-                openDocuments.Remove(documentEntityId);
-            }
+            // Remove this document from the list of documents to auto load when the project opens
+            Guard.IsNotNull(_settingsService.ProjectSettings);
+            var openDocuments = _settingsService.ProjectSettings.OpenDocuments;
+            var documentEntityId = document.DocumentEntity.Id;
+            openDocuments.Remove(documentEntityId);
         }
     }
 }

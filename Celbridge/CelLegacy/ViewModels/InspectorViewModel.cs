@@ -1,172 +1,167 @@
-﻿using Celbridge.Services;
-using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Scripting.Utils;
-using Serilog;
 using System.ComponentModel;
 
-namespace Celbridge.ViewModels
+namespace CelLegacy.ViewModels;
+
+public partial class InspectorViewModel : ObservableObject
 {
-    public partial class InspectorViewModel : ObservableObject
+    private readonly IMessenger _messengerService;
+    private readonly IInspectorService _inspectorService;
+    private readonly ISettingsService _settingsService;
+    private readonly IProjectService _projectService;
+    private readonly IResourceService _resourceService;
+    private readonly IResourceTypeService _resourceTypeService;
+    private readonly IDialogService _dialogService;
+
+    public InspectorViewModel(IMessenger messengerService,
+        IInspectorService inspectorService,
+        ISettingsService settingsService, 
+        IProjectService projectService,
+        IResourceService resourceService,
+        IResourceTypeService resourceTypeService,
+        IDialogService dialogService)
     {
-        private readonly IMessenger _messengerService;
-        private readonly IInspectorService _inspectorService;
-        private readonly ISettingsService _settingsService;
-        private readonly IProjectService _projectService;
-        private readonly IResourceService _resourceService;
-        private readonly IResourceTypeService _resourceTypeService;
-        private readonly IDialogService _dialogService;
+        _messengerService = messengerService;
+        _inspectorService = inspectorService;
+        _settingsService = settingsService;
+        _projectService = projectService;
+        _resourceService = resourceService;
+        _resourceTypeService = resourceTypeService;
+        _dialogService = dialogService;
 
-        public InspectorViewModel(IMessenger messengerService,
-            IInspectorService inspectorService,
-            ISettingsService settingsService, 
-            IProjectService projectService,
-            IResourceService resourceService,
-            IResourceTypeService resourceTypeService,
-            IDialogService dialogService)
+        _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
+    }
+
+    public ItemCollection? ItemCollection { get; set; }
+
+    [ObservableProperty]
+    private bool _hasSelectedEntity;
+
+    [ObservableProperty]
+    private IEntity? _selectedEntity;
+
+    [ObservableProperty]
+    private string? _typeName;
+
+    private string _typeIcon = "Help";
+    public string TypeIcon
+    {
+        get => _typeIcon;
+        set => SetProperty(ref _typeIcon, value);
+    }
+
+    public ICommand OpenFolderCommand => new RelayCommand(OpenFolder_Executed);
+    private void OpenFolder_Executed()
+    {
+        // Todo: Open the folder that contains the resource, not the project folder
+        if (_projectService.ActiveProject != null)
         {
-            _messengerService = messengerService;
-            _inspectorService = inspectorService;
-            _settingsService = settingsService;
-            _projectService = projectService;
-            _resourceService = resourceService;
-            _resourceTypeService = resourceTypeService;
-            _dialogService = dialogService;
+            var projectPath = _projectService.ActiveProject.ProjectPath;
+            var projectFolder = Path.GetDirectoryName(projectPath);
+            Guard.IsNotNull(projectFolder);
 
-            _messengerService.Register<SelectedEntityChangedMessage>(this, OnSelectedEntityChanged);
+            _dialogService.OpenFileExplorer(projectFolder);
+        }
+    }
+
+    public ICommand DeleteEntityCommand => new RelayCommand(DeleteEntity_Executed);
+    private void DeleteEntity_Executed()
+    {
+        if (SelectedEntity == null)
+        {
+            return;
         }
 
-        public ItemCollection? ItemCollection { get; set; }
+        // Todo: Find a more generic way to delete entities
 
-        [ObservableProperty]
-        private bool _hasSelectedEntity;
+        var project = _projectService.ActiveProject;
+        Guard.IsNotNull(project);
 
-        [ObservableProperty]
-        private IEntity? _selectedEntity;
-
-        [ObservableProperty]
-        private string? _typeName;
-
-        private string _typeIcon = "Help";
-        public string TypeIcon
+        switch (SelectedEntity)
         {
-            get => _typeIcon;
-            set => SetProperty(ref _typeIcon, value);
-        }
-
-        public ICommand OpenFolderCommand => new RelayCommand(OpenFolder_Executed);
-        private void OpenFolder_Executed()
-        {
-            // Todo: Open the folder that contains the resource, not the project folder
-            if (_projectService.ActiveProject != null)
-            {
-                var projectPath = _projectService.ActiveProject.ProjectPath;
-                var projectFolder = Path.GetDirectoryName(projectPath);
-                Guard.IsNotNull(projectFolder);
-
-                _dialogService.OpenFileExplorer(projectFolder);
-            }
-        }
-
-        public ICommand DeleteEntityCommand => new RelayCommand(DeleteEntity_Executed);
-        private void DeleteEntity_Executed()
-        {
-            if (SelectedEntity == null)
-            {
-                return;
-            }
-
-            // Todo: Find a more generic way to delete entities
-
-            var project = _projectService.ActiveProject;
-            Guard.IsNotNull(project);
-
-            switch (SelectedEntity)
-            {
-                case Resource resource:
-                    {
-                        var result = _resourceService.DeleteResource(project, resource);
-                        if (result is ErrorResult error)
-                        {
-                            Log.Error(error.Message);
-                        }
-                    }
-                    break;
-            }
-        }
-
-        private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
-        {
-            SelectedEntity = m.Entity;
-            HasSelectedEntity = SelectedEntity != null;
-
-            if (SelectedEntity != null)
-            {
-                if (SelectedEntity is Project)
+            case Resource resource:
                 {
-                    TypeName = nameof(Project);
-                    TypeIcon = "PreviewLink";
-                }
-                else if (SelectedEntity is Resource)
-                {
-                    var typeInfoResult = _resourceTypeService.GetResourceTypeInfo(SelectedEntity.GetType());
-                    if (typeInfoResult.Success)
+                    var result = _resourceService.DeleteResource(project, resource);
+                    if (result is ErrorResult error)
                     {
-                        TypeName = typeInfoResult.Data!.Name;
-                        TypeIcon = typeInfoResult.Data!.Icon ?? "Help";
+                        Log.Error(error.Message);
                     }
                 }
+                break;
+        }
+    }
 
-                PopulatePropertyListView();
-            }
-            else
+    private void OnSelectedEntityChanged(object r, SelectedEntityChangedMessage m)
+    {
+        SelectedEntity = m.Entity;
+        HasSelectedEntity = SelectedEntity != null;
+
+        if (SelectedEntity != null)
+        {
+            if (SelectedEntity is Project)
             {
-                TypeName = null;
+                TypeName = nameof(Project);
+                TypeIcon = "PreviewLink";
             }
-        }
-
-        private void PopulatePropertyListView()
-        {
-            // Remove any existing property user controls
-            Guard.IsNotNull(ItemCollection);
-            ItemCollection.Clear();
-
-            Guard.IsNotNull(SelectedEntity);
-
-            var result = PropertyViewUtils.CreatePropertyViews(SelectedEntity, PropertyContext.Record, OnPropertyChanged);
-            if (result is ErrorResult<List<UIElement>> error)
+            else if (SelectedEntity is Resource)
             {
-                Log.Error(error.Message);
-                return;
+                var typeInfoResult = _resourceTypeService.GetResourceTypeInfo(SelectedEntity.GetType());
+                if (typeInfoResult.Success)
+                {
+                    TypeName = typeInfoResult.Data!.Name;
+                    TypeIcon = typeInfoResult.Data!.Icon ?? "Help";
+                }
             }
 
-            var views = result.Data!;
-            ItemCollection.AddRange(views);
+            PopulatePropertyListView();
         }
-
-        private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        else
         {
-            var property = sender as Property;
-            Guard.IsNotNull(property);
-
-            var entity = property.Object as IEntity;
-            Guard.IsNotNull(entity);
-
-            Guard.IsNotNull(e.PropertyName);
-
-            var message = new EntityPropertyChangedMessage(entity, e.PropertyName);
-            _messengerService.Send(message);
+            TypeName = null;
         }
+    }
 
-        public ICommand CollapseCommand => new RelayCommand(Collapse_Executed);
+    private void PopulatePropertyListView()
+    {
+        // Remove any existing property user controls
+        Guard.IsNotNull(ItemCollection);
+        ItemCollection.Clear();
 
-        private void Collapse_Executed()
+        Guard.IsNotNull(SelectedEntity);
+
+        var result = PropertyViewUtils.CreatePropertyViews(SelectedEntity, PropertyContext.Record, OnPropertyChanged);
+        if (result is ErrorResult<List<UIElement>> error)
         {
-            Guard.IsNotNull(_settingsService.EditorSettings);
-
-            // Toggle the left toolbar expanded state
-            _settingsService.EditorSettings.RightPanelExpanded = false;
+            Log.Error(error.Message);
+            return;
         }
+
+        var views = result.Data!;
+        ItemCollection.AddRange(views);
+    }
+
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        var property = sender as Property;
+        Guard.IsNotNull(property);
+
+        var entity = property.Object as IEntity;
+        Guard.IsNotNull(entity);
+
+        Guard.IsNotNull(e.PropertyName);
+
+        var message = new EntityPropertyChangedMessage(entity, e.PropertyName);
+        _messengerService.Send(message);
+    }
+
+    public ICommand CollapseCommand => new RelayCommand(Collapse_Executed);
+
+    private void Collapse_Executed()
+    {
+        Guard.IsNotNull(_settingsService.EditorSettings);
+
+        // Toggle the left toolbar expanded state
+        _settingsService.EditorSettings.RightPanelExpanded = false;
     }
 }

@@ -1,88 +1,82 @@
-﻿using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.Generic;
+﻿namespace CelLegacy.ViewModels;
 
-namespace Celbridge.ViewModels
+public abstract partial class ClassPropertyViewModel<T> : ObservableObject where T : class
 {
-    public abstract partial class ClassPropertyViewModel<T> : ObservableObject where T : class
+    private Property? _property;
+    public Property Property 
     {
-        private Property? _property;
-        public Property Property 
+        get
         {
-            get
+            Guard.IsNotNull(_property);
+            return _property;
+        }
+        private set
+        {
+            Guard.IsNotNull(value);
+            _property = value;
+        }
+    }
+
+    public void SetProperty(Property property, string labelText)
+    {
+        Property = property;
+        LabelText = labelText;
+    }
+
+    public string LabelText { get; private set; } = string.Empty;
+    public int ItemIndex { get; set; }
+    public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
+
+    public T? Value
+    {
+        get
+        {
+            var propertyInfo = Property.PropertyInfo;
+            if (Property.CollectionType != null)
             {
-                Guard.IsNotNull(_property);
-                return _property;
+                var list = propertyInfo.GetValue(Property.Object) as List<T>;
+                Guard.IsNotNull(list);
+                Guard.IsTrue(ItemIndex < list.Count);
+                return list[ItemIndex];
             }
-            private set
-            {
-                Guard.IsNotNull(value);
-                _property = value;
-            }
+
+            return propertyInfo.GetValue(Property.Object) as T;
         }
 
-        public void SetProperty(Property property, string labelText)
+        set
         {
-            Property = property;
-            LabelText = labelText;
-        }
-
-        public string LabelText { get; private set; } = string.Empty;
-        public int ItemIndex { get; set; }
-        public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
-
-        public T? Value
-        {
-            get
+            if (value is null ||
+                value.Equals(Value))
             {
-                var propertyInfo = Property.PropertyInfo;
-                if (Property.CollectionType != null)
-                {
-                    var list = propertyInfo.GetValue(Property.Object) as List<T>;
-                    Guard.IsNotNull(list);
-                    Guard.IsTrue(ItemIndex < list.Count);
-                    return list[ItemIndex];
-                }
-
-                return propertyInfo.GetValue(Property.Object) as T;
+                return;
             }
 
-            set
+            var propertyInfo = Property.PropertyInfo;
+            if (Property.CollectionType != null)
             {
-                if (value is null ||
-                    value.Equals(Value))
-                {
-                    return;
-                }
-
-                var propertyInfo = Property.PropertyInfo;
-                if (Property.CollectionType != null)
-                {
-                    var list = propertyInfo.GetValue(Property.Object) as List<T>;
-                    Guard.IsNotNull(list);
-                    Guard.IsTrue(ItemIndex < list.Count);
-                    list[ItemIndex] = value;
-                }
-                else 
-                { 
-                    propertyInfo.SetValue(Property.Object, value);
-                }
-                OnPropertyChanged(nameof(Value));
+                var list = propertyInfo.GetValue(Property.Object) as List<T>;
+                Guard.IsNotNull(list);
+                Guard.IsTrue(ItemIndex < list.Count);
+                list[ItemIndex] = value;
             }
-        }
-
-        public ClassPropertyViewModel()
-        {
-            PropertyChanged += PropertyViewModel_PropertyChanged;
-        }
-
-        private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(Value))
-            {
-                Property.NotifyPropertyChanged();
+            else 
+            { 
+                propertyInfo.SetValue(Property.Object, value);
             }
+            OnPropertyChanged(nameof(Value));
+        }
+    }
+
+    public ClassPropertyViewModel()
+    {
+        PropertyChanged += PropertyViewModel_PropertyChanged;
+    }
+
+    private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Value))
+        {
+            Property.NotifyPropertyChanged();
         }
     }
 }

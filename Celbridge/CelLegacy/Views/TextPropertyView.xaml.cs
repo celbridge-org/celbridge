@@ -1,37 +1,30 @@
-﻿using Celbridge.Utils;
-using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public partial class TextPropertyView : UserControl, IPropertyView
 {
-    public partial class TextPropertyView : UserControl, IPropertyView
+    public TextPropertyViewModel ViewModel { get; }
+
+    public TextPropertyView()
     {
-        public TextPropertyViewModel ViewModel { get; }
+        this.InitializeComponent();
 
-        public TextPropertyView()
-        {
-            this.InitializeComponent();
+        var services = LegacyServiceProvider.Services!;
+        ViewModel = services.GetRequiredService<TextPropertyViewModel>();
+    }
 
-            var services = LegacyServiceProvider.Services!;
-            ViewModel = services.GetRequiredService<TextPropertyViewModel>();
-        }
+    public void SetProperty(Property property, string labelText)
+    {
+        ViewModel.SetProperty(property, labelText);
+    }
 
-        public void SetProperty(Property property, string labelText)
-        {
-            ViewModel.SetProperty(property, labelText);
-        }
+    public int ItemIndex 
+    {
+        get => ViewModel.ItemIndex;
+        set => ViewModel.ItemIndex = value;
+    }
 
-        public int ItemIndex 
-        {
-            get => ViewModel.ItemIndex;
-            set => ViewModel.ItemIndex = value;
-        }
-
-        public Result CreateChildViews()
-        {
-            return new SuccessResult();
-        }
+    public Result CreateChildViews()
+    {
+        return new SuccessResult();
     }
 }

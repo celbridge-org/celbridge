@@ -1,16 +1,12 @@
-﻿using Celbridge.ViewModels;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class SettingsDialog : ContentDialog
 {
-    public sealed partial class SettingsDialog : ContentDialog
+    public SettingsViewModel ViewModel { get; }
+
+    public SettingsDialog()
     {
-        public SettingsViewModel ViewModel { get; }
-
-        public SettingsDialog()
-        {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<SettingsViewModel>();
-        }
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<SettingsViewModel>();
     }
-
 }

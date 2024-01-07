@@ -1,8 +1,5 @@
-﻿using System;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
-{
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class HidePropertyAttribute : Attribute
-    {}
-}
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+public class HidePropertyAttribute : Attribute
+{}

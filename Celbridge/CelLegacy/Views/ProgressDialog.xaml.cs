@@ -1,26 +1,19 @@
-﻿using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using System;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class ProgressDialog : ContentDialog
 {
-    public sealed partial class ProgressDialog : ContentDialog
-    {
-        public ProgressDialogViewModel ViewModel { get; private set; }
+    public ProgressDialogViewModel ViewModel { get; private set; }
 
-        public ProgressDialog(Action? onCancel)
+    public ProgressDialog(Action? onCancel)
+    {
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<ProgressDialogViewModel>();
+        ViewModel.ContentDialog = this;
+        
+        if (onCancel != null)
         {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<ProgressDialogViewModel>();
-            ViewModel.ContentDialog = this;
-            
-            if (onCancel != null)
-            {
-                ViewModel.OnCancel = onCancel;
-                PrimaryButtonText = "Cancel";
-            }
+            ViewModel.OnCancel = onCancel;
+            PrimaryButtonText = "Cancel";
         }
     }
 }

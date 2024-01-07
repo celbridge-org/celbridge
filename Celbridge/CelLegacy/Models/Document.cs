@@ -1,21 +1,20 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+// An entity that may be opened as a document
+public interface IDocumentEntity : IEntity
+{}
+
+public interface IDocument
 {
-    // An entity that may be opened as a document
-    public interface IDocumentEntity : IEntity
-    {}
+    public IDocumentEntity DocumentEntity { get; }
+}
 
-    public interface IDocument
+public class Document : IDocument
+{
+    public IDocumentEntity DocumentEntity { get; }
+
+    public Document(IDocumentEntity documentEntity) 
     {
-        public IDocumentEntity DocumentEntity { get; }
-    }
-
-    public class Document : IDocument
-    {
-        public IDocumentEntity DocumentEntity { get; }
-
-        public Document(IDocumentEntity documentEntity) 
-        {
-            DocumentEntity = documentEntity;
-        }
+        DocumentEntity = documentEntity;
     }
 }

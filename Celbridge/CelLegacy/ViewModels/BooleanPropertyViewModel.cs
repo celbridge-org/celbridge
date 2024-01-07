@@ -1,5 +1,4 @@
-﻿namespace Celbridge.ViewModels
-{
-    public partial class BooleanPropertyViewModel : StructPropertyViewModel<bool>
-    {}
-}
+﻿namespace CelLegacy.ViewModels;
+
+public partial class BooleanPropertyViewModel : StructPropertyViewModel<bool>
+{}

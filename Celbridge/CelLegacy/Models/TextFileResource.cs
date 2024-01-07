@@ -1,25 +1,24 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+[ResourceType("Text File", "A text file resource", "\uE8E9", ".txt,.md")] // FontSize icon
+public class TextFileResource : FileResource, IDocumentEntity
 {
-    [ResourceType("Text File", "A text file resource", "\uE8E9", ".txt,.md")] // FontSize icon
-    public class TextFileResource : FileResource, IDocumentEntity
+    public string Permissions { get; set; } = string.Empty;
+
+    [PathProperty]
+    public string SomePath { get; set; } = string.Empty;
+
+    public static Result CreateResource(string path)
     {
-        public string Permissions { get; set; } = string.Empty;
-
-        [PathProperty]
-        public string SomePath { get; set; } = string.Empty;
-
-        public static Result CreateResource(string path)
+        try
         {
-            try
-            {
-                File.WriteAllText(path, string.Empty);
-            }
-            catch (Exception ex)
-            {
-                return new ErrorResult($"Failed to create file at '{path}'. {ex.Message}");
-            }
-
-            return new SuccessResult();
+            File.WriteAllText(path, string.Empty);
         }
+        catch (Exception ex)
+        {
+            return new ErrorResult($"Failed to create file at '{path}'. {ex.Message}");
+        }
+
+        return new SuccessResult();
     }
 }

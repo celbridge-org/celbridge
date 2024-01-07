@@ -1,3 +1,3 @@
-﻿global using Celbridge.Models;
+﻿global using CelLegacy.Models;
 global using FluentAssertions;
 global using NUnit.Framework;

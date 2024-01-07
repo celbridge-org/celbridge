@@ -1,15 +1,14 @@
-﻿using Celbridge.ViewModels;
+﻿using CelLegacy.ViewModels;
 
-namespace Celbridge.Views
+namespace CelLegacy.Views;
+
+public sealed partial class AddResourceDialog : ContentDialog
 {
-    public sealed partial class AddResourceDialog : ContentDialog
-    {
-        public AddResourceViewModel ViewModel { get; set; }
+    public AddResourceViewModel ViewModel { get; set; }
 
-        public AddResourceDialog()
-        {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<AddResourceViewModel>();
-        }
+    public AddResourceDialog()
+    {
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<AddResourceViewModel>();
     }
 }

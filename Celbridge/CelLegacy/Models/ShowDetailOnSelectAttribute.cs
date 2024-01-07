@@ -1,8 +1,5 @@
-﻿using System;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
-{
-    public class ShowDetailOnSelectAttribute : Attribute
-    {}
-}
+public class ShowDetailOnSelectAttribute : Attribute
+{}
 
