@@ -1,16 +1,22 @@
-﻿global using Celbridge.Models;
+﻿
+global using CelLegacy.ErrorHandling;
+global using CelLegacy.Models;
+global using CelLegacy.Services;
+global using CelLegacy.Utils;
+global using CelLegacy.Views;
+global using CelLegacy.ViewModels;
+global using CommunityToolkit.Diagnostics;
 global using CommunityToolkit.Mvvm.ComponentModel;
 global using CommunityToolkit.Mvvm.Input;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Localization;
-global using Microsoft.UI.Xaml;
 global using Microsoft.UI.Xaml.Controls;
 global using Microsoft.UI.Xaml.Media;
-global using System.Windows.Input;
-global using Windows.Storage;
-global using CommunityToolkit.Diagnostics;
+global using Microsoft.UI.Xaml;
+global using Newtonsoft.Json.Linq;
+global using Newtonsoft.Json;
 global using Serilog;
-global using CelLegacy.ErrorHandling;
-global using Celbridge.Services;
-global using CelLegacy.Services;
-
+global using System.Diagnostics;
+global using System.Windows.Input;
+global using System.Text;
+global using Windows.Storage;

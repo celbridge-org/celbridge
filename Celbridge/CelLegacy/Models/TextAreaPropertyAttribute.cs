@@ -1,9 +1,8 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+public class TextAreaPropertyAttribute : PropertyAttribute
 {
-    public class TextAreaPropertyAttribute : PropertyAttribute
-    {
-        public TextAreaPropertyAttribute()
-            : base("Celbridge.Views.TextAreaPropertyView", typeof(string))
-        {}
-    }
+    public TextAreaPropertyAttribute()
+        : base("CelLegacy.Views.TextAreaPropertyView", typeof(string))
+    {}
 }

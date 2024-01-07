@@ -1,34 +1,31 @@
-﻿using Celbridge.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace Celbridge.ViewModels
+namespace CelLegacy.ViewModels;
+
+public partial class StatusBarViewModel : ObservableObject
 {
-    public partial class StatusBarViewModel : ObservableObject
+    private readonly IMessenger _messengerService;
+
+    [ObservableProperty]
+    private bool _isSaving;
+
+    public StatusBarViewModel(IMessenger messengerService) 
     {
-        private readonly IMessenger _messengerService;
+        _messengerService = messengerService;
 
-        [ObservableProperty]
-        private bool _isSaving;
+        _messengerService.Register<SaveQueueUpdatedMessage>(this, OnSaveQueueUpdated);
+    }
 
-        public StatusBarViewModel(IMessenger messengerService) 
+    private void OnSaveQueueUpdated(object recipient, SaveQueueUpdatedMessage message)
+    {
+        var pendingSaveCount = message.PendingSaveCount;
+        if (pendingSaveCount == 0)
         {
-            _messengerService = messengerService;
-
-            _messengerService.Register<SaveQueueUpdatedMessage>(this, OnSaveQueueUpdated);
+            IsSaving = false;
         }
-
-        private void OnSaveQueueUpdated(object recipient, SaveQueueUpdatedMessage message)
+        else
         {
-            var pendingSaveCount = message.PendingSaveCount;
-            if (pendingSaveCount == 0)
-            {
-                IsSaving = false;
-            }
-            else
-            {
-                IsSaving = true;
-            }
+            IsSaving = true;
         }
     }
 }

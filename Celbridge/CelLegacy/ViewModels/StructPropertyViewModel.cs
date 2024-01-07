@@ -1,76 +1,70 @@
-﻿using Celbridge.Utils;
-using CommunityToolkit.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.Generic;
+﻿namespace CelLegacy.ViewModels;
 
-namespace Celbridge.ViewModels
+public abstract partial class StructPropertyViewModel<T> : ObservableObject where T : struct
 {
-    public abstract partial class StructPropertyViewModel<T> : ObservableObject where T : struct
+    public Property? Property { get; private set; }
+
+    public void SetProperty(Property property, string labelText)
     {
-        public Property? Property { get; private set; }
+        Property = property;
+        LabelText = labelText;
+    }
 
-        public void SetProperty(Property property, string labelText)
+    public string LabelText { get; private set; } = string.Empty;
+    public int ItemIndex { get; set; }
+    public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
+
+    public T Value
+    {
+        get
         {
-            Property = property;
-            LabelText = labelText;
+            Guard.IsNotNull(Property);
+            var propertyInfo = Property.PropertyInfo;
+            if (Property.CollectionType != null)
+            {
+                var list = propertyInfo.GetValue(Property.Object) as List<T>;
+                Guard.IsNotNull(list);
+                Guard.IsTrue(ItemIndex < list.Count);
+                return list[ItemIndex];
+            }
+            return (T)propertyInfo.GetValue(Property.Object)!;
         }
 
-        public string LabelText { get; private set; } = string.Empty;
-        public int ItemIndex { get; set; }
-        public bool HasLabelText => !string.IsNullOrEmpty(LabelText);
-
-        public T Value
+        set
         {
-            get
+            if (value.Equals(Value))
             {
-                Guard.IsNotNull(Property);
-                var propertyInfo = Property.PropertyInfo;
-                if (Property.CollectionType != null)
-                {
-                    var list = propertyInfo.GetValue(Property.Object) as List<T>;
-                    Guard.IsNotNull(list);
-                    Guard.IsTrue(ItemIndex < list.Count);
-                    return list[ItemIndex];
-                }
-                return (T)propertyInfo.GetValue(Property.Object)!;
+                return;
             }
 
-            set
+            Guard.IsNotNull(Property);
+            var propertyInfo = Property.PropertyInfo;
+            if (Property.CollectionType != null)
             {
-                if (value.Equals(Value))
-                {
-                    return;
-                }
-
-                Guard.IsNotNull(Property);
-                var propertyInfo = Property.PropertyInfo;
-                if (Property.CollectionType != null)
-                {
-                    var list = propertyInfo.GetValue(Property.Object) as List<T>;
-                    Guard.IsNotNull(list);
-                    Guard.IsTrue(ItemIndex < list.Count);
-                    list[ItemIndex] = value;
-                }
-                else 
-                { 
-                    propertyInfo.SetValue(Property.Object, value);
-                }
-                OnPropertyChanged(nameof(Value));
+                var list = propertyInfo.GetValue(Property.Object) as List<T>;
+                Guard.IsNotNull(list);
+                Guard.IsTrue(ItemIndex < list.Count);
+                list[ItemIndex] = value;
             }
+            else 
+            { 
+                propertyInfo.SetValue(Property.Object, value);
+            }
+            OnPropertyChanged(nameof(Value));
         }
+    }
 
-        public StructPropertyViewModel()
-        {
-            PropertyChanged += PropertyViewModel_PropertyChanged;
-        }
+    public StructPropertyViewModel()
+    {
+        PropertyChanged += PropertyViewModel_PropertyChanged;
+    }
 
-        private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void PropertyViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Value))
         {
-            if (e.PropertyName == nameof(Value))
-            {
-                Guard.IsNotNull(Property);
-                Property.NotifyPropertyChanged();
-            }
+            Guard.IsNotNull(Property);
+            Property.NotifyPropertyChanged();
         }
     }
 }

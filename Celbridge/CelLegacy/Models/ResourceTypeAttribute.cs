@@ -1,40 +1,35 @@
-﻿using CommunityToolkit.Diagnostics;
-using System;
-using System.Collections.Generic;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
+[AttributeUsage(AttributeTargets.Class)]
+public class ResourceTypeAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Class)]
-    public class ResourceTypeAttribute : Attribute
+    public string Name { get; }
+    public string Description { get; }
+    public string Icon { get; }
+    public List<string> Extensions { get; } = new List<string>();
+
+    public ResourceTypeAttribute(string name, string description, string iconPath, string extensions)
     {
-        public string Name { get; }
-        public string Description { get; }
-        public string Icon { get; }
-        public List<string> Extensions { get; } = new List<string>();
+        Name = name;
+        Description = description;
+        Icon = iconPath;
 
-        public ResourceTypeAttribute(string name, string description, string iconPath, string extensions)
+        if (name == "Folder")
         {
-            Name = name;
-            Description = description;
-            Icon = iconPath;
+            return;
+        }
 
-            if (name == "Folder")
+        Guard.IsFalse(string.IsNullOrEmpty(extensions));
+
+        var splitExtensions = extensions.Split(',');
+        foreach (var extension in splitExtensions)
+        {
+            var trimmed = extension.Trim();
+            if (!extension.StartsWith('.'))
             {
-                return;
+                throw new InvalidOperationException($"File extension for ResourceType '{Name}' must start with .");
             }
-
-            Guard.IsFalse(string.IsNullOrEmpty(extensions));
-
-            var splitExtensions = extensions.Split(',');
-            foreach (var extension in splitExtensions)
-            {
-                var trimmed = extension.Trim();
-                if (!extension.StartsWith('.'))
-                {
-                    throw new InvalidOperationException($"File extension for ResourceType '{Name}' must start with .");
-                }
-                Extensions.Add(extension);
-            }
+            Extensions.Add(extension);
         }
     }
 }

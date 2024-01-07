@@ -1,14 +1,11 @@
-﻿using System;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
+public class MaxListLengthAttribute : Attribute
 {
-    public class MaxListLengthAttribute : Attribute
-    {
-        public int MaxLength { get; private set; }
+    public int MaxLength { get; private set; }
 
-        public MaxListLengthAttribute(int maxLength)
-        {
-            MaxLength = maxLength;
-        }
+    public MaxListLengthAttribute(int maxLength)
+    {
+        MaxLength = maxLength;
     }
 }

@@ -1,34 +1,30 @@
-﻿using Celbridge.Utils;
-using Celbridge.ViewModels;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public partial class BooleanPropertyView : UserControl, IPropertyView
 {
-    public partial class BooleanPropertyView : UserControl, IPropertyView
+    public BooleanPropertyViewModel ViewModel { get; }
+
+    public BooleanPropertyView()
     {
-        public BooleanPropertyViewModel ViewModel { get; }
+        this.InitializeComponent();
 
-        public BooleanPropertyView()
-        {
-            this.InitializeComponent();
+        var services = LegacyServiceProvider.Services!;
+        ViewModel = services.GetRequiredService<BooleanPropertyViewModel>();
+    }
 
-            var services = LegacyServiceProvider.Services!;
-            ViewModel = services.GetRequiredService<BooleanPropertyViewModel>();
-        }
+    public void SetProperty(Property property, string labelText)
+    {
+        ViewModel.SetProperty(property, labelText);
+    }
 
-        public void SetProperty(Property property, string labelText)
-        {
-            ViewModel.SetProperty(property, labelText);
-        }
+    public int ItemIndex
+    {
+        get => ViewModel.ItemIndex;
+        set => ViewModel.ItemIndex = value;
+    }
 
-        public int ItemIndex
-        {
-            get => ViewModel.ItemIndex;
-            set => ViewModel.ItemIndex = value;
-        }
-
-        public Result CreateChildViews()
-        {
-            return new SuccessResult();
-        }
+    public Result CreateChildViews()
+    {
+        return new SuccessResult();
     }
 }

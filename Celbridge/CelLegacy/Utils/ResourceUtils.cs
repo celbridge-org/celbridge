@@ -1,27 +1,24 @@
-﻿using Microsoft.UI.Xaml;
+﻿namespace CelLegacy.Utils;
 
-namespace Celbridge.Utils
+class ResourceUtils
 {
-    class ResourceUtils
+    public static T? Get<T>(string resourceName)
     {
-        public static T? Get<T>(string resourceName)
+        try
         {
-            try
+            var success = Application.Current.Resources.TryGetValue(resourceName, out var outValue);
+            if (success && outValue is T)
             {
-                var success = Application.Current.Resources.TryGetValue(resourceName, out var outValue);
-                if (success && outValue is T)
-                {
-                    return (T)outValue;
-                }
-                else
-                {
-                    return default(T);
-                }
+                return (T)outValue;
             }
-            catch
+            else
             {
                 return default(T);
             }
+        }
+        catch
+        {
+            return default(T);
         }
     }
 }

@@ -1,15 +1,10 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
-using System.Threading.Tasks;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+interface IDocumentView
 {
-    interface IDocumentView
-    {
-        IDocument Document { get; set; }
+    IDocument Document { get; set; }
 
-        Task<Result> LoadDocumentAsync();
+    Task<Result> LoadDocumentAsync();
 
-        void CloseDocument();
-    }
+    void CloseDocument();
 }

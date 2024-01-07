@@ -1,17 +1,17 @@
 ﻿<Page
-    x:Class="Celbridge.Shell"
+    x:Class="CelLegacy.Views.Shell"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Celbridge"
+    xmlns:local="using:CelLegacy.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:not_win="http://uno.ui/not_win"
-    xmlns:viewmodels="using:Celbridge.ViewModels"
-    xmlns:utils="using:Celbridge.Utils"
-    xmlns:views="using:Celbridge.Views"
+    xmlns:viewmodels="using:CelLegacy.ViewModels"
+    xmlns:utils="using:CelLegacy.Utils"
+    xmlns:views="using:CelLegacy.Views"
     DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d not_win">
 

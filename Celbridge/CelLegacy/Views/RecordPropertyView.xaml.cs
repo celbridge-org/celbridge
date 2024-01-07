@@ -1,93 +1,83 @@
-﻿using Celbridge.Models;
-using Celbridge.Utils;
-using Celbridge.ViewModels;
-using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 
-namespace Celbridge.Views
+namespace CelLegacy.Views;
+
+public partial class RecordPropertyView : UserControl, IPropertyView
 {
-    public partial class RecordPropertyView : UserControl, IPropertyView
+    public RecordPropertyViewModel ViewModel { get; }
+
+    public RecordPropertyView()
     {
-        public RecordPropertyViewModel ViewModel { get; }
+        this.InitializeComponent();
 
-        public RecordPropertyView()
+        var services = LegacyServiceProvider.Services!;
+        ViewModel = services.GetRequiredService<RecordPropertyViewModel>();
+    }
+
+    public void SetProperty(Property property, string labelText)
+    {
+        ViewModel.SetProperty(property, labelText);
+    }
+
+    public Result CreateChildViews()
+    {
+        try
         {
-            this.InitializeComponent();
+            var property = ViewModel.Property;
 
-            var services = LegacyServiceProvider.Services!;
-            ViewModel = services.GetRequiredService<RecordPropertyViewModel>();
-        }
-
-        public void SetProperty(Property property, string labelText)
-        {
-            ViewModel.SetProperty(property, labelText);
-        }
-
-        public Result CreateChildViews()
-        {
-            try
+            // Get the record object that this property is referencing and create a view for each of its properties.
+            IRecord? record;
+            if (property.CollectionType != null)
             {
-                var property = ViewModel.Property;
-
-                // Get the record object that this property is referencing and create a view for each of its properties.
-                IRecord? record;
-                if (property.CollectionType != null)
-                {
-                    var list = property.PropertyInfo.GetValue(property.Object) as IList;
-                    Guard.IsNotNull(list);
-                    Guard.IsTrue(ItemIndex < list.Count);
-                    record = list[ItemIndex] as IRecord;
-                }
-                else
-                {
-                    record = property.PropertyInfo.GetValue(property.Object) as IRecord;
-                }
-
-                if (record == null)
-                {
-                    return new ErrorResult($"Failed to get record object for property {property.PropertyInfo.Name}.");
-                }
-
-                var result = PropertyViewUtils.CreatePropertyViews(record, PropertyContext.Record, (s, e) =>
-                {
-                    // This callback is called when any of the record's properties are changed.
-                    // Now we notify the record property itself that it has changed.
-                    property.NotifyPropertyChanged();
-                });
-
-                if (result is ErrorResult<List<UIElement>> error)
-                {
-                    return new ErrorResult(error.Message);
-                }
-
-                var views = result.Data!;
-                foreach (var view in views)
-                {
-                    PropertyViews.Items.Add(view);
-                }
-
-                return new SuccessResult();
+                var list = property.PropertyInfo.GetValue(property.Object) as IList;
+                Guard.IsNotNull(list);
+                Guard.IsTrue(ItemIndex < list.Count);
+                record = list[ItemIndex] as IRecord;
             }
-            catch (Exception ex)
+            else
             {
-                return new ErrorResult($"Failed to create child views. {ex.Message}");
+                record = property.PropertyInfo.GetValue(property.Object) as IRecord;
             }
-        }
 
-        public ItemCollection GetPropertyViews()
-        {
-            return PropertyViews.Items;
-        }
+            if (record == null)
+            {
+                return new ErrorResult($"Failed to get record object for property {property.PropertyInfo.Name}.");
+            }
 
-        public int ItemIndex
-        {
-            get => ViewModel.ItemIndex;
-            set => ViewModel.ItemIndex = value;
+            var result = PropertyViewUtils.CreatePropertyViews(record, PropertyContext.Record, (s, e) =>
+            {
+                // This callback is called when any of the record's properties are changed.
+                // Now we notify the record property itself that it has changed.
+                property.NotifyPropertyChanged();
+            });
+
+            if (result is ErrorResult<List<UIElement>> error)
+            {
+                return new ErrorResult(error.Message);
+            }
+
+            var views = result.Data!;
+            foreach (var view in views)
+            {
+                PropertyViews.Items.Add(view);
+            }
+
+            return new SuccessResult();
         }
+        catch (Exception ex)
+        {
+            return new ErrorResult($"Failed to create child views. {ex.Message}");
+        }
+    }
+
+    public ItemCollection GetPropertyViews()
+    {
+        return PropertyViews.Items;
+    }
+
+    public int ItemIndex
+    {
+        get => ViewModel.ItemIndex;
+        set => ViewModel.ItemIndex = value;
     }
 }

@@ -1,7 +1,6 @@
-namespace Celbridge.Models
+namespace CelLegacy.Models;
+
+public record AppConfig
 {
-    public record AppConfig
-    {
-        public string? Environment { get; init; }
-    }
+    public string? Environment { get; init; }
 }

@@ -1,9 +1,8 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+public class NumberPropertyAttribute : PropertyAttribute
 {
-    public class NumberPropertyAttribute : PropertyAttribute
-    {
-        public NumberPropertyAttribute()
-            : base("Celbridge.Views.NumberPropertyView", typeof(double))
-        {}
-    }
+    public NumberPropertyAttribute()
+        : base("CelLegacy.Views.NumberPropertyView", typeof(double))
+    {}
 }

@@ -1,30 +1,21 @@
-﻿using Celbridge.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
-using System;
-using Windows.System;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class LeftNavigationBar : UserControl
 {
-    public sealed partial class LeftNavigationBar : UserControl
+    public LeftNavigationBarViewModel ViewModel { get; set; }
+
+    public LeftNavigationBar()
     {
-        public LeftNavigationBarViewModel ViewModel { get; set; }
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<LeftNavigationBarViewModel>();
 
-        public LeftNavigationBar()
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "Expanded")
         {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<LeftNavigationBarViewModel>();
-
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        }
-
-        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == "Expanded")
-            {
-            }
         }
     }
 }

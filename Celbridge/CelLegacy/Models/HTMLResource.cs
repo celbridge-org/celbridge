@@ -1,15 +1,15 @@
-﻿namespace Celbridge.Models
+﻿namespace CelLegacy.Models;
+
+[ResourceType("Document", "A browser document", "\uE8A5", ".html,.png,.jpg,.webp,.pdf")] // Document icon
+public class HTMLResource : FileResource, IDocumentEntity
 {
-    [ResourceType("Document", "A browser document", "\uE8A5", ".html,.png,.jpg,.webp,.pdf")] // Document icon
-    public class HTMLResource : FileResource, IDocumentEntity
+    public string StartURL { get; set; } = string.Empty;
+    
+    public static Result CreateResource(string path)
     {
-        public string StartURL { get; set; } = string.Empty;
-        
-        public static Result CreateResource(string path)
+        try
         {
-            try
-            {
-                string htmlContent = @"
+            string htmlContent = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -22,14 +22,13 @@ Empty HTML Page
 </body>
 </html>
 ";
-                File.WriteAllText(path, htmlContent);
-            }
-            catch (Exception ex)
-            {
-                return new ErrorResult($"Failed to create file at '{path}'. {ex.Message}");
-            }
-
-            return new SuccessResult();
+            File.WriteAllText(path, htmlContent);
         }
+        catch (Exception ex)
+        {
+            return new ErrorResult($"Failed to create file at '{path}'. {ex.Message}");
+        }
+
+        return new SuccessResult();
     }
 }

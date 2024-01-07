@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="Celbridge.Views.ConsolePanel"
+    x:Class="CelLegacy.Views.ConsolePanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"

@@ -1,15 +1,12 @@
-﻿using Celbridge.ViewModels;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class StatusBar : UserControl
 {
-    public sealed partial class StatusBar : UserControl
-    {
-        public StatusBarViewModel ViewModel { get; set; }
+    public StatusBarViewModel ViewModel { get; set; }
 
-        public StatusBar()
-        {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<StatusBarViewModel>();
-        }
+    public StatusBar()
+    {
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<StatusBarViewModel>();
     }
 }

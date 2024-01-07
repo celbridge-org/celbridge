@@ -1,4 +1,3 @@
-﻿namespace Celbridge.Services
-{
-    public record ApplicationClosingMessage;
-}
+﻿namespace CelLegacy.Services;
+
+public record ApplicationClosingMessage;

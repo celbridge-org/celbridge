@@ -1,10 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿namespace CelLegacy.Models;
 
-namespace Celbridge.Models
+public interface IRecord : IEditable
 {
-    public interface IRecord : IEditable
-    {
-        [JsonIgnore]
-        public string Description => ToString() ?? string.Empty;
-    }
+    [JsonIgnore]
+    public string Description => ToString() ?? string.Empty;
 }

@@ -1,15 +1,12 @@
-﻿using Celbridge.ViewModels;
+﻿namespace CelLegacy.Views;
 
-namespace Celbridge.Views
+public sealed partial class NewProjectDialog : ContentDialog
 {
-    public sealed partial class NewProjectDialog : ContentDialog
+    public NewProjectViewModel ViewModel { get; set; }
+    
+    public NewProjectDialog()
     {
-        public NewProjectViewModel ViewModel { get; set; }
-        
-        public NewProjectDialog()
-        {
-            this.InitializeComponent();
-            ViewModel = LegacyServiceProvider.Services!.GetRequiredService<NewProjectViewModel>();
-        }
+        this.InitializeComponent();
+        ViewModel = LegacyServiceProvider.Services!.GetRequiredService<NewProjectViewModel>();
     }
 }
