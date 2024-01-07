@@ -20,7 +20,7 @@
 
 		<NoWarn>$(NoWarn);CA1416;NU1507</NoWarn>
 
-		<DefaultLanguage>en</DefaultLanguage>
+		<DefaultLanguage>en-us</DefaultLanguage>
 
 		<IsAndroid>false</IsAndroid>
 		<IsIOS>false</IsIOS>
