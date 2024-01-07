@@ -1,7 +1,9 @@
 using Celbridge.Services;
 using Celbridge.Tasks;
 using Celbridge.ViewModels;
+using CelLegacy.Services;
 using CommunityToolkit.Mvvm.Messaging;
+using IronPython.Runtime;
 
 namespace Celbridge
 {
@@ -50,6 +52,9 @@ namespace Celbridge
             MainWindow = builder.Window;
 
             Host = builder.Build();
+
+            LegacyServiceProvider.Services = Host.Services;
+            LegacyServiceProvider.MainWindow = MainWindow;
 
             // Do not repeat app initialization when the Window already has content,
             // just ensure that the window is active

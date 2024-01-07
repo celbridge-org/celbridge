@@ -20,7 +20,7 @@ namespace CelLegacy.Resources
                 return new ErrorResult<string>($"Failed to get resource path. Resource key is empty.");
             }
 
-            string path = null;
+            string? path = null;
             if (resourceKey.StartsWith("@"))
             {
                 // Resource in the project folder, map it to an absolute path

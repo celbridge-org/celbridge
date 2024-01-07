@@ -1,0 +1,16 @@
+﻿global using Celbridge.Models;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Localization;
+global using Microsoft.UI.Xaml;
+global using Microsoft.UI.Xaml.Controls;
+global using Microsoft.UI.Xaml.Media;
+global using System.Windows.Input;
+global using Windows.Storage;
+global using CommunityToolkit.Diagnostics;
+global using Serilog;
+global using CelLegacy.ErrorHandling;
+global using Celbridge.Services;
+global using CelLegacy.Services;
+
