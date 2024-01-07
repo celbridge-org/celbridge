@@ -25,6 +25,14 @@
 	<PackageReference Include="Uno.Extensions.Localization.WinUI" />
 	<PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <PackageReference Include="Uno.CommunityToolkit.WinUI.UI.Controls" />
+  </ItemGroup>
+
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
@@ -59,5 +67,126 @@
   </Choose>
   <ItemGroup>
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Views\AddResourceDialog.xaml" />
+    <None Remove="Views\BooleanPropertyView.xaml" />
+    <None Remove="Views\ConsolePanel.xaml" />
+    <None Remove="Views\DetailPanel.xaml" />
+    <None Remove="Views\DocumentsPanel.xaml" />
+    <None Remove="Views\HTMLDocumentView.xaml" />
+    <None Remove="Views\InspectorPanel.xaml" />
+    <None Remove="Views\LeftNavigationBar.xaml" />
+    <None Remove="Views\MainMenu.xaml" />
+    <None Remove="Views\NewProjectDialog.xaml" />
+    <None Remove="Views\NumberPropertyView.xaml" />
+    <None Remove="Views\PathPropertyView.xaml" />
+    <None Remove="Views\ProgressDialog.xaml" />
+    <None Remove="Views\ProjectPanel.xaml" />
+    <None Remove="Views\PropertyListItem.xaml" />
+    <None Remove="Views\PropertyListView.xaml" />
+    <None Remove="Views\RecordPropertyView.xaml" />
+    <None Remove="Views\SettingsDialog.xaml" />
+    <None Remove="Views\Shell.xaml" />
+    <None Remove="Views\StatusBar.xaml" />
+    <None Remove="Views\TextAreaPropertyView.xaml" />
+    <None Remove="Views\TextFileDocumentView.xaml" />
+    <None Remove="Views\TextPropertyView.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Views\AddResourceDialog.xaml" />
+    <UpToDateCheckInput Remove="Views\BooleanPropertyView.xaml" />
+    <UpToDateCheckInput Remove="Views\ConsolePanel.xaml" />
+    <UpToDateCheckInput Remove="Views\DetailPanel.xaml" />
+    <UpToDateCheckInput Remove="Views\DocumentsPanel.xaml" />
+    <UpToDateCheckInput Remove="Views\HTMLDocumentView.xaml" />
+    <UpToDateCheckInput Remove="Views\InspectorPanel.xaml" />
+    <UpToDateCheckInput Remove="Views\LeftNavigationBar.xaml" />
+    <UpToDateCheckInput Remove="Views\MainMenu.xaml" />
+    <UpToDateCheckInput Remove="Views\NewProjectDialog.xaml" />
+    <UpToDateCheckInput Remove="Views\NumberPropertyView.xaml" />
+    <UpToDateCheckInput Remove="Views\PathPropertyView.xaml" />
+    <UpToDateCheckInput Remove="Views\ProgressDialog.xaml" />
+    <UpToDateCheckInput Remove="Views\ProjectPanel.xaml" />
+    <UpToDateCheckInput Remove="Views\PropertyListItem.xaml" />
+    <UpToDateCheckInput Remove="Views\PropertyListView.xaml" />
+    <UpToDateCheckInput Remove="Views\RecordPropertyView.xaml" />
+    <UpToDateCheckInput Remove="Views\SettingsDialog.xaml" />
+    <UpToDateCheckInput Remove="Views\Shell.xaml" />
+    <UpToDateCheckInput Remove="Views\StatusBar.xaml" />
+    <UpToDateCheckInput Remove="Views\TextAreaPropertyView.xaml" />
+    <UpToDateCheckInput Remove="Views\TextFileDocumentView.xaml" />
+    <UpToDateCheckInput Remove="Views\TextPropertyView.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\AddResourceDialog.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\BooleanPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\ConsolePanel.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\DetailPanel.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\DocumentsPanel.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\HTMLDocumentView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\InspectorPanel.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\LeftNavigationBar.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\MainMenu.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\NewProjectDialog.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\NumberPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\PathPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\ProgressDialog.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\ProjectPanel.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\PropertyListItem.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\PropertyListView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\RecordPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\SettingsDialog.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\Shell.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\StatusBar.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\TextAreaPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\TextFileDocumentView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\TextPropertyView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
   </ItemGroup>
 </Project>
