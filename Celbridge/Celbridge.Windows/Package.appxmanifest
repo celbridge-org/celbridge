@@ -8,8 +8,8 @@
 
 	<Identity
 		Name="Celbridge"
-		Publisher="O=Chris Gregan"
-		Version="1.0.0.0" />
+		Publisher="CN=An Tulcha"
+		Version="1.0.3.0" />
 
 	<Properties>
 		<DisplayName>Celbridge</DisplayName>
@@ -33,6 +33,7 @@
 				DisplayName="Celbridge"
 				Description="Celbridge">
 				<uap:SplashScreen />
+				<uap:DefaultTile/>
 			</uap:VisualElements>
 		</Application>
 	</Applications>

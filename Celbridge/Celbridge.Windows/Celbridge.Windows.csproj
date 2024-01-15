@@ -14,6 +14,15 @@
 	<PropertyGroup>
 		<!-- Bundles the WinAppSDK binaries -->
 		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+		<AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+		<GenerateTestArtifacts>True</GenerateTestArtifacts>
+		<AppxBundle>Never</AppxBundle>
+		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+		<PackageCertificateThumbprint>814EA3F01011995BA542A5743049A906A2F457BD</PackageCertificateThumbprint>
 
 		<!-- <SelfContained>true</SelfContained> -->
 	</PropertyGroup>
