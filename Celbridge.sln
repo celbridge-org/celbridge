@@ -39,6 +39,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A13B9DDB-3
 		Docs\UnoPlatformNotes.md = Docs\UnoPlatformNotes.md
 		Docs\UsingGithub.md = Docs\UsingGithub.md
 		Docs\WindowsPackagedBuild.md = Docs\WindowsPackagedBuild.md
+		Docs\VisualStudioOddities.md = Docs\VisualStudioOddities.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Projects", "Projects", "{86258219-BA11-4966-8ACC-D08C896037BA}"
