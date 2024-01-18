@@ -124,43 +124,6 @@
     <UpToDateCheckInput Remove="Views\TextPropertyView.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\..\..\..\..\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-100.png" Link="Assets\BackIcon.scale-100.png">
-      <Private>False</Private>
-      <NuGetPackageVersion>4.2.22</NuGetPackageVersion>
-      <NuGetItemType>Content</NuGetItemType>
-      <NuGetPackageId>Uno.Toolkit.WinUI</NuGetPackageId>
-      <Pack>false</Pack>
-    </Content>
-    <Content Include="..\..\..\..\..\..\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-150.png" Link="Assets\BackIcon.scale-150.png">
-      <Private>False</Private>
-      <NuGetPackageVersion>4.2.22</NuGetPackageVersion>
-      <NuGetItemType>Content</NuGetItemType>
-      <NuGetPackageId>Uno.Toolkit.WinUI</NuGetPackageId>
-      <Pack>false</Pack>
-    </Content>
-    <Content Include="..\..\..\..\..\..\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-200.png" Link="Assets\BackIcon.scale-200.png">
-      <Private>False</Private>
-      <NuGetPackageVersion>4.2.22</NuGetPackageVersion>
-      <NuGetItemType>Content</NuGetItemType>
-      <NuGetPackageId>Uno.Toolkit.WinUI</NuGetPackageId>
-      <Pack>false</Pack>
-    </Content>
-    <Content Include="..\..\..\..\..\..\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-300.png" Link="Assets\BackIcon.scale-300.png">
-      <Private>False</Private>
-      <NuGetPackageVersion>4.2.22</NuGetPackageVersion>
-      <NuGetItemType>Content</NuGetItemType>
-      <NuGetPackageId>Uno.Toolkit.WinUI</NuGetPackageId>
-      <Pack>false</Pack>
-    </Content>
-    <Content Include="..\..\..\..\..\..\.nuget\packages\uno.toolkit.winui\4.2.22\contentFiles\any\net6.0-windows10.0.18362\Assets\BackIcon.scale-400.png" Link="Assets\BackIcon.scale-400.png">
-      <Private>False</Private>
-      <NuGetPackageVersion>4.2.22</NuGetPackageVersion>
-      <NuGetItemType>Content</NuGetItemType>
-      <NuGetPackageId>Uno.Toolkit.WinUI</NuGetPackageId>
-      <Pack>false</Pack>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <UnoImage Include="Assets\Icons\back.svg" />
   </ItemGroup>
   <ItemGroup>
