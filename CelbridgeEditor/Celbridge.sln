@@ -26,22 +26,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Celbridge\solution-config.props.sample = Celbridge\solution-config.props.sample
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A13B9DDB-364C-4EB7-A100-B243618EEF76}"
-	ProjectSection(SolutionItems) = preProject
-		Docs\AutomaticUpdates.md = Docs\AutomaticUpdates.md
-		Docs\BuildInstructions.md = Docs\BuildInstructions.md
-		Docs\CelRuntime.md = Docs\CelRuntime.md
-		Docs\CelUtilities.md = Docs\CelUtilities.md
-		Docs\ConsoleLogging.md = Docs\ConsoleLogging.md
-		Docs\FontIcons.md = Docs\FontIcons.md
-		Docs\StoringSecrets.md = Docs\StoringSecrets.md
-		Docs\UnoPlatformLibrary.md = Docs\UnoPlatformLibrary.md
-		Docs\UnoPlatformNotes.md = Docs\UnoPlatformNotes.md
-		Docs\UsingGithub.md = Docs\UsingGithub.md
-		Docs\WindowsPackagedBuild.md = Docs\WindowsPackagedBuild.md
-		Docs\VisualStudioOddities.md = Docs\VisualStudioOddities.md
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Projects", "Projects", "{86258219-BA11-4966-8ACC-D08C896037BA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CelLegacy", "Celbridge\CelLegacy\CelLegacy.csproj", "{DEA822D9-AE16-4E8D-AB35-2A25D42A3E95}"
