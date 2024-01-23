@@ -28,8 +28,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Content Include="Images\**" />
-		<Manifest Include="$(ApplicationManifest)" />
+    <Content Include="Images\**" />
+    <Content Include="Web\**" />
+    <Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>
 
 	<ItemGroup>

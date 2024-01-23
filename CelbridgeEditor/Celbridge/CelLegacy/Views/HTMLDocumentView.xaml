@@ -17,17 +17,25 @@
           VerticalAlignment="Stretch">
 
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <WebView2 Grid.Row="0" 
+        <Button Grid.Column="0"
+                ToolTipService.ToolTip="Clear"
+                ToolTipService.Placement="Top"
+                Click="Button_Click">
+            <SymbolIcon Symbol="Upload"/>
+        </Button>
+
+        <WebView2 Grid.Row="1" 
                   x:Name="HTMLView" 
                   Source="{x:Bind ViewModel.Source, Mode=TwoWay}" 
                   NavigationStarting="OnNavigationStarting"
                   NavigationCompleted="OnNavigationCompleted"/>
 
-        <TextBox Grid.Row="1" 
+        <TextBox Grid.Row="2" 
                  BorderBrush="{StaticResource PanelBorderBrush}" 
                  MinHeight="20"
                  Padding="2"

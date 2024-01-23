@@ -49,4 +49,26 @@ public partial class HTMLDocumentView : TabViewItem, IDocumentView
     {
         // Log.Information($"Navigation completed: {args}");
     }
+
+    private void Button_Click(object sender, RoutedEventArgs e)
+    {
+        async Task LoadCodeEditor()
+        {
+            await HTMLView.EnsureCoreWebView2Async();
+            HTMLView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "WebAssets",
+                "Web",
+                CoreWebView2HostResourceAccessKind.Allow);
+            //HTMLView.CoreWebView2.Navigate("http://localhost:5120/");
+            HTMLView.CoreWebView2.Navigate("http://WebAssets/index.html");
+
+            // Todo: it's displaying a Blazor widget but then complains it can't find the content?
+            // It's not a http thing, I tested that.
+            // Try publishing a debug version and using that?
+            // Don't spend all day on it anyway, we can put a version online and just download it every time if we have to.
+        }
+
+        _ = LoadCodeEditor();
+
+    }
 }

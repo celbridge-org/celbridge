@@ -1,0 +1,24 @@
+{
+  "Name": "MonacoTest",
+  "Description": "",
+  "Id": "aa3ca22f-b500-41fc-9ed6-ddfeb498f7bd",
+  "_name": "MonacoTest",
+  "_description": "",
+  "ResourceRegistry": {
+    "Root": {
+      "Name": "Root",
+      "Description": "",
+      "Id": "00000000-0000-0000-0000-000000000000",
+      "Children": [
+        {
+          "$type": "CelLegacy.Models.HTMLResource, CelLegacy",
+          "StartURL": "",
+          "Name": "CodeEditor.html",
+          "Description": "",
+          "Id": "caffb620-f859-4168-bcdc-31f89f993f64",
+          "Children": []
+        }
+      ]
+    }
+  }
+}
