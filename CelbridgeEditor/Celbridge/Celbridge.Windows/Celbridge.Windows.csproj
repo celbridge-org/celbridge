@@ -22,14 +22,14 @@
 		<GenerateTestArtifacts>True</GenerateTestArtifacts>
 		<AppxBundle>Never</AppxBundle>
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-		<PackageCertificateThumbprint>814EA3F01011995BA542A5743049A906A2F457BD</PackageCertificateThumbprint>
+		<PackageCertificateThumbprint>544FC61E009BD0A97933202B8F5538725D82A8CA</PackageCertificateThumbprint>
 
 		<!-- <SelfContained>true</SelfContained> -->
 	</PropertyGroup>
 
 	<ItemGroup>
     <Content Include="Images\**" />
-    <Content Include="Web\**" />
+    <Content Include="wwwroot\**" />
     <Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>
 
@@ -86,4 +86,8 @@
 	</PropertyGroup>
 
 	<Import Project="..\Celbridge.Base\base.props" />
+
+	<ItemGroup>
+	  <SourceGeneratorInput Remove="Celbridge.Windows_TemporaryKey.pfx" />
+	</ItemGroup>
 </Project>

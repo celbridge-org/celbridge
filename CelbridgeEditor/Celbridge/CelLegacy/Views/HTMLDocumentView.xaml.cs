@@ -47,6 +47,8 @@ public partial class HTMLDocumentView : TabViewItem, IDocumentView
 
     private void OnNavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
+        ViewModel.Source = HTMLView.Source.AbsoluteUri;
+
         // Log.Information($"Navigation completed: {args}");
     }
 
@@ -56,19 +58,12 @@ public partial class HTMLDocumentView : TabViewItem, IDocumentView
         {
             await HTMLView.EnsureCoreWebView2Async();
             HTMLView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "WebAssets",
-                "Web",
+                "CelbridgeBlazor",
+                "wwwroot",
                 CoreWebView2HostResourceAccessKind.Allow);
-            //HTMLView.CoreWebView2.Navigate("http://localhost:5120/");
-            HTMLView.CoreWebView2.Navigate("http://WebAssets/index.html");
-
-            // Todo: it's displaying a Blazor widget but then complains it can't find the content?
-            // It's not a http thing, I tested that.
-            // Try publishing a debug version and using that?
-            // Don't spend all day on it anyway, we can put a version online and just download it every time if we have to.
+            HTMLView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
         }
 
         _ = LoadCodeEditor();
-
     }
 }
