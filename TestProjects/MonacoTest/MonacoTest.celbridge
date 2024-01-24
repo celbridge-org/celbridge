@@ -17,6 +17,14 @@
           "Description": "",
           "Id": "caffb620-f859-4168-bcdc-31f89f993f64",
           "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.HTMLResource, CelLegacy",
+          "StartURL": "",
+          "Name": "MoreHTML.html",
+          "Description": "",
+          "Id": "cea8aecd-6466-499c-9b3c-e3b095d19764",
+          "Children": []
         }
       ]
     }
