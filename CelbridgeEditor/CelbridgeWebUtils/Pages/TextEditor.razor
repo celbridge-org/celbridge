@@ -1,0 +1,49 @@
+﻿@page "/editor"
+@layout FullPageLayout
+@inject IJSRuntime JS
+
+<PageTitle>Text Editor</PageTitle>
+
+<StandaloneCodeEditor @ref="_editor" 
+  Id="my-editor-instance-id" 
+  ConstructionOptions="EditorConstructionOptions" 
+  CssClass="fill-viewport"
+  OnDidChangeModelContent="EditorDidChangeModelContent" />
+
+@code {
+
+    private static StandaloneCodeEditor _editor = null!;
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+            {
+                AutomaticLayout = true,
+                Language = "markdown",
+                Minimap = new EditorMinimapOptions
+                {
+                    Enabled = false // This disables the minimap
+                },
+                Theme = "vs-dark",
+                MatchBrackets = "never",
+            };
+    }
+
+    private void EditorDidChangeModelContent(ModelContentChangedEvent eventArgs)
+    {
+        async Task SendUpdatedText()
+        {
+            var content = await _editor.GetValue();
+            await JS.InvokeVoidAsync("updateTextData", content);            
+        }
+
+        _ = SendUpdatedText();
+    }
+
+    [JSInvokable]
+    public static async Task<string> SetTextData(string text)
+    {
+        await _editor.SetValue(text);
+        return $"text was updated";
+    }
+}

@@ -401,3 +401,4 @@ FodyWeavers.xsd
 solution-config.props
 # Windows Publish Profiles
 !**/*.Windows/Properties/PublishProfiles/*.pubxml
+/CelbridgeEditor/CelbridgeWebUtils/Properties/PublishProfiles/CelbridgeContent.pubxml

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>CelbridgeWebUtils</title>
+    <base href="/" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="CelbridgeWebUtils.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_content/BlazorMonaco/jsInterop.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+
+    <script>
+        function postWebViewMessage(message) {
+            try {
+                if (window.hasOwnProperty("chrome") && typeof chrome.webview !== undefined) {
+                    // Windows
+                    chrome.webview.postMessage(message);
+                } else if (window.hasOwnProperty("unoWebView")) {
+                    // Android
+                    unoWebView.postMessage(JSON.stringify(message));
+                } else if (window.hasOwnProperty("webkit") && typeof webkit.messageHandlers !== undefined) {
+                    // iOS and macOS
+                    webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
+                }
+            }
+            catch (ex) {
+                console.error('Error:', ex);
+                // alert("Error occurred: " + ex);
+            }
+        }
+
+        function setTextData(text) {
+            result = DotNet.invokeMethodAsync('CelbridgeWebUtils', 'SetTextData', text)
+                .then(result => {
+                    postWebViewMessage('It worked:' + result)
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    postWebViewMessage('Error:' + error)
+                    throw error; // Re-throw the error for proper error handling
+                });
+        }
+
+        function updateTextData(text) {
+            postWebViewMessage('Update:' + text)
+        }
+
+    </script>
+</body>
+
+</html>
