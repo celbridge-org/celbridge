@@ -4,11 +4,11 @@
 
 <PageTitle>Text Editor</PageTitle>
 
-<StandaloneCodeEditor @ref="_editor" 
-  Id="my-editor-instance-id" 
-  ConstructionOptions="EditorConstructionOptions" 
-  CssClass="fill-viewport"
-  OnDidChangeModelContent="EditorDidChangeModelContent" />
+<StandaloneCodeEditor @ref="_editor"
+                      Id="text-editor"
+                      ConstructionOptions="EditorConstructionOptions"
+                      CssClass="editor-viewport"
+                      OnDidChangeModelContent="EditorDidChangeModelContent" />
 
 @code {
 
@@ -22,7 +22,7 @@
                 Language = "markdown",
                 Minimap = new EditorMinimapOptions
                 {
-                    Enabled = false // This disables the minimap
+                    Enabled = false
                 },
                 Theme = "vs-dark",
                 MatchBrackets = "never",
