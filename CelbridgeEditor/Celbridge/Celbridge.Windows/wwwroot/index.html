@@ -36,7 +36,7 @@
 
         function listenForWebViewMessages() {
             if (!window.isWebView) {
-                return
+                return;
             }
 
             // Windows (WebView2)
@@ -60,7 +60,7 @@
         }
 
         function processMessage(data) {
-            setTextData(data)
+            setTextData(data);
         }
 
         // Initialize the message listener
@@ -68,7 +68,7 @@
 
         function postWebViewMessage(message) {
             if (!window.isWebView) {
-                return
+                return;
             }
 
             try {
@@ -94,7 +94,7 @@
         // Called from Uno to set the text in the editor
         function setTextData(text) {
             if (!window.isWebView) {
-                return
+                return;
             }
             result = DotNet.invokeMethodAsync('CelbridgeWebUtils', 'SetTextData', text)
                 .then(result => {
@@ -108,14 +108,18 @@
 
         function updateTextData(text) {
             if (!window.isWebView) {
-                return
+                return;
             }
             // Called from Monaco to set the text back in Uno land
             postWebViewMessage(text)
         }
 
         function getLanguage() {
-            return window.language || "plaintext"
+            return window.language || "plaintext";
+        }
+
+        function getTheme() {
+            return window.theme || "vs-light";
         }
 
     </script>

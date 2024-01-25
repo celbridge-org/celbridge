@@ -23,7 +23,8 @@
                 Language = "plaintext",
                 Minimap = new EditorMinimapOptions
                 {
-                    Enabled = false
+                    Enabled = true,
+                    Autohide = true
                 },
                 Theme = "vs-dark",
                 MatchBrackets = "never",
@@ -34,13 +35,18 @@
     {
         async Task SendReadyNotification()
         {
+            // Set the text language for syntax highlighting
             var language = await JS.InvokeAsync<string>("getLanguage");
             var model = await _editor.GetModel();
             await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, language);
 
+            // Apply the light or dark theme to match the active theme in Celbridge
+            var theme = await JS.InvokeAsync<string>("getTheme");
+            await BlazorMonaco.Editor.Global.SetTheme(JS, theme);
+
+            // Notify Celbridge that the Monaco editor is ready to edit text
             await JS.InvokeVoidAsync("postWebViewMessage", "editor_ready");
         }
-
 
         _ = SendReadyNotification();
     }

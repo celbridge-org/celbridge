@@ -90,6 +90,13 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     string language = GetLanguage(ViewModel.Path);
                     await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.language = '{language}';");
 
+                    var settingsService = LegacyServiceProvider.Services!.GetRequiredService<ISettingsService>();
+                    Guard.IsNotNull(settingsService);
+                    Guard.IsNotNull(settingsService.EditorSettings);
+
+                    var theme = settingsService.EditorSettings.ApplicationTheme == ApplicationTheme.Dark ? "vs-dark" : "vs-light";
+                    await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{theme}';");
+
                     EditorWebView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
 
                     // WebView navigation will complete in a while, and then the Monaco editor will take some time to initialize.

@@ -1,7 +1,7 @@
 {
   "entryAssembly": "CelbridgeWebUtils",
   "resources": {
-    "hash": "sha256-1hG3b2wTuDoqFy7Z8GccqLJFQZoP26Agy5PdH0KNeGI=",
+    "hash": "sha256-Hl2qk7ps902s8xl+AYoova4QFV668SOyAP2HPAlqT2w=",
     "runtime": {
       "dotnet.7.0.15.dhj2obxs8l.js": "sha256-aIDBXWOjLVnIS1z/p9IK1NxKlztqdg00thjEdgNFSDg=",
       "dotnet.timezones.blat": "sha256-aHk3Pm2JXopn6UPLJtovAqIdIk8GyIMzGm450cli9UE=",
@@ -12,7 +12,7 @@
     },
     "assembly": {
       "BlazorMonaco.dll": "sha256-e2aNwHHs9k5ozSDQxHyQZkCPGnWTTfiZlSTbfpmsKgM=",
-      "CelbridgeWebUtils.dll": "sha256-PH47bkO0FuwsLA0k/ycBiU+h8nEvmTFgPE35gfHxgtc=",
+      "CelbridgeWebUtils.dll": "sha256-nYJRaKmJtFAt34B9m6hSMkb19dK82TKBLhApGFgaTCw=",
       "Microsoft.AspNetCore.Components.dll": "sha256-lbPCTzCtEgk8wiSf+9eBlGHktKNL0/C9A2L1qoYk3Sw=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-NXNSPYU7em1AlAnFJ8AJeeltog5RTwLt+SdhtVVCtqA=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-2+ToeRN36ZfEtkp9zMTrXxaWTBvesGRQ8aS31mr1II0=",
