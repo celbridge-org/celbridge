@@ -165,9 +165,9 @@ public class ConsoleService : IConsoleService
             {
                 // Execute the command as a Python script
                 // Have to pass the scope in to persist state between calls!
-                _scriptEngine.Execute(commandText, _scriptScope);
-                output = Encoding.Default.GetString(_outputStream.ToArray());
-                _outputStream.SetLength(0);
+                //_scriptEngine.Execute(commandText, _scriptScope);
+                //output = Encoding.Default.GetString(_outputStream.ToArray());
+                //_outputStream.SetLength(0);
             }
 
             if (output.Length > 0) 

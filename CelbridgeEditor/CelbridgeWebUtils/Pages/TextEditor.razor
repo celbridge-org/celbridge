@@ -8,6 +8,7 @@
                       Id="text-editor"
                       ConstructionOptions="EditorConstructionOptions"
                       CssClass="editor-viewport"
+                      OnDidInit="EditorDidInit"
                       OnDidChangeModelContent="EditorDidChangeModelContent" />
 
 @code {
@@ -27,6 +28,17 @@
                 Theme = "vs-dark",
                 MatchBrackets = "never",
             };
+    }
+
+    private void EditorDidInit()
+    {
+        async Task SendReadyNotification()
+        {
+            var message = "{\"status\": \"ready\"}";
+            await JS.InvokeVoidAsync("postWebViewMessage", message);
+        }
+
+        _ = SendReadyNotification();
     }
 
     private void EditorDidChangeModelContent(ModelContentChangedEvent eventArgs)

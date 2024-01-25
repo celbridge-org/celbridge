@@ -19,6 +19,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" 
@@ -36,5 +37,10 @@
                  IsSpellCheckEnabled="False"
                  Background="{StaticResource PanelBackgroundABrush}">
         </TextBox>
+
+        <WebView2 Grid.Row="2" 
+                  x:Name="EditorWebView" 
+                  NavigationStarting="OnNavigationStarting"
+                  NavigationCompleted="OnNavigationCompleted"/>
     </Grid>
 </muxc:TabViewItem>

@@ -47,8 +47,6 @@ public partial class HTMLDocumentView : TabViewItem, IDocumentView
 
     private void OnNavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        ViewModel.Source = HTMLView.Source.AbsoluteUri;
-
         // Log.Information($"Navigation completed: {args}");
     }
 

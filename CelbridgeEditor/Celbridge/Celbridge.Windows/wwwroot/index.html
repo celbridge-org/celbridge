@@ -33,7 +33,45 @@
     <script src="_framework/blazor.webassembly.js"></script>
 
     <script>
+
+        function listenForWebViewMessages() {
+            if (!window.isWebView) {
+                return
+            }
+
+            // Windows (WebView2)
+            if (window.chrome && typeof chrome.webview !== undefined) {
+                window.chrome.webview.addEventListener('message', event => {
+                    processMessage(event.data);
+                });
+            }
+            // Android
+            else if (window.unoWebView) {
+                window.unoWebViewReceiveMessage = function (data) {
+                    processMessage(data);
+                };
+            }
+            // iOS and macOS (WebKit)
+            else if (window.webkit && typeof webkit.messageHandlers !== undefined) {
+                window.webkit.messageHandlers.unoWebViewReceiveMessage = function (data) {
+                    processMessage(data);
+                };
+            }
+        }
+
+        function processMessage(data) {
+            console.log("Received message: ", data);
+            // Add further processing logic here
+        }
+
+        // Initialize the message listener
+        listenForWebViewMessages();
+
         function postWebViewMessage(message) {
+            if (!window.isWebView) {
+                return
+            }
+
             try {
                 if (window.hasOwnProperty("chrome") && typeof chrome.webview !== undefined) {
                     // Windows
@@ -52,7 +90,11 @@
             }
         }
 
+        // Called from Uno to set the text in the editor
         function setTextData(text) {
+            if (!window.isWebView) {
+                return
+            }
             result = DotNet.invokeMethodAsync('CelbridgeWebUtils', 'SetTextData', text)
                 .then(result => {
                     postWebViewMessage('It worked:' + result)
@@ -64,7 +106,11 @@
                 });
         }
 
+        // Called from Monaco to set the text over in Uno
         function updateTextData(text) {
+            if (!window.isWebView) {
+                return
+            }
             postWebViewMessage('Update:' + text)
         }
 
