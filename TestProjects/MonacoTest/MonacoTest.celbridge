@@ -25,6 +25,15 @@
           "Description": "",
           "Id": "cea8aecd-6466-499c-9b3c-e3b095d19764",
           "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "test.md",
+          "Description": "",
+          "Id": "593d97a7-c679-40a7-9869-433a984bbe1f",
+          "Children": []
         }
       ]
     }
