@@ -84,6 +84,8 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
         }
     }
 
+    public event Action LoadedContent;
+
     public IAsyncRelayCommand CloseDocumentCommand => new AsyncRelayCommand(OnCloseDocument_Executed);
     private async Task OnCloseDocument_Executed()
     {
@@ -133,6 +135,8 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
             _isLoadingContent = false;
             return new ErrorResult($"Failed to load content at path '{_path}'. {ex.Message}");
         }
+
+        LoadedContent?.Invoke();
 
         return new SuccessResult();
     }

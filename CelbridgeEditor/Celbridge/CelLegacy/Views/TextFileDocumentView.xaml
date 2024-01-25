@@ -19,7 +19,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" 
@@ -28,17 +27,7 @@
               Height="32">
         </Grid>
 
-        <TextBox Grid.Row="1" 
-                 x:Name="ContentTextBox"
-                 Text="{x:Bind ViewModel.Content, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Margin="1"
-                 TextWrapping="Wrap"
-                 AcceptsReturn="True"
-                 IsSpellCheckEnabled="False"
-                 Background="{StaticResource PanelBackgroundABrush}">
-        </TextBox>
-
-        <WebView2 Grid.Row="2" 
+        <WebView2 Grid.Row="1" 
                   x:Name="EditorWebView" 
                   NavigationStarting="OnNavigationStarting"
                   NavigationCompleted="OnNavigationCompleted"/>

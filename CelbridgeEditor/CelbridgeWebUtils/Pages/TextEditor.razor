@@ -34,8 +34,7 @@
     {
         async Task SendReadyNotification()
         {
-            var message = "{\"status\": \"ready\"}";
-            await JS.InvokeVoidAsync("postWebViewMessage", message);
+            await JS.InvokeVoidAsync("postWebViewMessage", "editor_ready");
         }
 
         _ = SendReadyNotification();
@@ -56,6 +55,6 @@
     public static async Task<string> SetTextData(string text)
     {
         await _editor.SetValue(text);
-        return $"text was updated";
+        return string.Empty;
     }
 }

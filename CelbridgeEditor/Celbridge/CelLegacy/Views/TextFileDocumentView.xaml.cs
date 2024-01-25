@@ -4,7 +4,7 @@ namespace CelLegacy.Views;
 
 public partial class TextFileDocumentView : TabViewItem, IDocumentView
 {
-    private bool _codeEditorLoaded;
+    private bool _isEditorReady;
 
     public TextFileDocumentViewModel ViewModel { get; }
 
@@ -14,40 +14,40 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
 
         ViewModel = LegacyServiceProvider.Services!.GetRequiredService<TextFileDocumentViewModel>();
 
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-        // Don't change background color on hover or focus. No IDE does this.
-        var brush = (SolidColorBrush)Application.Current.Resources["PanelBackgroundABrush"];
-        ContentTextBox.Resources["TextControlBackgroundPointerOver"] = brush;
-        ContentTextBox.Resources["TextControlBackgroundFocused"] = brush;
-
         Loaded += (s, e) =>
         {
             EditorWebView.WebMessageReceived += EditorWebView_WebMessageReceived;
         };
-    }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(TextFileDocumentViewModel.Content))
+        Unloaded += (s, e) =>
         {
-            if (_codeEditorLoaded)
-            {
-                // A WebMessage is assumed to be content update for the text editor
-                EditorWebView.CoreWebView2.PostWebMessageAsString(ViewModel.Content);
-            }
-        }
+            ViewModel.LoadedContent -= ViewModel_LoadedContent;
+        };
     }
 
     private void EditorWebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        // Todo: At this point the WebView and Monaco Editor are fully initialized.
-        // There are several asynchronous processes going on here though, so we should only
-        // actually populate the editor when the text is loaded from disk and the editor view is ready to receive the text.
-        // It's also very slow loading the editor view, see if AOT compiling makes it more snappy.
+        if (!_isEditorReady)
+        {
+            if (e.TryGetWebMessageAsString() == "editor_ready")
+            {
+                _isEditorReady = true;
+                SynchronizeContent();
 
-        var payload = e.WebMessageAsJson;
-        Log.Information($"Got payload: {payload}");
+                ViewModel.LoadedContent += ViewModel_LoadedContent;
+                return;
+            }
+
+            Log.Error($"Expected 'editor_ready' message, but received: {e.TryGetWebMessageAsString()}");
+            return;
+        }
+
+        ViewModel.Content = e.TryGetWebMessageAsString();
+    }
+
+    private void ViewModel_LoadedContent()
+    {
+        SynchronizeContent();
     }
 
     public IDocument Document
@@ -67,11 +67,16 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
 
     public async Task<Result> LoadDocumentAsync()
     {
+        Guard.IsFalse(_isEditorReady);
+
         var result = await ViewModel.LoadDocumentAsync();
         if (result.Success)
         {
-            async Task LoadCodeEditor()
+            async Task SetupCodeEditor()
             {
+                // The content to edit has been loaded from disk now, so it's safe to 
+                // initialize the Monaco editor.
+
                 await EditorWebView.EnsureCoreWebView2Async();
                 EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "CelbridgeBlazor",
@@ -79,12 +84,22 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     CoreWebView2HostResourceAccessKind.Allow);
                 await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
                 EditorWebView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
+
+                // WebView navigation will complete in a while, and then the Monaco editor will take some time to initialize.
+                // The web app sends a "editor_ready" message back to Celbridge once the editor is ready to accept content.
             }
 
-            _ = LoadCodeEditor();
+            _ = SetupCodeEditor();
         }
 
         return result;
+    }
+
+    private void SynchronizeContent()
+    {
+        Guard.IsTrue(_isEditorReady, "Failed to synchronize content because editor is not ready.");
+
+        EditorWebView.CoreWebView2.PostWebMessageAsString(ViewModel.Content);
     }
 
     private void OnNavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
@@ -94,7 +109,6 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
 
     private void OnNavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        _codeEditorLoaded = true;
         // Log.Information($"Navigation completed: {EditorWebView.Source}");
     }
 }

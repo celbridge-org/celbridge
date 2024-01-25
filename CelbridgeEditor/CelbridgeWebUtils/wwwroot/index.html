@@ -98,21 +98,20 @@
             }
             result = DotNet.invokeMethodAsync('CelbridgeWebUtils', 'SetTextData', text)
                 .then(result => {
-                    postWebViewMessage('It worked:' + result)
+                    // Noop
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    postWebViewMessage('Error:' + error)
                     throw error; // Re-throw the error for proper error handling
                 });
         }
 
-        // Called from Monaco to set the text over in Uno
         function updateTextData(text) {
             if (!window.isWebView) {
                 return
             }
-            postWebViewMessage('Update:' + text)
+            // Called from Monaco to set the text back in Uno land
+            postWebViewMessage(text)
         }
 
     </script>
