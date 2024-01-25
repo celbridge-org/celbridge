@@ -33,16 +33,8 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
         {
             if (_codeEditorLoaded)
             {
-                async Task CallJSFunction(string content)
-                {
-                    // Todo: Use PostWebMessageAsJson instead
-                    //EditorWebView.CoreWebView2.PostWebMessageAsString(content);
-
-                    var json = JsonConvert.SerializeObject(content);
-                    await EditorWebView.ExecuteScriptAsync($"setTextData({json})");
-                }
-
-                _ = CallJSFunction(ViewModel.Content);
+                // A WebMessage is assumed to be content update for the text editor
+                EditorWebView.CoreWebView2.PostWebMessageAsString(ViewModel.Content);
             }
         }
     }

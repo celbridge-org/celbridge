@@ -60,8 +60,7 @@
         }
 
         function processMessage(data) {
-            console.log("Received message: ", data);
-            // Add further processing logic here
+            setTextData(data)
         }
 
         // Initialize the message listener
@@ -75,6 +74,8 @@
             try {
                 if (window.hasOwnProperty("chrome") && typeof chrome.webview !== undefined) {
                     // Windows
+                    // This causes an exception when run in a browser rather than a WebView
+                    // As a workaround, we set the window.isWebView variable from the Uno side.
                     chrome.webview.postMessage(message);
                 } else if (window.hasOwnProperty("unoWebView")) {
                     // Android
