@@ -28,8 +28,6 @@
         </Grid>
 
         <WebView2 Grid.Row="1" 
-                  x:Name="EditorWebView" 
-                  NavigationStarting="OnNavigationStarting"
-                  NavigationCompleted="OnNavigationCompleted"/>
+                  x:Name="EditorWebView" />
     </Grid>
 </muxc:TabViewItem>

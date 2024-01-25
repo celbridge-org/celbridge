@@ -20,7 +20,7 @@
         return new StandaloneEditorConstructionOptions
             {
                 AutomaticLayout = true,
-                Language = "markdown",
+                Language = "plaintext",
                 Minimap = new EditorMinimapOptions
                 {
                     Enabled = false
@@ -34,8 +34,13 @@
     {
         async Task SendReadyNotification()
         {
+            var language = await JS.InvokeAsync<string>("getLanguage");
+            var model = await _editor.GetModel();
+            await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, language);
+
             await JS.InvokeVoidAsync("postWebViewMessage", "editor_ready");
         }
+
 
         _ = SendReadyNotification();
     }

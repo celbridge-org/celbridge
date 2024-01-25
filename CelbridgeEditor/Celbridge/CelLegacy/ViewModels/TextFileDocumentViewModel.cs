@@ -13,7 +13,7 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
     private bool _isSavingContent;
     private bool _isLoadingContent;
 
-    private string _path = string.Empty;
+    public string Path { get; private set; } = string.Empty;
 
     public TextFileDocumentViewModel(IMessenger messengerService,
                                      IProjectService projectService,
@@ -46,7 +46,7 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
 
     private void OnFileChanged(object recipient, FileChangedMessage message)
     {
-        if (message.Path == _path)
+        if (message.Path == Path)
         {
             if (_isSavingContent)
             {
@@ -84,7 +84,7 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
         }
     }
 
-    public event Action LoadedContent;
+    public event Action? LoadedContent;
 
     public IAsyncRelayCommand CloseDocumentCommand => new AsyncRelayCommand(OnCloseDocument_Executed);
     private async Task OnCloseDocument_Executed()
@@ -118,22 +118,22 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
             return new ErrorResult(error.Message);
         }
 
-        _path = pathResult.Data!;
-        if (!File.Exists(_path))
+        Path = pathResult.Data!;
+        if (!File.Exists(Path))
         {
-            return new ErrorResult($"Failed to load content. File '{_path}' does not exist.");
+            return new ErrorResult($"Failed to load content. File '{Path}' does not exist.");
         }
 
         try
         {
             _isLoadingContent = true;
-            Content = await File.ReadAllTextAsync(_path);
+            Content = await File.ReadAllTextAsync(Path);
             _isLoadingContent = false;
         }
         catch (Exception ex)
         {
             _isLoadingContent = false;
-            return new ErrorResult($"Failed to load content at path '{_path}'. {ex.Message}");
+            return new ErrorResult($"Failed to load content at path '{Path}'. {ex.Message}");
         }
 
         LoadedContent?.Invoke();
@@ -158,7 +158,7 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
 
         _isSavingContent = true;
 
-       return await FileUtils.SaveTextAsync(_path, Content);
+       return await FileUtils.SaveTextAsync(Path, Content);
     }
 
     private void TextFileDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

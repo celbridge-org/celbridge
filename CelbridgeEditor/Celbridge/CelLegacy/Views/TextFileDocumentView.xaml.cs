@@ -72,24 +72,36 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
         var result = await ViewModel.LoadDocumentAsync();
         if (result.Success)
         {
-            async Task SetupCodeEditor()
+            try
             {
-                // The content to edit has been loaded from disk now, so it's safe to 
-                // initialize the Monaco editor.
+                async Task SetupCodeEditor()
+                {
+                    // The content to edit has been loaded from disk now, so it's safe to 
+                    // initialize the Monaco editor.
 
-                await EditorWebView.EnsureCoreWebView2Async();
-                EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "CelbridgeBlazor",
-                    "wwwroot",
-                    CoreWebView2HostResourceAccessKind.Allow);
-                await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
-                EditorWebView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
+                    await EditorWebView.EnsureCoreWebView2Async();
+                    EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        "CelbridgeBlazor",
+                        "wwwroot",
+                        CoreWebView2HostResourceAccessKind.Allow);
 
-                // WebView navigation will complete in a while, and then the Monaco editor will take some time to initialize.
-                // The web app sends a "editor_ready" message back to Celbridge once the editor is ready to accept content.
+                    await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+                    string language = GetLanguage(ViewModel.Path);
+                    await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.language = '{language}';");
+
+                    EditorWebView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
+
+                    // WebView navigation will complete in a while, and then the Monaco editor will take some time to initialize.
+                    // The web app sends a "editor_ready" message back to Celbridge once the editor is ready to accept content.
+                }
+
+                _ = SetupCodeEditor();
             }
-
-            _ = SetupCodeEditor();
+            catch (Exception ex)
+            {
+                return new ErrorResult(ex.Message);
+            }
         }
 
         return result;
@@ -102,13 +114,84 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
         EditorWebView.CoreWebView2.PostWebMessageAsString(ViewModel.Content);
     }
 
-    private void OnNavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    private string GetLanguage(string filename)
     {
-        // Log.Information($"Navigation starting: {args.Uri}");
-    }
+        string language;
+        var extension = Path.GetExtension(filename).ToLowerInvariant();
 
-    private void OnNavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
-    {
-        // Log.Information($"Navigation completed: {EditorWebView.Source}");
+        switch (extension)
+        {
+            case ".js":
+                language = "javascript";
+                break;
+            case ".ts":
+                language = "typescript";
+                break;
+            case ".json":
+                language = "json";
+                break;
+            case ".html":
+            case ".htm":
+                language = "html";
+                break;
+            case ".css":
+                language = "css";
+                break;
+            case ".scss":
+                language = "scss";
+                break;
+            case ".less":
+                language = "less";
+                break;
+            case ".md":
+                language = "markdown";
+                break;
+            case ".py":
+                language = "python";
+                break;
+            case ".java":
+                language = "java";
+                break;
+            case ".c":
+                language = "c";
+                break;
+            case ".cpp":
+                language = "cpp";
+                break;
+            case ".cs":
+                language = "csharp";
+                break;
+            case ".php":
+                language = "php";
+                break;
+            case ".rb":
+                language = "ruby";
+                break;
+            case ".go":
+                language = "go";
+                break;
+            case ".lua":
+                language = "lua";
+                break;
+            case ".xml":
+                language = "xml";
+                break;
+            case ".sql":
+                language = "sql";
+                break;
+            case ".yaml":
+            case ".yml":
+                language = "yaml";
+                break;
+            case ".sh":
+                language = "shell";
+                break;
+            // Add more cases as needed
+            default:
+                language = "plaintext";
+                break;
+        }
+
+        return language;
     }
 }
