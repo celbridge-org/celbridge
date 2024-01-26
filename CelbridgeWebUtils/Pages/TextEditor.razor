@@ -1,0 +1,71 @@
+﻿@page "/editor"
+@layout FullPageLayout
+@inject IJSRuntime JS
+
+<PageTitle>Text Editor</PageTitle>
+
+<StandaloneCodeEditor @ref="_editor"
+                      Id="text-editor"
+                      ConstructionOptions="EditorConstructionOptions"
+                      CssClass="editor-viewport"
+                      OnDidInit="EditorDidInit"
+                      OnDidChangeModelContent="EditorDidChangeModelContent" />
+
+@code {
+
+    private static StandaloneCodeEditor _editor = null!;
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+            {
+                AutomaticLayout = true,
+                Language = "plaintext",
+                Minimap = new EditorMinimapOptions
+                {
+                    Enabled = true,
+                    Autohide = true
+                },
+                Theme = "vs-dark",
+                MatchBrackets = "never",
+            };
+    }
+
+    private void EditorDidInit()
+    {
+        async Task SendReadyNotification()
+        {
+            // Set the text language for syntax highlighting
+            var language = await JS.InvokeAsync<string>("getLanguage");
+            var model = await _editor.GetModel();
+            await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, language);
+
+            // Apply the light or dark theme to match the active theme in Celbridge
+            var theme = await JS.InvokeAsync<string>("getTheme");
+            await BlazorMonaco.Editor.Global.SetTheme(JS, theme);
+
+            // Notify Celbridge that the Monaco editor is ready to edit text
+            await JS.InvokeVoidAsync("postWebViewMessage", "editor_ready");
+        }
+
+        _ = SendReadyNotification();
+    }
+
+    private void EditorDidChangeModelContent(ModelContentChangedEvent eventArgs)
+    {
+        async Task SendUpdatedText()
+        {
+            var content = await _editor.GetValue();
+            await JS.InvokeVoidAsync("updateTextData", content);            
+        }
+
+        _ = SendUpdatedText();
+    }
+
+    [JSInvokable]
+    public static async Task<string> SetTextData(string text)
+    {
+        await _editor.SetValue(text);
+        return string.Empty;
+    }
+}
