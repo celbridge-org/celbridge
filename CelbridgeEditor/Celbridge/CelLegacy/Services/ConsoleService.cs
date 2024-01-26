@@ -1,5 +1,4 @@
-﻿using System.Text;
-using IronPython.Hosting;
+﻿using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
 using CommunityToolkit.WinUI.Helpers;

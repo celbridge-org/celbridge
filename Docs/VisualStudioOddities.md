@@ -23,3 +23,19 @@ folder depth in the file system. No idea why this happened, but deleting the who
 
   </ItemGroup>
 ```
+
+## Intellisense generating invalid errors
+
+This usually happens in code behind files for XAML, Visual Studio starts highlighting non-existent
+errors in references to XAML objects.
+
+The fix is easy, albeit very stupid. Just delete the .vs folder in the solution root.
+https://weblog.west-wind.com/posts/2018/Aug/07/Fixing-Visual-Studio-Intellisense-Errors
+
+# Refactoring fails with an exception
+
+Occasionally refactoring stops working in Visual Studio. Any attempt to rename an identifier causes
+an exception. I've just fixed this so I can't remember what the exception was. I think what fixed
+it was unload and reloading a project in the solution that I had added recently. This happened at the
+same time as the Intellisense issue mentioned above, so it's quite possible the two are related.
+If it happens again, try deleting the .vs folder!

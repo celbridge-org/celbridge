@@ -16,25 +16,9 @@
     <Grid Background="{StaticResource PanelBackgroundABrush}"
           VerticalAlignment="Stretch">
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0" 
-              BorderBrush="{StaticResource PanelBorderBrush}" 
-              BorderThickness="0 1 0 1"
-              Height="32">
-        </Grid>
-
-        <TextBox Grid.Row="1" 
-                 x:Name="ContentTextBox"
-                 Text="{x:Bind ViewModel.Content, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Margin="1"
-                 TextWrapping="Wrap"
-                 AcceptsReturn="True"
-                 IsSpellCheckEnabled="False"
-                 Background="{StaticResource PanelBackgroundABrush}">
-        </TextBox>
+        <WebView2 Grid.Row="1" 
+                  x:Name="EditorWebView" 
+                  Visibility="Collapsed"
+                  DefaultBackgroundColor="{ThemeResource PanelBackgroundAColor}"/>
     </Grid>
 </muxc:TabViewItem>

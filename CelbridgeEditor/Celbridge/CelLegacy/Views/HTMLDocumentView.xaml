@@ -33,7 +33,7 @@
                  Padding="2"
                  FontSize="12"
                  BorderThickness="0 1 0 1"
-                 Text="{x:Bind ViewModel.Source}"
+                 Text="{x:Bind ViewModel.Source, Mode=OneWay}"
                  IsSpellCheckEnabled="False"
                  IsEnabled="False">
         </TextBox>
