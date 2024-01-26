@@ -34,6 +34,8 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                 _isEditorReady = true;
                 SynchronizeContent();
 
+                EditorWebView.Visibility = Visibility.Visible;
+
                 ViewModel.LoadedContent += ViewModel_LoadedContent;
                 return;
             }
