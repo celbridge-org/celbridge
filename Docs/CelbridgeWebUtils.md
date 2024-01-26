@@ -1,7 +1,7 @@
-# Celbridge Web Utils
+# Monaco Editor
 
-This notes covers some of the rabbit holes I had to go down to get the Monaco text editor to work in Celbridge, via an 
-embedded Blazor Webassembly App.
+This notes covers some of the rabbit holes I had to go down to get the Monaco code editor to work in Celbridge. I initially go this to work via an embedded Blazor Webassembly App using Blazor Monaco, then
+I simplified it to just use the Monaca javascript library directly.
 
 ## Blazor Monaco
 
@@ -15,6 +15,27 @@ Blazor Monaco currently only supports .NET 7, which means it can't be used with 
 assembly modes (yet).
 
 Using a WebView2 with a full WebAssembly and Monaco Editor instance per tab is (probably) very resource intensive.
+
+# Monaco Editor in a Web View
+
+Once I had everything working via Blazor Webassembly, I came across this post which describes how to integrate Monaco using just the Javascript library and an index.html.
+https://stackoverflow.com/questions/71174736/how-to-use-the-monaco-editor-inside-a-windows-forms-application
+
+I've learned that Blazor is great if you want to implement an entire Single Page Application SPA, but for integrating individual web pages it's a lot easier to just work with HTML and javascript directly.
+
+## Localization warnings
+
+Building the Windows project head generated these warnings about some of the files in the Monaco folder.
+I think MsBuild think's they're related to localization and is performing some sort of validation on them
+incorrectly. My workaround was to set the following file's Build Action to "None".
+
+```
+>WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI249: 0xdef00520 - Invalid qualifier: ZH-CN
+>WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI249: 0xdef00520 - Invalid qualifier: ZH-TW
+>WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI249: 0xdef00520 - Invalid qualifier: ZH-CN
+>WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI249: 0xdef00520 - Invalid qualifier: ZH-TW
+>WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI263: 0xdef01051 - No default or neutral resource given for 'Files/monaco/min/vs/basic-languages/st.js'. The application may throw an exception for certain user configurations when retrieving the resources.
+```
 
 ## Uno Platform Javascript Interop
 
