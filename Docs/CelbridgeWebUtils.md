@@ -1,9 +1,10 @@
 # Monaco Editor
 
-This notes covers some of the rabbit holes I had to go down to get the Monaco code editor to work in Celbridge. I initially go this to work via an embedded Blazor Webassembly App using Blazor Monaco, then
-I simplified it to just use the Monaca javascript library directly.
+This notes covers some of the rabbit holes I had to go down to get the Monaco code editor to work in Celbridge. I 
+initially got this to work via an embedded Blazor Webassembly App using Blazor Monaco, then I simplified it to 
+just use the Monaca javascript library directly.
 
-## Blazor Monaco
+# Blazor Monaco
 
 `Monaco` is the same web-based code editor used in VS Code. It's integrated into Celbridge via a Blazor Webassembly 
 web app.
@@ -18,16 +19,18 @@ Using a WebView2 with a full WebAssembly and Monaco Editor instance per tab is (
 
 # Monaco Editor in a Web View
 
-Once I had everything working via Blazor Webassembly, I came across this post which describes how to integrate Monaco using just the Javascript library and an index.html.
+Once I had everything working via Blazor Webassembly, I came across this post which describes how to integrate Monaco 
+using just the Javascript library and an index.html.
 https://stackoverflow.com/questions/71174736/how-to-use-the-monaco-editor-inside-a-windows-forms-application
 
-I've learned that Blazor is great if you want to implement an entire Single Page Application SPA, but for integrating individual web pages it's a lot easier to just work with HTML and javascript directly.
+I've learned that Blazor is great if you want to implement an entire Single Page Application SPA, but for integrating 
+individual web pages it's a lot easier to just work with HTML and javascript directly.
 
-## Localization warnings
+# Monaco Localization warnings
 
-Building the Windows project head generated these warnings about some of the files in the Monaco folder.
-I think MsBuild think's they're related to localization and is performing some sort of validation on them
-incorrectly. My workaround was to set the following file's Build Action to "None".
+Building the Windows project head generated these warnings about some of the files in the Monaco folder. I think 
+MsBuild thinks they're related to localization and is performing some sort of validation on them incorrectly. 
+My workaround was to set the following file's Build Action to "None".
 
 ```
 >WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI249: 0xdef00520 - Invalid qualifier: ZH-CN
@@ -37,7 +40,7 @@ incorrectly. My workaround was to set the following file's Build Action to "None
 >WINAPPSDKGENERATEPROJECTPRIFILE : warning : PRI263: 0xdef01051 - No default or neutral resource given for 'Files/monaco/min/vs/basic-languages/st.js'. The application may throw an exception for certain user configurations when retrieving the resources.
 ```
 
-## Uno Platform Javascript Interop
+# Uno Platform Javascript Interop
 
 This is the best resource for figuring out how to call JavaScript functions on a page via WebView2, and then send 
 messages back to the Uno Platform app.
@@ -55,7 +58,7 @@ effect. Again, not documented, so spent hours trying to figure out why it wasn't
 There is a hacky way to call an async Javascript function and await the result via the Dev Tools API. This is an
 ugly hack, so I'm going with the Web View Message approach instead.
 
-## Embedding Webassembly App in Windows Head
+# Embedding Webassembly App in Windows Head
 
 The webassembly files are quite deeply nested, which can exceed the maximum path length on Windows.
 If this happens you get this completely unhelpful error message:
@@ -64,7 +67,7 @@ If this happens you get this completely unhelpful error message:
 This can be fixed by reducing the folder depth of the Celbridge project. It's also possible to change a registry 
 setting to enable long path support. Windows suxxxx :(
 
-## Optimizing Webassembly Warning
+# Optimizing Webassembly Warning
 
 This warning appeared when I was publishing the Blazor Webassembly project.
 
@@ -101,7 +104,7 @@ Some useful commands:
 - `dotnet --list-sdks`
 - `dotnet workload list`
 
-## Navigating to a page in the embedded web app
+# Navigating to a page in the embedded web app
 
 I used `WebView2.CoreWebView2.SetVirtualHostNameToFolderMapping()` to allow the WebView to access the embedded 
 Blazor Assembly application. This maps the "domain" CelbridgeBlazor to the `wwwroot` folder in the application.
@@ -116,6 +119,10 @@ The workaround was to load index.html, which then goes to the `NotFound` route i
 In `App.razor`, I check for a redirect property in the query string and then use the `NavigationManager` to navigate 
 to the indicated page. 
 
+# Flashing WebView when switching tabs
 
+There's an annoying flash when switching between tabs that contain a webview.
+https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
 
-
+I implemented the `DefaultBackgroundColor` property suggested in the thread. There is still a slight flicker for one 
+frame when switching between tab items, but it's much less noticeable now.
