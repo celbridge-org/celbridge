@@ -40,9 +40,10 @@ for their support.
 The tool will initially support scripting workflows via C#, Python, Markdown, etc. Once these workflows are
 robust, I will add support for Cel Script, a novel visual scripting language.
 
-- [x] Proof-of-concept prototype 
+- [x] Proof-of-concept prototype
+- [x] Text document editing via Monaco Editor
 - [ ] Application framework (GUI framework, plugin architecture, public API)
-- [ ] Basic IDE workflows (project & file management, text document editing)
+- [ ] Basic IDE workflows (robust project & file management)
 - [ ] Advanced document editing (syntax highlighting, spelling correction, web views)
 - [ ] Scripting support via C# Interactive
 - [ ] Interactive console window
