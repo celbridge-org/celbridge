@@ -83,7 +83,7 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
 
                     await EditorWebView.EnsureCoreWebView2Async();
                     EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                        "CelbridgeBlazor",
+                        "MonacoEditor",
                         "monaco",
                         CoreWebView2HostResourceAccessKind.Allow);
 
@@ -99,9 +99,9 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     var theme = settingsService.EditorSettings.ApplicationTheme == ApplicationTheme.Dark ? "vs-dark" : "vs-light";
                     await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{theme}';");
 
-                    EditorWebView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
+                    EditorWebView.CoreWebView2.Navigate("http://MonacoEditor/index.html");
 
-                    // WebView navigation will complete in a while, and then the Monaco editor will take some time to initialize.
+                    // WebView navigation will complete in a while, and then the Monaco editor will also take some time to initialize.
                     // The web app sends a "editor_ready" message back to Celbridge once the editor is ready to accept content.
                 }
 
