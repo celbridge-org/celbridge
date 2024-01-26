@@ -82,7 +82,7 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     await EditorWebView.EnsureCoreWebView2Async();
                     EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                         "CelbridgeBlazor",
-                        "wwwroot",
+                        "monaco",
                         CoreWebView2HostResourceAccessKind.Allow);
 
                     await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
