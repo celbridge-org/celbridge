@@ -49,19 +49,4 @@ public partial class HTMLDocumentView : TabViewItem, IDocumentView
     {
         // Log.Information($"Navigation completed: {args}");
     }
-
-    private void Button_Click(object sender, RoutedEventArgs e)
-    {
-        async Task LoadCodeEditor()
-        {
-            await HTMLView.EnsureCoreWebView2Async();
-            HTMLView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "CelbridgeBlazor",
-                "wwwroot",
-                CoreWebView2HostResourceAccessKind.Allow);
-            HTMLView.CoreWebView2.Navigate("http://CelbridgeBlazor/index.html?redirect=editor");
-        }
-
-        _ = LoadCodeEditor();
-    }
 }
