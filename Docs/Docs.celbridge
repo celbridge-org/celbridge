@@ -1,0 +1,133 @@
+{
+  "Name": "Docs",
+  "Description": "",
+  "Id": "905ec126-426f-4c32-ae62-e631a8fec1cb",
+  "_name": "Docs",
+  "_description": "",
+  "ResourceRegistry": {
+    "Root": {
+      "Name": "Root",
+      "Description": "",
+      "Id": "00000000-0000-0000-0000-000000000000",
+      "Children": [
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "AutomaticUpdates.md",
+          "Description": "",
+          "Id": "92bad0d8-7819-46b9-bfe3-abcdc31b57a4",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "BuildInstructions.md",
+          "Description": "",
+          "Id": "37875480-e63b-4a45-8600-de82fa59092a",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "CelRuntime.md",
+          "Description": "",
+          "Id": "9fd743e0-c077-491c-b9e5-135e65e537a2",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "CelUtilities.md",
+          "Description": "",
+          "Id": "ca32e8e4-57bc-4fce-81f9-86a84bb81c6b",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "ConsoleLogging.md",
+          "Description": "",
+          "Id": "5e9a791b-0a70-4e6c-a4f1-1da268c3cf7f",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "FontIcons.md",
+          "Description": "",
+          "Id": "43e03e6f-f648-4e91-a0a5-69ce7ffa59e5",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "MonacoEditorAndWebView2.md",
+          "Description": "",
+          "Id": "0c5dcb11-8fe5-4207-9a0b-a0364b91eac9",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "StoringSecrets.md",
+          "Description": "",
+          "Id": "4f7ffd83-5e23-4255-8026-c588c8ed05ec",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "UnoPlatformLibrary.md",
+          "Description": "",
+          "Id": "bf43d8c2-87bb-4ada-abab-b6dd57cb11f8",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "UnoPlatformNotes.md",
+          "Description": "",
+          "Id": "1a4e7b1b-17b2-438b-b564-fa30385893fb",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "UsingGithub.md",
+          "Description": "",
+          "Id": "8f37885a-8e0c-4411-9075-812b198a4c33",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "VisualStudioOddities.md",
+          "Description": "",
+          "Id": "226b07d8-5cb0-400c-95f2-9053ff312567",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "WindowsPackagedBuild.md",
+          "Description": "",
+          "Id": "fd5b8eda-7cf8-482e-af6c-b5c752d6e6ee",
+          "Children": []
+        }
+      ]
+    }
+  }
+}
