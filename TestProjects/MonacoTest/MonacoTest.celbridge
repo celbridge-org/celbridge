@@ -1,0 +1,59 @@
+{
+  "Name": "MonacoTest",
+  "Description": "",
+  "Id": "aa3ca22f-b500-41fc-9ed6-ddfeb498f7bd",
+  "_name": "MonacoTest",
+  "_description": "",
+  "ResourceRegistry": {
+    "Root": {
+      "Name": "Root",
+      "Description": "",
+      "Id": "00000000-0000-0000-0000-000000000000",
+      "Children": [
+        {
+          "$type": "CelLegacy.Models.HTMLResource, CelLegacy",
+          "StartURL": "",
+          "Name": "CodeEditor.html",
+          "Description": "",
+          "Id": "caffb620-f859-4168-bcdc-31f89f993f64",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.HTMLResource, CelLegacy",
+          "StartURL": "",
+          "Name": "MoreHTML.html",
+          "Description": "",
+          "Id": "cea8aecd-6466-499c-9b3c-e3b095d19764",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "test.md",
+          "Description": "",
+          "Id": "593d97a7-c679-40a7-9869-433a984bbe1f",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "some.json",
+          "Description": "",
+          "Id": "1d65cf48-f29d-4bc3-b5ba-935e5615b190",
+          "Children": []
+        },
+        {
+          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "script.cs",
+          "Description": "",
+          "Id": "68c3602b-9fbb-48d2-8977-e4a51b4c9573",
+          "Children": []
+        }
+      ]
+    }
+  }
+}
