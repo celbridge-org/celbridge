@@ -28,9 +28,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-    <Content Include="Images\**" />
-    <Content Include="wwwroot\**" />
-    <Manifest Include="$(ApplicationManifest)" />
+	    <Content Include="Images\**" />
+		<Content Include="wwwroot\**" />
+		<Content Include="monaco\**" />
+		<Manifest Include="$(ApplicationManifest)" />
 	</ItemGroup>
 
 	<ItemGroup>
