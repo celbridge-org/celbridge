@@ -1,0 +1,10 @@
+{
+  "profiles": {
+	"Celbridge.Windows (Package)": {
+	  "commandName": "MsixPackage"
+	},
+	"Celbridge.Windows (Unpackaged)": {
+	  "commandName": "Project"
+	}
+  }
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <link rel="stylesheet"
+          data-name="vs/editor/editor.main"
+          href="./min/vs/editor/editor.main.css" />
+    <style>
+        html, body { height: 100%; margin: 0; }
+        #container {
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <script src="./min/vs/loader.js"></script>
+    <script>
+        require.config({ paths: { 'vs': './min/vs' } });
+    </script>
+    <script src="./min/vs/editor/editor.main.nls.js"></script>
+    <script src="./min/vs/editor/editor.main.js"></script>
+    <script>
+
+        // Text updates from Uno (e.g. after loading a text file) are sent from Uno via the WebViewMessage API
+        function listenForWebViewMessages() {
+            if (!window.isWebView) {
+                return;
+            }
+
+            // Windows (WebView2)
+            if (window.chrome && typeof chrome.webview !== undefined) {
+                window.chrome.webview.addEventListener('message', event => {
+                    setTextData(event.data);
+                });
+            }
+            // Android
+            else if (window.unoWebView) {
+                window.unoWebViewReceiveMessage = function (data) {
+                    setTextData(data);
+                };
+            }
+            // iOS and macOS (WebKit)
+            else if (window.webkit && typeof webkit.messageHandlers !== undefined) {
+                window.webkit.messageHandlers.unoWebViewReceiveMessage = function (data) {
+                    setTextData(data);
+                };
+            }
+        }
+
+        // Text updates from Monaco (e.g. after typing some text in the editor) are sent to Uno 
+        // via the WebViewMessage API
+        function postWebViewMessage(message) {
+            if (!window.isWebView) {
+                return;
+            }
+
+            // Handle WebViews that are implemented using different browsers / platforms.
+            try {
+                if (window.hasOwnProperty("chrome") && typeof chrome.webview !== undefined) {
+                    // Windows
+                    // This causes an exception when run in a browser rather than a WebView
+                    // As a workaround, we set the window.isWebView variable from the Uno side.
+                    chrome.webview.postMessage(message);
+                } else if (window.hasOwnProperty("unoWebView")) {
+                    // Android
+                    unoWebView.postMessage(JSON.stringify(message));
+                } else if (window.hasOwnProperty("webkit") && typeof webkit.messageHandlers !== undefined) {
+                    // iOS and macOS
+                    webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
+                }
+            }
+            catch (ex) {
+                console.error('Error:', ex);
+                // alert("Error occurred: " + ex);
+            }
+        }
+
+        // Receive text data from Uno and display it in the Monaco Editor
+        function setTextData(text) {
+            if (!window.isWebView) {
+                return;
+            }
+            window.editor.setValue(text);
+        }
+
+        function initMonacoEditor() {
+            window.editor = monaco.editor.create(document.getElementById('container'), {
+                language: window.language || "plaintext",
+                automaticLayout: true,
+                theme: window.theme || "vs-light",
+                minimap: { autohide: true }
+            });
+
+            window.editor.getModel().onDidChangeContent((event) => {
+                if (!window.isWebView) {
+                    return;
+                }
+
+                // Send text data from Monaco Editor to Uno
+                var text = window.editor.getValue();
+                postWebViewMessage(text)
+            });
+        }
+
+        initMonacoEditor();
+        listenForWebViewMessages();
+        postWebViewMessage("editor_ready"); // Tell Uno that the editor is initialized
+
+    </script>
+</body>
+</html>
