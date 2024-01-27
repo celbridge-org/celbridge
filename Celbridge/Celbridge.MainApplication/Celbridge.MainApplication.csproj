@@ -57,6 +57,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\CelLegacy\Celbridge.Legacy.csproj" />
+	  <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
 	</ItemGroup>
 </Project>
