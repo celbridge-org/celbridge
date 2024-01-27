@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public class FileChangedMessage
 {

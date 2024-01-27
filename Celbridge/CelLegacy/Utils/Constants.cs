@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Utils;
+﻿namespace Celbridge.Legacy.Utils;
 
 /// <summary>
 /// Contains commonly used constant values used throughout the application.

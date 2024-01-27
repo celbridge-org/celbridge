@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.ViewModels;
+﻿namespace Celbridge.Legacy.ViewModels;
 
 public partial class NewProjectViewModel : ObservableObject
 {

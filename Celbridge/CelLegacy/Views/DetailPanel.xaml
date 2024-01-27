@@ -1,9 +1,9 @@
 ﻿<UserControl
-    x:Class="CelLegacy.Views.DetailPanel"
+    x:Class="Celbridge.Legacy.Views.DetailPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:utils="using:CelLegacy.Utils"
+    xmlns:utils="using:Celbridge.Legacy.Utils"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"

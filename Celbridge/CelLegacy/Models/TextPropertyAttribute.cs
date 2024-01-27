@@ -1,8 +1,8 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 public class TextPropertyAttribute : PropertyAttribute
 {
     public TextPropertyAttribute()
-        : base("CelLegacy.Views.TextPropertyView", typeof(string))
+        : base("Celbridge.Legacy.Views.TextPropertyView", typeof(string))
     {}
 }

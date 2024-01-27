@@ -2,7 +2,7 @@
 using Microsoft.Scripting.Utils;
 using System.ComponentModel;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class InspectorViewModel : ObservableObject
 {

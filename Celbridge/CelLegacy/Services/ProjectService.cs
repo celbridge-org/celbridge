@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
-using CelLegacy.Tasks;
+using Celbridge.Legacy.Tasks;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public interface IProject
 {

@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace CelLegacy.Resources;
+namespace Celbridge.Legacy.Resources;
 
 public static class ResourceUtils
 {

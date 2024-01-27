@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
 {

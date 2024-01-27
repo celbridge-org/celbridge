@@ -2,7 +2,7 @@
 using Serilog.Events;
 using Serilog.Configuration;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public class ConsoleServiceEventSink : ILogEventSink
 {

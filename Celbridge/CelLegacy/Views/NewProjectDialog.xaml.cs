@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Views;
+﻿namespace Celbridge.Legacy.Views;
 
 public sealed partial class NewProjectDialog : ContentDialog
 {

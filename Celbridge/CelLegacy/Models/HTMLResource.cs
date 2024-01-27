@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 [ResourceType("Document", "A browser document", "\uE8A5", ".html,.png,.jpg,.webp,.pdf")] // Document icon
 public class HTMLResource : FileResource, IDocumentEntity

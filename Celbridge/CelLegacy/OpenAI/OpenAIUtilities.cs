@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.OpenAI;
+﻿namespace Celbridge.Legacy.OpenAI;
 
 public class OpenAIUtilities
 {

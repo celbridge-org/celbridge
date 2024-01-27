@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class DocumentsViewModel : ObservableRecipient
 {
@@ -47,7 +47,7 @@ public partial class DocumentsViewModel : ObservableRecipient
         var resourceTypeName = document.DocumentEntity.GetType().Name;
         var documentTypeName = resourceTypeName.Replace("Resource", string.Empty, StringComparison.InvariantCultureIgnoreCase);
         var documentViewName = $"{documentTypeName}DocumentView";
-        var viewTypeName = $"CelLegacy.Views.{documentViewName}";
+        var viewTypeName = $"Celbridge.Legacy.Views.{documentViewName}";
 
         // Instantiate the document view user control
         var type = Type.GetType(viewTypeName);

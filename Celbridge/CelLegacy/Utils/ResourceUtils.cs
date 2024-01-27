@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Utils;
+﻿namespace Celbridge.Legacy.Utils;
 
 class ResourceUtils
 {

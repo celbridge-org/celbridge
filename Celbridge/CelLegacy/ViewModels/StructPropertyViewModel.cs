@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.ViewModels;
+﻿namespace Celbridge.Legacy.ViewModels;
 
 public abstract partial class StructPropertyViewModel<T> : ObservableObject where T : struct
 {

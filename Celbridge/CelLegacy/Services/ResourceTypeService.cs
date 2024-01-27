@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public interface IResourceTypeService
 {

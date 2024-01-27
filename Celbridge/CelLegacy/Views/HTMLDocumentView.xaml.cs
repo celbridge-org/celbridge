@@ -1,6 +1,6 @@
 ﻿using Microsoft.Web.WebView2.Core;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public partial class HTMLDocumentView : TabViewItem, IDocumentView
 {

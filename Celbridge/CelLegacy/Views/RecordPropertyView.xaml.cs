@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public partial class RecordPropertyView : UserControl, IPropertyView
 {

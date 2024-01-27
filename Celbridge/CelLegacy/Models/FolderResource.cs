@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 [ResourceType("Folder", "Contains file resources", "\uE188", "")] // Folder icon
 public class FolderResource : Resource

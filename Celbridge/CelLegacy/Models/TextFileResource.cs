@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 [ResourceType("Text File", "A text file resource", "\uE8E9", ".txt,.md,.cs,.json,.xml")] // FontSize icon
 public class TextFileResource : FileResource, IDocumentEntity

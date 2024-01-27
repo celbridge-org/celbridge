@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Media;
+﻿namespace Celbridge.Legacy.Media;
 
 public static class MediaUtils
 {

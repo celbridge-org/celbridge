@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 // Todo: A project should be an Object, but not a Resource because a Project can't contain another Project file directly.
 // Todo: A project _can_ contain a Project Reference file which links to another Project.

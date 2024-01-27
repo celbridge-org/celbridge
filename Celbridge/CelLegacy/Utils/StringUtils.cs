@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public static class StringUtils
 {

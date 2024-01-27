@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public static class ReflectionUtils
 {

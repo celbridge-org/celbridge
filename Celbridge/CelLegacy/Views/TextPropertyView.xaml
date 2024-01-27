@@ -1,11 +1,11 @@
 ﻿<UserControl
-    x:Class="CelLegacy.Views.TextPropertyView"
+    x:Class="Celbridge.Legacy.Views.TextPropertyView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:CelLegacy.Views"
+    xmlns:local="using:Celbridge.Legacy.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:utils="using:CelLegacy.Utils"
+    xmlns:utils="using:Celbridge.Legacy.Utils"
     mc:Ignorable="d"
     xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
 

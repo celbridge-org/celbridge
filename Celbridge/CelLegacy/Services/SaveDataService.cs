@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public class SaveQueueUpdatedMessage
 {

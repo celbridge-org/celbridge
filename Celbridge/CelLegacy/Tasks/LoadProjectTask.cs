@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Tasks;
+﻿namespace Celbridge.Legacy.Tasks;
 
 public class LoadProjectTask
 {
