@@ -1,4 +1,4 @@
-namespace Celbridge;
+namespace Celbridge.MainApplication;
 
 public partial class App : Application
 {

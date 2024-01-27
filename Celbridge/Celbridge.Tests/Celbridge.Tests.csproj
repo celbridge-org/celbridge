@@ -12,8 +12,4 @@
 		<PackageReference Include="NUnit3TestAdapter" />
 		<PackageReference Include="coverlet.collector" />
 	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\Celbridge\Celbridge.csproj" />
-	</ItemGroup>
 </Project>
