@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using System.Security.Cryptography;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public class RegistryUpdateSummary
 {

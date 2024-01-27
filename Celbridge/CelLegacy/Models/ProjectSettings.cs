@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace CelLegacy.Models;
+namespace Celbridge.Legacy.Models;
 
 public partial class ProjectSettings : ObservableObject
 {

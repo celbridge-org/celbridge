@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Services;
+﻿namespace Celbridge.Legacy.Services;
 
 public static class LegacyServiceProvider
 {

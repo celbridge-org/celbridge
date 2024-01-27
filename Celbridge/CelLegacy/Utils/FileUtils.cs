@@ -1,6 +1,6 @@
 ﻿using Windows.Storage.Pickers;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public static class FileUtils
 {

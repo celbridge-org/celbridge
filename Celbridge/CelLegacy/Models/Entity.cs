@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Text;
 
-namespace CelLegacy.Models;
+namespace Celbridge.Legacy.Models;
 
 public interface IEntity
 {

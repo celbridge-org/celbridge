@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public interface IDocumentService
 {

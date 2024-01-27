@@ -1,6 +1,6 @@
 ﻿using Windows.Storage.Pickers;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public class MainMenuViewModel : ObservableObject
 {
