@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
-using System;
 using Uno.Resizetizer;
+using Celbridge.MainApplication;
 
 namespace Celbridge
 {

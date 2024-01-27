@@ -54,10 +54,6 @@
 		<PackageReference Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Celbridge\Celbridge.csproj" />
-	</ItemGroup>
-
 	<!-- 
 		Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
 		Tools extension to be activated for this project even if the Windows App SDK Nuget
@@ -80,5 +76,9 @@
 
 	<ItemGroup>
 	  <SourceGeneratorInput Remove="Celbridge.Windows_TemporaryKey.pfx" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Celbridge.MainApplication\Celbridge.MainApplication.csproj" />
 	</ItemGroup>
 </Project>
