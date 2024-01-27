@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Serialization;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public static class JsonSettings
 {

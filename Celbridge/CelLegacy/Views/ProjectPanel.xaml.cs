@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public sealed partial class ProjectPanel : UserControl
 {

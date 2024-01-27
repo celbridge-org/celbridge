@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Windows.Foundation.Collections;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public record ListViewIsActiveMessage(ListView ListView);
 

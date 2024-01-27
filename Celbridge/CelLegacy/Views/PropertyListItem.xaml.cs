@@ -1,7 +1,7 @@
 ﻿using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public partial class PropertyListItem : UserControl
 {

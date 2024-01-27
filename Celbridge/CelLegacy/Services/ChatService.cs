@@ -1,9 +1,9 @@
-using CelLegacy.OpenAI;
+using Celbridge.Legacy.OpenAI;
 using OpenAI_API;
 using OpenAI_API.Chat;
-using CelLegacy.Media;
+using Celbridge.Legacy.Media;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public class ChatService : IChatService
 {

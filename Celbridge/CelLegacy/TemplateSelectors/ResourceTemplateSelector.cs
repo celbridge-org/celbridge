@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.TemplateSelectors;
+﻿namespace Celbridge.Legacy.TemplateSelectors;
 
 public class ResourceTemplateSelector : DataTemplateSelector
 {

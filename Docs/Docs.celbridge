@@ -11,7 +11,7 @@
       "Id": "00000000-0000-0000-0000-000000000000",
       "Children": [
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "AutomaticUpdates.md",
@@ -20,7 +20,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "BuildInstructions.md",
@@ -29,7 +29,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "CelRuntime.md",
@@ -38,7 +38,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "CelUtilities.md",
@@ -47,7 +47,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "ConsoleLogging.md",
@@ -56,7 +56,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "FontIcons.md",
@@ -65,7 +65,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "MonacoEditorAndWebView2.md",
@@ -74,7 +74,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "StoringSecrets.md",
@@ -83,7 +83,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "UnoPlatformLibrary.md",
@@ -92,7 +92,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "UnoPlatformNotes.md",
@@ -101,7 +101,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "UsingGithub.md",
@@ -110,7 +110,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "VisualStudioOddities.md",
@@ -119,7 +119,7 @@
           "Children": []
         },
         {
-          "$type": "CelLegacy.Models.TextFileResource, CelLegacy",
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
           "Permissions": "",
           "SomePath": "",
           "Name": "WindowsPackagedBuild.md",

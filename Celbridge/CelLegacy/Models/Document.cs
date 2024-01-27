@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 // An entity that may be opened as a document
 public interface IDocumentEntity : IEntity

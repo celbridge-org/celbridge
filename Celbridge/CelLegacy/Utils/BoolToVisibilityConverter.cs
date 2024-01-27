@@ -1,6 +1,6 @@
 ﻿using Microsoft.UI.Xaml.Data;
 
-namespace CelLegacy.Utils;
+namespace Celbridge.Legacy.Utils;
 
 public class BoolToVisibilityConverter : IValueConverter
 {

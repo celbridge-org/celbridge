@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class DetailViewModel : ObservableObject
 {

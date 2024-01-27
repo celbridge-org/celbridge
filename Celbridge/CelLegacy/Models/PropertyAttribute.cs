@@ -1,4 +1,4 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = false)]
 public abstract class PropertyAttribute : Attribute

@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public sealed partial class ConsolePanel : UserControl
 {

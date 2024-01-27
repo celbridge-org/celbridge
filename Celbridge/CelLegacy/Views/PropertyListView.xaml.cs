@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace CelLegacy.Views;
+namespace Celbridge.Legacy.Views;
 
 public partial class PropertyListView : UserControl, IPropertyView
 {

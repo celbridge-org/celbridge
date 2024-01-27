@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace CelLegacy.ViewModels;
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class AddResourceViewModel : ObservableObject
 {

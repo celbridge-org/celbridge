@@ -1,8 +1,8 @@
-﻿namespace CelLegacy.Models;
+﻿namespace Celbridge.Legacy.Models;
 
 public class BooleanPropertyAttribute : PropertyAttribute
 {
     public BooleanPropertyAttribute()
-        : base("CelLegacy.Views.BooleanPropertyView", typeof(bool))
+        : base("Celbridge.Legacy.Views.BooleanPropertyView", typeof(bool))
     {}
 }

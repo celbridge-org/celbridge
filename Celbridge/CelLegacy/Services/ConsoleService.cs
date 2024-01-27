@@ -4,7 +4,7 @@ using System.Reflection;
 using CommunityToolkit.WinUI.Helpers;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace CelLegacy.Services;
+namespace Celbridge.Legacy.Services;
 
 public interface IConsoleService
 {
@@ -82,8 +82,8 @@ public class ConsoleService : IConsoleService
         Execute($"import clr");
         // Execute($"clr.AddReferenceToFileAndPath(\"{assemblyFolder}\")"); // May not be necessary?
         Execute($"clr.AddReference(\"{assemblyName}\")");
-        Execute($"import CelLegacy.Utils");
-        Execute($"utils = CelLegacy.Utils.PythonBindings");
+        Execute($"import Celbridge.Legacy.Utils");
+        Execute($"utils = Celbridge.Legacy.Utils.PythonBindings");
 
         LoadHistory();
 

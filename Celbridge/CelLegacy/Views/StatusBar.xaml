@@ -1,8 +1,8 @@
 ﻿<UserControl
-    x:Class="CelLegacy.Views.StatusBar"
+    x:Class="Celbridge.Legacy.Views.StatusBar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:utils="using:CelLegacy.Utils"
+    xmlns:utils="using:Celbridge.Legacy.Utils"
     Background="{StaticResource PanelBackgroundABrush}"
     DataContext="{x:Bind ViewModel}">
     
