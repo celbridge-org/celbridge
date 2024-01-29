@@ -1,5 +1,4 @@
-﻿
-global using Celbridge.Legacy.ErrorHandling;
+﻿global using Celbridge.Legacy.ErrorHandling;
 global using Celbridge.Legacy.Models;
 global using Celbridge.Legacy.Services;
 global using Celbridge.Legacy.Utils;

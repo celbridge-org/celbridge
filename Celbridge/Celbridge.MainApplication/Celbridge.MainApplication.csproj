@@ -58,6 +58,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+	  <ProjectReference Include="..\Celbridge.DIContainer\Celbridge.DIContainer.csproj" />
 	  <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
 	</ItemGroup>
 </Project>
