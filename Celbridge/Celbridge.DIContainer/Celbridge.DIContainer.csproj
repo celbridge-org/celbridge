@@ -47,5 +47,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
+    <ProjectReference Include="..\Celbridge.CoreExtensions\Celbridge.CoreExtensions.csproj" />
   </ItemGroup>
 </Project>
