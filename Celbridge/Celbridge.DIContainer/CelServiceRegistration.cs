@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Celbridge.CommonServices;
+using Celbridge.CoreExtensions;
 
 namespace Celbridge.DIContainer;
 
@@ -11,6 +12,7 @@ public static class CelServiceRegistration
         //services.AddAutoRegisteredServices(loadedAssemblies);
 
         services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<IConsoleService, ConsoleService>();
 
         // Other service registrations...
     }
