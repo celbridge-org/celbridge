@@ -11,6 +11,6 @@ public class ConsoleService : IConsoleService
 
     public void Execute(string command)
     {
-        _loggingService.Log($"Received: {command}");
+        _loggingService.Info($"Command: {command}");
     }
 }

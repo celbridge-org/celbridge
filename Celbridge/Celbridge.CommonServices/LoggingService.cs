@@ -1,10 +1,21 @@
 ﻿namespace Celbridge.CommonServices;
+using Serilog;
 
 [CelService(CelServiceLifetime.Singleton)]
 public class LoggingService : ILoggingService
 {
-    public void Log(string message)
+    public void Info(string message)
     {
-        Console.WriteLine(message);
+        Log.Information(message);
+    }
+
+    public void Warn(string message)
+    {
+        Log.Warning(message);
+    }
+
+    public void Error(string message)
+    {
+        Log.Error(message);
     }
 }
