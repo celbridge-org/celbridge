@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Celbridge.CommonServices;
 using Celbridge.CoreExtensions;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.DIContainer;
 
@@ -11,6 +12,7 @@ public static class CelServiceRegistration
         //Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
         //services.AddAutoRegisteredServices(loadedAssemblies);
 
+        services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IConsoleService, ConsoleService>();
 
