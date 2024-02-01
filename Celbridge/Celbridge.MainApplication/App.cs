@@ -41,7 +41,7 @@ public partial class App : Application
                 {
                     RegisterServices(services);
 
-                    DIContainer.RegistrationService.ConfigureServices(services);
+                    Dependencies.RegistrationService.ConfigureServices(services);
                 })
             );
         MainWindow = builder.Window;
