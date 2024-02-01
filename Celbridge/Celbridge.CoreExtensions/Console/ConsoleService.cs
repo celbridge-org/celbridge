@@ -15,14 +15,17 @@ public class ConsoleService : IConsoleService
         _loggingService = loggingService;
     }
 
-    public bool Execute(string command)
+    public async Task<bool> Execute(string command)
     {
         if (command == "print")
         {
+            // Simulate an async delay
+            await Task.Delay(500);
+
             var logMessage = $"print: hello!";
             _loggingService.Info(logMessage);
             return true;
-        }    
+        }
 
         return false;
     }
