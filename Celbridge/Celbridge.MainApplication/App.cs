@@ -50,7 +50,7 @@ public partial class App : Application
 
         // Test new DI architecture
         var consoleService = Host.Services.GetRequiredService<BaseLibrary.Console.IConsoleService>();
-        consoleService.Execute("Do something!");
+        consoleService.Execute("print");
 
         LegacyServiceProvider.Services = Host.Services;
         LegacyServiceProvider.MainWindow = MainWindow;
