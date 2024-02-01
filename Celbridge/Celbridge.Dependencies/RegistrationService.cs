@@ -4,7 +4,7 @@ using Celbridge.CommonServices.Logging;
 using Celbridge.CoreExtensions.Console;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace Celbridge.DIContainer;
+namespace Celbridge.Dependencies;
 
 public static class RegistrationService
 {
