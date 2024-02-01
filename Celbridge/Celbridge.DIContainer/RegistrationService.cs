@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.DIContainer;
 
-public static class CelServiceRegistration
+public static class RegistrationService
 {
     public static void ConfigureServices(IServiceCollection services)
     {
