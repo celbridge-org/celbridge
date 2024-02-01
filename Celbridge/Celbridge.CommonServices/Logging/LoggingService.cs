@@ -1,21 +1,39 @@
 ﻿namespace Celbridge.CommonServices.Logging;
 
 using Celbridge.BaseLibrary.Logging;
+using CommunityToolkit.Mvvm.Messaging;
 
 public class LoggingService : ILoggingService
 {
-    public void Info(string message)
+    private IMessenger _messenger;
+
+    public LoggingService(IMessenger messenger)
     {
-        Log.Information(message);
+        _messenger = messenger;
     }
 
-    public void Warn(string message)
+    public void Info(string logMessage)
     {
-        Log.Warning(message);
+        Log.Information(logMessage);
+
+        var message = new WroteToLogMessage(logMessage);
+        _messenger.Send(message);
+
     }
 
-    public void Error(string message)
+    public void Warn(string logMessage)
     {
-        Log.Error(message);
+        Log.Warning(logMessage);
+
+        var message = new WroteToLogMessage(logMessage);
+        _messenger.Send(message);
+    }
+
+    public void Error(string logMessage)
+    {
+        Log.Error(logMessage);
+
+        var message = new WroteToLogMessage(logMessage);
+        _messenger.Send(message);
     }
 }
