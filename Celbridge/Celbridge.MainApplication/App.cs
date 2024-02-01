@@ -41,7 +41,7 @@ public partial class App : Application
                 {
                     RegisterServices(services);
 
-                    DIContainer.CelServiceRegistration.ConfigureServices(services);
+                    DIContainer.RegistrationService.ConfigureServices(services);
                 })
             );
         MainWindow = builder.Window;
