@@ -15,13 +15,15 @@ public class ConsoleService : IConsoleService
         _loggingService = loggingService;
     }
 
-    public void Execute(string command)
+    public bool Execute(string command)
     {
-        var logMessage = $"Command: {command}";
+        if (command == "print")
+        {
+            var logMessage = $"print: hello!";
+            _loggingService.Info(logMessage);
+            return true;
+        }    
 
-        _loggingService.Info(logMessage);
-
-        var message = new WroteToLogMessage(logMessage);
-        _messenger.Send(message);
+        return false;
     }
 }
