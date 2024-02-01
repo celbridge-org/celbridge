@@ -49,7 +49,7 @@ public partial class App : Application
         Host = builder.Build();
 
         // Test new DI architecture
-        var consoleService = Host.Services.GetRequiredService<BaseLibrary.IConsoleService>();
+        var consoleService = Host.Services.GetRequiredService<BaseLibrary.Console.IConsoleService>();
         consoleService.Execute("Do something!");
 
         LegacyServiceProvider.Services = Host.Services;

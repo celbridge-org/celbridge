@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary;
+﻿namespace Celbridge.BaseLibrary.Console;
 
 public interface IConsoleService
 {

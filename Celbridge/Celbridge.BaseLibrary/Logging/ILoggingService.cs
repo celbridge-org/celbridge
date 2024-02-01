@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary;
+﻿namespace Celbridge.BaseLibrary.Logging;
 
 public interface ILoggingService
 {
