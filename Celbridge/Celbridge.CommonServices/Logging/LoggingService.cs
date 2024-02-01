@@ -1,7 +1,7 @@
-﻿namespace Celbridge.CommonServices;
-using Serilog;
+﻿namespace Celbridge.CommonServices.Logging;
 
-[CelService(CelServiceLifetime.Singleton)]
+using Celbridge.BaseLibrary.Logging;
+
 public class LoggingService : ILoggingService
 {
     public void Info(string message)
