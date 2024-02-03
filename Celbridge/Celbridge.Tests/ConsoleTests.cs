@@ -38,13 +38,10 @@ public class ConsoleTests
     [Test]
     public async Task TestPrintCommand()
     {
-        // Resolve the service under test from the DI container
         var loggingService = _serviceProvider!.GetRequiredService<IConsoleService>();
 
-        // Assert something about the service
-        bool result = await loggingService.Execute("print");
+        var result = await loggingService.Execute("print");
 
-        // Todo: Use FluentResult to return a more informative success or error
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
     }
 }
