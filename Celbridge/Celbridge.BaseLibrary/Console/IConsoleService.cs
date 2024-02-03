@@ -2,5 +2,5 @@
 
 public interface IConsoleService
 {
-    Task<bool> Execute(string command);
+    Task<Result> Execute(string command);
 }
