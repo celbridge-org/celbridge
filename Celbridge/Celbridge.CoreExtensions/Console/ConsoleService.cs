@@ -15,7 +15,7 @@ public class ConsoleService : IConsoleService
         _loggingService = loggingService;
     }
 
-    public async Task<bool> Execute(string command)
+    public async Task<Result> Execute(string command)
     {
         if (command == "print")
         {
@@ -24,9 +24,9 @@ public class ConsoleService : IConsoleService
 
             var logMessage = $"print: hello!";
             _loggingService.Info(logMessage);
-            return true;
+            return Result.Ok();
         }
 
-        return false;
+        return Result.Fail($"Unknown command: {command}");
     }
 }
