@@ -1,15 +1,14 @@
-﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.CommonServices.Logging;
 using Celbridge.CommonServices.Messaging;
-using Celbridge.CoreExtensions.Console;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
 
 [TestFixture]
-public class ConsoleTests
+public class MessagingTests
 {
     private ServiceProvider? _serviceProvider;
 
@@ -18,10 +17,7 @@ public class ConsoleTests
     {
         var services = new ServiceCollection();
 
-        // Mimic your application's service registration
-        // For example, register a real service
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<IConsoleService, ConsoleService>();
         services.AddSingleton<ILoggingService, LoggingService>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -36,13 +32,24 @@ public class ConsoleTests
         }
     }
 
+    public record TestMessage;
+
     [Test]
-    public async Task TestPrintCommand()
+    public void TestSendMessage()
     {
-        var loggingService = _serviceProvider!.GetRequiredService<IConsoleService>();
+        var messengerService = _serviceProvider!.GetRequiredService<IMessengerService>();
+        var loggingService = _serviceProvider!.GetRequiredService<ILoggingService>();
 
-        var result = await loggingService.Execute("print");
+        bool received = false;
+        messengerService.Register<TestMessage>(this, (r, m) =>
+        {
+            loggingService.Info($"Got the message: {m}");
+            received = true;
+        });
 
-        result.IsSuccess.Should().BeTrue();
+        var message = new TestMessage();
+        messengerService.Send(message);
+
+        received.Should().BeTrue();
     }
 }

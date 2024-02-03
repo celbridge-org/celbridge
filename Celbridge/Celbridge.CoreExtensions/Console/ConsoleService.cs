@@ -1,17 +1,17 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Logging;
-using CommunityToolkit.Mvvm.Messaging;
+using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.CoreExtensions.Console;
 
 public class ConsoleService : IConsoleService
 {
-    private IMessenger _messenger;
+    private IMessengerService _messengerService;
     private ILoggingService _loggingService;
 
-    public ConsoleService(IMessenger messenger, ILoggingService loggingService)
+    public ConsoleService(IMessengerService messengerService, ILoggingService loggingService)
     {
-        _messenger = messenger;
+        _messengerService = messengerService;
         _loggingService = loggingService;
     }
 
