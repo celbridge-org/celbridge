@@ -1,8 +1,5 @@
 ﻿namespace Celbridge.CommonServices.Logging;
 
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
-
 public class LoggingService : ILoggingService
 {
     private IMessengerService _messengerService;
