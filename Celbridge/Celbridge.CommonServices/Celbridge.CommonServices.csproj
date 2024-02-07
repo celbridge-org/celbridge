@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
       <PackageReference Include="CommunityToolkit.MVVM" />
+      <PackageReference Include="LiteDB" />
       <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.Debug" />
   </ItemGroup>
