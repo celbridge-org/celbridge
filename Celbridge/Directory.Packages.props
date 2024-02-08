@@ -1,6 +1,6 @@
 <Project ToolsVersion="15.0">
   <ItemGroup>
-    <PackageVersion Include="CommunityToolkit.Diagnostics" Version="8.2.1" />
+    <PackageVersion Include="CommunityToolkit.Diagnostics" Version="8.2.2" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.2.1" />
     <PackageVersion Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
     <PackageVersion Include="IronPython" Version="2.7.12" />

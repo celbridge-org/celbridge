@@ -1,3 +1,6 @@
+using Celbridge.BaseLibrary.ServiceLocator;
+using Celbridge.Dependencies;
+
 namespace Celbridge.MainApplication;
 
 public partial class App : Application
@@ -39,17 +42,23 @@ public partial class App : Application
                 .UseLocalization()
                 .ConfigureServices((context, services) =>
                 {
+                    // Register legacy Celbridge services
                     RegisterServices(services);
 
-                    Dependencies.RegistrationService.ConfigureServices(services);
+                    // Configure all services and core extensions
+                    ServiceLocator.ConfigureServices(services);
                 })
             );
         MainWindow = builder.Window;
 
         Host = builder.Build();
 
+        // Initialize the service locator
+        var serviceLocator = Host.Services.GetRequiredService<IServiceLocator>();
+        serviceLocator.Initialize(Host.Services);
+
         // Test new DI architecture
-        var consoleService = Host.Services.GetRequiredService<BaseLibrary.Console.IConsoleService>();
+        var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
         consoleService.Execute("print");
 
         LegacyServiceProvider.Services = Host.Services;
