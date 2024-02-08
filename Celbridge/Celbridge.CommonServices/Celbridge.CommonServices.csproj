@@ -6,10 +6,11 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
+      <PackageReference Include="CommunityToolkit.Diagnostics" />
       <PackageReference Include="CommunityToolkit.MVVM" />
       <PackageReference Include="LiteDB" />
       <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Sinks.Debug" />
+      <PackageReference Include="Serilog.Sinks.Debug" />
   </ItemGroup>
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
