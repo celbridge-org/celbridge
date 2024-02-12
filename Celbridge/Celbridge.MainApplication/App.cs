@@ -1,4 +1,5 @@
 using Celbridge.BaseLibrary.ServiceLocator;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.Dependencies;
 
 namespace Celbridge.MainApplication;
@@ -107,15 +108,12 @@ public partial class App : Application
     private void InitializeServiceLocator()
     {
         // Initialize the service locator
-        var serviceLocator = Host.Services.GetRequiredService<IServiceLocator>();
+        var serviceLocator = Host!.Services.GetRequiredService<IServiceLocator>();
         serviceLocator.Initialize(Host.Services);
 
         // Test new DI architecture
         var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
         consoleService.Execute("print");
-
-        var settingsService = serviceLocator.GetRequiredService<BaseLibrary.Settings.IApplicationSettings>();
-        // Todo: Get the application theme from the settings service
     }
 
     private void RegisterLegacyServices(IServiceCollection services)
