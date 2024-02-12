@@ -5,80 +5,76 @@
  * This is used in situations where an operation is expected to fail in a well 
  * defined and understood manner. Exceptions are reserved for truly exceptional
  * situations where there is no clear way to handle the error.
+ * For success results, the payload is guaranteed to not be null.
  */
-public class Result
+public abstract class Result
 {
-    public bool IsSuccess { get; private set; }
-    public string? Error { get; private set; }
+    public bool IsSuccess { get; protected set; }
+    public string Error { get; protected set; } = string.Empty;
     public bool IsFailure => !IsSuccess;
 
-    protected Result(bool isSuccess, string? error)
+    protected Result(bool isSuccess, string error)
     {
-        if (isSuccess)
+        if (isSuccess && !string.IsNullOrEmpty(error))
         {
-            if (error != null)
-            {
-                throw new ArgumentException("Error must be null if the result is a success.");
-            }
+            throw new ArgumentException("Error must be null if the result is a success.", nameof(error));
         }
-        else 
+        if (!isSuccess && string.IsNullOrEmpty(error))
         {
-            if (string.IsNullOrEmpty(error))
-            {
-                throw new ArgumentException("Error message must be provided if the result is a failure.");
-            }
+            throw new ArgumentException("Error message must be provided if the result is a failure.", nameof(error));
         }
 
         IsSuccess = isSuccess;
         Error = error;
     }
 
-    public static Result Fail(string message)
+    public static Result Fail(string error)
     {
-        if (string.IsNullOrEmpty(message))
-        { 
-            throw new ArgumentException("Failure must have an error message.", nameof(message));
+        if (string.IsNullOrEmpty(error))
+        {
+            throw new ArgumentException("Failure must have an error message.");
         }
 
-        return new Result(false, message);
+        return new Failure(error);
     }
 
     // Factory method for success results with no payload
     public static Result Ok()
     {
-        return new Result(true, null);
+        return new OkResult();
+    }
+    private class OkResult : Result
+    {
+        public OkResult() : base(true, string.Empty) { }
     }
 
-    public static Result<T> Ok<T>(T value) where T : notnull
+    private class Failure : Result
     {
-        return new Result<T>(value, true, null);
+        internal Failure(string error) : base(false, error) { }
     }
 }
-
 public class Result<T> : Result where T : notnull
 {
-    private T _value;
+    public T Value { get; private set; }
 
-    public T Value
+    private Result(T value) : base(true, string.Empty)
     {
-        get
-        {
-            if (IsFailure)
-            {
-                throw new InvalidOperationException("Cannot access the value of a failed result.");
-            }
-            return _value;
-        }
+        Value = value;
     }
 
-    public Result(T value, bool isSuccess, string? error)
-        : base(isSuccess, error)
+    private Result(string error) : base(false, error)
     {
-        if (isSuccess && value == null)
-        { 
-            throw new ArgumentNullException(nameof(value), "Success result must have a non-null value.");
-        }
+        // Placeholder for value, will never be accessed in case of failure
+        Value = default!;
+    }
 
-        _value = value;
+    public static Result<T> Ok(T value)
+    {
+        return new Result<T>(value);
+    }
+
+    public new static Result<T> Fail(string error)
+    {
+        return new Result<T>(error);
     }
 }
