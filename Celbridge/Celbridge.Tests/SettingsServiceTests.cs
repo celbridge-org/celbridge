@@ -27,7 +27,7 @@ public class SettingsServiceTests
     }
 
     [Test]
-    public void TestGetAndSet()
+    public void ClientCanGetAndSetAValue()
     {
         Guard.IsNotNull(_settingsService);
 
@@ -47,5 +47,17 @@ public class SettingsServiceTests
         var getResult = _settingsService.GetValue<MySettingClass>(settingKey);
         getResult.IsSuccess.Should().BeTrue();
         getResult.Value.A.Should().BeSameAs(mySetting.A);
+    }
+
+    [Test]
+    public void ClientCantGetAnUndefinedValue()
+    {
+        Guard.IsNotNull(_settingsService);
+
+        const string settingKey = "SomeKey";
+
+        // Get the value
+        var getResult = _settingsService.GetValue<MySettingClass>(settingKey);
+        getResult.IsFailure.Should().BeTrue();
     }
 }
