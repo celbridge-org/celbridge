@@ -1,11 +1,13 @@
-﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.ServiceLocator;
-using Celbridge.CommonServices.LiteDB;
-using Celbridge.CommonServices.Logging;
+﻿using Celbridge.CoreExtensions.Console;
+using Celbridge.CommonServices.Settings;
 using Celbridge.CommonServices.Messaging;
-using Celbridge.CoreExtensions.Console;
+using Celbridge.CommonServices.Logging;
+using Celbridge.CommonServices.LiteDB;
+using Celbridge.BaseLibrary.Settings;
+using Celbridge.BaseLibrary.ServiceLocator;
+using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Console;
 
 namespace Celbridge.Dependencies;
 
@@ -19,6 +21,8 @@ public class ServiceLocator : IServiceLocator
         services.AddSingleton<IServiceLocator, ServiceLocator>();
 
         // Services exposed via BaseLibrary interfaces
+        services.AddSingleton<IApplicationSettings, ApplicationSettings>();
+        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IConsoleService, ConsoleService>();

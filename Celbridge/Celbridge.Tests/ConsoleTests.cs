@@ -39,9 +39,9 @@ public class ConsoleTests
     [Test]
     public async Task TestPrintCommand()
     {
-        var loggingService = _serviceProvider!.GetRequiredService<IConsoleService>();
+        var consoleService = _serviceProvider!.GetRequiredService<IConsoleService>();
 
-        var result = await loggingService.Execute("print");
+        var result = await consoleService.Execute("print");
 
         result.IsSuccess.Should().BeTrue();
     }
