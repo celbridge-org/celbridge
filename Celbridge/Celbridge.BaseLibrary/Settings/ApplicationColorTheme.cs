@@ -3,7 +3,7 @@
 /// <summary>
 /// Supported application color themes.
 /// </summary>
-public enum ApplicationTheme
+public enum ApplicationColorTheme
 {
     Light,
     Dark

@@ -21,8 +21,8 @@ public class ServiceLocator : IServiceLocator
         services.AddSingleton<IServiceLocator, ServiceLocator>();
 
         // Services exposed via BaseLibrary interfaces
-        services.AddSingleton<IApplicationSettings, ApplicationSettings>();
-        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddTransient<ISettingsContainer, SettingsContainer>();
+        services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IConsoleService, ConsoleService>();
