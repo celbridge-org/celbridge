@@ -27,6 +27,6 @@ public class FakeApplicationSettings : IApplicationSettings
             }
         }
 
-        return Result<T>.Fail("Failed to get value");
+        return Result<T>.Fail($"Failed to get value for setting '{settingKey}'");
     }
 }
