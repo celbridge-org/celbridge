@@ -13,7 +13,7 @@ public class LoggingService : ILoggingService
     {
         Log.Information(logMessage);
 
-        var message = new WroteToLogMessage(logMessage);
+        var message = new WroteToLogMessage(LogMessageType.Info, logMessage);
         _messengerService.Send(message);
 
     }
@@ -22,7 +22,7 @@ public class LoggingService : ILoggingService
     {
         Log.Warning(logMessage);
 
-        var message = new WroteToLogMessage(logMessage);
+        var message = new WroteToLogMessage(LogMessageType.Warning, logMessage);
         _messengerService.Send(message);
     }
 
@@ -30,7 +30,7 @@ public class LoggingService : ILoggingService
     {
         Log.Error(logMessage);
 
-        var message = new WroteToLogMessage(logMessage);
+        var message = new WroteToLogMessage(LogMessageType.Error, logMessage);
         _messengerService.Send(message);
     }
 }
