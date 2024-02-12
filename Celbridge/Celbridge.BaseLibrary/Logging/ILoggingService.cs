@@ -1,5 +1,12 @@
 ﻿namespace Celbridge.BaseLibrary.Logging;
 
+public enum LogMessageType
+{
+    Info,
+    Warning,
+    Error,
+}
+
 /// <summary>
 /// Manages logging information to supported log outputs (e.g. in-app console, terminal output, log file, etc.)
 /// </summary>
