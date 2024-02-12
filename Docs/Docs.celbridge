@@ -126,6 +126,15 @@
           "Description": "",
           "Id": "fd5b8eda-7cf8-482e-af6c-b5c752d6e6ee",
           "Children": []
+        },
+        {
+          "$type": "Celbridge.Legacy.Models.TextFileResource, Celbridge.Legacy",
+          "Permissions": "",
+          "SomePath": "",
+          "Name": "ExtensionArchitecture.md",
+          "Description": "",
+          "Id": "bd56d759-136e-4376-a82c-85976097ea59",
+          "Children": []
         }
       ]
     }

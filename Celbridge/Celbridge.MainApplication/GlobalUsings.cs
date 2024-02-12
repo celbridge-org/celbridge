@@ -1,12 +1,12 @@
 ﻿global using Celbridge.Legacy.Models;
 global using Celbridge.Legacy.Services;
+global using Celbridge.Legacy.Tasks;
+global using Celbridge.Legacy.ViewModels;
+global using Celbridge.Legacy.Views;
 global using CommunityToolkit.Diagnostics;
+global using CommunityToolkit.Mvvm.Messaging;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Localization;
 global using Microsoft.UI.Xaml.Controls;
 global using Microsoft.UI.Xaml;
-global using Celbridge.Legacy.Tasks;
-global using Celbridge.Legacy.ViewModels;
-global using Celbridge.Legacy.Views;
-global using CommunityToolkit.Mvvm.Messaging;
