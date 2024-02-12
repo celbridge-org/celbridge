@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Uno.WinUI" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
@@ -16,17 +17,17 @@
       </ItemGroup>
       <ItemGroup>
         <!--
-				If you encounter this error message:
+                If you encounter this error message:
 
-					error NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll.
-					Please update to a newer .NET SDK in order to reference this assembly.
+                    error NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll.
+                    Please update to a newer .NET SDK in order to reference this assembly.
 
-				This means that the two packages below must be aligned with the "build" version number of
-				the "Microsoft.Windows.SDK.BuildTools" package above, and the "revision" version number
-				must be the highest found in https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref.
-				-->
+                This means that the two packages below must be aligned with the "build" version number of
+                the "Microsoft.Windows.SDK.BuildTools" package above, and the "revision" version number
+                must be the highest found in https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref.
+                -->
         <!-- <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" RuntimeFrameworkVersion="10.0.22621.28" />
-				<FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
+                <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
       </ItemGroup>
     </When>
     <Otherwise>
@@ -42,5 +43,10 @@
   </Choose>
   <ItemGroup>
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
+    <ProjectReference Include="..\Celbridge.CoreExtensions\Celbridge.CoreExtensions.csproj" />
   </ItemGroup>
 </Project>

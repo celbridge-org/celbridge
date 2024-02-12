@@ -1,7 +1,7 @@
 # Visual Studio Oddities
 
 Sometimes (often) things just break in Visual Studio and you have to spend ages figuring out how to fix it.
-Hopefully these notes will help if the same issues happend again.
+Hopefully these notes will help if the same issues happen again.
 
 ## References to content in nuget packages
 
@@ -39,3 +39,11 @@ an exception. I've just fixed this so I can't remember what the exception was. I
 it was unload and reloading a project in the solution that I had added recently. This happened at the
 same time as the Intellisense issue mentioned above, so it's quite possible the two are related.
 If it happens again, try deleting the .vs folder!
+
+# Renaming projects
+
+For such a basic operation, renaming a project folder is still surprisingly clunky.
+https://www.linkedin.com/pulse/how-rename-solution-project-visual-studio-/
+
+The rename feature in Visual Studio doesn't modify the folder name on disk, so you manually have to change
+it via Windows Explorer and then fix up all the references in the Visual Studio project.
