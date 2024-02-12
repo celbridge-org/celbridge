@@ -3,4 +3,4 @@
 /// <summary>
 /// A message was written to the log
 /// </summary>
-public record WroteToLogMessage(LogMessageType logMessageType, string logMessage);
+public record WroteLogMessage(LogMessageType logMessageType, string logMessage);
