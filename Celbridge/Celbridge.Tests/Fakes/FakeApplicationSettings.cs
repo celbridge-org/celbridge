@@ -1,6 +1,8 @@
 ﻿using Celbridge.BaseLibrary.Core;
 using Celbridge.BaseLibrary.Settings;
 
+using Container = System.Collections.Generic.Dictionary<string, object>;
+
 namespace Celbridge.Tests.Fakes;
 
 /// <summary>
@@ -8,17 +10,32 @@ namespace Celbridge.Tests.Fakes;
 /// </summary>
 public class FakeApplicationSettings : IApplicationSettings
 {
-    private Dictionary<string, object> _settings = new Dictionary<string, object>();
+    private Dictionary<string, Container> _containers = new();
 
-    public Result SetValue<T>(string settingKey, T value) where T : notnull
+    private Container GetContainer(string containerName)
     {
-        _settings[settingKey] = value;
+        if (_containers.TryGetValue(containerName, out var container))
+        {
+            return container;
+        }
+
+        container = new Container();
+        _containers.Add(containerName, container);
+
+        return container;
+    }
+
+    public Result SetValue<T>(string containerName, string settingKey, T value) where T : notnull
+    {
+        var settings = GetContainer(containerName);
+        settings[settingKey] = value;
         return Result.Ok();
     }
 
-    public Result<T> GetValue<T>(string settingKey) where T : notnull
+    public Result<T> GetValue<T>(string containerName, string settingKey) where T : notnull
     {
-        if (_settings.TryGetValue(settingKey, out object? value))
+        var settings = GetContainer(containerName);
+        if (settings.TryGetValue(settingKey, out object? value))
         {
             var v = (T)value;
             if (v != null)
@@ -28,5 +45,27 @@ public class FakeApplicationSettings : IApplicationSettings
         }
 
         return Result<T>.Fail($"Failed to get value for setting '{settingKey}'");
+    }
+
+    public bool ContainsValue(string containerName, string key)
+    {
+        var settings = GetContainer(containerName);
+        return settings.ContainsKey(key);
+    }
+
+    public Result DeleteValue(string containerName, string key)
+    {
+        var settings = GetContainer(containerName);
+        if (settings.Remove(key))
+        {
+            return Result.Ok();
+        }
+        return Result.Fail("Key not found");
+    }
+
+    public void DeleteAll(string containerName)
+    {
+        var settings = GetContainer(containerName);
+        settings.Clear();
     }
 }

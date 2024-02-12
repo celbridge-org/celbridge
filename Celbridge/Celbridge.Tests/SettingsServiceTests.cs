@@ -31,6 +31,7 @@ public class SettingsServiceTests
     {
         Guard.IsNotNull(_settingsService);
 
+        const string containerKey = "SomeContainer";
         const string settingKey = "SomeKey";
 
         // Define some data we want to store
@@ -40,11 +41,11 @@ public class SettingsServiceTests
         };
 
         // Set a value
-        var setResult = _settingsService.SetValue(settingKey, mySetting);
+        var setResult = _settingsService.SetValue(containerKey, settingKey, mySetting);
         setResult.IsSuccess.Should().BeTrue();
 
         // Get the value
-        var getResult = _settingsService.GetValue<MySettingClass>(settingKey);
+        var getResult = _settingsService.GetValue<MySettingClass>(containerKey, settingKey);
         getResult.IsSuccess.Should().BeTrue();
         getResult.Value.A.Should().BeSameAs(mySetting.A);
     }
@@ -54,10 +55,11 @@ public class SettingsServiceTests
     {
         Guard.IsNotNull(_settingsService);
 
+        const string containerKey = "SomeContainer";
         const string settingKey = "SomeKey";
 
         // Get the value
-        var getResult = _settingsService.GetValue<MySettingClass>(settingKey);
+        var getResult = _settingsService.GetValue<MySettingClass>(containerKey, settingKey);
         getResult.IsFailure.Should().BeTrue();
     }
 }
