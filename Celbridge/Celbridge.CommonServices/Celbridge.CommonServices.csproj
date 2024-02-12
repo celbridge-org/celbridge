@@ -6,12 +6,21 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
-      <PackageReference Include="CommunityToolkit.Diagnostics" />
-      <PackageReference Include="CommunityToolkit.MVVM" />
-      <PackageReference Include="LiteDB" />
-      <PackageReference Include="Serilog" />
-      <PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="CommunityToolkit.MVVM" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="LiteDB" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <PackageReference Include="Uno.CommunityToolkit.WinUI.UI.Controls" />
+  </ItemGroup>
+
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>

@@ -43,7 +43,7 @@ public partial class App : Application
                 .ConfigureServices((context, services) =>
                 {
                     // Register legacy Celbridge services
-                    RegisterServices(services);
+                    RegisterLegacyServices(services);
 
                     // Configure all services and core extensions
                     ServiceLocator.ConfigureServices(services);
@@ -53,13 +53,7 @@ public partial class App : Application
 
         Host = builder.Build();
 
-        // Initialize the service locator
-        var serviceLocator = Host.Services.GetRequiredService<IServiceLocator>();
-        serviceLocator.Initialize(Host.Services);
-
-        // Test new DI architecture
-        var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
-        consoleService.Execute("print");
+        InitializeServiceLocator();
 
         LegacyServiceProvider.Services = Host.Services;
         LegacyServiceProvider.MainWindow = MainWindow;
@@ -110,7 +104,21 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
-    private void RegisterServices(IServiceCollection services)
+    private void InitializeServiceLocator()
+    {
+        // Initialize the service locator
+        var serviceLocator = Host.Services.GetRequiredService<IServiceLocator>();
+        serviceLocator.Initialize(Host.Services);
+
+        // Test new DI architecture
+        var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
+        consoleService.Execute("print");
+
+        var settingsService = serviceLocator.GetRequiredService<BaseLibrary.Settings.IApplicationSettings>();
+        // Todo: Get the application theme from the settings service
+    }
+
+    private void RegisterLegacyServices(IServiceCollection services)
     {
         IMessenger messengerService = WeakReferenceMessenger.Default;
         ISettingsService settingsService = new SettingsService(messengerService);
