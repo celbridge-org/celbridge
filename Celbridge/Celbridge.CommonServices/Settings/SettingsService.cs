@@ -12,13 +12,28 @@ public class SettingsService : ISettingsService
         _applicationSettings = applicationSettings;
     }
 
-    public Result SetValue<T>(string settingKey, T value) where T : notnull
+    public Result SetValue<T>(string containerName, string key, T value) where T : notnull
     {
-        return _applicationSettings.SetValue(settingKey, value);
+        return _applicationSettings.SetValue(containerName, key, value);
     }
 
-    public Result<T> GetValue<T>(string settingKey) where T : notnull
+    public Result<T> GetValue<T>(string containerName, string key) where T : notnull
     {
-        return _applicationSettings.GetValue<T>(settingKey);
+        return _applicationSettings.GetValue<T>(containerName, key);
+    }
+
+    public bool ContainsValue(string containerName, string key)
+    {
+        return _applicationSettings.ContainsValue(containerName, key);
+    }
+
+    public Result DeleteValue(string containerName, string key)
+    {
+        return _applicationSettings.DeleteValue(containerName, key);
+    }
+
+    public void DeleteAll(string containerName)
+    {
+        _applicationSettings.DeleteAll(containerName);
     }
 }
