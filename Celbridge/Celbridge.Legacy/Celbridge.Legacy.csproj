@@ -6,24 +6,24 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
-	<PackageReference Include="CommunityToolkit.Diagnostics" />
-	<PackageReference Include="IronPython" />
-	<PackageReference Include="IronPython.StdLib" />
-	<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
-	<PackageReference Include="Newtonsoft.Json" />
-	<PackageReference Include="OpenAI" />
-	<PackageReference Include="Scriban" />
-	<PackageReference Include="Serilog" />
-	<PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="IronPython" />
+    <PackageReference Include="IronPython.StdLib" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="OpenAI" />
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Uno.WinUI" />
-	<PackageReference Include="Uno.Resizetizer" />
-	<PackageReference Include="CommunityToolkit.Mvvm" />
-	<PackageReference Include="Uno.Extensions.Configuration" />
-	<PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
-	<PackageReference Include="Uno.Toolkit.WinUI" />
-	<PackageReference Include="Uno.Extensions.Hosting.WinUI" />
-	<PackageReference Include="Uno.Extensions.Localization.WinUI" />
-	<PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Uno.Resizetizer" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Uno.Extensions.Configuration" />
+    <PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
+    <PackageReference Include="Uno.Toolkit.WinUI" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
+    <PackageReference Include="Uno.Extensions.Localization.WinUI" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
@@ -41,17 +41,17 @@
       </ItemGroup>
       <ItemGroup>
         <!--
-				If you encounter this error message:
+        If you encounter this error message:
 
-					error NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll.
-					Please update to a newer .NET SDK in order to reference this assembly.
+          error NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll.
+          Please update to a newer .NET SDK in order to reference this assembly.
 
-				This means that the two packages below must be aligned with the "build" version number of
-				the "Microsoft.Windows.SDK.BuildTools" package above, and the "revision" version number
-				must be the highest found in https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref.
-				-->
+        This means that the two packages below must be aligned with the "build" version number of
+        the "Microsoft.Windows.SDK.BuildTools" package above, and the "revision" version number
+        must be the highest found in https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref.
+        -->
         <!-- <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" RuntimeFrameworkVersion="10.0.22621.28" />
-				<FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
+        <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
       </ItemGroup>
     </When>
     <Otherwise>

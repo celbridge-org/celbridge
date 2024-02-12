@@ -1,3 +1,7 @@
+using Celbridge.BaseLibrary.ServiceLocator;
+using Celbridge.BaseLibrary.Settings;
+using Celbridge.Dependencies;
+
 namespace Celbridge.MainApplication;
 
 public partial class App : Application
@@ -39,12 +43,18 @@ public partial class App : Application
                 .UseLocalization()
                 .ConfigureServices((context, services) =>
                 {
-                    RegisterServices(services);
+                    // Register legacy Celbridge services
+                    RegisterLegacyServices(services);
+
+                    // Configure all services and core extensions
+                    ServiceLocator.ConfigureServices(services);
                 })
             );
         MainWindow = builder.Window;
 
         Host = builder.Build();
+
+        InitializeServiceLocator();
 
         LegacyServiceProvider.Services = Host.Services;
         LegacyServiceProvider.MainWindow = MainWindow;
@@ -95,7 +105,18 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
-    private void RegisterServices(IServiceCollection services)
+    private void InitializeServiceLocator()
+    {
+        // Initialize the service locator
+        var serviceLocator = Host!.Services.GetRequiredService<IServiceLocator>();
+        serviceLocator.Initialize(Host.Services);
+
+        // Test new DI architecture
+        var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
+        consoleService.Execute("print");
+    }
+
+    private void RegisterLegacyServices(IServiceCollection services)
     {
         IMessenger messengerService = WeakReferenceMessenger.Default;
         ISettingsService settingsService = new SettingsService(messengerService);
