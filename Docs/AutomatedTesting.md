@@ -52,3 +52,8 @@ public class SolarTimesSpecs
 }
 ```
 
+Due to limitations in NUnity and the Visual Studio Test Explorer, our test names use pascal case, e.g.
+```
+UserCanGetSolarTimesAutomaticallyForTheirLocation()
+```
+
