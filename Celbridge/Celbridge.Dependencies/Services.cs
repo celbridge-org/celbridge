@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Dependencies;
+﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
