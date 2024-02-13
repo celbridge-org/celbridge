@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Dependencies;
+﻿namespace Celbridge.BaseLibrary.Extensions;
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with Dependency Injection without

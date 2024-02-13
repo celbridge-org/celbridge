@@ -29,4 +29,7 @@ public class ConsoleService : IConsoleService
 
         return Result.Fail($"Unknown command: {command}");
     }
+
+    public void Initialize()
+    {}
 }

@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Dependencies;
+﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.Shell.ViewModels;
 using Celbridge.Shell.Views;
 
@@ -11,4 +11,7 @@ public class ShellExtension : IExtension
         config.AddTransient<ShellView>();
         config.AddTransient<ShellViewModel>();
     }
+
+    public void Initialize()
+    {}
 }
