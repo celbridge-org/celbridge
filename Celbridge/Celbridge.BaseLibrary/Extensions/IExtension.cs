@@ -9,5 +9,5 @@ public interface IExtension
     /// <summary>
     /// Configures the dependency injection framework to support the types provided by the extension.
     /// </summary>
-    void ConfigureServices(IServiceConfiguration config);
+    void ConfigureServices(IExtensionServiceCollection serviceCollection);
 }

@@ -1,62 +1,83 @@
-﻿namespace Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Extensions;
+using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Settings;
+using Celbridge.CommonServices.Logging;
+using Celbridge.CommonServices.Messaging;
+using Celbridge.CommonServices.Settings;
+using System.Reflection;
+
+namespace Celbridge.Dependencies;
 
 /// <summary>
-/// Helper class to allow Celbridge extensions to register types for use with Dependency Injection without
-/// using the Microsoft.Extensions.DependencyInjection package.
+/// Configures the dependency injection framework to support all required services.
 /// </summary>
-public class ServiceConfiguration : IServiceConfiguration
+public class ServiceConfiguration
 {
-    private List<Type> TransientServices { get; } = new();
-    private Dictionary<Type, Type> TransientInterfaceServices { get; } = new();
-    private List<Type> SingletonServices { get; } = new();
-    private Dictionary<Type, Type> SingletonInterfaceServices { get; } = new();
-
-    public void AddTransient<T>() 
-        where T : class
+    public static void Configure(IServiceCollection services, List<Assembly> extensionAssemblies)
     {
-        TransientServices.Add(typeof(T));
+        ConfigureCommonServices(services);
+        ConfigureExtensionServices(services, extensionAssemblies);
     }
 
-    public void AddTransient<I, T>() 
-        where I : class
-        where T : class
+    private static void ConfigureCommonServices(IServiceCollection services)
     {
-        TransientInterfaceServices.Add(typeof(I), typeof(T));
+        // This assembly has direct references to these common services, so we simply add them
+        // to the services collection.
+
+        services.AddTransient<ISettingsContainer, SettingsContainer>();
+        services.AddSingleton<IEditorSettings, EditorSettings>();
+        services.AddSingleton<IMessengerService, MessengerService>();
+        services.AddSingleton<ILoggingService, LoggingService>();
     }
 
-    public void AddSingleton<T>()
-    where T : class
+    private static void ConfigureExtensionServices(IServiceCollection services, List<Assembly> extensionAssemblies)
     {
-        SingletonServices.Add(typeof(T));
-    }
+        // Extension assemblies are loaded by the application and passed in here where we use reflection to
+        // register the necessary services for dependency injection.
 
-    public void AddSingleton<I, T>()
-    where I : class
-    where T : class
-    {
-        SingletonInterfaceServices.Add(typeof(I), typeof(T));
-    }
+        var extensionServices = new ExtensionServiceCollection();
 
-    public void ConfigureServices(IServiceCollection services)
-    {
-        foreach (var serviceType in TransientServices)
+        foreach (var assembly in extensionAssemblies)
         {
-            services.AddTransient(serviceType);
+            // Find all types that implement the IExtension interface
+            var extensionTypes = assembly.GetTypes()
+                .Where(t => typeof(IExtension).IsAssignableFrom(t) && 
+                       !t.IsInterface && 
+                       !t.IsAbstract);
+
+            if (extensionTypes.Count() == 0)
+            {
+                // Extension assemblies must contain a class that implements IExtension
+                System.Console.WriteLine($"Failed to configure extension because assembly '{assembly.GetName()}' does not contain a type that implements IExtension.");
+                continue;
+            }
+
+            if (extensionTypes.Count() > 1)
+            {
+                // Don't register the extension if it contains more than one IExtension class.
+                // We can't tell which is the right one to load, so just log an error and skip to the next extension.
+                System.Console.WriteLine($"Failed to configure extension because assembly '{assembly.GetName()}' contains multiple types that implement IExtension.");
+                continue;
+            }
+
+            var extensionType = extensionTypes.First();
+            try
+            {
+                // Create an instance of the class
+                var instance = Activator.CreateInstance(extensionType) as IExtension;
+                if (instance != null)
+                {
+                    instance.ConfigureServices(extensionServices);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception and continue
+                System.Console.WriteLine($"Error initializing extension {extensionType.Name}: {ex.Message}");
+            }
         }
 
-        foreach (var kv in TransientInterfaceServices)
-        {
-            services.AddTransient(kv.Key, kv.Value);
-        }
-
-        foreach (var serviceType in SingletonServices)
-        {
-            services.AddSingleton(serviceType);
-        }
-
-        foreach (var kv in SingletonInterfaceServices)
-        {
-            services.AddSingleton(kv.Key, kv.Value);
-        }
+        extensionServices.PopulateServices(services);
     }
 }
