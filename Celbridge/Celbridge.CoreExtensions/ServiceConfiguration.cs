@@ -14,24 +14,15 @@ public class ServiceConfiguration
 {
     public static void Configure(IServiceCollection services)
     {
-        ConfigureCommonServices(services);
-        ConfigureCoreExtensions(services);
-
-        // Internal services
-        services.AddSingleton<LiteDBService>();
-        services.AddTransient<LiteDBInstance>();
-    }
-
-    private static void ConfigureCommonServices(IServiceCollection services)
-    {
+        // Services exposed via BaseLibrary interfaces
         services.AddTransient<ISettingsContainer, SettingsContainer>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
-    }
-
-    private static void ConfigureCoreExtensions(IServiceCollection services)
-    {
         services.AddSingleton<IConsoleService, ConsoleService>();
+
+        // Internal services
+        services.AddSingleton<LiteDBService>();
+        services.AddTransient<LiteDBInstance>();
     }
 }
