@@ -10,7 +10,7 @@ namespace Celbridge.Skia.Gtk
         {
             ExceptionManager.UnhandledException += delegate (UnhandledExceptionArgs expArgs)
             {
-                Console.WriteLine("GLIB UNHANDLED EXCEPTION" + expArgs.ExceptionObject.ToString());
+                System.Console.WriteLine("GLIB UNHANDLED EXCEPTION" + expArgs.ExceptionObject.ToString());
                 expArgs.ExitApplication = true;
             };
 

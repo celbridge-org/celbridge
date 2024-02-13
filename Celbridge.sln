@@ -42,6 +42,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CoreExtensions", "CoreExten
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Console", "Celbridge\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj", "{83D773BC-60C1-4D00-B01F-591FB418A7DF}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Shell", "Celbridge\CoreExtensions\Celbridge.Shell\Celbridge.Shell.csproj", "{85821817-033A-428E-8F47-0EE66C67F283}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -238,6 +240,22 @@ Global
 		{83D773BC-60C1-4D00-B01F-591FB418A7DF}.Release|x64.Build.0 = Release|Any CPU
 		{83D773BC-60C1-4D00-B01F-591FB418A7DF}.Release|x86.ActiveCfg = Release|Any CPU
 		{83D773BC-60C1-4D00-B01F-591FB418A7DF}.Release|x86.Build.0 = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|arm64.Build.0 = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|x64.Build.0 = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Debug|x86.Build.0 = Debug|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|arm64.ActiveCfg = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|arm64.Build.0 = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|x64.ActiveCfg = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|x64.Build.0 = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|x86.ActiveCfg = Release|Any CPU
+		{85821817-033A-428E-8F47-0EE66C67F283}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -256,6 +274,7 @@ Global
 		{41330624-71AD-44F3-9D6E-41776CD87440} = {86258219-BA11-4966-8ACC-D08C896037BA}
 		{9AD04F3B-6CD0-4F96-A0E7-9C2B36FB55DD} = {86258219-BA11-4966-8ACC-D08C896037BA}
 		{83D773BC-60C1-4D00-B01F-591FB418A7DF} = {9AD04F3B-6CD0-4F96-A0E7-9C2B36FB55DD}
+		{85821817-033A-428E-8F47-0EE66C67F283} = {9AD04F3B-6CD0-4F96-A0E7-9C2B36FB55DD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A6836F12-B3A5-413B-A5BF-9ECE41139834}
