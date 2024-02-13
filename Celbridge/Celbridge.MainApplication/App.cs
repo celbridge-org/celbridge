@@ -24,7 +24,7 @@ public partial class App : Application
     public Window? MainWindow { get; private set; }
     public IHost? Host { get; private set; }
 
-    private ExtensionLoader? _extensionLoader;
+    private ExtensionAssemblyLoader? _extensionLoader;
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -112,7 +112,7 @@ public partial class App : Application
     private void LoadExtensions()
     {
         // Todo: Discover extension assemblies by scanning a folder or via config
-        _extensionLoader = new ExtensionLoader();
+        _extensionLoader = new ExtensionAssemblyLoader();
         _extensionLoader.LoadAssembly("Celbridge.Console");
         _extensionLoader.LoadAssembly("Celbridge.Shell");
     }

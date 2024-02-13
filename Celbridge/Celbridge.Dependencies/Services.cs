@@ -2,7 +2,6 @@
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
-using Celbridge.CommonServices.LiteDB;
 using Celbridge.CommonServices.Logging;
 using Celbridge.CommonServices.Messaging;
 using Celbridge.CommonServices.Settings;
@@ -16,10 +15,6 @@ public class Services
     {
         ConfigureCommonServices(services);
         ConfigureExtensionServices(services, extensionAssemblies);
-
-        // Internal services
-        services.AddSingleton<LiteDBService>();
-        services.AddTransient<LiteDBInstance>();
     }
 
     private static void ConfigureCommonServices(IServiceCollection services)
