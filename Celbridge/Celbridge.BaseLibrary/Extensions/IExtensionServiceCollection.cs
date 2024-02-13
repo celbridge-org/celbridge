@@ -3,9 +3,9 @@
 /// <summary>
 /// Extensions use this interface to configure the dependency injection framework without using the 
 /// Microsoft.Extensions.DependencyInjection package. The methods here correspond to a subset of the
-/// Microsoft.Extensions.DependencyInjection.IServicesCollection interface.
+/// Microsoft.Extensions.DependencyInjection.IServiceCollection interface.
 /// </summary>
-public interface IServiceConfiguration
+public interface IExtensionServiceCollection
 {
     void AddTransient<T>()
         where T : class;

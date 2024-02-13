@@ -51,7 +51,7 @@ public partial class App : Application
                     // Configure all services and core extensions
                     Guard.IsNotNull(_extensionLoader);
                     var extensionAssemblies = _extensionLoader.LoadedAssemblies.Values.ToList();
-                    Services.Configure(services, extensionAssemblies);
+                    ServiceConfiguration.Configure(services, extensionAssemblies);
                 }))
             );
         MainWindow = builder.Window;
