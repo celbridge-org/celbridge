@@ -6,7 +6,7 @@ namespace Celbridge.Console;
 
 public class ConsoleExtension : IExtension
 {
-    public void ConfigureServices(IServiceConfiguration config)
+    public void ConfigureServices(IExtensionServiceCollection config)
     {
         config.AddSingleton<IConsoleService, ConsoleService>();
     }
