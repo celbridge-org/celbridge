@@ -1,5 +1,3 @@
-using Celbridge.BaseLibrary.ServiceLocator;
-using Celbridge.BaseLibrary.Settings;
 using Celbridge.Dependencies;
 
 namespace Celbridge.MainApplication;
@@ -47,7 +45,7 @@ public partial class App : Application
                     RegisterLegacyServices(services);
 
                     // Configure all services and core extensions
-                    ServiceLocator.ConfigureServices(services);
+                    ServiceConfiguration.Configure(services);
                 })
             );
         MainWindow = builder.Window;
@@ -108,11 +106,10 @@ public partial class App : Application
     private void InitializeServiceLocator()
     {
         // Initialize the service locator
-        var serviceLocator = Host!.Services.GetRequiredService<IServiceLocator>();
-        serviceLocator.Initialize(Host.Services);
+        var serviceProvider = Host!.Services.GetRequiredService<IServiceProvider>();
 
         // Test new DI architecture
-        var consoleService = serviceLocator.GetRequiredService<BaseLibrary.Console.IConsoleService>();
+        var consoleService = serviceProvider.GetRequiredService<BaseLibrary.Console.IConsoleService>();
         consoleService.Execute("print");
     }
 
