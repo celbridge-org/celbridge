@@ -24,10 +24,14 @@ public partial class App : Application
     public Window? MainWindow { get; private set; }
     public IHost? Host { get; private set; }
 
+    private ExtensionLoader? _extensionLoader;
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        LoadExtensions();
+
         var builder = this.CreateBuilder(args)
-            .Configure((Action<IHostBuilder>)(host => host
+            .Configure((host => host
 #if DEBUG
 				// Switch to Development environment when running in DEBUG
 				.UseEnvironment(Environments.Development)
@@ -39,20 +43,22 @@ public partial class App : Application
                 )
                 // Enable localization (see appsettings.json for supported languages)
                 .UseLocalization()
-                .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
+                .ConfigureServices((context, services) =>
                 {
                     // Register legacy Celbridge services
                     RegisterLegacyServices(services);
 
                     // Configure all services and core extensions
-                    Dependencies.Services.Configure(services);
-                })))
+                    Guard.IsNotNull(_extensionLoader);
+                    var extensionAssemblies = _extensionLoader.LoadedAssemblies.Values.ToList();
+                    Services.Configure(services, extensionAssemblies);
+                }))
             );
         MainWindow = builder.Window;
 
         Host = builder.Build();
 
-        InitializeServiceLocator();
+        InitializeNewServices();
 
         LegacyServiceProvider.Services = Host.Services;
         LegacyServiceProvider.MainWindow = MainWindow;
@@ -103,7 +109,15 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
-    private void InitializeServiceLocator()
+    private void LoadExtensions()
+    {
+        // Todo: Discover extension assemblies by scanning a folder or via config
+        _extensionLoader = new ExtensionLoader();
+        _extensionLoader.LoadAssembly("Celbridge.Console");
+        _extensionLoader.LoadAssembly("Celbridge.Shell");
+    }
+
+    private void InitializeNewServices()
     {
         // Initialize the service locator
         var serviceProvider = Host!.Services.GetRequiredService<IServiceProvider>();

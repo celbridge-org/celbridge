@@ -11,7 +11,4 @@ public class ShellExtension : IExtension
         config.AddTransient<ShellView>();
         config.AddTransient<ShellViewModel>();
     }
-
-    public void Initialize()
-    {}
 }
