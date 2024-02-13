@@ -1,37 +1,62 @@
-﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.Settings;
-using Celbridge.CommonServices.LiteDB;
-using Celbridge.CommonServices.Logging;
-using Celbridge.CommonServices.Messaging;
-using Celbridge.CommonServices.Settings;
-using Celbridge.CoreExtensions.Console;
+﻿namespace Celbridge.BaseLibrary.Dependencies;
 
-namespace Celbridge.Dependencies;
-
-public class ServiceConfiguration
+/// <summary>
+/// Helper class to allow Celbridge extensions to register types for use with Dependency Injection without
+/// needing a dependency on Microsoft.Extensions.DependencyInjection.
+/// </summary>
+public class ServiceConfiguration : IServiceConfiguration
 {
-    public static void Configure(IServiceCollection services)
-    {
-        ConfigureCommonServices(services);
-        ConfigureCoreExtensions(services);
+    private List<Type> TransientServices { get; } = new();
+    private Dictionary<Type, Type> TransientInterfaceServices { get; } = new();
+    private List<Type> SingletonServices { get; } = new();
+    private Dictionary<Type, Type> SingletonInterfaceServices { get; } = new();
 
-        // Internal services
-        services.AddSingleton<LiteDBService>();
-        services.AddTransient<LiteDBInstance>();
+    public void AddTransient<T>() 
+        where T : class
+    {
+        TransientServices.Add(typeof(T));
     }
 
-    private static void ConfigureCommonServices(IServiceCollection services)
+    public void AddTransient<I, T>() 
+        where I : class
+        where T : class
     {
-        services.AddTransient<ISettingsContainer, SettingsContainer>();
-        services.AddSingleton<IEditorSettings, EditorSettings>();
-        services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<ILoggingService, LoggingService>();
+        TransientInterfaceServices.Add(typeof(I), typeof(T));
     }
 
-    private static void ConfigureCoreExtensions(IServiceCollection services)
+    public void AddSingleton<T>()
+    where T : class
     {
-        services.AddSingleton<IConsoleService, ConsoleService>();
+        SingletonServices.Add(typeof(T));
+    }
+
+    public void AddSingleton<I, T>()
+    where I : class
+    where T : class
+    {
+        SingletonInterfaceServices.Add(typeof(I), typeof(T));
+    }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        foreach (var serviceType in TransientServices)
+        {
+            services.AddTransient(serviceType);
+        }
+
+        foreach (var kv in TransientInterfaceServices)
+        {
+            services.AddTransient(kv.Key, kv.Value);
+        }
+
+        foreach (var serviceType in SingletonServices)
+        {
+            services.AddSingleton(serviceType);
+        }
+
+        foreach (var kv in SingletonInterfaceServices)
+        {
+            services.AddSingleton(kv.Key, kv.Value);
+        }
     }
 }
