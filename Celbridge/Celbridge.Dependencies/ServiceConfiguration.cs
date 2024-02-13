@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with Dependency Injection without
-/// needing a dependency on Microsoft.Extensions.DependencyInjection.
+/// using the Microsoft.Extensions.DependencyInjection package.
 /// </summary>
 public class ServiceConfiguration : IServiceConfiguration
 {

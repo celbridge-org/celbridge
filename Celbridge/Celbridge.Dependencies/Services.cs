@@ -6,15 +6,16 @@ using Celbridge.CommonServices.LiteDB;
 using Celbridge.CommonServices.Logging;
 using Celbridge.CommonServices.Messaging;
 using Celbridge.CommonServices.Settings;
+using System.Reflection;
 
 namespace Celbridge.Dependencies;
 
 public class Services
 {
-    public static void Configure(IServiceCollection services)
+    public static void Configure(IServiceCollection services, List<Assembly> extensionAssemblies)
     {
         ConfigureCommonServices(services);
-        ConfigureCoreExtensions(services);
+        ConfigureExtensionServices(services, extensionAssemblies);
 
         // Internal services
         services.AddSingleton<LiteDBService>();
@@ -29,17 +30,49 @@ public class Services
         services.AddSingleton<ILoggingService, LoggingService>();
     }
 
-    private static void ConfigureCoreExtensions(IServiceCollection services)
+    private static void ConfigureExtensionServices(IServiceCollection services, List<Assembly> extensionAssemblies)
     {
         var configuration = new ServiceConfiguration();
 
-        // Todo: Use reflection to discover all extension classes automatically
+        foreach (var assembly in extensionAssemblies)
+        {
+            // Find all types that implement the IExtension interface
+            var extensionTypes = assembly.GetTypes()
+                .Where(t => typeof(IExtension).IsAssignableFrom(t) && 
+                       !t.IsInterface && 
+                       !t.IsAbstract);
 
-        var shellExtension = new Shell.ShellExtension();
-        shellExtension.ConfigureServices(configuration);
+            if (extensionTypes.Count() == 0)
+            {
+                // Extension assemblies must contain a class that implements IExtension
+                System.Console.WriteLine($"Failed to configure extension because assembly '{assembly.GetName()}' does not contain a type that implements IExtension.");
+                continue;
+            }
 
-        var consoleExtension = new Console.ConsoleExtension();
-        consoleExtension.ConfigureServices(configuration);
+            if (extensionTypes.Count() > 1)
+            {
+                // Don't register the extension if it contains more than one IExtension class.
+                // We can't tell which is the right one to load, so just log an error and skip to the next extension.
+                System.Console.WriteLine($"Failed to configure extension because assembly '{assembly.GetName()}' contains multiple types that implement IExtension.");
+                continue;
+            }
+
+            var extensionType = extensionTypes.First();
+            try
+            {
+                // Create an instance of the class
+                var instance = Activator.CreateInstance(extensionType) as IExtension;
+                if (instance != null)
+                {
+                    instance.ConfigureServices(configuration);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception and continue
+                System.Console.WriteLine($"Error initializing extension {extensionType.Name}: {ex.Message}");
+            }
+        }
 
         configuration.ConfigureServices(services);
     }

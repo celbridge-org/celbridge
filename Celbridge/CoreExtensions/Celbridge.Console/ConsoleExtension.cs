@@ -10,7 +10,4 @@ public class ConsoleExtension : IExtension
     {
         config.AddSingleton<IConsoleService, ConsoleService>();
     }
-
-    public void Initialize()
-    {}
 }
