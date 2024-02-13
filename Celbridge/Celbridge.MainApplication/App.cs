@@ -27,7 +27,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var builder = this.CreateBuilder(args)
-            .Configure(host => host
+            .Configure((Action<IHostBuilder>)(host => host
 #if DEBUG
 				// Switch to Development environment when running in DEBUG
 				.UseEnvironment(Environments.Development)
@@ -39,14 +39,14 @@ public partial class App : Application
                 )
                 // Enable localization (see appsettings.json for supported languages)
                 .UseLocalization()
-                .ConfigureServices((context, services) =>
+                .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
                 {
                     // Register legacy Celbridge services
                     RegisterLegacyServices(services);
 
                     // Configure all services and core extensions
-                    ServiceConfiguration.Configure(services);
-                })
+                    Dependencies.Services.Configure(services);
+                })))
             );
         MainWindow = builder.Window;
 
@@ -97,7 +97,7 @@ public partial class App : Application
             // When the navigation stack isn't restored navigate to the first page,
             // configuring the new page by passing required information as a navigation
             // parameter
-            rootFrame.Navigate(typeof(Shell), args.Arguments);
+            rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
         }
         // Ensure the current window is active
         MainWindow.Activate();
@@ -111,6 +111,9 @@ public partial class App : Application
         // Test new DI architecture
         var consoleService = serviceProvider.GetRequiredService<BaseLibrary.Console.IConsoleService>();
         consoleService.Execute("print");
+
+        var shellView = serviceProvider.GetRequiredService<Shell.Views.ShellView>();
+        Guard.IsNotNull(shellView);
     }
 
     private void RegisterLegacyServices(IServiceCollection services)
