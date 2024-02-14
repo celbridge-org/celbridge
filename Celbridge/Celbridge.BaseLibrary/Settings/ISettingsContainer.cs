@@ -17,14 +17,20 @@ public interface ISettingsContainer
 
     /// <summary>
     /// Gets a previously stored value with the provided key.
-    /// Fails if the requested key was not found.
+    /// Returns default(T) if the key does not exist.
     /// </summary>
     T GetValue<T>(string key) where T : notnull;
 
     /// <summary>
+    /// Gets a previously stored value with the provided key.
+    /// Returns defaultValue if the key does not exist.
+    /// </summary>
+    T GetValue<T>(string key, T defaultValue) where T : notnull;
+
+    /// <summary>
     /// Returns true if the container contains the key.
     /// </summary>
-    bool ContainsValue(string key);
+    bool ContainsKey(string key);
 
     /// <summary>
     /// Deletes a key value pair from the container.

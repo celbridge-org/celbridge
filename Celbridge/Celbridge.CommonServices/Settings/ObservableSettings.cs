@@ -29,13 +29,22 @@ public abstract class ObservableSettings : INotifyPropertyChanged
         return _settingsContainer.GetValue<T>(settingName);
     }
 
+    protected T GetValue<T>(string settingName, T defaultValue)
+        where T : notnull
+    {
+        return _settingsContainer.GetValue<T>(settingName, defaultValue );
+    }
+
     protected void SetValue<T>(string settingName, T value)
         where T : notnull
     {
-        if (value.Equals(GetValue<T>(settingName)))
+        if (_settingsContainer.ContainsKey(settingName) &&
+            value.Equals(GetValue<T>(settingName)))
         {
+            // Previously stored value matches the value we are trying to set, so no change.
             return;
         }
+
         _settingsContainer.SetValue(settingName, value);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(settingName));
     }
