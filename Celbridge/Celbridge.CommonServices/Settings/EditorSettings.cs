@@ -2,24 +2,15 @@
 
 namespace Celbridge.CommonServices.Settings;
 
-public class EditorSettings : IEditorSettings
+public class EditorSettings : ObservableSettings, IEditorSettings
 {
-    private ISettingsContainer _settingsContainer;
-
     public EditorSettings(ISettingsContainer settingsContainer)
-    {
-        _settingsContainer = settingsContainer;
-        _settingsContainer.Initialize(nameof(EditorSettings));
-    }
+        : base(settingsContainer, nameof(EditorSettings))
+    {}
 
     public ApplicationColorTheme Theme
     {
-        get => _settingsContainer.GetValue<ApplicationColorTheme>(nameof(ApplicationColorTheme));
-        set => _settingsContainer.SetValue(nameof(ApplicationColorTheme), value);
-    }
-
-    public void Reset()
-    {
-        _settingsContainer.Reset();
+        get => GetValue<ApplicationColorTheme>(nameof(Theme));
+        set => SetValue(nameof(Theme), value);
     }
 }
