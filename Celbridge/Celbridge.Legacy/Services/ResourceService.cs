@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 using System.Security.Cryptography;
 
 namespace Celbridge.Legacy.Services;
@@ -54,11 +55,11 @@ public record ResourcesChangedMessage(List<Guid> Added, List<Guid> Changed, List
 public class ResourceService : IResourceService
 {
     private readonly SHA256 _hashAlgorithm = SHA256.Create();
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IResourceTypeService _resourceTypeService;
     private IInspectorService? _inspectorService;
 
-    public ResourceService(IMessenger messengerService, IResourceTypeService resourceTypeService)
+    public ResourceService(IMessengerService messengerService, IResourceTypeService resourceTypeService)
     {
         _messengerService = messengerService;
         _resourceTypeService = resourceTypeService;

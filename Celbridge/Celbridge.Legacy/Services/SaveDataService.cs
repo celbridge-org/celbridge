@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.Services;
 
@@ -29,14 +30,14 @@ public interface ISaveDataService
 
 public class SaveDataService : ISaveDataService
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly Queue<ISaveData> _pendingSaves = new ();
     private readonly CancellationTokenSource _cancellationToken = new ();
     private ISaveData? _activeSaveData;
 
     private bool _receivedRecentSaveRequest;
 
-    public SaveDataService(IMessenger messengerService)
+    public SaveDataService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
     }

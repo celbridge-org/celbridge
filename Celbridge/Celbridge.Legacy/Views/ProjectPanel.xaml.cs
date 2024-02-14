@@ -1,10 +1,10 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.Views;
 
 public sealed partial class ProjectPanel : UserControl
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IInspectorService _inspectorService;
     private readonly IDocumentService _documentService;
 
@@ -16,7 +16,7 @@ public sealed partial class ProjectPanel : UserControl
 
         var services = LegacyServiceProvider.Services!;
         ViewModel = services.GetRequiredService<ProjectViewModel>();
-        _messengerService = services.GetRequiredService<IMessenger>();
+        _messengerService = services.GetRequiredService<IMessengerService>();
         _inspectorService = services.GetRequiredService<IInspectorService>();
         _documentService = services.GetRequiredService<IDocumentService>();
 

@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Celbridge.Legacy.Services;
@@ -28,10 +29,10 @@ public class DocumentClosedMessage : ValueChangedMessage<IDocument>
 
 public class DocumentService : IDocumentService
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly List<IDocument> _openDocuments = new();
 
-    public DocumentService(IMessenger messengerService)
+    public DocumentService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
     }
