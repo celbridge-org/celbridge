@@ -1,6 +1,6 @@
 using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.Settings;
 using Celbridge.Dependencies;
+using Uno.Toolkit.UI;
 using Windows.Storage;
 
 namespace Celbridge.MainApplication;
@@ -101,28 +101,40 @@ public partial class App : Application
 
     private void ApplyTheme()
     {
-        // Application.RequestedTheme may only be set during the application constructor.
-        // We store EditorSettings in a SettingContainer in ApplicationData.Current.LocalSettings.Containers.
-        // ApplicationData.Current.LocalSettings.Containers may not be accessed during the application constructor.
-        // Workaround: Store the user selected theme in the ApplicationData.Current.LocalSettings.Values, which
-        // can be accessed in the application constructor.
+        // Note: Application.RequestedTheme may only be set during the application constructor.
 
+        // Note: Uno provides the SystemThemeHelper to support changing the application theme at runtime, without needing a restart.
+        // The last time I tried it though it only partially worked, in particular dialogs would still use the previous theme.
+
+        const string ThemeSettingKey = "EditorSettings.Theme";
+
+        // Putting a breakpoint on this line in Visual Studio causes an intermittent exception.
+        // Probably some sort of race condition between the debugger and the underlying settings service.
         var editorSettings = ApplicationData.Current.LocalSettings.Values;
-        if (editorSettings.TryGetValue("Theme", out var value))
+
+        if (!editorSettings.ContainsKey(ThemeSettingKey))
         {
-            var theme = ApplicationTheme.Light;
-            var themeSetting = (string)value;
-            if (themeSetting == nameof(ApplicationColorTheme.Dark))
-            {
-                theme = ApplicationTheme.Dark;
-            }
-#if HAS_UNO
-            var themeName = theme.ToString();
-            Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
-#else
-            this.RequestedTheme = theme;
-#endif
+            // No theme was previously selected, so the application will use the current OS theme.
+            // Update the stored theme setting so that the settings dialog displays the correct value.
+            // The double quotes are needed here because we store all settings as Json values.
+            var osTheme = SystemThemeHelper.GetCurrentOsTheme();
+            editorSettings[ThemeSettingKey] = osTheme == ApplicationTheme.Light ? "\"Light\"" : "\"Dark\"";
         }
+
+        var themeSetting = editorSettings[ThemeSettingKey] as string;
+        Guard.IsNotNull(themeSetting);
+
+        var theme = ApplicationTheme.Light;
+        if (themeSetting.Contains("Dark"))
+        {
+            theme = ApplicationTheme.Dark;
+        }
+#if HAS_UNO
+        var themeName = theme.ToString();
+        Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
+#else
+        this.RequestedTheme = theme;
+#endif
     }
 
     private void LoadExtensions()

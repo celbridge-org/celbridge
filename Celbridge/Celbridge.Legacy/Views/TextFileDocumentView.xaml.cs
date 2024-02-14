@@ -97,7 +97,9 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     Guard.IsNotNull(settingsService);
                     Guard.IsNotNull(settingsService.EditorSettings);
 
-                    var theme = settingsService.EditorSettings.Theme == ApplicationColorTheme.Dark ? "vs-dark" : "vs-light";
+                    var themeSetting = settingsService.EditorSettings.Theme;
+                    var theme = themeSetting == "Dark" ? "vs-dark" : "vs-light";
+
                     await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{theme}';");
 
                     EditorWebView.CoreWebView2.Navigate("http://MonacoEditor/index.html");

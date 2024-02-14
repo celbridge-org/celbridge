@@ -16,7 +16,7 @@ public class EditorSettingsTests
     {
         var services = new ServiceCollection();
 
-        services.AddTransient<ISettingsContainer, FakeSettingsContainer>();
+        services.AddTransient<ISettingsGroup, FakeSettingsGroup>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -34,15 +34,15 @@ public class EditorSettingsTests
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the default value
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light);
+        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light.ToString());
 
         // Set a new value
-        editorSettings.Theme = ApplicationColorTheme.Dark;
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Dark);
+        editorSettings.Theme = ApplicationColorTheme.Dark.ToString();
+        editorSettings.Theme.Should().Be(ApplicationColorTheme.Dark.ToString());
 
         // Reset the settings
         editorSettings.Reset();
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light);
+        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light.ToString());
 
         // Check the default value system is working
         editorSettings.LeftPanelExpanded.Should().BeTrue();
