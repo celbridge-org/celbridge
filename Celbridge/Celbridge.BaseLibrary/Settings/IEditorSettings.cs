@@ -7,7 +7,7 @@ namespace Celbridge.BaseLibrary.Settings;
 /// </summary>
 public interface IEditorSettings : INotifyPropertyChanged
 {
-    ApplicationColorTheme Theme { get; set; }
+    string Theme { get; set; }
 
     bool LeftPanelExpanded { get; set; }
 

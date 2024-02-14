@@ -25,7 +25,7 @@ public class ServiceConfiguration
         // This assembly has direct references to these common services, so we simply add them
         // to the services collection.
 
-        services.AddTransient<ISettingsContainer, SettingsContainer>();
+        services.AddTransient<ISettingsGroup, SettingsGroup>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();

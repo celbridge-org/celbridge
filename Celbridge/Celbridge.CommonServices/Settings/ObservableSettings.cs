@@ -8,25 +8,19 @@ namespace Celbridge.CommonServices.Settings;
 /// </summary>
 public abstract class ObservableSettings : INotifyPropertyChanged
 {
-    private ISettingsContainer _settingsContainer;
+    private ISettingsGroup _settingsContainer;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableSettings(ISettingsContainer settingsContainer, string containerName)
+    public ObservableSettings(ISettingsGroup settingsContainer, string containerName)
     {
         _settingsContainer = settingsContainer;
         _settingsContainer.Initialize(containerName);
     }
 
-    public virtual void Reset()
+    public void Reset()
     {
         _settingsContainer.Reset();
-    }
-
-    protected T GetValue<T>(string settingName)
-        where T : notnull
-    {
-        return _settingsContainer.GetValue<T>(settingName);
     }
 
     protected T GetValue<T>(string settingName, T defaultValue)
@@ -38,8 +32,7 @@ public abstract class ObservableSettings : INotifyPropertyChanged
     protected void SetValue<T>(string settingName, T value)
         where T : notnull
     {
-        if (_settingsContainer.ContainsKey(settingName) &&
-            value.Equals(GetValue<T>(settingName)))
+        if (_settingsContainer.ContainsValue(settingName, value))
         {
             // Previously stored value matches the value we are trying to set, so no change.
             return;
