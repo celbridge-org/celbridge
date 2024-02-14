@@ -1,10 +1,11 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class ShellViewModel : ObservableObject
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
 
     [ObservableProperty]
@@ -17,7 +18,7 @@ public partial class ShellViewModel : ObservableObject
         WindowActivated?.Invoke(active);
     }
 
-    public ShellViewModel(IMessenger messengerService, IProjectService projectService)
+    public ShellViewModel(IMessengerService messengerService, IProjectService projectService)
     {
         _messengerService = messengerService;
         _projectService = projectService;

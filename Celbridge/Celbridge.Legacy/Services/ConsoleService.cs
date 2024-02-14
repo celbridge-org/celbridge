@@ -3,6 +3,7 @@ using Microsoft.Scripting.Hosting;
 using System.Reflection;
 using CommunityToolkit.WinUI.Helpers;
 using CommunityToolkit.Mvvm.Messaging;
+using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.Services;
 
@@ -52,7 +53,7 @@ public class ConsoleService : IConsoleService
     private bool _isChatModeEnabled;
     private string _chatFile = string.Empty;
 
-    public ConsoleService(IMessenger messengerService, IChatService chatService)
+    public ConsoleService(IMessengerService messengerService, IChatService chatService)
     {
         _chatService = chatService;
 

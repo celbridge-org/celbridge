@@ -1,10 +1,10 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IDocumentService _documentService;
     private readonly IResourceService _resourceService;
@@ -15,7 +15,7 @@ public partial class TextFileDocumentViewModel : ObservableObject, ISaveData
 
     public string Path { get; private set; } = string.Empty;
 
-    public TextFileDocumentViewModel(IMessenger messengerService,
+    public TextFileDocumentViewModel(IMessengerService messengerService,
                                      IProjectService projectService,
                                      IDocumentService documentService,
                                      IResourceService resourceService,

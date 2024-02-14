@@ -1,17 +1,17 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class HTMLDocumentViewModel : ObservableObject
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IDocumentService _documentService;
     private readonly IResourceService _resourceService;
 
     private string _path = string.Empty;
 
-    public HTMLDocumentViewModel(IMessenger messengerService,
+    public HTMLDocumentViewModel(IMessengerService messengerService,
                                  IProjectService projectService,
                                  IDocumentService documentService,
                                  IResourceService resourceService)

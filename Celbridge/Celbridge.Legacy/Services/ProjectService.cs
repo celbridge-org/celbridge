@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using Celbridge.Legacy.Tasks;
+using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.Services;
 
@@ -31,7 +32,7 @@ public record PreviouslySelectedEntityMessage(Guid EntityId);
 
 public class ProjectService : IProjectService, ISaveData
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly ISaveDataService _saveDataService;
     private readonly IResourceService _resourceService;
@@ -41,7 +42,7 @@ public class ProjectService : IProjectService, ISaveData
 
     public Project? ActiveProject { get; private set; }
 
-    public ProjectService(IMessenger messengerService, 
+    public ProjectService(IMessengerService messengerService, 
         ISettingsService settingsService,
         ISaveDataService saveDataService,
         IResourceService resourceService,

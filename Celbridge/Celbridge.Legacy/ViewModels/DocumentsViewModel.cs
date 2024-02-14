@@ -1,16 +1,16 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class DocumentsViewModel : ObservableRecipient
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IDocumentService _documentService;
     private readonly ISettingsService _settingsService;
 
     public IDocumentsPanelView? DocumentsPanelView { get; internal set; }
 
-    public DocumentsViewModel(IMessenger messengerService, 
+    public DocumentsViewModel(IMessengerService messengerService, 
         IDocumentService documentService,
         ISettingsService settingsService)
     {

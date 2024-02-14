@@ -18,7 +18,7 @@ public abstract class ObservableSettings : INotifyPropertyChanged
         _settingsContainer.Initialize(containerName);
     }
 
-    public void Reset()
+    public virtual void Reset()
     {
         _settingsContainer.Reset();
     }

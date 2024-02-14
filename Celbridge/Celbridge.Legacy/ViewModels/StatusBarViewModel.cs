@@ -1,15 +1,15 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class StatusBarViewModel : ObservableObject
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
 
     [ObservableProperty]
     private bool _isSaving;
 
-    public StatusBarViewModel(IMessenger messengerService) 
+    public StatusBarViewModel(IMessengerService messengerService) 
     {
         _messengerService = messengerService;
 

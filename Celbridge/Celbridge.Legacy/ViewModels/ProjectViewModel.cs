@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using Celbridge.BaseLibrary.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
@@ -10,7 +11,7 @@ public partial class ProjectViewModel : ObservableObject
     private readonly IResourceService _resourceService;
     private readonly IDialogService _dialogService;
     private readonly IInspectorService _inspectorService;
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
 
     private Project? _activeProject;
     public Project? ActiveProject
@@ -55,7 +56,7 @@ public partial class ProjectViewModel : ObservableObject
                             IResourceService resourceService,
                             IDialogService dialogService,
                             IInspectorService inspectorService,
-                            IMessenger messengerService)
+                            IMessengerService messengerService)
     {
         _settingsService = settingsService;
         _projectService = projectService;

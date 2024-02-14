@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.Services;
 
@@ -19,11 +20,11 @@ public record HideProgressDialogMessage;
 
 public class DialogService : IDialogService
 {
-    private IMessenger _messengerService;
+    private IMessengerService _messengerService;
 
     public XamlRoot? XamlRoot { get; set; }
 
-    public DialogService(IMessenger messengerService)
+    public DialogService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
     }
