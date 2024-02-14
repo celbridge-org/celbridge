@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Legacy.ViewModels;
+﻿using Celbridge.BaseLibrary.Settings;
+
+namespace Celbridge.Legacy.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
@@ -10,7 +12,11 @@ public partial class SettingsViewModel : ObservableObject
 
         Guard.IsNotNull(_settingsService.EditorSettings);
 
-        ThemeIndex = (int)_settingsService.EditorSettings.Theme;
+        var themeName = _settingsService.EditorSettings.Theme;
+        if (Enum.TryParse(themeName, out ApplicationColorTheme theme))
+        {
+            ThemeIndex = (int)theme;
+        }
 
         PropertyChanged += SettingsViewModel_PropertyChanged;
     }
@@ -60,8 +66,9 @@ public partial class SettingsViewModel : ObservableObject
         {
             Guard.IsNotNull(_settingsService.EditorSettings);
 
-            var theme = ThemeIndex == 0 ? ApplicationTheme.Light : ApplicationTheme.Dark;
-            _settingsService.EditorSettings.Theme = (BaseLibrary.Settings.ApplicationColorTheme)theme;
+            var theme = ThemeIndex == 0 ? ApplicationColorTheme.Light : ApplicationColorTheme.Dark;
+
+            _settingsService.EditorSettings.Theme = theme.ToString();
         }
     }
 }
