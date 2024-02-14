@@ -15,6 +15,12 @@ public class MessengerService : IMessengerService
         _messenger.Register<TMessage>(recipient, handler.Invoke);
     }
 
+    public void Unregister<TMessage>(object recipient)
+        where TMessage : class
+    {
+        _messenger.Unregister<TMessage>(recipient);
+    }
+
     public void UnregisterAll(object recipient)
     {
         _messenger.UnregisterAll(recipient);

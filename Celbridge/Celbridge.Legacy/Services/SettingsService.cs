@@ -1,15 +1,11 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Settings;
 
 namespace Celbridge.Legacy.Services;
 
 public interface ISettingsService
 {
-    EditorSettings? EditorSettings { get; }
+    IEditorSettings? EditorSettings { get; }
     ProjectSettings? ProjectSettings { get; }
-
-    void SaveEditorSettings();
-    void LoadEditorSettings();
-
     void SaveProjectSettings(Guid projectId);
     void LoadProjectSettings(Guid projectId);
     void ClearProjectSettings();
@@ -17,78 +13,14 @@ public interface ISettingsService
 
 public class SettingsService : ISettingsService
 {
-    private const string EditorSettingsKey = "EditorSettings";
     private const string ProjectSettingsKey = "ProjectSettings";
 
-    public EditorSettings? EditorSettings { get; private set; }
+    public IEditorSettings EditorSettings { get; private set; }
     public ProjectSettings? ProjectSettings { get; private set; }
 
-    public SettingsService(IMessenger messengerService)
+    public SettingsService(IEditorSettings editorSettings)
     {
-        LoadEditorSettings();
-    }
-
-    public void LoadEditorSettings()
-    {
-        try
-        {
-            var editorSettings = ApplicationData.Current.LocalSettings.Values[EditorSettingsKey];
-            if (editorSettings == null)
-            {
-                EditorSettings = null;
-            }
-            else
-            {
-                var settingsJson = editorSettings.ToString();
-                Guard.IsNotNull(settingsJson);
-
-                EditorSettings = JsonConvert.DeserializeObject<EditorSettings>(settingsJson);
-            }
-        }
-#pragma warning disable 0168
-        catch (Exception ex)
-#pragma warning restore 0168
-        {
-            // Unable to read the settings (e.g. broken json)
-            Debugger.Break();
-            EditorSettings = null;
-            ApplicationData.Current.LocalSettings.Values.Remove(EditorSettingsKey);
-        }
-
-#pragma warning disable IDE0074 // Use compound assignment
-        if (EditorSettings == null)
-        {
-            EditorSettings = new ()
-            {
-                // Default values here ...
-            };
-        }
-#pragma warning restore IDE0074 // Use compound assignment
-
-        EditorSettings.PropertyChanged += EditorSettings_PropertyChanged;
-    }
-
-    private void EditorSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        Guard.IsNotNull(EditorSettings);
-
-        // Todo: Avoid saving multiple times per frame - use a dirty flag and an update tick
-        SaveEditorSettings();
-    }
-
-    public void SaveEditorSettings()
-    {
-        try
-        {
-            var settingsJson = JsonConvert.SerializeObject(EditorSettings, Formatting.Indented);
-            ApplicationData.Current.LocalSettings.Values[EditorSettingsKey] = settingsJson;
-        }
-#pragma warning disable 0168
-        catch (Exception _)
-#pragma warning restore 0168
-        {
-            Debugger.Break();
-        }
+        EditorSettings = editorSettings;
     }
 
     public void LoadProjectSettings(Guid projectId)

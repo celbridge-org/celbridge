@@ -1,4 +1,7 @@
+using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.Dependencies;
+using Windows.Storage;
 
 namespace Celbridge.MainApplication;
 
@@ -6,19 +9,7 @@ public partial class App : Application
 {
     public App()
     {
-        var settingsService = new SettingsService(WeakReferenceMessenger.Default);
-        ApplicationTheme theme = ApplicationTheme.Light;
-        if (settingsService.EditorSettings is not null)
-        {
-            theme = settingsService.EditorSettings.ApplicationTheme;
-        }
-
-#if HAS_UNO
-        var themeName = theme.ToString();
-        Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
-#else
-	        this.RequestedTheme = theme;
-#endif
+        ApplyTheme();
     }
 
     public Window? MainWindow { get; private set; }
@@ -33,8 +24,8 @@ public partial class App : Application
         var builder = this.CreateBuilder(args)
             .Configure((host => host
 #if DEBUG
-				// Switch to Development environment when running in DEBUG
-				.UseEnvironment(Environments.Development)
+                // Switch to Development environment when running in DEBUG
+                .UseEnvironment(Environments.Development)
 #endif
                 .UseConfiguration(configure: configBuilder =>
                     configBuilder
@@ -79,11 +70,10 @@ public partial class App : Application
 
         MainWindow.Closed += (s, e) =>
         {
-            var messengerService = Host!.Services.GetRequiredService<IMessenger>();
+            var messengerService = Host!.Services.GetRequiredService<IMessengerService>();
             var message = new ApplicationClosingMessage();
             messengerService.Send(message);
         };
-
 
         rootFrame.Loaded += (s, e) =>
         {
@@ -109,6 +99,32 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
+    private void ApplyTheme()
+    {
+        // Application.RequestedTheme may only be set during the application constructor.
+        // We store EditorSettings in a SettingContainer in ApplicationData.Current.LocalSettings.Containers.
+        // ApplicationData.Current.LocalSettings.Containers may not be accessed during the application constructor.
+        // Workaround: Store the user selected theme in the ApplicationData.Current.LocalSettings.Values, which
+        // can be accessed in the application constructor.
+
+        var editorSettings = ApplicationData.Current.LocalSettings.Values;
+        if (editorSettings.TryGetValue("Theme", out var value))
+        {
+            var theme = ApplicationTheme.Light;
+            var themeSetting = (string)value;
+            if (themeSetting == nameof(ApplicationColorTheme.Dark))
+            {
+                theme = ApplicationTheme.Dark;
+            }
+#if HAS_UNO
+            var themeName = theme.ToString();
+            Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
+#else
+            this.RequestedTheme = theme;
+#endif
+        }
+    }
+
     private void LoadExtensions()
     {
         // Todo: Discover extension assemblies by scanning a folder or via config
@@ -132,29 +148,17 @@ public partial class App : Application
 
     private void RegisterLegacyServices(IServiceCollection services)
     {
-        IMessenger messengerService = WeakReferenceMessenger.Default;
-        ISettingsService settingsService = new SettingsService(messengerService);
-        IResourceTypeService resourceTypeService = new ResourceTypeService();
-        IResourceService resourceService = new ResourceService(messengerService, resourceTypeService);
-        IInspectorService inspectorService = new InspectorService(messengerService);
-        ISaveDataService saveDataService = new SaveDataService(messengerService);
-        IDocumentService documentService = new DocumentService(messengerService);
-        IDialogService dialogService = new DialogService(messengerService);
-        IProjectService projectService = new ProjectService(messengerService, settingsService, saveDataService, resourceService, documentService, dialogService, inspectorService);
-        IChatService chatService = new ChatService(settingsService);
-        IConsoleService consoleService = new ConsoleService(messengerService, chatService);
+        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IResourceTypeService, ResourceTypeService>();
+        services.AddSingleton<IResourceService, ResourceService>();
+        services.AddSingleton<IInspectorService, InspectorService>();
+        services.AddSingleton<ISaveDataService, SaveDataService>();
+        services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IDocumentService, DocumentService>();
+        services.AddSingleton<IProjectService, ProjectService>();
+        services.AddSingleton<IChatService, ChatService>();
+        services.AddSingleton<IConsoleService, ConsoleService>();
 
-        services.AddSingleton(messengerService);
-        services.AddSingleton(settingsService);
-        services.AddSingleton(resourceTypeService);
-        services.AddSingleton(resourceService);
-        services.AddSingleton(saveDataService);
-        services.AddSingleton(dialogService);
-        services.AddSingleton(projectService);
-        services.AddSingleton(consoleService);
-        services.AddSingleton(inspectorService);
-        services.AddSingleton(documentService);
-        services.AddSingleton(chatService);
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<ConsoleViewModel>();
         services.AddSingleton<ProjectViewModel>();

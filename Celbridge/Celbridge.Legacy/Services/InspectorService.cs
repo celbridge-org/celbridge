@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.Services;
 
@@ -52,9 +53,9 @@ public class EntityPropertyChangedMessage
 
 public class InspectorService : IInspectorService
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
 
-    public InspectorService(IMessenger messengerService)
+    public InspectorService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
         _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);

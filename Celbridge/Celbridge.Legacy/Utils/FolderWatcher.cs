@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.Utils;
 
@@ -16,12 +17,12 @@ class FolderWatcher : IDisposable
     private DateTime _modifiedTime;
     private readonly TimeSpan _cooldownTime;
     private readonly DispatcherTimer _updateTimer;
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private FileSystemWatcher? _watcher;
 
     public List<string> _changedFiles  = new ();
 
-    public FolderWatcher(IMessenger messengerService, string path, float cooldownTime)
+    public FolderWatcher(IMessengerService messengerService, string path, float cooldownTime)
     {
         _messengerService = messengerService;
 

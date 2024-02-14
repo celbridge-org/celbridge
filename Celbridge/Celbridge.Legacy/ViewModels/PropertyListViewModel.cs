@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
@@ -11,7 +11,7 @@ public record ListViewIsActiveMessage(ListView ListView);
 
 public partial class PropertyListViewModel : ObservableObject
 {
-    private IMessenger _messengerService;
+    private IMessengerService _messengerService;
     private readonly IInspectorService _inspectorService;
 
     public ListView? ListView { get; set; }
@@ -25,7 +25,7 @@ public partial class PropertyListViewModel : ObservableObject
     private int _lastInsertedIndex = -1;
     private bool _isDragging;
 
-    public PropertyListViewModel(IMessenger messengerService,
+    public PropertyListViewModel(IMessengerService messengerService,
                                  IInspectorService inspectorService)
     {
         _messengerService = messengerService;

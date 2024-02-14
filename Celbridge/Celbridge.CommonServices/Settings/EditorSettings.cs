@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Settings;
+using Windows.Storage;
 
 namespace Celbridge.CommonServices.Settings;
 
@@ -6,7 +7,36 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 {
     public EditorSettings(ISettingsContainer settingsContainer)
         : base(settingsContainer, nameof(EditorSettings))
-    {}
+    {
+        PropertyChanged += EditorSettings_PropertyChanged;
+    }
+
+    private void EditorSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Theme))
+        {
+            // Values will be null here when this code is run as a unit test.
+            if (ApplicationData.Current.LocalSettings.Values != null)
+            {
+                // Store a duplicate of the Theme value in ApplicationData.Current.LocalSettings.
+                // We need to access this setting in the application constructor, which can't access settings stored
+                // ApplicationData.Current.LocalSettings.Containers
+                ApplicationData.Current.LocalSettings.Values[nameof(Theme)] = Theme.ToString();
+            }
+        }
+    }
+
+    public override void Reset()
+    {
+        base.Reset();
+
+        // Values will be null here when this code is run as a unit test.
+        if (ApplicationData.Current.LocalSettings.Values != null)
+        {
+            // Reset the duplicate Theme setting stored above
+            ApplicationData.Current.LocalSettings.Values.Remove(nameof(Theme));
+        }
+    }
 
     public ApplicationColorTheme Theme
     {

@@ -1,9 +1,11 @@
-﻿namespace Celbridge.BaseLibrary.Settings;
+﻿using System.ComponentModel;
+
+namespace Celbridge.BaseLibrary.Settings;
 
 /// <summary>
 /// Manage persitent user settings via named setting containers.
 /// </summary>
-public interface IEditorSettings
+public interface IEditorSettings : INotifyPropertyChanged
 {
     ApplicationColorTheme Theme { get; set; }
 

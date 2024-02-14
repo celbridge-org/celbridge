@@ -1,12 +1,13 @@
 ﻿using System.Collections;
 using System.ComponentModel;
+using Celbridge.BaseLibrary.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class DetailViewModel : ObservableObject
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IInspectorService _inspectorService;
 
     public ItemCollection? ItemCollection { get; set; }
@@ -14,7 +15,7 @@ public partial class DetailViewModel : ObservableObject
     [ObservableProperty]
     private string _labelText = string.Empty;
 
-    public DetailViewModel(IMessenger messengerService,
+    public DetailViewModel(IMessengerService messengerService,
         IInspectorService inspectorService)
     {
         _messengerService = messengerService;

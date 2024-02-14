@@ -124,6 +124,9 @@
     <UpToDateCheckInput Remove="Views\TextPropertyView.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <UnoImage Include="Assets\Icons\back.svg" />
   </ItemGroup>
   <ItemGroup>

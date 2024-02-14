@@ -10,7 +10,7 @@ public partial class SettingsViewModel : ObservableObject
 
         Guard.IsNotNull(_settingsService.EditorSettings);
 
-        ThemeIndex = (int)_settingsService.EditorSettings.ApplicationTheme;
+        ThemeIndex = (int)_settingsService.EditorSettings.Theme;
 
         PropertyChanged += SettingsViewModel_PropertyChanged;
     }
@@ -61,7 +61,7 @@ public partial class SettingsViewModel : ObservableObject
             Guard.IsNotNull(_settingsService.EditorSettings);
 
             var theme = ThemeIndex == 0 ? ApplicationTheme.Light : ApplicationTheme.Dark;
-            _settingsService.EditorSettings.ApplicationTheme = theme;
+            _settingsService.EditorSettings.Theme = (BaseLibrary.Settings.ApplicationColorTheme)theme;
         }
     }
 }

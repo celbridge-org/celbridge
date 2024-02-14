@@ -1,11 +1,11 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
 using Windows.Foundation;
 
 namespace Celbridge.Legacy.ViewModels;
 
 public partial class ProgressDialogViewModel : ObservableObject
 {
-    public ProgressDialogViewModel(IMessenger messengerService)
+    public ProgressDialogViewModel(IMessengerService messengerService)
     {
         messengerService.Register<HideProgressDialogMessage>(this, OnHideProgressDialogueMessage);
     }

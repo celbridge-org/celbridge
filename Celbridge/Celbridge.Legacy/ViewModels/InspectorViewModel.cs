@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Scripting.Utils;
 using System.ComponentModel;
 
@@ -6,7 +7,7 @@ namespace Celbridge.Legacy.ViewModels;
 
 public partial class InspectorViewModel : ObservableObject
 {
-    private readonly IMessenger _messengerService;
+    private readonly IMessengerService _messengerService;
     private readonly IInspectorService _inspectorService;
     private readonly ISettingsService _settingsService;
     private readonly IProjectService _projectService;
@@ -14,7 +15,7 @@ public partial class InspectorViewModel : ObservableObject
     private readonly IResourceTypeService _resourceTypeService;
     private readonly IDialogService _dialogService;
 
-    public InspectorViewModel(IMessenger messengerService,
+    public InspectorViewModel(IMessengerService messengerService,
         IInspectorService inspectorService,
         ISettingsService settingsService, 
         IProjectService projectService,
