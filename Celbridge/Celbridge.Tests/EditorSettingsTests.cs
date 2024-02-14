@@ -43,5 +43,8 @@ public class EditorSettingsTests
         // Reset the settings
         editorSettings.Reset();
         editorSettings.Theme.Should().Be(ApplicationColorTheme.Light);
+
+        // Check the default value system is working
+        editorSettings.LeftPanelExpanded.Should().BeTrue();
     }
 }
