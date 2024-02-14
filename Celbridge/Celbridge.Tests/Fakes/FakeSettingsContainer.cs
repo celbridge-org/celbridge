@@ -56,7 +56,26 @@ public class FakeSettingsContainer : ISettingsContainer
         return value;
     }
 
-    public bool ContainsValue(string key)
+    public T GetValue<T>(string key, T defaultValue) where T : notnull
+    {
+        Guard.IsNotNull(_container);
+
+        if (!_container.TryGetValue(key, out object? json))
+        {
+            return defaultValue;
+        }
+
+        var value = JsonConvert.DeserializeObject<T>((string)json);
+        if (value is null)
+        {
+            throw new InvalidOperationException();
+        }
+
+        return value;
+    }
+
+
+    public bool ContainsKey(string key)
     {
         Guard.IsNotNull(_container);
 

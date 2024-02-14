@@ -66,6 +66,8 @@ public class SettingsContainer : ISettingsContainer
         {
             if (!container.Values.TryGetValue(key, out object? json))
             {
+                // A null value here should be impossible because of the T : notnull constaint above,
+                // but Rider generates a warning about it anyway. To be on the safe side, we throw an exception if it is null.
                 return default(T) ?? throw new InvalidOperationException();
             }
 
@@ -89,7 +91,38 @@ public class SettingsContainer : ISettingsContainer
         }
     }
 
-    public bool ContainsValue(string key)
+    public T GetValue<T>(string key, T defaultValue) where T : notnull
+    {
+        var container = GetContainer();
+
+        try
+        {
+            if (!container.Values.TryGetValue(key, out object? json))
+            {
+                return defaultValue;
+            }
+
+            // Deserialize the JSON string back into the generic type T.
+            // The serialization type does not have to match the deserialization type. The deserializer
+            // simply attempts to match the property names.This allows for clients to change the serialization
+            // type in future releases, as long as the key remains the same.
+            var value = JsonConvert.DeserializeObject<T>((string)json);
+            if (value is null)
+            {
+                _loggingService.Error($"Failed to get setting '{container.Name}.{key}' because the value failed to deserialize.");
+                return defaultValue;
+            }
+
+            return value;
+        }
+        catch (JsonException ex)
+        {
+            _loggingService.Error($"Failed to get setting '{container.Name}.{key}' because the Json exception occured. {ex}");
+            return defaultValue;
+        }
+    }
+
+    public bool ContainsKey(string key)
     {
         var container = GetContainer();
         return container.Values.ContainsKey(key);
