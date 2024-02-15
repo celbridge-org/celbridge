@@ -1,5 +1,8 @@
 using Celbridge.BaseLibrary.Messaging;
+using Celbridge.CommonUI.UserInterface;
+using Celbridge.CommonUI.Views;
 using Celbridge.Dependencies;
+using Celbridge.Dependencies.Extensions;
 using Uno.Toolkit.UI;
 using Windows.Storage;
 
@@ -15,11 +18,14 @@ public partial class App : Application
     public Window? MainWindow { get; private set; }
     public IHost? Host { get; private set; }
 
-    private ExtensionAssemblyLoader? _extensionLoader;
+    private ExtensionLoader? _extensionLoader;
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        LoadExtensions();
+        // Load Extensions
+        // Todo: Discover extension assemblies by scanning a folder or via config
+        _extensionLoader = new ExtensionLoader();
+        _extensionLoader.LoadExtension("Celbridge.Console");
 
         var builder = this.CreateBuilder(args)
             .Configure((host => host
@@ -39,17 +45,21 @@ public partial class App : Application
                     // Register legacy Celbridge services
                     RegisterLegacyServices(services);
 
-                    // Configure all services and core extensions
+                    // Configure all services and loaded extensions
                     Guard.IsNotNull(_extensionLoader);
-                    var extensionAssemblies = _extensionLoader.LoadedAssemblies.Values.ToList();
-                    ServiceConfiguration.Configure(services, extensionAssemblies);
+                    var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
+                    ServiceConfiguration.ConfigureServices(services, extensions);
                 }))
             );
         MainWindow = builder.Window;
 
         Host = builder.Build();
 
-        InitializeNewServices();
+        // Setup the globally available helper for using the dependency injection framework.
+        BaseLibrary.Core.Services.Initialize(Host.Services);
+
+        // Tell the loaded extensions to initialize before the application starts.
+        _extensionLoader.InitializeExtensions();
 
         LegacyServiceProvider.Services = Host.Services;
         LegacyServiceProvider.MainWindow = MainWindow;
@@ -86,6 +96,17 @@ public partial class App : Application
             // Start monitoring for save requests
             var saveDataService = Host.Services.GetRequiredService<ISaveDataService>();
             _ = saveDataService.StartMonitoringAsync(0.25);
+
+            //
+            // Populate the MainPage property in the UserInterfaceService
+            //
+
+            var workspaceView = rootFrame.Content as WorkspaceView;
+            if (workspaceView is not null)
+            {
+                var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
+                userInterfaceService.WorkspaceView = workspaceView;
+            }
         };
 
         if (rootFrame.Content == null)
@@ -94,6 +115,7 @@ public partial class App : Application
             // configuring the new page by passing required information as a navigation
             // parameter
             rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
+            //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
         }
         // Ensure the current window is active
         MainWindow.Activate();
@@ -135,27 +157,6 @@ public partial class App : Application
 #else
         this.RequestedTheme = theme;
 #endif
-    }
-
-    private void LoadExtensions()
-    {
-        // Todo: Discover extension assemblies by scanning a folder or via config
-        _extensionLoader = new ExtensionAssemblyLoader();
-        _extensionLoader.LoadAssembly("Celbridge.Console");
-        _extensionLoader.LoadAssembly("Celbridge.Shell");
-    }
-
-    private void InitializeNewServices()
-    {
-        // Initialize the service locator
-        var serviceProvider = Host!.Services.GetRequiredService<IServiceProvider>();
-
-        // Test new DI architecture
-        var consoleService = serviceProvider.GetRequiredService<BaseLibrary.Console.IConsoleService>();
-        consoleService.Execute("print");
-
-        var shellView = serviceProvider.GetRequiredService<Shell.Views.ShellView>();
-        Guard.IsNotNull(shellView);
     }
 
     private void RegisterLegacyServices(IServiceCollection services)

@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Extensions;
+
+namespace Celbridge.Dependencies.Extensions;
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with dependency injection without
@@ -11,13 +13,13 @@ public class ExtensionServiceCollection : IExtensionServiceCollection
     private List<Type> SingletonServices { get; } = new();
     private Dictionary<Type, Type> SingletonInterfaceServices { get; } = new();
 
-    public void AddTransient<T>() 
+    public void AddTransient<T>()
         where T : class
     {
         TransientServices.Add(typeof(T));
     }
 
-    public void AddTransient<I, T>() 
+    public void AddTransient<I, T>()
         where I : class
         where T : class
     {
