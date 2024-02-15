@@ -9,6 +9,11 @@ public class LoggingService : ILoggingService
     public LoggingService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
+
+        Log.Logger = new LoggerConfiguration()
+            //.WriteTo.ConsoleService(this) // Our custom sink that writes to the Console panel in the app
+            .WriteTo.Debug() // Writes to the Visual Studio debug Output window (uses a Nuget package)
+        .CreateLogger();
     }
 
     public void Info(string logMessage)
