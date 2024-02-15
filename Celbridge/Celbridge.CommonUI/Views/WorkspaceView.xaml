@@ -9,5 +9,7 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     DataContext="{x:Bind ViewModel}">
 
-    <TextBlock Text="{x:Bind ViewModel.SomeText}" />
+    <Button Command="{x:Bind ViewModel.PrintText}">
+        Print Text
+    </Button>
 </Page>
