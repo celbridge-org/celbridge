@@ -9,7 +9,10 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     DataContext="{x:Bind ViewModel}">
 
-    <Button Command="{x:Bind ViewModel.PrintText}">
-        Print Text
-    </Button>
+    <StackPanel>
+        <Button Command="{x:Bind ViewModel.UpdateText}">
+            Update Text
+        </Button>
+        <TextBlock Text="{x:Bind ViewModel.Message, Mode=OneWay}"/>
+    </StackPanel>
 </Page>
