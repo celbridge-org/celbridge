@@ -4,8 +4,8 @@ namespace Celbridge.CommonServices.Settings;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
 {
-    public EditorSettings(ISettingsGroup settingsContainer)
-        : base(settingsContainer, nameof(EditorSettings))
+    public EditorSettings(ISettingsGroup settingsGroup)
+        : base(settingsGroup, nameof(EditorSettings))
     {}
 
     public string Theme

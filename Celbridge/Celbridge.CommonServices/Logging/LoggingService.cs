@@ -1,4 +1,6 @@
-﻿namespace Celbridge.CommonServices.Logging;
+﻿using Serilog;
+
+namespace Celbridge.CommonServices.Logging;
 
 public class LoggingService : ILoggingService
 {

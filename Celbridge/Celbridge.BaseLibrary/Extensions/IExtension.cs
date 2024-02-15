@@ -10,4 +10,9 @@ public interface IExtension
     /// Configures the dependency injection framework to support the types provided by the extension.
     /// </summary>
     void ConfigureServices(IExtensionServiceCollection serviceCollection);
+
+    /// <summary>
+    /// Initializes the extension during application startup.
+    /// </summary>
+    Result Initialize();
 }
