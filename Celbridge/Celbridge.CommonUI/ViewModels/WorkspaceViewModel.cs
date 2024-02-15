@@ -1,25 +1,32 @@
-﻿using Celbridge.BaseLibrary.Console;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using System.Windows.Input;
-
-namespace Celbridge.Shell.ViewModels;
+﻿namespace Celbridge.CommonUI.ViewModels;
 
 public partial class WorkspaceViewModel : ObservableObject
 {
-    private IConsoleService _consoleService;
-
-    public WorkspaceViewModel(IConsoleService consoleService)
-    {
-        _consoleService = consoleService;
-    }
+    private readonly IMessengerService _messengerService;
+    //private readonly IProjectService _projectService;
 
     [ObservableProperty]
-    public string _message = string.Empty;
+    private bool _isProjectActive;
 
-    public ICommand UpdateText => new RelayCommand(UpdateText_Executed);
-    private void UpdateText_Executed()
+    public event Action<bool>? WindowActivated;
+
+    public void NotifyWindowActivated(bool active)
     {
-        Message = _consoleService.GetTestString();
+        WindowActivated?.Invoke(active);
     }
+
+    public WorkspaceViewModel(IMessengerService messengerService)
+    {
+        _messengerService = messengerService;
+ 
+        //_messengerService.Register<ActiveProjectChangedMessage>(this, OnActiveProjectChanged);
+    }
+
+    /*
+    private void OnActiveProjectChanged(object r, ActiveProjectChangedMessage m)
+    {
+        IsProjectActive = _projectService.ActiveProject != null;
+    }
+    */
 }
+

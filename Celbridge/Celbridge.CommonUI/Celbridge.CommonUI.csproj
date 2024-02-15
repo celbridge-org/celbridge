@@ -55,15 +55,21 @@
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\MainMenuView.xaml" />
+    <None Remove="Views\StartView.xaml" />
     <None Remove="WorkSpaceView.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <UpToDateCheckInput Remove="Views\MainMenuView.xaml" />
+    <UpToDateCheckInput Remove="Views\StartView.xaml" />
     <UpToDateCheckInput Remove="WorkSpaceView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Views\" />
+    <Page Update="Views\MainMenuView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
   </ItemGroup>
 </Project>
