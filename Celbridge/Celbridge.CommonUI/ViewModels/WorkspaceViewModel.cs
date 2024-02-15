@@ -1,21 +1,25 @@
-﻿using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.BaseLibrary.Console;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows.Input;
 
 namespace Celbridge.Shell.ViewModels;
 
-public class WorkspaceViewModel
+public partial class WorkspaceViewModel : ObservableObject
 {
-    private ILoggingService _loggingService;
+    private IConsoleService _consoleService;
 
-    public WorkspaceViewModel(ILoggingService loggingService)
+    public WorkspaceViewModel(IConsoleService consoleService)
     {
-        _loggingService = loggingService;
+        _consoleService = consoleService;
     }
 
-    public ICommand PrintText => new RelayCommand(PrintText_Executed);
-    private void PrintText_Executed()
+    [ObservableProperty]
+    public string _message = string.Empty;
+
+    public ICommand UpdateText => new RelayCommand(UpdateText_Executed);
+    private void UpdateText_Executed()
     {
-        _loggingService.Info("Some text");
+        Message = _consoleService.GetTestString();
     }
 }
