@@ -1,5 +1,5 @@
 ﻿using Celbridge.CommonUI.UserInterface;
-using Celbridge.Shell.ViewModels;
+using Celbridge.CommonUI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.CommonUI;
