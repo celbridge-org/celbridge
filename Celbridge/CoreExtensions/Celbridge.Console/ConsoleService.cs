@@ -20,7 +20,7 @@ public class ConsoleService : IConsoleService
         if (command == "print")
         {
             // Simulate an async delay
-            await Task.Delay(500);
+            await Task.Delay(100);
 
             var logMessage = $"print: hello!";
             _loggingService.Info(logMessage);
@@ -28,5 +28,10 @@ public class ConsoleService : IConsoleService
         }
 
         return Result.Fail($"Unknown command: {command}");
+    }
+
+    public string GetTestString()
+    {
+        return "Text from console service";
     }
 }
