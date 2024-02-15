@@ -115,9 +115,9 @@ public partial class App : Application
             // configuring the new page by passing required information as a navigation
             // parameter
 
-            rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
+            //rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
             //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
-            //rootFrame.Navigate(typeof(StartView));
+            rootFrame.Navigate(typeof(StartView));
         }
         // Ensure the current window is active
         MainWindow.Activate();

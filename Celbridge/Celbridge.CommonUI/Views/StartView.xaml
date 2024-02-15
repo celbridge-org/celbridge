@@ -5,6 +5,7 @@
     xmlns:local="using:Celbridge.CommonUI.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
@@ -18,10 +19,12 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="1"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Spacing="6">
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="6">
                 <TextBlock Text="Welcome to Celbridge!"/>
+                <Button Content="New UI" Command="{x:Bind ViewModel.SelectNewUICommand}"/>
+                <Button Content="Legacy UI" Command="{x:Bind ViewModel.SelectLegacyUICommand}"/>
             </StackPanel>
         </Grid>
     </Grid>
