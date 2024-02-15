@@ -105,7 +105,7 @@ public partial class App : Application
             if (workspaceView is not null)
             {
                 var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
-                userInterfaceService.WorkspaceView = workspaceView;
+                userInterfaceService.Initialize(MainWindow, workspaceView);
             }
         };
 
@@ -114,8 +114,10 @@ public partial class App : Application
             // When the navigation stack isn't restored navigate to the first page,
             // configuring the new page by passing required information as a navigation
             // parameter
+
             rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
             //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
+            //rootFrame.Navigate(typeof(StartView));
         }
         // Ensure the current window is active
         MainWindow.Activate();
@@ -124,6 +126,7 @@ public partial class App : Application
     private void ApplyTheme()
     {
         // Note: Application.RequestedTheme may only be set during the application constructor.
+        // https://platform.uno/docs/articles/features/working-with-themes.html?tabs=windows
 
         // Note: Uno provides the SystemThemeHelper to support changing the application theme at runtime, without needing a restart.
         // The last time I tried it though it only partially worked, in particular dialogs would still use the previous theme.
