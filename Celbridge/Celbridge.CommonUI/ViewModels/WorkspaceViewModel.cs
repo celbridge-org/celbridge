@@ -1,6 +1,21 @@
-﻿namespace Celbridge.Shell.ViewModels;
+﻿using Celbridge.BaseLibrary.Logging;
+using CommunityToolkit.Mvvm.Input;
+using System.Windows.Input;
+
+namespace Celbridge.Shell.ViewModels;
 
 public class WorkspaceViewModel
 {
-    public string SomeText { get; set; } = "Some text from Workspace ViewModel";
+    private ILoggingService _loggingService;
+
+    public WorkspaceViewModel(ILoggingService loggingService)
+    {
+        _loggingService = loggingService;
+    }
+
+    public ICommand PrintText => new RelayCommand(PrintText_Executed);
+    private void PrintText_Executed()
+    {
+        _loggingService.Info("Some text");
+    }
 }
