@@ -5,21 +5,21 @@
     xmlns:local="using:Celbridge.CommonUI.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    DataContext="{x:Bind ViewModel}">
 
-    <Grid HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch"
-          Background="{StaticResource PanelBackgroundABrush}">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+    <Grid x:Name="LayoutRoot"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-            <StackPanel Grid.Row="1"
-                        HorizontalAlignment="Center"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar is added in row 0 via code behind (Windows only) -->
+
+        <Grid Grid.Row="1">
+            <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="6">
                 <TextBlock Text="Welcome to Celbridge!"/>
