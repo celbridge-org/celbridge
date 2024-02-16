@@ -1,4 +1,5 @@
 ﻿using Celbridge.CommonUI.UserInterface;
+using Celbridge.CommonUI.Views;
 
 namespace Celbridge.CommonUI;
 
@@ -9,5 +10,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddTransient<WorkspaceViewModel>();
         services.AddTransient<StartViewModel>();
+        services.AddTransient<TitleBar>();
     }
 }

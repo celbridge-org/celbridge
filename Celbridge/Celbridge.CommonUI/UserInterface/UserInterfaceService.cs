@@ -26,7 +26,31 @@ public class UserInterfaceService : IUserInterfaceService
 
         _mainWindow = mainWindow;
         _frame = frame;
+
+#if WINDOWS
+        // Broadcast a message whenever the main window acquires or loses focus (Windows only).
+        _mainWindow.Activated += MainWindow_Activated;
+#endif
     }
+
+#if WINDOWS
+    private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
+    {
+        var activationState = e.WindowActivationState;
+
+        if (activationState == WindowActivationState.Deactivated)
+        {
+            var message = new MainWindowDeactivated();
+            _messengerService.Send(message);
+        }
+        else if (activationState == WindowActivationState.PointerActivated ||
+                 activationState == WindowActivationState.CodeActivated)
+        {
+            var message = new MainWindowActivated();
+            _messengerService.Send(message);
+        }
+    }
+#endif
 
     private void OnWorkspaceViewLoaded(object recipient, WorkspaceViewLoadedMessage message)
     {
