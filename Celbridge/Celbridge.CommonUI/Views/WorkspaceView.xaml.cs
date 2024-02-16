@@ -31,10 +31,13 @@ public sealed partial class WorkspaceView : Page
     private void Page_Loaded(object? sender, RoutedEventArgs e)
     {
 #if WINDOWS
-        // Extend the application content into the title bar area on Windows
+        var titleBar = new TitleBar();
+        LayoutRoot.Children.Add(titleBar);
+
+        // Extend the application content into the title bar area
         var mainWindow = _userInterfaceService.MainWindow;
         mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(TitleBar);
+        mainWindow.SetTitleBar(titleBar);
 #endif
 
         ViewModel.WindowActivated += Window_Activated;
