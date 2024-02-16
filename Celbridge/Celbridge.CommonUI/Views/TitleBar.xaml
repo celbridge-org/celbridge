@@ -6,11 +6,25 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Stretch"
+    <Grid x:Name="MainGrid"
+          HorizontalAlignment="Stretch"
           VerticalAlignment="Top"
-          Background="{StaticResource PanelBackgroundABrush}"
+          Background="{StaticResource TitleBarActiveColor}"
           BorderBrush="{StaticResource PanelBorderBrush}"
           BorderThickness="0 0 0 1">
+
+        <!-- TitleBar changes to a lighter color when the application loses focus (Windows only) -->
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="BackgroundStates">
+                <VisualState x:Name="Active">
+                </VisualState>
+                <VisualState x:Name="Inactive">
+                    <VisualState.Setters>
+                        <Setter Target="MainGrid.Background" Value="{StaticResource TitleBarInactiveColor}"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
