@@ -24,100 +24,77 @@ public sealed partial class WorkspaceView : Page
 
         ViewModel = serviceProvider.GetRequiredService<WorkspaceViewModel>();
 
-        Loaded += Page_Loaded;
-        Unloaded += Page_Unloaded;
+        Loaded += OnWorkspaceView_Loaded;
+        Unloaded += OnWorkspaceView_Unloaded;
     }
 
-    private void Page_Loaded(object? sender, RoutedEventArgs e)
+    private void OnWorkspaceView_Loaded(object? sender, RoutedEventArgs e)
     {
 #if WINDOWS
-        var titleBar = new TitleBar();
+        // Setup the custom title bar (Windows only)
+
+        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
+        var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         LayoutRoot.Children.Add(titleBar);
 
-        // Extend the application content into the title bar area
         var mainWindow = _userInterfaceService.MainWindow;
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(titleBar);
 #endif
 
-        ViewModel.WindowActivated += Window_Activated;
+        _settings.PropertyChanged += OnSettings_PropertyChanged;
 
-        //BottomPanel.Children.Add(new ConsolePanel());
-        //LeftPanel.Children.Add(new ProjectPanel());
-        //LeftNavigationBar.Children.Add(new LeftNavigationBar());
-        //StatusBar.Children.Add(new StatusBar());
-        //CenterPanel.Children.Add(new DocumentsPanel());
-        //RightPanel.Children.Add(new InspectorPanel());
+        _messengerService.Register<MainWindowActivated>(this, OnMainWindowActivated);
 
-        _settings.PropertyChanged += Settings_PropertyChanged;
-
-        LeftSplitter.SizeChanged += LeftSplitter_SizeChanged;
-        RightSplitter.SizeChanged += RightSplitter_SizeChanged;
-        CenterPanelGrid.LayoutUpdated += CenterPanelGrid_LayoutUpdated;
+        LeftSplitter.SizeChanged += OnLeftSplitter_SizeChanged;
+        RightSplitter.SizeChanged += OnRightSplitter_SizeChanged;
+        CenterPanelGrid.LayoutUpdated += OnCenterPanelGrid_LayoutUpdated;
 
         UpdateSidePanels();
 
-        //var projectService = LegacyServiceProvider.Services!.GetRequiredService<IProjectService>();
-
-        //async Task OpenPreviousProject()
-        //{
-        //    var openResult = await projectService.OpenPreviousProject();
-        //    if (openResult is ErrorResult openError)
-        //    {
-        //        Log.Error(openError.Message);
-        //    }
-        //}
-
-        //_ = OpenPreviousProject();
+        // Notify listeners that the Workspace View has been loaded
 
         var message = new WorkspaceViewLoadedMessage(this);
         _messengerService.Send(message);
     }
 
-    private void Page_Unloaded(object sender, RoutedEventArgs e)
+    private void OnWorkspaceView_Unloaded(object sender, RoutedEventArgs e)
     {
-        //
         // Unregister all event handlers to avoid memory leaks
-        //
-        ViewModel.WindowActivated -= Window_Activated;
-        Loaded -= Page_Loaded;
-        Unloaded -= Page_Unloaded;
+
+        Loaded -= OnWorkspaceView_Loaded;
+        Unloaded -= OnWorkspaceView_Unloaded;
+
+        _settings.PropertyChanged -= OnSettings_PropertyChanged;
+
+        _messengerService.Unregister<MainWindowActivated>(this);
+
+        LeftSplitter.SizeChanged -= OnLeftSplitter_SizeChanged;
+        RightSplitter.SizeChanged -= OnRightSplitter_SizeChanged;
+        CenterPanelGrid.LayoutUpdated -= OnCenterPanelGrid_LayoutUpdated;
+
+        // Notify listeners that the Workspace View has been unloaded
 
         var message = new WorkspaceViewUnloadedMessage();
         _messengerService.Send(message);
     }
 
-    private void Window_Activated(bool active)
+    private void OnMainWindowActivated(object recipient, MainWindowActivated message)
     {
-        /*
-         // Todo: What does this then?
-#if WINDOWS
-        if (active)
-        {
-            var ActiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarActiveColor");
-            TitleBar.Background = new SolidColorBrush(ActiveColor);
-        }
-        else
-        {
-            var InactiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarInactiveColor");
-            TitleBar.Background = new SolidColorBrush(InactiveColor);
-        }
-#endif
-        */
         UpdateSidePanels();
     }
 
-    private void LeftSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
+    private void OnLeftSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
         _settings.LeftPanelWidth = (float)e.NewSize.Width;
     }
 
-    private void RightSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
+    private void OnRightSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
         _settings.RightPanelWidth = (float)e.NewSize.Width;
     }
 
-    private void CenterPanelGrid_LayoutUpdated(object? sender, object e)
+    private void OnCenterPanelGrid_LayoutUpdated(object? sender, object e)
     {
         // For some reason, the panels get initialized first with a value of 4.
         // The code here only updates the value stored in settings when the width
@@ -143,9 +120,9 @@ public sealed partial class WorkspaceView : Page
         }
     }
 
-    private void Settings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == "LeftPanelExpanded")
+        if (e.PropertyName == nameof(IEditorSettings.LeftPanelExpanded))
         {
             if (!_settings.LeftPanelExpanded)
             {
@@ -154,7 +131,7 @@ public sealed partial class WorkspaceView : Page
             }
             UpdateSidePanels();
         }
-        else if (e.PropertyName == "RightPanelExpanded")
+        else if (e.PropertyName == nameof(IEditorSettings.RightPanelExpanded))
         {
             if (!_settings.RightPanelExpanded)
             {
@@ -163,7 +140,7 @@ public sealed partial class WorkspaceView : Page
             }
             UpdateSidePanels();
         }
-        else if (e.PropertyName == "BottomPanelExpanded")
+        else if (e.PropertyName == nameof(IEditorSettings.BottomPanelExpanded))
         {
             if (!_settings.BottomPanelExpanded)
             {

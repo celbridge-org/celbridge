@@ -18,30 +18,30 @@ public sealed partial class StartView : Page
 
         ViewModel = serviceProvider.GetRequiredService<StartViewModel>();
 
-        Loaded += StartView_Loaded;
-        Unloaded += StartView_Unloaded;
+        Loaded += OnStartView_Loaded;
+        Unloaded += OnStartView_Unloaded;
     }
 
-    private void StartView_Loaded(object sender, RoutedEventArgs e)
+    private void OnStartView_Loaded(object sender, RoutedEventArgs e)
     {
 #if WINDOWS
-        var titleBar = new TitleBar();
+        // Setup the custom title bar (Windows only)
+
+        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
+        var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         LayoutRoot.Children.Add(titleBar);
 
-        // Extend the application content into the title bar area
         var mainWindow = _userInterfaceService.MainWindow;
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(titleBar);
 #endif
     }
 
-    private void StartView_Unloaded(object sender, RoutedEventArgs e)
+    private void OnStartView_Unloaded(object sender, RoutedEventArgs e)
     {
-        //
         // Unregister all event handlers to avoid memory leaks
-        //
 
-        Loaded -= StartView_Loaded;
-        Unloaded -= StartView_Unloaded;
+        Loaded -= OnStartView_Loaded;
+        Unloaded -= OnStartView_Unloaded;
     }
 }
