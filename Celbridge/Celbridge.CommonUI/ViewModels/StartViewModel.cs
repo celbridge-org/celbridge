@@ -1,27 +1,29 @@
-﻿using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.CommonUI.UserInterface;
+using Celbridge.CommonUI.Views;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Celbridge.CommonUI.ViewModels;
 
 public partial class StartViewModel : ObservableObject
 {
-    private ILoggingService _loggingService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
-    public StartViewModel(ILoggingService loggingService)
+    public StartViewModel(IUserInterfaceService userInterfaceService)
     {
-        _loggingService = loggingService;
+        _userInterfaceService = userInterfaceService;
     }
 
     public ICommand SelectNewUICommand => new RelayCommand(SelectNewUICommand_Executed);
     private void SelectNewUICommand_Executed()
     {
-        _loggingService.Info("New UI");        
+        _userInterfaceService.Frame.Navigate(typeof(WorkspaceView));
     }
 
     public ICommand SelectLegacyUICommand => new RelayCommand(SelectLegacyUICommand_Executed);
     private void SelectLegacyUICommand_Executed()
     {
-        _loggingService.Info("Legacy UI");
+        // Todo: Remove legacy type and project reference
+        _userInterfaceService.Frame.Navigate(typeof(Legacy.Views.Shell));
     }
 }
 

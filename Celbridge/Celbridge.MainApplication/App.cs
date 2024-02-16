@@ -78,6 +78,13 @@ public partial class App : Application
             MainWindow.Title = localizer["ApplicationName.Text"];
         }
 
+        //
+        // Populate the MainWindow and Frame properties in the UserInterfaceService
+        //
+
+        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
+        userInterfaceService.Initialize(MainWindow, rootFrame);
+
         MainWindow.Closed += (s, e) =>
         {
             var messengerService = Host!.Services.GetRequiredService<IMessengerService>();
@@ -96,17 +103,6 @@ public partial class App : Application
             // Start monitoring for save requests
             var saveDataService = Host.Services.GetRequiredService<ISaveDataService>();
             _ = saveDataService.StartMonitoringAsync(0.25);
-
-            //
-            // Populate the MainPage property in the UserInterfaceService
-            //
-
-            var workspaceView = rootFrame.Content as WorkspaceView;
-            if (workspaceView is not null)
-            {
-                var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
-                userInterfaceService.Initialize(MainWindow, workspaceView);
-            }
         };
 
         if (rootFrame.Content == null)
@@ -119,6 +115,7 @@ public partial class App : Application
             //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
             rootFrame.Navigate(typeof(StartView));
         }
+
         // Ensure the current window is active
         MainWindow.Activate();
     }
