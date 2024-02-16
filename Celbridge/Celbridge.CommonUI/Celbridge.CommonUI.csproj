@@ -57,11 +57,13 @@
   <ItemGroup>
     <None Remove="Views\MainMenuView.xaml" />
     <None Remove="Views\StartView.xaml" />
+    <None Remove="Views\TitleBar.xaml" />
     <None Remove="WorkSpaceView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Remove="Views\MainMenuView.xaml" />
     <UpToDateCheckInput Remove="Views\StartView.xaml" />
+    <UpToDateCheckInput Remove="Views\TitleBar.xaml" />
     <UpToDateCheckInput Remove="WorkSpaceView.xaml" />
   </ItemGroup>
   <ItemGroup>
