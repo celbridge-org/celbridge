@@ -4,9 +4,11 @@ namespace Celbridge.CommonUI.UserInterface;
 
 public interface IUserInterfaceService
 {
-    void Initialize(Window mainWindow, WorkspaceView workspaceView);
+    void Initialize(Window mainWindow, Frame frame);
 
     Window MainWindow { get; }
+
+    Frame Frame { get; }
 
     WorkspaceView WorkspaceView { get; }
 }

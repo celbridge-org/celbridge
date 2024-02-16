@@ -1,12 +1,14 @@
 ﻿using Celbridge.BaseLibrary.Settings;
+using Celbridge.CommonUI.Messages;
 using Celbridge.CommonUI.UserInterface;
 
 namespace Celbridge.CommonUI.Views;
 
 public sealed partial class WorkspaceView : Page
 {
-    private IEditorSettings _settings;
-    private IUserInterfaceService _userInterfaceService;
+    private readonly IMessengerService _messengerService;
+    private readonly IEditorSettings _settings;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     public WorkspaceViewModel ViewModel { get; set; }
 
@@ -15,44 +17,27 @@ public sealed partial class WorkspaceView : Page
         this.InitializeComponent();
 
         var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<WorkspaceViewModel>();
 
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _settings = serviceProvider.GetRequiredService<IEditorSettings>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
-        ViewModel.WindowActivated += Window_Activated;
+        ViewModel = serviceProvider.GetRequiredService<WorkspaceViewModel>();
 
         Loaded += Page_Loaded;
-    }
-
-    private void Window_Activated(bool active)
-    {
-        /*
-         // Todo: What does this then?
-#if WINDOWS
-        if (active)
-        {
-            var ActiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarActiveColor");
-            TitleBar.Background = new SolidColorBrush(ActiveColor);
-        }
-        else
-        {
-            var InactiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarInactiveColor");
-            TitleBar.Background = new SolidColorBrush(InactiveColor);
-        }
-#endif
-        */
-        UpdateSidePanels();
+        Unloaded += Page_Unloaded;
     }
 
     private void Page_Loaded(object? sender, RoutedEventArgs e)
     {
 #if WINDOWS
+        // Extend the application content into the title bar area on Windows
         var mainWindow = _userInterfaceService.MainWindow;
-
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(TitleBar);
 #endif
+
+        ViewModel.WindowActivated += Window_Activated;
 
         //BottomPanel.Children.Add(new ConsolePanel());
         //LeftPanel.Children.Add(new ProjectPanel());
@@ -81,6 +66,42 @@ public sealed partial class WorkspaceView : Page
         //}
 
         //_ = OpenPreviousProject();
+
+        var message = new WorkspaceViewLoadedMessage(this);
+        _messengerService.Send(message);
+    }
+
+    private void Page_Unloaded(object sender, RoutedEventArgs e)
+    {
+        //
+        // Unregister all event handlers to avoid memory leaks
+        //
+        ViewModel.WindowActivated -= Window_Activated;
+        Loaded -= Page_Loaded;
+        Unloaded -= Page_Unloaded;
+
+        var message = new WorkspaceViewUnloadedMessage();
+        _messengerService.Send(message);
+    }
+
+    private void Window_Activated(bool active)
+    {
+        /*
+         // Todo: What does this then?
+#if WINDOWS
+        if (active)
+        {
+            var ActiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarActiveColor");
+            TitleBar.Background = new SolidColorBrush(ActiveColor);
+        }
+        else
+        {
+            var InactiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarInactiveColor");
+            TitleBar.Background = new SolidColorBrush(InactiveColor);
+        }
+#endif
+        */
+        UpdateSidePanels();
     }
 
     private void LeftSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
