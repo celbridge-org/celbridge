@@ -7,7 +7,6 @@ namespace Celbridge.CommonUI.Views;
 public sealed partial class WorkspaceView : Page
 {
     private readonly IMessengerService _messengerService;
-    private readonly IEditorSettings _settings;
     private readonly IUserInterfaceService _userInterfaceService;
 
     public WorkspaceViewModel ViewModel { get; set; }
@@ -19,7 +18,6 @@ public sealed partial class WorkspaceView : Page
         var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
 
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        _settings = serviceProvider.GetRequiredService<IEditorSettings>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
         ViewModel = serviceProvider.GetRequiredService<WorkspaceViewModel>();
@@ -42,7 +40,7 @@ public sealed partial class WorkspaceView : Page
         mainWindow.SetTitleBar(titleBar);
 #endif
 
-        _settings.PropertyChanged += OnSettings_PropertyChanged;
+        ViewModel.PropertyChanged += OnSettings_PropertyChanged;
 
         _messengerService.Register<MainWindowActivated>(this, OnMainWindowActivated);
 
@@ -65,7 +63,8 @@ public sealed partial class WorkspaceView : Page
         Loaded -= OnWorkspaceView_Loaded;
         Unloaded -= OnWorkspaceView_Unloaded;
 
-        _settings.PropertyChanged -= OnSettings_PropertyChanged;
+        ViewModel.PropertyChanged -= OnSettings_PropertyChanged;
+        ViewModel.OnView_Unloaded();
 
         _messengerService.Unregister<MainWindowActivated>(this);
 
@@ -86,12 +85,12 @@ public sealed partial class WorkspaceView : Page
 
     private void OnLeftSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        _settings.LeftPanelWidth = (float)e.NewSize.Width;
+        ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
     }
 
     private void OnRightSplitter_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        _settings.RightPanelWidth = (float)e.NewSize.Width;
+        ViewModel.RightPanelWidth = (float)e.NewSize.Width;
     }
 
     private void OnCenterPanelGrid_LayoutUpdated(object? sender, object e)
@@ -104,19 +103,19 @@ public sealed partial class WorkspaceView : Page
         var leftWidth = (float)LeftPanelColumn.Width.Value;
         if (leftWidth > LeftPanelColumn.MinWidth)
         {
-            _settings.LeftPanelWidth = leftWidth;
+            ViewModel.LeftPanelWidth = leftWidth;
         }
 
         var rightWidth = (float)RightPanelColumn.Width.Value;
         if (rightWidth > RightPanelColumn.MinWidth)
         {
-            _settings.RightPanelWidth = rightWidth;
+            ViewModel.RightPanelWidth = rightWidth;
         }
 
         var bottomHeight = (float)BottomPanelRow.Height.Value;
         if (bottomHeight > BottomPanelRow.MinHeight)
         {
-            _settings.BottomPanelHeight = bottomHeight;
+            ViewModel.BottomPanelHeight = bottomHeight;
         }
     }
 
@@ -124,28 +123,28 @@ public sealed partial class WorkspaceView : Page
     {
         if (e.PropertyName == nameof(IEditorSettings.LeftPanelExpanded))
         {
-            if (!_settings.LeftPanelExpanded)
+            if (!ViewModel.LeftPanelExpanded)
             {
                 // Record the current width before collapsing the panel
-                _settings.LeftPanelWidth = (float)LeftPanelColumn.Width.Value;
+                ViewModel.LeftPanelWidth = (float)LeftPanelColumn.Width.Value;
             }
             UpdateSidePanels();
         }
         else if (e.PropertyName == nameof(IEditorSettings.RightPanelExpanded))
         {
-            if (!_settings.RightPanelExpanded)
+            if (!ViewModel.RightPanelExpanded)
             {
                 // Record the current width before collapsing the panel
-                _settings.RightPanelWidth = (float)RightPanelColumn.Width.Value;
+                ViewModel.RightPanelWidth = (float)RightPanelColumn.Width.Value;
             }
             UpdateSidePanels();
         }
         else if (e.PropertyName == nameof(IEditorSettings.BottomPanelExpanded))
         {
-            if (!_settings.BottomPanelExpanded)
+            if (!ViewModel.BottomPanelExpanded)
             {
                 // Record the current height before collapsing the panel
-                _settings.BottomPanelHeight = (float)BottomPanelRow.Height.Value;
+                ViewModel.BottomPanelHeight = (float)BottomPanelRow.Height.Value;
             }
             UpdateSidePanels();
         }
@@ -156,13 +155,13 @@ public sealed partial class WorkspaceView : Page
         // The trick here is to set the panel to collapsed _before_ setting the width to 0.
         // This avoids an exception in Skia.Gtk where it tries to perform layout on a 0 sized control.
 
-        var leftPanelExpanded = _settings.LeftPanelExpanded;
+        var leftPanelExpanded = ViewModel.LeftPanelExpanded;
         if (leftPanelExpanded)
         {
             LeftSplitter.Visibility = Visibility.Visible;
             LeftPanel.Visibility = Visibility.Visible;
             LeftPanelColumn.MinWidth = 100;
-            LeftPanelColumn.Width = new GridLength(_settings.LeftPanelWidth);
+            LeftPanelColumn.Width = new GridLength(ViewModel.LeftPanelWidth);
         }
         else
         {
@@ -172,13 +171,13 @@ public sealed partial class WorkspaceView : Page
             LeftPanelColumn.Width = new GridLength(0);
         }
 
-        var rightPanelExpanded = _settings.RightPanelExpanded;
+        var rightPanelExpanded = ViewModel.RightPanelExpanded;
         if (rightPanelExpanded)
         {
             RightSplitter.Visibility = Visibility.Visible;
             RightPanel.Visibility = Visibility.Visible;
             RightPanelColumn.MinWidth = 100;
-            RightPanelColumn.Width = new GridLength(_settings.RightPanelWidth);
+            RightPanelColumn.Width = new GridLength(ViewModel.RightPanelWidth);
         }
         else
         {
@@ -188,13 +187,13 @@ public sealed partial class WorkspaceView : Page
             RightPanelColumn.Width = new GridLength(0);
         }
 
-        var bottomPanelExpanded = _settings.BottomPanelExpanded;
+        var bottomPanelExpanded = ViewModel.BottomPanelExpanded;
         if (bottomPanelExpanded)
         {
             BottomSplitter.Visibility = Visibility.Visible;
             BottomPanel.Visibility = Visibility.Visible;
             BottomPanelRow.MinHeight = 100;
-            BottomPanelRow.Height = new GridLength(_settings.BottomPanelHeight);
+            BottomPanelRow.Height = new GridLength(ViewModel.BottomPanelHeight);
         }
         else
         {
