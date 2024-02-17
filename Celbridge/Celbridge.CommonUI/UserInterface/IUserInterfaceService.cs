@@ -4,11 +4,11 @@ namespace Celbridge.CommonUI.UserInterface;
 
 public interface IUserInterfaceService
 {
-    void Initialize(Window mainWindow, Frame frame);
+    void Initialize(Window mainWindow);
+
+    void Navigate(Type page);
 
     Window MainWindow { get; }
-
-    Frame Frame { get; }
 
     WorkspaceView WorkspaceView { get; }
 }

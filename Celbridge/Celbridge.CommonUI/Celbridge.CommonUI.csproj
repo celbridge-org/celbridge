@@ -56,12 +56,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="Views\MainMenuView.xaml" />
+    <None Remove="Views\MainPage.xaml" />
     <None Remove="Views\StartView.xaml" />
     <None Remove="Views\TitleBar.xaml" />
     <None Remove="WorkSpaceView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Remove="Views\MainMenuView.xaml" />
+    <UpToDateCheckInput Remove="Views\MainPage.xaml" />
     <UpToDateCheckInput Remove="Views\StartView.xaml" />
     <UpToDateCheckInput Remove="Views\TitleBar.xaml" />
     <UpToDateCheckInput Remove="WorkSpaceView.xaml" />
@@ -72,6 +74,9 @@
   </ItemGroup>
   <ItemGroup>
     <Page Update="Views\MainMenuView.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+    </Page>
+    <Page Update="Views\MainPage.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
     </Page>
   </ItemGroup>

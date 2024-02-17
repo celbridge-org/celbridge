@@ -23,19 +23,7 @@ public sealed partial class StartView : Page
     }
 
     private void OnStartView_Loaded(object sender, RoutedEventArgs e)
-    {
-#if WINDOWS
-        // Setup the custom title bar (Windows only)
-
-        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
-        var titleBar = serviceProvider.GetRequiredService<TitleBar>();
-        LayoutRoot.Children.Add(titleBar);
-
-        var mainWindow = _userInterfaceService.MainWindow;
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
-#endif
-    }
+    {}
 
     private void OnStartView_Unloaded(object sender, RoutedEventArgs e)
     {

@@ -70,7 +70,7 @@ public partial class App : Application
             MainWindow.Content = rootFrame;
 
             var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
-            MainWindow.Title = localizer["Application.Title"];
+            MainWindow.Title = localizer["ApplicationName.Text"];
         }
 
         //
@@ -78,7 +78,7 @@ public partial class App : Application
         //
 
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
-        userInterfaceService.Initialize(MainWindow, rootFrame);
+        userInterfaceService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
@@ -100,7 +100,7 @@ public partial class App : Application
 
             //rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
             //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
-            rootFrame.Navigate(typeof(StartView), args.Arguments);
+            rootFrame.Navigate(typeof(MainPage), args.Arguments);
         }
 
         // Ensure the current window is active
