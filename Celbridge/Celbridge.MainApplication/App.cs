@@ -1,4 +1,3 @@
-using Celbridge.BaseLibrary.Messaging;
 using Celbridge.CommonUI.UserInterface;
 using Celbridge.CommonUI.Views;
 using Celbridge.Dependencies;
@@ -18,13 +17,13 @@ public partial class App : Application
     public Window? MainWindow { get; private set; }
     public IHost? Host { get; private set; }
 
-    private ExtensionLoader? _extensionLoader;
+    private ExtensionLoader _extensionLoader = new();
+
+    private LegacyAppHelper? _legacyApp = new();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Load Extensions
-        // Todo: Discover extension assemblies by scanning a folder or via config
-        _extensionLoader = new ExtensionLoader();
         _extensionLoader.LoadExtension("Celbridge.Console");
 
         var builder = this.CreateBuilder(args)
@@ -42,8 +41,7 @@ public partial class App : Application
                 .UseLocalization()
                 .ConfigureServices((context, services) =>
                 {
-                    // Register legacy Celbridge services
-                    RegisterLegacyServices(services);
+                    _legacyApp?.RegisterServices(services);
 
                     // Configure all services and loaded extensions
                     Guard.IsNotNull(_extensionLoader);
@@ -61,9 +59,6 @@ public partial class App : Application
         // Tell the loaded extensions to initialize before the application starts.
         _extensionLoader.InitializeExtensions();
 
-        LegacyServiceProvider.Services = Host.Services;
-        LegacyServiceProvider.MainWindow = MainWindow;
-
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
         if (MainWindow.Content is not Frame rootFrame)
@@ -75,7 +70,7 @@ public partial class App : Application
             MainWindow.Content = rootFrame;
 
             var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
-            MainWindow.Title = localizer["ApplicationName.Text"];
+            MainWindow.Title = localizer["Application.Title"];
         }
 
         //
@@ -85,24 +80,16 @@ public partial class App : Application
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
         userInterfaceService.Initialize(MainWindow, rootFrame);
 
+        _legacyApp?.Initialize(Host.Services, MainWindow);
+
         MainWindow.Closed += (s, e) =>
         {
-            var messengerService = Host!.Services.GetRequiredService<IMessengerService>();
-            var message = new ApplicationClosingMessage();
-            messengerService.Send(message);
+            _legacyApp?.OnMainWindowClosed();
         };
 
         rootFrame.Loaded += (s, e) =>
         {
-            // XamlRoot is required for displaying content dialogs
-            var dialogService = Host.Services.GetRequiredService<IDialogService>();
-            Guard.IsNotNull(rootFrame.XamlRoot);
-
-            dialogService.XamlRoot = rootFrame.XamlRoot;
-
-            // Start monitoring for save requests
-            var saveDataService = Host.Services.GetRequiredService<ISaveDataService>();
-            _ = saveDataService.StartMonitoringAsync(0.25);
+            _legacyApp?.OnFrameLoaded(rootFrame);
         };
 
         if (rootFrame.Content == null)
@@ -113,7 +100,7 @@ public partial class App : Application
 
             //rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
             //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
-            rootFrame.Navigate(typeof(StartView));
+            rootFrame.Navigate(typeof(StartView), args.Arguments);
         }
 
         // Ensure the current window is active
@@ -126,7 +113,7 @@ public partial class App : Application
         // https://platform.uno/docs/articles/features/working-with-themes.html?tabs=windows
 
         // Note: Uno provides the SystemThemeHelper to support changing the application theme at runtime, without needing a restart.
-        // The last time I tried it though it only partially worked, in particular dialogs would still use the previous theme.
+        // The last time I tried it though it only partially worked, dialogs would still use the previous theme.
 
         const string ThemeSettingKey = "EditorSettings.Theme";
 
@@ -157,43 +144,5 @@ public partial class App : Application
 #else
         this.RequestedTheme = theme;
 #endif
-    }
-
-    private void RegisterLegacyServices(IServiceCollection services)
-    {
-        services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<IResourceTypeService, ResourceTypeService>();
-        services.AddSingleton<IResourceService, ResourceService>();
-        services.AddSingleton<IInspectorService, InspectorService>();
-        services.AddSingleton<ISaveDataService, SaveDataService>();
-        services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<IDocumentService, DocumentService>();
-        services.AddSingleton<IProjectService, ProjectService>();
-        services.AddSingleton<IChatService, ChatService>();
-        services.AddSingleton<IConsoleService, ConsoleService>();
-
-        services.AddSingleton<ShellViewModel>();
-        services.AddSingleton<ConsoleViewModel>();
-        services.AddSingleton<ProjectViewModel>();
-        services.AddSingleton<LeftNavigationBarViewModel>();
-        services.AddSingleton<RightNavigationBarViewModel>();
-        services.AddSingleton<StatusBarViewModel>();
-        services.AddSingleton<DocumentsViewModel>();
-        services.AddSingleton<InspectorViewModel>();
-        services.AddSingleton<DetailViewModel>();
-        services.AddSingleton<MainMenuViewModel>();
-        services.AddTransient<NewProjectViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<AddResourceViewModel>();
-        services.AddTransient<ProgressDialogViewModel>();
-        services.AddTransient<TextFileDocumentViewModel>();
-        services.AddTransient<HTMLDocumentViewModel>();
-        services.AddTransient<PropertyListViewModel>();
-        services.AddTransient<NumberPropertyViewModel>();
-        services.AddTransient<TextPropertyViewModel>();
-        services.AddTransient<BooleanPropertyViewModel>();
-        services.AddTransient<PathPropertyViewModel>();
-        services.AddTransient<RecordPropertyViewModel>();
-        services.AddTransient<LoadProjectTask>();
     }
 }
