@@ -8,6 +8,7 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddTransient<MainPageViewModel>();
         services.AddTransient<WorkspaceViewModel>();
         services.AddTransient<StartViewModel>();
         services.AddTransient<TitleBar>();

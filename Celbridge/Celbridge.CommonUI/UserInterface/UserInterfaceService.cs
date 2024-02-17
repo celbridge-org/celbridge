@@ -8,24 +8,30 @@ public class UserInterfaceService : IUserInterfaceService
     private IMessengerService _messengerService;
 
     private Window? _mainWindow;
-    private Frame? _frame;
+    public Window MainWindow => _mainWindow!;
+
+    private MainPage? _mainPage;
+    public MainPage MainPage => _mainPage!;
+
     private WorkspaceView? _workspaceView;
+    public WorkspaceView WorkspaceView => _workspaceView!;
 
     public UserInterfaceService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
+        _messengerService.Register<MainPageLoadedMessage>(this, OnMainPageLoaded);
+        _messengerService.Register<MainPageUnloadedMessage>(this, OnMainPageUnloaded);
+
         _messengerService.Register<WorkspaceViewLoadedMessage>(this, OnWorkspaceViewLoaded);
         _messengerService.Register<WorkspaceViewUnloadedMessage>(this, OnWorkspaceViewUnloaded);
     }
 
-    public void Initialize(Window mainWindow, Frame frame)
+    public void Initialize(Window mainWindow)
     {
         Guard.IsNotNull(mainWindow);
-        Guard.IsNotNull(frame);
 
         _mainWindow = mainWindow;
-        _frame = frame;
 
 #if WINDOWS
         // Broadcast a message whenever the main window acquires or loses focus (Windows only).
@@ -52,6 +58,24 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
+    public void Navigate(Type page)
+    {
+        Guard.IsNotNull(_mainPage);
+        Guard.IsTrue(page.GetType().IsAssignableTo(typeof(Page)));
+
+        _mainPage.Navigate(page);
+    }
+
+    private void OnMainPageLoaded(object recipient, MainPageLoadedMessage message)
+    {
+        _mainPage = message.mainPage;
+    }
+
+    private void OnMainPageUnloaded(object recipient, MainPageUnloadedMessage message)
+    {
+        _mainPage = null;
+    }
+
     private void OnWorkspaceViewLoaded(object recipient, WorkspaceViewLoadedMessage message)
     {
         _workspaceView = message.workspace;
@@ -61,8 +85,4 @@ public class UserInterfaceService : IUserInterfaceService
     {
         _workspaceView = null;
     }
-
-    public Window MainWindow => _mainWindow!;
-    public Frame Frame => _frame!;
-    public WorkspaceView WorkspaceView => _workspaceView!;
 }
