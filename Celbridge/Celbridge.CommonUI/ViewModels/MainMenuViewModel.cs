@@ -1,73 +1,33 @@
 ﻿using CommunityToolkit.Mvvm.Input;
-// using Windows.Storage.Pickers;
 
 namespace Celbridge.CommonUI.ViewModels;
-
 public class MainMenuViewModel : ObservableObject
 {
-
     public MainMenuViewModel()
-    {
-    }
+    {}
 
-    public ICommand NewProjectCommand => new AsyncRelayCommand(NewProject_Executed);
-    private async Task NewProject_Executed()
-    {
-        throw new NotImplementedException();
-        // await _dialogService.ShowNewProjectDialogAsync();
-    }
-
-    public ICommand OpenProjectCommand => new AsyncRelayCommand(OpenProject_Executed);
-    private async Task OpenProject_Executed()
+    public ICommand NewProjectCommand => new RelayCommand(NewProject_Executed);
+    private void NewProject_Executed()
     {
         throw new NotImplementedException();
-        /*
-        // Create a new FileOpenPicker
-        var filePicker = new FileOpenPicker();
-
-        // Set the file type filters
-        filePicker.FileTypeFilter.Add(Constants.ProjectFileExtension);
-
-#if WINDOWS
-        // For Uno.WinUI-based apps
-        var mainWindow = LegacyServiceProvider.MainWindow!;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-        WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
-#endif
-
-        // Show the picker and wait for the user to select a file
-        var projectFile = await filePicker.PickSingleFileAsync();
-        // If the user selected a file, return the file path
-        if (projectFile != null)
-        {
-            var projectPath = projectFile.Path;
-            await _projectService.LoadProject(projectPath);
-        }
-        */
     }
 
-    public ICommand CloseProjectCommand => new AsyncRelayCommand(CloseProject_Executed);
-    private async Task CloseProject_Executed()
+    public ICommand OpenProjectCommand => new RelayCommand(OpenProject_Executed);
+    private void OpenProject_Executed()
     {
         throw new NotImplementedException();
-        /*
-        var result = await _projectService.CloseProject();
-        if (result.Success)
-        {
-            Log.Information($"Closed project");
-        }
-        else if (result is ErrorResult error)
-        {
-            Log.Information(error.Message);
-        }
-        */
     }
 
-    public ICommand OpenSettingsCommand => new AsyncRelayCommand(OpenSettings_Executed);
-    private async Task OpenSettings_Executed()
+    public ICommand CloseProjectCommand => new RelayCommand(CloseProject_Executed);
+    private void CloseProject_Executed()
     {
         throw new NotImplementedException();
-        //    await _dialogService.ShowSettingsDialogAsync();
+    }
+
+    public ICommand OpenSettingsCommand => new RelayCommand(OpenSettings_Executed);
+    private void OpenSettings_Executed()
+    {
+        throw new NotImplementedException();
     }
 
     public ICommand ExitCommand => new RelayCommand(Exit_Executed);
