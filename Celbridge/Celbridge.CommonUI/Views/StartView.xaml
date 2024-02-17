@@ -10,23 +10,12 @@
 
     <Grid x:Name="LayoutRoot"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Title bar is added in row 0 via code behind (Windows only) -->
-
-        <Grid Grid.Row="1">
-            <StackPanel HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="6">
-                <local:MainMenuView/>
-                <TextBlock Text="Welcome to Celbridge!"/>
-                <Button Content="New UI" Command="{x:Bind ViewModel.SelectNewUICommand}"/>
-                <Button Content="Legacy UI" Command="{x:Bind ViewModel.SelectLegacyUICommand}"/>
-            </StackPanel>
-        </Grid>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="6">
+            <TextBlock Text="Welcome to Celbridge!"/>
+            <Button Content="New UI" Command="{x:Bind ViewModel.SelectNewUICommand}"/>
+            <Button Content="Legacy UI" Command="{x:Bind ViewModel.SelectLegacyUICommand}"/>
+        </StackPanel>
     </Grid>
 </Page>

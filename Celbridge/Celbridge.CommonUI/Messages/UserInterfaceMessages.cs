@@ -3,16 +3,6 @@
 namespace Celbridge.CommonUI.Messages;
 
 /// <summary>
-/// The WorkspaceView page has been loaded.
-/// </summary>
-public record WorkspaceViewLoadedMessage(WorkspaceView workspace);
-
-/// <summary>
-/// The WorkspaceView page has been unloaded.
-/// </summary>
-public record WorkspaceViewUnloadedMessage();
-
-/// <summary>
 /// The main window has been activated (i.e. received focus).
 /// </summary>
 public record MainWindowActivated();
@@ -22,5 +12,22 @@ public record MainWindowActivated();
 /// </summary>
 public record MainWindowDeactivated();
 
+/// <summary>
+/// The Main Page has been loaded.
+/// </summary>
+public record MainPageLoadedMessage(MainPage mainPage);
 
+/// <summary>
+/// The Main Page has been unloaded.
+/// </summary>
+public record MainPageUnloadedMessage();
 
+/// <summary>
+/// The WorkspaceView page has been loaded.
+/// </summary>
+public record WorkspaceViewLoadedMessage(WorkspaceView workspace);
+
+/// <summary>
+/// The WorkspaceView page has been unloaded.
+/// </summary>
+public record WorkspaceViewUnloadedMessage();
