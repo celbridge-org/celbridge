@@ -13,8 +13,8 @@ public class UserInterfaceService : IUserInterfaceService
     private MainPage? _mainPage;
     public MainPage MainPage => _mainPage!;
 
-    private WorkspaceView? _workspaceView;
-    public WorkspaceView WorkspaceView => _workspaceView!;
+    private WorkspacePage? _workspacePage;
+    public WorkspacePage WorkspacePage => _workspacePage!;
 
     public UserInterfaceService(IMessengerService messengerService)
     {
@@ -23,8 +23,8 @@ public class UserInterfaceService : IUserInterfaceService
         _messengerService.Register<MainPageLoadedMessage>(this, OnMainPageLoaded);
         _messengerService.Register<MainPageUnloadedMessage>(this, OnMainPageUnloaded);
 
-        _messengerService.Register<WorkspaceViewLoadedMessage>(this, OnWorkspaceViewLoaded);
-        _messengerService.Register<WorkspaceViewUnloadedMessage>(this, OnWorkspaceViewUnloaded);
+        _messengerService.Register<WorkspacePageLoadedMessage>(this, OnWorkspaceViewLoaded);
+        _messengerService.Register<WorkspacePageUnloadedMessage>(this, OnWorkspaceViewUnloaded);
     }
 
     public void Initialize(Window mainWindow)
@@ -76,13 +76,13 @@ public class UserInterfaceService : IUserInterfaceService
         _mainPage = null;
     }
 
-    private void OnWorkspaceViewLoaded(object recipient, WorkspaceViewLoadedMessage message)
+    private void OnWorkspaceViewLoaded(object recipient, WorkspacePageLoadedMessage message)
     {
-        _workspaceView = message.workspace;
+        _workspacePage = message.workspace;
     }
 
-    private void OnWorkspaceViewUnloaded(object recipient, WorkspaceViewUnloadedMessage message)
+    private void OnWorkspaceViewUnloaded(object recipient, WorkspacePageUnloadedMessage message)
     {
-        _workspaceView = null;
+        _workspacePage = null;
     }
 }

@@ -9,8 +9,8 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddTransient<MainPageViewModel>();
-        services.AddTransient<WorkspaceViewModel>();
-        services.AddTransient<StartViewModel>();
+        services.AddTransient<WorkspacePageViewModel>();
+        services.AddTransient<StartPageViewModel>();
         services.AddTransient<TitleBar>();
         services.AddTransient<MainMenuViewModel>();
     }
