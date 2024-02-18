@@ -57,16 +57,16 @@
   <ItemGroup>
     <None Remove="Views\MainMenuView.xaml" />
     <None Remove="Views\MainPage.xaml" />
-    <None Remove="Views\StartView.xaml" />
+    <None Remove="Views\StartPage.xaml" />
     <None Remove="Views\TitleBar.xaml" />
-    <None Remove="WorkSpaceView.xaml" />
+    <None Remove="Views\WorkSpacePage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Remove="Views\MainMenuView.xaml" />
     <UpToDateCheckInput Remove="Views\MainPage.xaml" />
-    <UpToDateCheckInput Remove="Views\StartView.xaml" />
+    <UpToDateCheckInput Remove="Views\StartPage.xaml" />
     <UpToDateCheckInput Remove="Views\TitleBar.xaml" />
-    <UpToDateCheckInput Remove="WorkSpaceView.xaml" />
+    <UpToDateCheckInput Remove="Views\WorkspacePage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />

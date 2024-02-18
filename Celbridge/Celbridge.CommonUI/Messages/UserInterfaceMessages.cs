@@ -25,9 +25,9 @@ public record MainPageUnloadedMessage();
 /// <summary>
 /// The WorkspaceView page has been loaded.
 /// </summary>
-public record WorkspaceViewLoadedMessage(WorkspaceView workspace);
+public record WorkspacePageLoadedMessage(WorkspacePage workspace);
 
 /// <summary>
 /// The WorkspaceView page has been unloaded.
 /// </summary>
-public record WorkspaceViewUnloadedMessage();
+public record WorkspacePageUnloadedMessage();

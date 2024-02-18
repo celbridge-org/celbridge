@@ -4,37 +4,35 @@ using Celbridge.CommonUI.UserInterface;
 
 namespace Celbridge.CommonUI.Views;
 
-public sealed partial class WorkspaceView : Page
+public sealed partial class WorkspacePage : Page
 {
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    public WorkspaceViewModel ViewModel { get; set; }
+    public WorkspacePageViewModel ViewModel { get; set; }
 
-    public WorkspaceView()
+    public WorkspacePage()
     {
         this.InitializeComponent();
 
-        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
+        var serviceProvider = Services.ServiceProvider;
 
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
-        ViewModel = serviceProvider.GetRequiredService<WorkspaceViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
-        Loaded += OnWorkspaceView_Loaded;
-        Unloaded += OnWorkspaceView_Unloaded;
+        Loaded += OnWorkspacePage_Loaded;
+        Unloaded += OnWorkspacePage_Unloaded;
     }
 
-    private void OnWorkspaceView_Loaded(object? sender, RoutedEventArgs e)
+    private void OnWorkspacePage_Loaded(object? sender, RoutedEventArgs e)
     {
 #if WINDOWS
         // Setup the custom title bar (Windows only)
-
-        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
+        var serviceProvider = Services.ServiceProvider;
         var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         LayoutRoot.Children.Add(titleBar);
-
         var mainWindow = _userInterfaceService.MainWindow;
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(titleBar);
@@ -52,16 +50,16 @@ public sealed partial class WorkspaceView : Page
 
         // Notify listeners that the Workspace View has been loaded
 
-        var message = new WorkspaceViewLoadedMessage(this);
+        var message = new WorkspacePageLoadedMessage(this);
         _messengerService.Send(message);
     }
 
-    private void OnWorkspaceView_Unloaded(object sender, RoutedEventArgs e)
+    private void OnWorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
         // Unregister all event handlers to avoid memory leaks
 
-        Loaded -= OnWorkspaceView_Loaded;
-        Unloaded -= OnWorkspaceView_Unloaded;
+        Loaded -= OnWorkspacePage_Loaded;
+        Unloaded -= OnWorkspacePage_Unloaded;
 
         ViewModel.PropertyChanged -= OnSettings_PropertyChanged;
         ViewModel.OnView_Unloaded();
@@ -74,7 +72,7 @@ public sealed partial class WorkspaceView : Page
 
         // Notify listeners that the Workspace View has been unloaded
 
-        var message = new WorkspaceViewUnloadedMessage();
+        var message = new WorkspacePageUnloadedMessage();
         _messengerService.Send(message);
     }
 

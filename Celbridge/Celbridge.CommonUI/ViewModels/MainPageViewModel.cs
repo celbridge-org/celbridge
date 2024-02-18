@@ -14,7 +14,7 @@ public partial class MainPageViewModel : ObservableObject
 
     public void SelectNavigationItem_Home()
     {
-        _userInterfaceService.Navigate<StartView>();
+        _userInterfaceService.Navigate<StartPage>();
     }
 
     public void SelectNavigationItem_NewProject()

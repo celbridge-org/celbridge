@@ -3,13 +3,13 @@ using System.ComponentModel;
 
 namespace Celbridge.CommonUI.ViewModels;
 
-public partial class WorkspaceViewModel : INotifyPropertyChanged
+public partial class WorkspacePageViewModel : INotifyPropertyChanged
 {
     private readonly IEditorSettings _settings;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public WorkspaceViewModel(IEditorSettings editorSettings)
+    public WorkspacePageViewModel(IEditorSettings editorSettings)
     {
         _settings = editorSettings;
         _settings.PropertyChanged += OnSettings_PropertyChanged;
