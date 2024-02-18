@@ -58,12 +58,12 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    public void Navigate(Type page)
+    public void Navigate<T>() where T : Page
     {
         Guard.IsNotNull(_mainPage);
-        Guard.IsTrue(page.GetType().IsAssignableTo(typeof(Page)));
 
-        _mainPage.Navigate(page);
+        var pageType = typeof(T);
+        _mainPage.Navigate(pageType);
     }
 
     private void OnMainPageLoaded(object recipient, MainPageLoadedMessage message)

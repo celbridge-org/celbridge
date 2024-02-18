@@ -14,8 +14,6 @@
                     VerticalAlignment="Center"
                     Spacing="6">
             <TextBlock Text="Welcome to Celbridge!"/>
-            <Button Content="New UI" Command="{x:Bind ViewModel.SelectNewUICommand}"/>
-            <Button Content="Legacy UI" Command="{x:Bind ViewModel.SelectLegacyUICommand}"/>
         </StackPanel>
     </Grid>
 </Page>

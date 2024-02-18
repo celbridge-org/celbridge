@@ -6,7 +6,7 @@ public interface IUserInterfaceService
 {
     void Initialize(Window mainWindow);
 
-    void Navigate(Type page);
+    void Navigate<T>() where T : Page;
 
     Window MainWindow { get; }
 

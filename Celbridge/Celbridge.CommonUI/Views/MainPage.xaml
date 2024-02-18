@@ -17,24 +17,26 @@
         </Grid.RowDefinitions>
 
         <!-- Title bar is added in row 0 via code behind (Windows only) -->
-
-        <!-- 
-            IsPaneToggleButtonVisible="False"
-            IsBackButtonVisible="Collapsed"
-            IsSettingsVisible="False"
-            CompactModeThresholdWidth="0"
-            AlwaysShowHeader="False"
-        -->
         
-        <NavigationView Grid.Row="1"                         
+        <NavigationView x:Name="MainNavigation"
+                        Grid.Row="1"                         
                         IsBackButtonVisible="Collapsed"
                         PaneDisplayMode="LeftMinimal">
             <NavigationView.MenuItems>
-                <NavigationViewItem Icon="Home" Tag="home" Content="Home"/>
-                <NavigationViewItem Icon="AddFriend" Tag="newui" Content="New UI"/>
-                <NavigationViewItem Icon="AddFriend" Tag="oldui" Content="Old UI"/>
+                <NavigationViewItem Icon="Home" Tag="MainPage.Home" Content="Home"/>
+                <NavigationViewItemSeparator/>
+                <NavigationViewItem Icon="NewFolder" Tag="MainPage.NewProject" Content="New Project"/>
+                <NavigationViewItem Icon="OpenFile" Tag="MainPage.OpenProject" Content="Open Project"/>
                 <!-- Add your other icon-only items here -->
             </NavigationView.MenuItems>
+            <!--
+            <NavigationView.AutoSuggestBox>
+                <AutoSuggestBox x:Name="SearchBox" 
+                                QueryIcon="Find" 
+                                VerticalAlignment="Bottom"
+                                PlaceholderText="Ask a question"/>
+            </NavigationView.AutoSuggestBox>
+            -->
             <Frame x:Name="ContentFrame"/>
         </NavigationView>
     </Grid>
