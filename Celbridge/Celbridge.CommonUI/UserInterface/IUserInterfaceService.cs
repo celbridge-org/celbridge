@@ -10,5 +10,5 @@ public interface IUserInterfaceService
 
     Window MainWindow { get; }
 
-    WorkspaceView WorkspaceView { get; }
+    WorkspacePage WorkspacePage { get; }
 }

@@ -49,7 +49,7 @@ public sealed partial class MainPage : Page
         messengerService.Send(message);
 
         // Navigate to the initial page
-        Navigate(typeof(StartView));
+        Navigate(typeof(StartPage));
 
         // Begin listening for user navigation events
         MainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
