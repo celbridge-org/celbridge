@@ -1,5 +1,4 @@
 ﻿using Celbridge.CommonUI.Messages;
-using Celbridge.CommonUI.Views;
 
 namespace Celbridge.CommonUI.UserInterface;
 
@@ -10,21 +9,15 @@ public class UserInterfaceService : IUserInterfaceService
     private Window? _mainWindow;
     public Window MainWindow => _mainWindow!;
 
-    private MainPage? _mainPage;
-    public MainPage MainPage => _mainPage!;
-
-    private WorkspacePage? _workspacePage;
-    public WorkspacePage WorkspacePage => _workspacePage!;
+    private INavigationProvider? _navigationProvider;
+ 
+    private Dictionary<string, Type> _pageTypes = new();
 
     public UserInterfaceService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
-        _messengerService.Register<MainPageLoadedMessage>(this, OnMainPageLoaded);
-        _messengerService.Register<MainPageUnloadedMessage>(this, OnMainPageUnloaded);
-
-        _messengerService.Register<WorkspacePageLoadedMessage>(this, OnWorkspaceViewLoaded);
-        _messengerService.Register<WorkspacePageUnloadedMessage>(this, OnWorkspaceViewUnloaded);
+        _messengerService.Register<NavigationProviderLoadedMessage>(this, OnNavigationProviderLoaded);
     }
 
     public void Initialize(Window mainWindow)
@@ -58,31 +51,56 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    public void Navigate<T>() where T : Page
+    public Result RegisterPage(string pageName, Type pageType)
     {
-        Guard.IsNotNull(_mainPage);
+        if (_pageTypes.ContainsKey(pageName))
+        {
+            return Result.Fail($"Failed to register page name '{pageName}' because it is already registered."); 
+        }
 
-        var pageType = typeof(T);
-        _mainPage.Navigate(pageType);
+        if (!pageType.IsAssignableTo(typeof(Page)))
+        {
+            return Result.Fail($"Failed to register page name '{pageName}' because the type '{pageType}' does not inherit from Page.");
+        }
+
+        _pageTypes[pageName] = pageType;
+
+        return Result.Ok();
     }
 
-    private void OnMainPageLoaded(object recipient, MainPageLoadedMessage message)
+    public Result UnregisterPage(string pageName)
     {
-        _mainPage = message.mainPage;
+        if (!_pageTypes.ContainsKey(pageName))
+        {
+            return Result.Fail($"Failed to unregister page name '{pageName}' because it is not registered.");
+        }
+
+        _pageTypes.Remove(pageName);
+
+        return Result.Ok();
     }
 
-    private void OnMainPageUnloaded(object recipient, MainPageUnloadedMessage message)
+    public Result NavigateToPage(string pageName)
     {
-        _mainPage = null;
+        Guard.IsNotNull(_navigationProvider);
+
+        // Resolve the page type by looking up the page name
+        if (!_pageTypes.TryGetValue(pageName, out var pageType))
+        {
+            return Result.Fail($"Failed to navigage to content page '{pageName}' because it is not registered.");
+        }
+
+        // Navigate using the resolved page type
+        var navigateResult = _navigationProvider.NavigateToPage(pageType);
+
+        return navigateResult;
     }
 
-    private void OnWorkspaceViewLoaded(object recipient, WorkspacePageLoadedMessage message)
+    private void OnNavigationProviderLoaded(object recipient, NavigationProviderLoadedMessage message)
     {
-        _workspacePage = message.workspace;
-    }
-
-    private void OnWorkspaceViewUnloaded(object recipient, WorkspacePageUnloadedMessage message)
-    {
-        _workspacePage = null;
+        // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
+        // instance is not available until the Main Page has finished loading. We acquire this dependency via a message to
+        // avoid tighly coupling the UserInterfaceService to MainPage.
+        _navigationProvider = message.NavigationProvider;
     }
 }
