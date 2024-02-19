@@ -74,11 +74,12 @@ public partial class App : Application
         }
 
         //
-        // Populate the MainWindow and Frame properties in the UserInterfaceService
+        // Initialize the UserInterfaceService
         //
 
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
         userInterfaceService.Initialize(MainWindow);
+        userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
@@ -94,16 +95,9 @@ public partial class App : Application
 
         if (rootFrame.Content == null)
         {
-            // When the navigation stack isn't restored navigate to the first page,
-            // configuring the new page by passing required information as a navigation
-            // parameter
-
-            //rootFrame.Navigate(typeof(Legacy.Views.Shell), args.Arguments);
-            //rootFrame.Navigate(typeof(WorkspaceView), args.Arguments);
             rootFrame.Navigate(typeof(MainPage), args.Arguments);
         }
 
-        // Ensure the current window is active
         MainWindow.Activate();
     }
 
