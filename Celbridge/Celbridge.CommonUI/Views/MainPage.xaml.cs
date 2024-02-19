@@ -1,22 +1,10 @@
-﻿using Celbridge.CommonUI.Messages;
-using Celbridge.CommonUI.UserInterface;
+﻿using Celbridge.CommonUI.UserInterface;
 
 namespace Celbridge.CommonUI.Views;
 
 public sealed partial class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; private set; }
-
-    public void Navigate(Type pageType)
-    {
-        Guard.IsNotNull(ContentFrame);
-
-        if (ContentFrame.Content is null ||
-            ContentFrame.Content.GetType() != pageType)
-        {
-            ContentFrame.Navigate(pageType);
-        }
-    }
 
     public MainPage()
     {
@@ -43,13 +31,8 @@ public sealed partial class MainPage : Page
         mainWindow.SetTitleBar(titleBar);
 #endif
 
-        // Notify listeners that the Main Page has now loaded so page navigation can be performed now.
-        var messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        var message = new MainPageLoadedMessage(this);
-        messengerService.Send(message);
-
-        // Navigate to the initial page
-        Navigate(typeof(StartPage));
+        ViewModel.OnNavigate += OnViewModel_Navigate;
+        ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
         MainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
@@ -59,17 +42,35 @@ public sealed partial class MainPage : Page
     {
         // Unregister all event handlers to avoid memory leaks
 
+        ViewModel.OnNavigate -= OnViewModel_Navigate;
+
         MainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
     }
 
+    private Result OnViewModel_Navigate(Type pageType)
+    {
+        if (ContentFrame.Content != null &&
+            ContentFrame.Content.GetType() == pageType)
+        {
+            // Already at the requested page, so just early out.
+            return Result.Ok();
+        }
+
+        if (ContentFrame.Navigate(pageType))
+        {
+            return Result.Ok();
+        }
+        return Result.Fail($"Failed to navigate to page type {pageType}");
+    }
+
     private void OnMainPage_NavigationViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         if (args.IsSettingsInvoked)
         {
-            // _userInterfaceService.Navigate<SettingsPage>();
+            ViewModel.SelectNavigationItem_Settings();
             return;
         }
 
@@ -87,6 +88,16 @@ public sealed partial class MainPage : Page
             case "MainPage.OpenProject":
                 ViewModel.SelectNavigationItem_OpenProject();
                 break;
+        }
+    }
+    public void Navigate(Type pageType)
+    {
+        Guard.IsNotNull(ContentFrame);
+
+        if (ContentFrame.Content is null ||
+            ContentFrame.Content.GetType() != pageType)
+        {
+            ContentFrame.Navigate(pageType);
         }
     }
 }

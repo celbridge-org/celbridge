@@ -48,9 +48,9 @@ public sealed partial class WorkspacePage : Page
 
         UpdateSidePanels();
 
-        // Notify listeners that the Workspace View has been loaded
+        // Notify listeners that the page has been loaded
 
-        var message = new WorkspacePageLoadedMessage(this);
+        var message = new PageLoadedMessage(this);
         _messengerService.Send(message);
     }
 
@@ -70,9 +70,9 @@ public sealed partial class WorkspacePage : Page
         RightSplitter.SizeChanged -= OnRightSplitter_SizeChanged;
         CenterPanelGrid.LayoutUpdated -= OnCenterPanelGrid_LayoutUpdated;
 
-        // Notify listeners that the Workspace View has been unloaded
+        // Notify listeners that the page has been loaded
 
-        var message = new WorkspacePageUnloadedMessage();
+        var message = new PageUnloadedMessage(this);
         _messengerService.Send(message);
     }
 

@@ -1,4 +1,5 @@
-﻿using Celbridge.CommonUI.Views;
+﻿using Celbridge.CommonUI.UserInterface;
+using Celbridge.CommonUI.Views;
 
 namespace Celbridge.CommonUI.Messages;
 
@@ -13,21 +14,23 @@ public record MainWindowActivated();
 public record MainWindowDeactivated();
 
 /// <summary>
-/// The Main Page has been loaded.
+/// The UI element that provides navigation support has loaded.
 /// </summary>
-public record MainPageLoadedMessage(MainPage mainPage);
+public record NavigationProviderLoadedMessage(INavigationProvider NavigationProvider);
 
 /// <summary>
-/// The Main Page has been unloaded.
+/// A page has been loaded.
+/// The Main Page displays content pages via its Frame.
 /// </summary>
-public record MainPageUnloadedMessage();
+public record PageLoadedMessage(Page Page);
 
 /// <summary>
-/// The WorkspaceView page has been loaded.
+/// A page has been unloaded.
+/// The Main Page displays content pages via its Frame.
 /// </summary>
-public record WorkspacePageLoadedMessage(WorkspacePage workspace);
+public record PageUnloadedMessage(Page Page);
 
 /// <summary>
-/// The WorkspaceView page has been unloaded.
+/// Request navigation to a named page.
 /// </summary>
-public record WorkspacePageUnloadedMessage();
+public record RequestPageNavigation(string pageName);
