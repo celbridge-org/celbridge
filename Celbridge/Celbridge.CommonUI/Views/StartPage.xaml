@@ -8,12 +8,13 @@
     mc:Ignorable="d"
     DataContext="{x:Bind ViewModel}">
 
-    <Grid x:Name="LayoutRoot"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <StackPanel HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Spacing="6">
             <TextBlock Text="Welcome to Celbridge!"/>
+            <Button Content="Test Workspace" Command="{x:Bind ViewModel.TestWorkspaceCommand}" />
+            <Button Content="Legacy Interface" Command="{x:Bind ViewModel.LegacyInterfaceCommand}" />
         </StackPanel>
     </Grid>
 </Page>

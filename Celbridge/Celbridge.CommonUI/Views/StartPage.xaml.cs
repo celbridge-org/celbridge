@@ -1,4 +1,6 @@
-﻿namespace Celbridge.CommonUI.Views;
+﻿using CommunityToolkit.Mvvm.Input;
+
+namespace Celbridge.CommonUI.Views;
 
 public sealed partial class StartPage : Page
 {

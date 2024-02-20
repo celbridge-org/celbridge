@@ -80,6 +80,7 @@ public partial class App : Application
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
         userInterfaceService.Initialize(MainWindow);
         userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
+        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
