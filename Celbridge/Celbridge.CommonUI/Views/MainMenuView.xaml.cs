@@ -8,7 +8,7 @@ public partial class MainMenuView : UserControl
     {
         this.InitializeComponent();
 
-        var serviceProvider = BaseLibrary.Core.Services.ServiceProvider;
+        var serviceProvider = Services.ServiceProvider;
 
         ViewModel = serviceProvider.GetRequiredService<MainMenuViewModel>();
     }

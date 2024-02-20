@@ -9,9 +9,20 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddTransient<MainPageViewModel>();
+        services.AddTransient<TitleBar>();
         services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<StartPageViewModel>();
-        services.AddTransient<TitleBar>();
         services.AddTransient<MainMenuViewModel>();
+        services.AddTransient<SettingsPageViewModel>();
+    }
+
+    public static void Initialize(Window mainWindow)
+    {
+        var userInterfaceService = Services.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        userInterfaceService.Initialize(mainWindow);
+
+        userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
+        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
+        userInterfaceService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
     }
 }
