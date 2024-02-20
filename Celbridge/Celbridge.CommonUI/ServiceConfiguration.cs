@@ -12,7 +12,6 @@ public static class ServiceConfiguration
         services.AddTransient<TitleBar>();
         services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<StartPageViewModel>();
-        services.AddTransient<MainMenuViewModel>();
         services.AddTransient<SettingsPageViewModel>();
     }
 
