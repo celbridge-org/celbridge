@@ -22,7 +22,7 @@ public partial class StartPageViewModel : ObservableObject
     public ICommand LegacyInterfaceCommand => new RelayCommand(LegacyInterfaceCommand_Executed);
     private void LegacyInterfaceCommand_Executed()
     {
-        _userInterfaceService.NavigateToPage(nameof(Legacy.Views.Shell));
+        _userInterfaceService.NavigateToPage("Shell");
     }
 }
 
