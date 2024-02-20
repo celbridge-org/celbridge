@@ -7,7 +7,6 @@ namespace Celbridge.CommonUI.Views;
 public sealed partial class WorkspacePage : Page
 {
     private readonly IMessengerService _messengerService;
-    private readonly IUserInterfaceService _userInterfaceService;
 
     public WorkspacePageViewModel ViewModel { get; set; }
 
@@ -18,8 +17,6 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = Services.ServiceProvider;
 
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
-
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
         Loaded += OnWorkspacePage_Loaded;
@@ -28,16 +25,6 @@ public sealed partial class WorkspacePage : Page
 
     private void OnWorkspacePage_Loaded(object? sender, RoutedEventArgs e)
     {
-#if WINDOWS
-        // Setup the custom title bar (Windows only)
-        var serviceProvider = Services.ServiceProvider;
-        var titleBar = serviceProvider.GetRequiredService<TitleBar>();
-        LayoutRoot.Children.Add(titleBar);
-        var mainWindow = _userInterfaceService.MainWindow;
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
-#endif
-
         ViewModel.PropertyChanged += OnSettings_PropertyChanged;
 
         _messengerService.Register<MainWindowActivated>(this, OnMainWindowActivated);

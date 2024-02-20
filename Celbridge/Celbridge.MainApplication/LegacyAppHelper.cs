@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Messaging;
+using Celbridge.CommonUI.UserInterface;
 
 namespace Celbridge.MainApplication;
 
@@ -50,6 +51,9 @@ public class LegacyAppHelper
     {
         LegacyServiceProvider.Services = services;
         LegacyServiceProvider.MainWindow = mainWindow;
+
+        var userInterfaceService = services.GetRequiredService<IUserInterfaceService>();
+        userInterfaceService.RegisterPage(nameof(Shell), typeof(Shell));
     }
 
     internal void OnMainWindowClosed()
