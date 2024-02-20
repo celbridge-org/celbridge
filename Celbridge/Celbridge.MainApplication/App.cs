@@ -73,14 +73,7 @@ public partial class App : Application
             MainWindow.Title = localizer["ApplicationName.Text"];
         }
 
-        //
-        // Initialize the UserInterfaceService
-        //
-
-        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>();
-        userInterfaceService.Initialize(MainWindow);
-        userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
-        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
+        CommonUI.ServiceConfiguration.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 

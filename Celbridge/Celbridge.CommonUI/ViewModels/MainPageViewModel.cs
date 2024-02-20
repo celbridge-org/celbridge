@@ -50,6 +50,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem_Settings()
     {
+        _userInterfaceService.NavigateToPage(nameof(SettingsPage));
     }
 }
 
