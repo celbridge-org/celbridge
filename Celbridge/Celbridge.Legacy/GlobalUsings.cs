@@ -4,6 +4,7 @@ global using Celbridge.Legacy.Services;
 global using Celbridge.Legacy.Utils;
 global using Celbridge.Legacy.Views;
 global using Celbridge.Legacy.ViewModels;
+global using Celbridge.Legacy.Tasks;
 global using CommunityToolkit.Diagnostics;
 global using CommunityToolkit.Mvvm.ComponentModel;
 global using CommunityToolkit.Mvvm.Input;

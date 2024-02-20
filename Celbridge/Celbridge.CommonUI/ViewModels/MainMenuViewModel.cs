@@ -33,6 +33,8 @@ public class MainMenuViewModel : ObservableObject
     public ICommand ExitCommand => new RelayCommand(Exit_Executed);
     private void Exit_Executed()
     {
+#if !HAS_UNO
         Application.Current.Exit();
+#endif
     }
 }
