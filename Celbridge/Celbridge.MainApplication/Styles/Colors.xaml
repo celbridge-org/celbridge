@@ -5,10 +5,7 @@
 
 		<!-- Light Theme -->
 		<ResourceDictionary x:Key="Light">
-			<Color x:Key="Color01">Black	</Color>
 			<Color x:Key="BackgroundColor">#FFFFFF</Color>
-			<Color x:Key="OnSurfaceColor">#000000</Color>
-            
             <Color x:Key="TitleBarActiveColor">#F3F3F3</Color>
             <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
             <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
@@ -18,10 +15,7 @@
 
 		<!-- Dark Theme -->
 		<ResourceDictionary x:Key="Dark">
-			<Color x:Key="Color01">White</Color>
 			<Color x:Key="BackgroundColor">#121212</Color>
-			<Color x:Key="OnSurfaceColor">#DEFFFFFF</Color>
-            
             <Color x:Key="TitleBarActiveColor">#2B2D30</Color>
             <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
             <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
@@ -39,45 +33,12 @@
 
     <SolidColorBrush x:Key="PanelBorderBrush"
 					 Color="{ThemeResource PanelBorderColor}" />
-
-    <!-- Old colors - refactor these to use theme colors -->
     
-    <SolidColorBrush x:Key="Color01Brush"
-					 Color="{ThemeResource Color01}" />
-
-	<SolidColorBrush x:Key="DividerBrush"
-					 Color="{ThemeResource OnSurfaceColor}"
-					 Opacity="0.13" />
-
-	<SolidColorBrush x:Key="SampleSecondBackgroundBrush"
-					 Color="{ThemeResource OnSurfaceColor}"
-					 Opacity="0.05" />
-
 	<SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"
 					 Color="{ThemeResource BackgroundColor}" />
-
-	<Color x:Key="UnoBlueColor">#FF229DFC</Color>
-	<Color x:Key="UnoPurpleColor">#FF7A69F5</Color>
-	<Color x:Key="UnoGreenColor">#FF6CE5AE</Color>
-	<Color x:Key="UnoRedColor">#FFF65678</Color>
-
-	<SolidColorBrush x:Key="UnoBlueColorBrush"
-					 Color="{StaticResource UnoBlueColor}" />
-
-	<SolidColorBrush x:Key="UnoPurpleColorBrush"
-					 Color="{StaticResource UnoPurpleColor}" />
-
-	<SolidColorBrush x:Key="UnoGreenColorBrush"
-					 Color="{StaticResource UnoGreenColor}" />
-
-	<SolidColorBrush x:Key="UnoRedColorBrush"
-					 Color="{StaticResource UnoRedColor}" />
 
     <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
     <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
     <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>
-
-    <Color x:Key="CelConnectionInactiveColor">DarkSlateGray</Color>
-    <Color x:Key="CelConnectionActiveColor">Teal</Color>
 
 </ResourceDictionary>
