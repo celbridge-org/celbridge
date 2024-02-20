@@ -9,7 +9,7 @@
         <ToolkitResources xmlns="using:Uno.Toolkit.UI" />
 
         <!-- Add resource dictionaries here -->
-        <ResourceDictionary Source="Styles/Colors.xaml" />
+        <ResourceDictionary Source="ms-appx:///Celbridge.CommonUI/Resources/Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
 </ResourceDictionary>
