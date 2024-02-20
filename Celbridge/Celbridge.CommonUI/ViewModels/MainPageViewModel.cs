@@ -47,6 +47,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem_OpenProject()
     {
+        // Todo: Open a file picker dialog to select a project
     }
 
     public void SelectNavigationItem_Settings()
