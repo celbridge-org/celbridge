@@ -70,7 +70,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Page Update="Views\MainMenuView.xaml">

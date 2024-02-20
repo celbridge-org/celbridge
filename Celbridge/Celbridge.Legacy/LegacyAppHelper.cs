@@ -9,7 +9,7 @@ namespace Celbridge.MainApplication;
 /// </summary>
 public class LegacyAppHelper
 {
-    internal void RegisterServices(IServiceCollection services)
+    public void RegisterServices(IServiceCollection services)
     {
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IResourceTypeService, ResourceTypeService>();
@@ -47,7 +47,7 @@ public class LegacyAppHelper
         services.AddTransient<LoadProjectTask>();
     }
 
-    internal void Initialize(IServiceProvider services, Window mainWindow)
+    public void Initialize(IServiceProvider services, Window mainWindow)
     {
         LegacyServiceProvider.Services = services;
         LegacyServiceProvider.MainWindow = mainWindow;
@@ -56,14 +56,14 @@ public class LegacyAppHelper
         userInterfaceService.RegisterPage(nameof(Shell), typeof(Shell));
     }
 
-    internal void OnMainWindowClosed()
+    public void OnMainWindowClosed()
     {
         var messengerService = LegacyServiceProvider.Services!.GetRequiredService<IMessengerService>();
         var message = new ApplicationClosingMessage();
         messengerService.Send(message);
     }
 
-    internal void OnFrameLoaded(Frame rootFrame)
+    public void OnFrameLoaded(Frame rootFrame)
     {
         // XamlRoot is required for displaying content dialogs
         var dialogService = LegacyServiceProvider.Services!.GetRequiredService<IDialogService>();
