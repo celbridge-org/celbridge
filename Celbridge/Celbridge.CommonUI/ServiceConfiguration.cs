@@ -10,9 +10,10 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddTransient<MainPageViewModel>();
         services.AddTransient<TitleBar>();
-        services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<StartPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
+        services.AddTransient<NewProjectPageViewModel>();
+        services.AddTransient<WorkspacePageViewModel>();
     }
 
     public static void Initialize(Window mainWindow)
@@ -21,7 +22,8 @@ public static class ServiceConfiguration
         userInterfaceService.Initialize(mainWindow);
 
         userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
-        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
         userInterfaceService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
+        userInterfaceService.RegisterPage(nameof(NewProjectPage), typeof(NewProjectPage));
+        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
     }
 }
