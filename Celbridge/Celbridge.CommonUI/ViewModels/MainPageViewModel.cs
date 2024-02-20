@@ -42,6 +42,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem_NewProject()
     {
+        _userInterfaceService.NavigateToPage(nameof(NewProjectPage));
     }
 
     public void SelectNavigationItem_OpenProject()
