@@ -6,9 +6,15 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.MVVM" />
     <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="CommunityToolkit.MVVM" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Uno.Extensions.Configuration" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
+    <PackageReference Include="Uno.Extensions.Localization.WinUI" />
+    <PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
+    <PackageReference Include="Uno.Toolkit.WinUI" />
+    <PackageReference Include="Uno.WinUI" />
   </ItemGroup>
 
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
@@ -55,6 +61,7 @@
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Resources\AppResources.xaml" />
     <None Remove="Views\MainPage.xaml" />
     <None Remove="Views\NewProjectPage.xaml" />
     <None Remove="Views\SettingsPage.xaml" />
@@ -63,6 +70,7 @@
     <None Remove="Views\WorkSpacePage.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <UpToDateCheckInput Remove="Resources\AppResources.xaml" />
     <UpToDateCheckInput Remove="Views\MainPage.xaml" />
     <UpToDateCheckInput Remove="Views\NewProjectPage.xaml" />
     <UpToDateCheckInput Remove="Views\SettingsPage.xaml" />
@@ -74,6 +82,10 @@
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Page Update="Resources\AppResources.xaml">
+      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="Views\MainPage.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
     </Page>
