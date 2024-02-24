@@ -1,11 +1,12 @@
 ﻿using Celbridge.CommonServices.UserInterface;
-using Celbridge.CommonUI.Views;
-using CommunityToolkit.Mvvm.Input;
 
-namespace Celbridge.CommonUI.ViewModels;
+namespace Celbridge.CommonServices.ViewModels;
 
 public partial class StartPageViewModel : ObservableObject
 {
+    private readonly string WorkspacePageName = "WorkspacePage";
+    private readonly string ShellName = "Shell";
+
     private INavigationService _navigationService;
 
     public StartPageViewModel(INavigationService navigationService)
@@ -16,13 +17,13 @@ public partial class StartPageViewModel : ObservableObject
     public ICommand TestWorkspaceCommand => new RelayCommand(TestWorkspaceCommand_Executed);
     private void TestWorkspaceCommand_Executed()
     {
-        _navigationService.NavigateToPage(nameof(WorkspacePage));
+        _navigationService.NavigateToPage(WorkspacePageName);
     }
 
     public ICommand LegacyInterfaceCommand => new RelayCommand(LegacyInterfaceCommand_Executed);
     private void LegacyInterfaceCommand_Executed()
     {
-        _navigationService.NavigateToPage("Shell");
+        _navigationService.NavigateToPage(ShellName);
     }
 }
 
