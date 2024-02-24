@@ -2,6 +2,10 @@
 global using Celbridge.BaseLibrary.Logging;
 global using Celbridge.BaseLibrary.Messaging;
 global using CommunityToolkit.Diagnostics;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.UI.Xaml.Controls;
 global using Microsoft.UI.Xaml;
+global using System.ComponentModel;
+global using System.Windows.Input;
