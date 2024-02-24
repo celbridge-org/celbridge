@@ -12,6 +12,7 @@ public class ServiceConfiguration
     {
         CommonServices.ServiceConfiguration.ConfigureServices(services);
         CommonUI.ServiceConfiguration.ConfigureServices(services);
+        CommonViewModels.ServiceConfiguration.ConfigureServices(services);
 
         // Register the services provided by each extension with the dependency injection framework.
         var extensionServices = new ExtensionServiceCollection();
