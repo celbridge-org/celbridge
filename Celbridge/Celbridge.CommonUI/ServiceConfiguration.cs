@@ -7,12 +7,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<MainPageViewModel>();
         services.AddTransient<TitleBar>();
-        services.AddTransient<StartPageViewModel>();
-        services.AddTransient<SettingsPageViewModel>();
-        services.AddTransient<NewProjectPageViewModel>();
-        services.AddTransient<WorkspacePageViewModel>();
     }
 
     public static void Initialize()

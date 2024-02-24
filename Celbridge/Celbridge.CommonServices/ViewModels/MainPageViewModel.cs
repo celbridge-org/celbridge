@@ -1,11 +1,14 @@
 ﻿using Celbridge.CommonServices.Messaging;
 using Celbridge.CommonServices.UserInterface;
-using Celbridge.CommonUI.Views;
 
-namespace Celbridge.CommonUI.ViewModels;
+namespace Celbridge.CommonServices.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
+    private readonly string StartPageName = "StartPage";
+    private readonly string NewProjectPageName = "NewProjectPage";
+    private readonly string SettingsPageName = "SettingsPage";
+
     private IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
 
@@ -30,19 +33,19 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _messengerService.Send(message);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage(nameof(StartPage));
+        _navigationService.NavigateToPage(StartPageName);
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
     public void SelectNavigationItem_Home()
     {
-        _navigationService.NavigateToPage(nameof(StartPage));
+        _navigationService.NavigateToPage(StartPageName);
     }
 
     public void SelectNavigationItem_NewProject()
     {
-        _navigationService.NavigateToPage(nameof(NewProjectPage));
+        _navigationService.NavigateToPage(NewProjectPageName);
     }
 
     public void SelectNavigationItem_OpenProject()
@@ -52,7 +55,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem_Settings()
     {
-        _navigationService.NavigateToPage(nameof(SettingsPage));
+        _navigationService.NavigateToPage(SettingsPageName);
     }
 }
 

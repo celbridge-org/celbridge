@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Settings;
-using System.ComponentModel;
 
-namespace Celbridge.CommonUI.ViewModels;
+namespace Celbridge.CommonServices.ViewModels;
 
 public partial class WorkspacePageViewModel : INotifyPropertyChanged
 {
