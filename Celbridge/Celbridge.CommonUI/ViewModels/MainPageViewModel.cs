@@ -1,5 +1,5 @@
-﻿using Celbridge.CommonUI.Messages;
-using Celbridge.CommonUI.UserInterface;
+﻿using Celbridge.CommonServices.Messaging;
+using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonUI.Views;
 
 namespace Celbridge.CommonUI.ViewModels;

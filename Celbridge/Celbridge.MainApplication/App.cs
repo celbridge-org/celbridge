@@ -1,3 +1,4 @@
+using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonUI.Views;
 using Celbridge.Dependencies;
 using Celbridge.Dependencies.Extensions;
@@ -55,6 +56,9 @@ public partial class App : Application
         // Setup the globally available helper for using the dependency injection framework.
         BaseLibrary.Core.Services.Initialize(Host.Services);
 
+        // Initialize the UI system
+        CommonUI.ServiceConfiguration.Initialize();
+
         // Tell the loaded extensions to initialize before the application starts.
         _extensionLoader.InitializeExtensions();
 
@@ -72,7 +76,11 @@ public partial class App : Application
             MainWindow.Title = localizer["ApplicationName.Text"];
         }
 
-        CommonUI.ServiceConfiguration.Initialize(MainWindow);
+        // Initialize the user interface system
+        // Using the concrete class here to avoid exposing a setter for Window in the interface.
+        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
+        Guard.IsNotNull(userInterfaceService);
+        userInterfaceService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 

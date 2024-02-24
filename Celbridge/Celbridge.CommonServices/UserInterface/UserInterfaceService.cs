@@ -1,9 +1,10 @@
-﻿using Celbridge.CommonUI.Messages;
+﻿using Celbridge.CommonServices.Messaging;
 
-namespace Celbridge.CommonUI.UserInterface;
+namespace Celbridge.CommonServices.UserInterface;
 
 public class UserInterfaceService : IUserInterfaceService
 {
+    private ILoggingService _loggingService;
     private IMessengerService _messengerService;
 
     private Window? _mainWindow;
@@ -13,8 +14,10 @@ public class UserInterfaceService : IUserInterfaceService
  
     private Dictionary<string, Type> _pageTypes = new();
 
-    public UserInterfaceService(IMessengerService messengerService)
+    public UserInterfaceService(ILoggingService loggingService,
+                                IMessengerService messengerService)
     {
+        _loggingService = loggingService;
         _messengerService = messengerService;
 
         _messengerService.Register<NavigationProviderLoadedMessage>(this, OnNavigationProviderLoaded);
@@ -87,7 +90,10 @@ public class UserInterfaceService : IUserInterfaceService
         // Resolve the page type by looking up the page name
         if (!_pageTypes.TryGetValue(pageName, out var pageType))
         {
-            return Result.Fail($"Failed to navigage to content page '{pageName}' because it is not registered.");
+            var errorMessage = $"Failed to navigage to content page '{pageName}' because it is not registered.";
+            _loggingService.Error(errorMessage);
+
+            return Result.Fail(errorMessage);
         }
 
         // Navigate using the resolved page type
