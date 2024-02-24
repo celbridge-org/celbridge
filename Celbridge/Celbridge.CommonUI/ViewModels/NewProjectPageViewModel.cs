@@ -4,11 +4,11 @@ namespace Celbridge.CommonUI.ViewModels;
 
 public partial class NewProjectPageViewModel : ObservableObject
 {
-    private IUserInterfaceService _userInterfaceService;
+    private INavigationService _navigationService;
 
-    public NewProjectPageViewModel(IUserInterfaceService userInterfaceService)
+    public NewProjectPageViewModel(INavigationService navigationService)
     {
-        _userInterfaceService = userInterfaceService;
+        _navigationService = navigationService;
     }
 }
 

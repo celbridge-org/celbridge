@@ -6,23 +6,23 @@ namespace Celbridge.CommonUI.ViewModels;
 
 public partial class StartPageViewModel : ObservableObject
 {
-    private IUserInterfaceService _userInterfaceService;
+    private INavigationService _navigationService;
 
-    public StartPageViewModel(IUserInterfaceService userInterfaceService)
+    public StartPageViewModel(INavigationService navigationService)
     {
-        _userInterfaceService = userInterfaceService;
+        _navigationService = navigationService;
     }
 
     public ICommand TestWorkspaceCommand => new RelayCommand(TestWorkspaceCommand_Executed);
     private void TestWorkspaceCommand_Executed()
     {
-        _userInterfaceService.NavigateToPage(nameof(WorkspacePage));
+        _navigationService.NavigateToPage(nameof(WorkspacePage));
     }
 
     public ICommand LegacyInterfaceCommand => new RelayCommand(LegacyInterfaceCommand_Executed);
     private void LegacyInterfaceCommand_Executed()
     {
-        _userInterfaceService.NavigateToPage("Shell");
+        _navigationService.NavigateToPage("Shell");
     }
 }
 

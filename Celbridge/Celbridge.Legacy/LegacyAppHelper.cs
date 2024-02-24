@@ -52,8 +52,8 @@ public class LegacyAppHelper
         LegacyServiceProvider.Services = services;
         LegacyServiceProvider.MainWindow = mainWindow;
 
-        var userInterfaceService = services.GetRequiredService<IUserInterfaceService>();
-        userInterfaceService.RegisterPage(nameof(Shell), typeof(Shell));
+        var navigationService = services.GetRequiredService<INavigationService>();
+        navigationService.RegisterPage(nameof(Shell), typeof(Shell));
     }
 
     public void OnMainWindowClosed()
