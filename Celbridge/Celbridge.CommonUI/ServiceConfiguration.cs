@@ -17,11 +17,11 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var userInterfaceService = Services.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        var navigationService = Services.ServiceProvider.GetRequiredService<INavigationService>();
 
-        userInterfaceService.RegisterPage(nameof(StartPage), typeof(StartPage));
-        userInterfaceService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
-        userInterfaceService.RegisterPage(nameof(NewProjectPage), typeof(NewProjectPage));
-        userInterfaceService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
+        navigationService.RegisterPage(nameof(StartPage), typeof(StartPage));
+        navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
+        navigationService.RegisterPage(nameof(NewProjectPage), typeof(NewProjectPage));
+        navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
     }
 }

@@ -10,7 +10,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<INavigationService, NavigationService>();
         services.AddTransient<ISettingsGroup, SettingsGroup>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();

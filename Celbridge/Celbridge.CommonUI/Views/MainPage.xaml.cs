@@ -20,13 +20,13 @@ public sealed partial class MainPage : Page
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
         var serviceProvider = Services.ServiceProvider;
-        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
 #if WINDOWS
         // Setup the custom title bar (Windows only)
         var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         LayoutRoot.Children.Add(titleBar);
-        var mainWindow = userInterfaceService.MainWindow;
+        var mainWindow = navigationService.MainWindow;
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(titleBar);
 #endif

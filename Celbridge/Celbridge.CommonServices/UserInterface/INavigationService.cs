@@ -1,10 +1,13 @@
 ﻿namespace Celbridge.CommonServices.UserInterface;
 
 /// <summary>
-/// A service that supports application-wide UI operations.
+/// A service that supports page UI navigation.
 /// </summary>
-public interface IUserInterfaceService
+public interface INavigationService
 {
+    /// <summary>
+    /// Returns the main window of the application.
+    /// </summary>
     Window MainWindow { get; }
 
     /// <summary>

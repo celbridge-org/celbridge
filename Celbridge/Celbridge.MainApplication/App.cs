@@ -78,9 +78,9 @@ public partial class App : Application
 
         // Initialize the user interface system
         // Using the concrete class here to avoid exposing a setter for Window in the interface.
-        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
-        Guard.IsNotNull(userInterfaceService);
-        userInterfaceService.Initialize(MainWindow);
+        var navigationService = Host.Services.GetRequiredService<INavigationService>() as NavigationService;
+        Guard.IsNotNull(navigationService);
+        navigationService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 

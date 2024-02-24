@@ -2,7 +2,7 @@
 
 namespace Celbridge.CommonServices.UserInterface;
 
-public class UserInterfaceService : IUserInterfaceService
+public class NavigationService : INavigationService
 {
     private ILoggingService _loggingService;
     private IMessengerService _messengerService;
@@ -14,8 +14,8 @@ public class UserInterfaceService : IUserInterfaceService
  
     private Dictionary<string, Type> _pageTypes = new();
 
-    public UserInterfaceService(ILoggingService loggingService,
-                                IMessengerService messengerService)
+    public NavigationService(ILoggingService loggingService,
+        IMessengerService messengerService)
     {
         _loggingService = loggingService;
         _messengerService = messengerService;
@@ -106,7 +106,7 @@ public class UserInterfaceService : IUserInterfaceService
     {
         // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
         // instance is not available until the Main Page has finished loading. We acquire this dependency via a message to
-        // avoid tighly coupling the UserInterfaceService to MainPage.
+        // avoid tighly coupling the NavigationService to MainPage.
         _navigationProvider = message.NavigationProvider;
     }
 }
