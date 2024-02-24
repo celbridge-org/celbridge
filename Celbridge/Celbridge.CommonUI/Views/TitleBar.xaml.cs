@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonUI.Messages;
+﻿using Celbridge.CommonServices.Messaging;
 
 namespace Celbridge.CommonUI.Views;
 
