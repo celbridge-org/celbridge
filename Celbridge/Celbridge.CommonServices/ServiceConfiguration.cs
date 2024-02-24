@@ -2,6 +2,7 @@
 using Celbridge.CommonServices.Logging;
 using Celbridge.CommonServices.Messaging;
 using Celbridge.CommonServices.Settings;
+using Celbridge.CommonServices.UserInterface;
 
 namespace Celbridge.CommonServices;
 
@@ -9,6 +10,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddTransient<ISettingsGroup, SettingsGroup>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();

@@ -80,6 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Page Update="Resources\AppResources.xaml">

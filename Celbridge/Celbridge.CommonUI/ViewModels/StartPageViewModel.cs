@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonUI.UserInterface;
+﻿using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonUI.Views;
 using CommunityToolkit.Mvvm.Input;
 

@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonUI.UserInterface;
+﻿using Celbridge.CommonServices.UserInterface;
 
 namespace Celbridge.CommonUI.Views;
 

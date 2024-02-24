@@ -1,7 +1,6 @@
-﻿using Celbridge.CommonUI.UserInterface;
-using Celbridge.CommonUI.Views;
+﻿using Celbridge.CommonServices.UserInterface;
 
-namespace Celbridge.CommonUI.Messages;
+namespace Celbridge.CommonServices.Messaging;
 
 /// <summary>
 /// The main window has been activated (i.e. received focus).
