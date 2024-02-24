@@ -125,7 +125,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonUI\Celbridge.CommonUI.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonViews\Celbridge.CommonViews.csproj" />
   </ItemGroup>
   <ItemGroup>
     <UnoImage Include="Assets\Icons\back.svg" />

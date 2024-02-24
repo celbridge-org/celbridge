@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Settings;
 using Celbridge.CommonServices.Messaging;
 
-namespace Celbridge.CommonUI.Views;
+namespace Celbridge.CommonViews.Pages;
 
 public sealed partial class WorkspacePage : Page
 {

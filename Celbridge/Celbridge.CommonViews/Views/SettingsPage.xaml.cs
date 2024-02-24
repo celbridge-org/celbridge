@@ -1,16 +1,16 @@
-﻿namespace Celbridge.CommonUI.Views;
+﻿namespace Celbridge.CommonViews.Pages;
 
-public sealed partial class StartPage : Page
+public sealed partial class SettingsPage : Page
 {
-    public StartPageViewModel ViewModel { get; private set; }
+    public SettingsPageViewModel ViewModel { get; private set; }
 
-    public StartPage()
+    public SettingsPage()
     {
         this.InitializeComponent();
 
         var serviceProvider = Services.ServiceProvider;
 
-        ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<SettingsPageViewModel>();
 
         Loaded += OnStartView_Loaded;
         Unloaded += OnStartView_Unloaded;
