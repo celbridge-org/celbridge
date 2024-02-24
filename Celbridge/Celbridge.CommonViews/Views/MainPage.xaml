@@ -21,7 +21,7 @@
         <NavigationView x:Name="MainNavigation"
                         Grid.Row="1"                         
                         IsBackButtonVisible="Collapsed"
-                        PaneDisplayMode="LeftMinimal">
+                        PaneDisplayMode="LeftCompact">
             <NavigationView.MenuItems>
                 <NavigationViewItem Icon="Home" Tag="MainPage.Home" Content="Home"/>
                 <NavigationViewItemSeparator/>
