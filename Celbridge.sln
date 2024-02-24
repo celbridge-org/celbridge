@@ -42,6 +42,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Console", "Celbri
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.CommonUI", "Celbridge\Celbridge.CommonUI\Celbridge.CommonUI.csproj", "{EC4837A6-BC5D-455E-BDF8-7326D47AB6F9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.CommonViewModels", "Celbridge\Celbridge.CommonViewModels\Celbridge.CommonViewModels.csproj", "{7781F01D-C435-4B71-85BA-18DC90526C01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -238,6 +240,22 @@ Global
 		{EC4837A6-BC5D-455E-BDF8-7326D47AB6F9}.Release|x64.Build.0 = Release|Any CPU
 		{EC4837A6-BC5D-455E-BDF8-7326D47AB6F9}.Release|x86.ActiveCfg = Release|Any CPU
 		{EC4837A6-BC5D-455E-BDF8-7326D47AB6F9}.Release|x86.Build.0 = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|arm64.Build.0 = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|x64.Build.0 = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Debug|x86.Build.0 = Debug|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|arm64.ActiveCfg = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|arm64.Build.0 = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|x64.ActiveCfg = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|x64.Build.0 = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|x86.ActiveCfg = Release|Any CPU
+		{7781F01D-C435-4B71-85BA-18DC90526C01}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -256,6 +274,7 @@ Global
 		{9AD04F3B-6CD0-4F96-A0E7-9C2B36FB55DD} = {86258219-BA11-4966-8ACC-D08C896037BA}
 		{83D773BC-60C1-4D00-B01F-591FB418A7DF} = {9AD04F3B-6CD0-4F96-A0E7-9C2B36FB55DD}
 		{EC4837A6-BC5D-455E-BDF8-7326D47AB6F9} = {86258219-BA11-4966-8ACC-D08C896037BA}
+		{7781F01D-C435-4B71-85BA-18DC90526C01} = {86258219-BA11-4966-8ACC-D08C896037BA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A6836F12-B3A5-413B-A5BF-9ECE41139834}
