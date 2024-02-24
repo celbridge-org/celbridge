@@ -46,7 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonUI\Celbridge.CommonUI.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonViews\Celbridge.CommonViews.csproj" />
     <ProjectReference Include="..\Celbridge.CommonViewModels\Celbridge.CommonViewModels.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
   </ItemGroup>
