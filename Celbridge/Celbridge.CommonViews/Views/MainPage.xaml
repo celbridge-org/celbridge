@@ -19,9 +19,10 @@
         <!-- Title bar is added in row 0 via code behind (Windows only) -->
         
         <NavigationView x:Name="MainNavigation"
-                        Grid.Row="1"                         
+                        Grid.Row="1"       
                         IsBackButtonVisible="Collapsed"
-                        PaneDisplayMode="LeftCompact">
+                        PaneDisplayMode="LeftCompact"
+                        Background="{StaticResource PanelBackgroundABrush}">
             <NavigationView.MenuItems>
                 <NavigationViewItem Icon="Home" Tag="MainPage.Home" Content="Home"/>
                 <NavigationViewItemSeparator/>
