@@ -17,20 +17,8 @@
             <RowDefinition Height="28"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="40" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <!-- Left Navigation Bar -->
-        <Grid Background="{StaticResource PanelBackgroundABrush}"
-                    BorderBrush="{StaticResource PanelBorderBrush}"
-                    BorderThickness="0 0 1 0">
-            <Grid x:Name="LeftNavigationBar"/>
-        </Grid>
-
         <!-- IDE panels -->
-        <Grid Grid.Column="1">
+        <Grid>
 
             <!-- Center Panels -->
             <Grid x:Name="CenterPanelGrid">
@@ -42,7 +30,7 @@
 
                 <!-- Left Panel -->
                 <Grid x:Name="LeftPanel" 
-                            HorizontalAlignment="Stretch"/>
+                      HorizontalAlignment="Stretch"/>
 
                 <!-- Center Panel -->
                 <Grid Grid.Column="1">
@@ -56,21 +44,21 @@
 
                     <!-- Bottom Panel -->
                     <Grid x:Name="BottomPanel" 
-                                Grid.Row="1"/>
+                          Grid.Row="1"/>
 
                     <!-- Grid splitters -->
                     <toolkit:GridSplitter x:Name="BottomSplitter" 
-                                                Grid.Row="1" 
-                                                Grid.Column="0"
-                                                VerticalAlignment="Top"
-                                                MinHeight="4"
-                                                Height="4"
-                                                GripperCursor="Default"
-                                                ResizeDirection="Auto"
-                                                ResizeBehavior="BasedOnAlignment"
-                                                CursorBehavior="ChangeOnSplitterHover"
-                                                Background="Transparent" 
-                                                Foreground="{StaticResource PanelBackgroundBBrush}">
+                                          Grid.Row="1" 
+                                          Grid.Column="0"
+                                          VerticalAlignment="Top"
+                                          MinHeight="4"
+                                          Height="4"
+                                          GripperCursor="Default"
+                                          ResizeDirection="Auto"
+                                          ResizeBehavior="BasedOnAlignment"
+                                          CursorBehavior="ChangeOnSplitterHover"
+                                          Background="Transparent" 
+                                          Foreground="{StaticResource PanelBackgroundBBrush}">
                         <toolkit:GridSplitter.RenderTransform>
                             <TranslateTransform Y="-2" />
                         </toolkit:GridSplitter.RenderTransform>
@@ -84,21 +72,21 @@
 
                 <!-- Right Panel -->
                 <Grid x:Name="RightPanel"
-                            Grid.Column="2"
-                            HorizontalAlignment="Stretch"/>
+                      Grid.Column="2"
+                      HorizontalAlignment="Stretch"/>
 
                 <!-- Grid splitters -->
                 <toolkit:GridSplitter x:Name="LeftSplitter" 
-                                            Grid.Column="1"
-                                            HorizontalAlignment="Left" 
-                                            MinWidth="4"
-                                            Width="4"
-                                            GripperCursor="Default"
-                                            ResizeDirection="Auto"
-                                            ResizeBehavior="BasedOnAlignment"
-                                            CursorBehavior="ChangeOnSplitterHover"
-                                            Background="{StaticResource PanelBackgroundBBrush}" 
-                                            Foreground="{StaticResource PanelBackgroundBBrush}">
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Left" 
+                                      MinWidth="4"
+                                      Width="4"
+                                      GripperCursor="Default"
+                                      ResizeDirection="Auto"
+                                      ResizeBehavior="BasedOnAlignment"
+                                      CursorBehavior="ChangeOnSplitterHover"
+                                      Background="{StaticResource PanelBackgroundBBrush}" 
+                                      Foreground="{StaticResource PanelBackgroundBBrush}">
                     <toolkit:GridSplitter.RenderTransform>
                         <TranslateTransform X="-2" />
                     </toolkit:GridSplitter.RenderTransform>
@@ -110,16 +98,16 @@
                 </toolkit:GridSplitter>
 
                 <toolkit:GridSplitter x:Name="RightSplitter" 
-                                            Grid.Column="2"
-                                            HorizontalAlignment="Left" 
-                                            MinWidth="4"
-                                            Width="4"
-                                            GripperCursor="Default"
-                                            ResizeDirection="Auto"
-                                            ResizeBehavior="BasedOnAlignment"
-                                            CursorBehavior="ChangeOnSplitterHover"
-                                            Background="{StaticResource PanelBackgroundBBrush}" 
-                                            Foreground="{StaticResource PanelBackgroundBBrush}">
+                                      Grid.Column="2"
+                                      HorizontalAlignment="Left" 
+                                      MinWidth="4"
+                                      Width="4"
+                                      GripperCursor="Default"
+                                      ResizeDirection="Auto"
+                                      ResizeBehavior="BasedOnAlignment"
+                                      CursorBehavior="ChangeOnSplitterHover"
+                                      Background="{StaticResource PanelBackgroundBBrush}" 
+                                      Foreground="{StaticResource PanelBackgroundBBrush}">
                     <toolkit:GridSplitter.RenderTransform>
                         <TranslateTransform X="-2" />
                     </toolkit:GridSplitter.RenderTransform>
@@ -134,10 +122,10 @@
 
         <!-- Status bar -->
         <Grid Grid.Row="1"
-                    Grid.ColumnSpan="3" 
-                    Background="{ThemeResource PanelBackgroundABrush}"
-                    BorderBrush="{StaticResource PanelBorderBrush}"
-                    BorderThickness="0 1 0 0">
+              Grid.ColumnSpan="3" 
+              Background="{ThemeResource PanelBackgroundABrush}"
+              BorderBrush="{StaticResource PanelBorderBrush}"
+              BorderThickness="0 1 0 0">
             <Grid x:Name="StatusBar"/>
         </Grid>
     </Grid>
