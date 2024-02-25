@@ -70,25 +70,17 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.SelectNavigationItem_Settings();
+            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsPageName);
             return;
         }
 
         var item = args.InvokedItemContainer as NavigationViewItem;
         Guard.IsNotNull(item);
 
-        switch (item.Tag.ToString())
-        {
-            case "MainPage.Home":
-                ViewModel.SelectNavigationItem_Home();
-                break;
-            case "MainPage.NewProject":
-                ViewModel.SelectNavigationItem_NewProject();
-                break;
-            case "MainPage.OpenProject":
-                ViewModel.SelectNavigationItem_OpenProject();
-                break;
-        }
+        var navigationItem = item.Tag.ToString();
+        Guard.IsNotNullOrEmpty(navigationItem);
+
+        ViewModel.SelectNavigationItem(navigationItem);
     }
     public void Navigate(Type pageType)
     {
