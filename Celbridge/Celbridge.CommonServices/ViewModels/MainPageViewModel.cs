@@ -5,16 +5,21 @@ namespace Celbridge.CommonServices.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    private readonly string StartPageName = "StartPage";
-    private readonly string NewProjectPageName = "NewProjectPage";
-    private readonly string SettingsPageName = "SettingsPage";
+    public const string StartPageName = "StartPage";
+    public const string NewProjectPageName = "NewProjectPage";
+    public const string OpenProjectPageName = "OpenProjectPage";
+    public const string LegacyPageName = "Shell";
+    public const string SettingsPageName = "SettingsPage";
 
+    private ILoggingService _loggingService;
     private IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
 
-    public MainPageViewModel(IMessengerService messengerService, 
+    public MainPageViewModel(ILoggingService loggingService,
+        IMessengerService messengerService, 
         INavigationService navigationService)
     {
+        _loggingService = loggingService;
         _messengerService = messengerService;
         _navigationService = navigationService;
     }
@@ -38,24 +43,17 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
-    public void SelectNavigationItem_Home()
+    public void SelectNavigationItem(string navigationItem)
     {
-        _navigationService.NavigateToPage(StartPageName);
-    }
+        var navigateResult = _navigationService.NavigateToPage(navigationItem);
+        if (navigateResult.IsSuccess)
+        {
+            return;
+        }
 
-    public void SelectNavigationItem_NewProject()
-    {
-        _navigationService.NavigateToPage(NewProjectPageName);
-    }
+        // Todo: Handle navigation to non-page items
 
-    public void SelectNavigationItem_OpenProject()
-    {
-        // Todo: Open a file picker dialog to select a project
-    }
-
-    public void SelectNavigationItem_Settings()
-    {
-        _navigationService.NavigateToPage(SettingsPageName);
+        _loggingService.Error($"Failed to navigate to unknown navigation item '{navigationItem}'");
     }
 }
 

@@ -24,10 +24,11 @@
                         PaneDisplayMode="LeftCompact"
                         Background="{StaticResource PanelBackgroundABrush}">
             <NavigationView.MenuItems>
-                <NavigationViewItem Icon="Home" Tag="MainPage.Home" Content="Home"/>
+                <NavigationViewItem Icon="Home" Tag="StartPage" Content="Home"/>
                 <NavigationViewItemSeparator/>
-                <NavigationViewItem Icon="NewFolder" Tag="MainPage.NewProject" Content="New Project"/>
-                <NavigationViewItem Icon="OpenFile" Tag="MainPage.OpenProject" Content="Open Project"/>
+                <NavigationViewItem Icon="NewFolder" Tag="" Content="NewProjectPage"/>
+                <NavigationViewItem Icon="OpenFile" Tag="OpenProjectPage" Content="Open Project"/>
+                <NavigationViewItem Icon="Admin" Tag="Shell" Content="Open Legacy App"/>
                 <!-- Add your other icon-only items here -->
             </NavigationView.MenuItems>
             <!--
