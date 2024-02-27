@@ -14,7 +14,6 @@
                     Spacing="6">
             <TextBlock Text="Welcome to Celbridge!"/>
             <Button Content="Test Workspace" Command="{x:Bind ViewModel.TestWorkspaceCommand}" />
-            <Button Content="Legacy Interface" Command="{x:Bind ViewModel.LegacyInterfaceCommand}" />
         </StackPanel>
     </Grid>
 </Page>

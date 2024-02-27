@@ -26,8 +26,8 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem Icon="Home" Tag="StartPage" Content="Home"/>
                 <NavigationViewItemSeparator/>
-                <NavigationViewItem Icon="NewFolder" Tag="" Content="NewProjectPage"/>
-                <NavigationViewItem Icon="OpenFile" Tag="OpenProjectPage" Content="Open Project"/>
+                <NavigationViewItem Icon="NewFolder" Tag="NewProjectPage" Content="New Project" />
+                <NavigationViewItem Icon="OpenFile" Tag="OpenProjectPage" Content="Open Project" />
                 <NavigationViewItem Icon="Admin" Tag="Shell" Content="Open Legacy App"/>
                 <!-- Add your other icon-only items here -->
             </NavigationView.MenuItems>
