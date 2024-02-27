@@ -1,4 +1,6 @@
-﻿namespace Celbridge.CommonViews.Pages;
+﻿using Celbridge.CommonViewModels.Pages;
+
+namespace Celbridge.CommonViews.Pages;
 
 public sealed partial class SettingsPage : Page
 {

@@ -1,21 +1,23 @@
-﻿using Celbridge.CommonServices.Messaging;
+﻿using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.CommonServices.UserInterface;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.CommonViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    private readonly string StartPageName = "StartPage";
-    private readonly string NewProjectPageName = "NewProjectPage";
-    private readonly string SettingsPageName = "SettingsPage";
+    public const string StartPageName = "StartPage";
+    public const string NewProjectPageName = "NewProjectPage";
+    public const string SettingsPageName = "SettingsPage";
 
-    private IMessengerService _messengerService;
+    private ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
 
-    public MainPageViewModel(IMessengerService messengerService, 
+    public MainPageViewModel(ILoggingService loggingService, 
         INavigationService navigationService)
     {
-        _messengerService = messengerService;
+        _loggingService = loggingService;
         _navigationService = navigationService;
     }
 
@@ -29,8 +31,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public void OnMainPage_Loaded()
     {
         // Register this class as the navigation provider for the application
-        var message = new NavigationProviderLoadedMessage(this);
-        _messengerService.Send(message);
+        var navigationService = _navigationService as NavigationService;
+        Guard.IsNotNull(navigationService);
+        navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
         _navigationService.NavigateToPage(StartPageName);
@@ -38,24 +41,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
-    public void SelectNavigationItem_Home()
+    public void SelectNavigationItem(string pageName)
     {
-        _navigationService.NavigateToPage(StartPageName);
-    }
+        var navigationResult = _navigationService.NavigateToPage(pageName);
+        if (navigationResult.IsSuccess)
+        {
+            return;
+        }
 
-    public void SelectNavigationItem_NewProject()
-    {
-        _navigationService.NavigateToPage(NewProjectPageName);
-    }
-
-    public void SelectNavigationItem_OpenProject()
-    {
-        // Todo: Open a file picker dialog to select a project
-    }
-
-    public void SelectNavigationItem_Settings()
-    {
-        _navigationService.NavigateToPage(SettingsPageName);
+        _loggingService.Error($"Failed to navigate to page {pageName}.");
     }
 }
 

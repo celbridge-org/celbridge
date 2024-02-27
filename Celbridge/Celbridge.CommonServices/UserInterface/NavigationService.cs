@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonServices.Messaging;
+﻿using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.CommonServices.UserInterface;
 
@@ -8,10 +8,13 @@ public class NavigationService : INavigationService
     private IMessengerService _messengerService;
 
     private Window? _mainWindow;
-    public Window MainWindow => _mainWindow!;
+    public object MainWindow => _mainWindow!;
+
 
     private INavigationProvider? _navigationProvider;
+    public INavigationProvider NavigationProvider => _navigationProvider!;
  
+   
     private Dictionary<string, Type> _pageTypes = new();
 
     public NavigationService(ILoggingService loggingService,
@@ -19,13 +22,12 @@ public class NavigationService : INavigationService
     {
         _loggingService = loggingService;
         _messengerService = messengerService;
-
-        _messengerService.Register<NavigationProviderLoadedMessage>(this, OnNavigationProviderLoaded);
     }
 
-    public void Initialize(Window mainWindow)
+    public void SetMainWindow(Window mainWindow)
     {
         Guard.IsNotNull(mainWindow);
+        Guard.IsNull(_mainWindow);
 
         _mainWindow = mainWindow;
 
@@ -42,17 +44,26 @@ public class NavigationService : INavigationService
 
         if (activationState == WindowActivationState.Deactivated)
         {
-            var message = new MainWindowDeactivated();
+            var message = new MainWindowDeactivatedMessage();
             _messengerService.Send(message);
         }
         else if (activationState == WindowActivationState.PointerActivated ||
                  activationState == WindowActivationState.CodeActivated)
         {
-            var message = new MainWindowActivated();
+            var message = new MainWindowActivatedMessage();
             _messengerService.Send(message);
         }
     }
 #endif
+
+    // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
+    // instance is not available until the Main Page has finished loading. This method is used to set this dependency.
+    public void SetNavigationProvider(INavigationProvider navigationProvider)
+    {
+        Guard.IsNotNull(navigationProvider);
+        Guard.IsNull(_navigationProvider);
+        _navigationProvider = navigationProvider;
+    }
 
     public Result RegisterPage(string pageName, Type pageType)
     {
@@ -100,13 +111,5 @@ public class NavigationService : INavigationService
         var navigateResult = _navigationProvider.NavigateToPage(pageType);
 
         return navigateResult;
-    }
-
-    private void OnNavigationProviderLoaded(object recipient, NavigationProviderLoadedMessage message)
-    {
-        // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
-        // instance is not available until the Main Page has finished loading. We acquire this dependency via a message to
-        // avoid tighly coupling the NavigationService to MainPage.
-        _navigationProvider = message.NavigationProvider;
     }
 }

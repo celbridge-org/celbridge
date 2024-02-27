@@ -1,3 +1,4 @@
+using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonViews.Pages;
 using Celbridge.Dependencies;
@@ -24,6 +25,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Load Extensions
+        _extensionLoader.LoadExtension("Celbridge.Workspace");
         _extensionLoader.LoadExtension("Celbridge.Console");
 
         var builder = this.CreateBuilder(args)
@@ -80,7 +82,7 @@ public partial class App : Application
         // Using the concrete class here to avoid exposing a setter for Window in the interface.
         var navigationService = Host.Services.GetRequiredService<INavigationService>() as NavigationService;
         Guard.IsNotNull(navigationService);
-        navigationService.Initialize(MainWindow);
+        navigationService.SetMainWindow(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 

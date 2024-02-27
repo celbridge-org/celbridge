@@ -13,6 +13,5 @@ public static class ServiceConfiguration
         services.AddTransient<StartPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<NewProjectPageViewModel>();
-        services.AddTransient<WorkspacePageViewModel>();
     }
 }
