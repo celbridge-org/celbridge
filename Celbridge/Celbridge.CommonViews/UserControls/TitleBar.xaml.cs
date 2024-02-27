@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonServices.Messaging;
 
-namespace Celbridge.CommonViews.Pages;
+namespace Celbridge.CommonViews.UserControls;
 
 public sealed partial class TitleBar : UserControl
 {
