@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonViewModels.Pages;
+using Celbridge.CommonViews.UserControls;
 
 namespace Celbridge.CommonViews.Pages;
 
@@ -79,11 +79,15 @@ public sealed partial class MainPage : Page
         var item = args.InvokedItemContainer as NavigationViewItem;
         Guard.IsNotNull(item);
 
-        var navigationItem = item.Tag.ToString();
-        Guard.IsNotNullOrEmpty(navigationItem);
+        var navigationItemTag = item.Tag;
+        Guard.IsNotNull(navigationItemTag);
 
-        ViewModel.SelectNavigationItem(navigationItem);
+        var pageName = navigationItemTag.ToString();
+        Guard.IsNotNullOrEmpty(pageName);
+
+        ViewModel.SelectNavigationItem(pageName);
     }
+
     public void Navigate(Type pageType)
     {
         Guard.IsNotNull(ContentFrame);

@@ -62,19 +62,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="Resources\AppResources.xaml" />
-    <None Remove="Views\MainPage.xaml" />
-    <None Remove="Views\NewProjectPage.xaml" />
-    <None Remove="Views\SettingsPage.xaml" />
-    <None Remove="Views\StartPage.xaml" />
-    <None Remove="Views\TitleBar.xaml" />
+    <None Remove="Pages\MainPage.xaml" />
+    <None Remove="Pages\NewProjectPage.xaml" />
+    <None Remove="Pages\SettingsPage.xaml" />
+    <None Remove="Pages\StartPage.xaml" />
+    <None Remove="UserControls\TitleBar.xaml" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Remove="Resources\AppResources.xaml" />
-    <UpToDateCheckInput Remove="Views\MainPage.xaml" />
-    <UpToDateCheckInput Remove="Views\NewProjectPage.xaml" />
-    <UpToDateCheckInput Remove="Views\SettingsPage.xaml" />
-    <UpToDateCheckInput Remove="Views\StartPage.xaml" />
-    <UpToDateCheckInput Remove="Views\TitleBar.xaml" />
+    <UpToDateCheckInput Remove="Pages\MainPage.xaml" />
+    <UpToDateCheckInput Remove="Pages\NewProjectPage.xaml" />
+    <UpToDateCheckInput Remove="Pages\SettingsPage.xaml" />
+    <UpToDateCheckInput Remove="Pages\StartPage.xaml" />
+    <UpToDateCheckInput Remove="UserControls\TitleBar.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
