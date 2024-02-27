@@ -1,7 +1,12 @@
-﻿using Celbridge.BaseLibrary.Settings;
-using Celbridge.CommonServices.Messaging;
+﻿using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Settings;
+using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Workspace.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
-namespace Celbridge.CommonViews.Pages;
+namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
@@ -26,18 +31,13 @@ public sealed partial class WorkspacePage : Page
     {
         ViewModel.PropertyChanged += OnSettings_PropertyChanged;
 
-        _messengerService.Register<MainWindowActivated>(this, OnMainWindowActivated);
+        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivated);
 
         LeftSplitter.SizeChanged += OnLeftSplitter_SizeChanged;
         RightSplitter.SizeChanged += OnRightSplitter_SizeChanged;
         CenterPanelGrid.LayoutUpdated += OnCenterPanelGrid_LayoutUpdated;
 
         UpdateSidePanels();
-
-        // Notify listeners that the page has been loaded
-
-        var message = new PageLoadedMessage(this);
-        _messengerService.Send(message);
     }
 
     private void OnWorkspacePage_Unloaded(object sender, RoutedEventArgs e)
@@ -50,19 +50,14 @@ public sealed partial class WorkspacePage : Page
         ViewModel.PropertyChanged -= OnSettings_PropertyChanged;
         ViewModel.OnView_Unloaded();
 
-        _messengerService.Unregister<MainWindowActivated>(this);
+        _messengerService.Unregister<MainWindowActivatedMessage>(this);
 
         LeftSplitter.SizeChanged -= OnLeftSplitter_SizeChanged;
         RightSplitter.SizeChanged -= OnRightSplitter_SizeChanged;
         CenterPanelGrid.LayoutUpdated -= OnCenterPanelGrid_LayoutUpdated;
-
-        // Notify listeners that the page has been loaded
-
-        var message = new PageUnloadedMessage(this);
-        _messengerService.Send(message);
     }
 
-    private void OnMainWindowActivated(object recipient, MainWindowActivated message)
+    private void OnMainWindowActivated(object recipient, MainWindowActivatedMessage message)
     {
         UpdateSidePanels();
     }

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.CommonServices.UserInterface;
+﻿namespace Celbridge.BaseLibrary.UserInterface;
 
 /// <summary>
 /// A service that supports page UI navigation.
@@ -8,7 +8,12 @@ public interface INavigationService
     /// <summary>
     /// Returns the main window of the application.
     /// </summary>
-    Window MainWindow { get; }
+    object MainWindow { get; }
+
+    /// <summary>
+    /// Returns the page navigation provider.
+    /// </summary>
+    INavigationProvider NavigationProvider { get; }
 
     /// <summary>
     /// Registers a page with the navigation system.

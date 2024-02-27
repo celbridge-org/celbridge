@@ -1,4 +1,4 @@
-﻿namespace Celbridge.CommonServices.UserInterface;
+﻿namespace Celbridge.BaseLibrary.UserInterface;
 
 /// <summary>
 /// Abstraction for a UI element that supports application-wide page navigation.

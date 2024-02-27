@@ -1,4 +1,5 @@
-﻿using Celbridge.CommonServices.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonViews.Pages;
 
 namespace Celbridge.CommonViews;
@@ -17,6 +18,5 @@ public static class ServiceConfiguration
         navigationService.RegisterPage(nameof(StartPage), typeof(StartPage));
         navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
         navigationService.RegisterPage(nameof(NewProjectPage), typeof(NewProjectPage));
-        navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
     }
 }

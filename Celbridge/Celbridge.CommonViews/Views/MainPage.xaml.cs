@@ -1,4 +1,6 @@
-﻿using Celbridge.CommonServices.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.CommonServices.UserInterface;
+using Celbridge.CommonViewModels.Pages;
 
 namespace Celbridge.CommonViews.Pages;
 
@@ -26,9 +28,9 @@ public sealed partial class MainPage : Page
         // Setup the custom title bar (Windows only)
         var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         LayoutRoot.Children.Add(titleBar);
-        var mainWindow = navigationService.MainWindow;
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
+        var mainWindow = navigationService.MainWindow as Window;
+        mainWindow!.ExtendsContentIntoTitleBar = true;
+        mainWindow!.SetTitleBar(titleBar);
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
