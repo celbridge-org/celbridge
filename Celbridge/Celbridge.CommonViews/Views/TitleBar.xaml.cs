@@ -1,4 +1,5 @@
-﻿using Celbridge.CommonServices.Messaging;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.CommonServices.Messaging;
 
 namespace Celbridge.CommonViews.Pages;
 
@@ -18,8 +19,8 @@ public sealed partial class TitleBar : UserControl
 
     private void OnTitleBar_Loaded(object sender, RoutedEventArgs e)
     {
-        _messengerService.Register<MainWindowActivated>(this, OnMainWindowActivated);
-        _messengerService.Register<MainWindowDeactivated>(this, OnMainWindowDeactivated);
+        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivated);
+        _messengerService.Register<MainWindowDeactivatedMessage>(this, OnMainWindowDeactivated);
     }
 
     private void OnTitleBar_Unloaded(object sender, RoutedEventArgs e)
@@ -29,16 +30,16 @@ public sealed partial class TitleBar : UserControl
         Loaded -= OnTitleBar_Loaded;
         Unloaded -= OnTitleBar_Unloaded;
 
-        _messengerService.Unregister<MainWindowActivated>(this);
-        _messengerService.Unregister<MainWindowDeactivated>(this);
+        _messengerService.Unregister<MainWindowActivatedMessage>(this);
+        _messengerService.Unregister<MainWindowDeactivatedMessage>(this);
     }
 
-    private void OnMainWindowActivated(object recipient, MainWindowActivated message)
+    private void OnMainWindowActivated(object recipient, MainWindowActivatedMessage message)
     {
         VisualStateManager.GoToState(this, "Active", false);
     }
 
-    private void OnMainWindowDeactivated(object recipient, MainWindowDeactivated message)
+    private void OnMainWindowDeactivated(object recipient, MainWindowDeactivatedMessage message)
     {
         VisualStateManager.GoToState(this, "Inactive", false);
     }

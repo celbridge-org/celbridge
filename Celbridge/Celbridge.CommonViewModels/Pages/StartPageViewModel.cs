@@ -1,4 +1,5 @@
-﻿using Celbridge.CommonServices.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.CommonServices.UserInterface;
 
 namespace Celbridge.CommonViewModels.Pages;
 

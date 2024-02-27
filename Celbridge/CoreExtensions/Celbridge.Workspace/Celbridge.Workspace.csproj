@@ -5,12 +5,9 @@
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
+    
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="CommunityToolkit.MVVM" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Uno.Extensions.Configuration" />
-    <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
     <PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
     <PackageReference Include="Uno.Toolkit.WinUI" />
@@ -23,7 +20,7 @@
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
     <PackageReference Include="Uno.CommunityToolkit.WinUI.UI.Controls" />
   </ItemGroup>
-
+    
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
@@ -56,44 +53,20 @@
       </ItemGroup>
     </Otherwise>
   </Choose>
-
   <ItemGroup>
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Resources\AppResources.xaml" />
-    <None Remove="Views\MainPage.xaml" />
-    <None Remove="Views\NewProjectPage.xaml" />
-    <None Remove="Views\SettingsPage.xaml" />
-    <None Remove="Views\StartPage.xaml" />
-    <None Remove="Views\TitleBar.xaml" />
+    <None Remove="Views\WorkspacePage.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <UpToDateCheckInput Remove="Resources\AppResources.xaml" />
-    <UpToDateCheckInput Remove="Views\MainPage.xaml" />
-    <UpToDateCheckInput Remove="Views\NewProjectPage.xaml" />
-    <UpToDateCheckInput Remove="Views\SettingsPage.xaml" />
-    <UpToDateCheckInput Remove="Views\StartPage.xaml" />
-    <UpToDateCheckInput Remove="Views\TitleBar.xaml" />
+    <UpToDateCheckInput Remove="Views\WorkspacePage.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonViewModels\Celbridge.CommonViewModels.csproj" />
+    <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Resources\AppResources.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Views\MainPage.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\NewProjectPage.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Views\SettingsPage.xaml">
+    <Page Update="Views\WorkspacePage.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
     </Page>
   </ItemGroup>
