@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.Dependencies.Extensions;
+using Celbridge.MainApplication.Extensions;
 
 namespace Celbridge.Dependencies;
 
