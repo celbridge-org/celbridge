@@ -9,11 +9,12 @@
     DataContext="{x:Bind ViewModel}">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <TextBlock x:Uid="/Resources/TestString" />
         <StackPanel HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Spacing="6">
-            <TextBlock Text="Welcome to Celbridge!"/>
-            <Button Content="Test Workspace" Command="{x:Bind ViewModel.TestWorkspaceCommand}" />
+            <Button Content="{x:Bind OpenWorkspace}" 
+                    Command="{x:Bind ViewModel.OpenWorkspacePageCommand}" />
         </StackPanel>
     </Grid>
 </Page>

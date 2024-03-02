@@ -56,12 +56,11 @@
       </ItemGroup>
     </Otherwise>
   </Choose>
-
+	
   <ItemGroup>
     <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Resources\AppResources.xaml" />
     <None Remove="Pages\MainPage.xaml" />
     <None Remove="Pages\NewProjectPage.xaml" />
     <None Remove="Pages\SettingsPage.xaml" />
@@ -69,7 +68,6 @@
     <None Remove="UserControls\TitleBar.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <UpToDateCheckInput Remove="Resources\AppResources.xaml" />
     <UpToDateCheckInput Remove="Pages\MainPage.xaml" />
     <UpToDateCheckInput Remove="Pages\NewProjectPage.xaml" />
     <UpToDateCheckInput Remove="Pages\SettingsPage.xaml" />
@@ -82,10 +80,6 @@
     <ProjectReference Include="..\Celbridge.CommonViewModels\Celbridge.CommonViewModels.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Resources\AppResources.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Update="Views\MainPage.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
     </Page>
@@ -96,5 +90,11 @@
     <Page Update="Views\SettingsPage.xaml">
       <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Remove="Resources\AppResources.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Remove="Resources\Colors.xaml" />
   </ItemGroup>
 </Project>
