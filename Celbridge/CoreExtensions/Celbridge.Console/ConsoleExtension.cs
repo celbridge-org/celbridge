@@ -10,4 +10,9 @@ public class ConsoleExtension : IExtension
     {
         config.AddSingleton<IConsoleService, ConsoleService>();
     }
+
+    public Result Initialize()
+    {
+        return Result.Ok();
+    }
 }

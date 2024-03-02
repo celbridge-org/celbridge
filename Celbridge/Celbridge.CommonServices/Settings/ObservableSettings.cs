@@ -4,41 +4,41 @@ using System.ComponentModel;
 namespace Celbridge.CommonServices.Settings;
 
 /// <summary>
-/// A wrapper for a named settings container, with support for observing property changes.
+/// A wrapper for a named settings group which adds support for observing property changes.
 /// </summary>
 public abstract class ObservableSettings : INotifyPropertyChanged
 {
-    private ISettingsGroup _settingsContainer;
+    private ISettingsGroup _settingsGroup;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableSettings(ISettingsGroup settingsContainer, string containerName)
+    public ObservableSettings(ISettingsGroup settingsGroup, string groupName)
     {
-        _settingsContainer = settingsContainer;
-        _settingsContainer.Initialize(containerName);
+        _settingsGroup = settingsGroup;
+        _settingsGroup.Initialize(groupName);
     }
 
     public void Reset()
     {
-        _settingsContainer.Reset();
+        _settingsGroup.Reset();
     }
 
     protected T GetValue<T>(string settingName, T defaultValue)
         where T : notnull
     {
-        return _settingsContainer.GetValue<T>(settingName, defaultValue );
+        return _settingsGroup.GetValue<T>(settingName, defaultValue );
     }
 
     protected void SetValue<T>(string settingName, T value)
         where T : notnull
     {
-        if (_settingsContainer.ContainsValue(settingName, value))
+        if (_settingsGroup.ContainsValue(settingName, value))
         {
             // Previously stored value matches the value we are trying to set, so no change.
             return;
         }
 
-        _settingsContainer.SetValue(settingName, value);
+        _settingsGroup.SetValue(settingName, value);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(settingName));
     }
 }

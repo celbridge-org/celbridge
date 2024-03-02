@@ -20,9 +20,9 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Uno.Extensions.Configuration" />
     <PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
-    <PackageReference Include="Uno.Toolkit.WinUI" />
     <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
+    <PackageReference Include="Uno.Toolkit.WinUI" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
@@ -125,6 +125,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonViews\Celbridge.CommonViews.csproj" />
   </ItemGroup>
   <ItemGroup>
     <UnoImage Include="Assets\Icons\back.svg" />
