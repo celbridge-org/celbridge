@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
 
-namespace Celbridge.Dependencies.Extensions;
+namespace Celbridge.MainApplication.Extensions;
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with dependency injection without

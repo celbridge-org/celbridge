@@ -1,10 +1,9 @@
 ﻿using Celbridge.BaseLibrary.Core;
 using Celbridge.BaseLibrary.Extensions;
-using CommunityToolkit.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Celbridge.Dependencies.Extensions;
+namespace Celbridge.MainApplication.Extensions;
 
 /// <summary>
 /// A helper class that to load the extension assemblies for the current session.
