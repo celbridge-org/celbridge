@@ -19,30 +19,11 @@ public sealed partial class Shell : Page
 
     private void Window_Activated(bool active)
     {
-#if WINDOWS
-        if (active)
-        {
-            var ActiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarActiveColor");
-            TitleBar.Background = new SolidColorBrush(ActiveColor);
-        }
-        else
-        {
-            var InactiveColor = ResourceUtils.Get<Windows.UI.Color>("TitleBarInactiveColor");
-            TitleBar.Background = new SolidColorBrush(InactiveColor);
-        }
-#endif
         UpdateSidePanels();
     }
 
     private void Page_Loaded(object? sender, RoutedEventArgs e)
     {
-#if WINDOWS
-        var mainWindow = LegacyServiceProvider.MainWindow;
-        Guard.IsNotNull(mainWindow);
-
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(TitleBar);
-#endif
         BottomPanel.Children.Add(new ConsolePanel());
         LeftPanel.Children.Add(new ProjectPanel());
         LeftNavigationBar.Children.Add(new LeftNavigationBar());

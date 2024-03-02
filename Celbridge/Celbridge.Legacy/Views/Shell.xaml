@@ -23,44 +23,11 @@
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Title bar -->
-        <win:Grid x:Name="TitleBar" 
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Background="{StaticResource PanelBackgroundABrush}"
-              BorderBrush="{StaticResource PanelBorderBrush}"
-              BorderThickness="0 0 0 1">
-
-            <Grid.RowDefinitions>
-                <RowDefinition Height="40"/>
-            </Grid.RowDefinitions>
-            
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="40"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <Image Grid.Row="0"
-                   Grid.Column="0"
-                   Source="ms-appx:///Assets/Icons/Logo.png"
-                   Height="28"
-                   Width="28"
-                   Margin="0"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
-            <TextBlock Grid.Row="0" 
-                       Grid.Column="1" 
-                       x:Uid="ApplicationName" 
-                       Padding="2"
-                       VerticalAlignment="Center"/>
-        </win:Grid>
-
         <Grid x:Name="ShellGridEmpty" 
-              Grid.Row="1"
+              Grid.Row="0"
               Grid.Column="0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
@@ -68,13 +35,14 @@
               Visibility="{x:Bind ViewModel.IsProjectActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="48"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <views:MainMenu Grid.Row="0"
+                <views:MainMenu Grid.Row="1"
                                 Grid.Column="0"/>
-                <StackPanel Grid.Row="1"
+                <StackPanel Grid.Row="2"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Spacing="6">

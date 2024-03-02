@@ -8,7 +8,7 @@
     DataContext="{x:Bind ViewModel}">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="88"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="auto"/>
             <RowDefinition Height="auto"/>
@@ -20,7 +20,7 @@
         <Grid Grid.Row="0"
               x:Name="Output" 
               HorizontalAlignment="Left" 
-              VerticalAlignment="Top">
+              VerticalAlignment="Bottom">
             <views:MainMenu/>
         </Grid>
 
