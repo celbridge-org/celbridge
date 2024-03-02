@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
 
-namespace Celbridge.CoreExtensions.Console;
+namespace Celbridge.Console;
 
 public class ConsoleService : IConsoleService
 {

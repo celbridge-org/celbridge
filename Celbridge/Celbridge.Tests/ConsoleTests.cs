@@ -1,10 +1,10 @@
-﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
-using Celbridge.CommonServices.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Celbridge.Console;
 using Celbridge.CommonServices.Messaging;
-using Celbridge.CoreExtensions.Console;
-using Microsoft.Extensions.DependencyInjection;
+using Celbridge.CommonServices.Logging;
+using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Console;
 
 namespace Celbridge.Tests;
 
