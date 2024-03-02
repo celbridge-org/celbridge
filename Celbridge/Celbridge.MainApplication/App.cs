@@ -2,7 +2,7 @@ using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonViews.Pages;
 using Celbridge.Dependencies;
-using Celbridge.Dependencies.Extensions;
+using Celbridge.MainApplication.Extensions;
 using Uno.Toolkit.UI;
 using Windows.Storage;
 
