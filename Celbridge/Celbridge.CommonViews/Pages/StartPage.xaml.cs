@@ -1,9 +1,14 @@
 ﻿using Celbridge.CommonViewModels.Pages;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.CommonViews.Pages;
 
 public sealed partial class StartPage : Page
 {
+    private IStringLocalizer _stringLocalizer;
+
+    public string OpenWorkspace => _stringLocalizer.GetString($"{nameof(StartPage)}.{nameof(OpenWorkspace)}");
+
     public StartPageViewModel ViewModel { get; private set; }
 
     public StartPage()
@@ -11,6 +16,7 @@ public sealed partial class StartPage : Page
         this.InitializeComponent();
 
         var serviceProvider = Services.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();
 
