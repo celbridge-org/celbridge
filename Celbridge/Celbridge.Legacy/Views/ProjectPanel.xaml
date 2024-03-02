@@ -53,10 +53,6 @@
 							   IsExpanded="True"
                                ContextFlyout="{StaticResource FolderResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
-                    <Path Data="{StaticResource IconFolder}"
-						  Stretch="Uniform"
-						  Width="18"
-						  Fill="{StaticResource UnoBlueColorBrush}" />
                     <TextBlock Margin="0,0,10,0" />
                     <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>
