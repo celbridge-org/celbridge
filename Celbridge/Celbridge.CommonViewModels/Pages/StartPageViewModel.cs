@@ -15,8 +15,8 @@ public partial class StartPageViewModel : ObservableObject
         _navigationService = navigationService;
     }
 
-    public ICommand TestWorkspaceCommand => new RelayCommand(TestWorkspaceCommand_Executed);
-    private void TestWorkspaceCommand_Executed()
+    public ICommand OpenWorkspacePageCommand => new RelayCommand(OpenWorkspacePageCommand_Executed);
+    private void OpenWorkspacePageCommand_Executed()
     {
         _navigationService.NavigateToPage(WorkspacePageName);
     }
