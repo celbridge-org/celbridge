@@ -1,20 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);net7.0-windows10.0.19041</TargetFrameworks>
-    <TargetFrameworks>$(TargetFrameworks);net7.0;</TargetFrameworks>
+    <DotNetVersion Condition=" $(DotNetVersion) == '' ">net8.0</DotNetVersion>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);$(DotNetVersion)-windows10.0.19041</TargetFrameworks>
+    <TargetFrameworks>$(TargetFrameworks);$(DotNetVersion);</TargetFrameworks>
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
+  
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.MVVM" />
+    <PackageReference Include="Uno.WinUI" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+  </ItemGroup>
+
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
         <PackageReference Include="Microsoft.WindowsAppSDK" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
-      </ItemGroup>
-      <ItemGroup>
+
         <!--
         If you encounter this error message:
 
@@ -29,21 +35,5 @@
         <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
       </ItemGroup>
     </When>
-    <Otherwise>
-      <ItemGroup>
-        <Content Include="Assets\**" />
-        <Page Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
-        <Compile Update="**\*.xaml.cs">
-          <DependentUpon>%(Filename)</DependentUpon>
-        </Compile>
-        <PriResource Include="**\*.resw" />
-      </ItemGroup>
-    </Otherwise>
   </Choose>
-  <ItemGroup>
-    <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-  </ItemGroup>
 </Project>

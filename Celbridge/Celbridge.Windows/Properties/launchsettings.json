@@ -1,10 +1,10 @@
 {
-  "profiles": {
-	"Celbridge.Windows (Package)": {
-	  "commandName": "MsixPackage"
-	},
-	"Celbridge.Windows (Unpackaged)": {
-	  "commandName": "Project"
+	"profiles": {
+		"Celbridge.Windows (Unpackaged)": {
+			"commandName": "Project"
+		},
+		"Celbridge.Windows (Package)": {
+			"commandName": "MsixPackage"
+		}
 	}
-  }
 }
