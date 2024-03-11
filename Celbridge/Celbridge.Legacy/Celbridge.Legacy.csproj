@@ -1,36 +1,42 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);net7.0-windows10.0.19041</TargetFrameworks>
-    <TargetFrameworks>$(TargetFrameworks);net7.0;</TargetFrameworks>
+    <DotNetVersion Condition=" $(DotNetVersion) == '' ">net8.0</DotNetVersion>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);$(DotNetVersion)-windows10.0.19041</TargetFrameworks>
+    <TargetFrameworks>$(TargetFrameworks);$(DotNetVersion);</TargetFrameworks>
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
     <PackageReference Include="IronPython" />
     <PackageReference Include="IronPython.StdLib" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="OpenAI" />
     <PackageReference Include="Scriban" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.Debug" />
-    <PackageReference Include="Uno.WinUI" />
-    <PackageReference Include="Uno.Resizetizer" />
-    <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Uno.Extensions.Configuration" />
-    <PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
     <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
+    <PackageReference Include="Uno.Resizetizer" />
     <PackageReference Include="Uno.Toolkit.WinUI" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Uno.WinUI" />
   </ItemGroup>
 
-  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" />
+  <ItemGroup>
+    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
   </ItemGroup>
-  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
-    <PackageReference Include="Uno.CommunityToolkit.WinUI.UI.Controls" />
+
+  <ItemGroup>
+    <Content Update="Assets\Icons\logo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <Choose>
@@ -38,8 +44,7 @@
       <ItemGroup>
         <PackageReference Include="Microsoft.WindowsAppSDK" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
-      </ItemGroup>
-      <ItemGroup>
+
         <!--
         If you encounter this error message:
 
@@ -54,156 +59,5 @@
         <FrameworkReference Update="Microsoft.Windows.SDK.NET.Ref" TargetingPackVersion="10.0.22621.28" /> -->
       </ItemGroup>
     </When>
-    <Otherwise>
-      <ItemGroup>
-        <Content Include="Assets\**" />
-        <Page Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
-        <Compile Update="**\*.xaml.cs">
-          <DependentUpon>%(Filename)</DependentUpon>
-        </Compile>
-        <PriResource Include="**\*.resw" />
-      </ItemGroup>
-    </Otherwise>
   </Choose>
-  <ItemGroup>
-    <UpToDateCheckInput Include="**\*.xaml" Exclude="bin\**\*.xaml;obj\**\*.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Remove="Assets\Icons\back.svg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="Assets\Icons\back.svg" />
-    <None Remove="Assets\SharedAssets.md" />
-    <None Remove="Views\AddResourceDialog.xaml" />
-    <None Remove="Views\BooleanPropertyView.xaml" />
-    <None Remove="Views\ConsolePanel.xaml" />
-    <None Remove="Views\DetailPanel.xaml" />
-    <None Remove="Views\DocumentsPanel.xaml" />
-    <None Remove="Views\HTMLDocumentView.xaml" />
-    <None Remove="Views\InspectorPanel.xaml" />
-    <None Remove="Views\LeftNavigationBar.xaml" />
-    <None Remove="Views\MainMenu.xaml" />
-    <None Remove="Views\NewProjectDialog.xaml" />
-    <None Remove="Views\NumberPropertyView.xaml" />
-    <None Remove="Views\PathPropertyView.xaml" />
-    <None Remove="Views\ProgressDialog.xaml" />
-    <None Remove="Views\ProjectPanel.xaml" />
-    <None Remove="Views\PropertyListItem.xaml" />
-    <None Remove="Views\PropertyListView.xaml" />
-    <None Remove="Views\RecordPropertyView.xaml" />
-    <None Remove="Views\SettingsDialog.xaml" />
-    <None Remove="Views\Shell.xaml" />
-    <None Remove="Views\StatusBar.xaml" />
-    <None Remove="Views\TextAreaPropertyView.xaml" />
-    <None Remove="Views\TextFileDocumentView.xaml" />
-    <None Remove="Views\TextPropertyView.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <UpToDateCheckInput Remove="Views\AddResourceDialog.xaml" />
-    <UpToDateCheckInput Remove="Views\BooleanPropertyView.xaml" />
-    <UpToDateCheckInput Remove="Views\ConsolePanel.xaml" />
-    <UpToDateCheckInput Remove="Views\DetailPanel.xaml" />
-    <UpToDateCheckInput Remove="Views\DocumentsPanel.xaml" />
-    <UpToDateCheckInput Remove="Views\HTMLDocumentView.xaml" />
-    <UpToDateCheckInput Remove="Views\InspectorPanel.xaml" />
-    <UpToDateCheckInput Remove="Views\LeftNavigationBar.xaml" />
-    <UpToDateCheckInput Remove="Views\MainMenu.xaml" />
-    <UpToDateCheckInput Remove="Views\NewProjectDialog.xaml" />
-    <UpToDateCheckInput Remove="Views\NumberPropertyView.xaml" />
-    <UpToDateCheckInput Remove="Views\PathPropertyView.xaml" />
-    <UpToDateCheckInput Remove="Views\ProgressDialog.xaml" />
-    <UpToDateCheckInput Remove="Views\ProjectPanel.xaml" />
-    <UpToDateCheckInput Remove="Views\PropertyListItem.xaml" />
-    <UpToDateCheckInput Remove="Views\PropertyListView.xaml" />
-    <UpToDateCheckInput Remove="Views\RecordPropertyView.xaml" />
-    <UpToDateCheckInput Remove="Views\SettingsDialog.xaml" />
-    <UpToDateCheckInput Remove="Views\Shell.xaml" />
-    <UpToDateCheckInput Remove="Views\StatusBar.xaml" />
-    <UpToDateCheckInput Remove="Views\TextAreaPropertyView.xaml" />
-    <UpToDateCheckInput Remove="Views\TextFileDocumentView.xaml" />
-    <UpToDateCheckInput Remove="Views\TextPropertyView.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonViews\Celbridge.CommonViews.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <UnoImage Include="Assets\Icons\back.svg" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Update="Assets\Icons\logo.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <Page Update="Views\AddResourceDialog.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\BooleanPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\ConsolePanel.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\DetailPanel.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\DocumentsPanel.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\HTMLDocumentView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\InspectorPanel.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\LeftNavigationBar.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\MainMenu.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\NewProjectDialog.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\NumberPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\PathPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\ProgressDialog.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\ProjectPanel.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\PropertyListItem.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\PropertyListView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\RecordPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\SettingsDialog.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\Shell.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\StatusBar.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\TextAreaPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\TextFileDocumentView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-    <Page Update="Views\TextPropertyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
-  </ItemGroup>
 </Project>

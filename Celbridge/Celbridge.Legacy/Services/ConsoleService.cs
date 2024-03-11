@@ -1,8 +1,6 @@
-﻿using IronPython.Hosting;
+using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
-using CommunityToolkit.WinUI.Helpers;
-using CommunityToolkit.Mvvm.Messaging;
 using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Legacy.Services;
@@ -312,14 +310,13 @@ public class ConsoleService : IConsoleService
         {
             StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
 
-            var fileExists = await storageFolder.FileExistsAsync(HistoryFile);
-            if (!fileExists)
+            var storageFile = await storageFolder.GetFileAsync(HistoryFile);
+            if (storageFile is null)
             {
                 return;
             }
 
-            StorageFile file = await storageFolder.GetFileAsync(HistoryFile);
-            using (Stream stream = await file.OpenStreamForReadAsync())
+            using (Stream stream = await storageFile.OpenStreamForReadAsync())
             {
                 using StreamReader reader = new(stream);
                 var json = reader.ReadToEnd();
