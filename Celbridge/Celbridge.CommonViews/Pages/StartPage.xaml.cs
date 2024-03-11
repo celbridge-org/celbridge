@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonViewModels.Pages;
+﻿using Celbridge.ViewModels.Pages;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.CommonViews.Pages;
