@@ -1,7 +1,11 @@
 ﻿global using Celbridge.BaseLibrary.Core;
 global using Celbridge.BaseLibrary.Messaging;
+global using Celbridge.ViewModels.Pages;
 global using CommunityToolkit.Diagnostics;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Localization;
 global using Microsoft.UI.Xaml.Controls;
 global using Microsoft.UI.Xaml;
-
+global using Uno.Extensions.Markup;
+global using Uno.Themes.Markup;
+global using Uno.UI;
