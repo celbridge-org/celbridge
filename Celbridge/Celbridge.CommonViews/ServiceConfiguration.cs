@@ -13,7 +13,7 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = Services.ServiceProvider.GetRequiredService<INavigationService>();
+        var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
 
         navigationService.RegisterPage(nameof(StartPage), typeof(StartPage));
         navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));

@@ -12,7 +12,7 @@ public sealed partial class MainPage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
 
         Loaded += OnMainPage_Loaded;
@@ -21,7 +21,7 @@ public sealed partial class MainPage : Page
 
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
         var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
 #if WINDOWS

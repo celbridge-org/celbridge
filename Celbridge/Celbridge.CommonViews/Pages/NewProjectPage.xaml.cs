@@ -10,7 +10,7 @@ public sealed partial class NewProjectPage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
 
         ViewModel = serviceProvider.GetRequiredService<NewProjectPageViewModel>();
 

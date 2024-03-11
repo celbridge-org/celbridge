@@ -55,7 +55,7 @@ public class App : Application
         Host = builder.Build();
 
         // Setup the globally available helper for using the dependency injection framework.
-        BaseLibrary.Core.Services.Initialize(Host.Services);
+        BaseLibrary.Core.ServiceLocator.Initialize(Host.Services);
 
         // Initialize the UI system
         CommonViews.ServiceConfiguration.Initialize();

@@ -15,7 +15,7 @@ public sealed partial class StartPage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();

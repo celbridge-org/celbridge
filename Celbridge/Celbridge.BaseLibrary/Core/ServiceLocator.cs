@@ -4,7 +4,7 @@
 /// Provides general access to the dependency injection framework.
 /// Use this in situations where you need to acquire a dependency but can't use constructor injection.
 /// </summary>
-public static class Services
+public static class ServiceLocator
 {
     private static IServiceProvider? _serviceProvider;
 
