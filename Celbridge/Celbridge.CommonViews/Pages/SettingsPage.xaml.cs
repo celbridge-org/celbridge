@@ -10,7 +10,7 @@ public sealed partial class SettingsPage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
 
         ViewModel = serviceProvider.GetRequiredService<SettingsPageViewModel>();
 
