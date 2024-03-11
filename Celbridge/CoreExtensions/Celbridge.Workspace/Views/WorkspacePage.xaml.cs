@@ -18,7 +18,7 @@ public sealed partial class WorkspacePage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = Services.ServiceProvider;
+        var serviceProvider = ServiceLocator.ServiceProvider;
 
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
