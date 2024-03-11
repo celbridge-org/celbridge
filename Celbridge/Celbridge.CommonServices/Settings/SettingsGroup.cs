@@ -1,6 +1,4 @@
-﻿using Celbridge.BaseLibrary.Core;
 using Celbridge.BaseLibrary.Settings;
-using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Windows.Foundation.Collections;
 using Windows.Storage;
@@ -17,7 +15,7 @@ public class SettingsGroup : ISettingsGroup
     {
         _loggingService = loggingService;
 
-        // Ideally we would the Containers system provided by ApplicationDataContainer, but this is only
+        // Ideally we would use the Containers system provided by ApplicationDataContainer, but this is only
         // available on Windows. Instead, we use the root LocalSettings.Value property set, with a prepended group name.
         _propertySet = ApplicationData.Current.LocalSettings.Values;
     }

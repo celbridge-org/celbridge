@@ -1,25 +1,20 @@
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.CommonServices.UserInterface;
 using Celbridge.CommonViews.Pages;
-using Celbridge.Dependencies;
+using Celbridge.MainApplication;
 using Celbridge.MainApplication.Extensions;
 using Uno.Toolkit.UI;
+using Uno.UI;
 using Windows.Storage;
 
-namespace Celbridge.MainApplication;
+namespace Celbridge;
 
-public partial class App : Application
+public class App : Application
 {
-    public App()
-    {
-        ApplyTheme();
-    }
-
-    public Window? MainWindow { get; private set; }
-    public IHost? Host { get; private set; }
+    protected Window? MainWindow { get; private set; }
+    protected IHost? Host { get; private set; }
 
     private ExtensionLoader _extensionLoader = new();
-
     private LegacyAppHelper? _legacyApp = new();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -29,7 +24,7 @@ public partial class App : Application
         _extensionLoader.LoadExtension("Celbridge.Console");
 
         var builder = this.CreateBuilder(args)
-            .Configure((host => host
+            .Configure(host => host
 #if DEBUG
                 // Switch to Development environment when running in DEBUG
                 .UseEnvironment(Environments.Development)
@@ -49,9 +44,13 @@ public partial class App : Application
                     Guard.IsNotNull(_extensionLoader);
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
                     ServiceConfiguration.ConfigureServices(services, extensions);
-                }))
+                })
             );
         MainWindow = builder.Window;
+
+#if DEBUG
+        MainWindow.EnableHotReload();
+#endif
 
         Host = builder.Build();
 
