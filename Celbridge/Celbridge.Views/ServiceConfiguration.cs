@@ -1,8 +1,8 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonViews.Pages;
-using Celbridge.CommonViews.UserControls;
+using Celbridge.Views.Pages;
+using Celbridge.Views.UserControls;
 
-namespace Celbridge.CommonViews;
+namespace Celbridge.Views;
 
 public static class ServiceConfiguration
 {

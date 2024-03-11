@@ -1,8 +1,8 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.ViewModels.Pages;
-using Celbridge.CommonViews.UserControls;
+using Celbridge.Views.UserControls;
 
-namespace Celbridge.CommonViews.Pages;
+namespace Celbridge.Views.Pages;
 
 public sealed partial class MainPage : Page
 {

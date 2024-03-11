@@ -11,7 +11,7 @@ public class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services, List<IExtension> extensions)
     {
         Services.ServiceConfiguration.ConfigureServices(services);
-        CommonViews.ServiceConfiguration.ConfigureServices(services);
+        Views.ServiceConfiguration.ConfigureServices(services);
         ViewModels.ServiceConfiguration.ConfigureServices(services);
 
         // Register the services provided by each extension with the dependency injection framework.
