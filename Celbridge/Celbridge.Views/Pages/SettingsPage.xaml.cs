@@ -1,6 +1,6 @@
 ﻿using Celbridge.ViewModels.Pages;
 
-namespace Celbridge.CommonViews.Pages;
+namespace Celbridge.Views.Pages;
 
 public sealed partial class SettingsPage : Page
 {

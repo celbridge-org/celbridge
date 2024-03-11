@@ -1,6 +1,6 @@
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Services.UserInterface;
-using Celbridge.CommonViews.Pages;
+using Celbridge.Views.Pages;
 using Celbridge.MainApplication;
 using Celbridge.MainApplication.Extensions;
 using Uno.Toolkit.UI;
@@ -58,7 +58,7 @@ public class App : Application
         BaseLibrary.Core.ServiceLocator.Initialize(Host.Services);
 
         // Initialize the UI system
-        CommonViews.ServiceConfiguration.Initialize();
+        Views.ServiceConfiguration.Initialize();
 
         // Tell the loaded extensions to initialize before the application starts.
         _extensionLoader.InitializeExtensions();
