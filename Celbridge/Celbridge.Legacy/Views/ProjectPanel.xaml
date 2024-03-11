@@ -6,7 +6,6 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:models="using:Celbridge.Legacy.Models"
     xmlns:selectors="using:Celbridge.Legacy.TemplateSelectors"
     xmlns:utils="using:Celbridge.Legacy.Utils"

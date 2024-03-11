@@ -1,84 +1,49 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net7.0-windows10.0.19041.0</TargetFramework>
-		<TargetPlatformMinVersion>10.0.18362.0</TargetPlatformMinVersion>
-		<RootNamespace>Celbridge.Windows</RootNamespace>
-		<ApplicationManifest>app.manifest</ApplicationManifest>
-		<Platforms>x86;x64;arm64</Platforms>
-		<RuntimeIdentifiers>win10-x86;win10-x64;win10-arm64</RuntimeIdentifiers>
-		<PublishProfile>win10-$(Platform).pubxml</PublishProfile>
-		<UseWinUI>true</UseWinUI>
-		<EnableMsixTooling>true</EnableMsixTooling>
-	</PropertyGroup>
-	<PropertyGroup>
-		<!-- Bundles the WinAppSDK binaries -->
-		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
-		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
-		<AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
-		<GenerateTestArtifacts>True</GenerateTestArtifacts>
-		<AppxBundle>Never</AppxBundle>
-		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-		<PackageCertificateThumbprint>544FC61E009BD0A97933202B8F5538725D82A8CA</PackageCertificateThumbprint>
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(DotNetVersion)-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>Celbridge.Windows</RootNamespace>
+    <Platforms>x86;x64;arm64</Platforms>
 
-		<!-- <SelfContained>true</SelfContained> -->
-	</PropertyGroup>
+    <!-- Bundles the WinAppSDK binaries -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
 
-	<ItemGroup>
-	    <Content Include="Images\**" />
-			<Content Include="monaco\**" />
-			<!-- Excluding these files as they trigger localization warnings during the build process -->
-			<Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-			<Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-			<Content Remove="monaco\min\vs\basic-languages\st\st.js" />
-			<Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-			<Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
-		<Manifest Include="$(ApplicationManifest)" />
-	</ItemGroup>
+    <!-- <SelfContained>true</SelfContained> -->
+  </PropertyGroup>
 
   <ItemGroup>
-		<PackageReference Include="Uno.WinUI" />
-		<PackageReference Include="Microsoft.WindowsAppSDK" />
-		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
-		<PackageReference Include="CommunityToolkit.Mvvm" />
-		<PackageReference Include="Uno.Extensions.Configuration" />
-		<PackageReference Include="Uno.Extensions.Toolkit.WinUI" />
-		<PackageReference Include="Uno.Toolkit.WinUI" />
-		<PackageReference Include="Uno.Extensions.Hosting.WinUI" />
-		<PackageReference Include="Uno.Extensions.Localization.WinUI" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Console" />
-		<PackageReference Include="Uno.Core.Extensions.Logging.Singleton" />
-		<PackageReference Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" />
-	</ItemGroup>
+    <Content Include="Images\**" />
+    <Content Include="monaco\**" />
+    <!-- Excluding these files as they trigger localization warnings during the build process -->
+    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Uno.WinUI" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Uno.Extensions.Configuration" />
+    <PackageReference Include="Uno.Extensions.Logging.WinUI" />
+    <PackageReference Include="Uno.Toolkit.WinUI" />
+    <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
+    <PackageReference Include="Uno.Extensions.Localization.WinUI" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Uno.Core.Extensions.Logging.Singleton" />
+    <PackageReference Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" />
+  </ItemGroup>
 
-	<!-- 
-		Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
-		Tools extension to be activated for this project even if the Windows App SDK Nuget
-		package has not yet been restored.
-	-->
-	<ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-		<ProjectCapability Include="Msix" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Celbridge.MainApplication\Celbridge.MainApplication.csproj" />
+  </ItemGroup>
 
-	<!-- 
-		Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution 
-		Explorer "Package and Publish" context menu entry to be enabled for this project even if 
-		the Windows App SDK Nuget package has not yet been restored.
-	-->
-	<PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-		<HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-	</PropertyGroup>
+  <Import Project="..\Celbridge.Shared\base.props" />
 
-	<Import Project="..\Celbridge.Base\base.props" />
-
-	<ItemGroup>
-	  <SourceGeneratorInput Remove="Celbridge.Windows_TemporaryKey.pfx" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\Celbridge.MainApplication\Celbridge.MainApplication.csproj" />
-	</ItemGroup>
+  <Target Name="ValidateOverrides" BeforeTargets="Restore;_CheckForUnsupportedTargetFramework" Condition="'$(OverrideTargetFramework)' != ''">
+    <Error Text="OverrideTargetFramework set to '$(OverrideTargetFramework)' is missing Windows target. Set OverrideTargetFramework to $([MSBuild]::Escape('$'))(DotNetVersion)-windows10.0.19041.0 or skip building this project (eg unload the project in Visual Studio)" Condition="!$(OverrideTargetFramework.Contains('windows10'))" />
+  </Target>
 </Project>
