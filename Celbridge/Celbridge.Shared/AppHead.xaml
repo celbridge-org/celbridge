@@ -9,7 +9,7 @@
   <local:App.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="ms-appx:///Celbridge.CommonViews/Resources/AppResources.xaml" />
+        <ResourceDictionary Source="ms-appx:///Celbridge.Views/Resources/AppResources.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </local:App.Resources>

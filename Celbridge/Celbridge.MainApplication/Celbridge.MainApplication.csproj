@@ -45,9 +45,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonViews\Celbridge.CommonViews.csproj" />
+    <ProjectReference Include="..\Celbridge.Views\Celbridge.Views.csproj" />
     <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
+    <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
