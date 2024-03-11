@@ -1,0 +1,45 @@
+﻿<Page
+    x:Class="Celbridge.Views.Pages.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Views.Pages"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    DataContext="{x:Bind ViewModel}">
+
+    <Grid x:Name="LayoutRoot" 
+          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar is added in row 0 via code behind (Windows only) -->
+        
+        <NavigationView x:Name="MainNavigation"
+                        Grid.Row="1"       
+                        IsBackButtonVisible="Collapsed"
+                        PaneDisplayMode="LeftCompact"
+                        Background="{StaticResource PanelBackgroundABrush}">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Home" Tag="StartPage" Content="Home"/>
+                <NavigationViewItemSeparator/>
+                <NavigationViewItem Icon="NewFolder" Tag="NewProjectPage" Content="New Project" />
+                <NavigationViewItem Icon="OpenFile" Tag="OpenProjectPage" Content="Open Project" />
+                <NavigationViewItem Icon="Admin" Tag="Shell" Content="Open Legacy App"/>
+                <!-- Add your other icon-only items here -->
+            </NavigationView.MenuItems>
+            <!--
+            <NavigationView.AutoSuggestBox>
+                <AutoSuggestBox x:Name="SearchBox" 
+                                QueryIcon="Find" 
+                                VerticalAlignment="Bottom"
+                                PlaceholderText="Ask a question"/>
+            </NavigationView.AutoSuggestBox>
+            -->
+            <Frame x:Name="ContentFrame"/>
+        </NavigationView>
+    </Grid>
+</Page>
