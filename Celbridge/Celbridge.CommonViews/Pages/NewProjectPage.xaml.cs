@@ -1,4 +1,4 @@
-﻿using Celbridge.CommonViewModels.Pages;
+﻿using Celbridge.ViewModels.Pages;
 
 namespace Celbridge.CommonViews.Pages;
 

@@ -1,6 +1,6 @@
-﻿using Celbridge.CommonViewModels.Pages;
+﻿using Celbridge.ViewModels.Pages;
 
-namespace Celbridge.CommonViewModels;
+namespace Celbridge.ViewModels;
 
 public static class ServiceConfiguration
 {

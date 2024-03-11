@@ -1,4 +1,4 @@
-﻿namespace Celbridge.CommonViewModels.Pages;
+﻿namespace Celbridge.ViewModels.Pages;
 
 public partial class NewProjectPageViewModel : ObservableObject
 {
