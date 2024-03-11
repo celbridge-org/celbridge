@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Windows.Foundation.Collections;
 using Windows.Storage;
 
-namespace Celbridge.CommonServices.Settings;
+namespace Celbridge.Services.Settings;
 
 public class SettingsGroup : ISettingsGroup
 {

@@ -1,11 +1,11 @@
 ﻿using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonServices.Logging;
-using Celbridge.CommonServices.Messaging;
-using Celbridge.CommonServices.Settings;
-using Celbridge.CommonServices.UserInterface;
+using Celbridge.Services.Logging;
+using Celbridge.Services.Messaging;
+using Celbridge.Services.Settings;
+using Celbridge.Services.UserInterface;
 
-namespace Celbridge.CommonServices;
+namespace Celbridge.Services;
 
 public static class ServiceConfiguration
 {

@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
+    <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
   </ItemGroup>
 
   <Choose>
