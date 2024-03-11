@@ -1,18 +1,24 @@
 ﻿using Celbridge.ViewModels.Pages;
+using Microsoft.Extensions.Localization;
 
-namespace Celbridge.CommonViews.Pages;
+namespace Celbridge.Views.Pages;
 
-public sealed partial class NewProjectPage : Page
+public sealed partial class StartPage : Page
 {
-    public NewProjectPageViewModel ViewModel { get; private set; }
+    private IStringLocalizer _stringLocalizer;
 
-    public NewProjectPage()
+    public string OpenWorkspace => _stringLocalizer.GetString($"{nameof(StartPage)}.{nameof(OpenWorkspace)}");
+
+    public StartPageViewModel ViewModel { get; private set; }
+
+    public StartPage()
     {
         this.InitializeComponent();
 
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
-        ViewModel = serviceProvider.GetRequiredService<NewProjectPageViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();
 
         Loaded += OnStartView_Loaded;
         Unloaded += OnStartView_Unloaded;
