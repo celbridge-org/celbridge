@@ -3,7 +3,7 @@ using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Services.UserInterface;
 using CommunityToolkit.Diagnostics;
 
-namespace Celbridge.CommonViewModels.Pages;
+namespace Celbridge.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
