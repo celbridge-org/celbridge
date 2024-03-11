@@ -1,6 +1,6 @@
 ﻿using Serilog;
 
-namespace Celbridge.CommonServices.Logging;
+namespace Celbridge.Services.Logging;
 
 public class LoggingService : ILoggingService
 {
