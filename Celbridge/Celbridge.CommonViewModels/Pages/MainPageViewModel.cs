@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonServices.UserInterface;
+using Celbridge.Services.UserInterface;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.CommonViewModels.Pages;

@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 
-namespace Celbridge.CommonServices.Messaging;
+namespace Celbridge.Services.Messaging;
 
 /// <summary>
 /// A wrapper for CommunityToolkit.Mvvm.Messaging.

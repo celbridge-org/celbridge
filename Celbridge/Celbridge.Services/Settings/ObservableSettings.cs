@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Settings;
 using System.ComponentModel;
 
-namespace Celbridge.CommonServices.Settings;
+namespace Celbridge.Services.Settings;
 
 /// <summary>
 /// A wrapper for a named settings group which adds support for observing property changes.
