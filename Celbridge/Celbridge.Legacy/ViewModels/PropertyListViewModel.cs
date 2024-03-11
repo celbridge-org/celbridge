@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Messaging;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
@@ -180,7 +180,7 @@ public partial class PropertyListViewModel : ObservableObject
             {
                 // If the type has no parameterless constructor, this method creates
                 // a zeroed instance of the type.
-                newItem = FormatterServices.GetSafeUninitializedObject(originalType);
+                newItem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(originalType);
             }
 
             if (newIndex == list.Count)

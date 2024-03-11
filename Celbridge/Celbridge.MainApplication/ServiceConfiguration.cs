@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Extensions;
+using Celbridge.BaseLibrary.Extensions;
 using Celbridge.MainApplication.Extensions;
 
-namespace Celbridge.Dependencies;
+namespace Celbridge.MainApplication;
 
 /// <summary>
 /// Configures the dependency injection framework to support all required services.

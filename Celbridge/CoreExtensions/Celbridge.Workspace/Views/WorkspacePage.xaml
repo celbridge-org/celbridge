@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     DataContext="{x:Bind ViewModel}">
 
     <Grid x:Name="LayoutRoot"
@@ -53,20 +53,12 @@
                                           VerticalAlignment="Top"
                                           MinHeight="4"
                                           Height="4"
-                                          GripperCursor="Default"
-                                          ResizeDirection="Auto"
+                                          ResizeDirection="Columns"
                                           ResizeBehavior="BasedOnAlignment"
-                                          CursorBehavior="ChangeOnSplitterHover"
-                                          Background="Transparent" 
                                           Foreground="{StaticResource PanelBackgroundBBrush}">
                         <toolkit:GridSplitter.RenderTransform>
                             <TranslateTransform Y="-2" />
                         </toolkit:GridSplitter.RenderTransform>
-                        <toolkit:GridSplitter.Element>
-                            <Grid>
-                                <!-- No gripper -->
-                            </Grid>
-                        </toolkit:GridSplitter.Element>
                     </toolkit:GridSplitter>
                 </Grid>
 
@@ -81,20 +73,13 @@
                                       HorizontalAlignment="Left" 
                                       MinWidth="4"
                                       Width="4"
-                                      GripperCursor="Default"
                                       ResizeDirection="Auto"
                                       ResizeBehavior="BasedOnAlignment"
-                                      CursorBehavior="ChangeOnSplitterHover"
                                       Background="{StaticResource PanelBackgroundBBrush}" 
                                       Foreground="{StaticResource PanelBackgroundBBrush}">
                     <toolkit:GridSplitter.RenderTransform>
                         <TranslateTransform X="-2" />
                     </toolkit:GridSplitter.RenderTransform>
-                    <toolkit:GridSplitter.Element>
-                        <Grid>
-                            <!-- No gripper -->
-                        </Grid>
-                    </toolkit:GridSplitter.Element>
                 </toolkit:GridSplitter>
 
                 <toolkit:GridSplitter x:Name="RightSplitter" 
@@ -102,20 +87,13 @@
                                       HorizontalAlignment="Left" 
                                       MinWidth="4"
                                       Width="4"
-                                      GripperCursor="Default"
                                       ResizeDirection="Auto"
                                       ResizeBehavior="BasedOnAlignment"
-                                      CursorBehavior="ChangeOnSplitterHover"
                                       Background="{StaticResource PanelBackgroundBBrush}" 
                                       Foreground="{StaticResource PanelBackgroundBBrush}">
                     <toolkit:GridSplitter.RenderTransform>
                         <TranslateTransform X="-2" />
                     </toolkit:GridSplitter.RenderTransform>
-                    <toolkit:GridSplitter.Element>
-                        <Grid>
-                            <!-- No gripper -->
-                        </Grid>
-                    </toolkit:GridSplitter.Element>
                 </toolkit:GridSplitter>
             </Grid>
         </Grid>
@@ -130,4 +108,3 @@
         </Grid>
     </Grid>
 </Page>
-    
