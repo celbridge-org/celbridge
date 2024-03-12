@@ -21,8 +21,6 @@ public sealed partial class StartPage : Page
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .Children(
-                    new TextBlock()
-                        .Uid("/Resources/TestString"),
                     new Button()
                         .Content(OpenWorkspace)
                         .Command(() => vm.OpenWorkspacePageCommand)
