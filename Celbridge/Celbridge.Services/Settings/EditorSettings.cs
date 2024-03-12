@@ -8,12 +8,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         : base(settingsGroup, nameof(EditorSettings))
     {}
 
-    public string Theme
-    {
-        get => GetValue<string>(nameof(Theme), "Light");
-        set => SetValue(nameof(Theme), value);
-    }
-
     public bool LeftPanelExpanded
     {
         get => GetValue<bool>(nameof(LeftPanelExpanded), true);
