@@ -63,7 +63,6 @@ public sealed partial class MainPage : Page
             .Children(_mainNavigation);
 
         this.DataContext<MainPageViewModel>((page, vm) => page
-            .Background(Theme.Brushes.Background.Default)
             .Content(_layoutRoot));
 
         Loaded += OnMainPage_Loaded;
