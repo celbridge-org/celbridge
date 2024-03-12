@@ -6,8 +6,8 @@
     DataContext="{x:Bind ViewModel}"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid Background="{StaticResource PanelBackgroundABrush}"
-          BorderBrush="{StaticResource PanelBorderBrush}" 
+    <Grid Background="{ThemeResource PanelBackgroundABrush}"
+          BorderBrush="{ThemeResource PanelBorderBrush}" 
           BorderThickness="0 0 0 0">
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
-                BorderBrush="{StaticResource PanelBorderBrush}" 
+                BorderBrush="{ThemeResource PanelBorderBrush}" 
                 BorderThickness="0 1 0 1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -40,7 +40,7 @@
 
         <ScrollViewer Grid.Row="1"
                       x:Name="ConsoleScrollViewer"
-                      Background="{StaticResource PanelBackgroundABrush}"
+                      Background="{ThemeResource PanelBackgroundABrush}"
                       Padding="6">
             <RichTextBlock x:Name="ConsoleLogText"
                        TextWrapping="Wrap"
