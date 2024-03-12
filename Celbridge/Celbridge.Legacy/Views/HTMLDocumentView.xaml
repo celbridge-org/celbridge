@@ -13,7 +13,7 @@
         <TextBlock Text="{x:Bind ViewModel.Name, Mode=OneWay}" />
     </muxc:TabViewItem.Header>
 
-    <Grid Background="{StaticResource PanelBackgroundABrush}"
+    <Grid Background="{ThemeResource PanelBackgroundABrush}"
           VerticalAlignment="Stretch">
 
         <Grid.RowDefinitions>
@@ -28,7 +28,7 @@
                   NavigationCompleted="OnNavigationCompleted"/>
 
         <TextBox Grid.Row="1" 
-                 BorderBrush="{StaticResource PanelBorderBrush}" 
+                 BorderBrush="{ThemeResource PanelBorderBrush}" 
                  MinHeight="20"
                  Padding="2"
                  FontSize="12"

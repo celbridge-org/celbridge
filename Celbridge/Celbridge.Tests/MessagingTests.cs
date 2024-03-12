@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
-using Celbridge.CommonServices.Logging;
-using Celbridge.CommonServices.Messaging;
+using Celbridge.Services.Logging;
+using Celbridge.Services.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
