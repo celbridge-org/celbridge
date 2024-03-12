@@ -12,7 +12,7 @@ public partial class SettingsViewModel : ObservableObject
 
         Guard.IsNotNull(_settingsService.EditorSettings);
 
-        var themeName = _settingsService.EditorSettings.Theme;
+        var themeName = "Dark";
         if (Enum.TryParse(themeName, out ApplicationColorTheme theme))
         {
             ThemeIndex = (int)theme;
@@ -68,7 +68,7 @@ public partial class SettingsViewModel : ObservableObject
 
             var theme = ThemeIndex == 0 ? ApplicationColorTheme.Light : ApplicationColorTheme.Dark;
 
-            _settingsService.EditorSettings.Theme = theme.ToString();
+            //_settingsService.EditorSettings.Theme = theme.ToString();
         }
     }
 }

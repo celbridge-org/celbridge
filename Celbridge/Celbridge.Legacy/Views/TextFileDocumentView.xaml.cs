@@ -97,8 +97,9 @@ public partial class TextFileDocumentView : TabViewItem, IDocumentView
                     Guard.IsNotNull(settingsService);
                     Guard.IsNotNull(settingsService.EditorSettings);
 
-                    var themeSetting = settingsService.EditorSettings.Theme;
-                    var theme = themeSetting == "Dark" ? "vs-dark" : "vs-light";
+                    //var themeSetting = settingsService.EditorSettings.Theme;
+                    //var theme = themeSetting == "Dark" ? "vs-dark" : "vs-light";
+                    var theme = "vs-dark";
 
                     await EditorWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{theme}';");
 

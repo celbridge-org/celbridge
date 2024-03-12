@@ -7,8 +7,6 @@ namespace Celbridge.BaseLibrary.Settings;
 /// </summary>
 public interface IEditorSettings : INotifyPropertyChanged
 {
-    string Theme { get; set; }
-
     bool LeftPanelExpanded { get; set; }
 
     float LeftPanelWidth { get; set; }
