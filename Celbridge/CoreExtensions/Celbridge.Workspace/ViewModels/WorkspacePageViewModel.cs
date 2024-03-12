@@ -1,4 +1,5 @@
 using Celbridge.BaseLibrary.Settings;
+using System.ComponentModel;
 
 namespace Celbridge.Workspace.ViewModels;
 
