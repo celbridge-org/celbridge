@@ -120,6 +120,24 @@
   <data name="ApplicationName" xml:space="preserve">
     <value>Celbridge</value>
   </data>
+  <data name="MainPage.Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="MainPage.LegacyApp" xml:space="preserve">
+    <value>Open Legacy App</value>
+  </data>
+  <data name="MainPage.NewProject" xml:space="preserve">
+    <value>New Project</value>
+  </data>
+  <data name="MainPage.OpenProject" xml:space="preserve">
+    <value>Open Project</value>
+  </data>
+  <data name="NewProjectPage.Title" xml:space="preserve">
+    <value>New Project</value>
+  </data>
+  <data name="SettingsPage.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="StartPage.OpenWorkspace" xml:space="preserve">
     <value>Open workspace</value>
   </data>

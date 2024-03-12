@@ -1,15 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>$(DotNetVersion)</TargetFramework>
     <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.MVVM" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
@@ -17,7 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.CommonServices\Celbridge.CommonServices.csproj" />
+    <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
   </ItemGroup>
 </Project>

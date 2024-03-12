@@ -1,25 +1,18 @@
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.CommonServices.UserInterface;
-using Celbridge.CommonViews.Pages;
-using Celbridge.Dependencies;
+using Celbridge.Services.UserInterface;
+using Celbridge.Views.Pages;
+using Celbridge.MainApplication;
 using Celbridge.MainApplication.Extensions;
-using Uno.Toolkit.UI;
-using Windows.Storage;
+using Uno.UI;
 
-namespace Celbridge.MainApplication;
+namespace Celbridge;
 
-public partial class App : Application
+public class App : Application
 {
-    public App()
-    {
-        ApplyTheme();
-    }
-
-    public Window? MainWindow { get; private set; }
-    public IHost? Host { get; private set; }
+    protected Window? MainWindow { get; private set; }
+    protected IHost? Host { get; private set; }
 
     private ExtensionLoader _extensionLoader = new();
-
     private LegacyAppHelper? _legacyApp = new();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -29,7 +22,7 @@ public partial class App : Application
         _extensionLoader.LoadExtension("Celbridge.Console");
 
         var builder = this.CreateBuilder(args)
-            .Configure((host => host
+            .Configure(host => host
 #if DEBUG
                 // Switch to Development environment when running in DEBUG
                 .UseEnvironment(Environments.Development)
@@ -49,17 +42,21 @@ public partial class App : Application
                     Guard.IsNotNull(_extensionLoader);
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
                     ServiceConfiguration.ConfigureServices(services, extensions);
-                }))
+                })
             );
         MainWindow = builder.Window;
+
+#if DEBUG
+        MainWindow.EnableHotReload();
+#endif
 
         Host = builder.Build();
 
         // Setup the globally available helper for using the dependency injection framework.
-        BaseLibrary.Core.Services.Initialize(Host.Services);
+        BaseLibrary.Core.ServiceLocator.Initialize(Host.Services);
 
         // Initialize the UI system
-        CommonViews.ServiceConfiguration.Initialize();
+        Views.ServiceConfiguration.Initialize();
 
         // Tell the loaded extensions to initialize before the application starts.
         _extensionLoader.InitializeExtensions();
@@ -102,44 +99,5 @@ public partial class App : Application
         }
 
         MainWindow.Activate();
-    }
-
-    private void ApplyTheme()
-    {
-        // Note: Application.RequestedTheme may only be set during the application constructor.
-        // https://platform.uno/docs/articles/features/working-with-themes.html?tabs=windows
-
-        // Note: Uno provides the SystemThemeHelper to support changing the application theme at runtime, without needing a restart.
-        // The last time I tried it though it only partially worked, dialogs would still use the previous theme.
-
-        const string ThemeSettingKey = "EditorSettings.Theme";
-
-        // Putting a breakpoint on this line in Visual Studio causes an intermittent exception.
-        // Probably some sort of race condition between the debugger and the underlying settings service.
-        var editorSettings = ApplicationData.Current.LocalSettings.Values;
-
-        if (!editorSettings.ContainsKey(ThemeSettingKey))
-        {
-            // No theme was previously selected, so the application will use the current OS theme.
-            // Update the stored theme setting so that the settings dialog displays the correct value.
-            // The double quotes are needed here because we store all settings as Json values.
-            var osTheme = SystemThemeHelper.GetCurrentOsTheme();
-            editorSettings[ThemeSettingKey] = osTheme == ApplicationTheme.Light ? "\"Light\"" : "\"Dark\"";
-        }
-
-        var themeSetting = editorSettings[ThemeSettingKey] as string;
-        Guard.IsNotNull(themeSetting);
-
-        var theme = ApplicationTheme.Light;
-        if (themeSetting.Contains("Dark"))
-        {
-            theme = ApplicationTheme.Dark;
-        }
-#if HAS_UNO
-        var themeName = theme.ToString();
-        Uno.UI.ApplicationHelper.RequestedCustomTheme = themeName;
-#else
-        this.RequestedTheme = theme;
-#endif
     }
 }

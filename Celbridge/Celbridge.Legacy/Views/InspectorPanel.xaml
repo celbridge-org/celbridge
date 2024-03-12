@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:utils="using:Celbridge.Legacy.Utils"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
     xmlns:views="using:Celbridge.Legacy.Views"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
@@ -13,8 +13,8 @@
         <utils:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </UserControl.Resources>
 
-    <Grid Background="{StaticResource PanelBackgroundABrush}"
-          BorderBrush="{StaticResource PanelBorderBrush}" 
+    <Grid Background="{ThemeResource PanelBackgroundABrush}"
+          BorderBrush="{ThemeResource PanelBorderBrush}" 
           BorderThickness="1 0 0 0"
           LayoutUpdated="InspectorPanel_LayoutUpdated">
 
@@ -32,7 +32,7 @@
             
             <Grid Grid.Row="0"
                   HorizontalAlignment="Stretch"
-                  BorderBrush="{StaticResource PanelBorderBrush}" 
+                  BorderBrush="{ThemeResource PanelBorderBrush}" 
                   BorderThickness="0 0 0 1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -89,20 +89,13 @@
                                   VerticalAlignment="Top"
                                   MinHeight="4"
                                   Height="4"
-                                  GripperCursor="Default"
                                   ResizeDirection="Auto"
                                   ResizeBehavior="BasedOnAlignment"
-                                  CursorBehavior="ChangeOnSplitterHover"
-                                  Background="{StaticResource PanelBorderBrush}" 
-                                  Foreground="{StaticResource PanelBackgroundBBrush}">
+                                  Background="{ThemeResource PanelBorderBrush}" 
+                                  Foreground="{ThemeResource PanelBackgroundBBrush}">
                 <toolkit:GridSplitter.RenderTransform>
                     <TranslateTransform Y="-2" />
                 </toolkit:GridSplitter.RenderTransform>
-                <toolkit:GridSplitter.Element>
-                    <Grid>
-                        <!-- No gripper -->
-                    </Grid>
-                </toolkit:GridSplitter.Element>
             </toolkit:GridSplitter>
         </Grid>
     </Grid>
