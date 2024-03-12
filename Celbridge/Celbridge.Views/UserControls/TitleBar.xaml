@@ -9,8 +9,8 @@
     <Grid x:Name="MainGrid"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Top"
-          Background="{StaticResource TitleBarActiveColor}"
-          BorderBrush="{StaticResource PanelBorderBrush}"
+          Background="{ThemeResource TitleBarActiveColor}"
+          BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0 0 0 1">
 
         <!-- TitleBar changes to a lighter color when the application loses focus (Windows only) -->
@@ -20,7 +20,7 @@
                 </VisualState>
                 <VisualState x:Name="Inactive">
                     <VisualState.Setters>
-                        <Setter Target="MainGrid.Background" Value="{StaticResource TitleBarInactiveColor}"/>
+                        <Setter Target="MainGrid.Background" Value="{ThemeResource TitleBarInactiveColor}"/>
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
