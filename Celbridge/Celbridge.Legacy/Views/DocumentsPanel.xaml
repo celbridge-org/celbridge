@@ -4,12 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     DataContext="{x:Bind ViewModel}">
-    <Grid Background="{StaticResource PanelBackgroundABrush}">
+    <Grid Background="{ThemeResource PanelBackgroundABrush}">
         <muxc:TabView x:Name="DocumentTabView"
                       IsAddTabButtonVisible="False" 
                       TabWidthMode="SizeToContent"
                       TabCloseRequested="DocumentTabView_TabCloseRequested"
                       VerticalAlignment="Stretch"
-                      Background="{StaticResource PanelBackgroundABrush}"/>
+                      Background="{ThemeResource PanelBackgroundABrush}"/>
     </Grid>
 </UserControl>

@@ -31,7 +31,7 @@
               Grid.Column="0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
-              Background="{StaticResource PanelBackgroundABrush}"
+              Background="{ThemeResource PanelBackgroundABrush}"
               Visibility="{x:Bind ViewModel.IsProjectActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -73,8 +73,8 @@
                 <!-- Left Navigation Bar -->
                 <Grid Grid.Row="0"
                       Grid.Column="0"
-                      Background="{StaticResource PanelBackgroundABrush}"
-                      BorderBrush="{StaticResource PanelBorderBrush}"
+                      Background="{ThemeResource PanelBackgroundABrush}"
+                      BorderBrush="{ThemeResource PanelBorderBrush}"
                       BorderThickness="0 0 1 0">
                     <Grid x:Name="LeftNavigationBar"/>
                 </Grid>
@@ -126,7 +126,7 @@
                                           ResizeDirection="Auto"
                                           ResizeBehavior="BasedOnAlignment"
                                           Background="Transparent" 
-                                          Foreground="{StaticResource PanelBackgroundBBrush}">
+                                          Foreground="{ThemeResource PanelBackgroundBBrush}">
                                 <toolkit:GridSplitter.RenderTransform>
                                     <TranslateTransform Y="-2" />
                                 </toolkit:GridSplitter.RenderTransform>
@@ -148,8 +148,8 @@
                                               Width="4"
                                               ResizeDirection="Auto"
                                               ResizeBehavior="BasedOnAlignment"
-                                              Background="{StaticResource PanelBackgroundBBrush}" 
-                                              Foreground="{StaticResource PanelBackgroundBBrush}">
+                                              Background="{ThemeResource PanelBackgroundBBrush}" 
+                                              Foreground="{ThemeResource PanelBackgroundBBrush}">
                             <toolkit:GridSplitter.RenderTransform>
                                 <TranslateTransform X="-2" />
                             </toolkit:GridSplitter.RenderTransform>
@@ -163,8 +163,8 @@
                                               Width="4"
                                               ResizeDirection="Auto"
                                               ResizeBehavior="BasedOnAlignment"
-                                              Background="{StaticResource PanelBackgroundBBrush}" 
-                                              Foreground="{StaticResource PanelBackgroundBBrush}">
+                                              Background="{ThemeResource PanelBackgroundBBrush}" 
+                                              Foreground="{ThemeResource PanelBackgroundBBrush}">
                             <toolkit:GridSplitter.RenderTransform>
                                 <TranslateTransform X="-2" />
                             </toolkit:GridSplitter.RenderTransform>
@@ -177,7 +177,7 @@
                       Grid.Column="0"
                       Grid.ColumnSpan="3" 
                       Background="{ThemeResource PanelBackgroundABrush}"
-                      BorderBrush="{StaticResource PanelBorderBrush}"
+                      BorderBrush="{ThemeResource PanelBorderBrush}"
                       BorderThickness="0 1 0 0">
                     <Grid x:Name="StatusBar"/>
                 </Grid>
