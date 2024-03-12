@@ -9,6 +9,9 @@ public sealed partial class WorkspacePage : Page
 {
     public WorkspacePageViewModel ViewModel { get; }
 
+    private Button _leftPanelButton;
+    private Button _rightPanelButton;
+
     private Grid _leftPanel;
     private Grid _centerPanel;
     private Grid _bottomPanel;
@@ -25,10 +28,29 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
+        _leftPanelButton = new Button()
+            .Content(new FontIcon
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                Glyph = "\ue76b",
+            })
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Top);
+
+        _rightPanelButton = new Button()
+            .Content(new FontIcon
+            {
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                Glyph = "\ue76c",
+            })
+            .HorizontalAlignment(HorizontalAlignment.Right)
+            .VerticalAlignment(VerticalAlignment.Top);
+
         _leftPanel = new Grid()
-            .Grid(column:0, row:0, rowSpan:3)
+            .Grid(column: 0, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background("Red");
+            .Background("Red")
+            .Children(_leftPanelButton);
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
@@ -48,7 +70,8 @@ public sealed partial class WorkspacePage : Page
         _rightPanel = new Grid()
             .Grid(column: 2, row:0, rowSpan:3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background("Blue");
+            .Background("Blue")
+            .Children(_rightPanelButton);
 
 #if WINDOWS
 
