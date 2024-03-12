@@ -8,8 +8,8 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     DataContext="{x:Bind ViewModel}">
 
-    <Grid Background="{StaticResource PanelBackgroundABrush}"
-          BorderBrush="{StaticResource PanelBorderBrush}" 
+    <Grid Background="{ThemeResource PanelBackgroundABrush}"
+          BorderBrush="{ThemeResource PanelBorderBrush}" 
           BorderThickness="1 0 0 0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -19,7 +19,7 @@
         <Grid Grid.Row="0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Center"
-              BorderBrush="{StaticResource PanelBorderBrush}" 
+              BorderBrush="{ThemeResource PanelBorderBrush}" 
               BorderThickness="0 0 0 1"
               Height="40">
 
