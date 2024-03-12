@@ -1,18 +1,21 @@
 using Celbridge.BaseLibrary.Settings;
+using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
+using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
 public partial class WorkspacePageViewModel : INotifyPropertyChanged
 {
-    private readonly IEditorSettings _settings;
+    private readonly IEditorSettings _editorSettings;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public WorkspacePageViewModel(IEditorSettings editorSettings)
     {
-        _settings = editorSettings;
-        _settings.PropertyChanged += OnSettings_PropertyChanged;
+        _editorSettings = editorSettings;
+        _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -23,43 +26,61 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
 
     public void OnView_Unloaded()
     {
-        _settings.PropertyChanged -= OnSettings_PropertyChanged;
+        _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
     }
 
     public float LeftPanelWidth
     {
-        get => _settings.LeftPanelWidth;
-        set => _settings.LeftPanelWidth = value;
+        get => _editorSettings.LeftPanelWidth;
+        set => _editorSettings.LeftPanelWidth = value;
     }
 
     public float RightPanelWidth
     {
-        get => _settings.RightPanelWidth;
-        set => _settings.RightPanelWidth = value;
+        get => _editorSettings.RightPanelWidth;
+        set => _editorSettings.RightPanelWidth = value;
     }
 
     public float BottomPanelHeight
     {
-        get => _settings.BottomPanelHeight;
-        set => _settings.BottomPanelHeight = value;
+        get => _editorSettings.BottomPanelHeight;
+        set => _editorSettings.BottomPanelHeight = value;
     }
 
     public bool LeftPanelExpanded
     {
-        get => _settings.LeftPanelExpanded;
-        set => _settings.LeftPanelExpanded = value;
+        get => _editorSettings.LeftPanelExpanded;
+        set => _editorSettings.LeftPanelExpanded = value;
     }
 
     public bool RightPanelExpanded
     {
-        get => _settings.RightPanelExpanded;
-        set => _settings.RightPanelExpanded = value;
+        get => _editorSettings.RightPanelExpanded;
+        set => _editorSettings.RightPanelExpanded = value;
     }
 
     public bool BottomPanelExpanded
     {
-        get => _settings.BottomPanelExpanded;
-        set => _settings.BottomPanelExpanded = value;
+        get => _editorSettings.BottomPanelExpanded;
+        set => _editorSettings.BottomPanelExpanded = value;
+    }
+
+    public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
+    private void ToggleLeftPanel_Executed()
+    {
+        _editorSettings.LeftPanelExpanded = !_editorSettings.LeftPanelExpanded;
+    }
+
+    public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
+    private void ToggleRightPanel_Executed()
+    {
+        _editorSettings.RightPanelExpanded = !_editorSettings.RightPanelExpanded;
+    }
+
+    public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
+    private void ToggleBottomPanel_Executed()
+    {
+        _editorSettings.BottomPanelExpanded = !_editorSettings.BottomPanelExpanded;
     }
 }
 
