@@ -1,5 +1,4 @@
 using Celbridge.BaseLibrary.Settings;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
 using System.Windows.Input;
@@ -47,40 +46,40 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         set => _editorSettings.BottomPanelHeight = value;
     }
 
-    public bool LeftPanelExpanded
+    public bool LeftPanelVisible
     {
-        get => _editorSettings.LeftPanelExpanded;
-        set => _editorSettings.LeftPanelExpanded = value;
+        get => _editorSettings.LeftPanelVisible;
+        set => _editorSettings.LeftPanelVisible = value;
     }
 
-    public bool RightPanelExpanded
+    public bool RightPanelVisible
     {
-        get => _editorSettings.RightPanelExpanded;
-        set => _editorSettings.RightPanelExpanded = value;
+        get => _editorSettings.RightPanelVisible;
+        set => _editorSettings.RightPanelVisible = value;
     }
 
-    public bool BottomPanelExpanded
+    public bool BottomPanelVisible
     {
-        get => _editorSettings.BottomPanelExpanded;
-        set => _editorSettings.BottomPanelExpanded = value;
+        get => _editorSettings.BottomPanelVisible;
+        set => _editorSettings.BottomPanelVisible = value;
     }
 
     public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
     private void ToggleLeftPanel_Executed()
     {
-        _editorSettings.LeftPanelExpanded = !_editorSettings.LeftPanelExpanded;
+        _editorSettings.LeftPanelVisible = !_editorSettings.LeftPanelVisible;
     }
 
     public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
     private void ToggleRightPanel_Executed()
     {
-        _editorSettings.RightPanelExpanded = !_editorSettings.RightPanelExpanded;
+        _editorSettings.RightPanelVisible = !_editorSettings.RightPanelVisible;
     }
 
     public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
     private void ToggleBottomPanel_Executed()
     {
-        _editorSettings.BottomPanelExpanded = !_editorSettings.BottomPanelExpanded;
+        _editorSettings.BottomPanelVisible = !_editorSettings.BottomPanelVisible;
     }
 }
 
