@@ -37,3 +37,9 @@ AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeight
 
 Once you do this however, you are no longer using the standard title bar, so you lose things like the window control styling,
 hover effects, etc. There's gotta be some way to configure these to work again. It's also possible that the AppWindow functionality is only available on Windows 11, so we might need a fallback on Windows 10.
+
+# Setting Drag Rectangles
+
+These discussions discuss a way to define the drag rectangle in the Title Bar.
+https://github.com/microsoft/WindowsAppSDK/discussions/3951
+https://github.com/WinUICommunity/WinUICommunity/blob/main/dev/Core/Helpers/TitleBarHelper.cs
