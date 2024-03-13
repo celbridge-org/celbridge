@@ -66,6 +66,16 @@ There appears however to be a limitation with the `.Add` method. It does not app
 
 The `Add()` method does provide overloads that allow you to specify both a light and dark resource in the same call.
 
+# Using the Fluent Palette
+
+The Fluent Palette section in the [Uno Gallery](https://gallery.platform.uno/) lists some colors constants that you can look up at runtime, for example like this:
+````
+.Background(new SolidColorBrush().Color(ThemeResource.Get<Color>("SystemChromeLowColor")))
+````
+
+This works, but then crashes when I change the system theme with a named resource not found exception.
+I prefer a fixed color scheme similar to Rider's that the default Fluent palette, which will probably change completely in the next update of Windows anyway. This may still be useful if we want to use the system accent color for a UI element, but I wonder how many people bother to customize that?
+
 # Theme Switching
 
 I get a crash when changing the system dark/light if I specify the background color of a page using `.Background(Theme.Brushes.Background.Default)`. As far as I can tell, the `Theme.Brushes` approach is only valid when using the `Material` style, and shouldn't be used for `Fluent` style applications.
