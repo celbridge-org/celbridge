@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Views.UserControls;
+using Windows.UI;
 
 namespace Celbridge.Views.Pages;
 
@@ -29,11 +30,13 @@ public sealed partial class MainPage : Page
         DataContext = ViewModel;
 
         _contentFrame = new Frame()
+            .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
 
         _mainNavigation = new NavigationView()
             .Name("MainNavigation")
             .Grid(row: 1)
+            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
             .IsBackButtonVisible(NavigationViewBackButtonVisible.Collapsed)
             .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftCompact)
             .MenuItems(
