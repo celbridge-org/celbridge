@@ -37,9 +37,6 @@
     <SolidColorBrush x:Key="PanelBorderBrush"
                      Color="{ThemeResource PanelBorderColor}" />
     
-    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"
-                     Color="{ThemeResource BackgroundColor}" />
-
     <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
     <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
     <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>
