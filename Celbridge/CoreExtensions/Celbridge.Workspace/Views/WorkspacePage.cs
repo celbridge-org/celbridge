@@ -7,11 +7,21 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
+    private readonly FontFamily IconFontFamily = new FontFamily("Segoe MDL2 Assets");
+
+    private const string LeftChevronGlyph = "\ue76b";
+    private const string RightChevronGlyph = "\ue76c";
+    private const string DownChevronGlyph = "\ue70d";
+    private const string UpChevronGlyph = "\ue70e";
+
     public WorkspacePageViewModel ViewModel { get; }
 
-    private Button _toggleLeftPanelButton;
-    private Button _toggleRightPanelButton;
-    private Button _toggleBottomPanelButton;
+    private Button _showLeftPanelButton;
+    private Button _hideLeftPanelButton;
+    private Button _showRightPanelButton;
+    private Button _hideRightPanelButton;
+    private Button _showBottomPanelButton;
+    private Button _hideBottomPanelButton;
 
     private Grid _leftPanel;
     private Grid _centerPanel;
@@ -25,9 +35,9 @@ public sealed partial class WorkspacePage : Page
     private RowDefinition _bottomPanelRow;
 
 #if WINDOWS
-    private GridSplitter _leftSplitter;
-    private GridSplitter _rightSplitter;
-    private GridSplitter _bottomSplitter;
+    private GridSplitter _leftPanelSplitter;
+    private GridSplitter _rightPanelSplitter;
+    private GridSplitter _bottomPanelSplitter;
 #endif
 
     public WorkspacePage()
@@ -35,54 +45,113 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
-        _toggleLeftPanelButton = new Button()
+        //
+        // Define panel visibility buttons
+        //
+
+        _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
             .VerticalAlignment(VerticalAlignment.Top)
-            .Command(ViewModel.ToggleLeftPanelCommand);
+            .Command(ViewModel.ToggleLeftPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = RightChevronGlyph,
+            });
 
-        _toggleRightPanelButton = new Button()
+        _hideLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Top)
-            .Command(ViewModel.ToggleRightPanelCommand);
+            .Command(ViewModel.ToggleLeftPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = LeftChevronGlyph,
+            });
 
-        _toggleBottomPanelButton = new Button()
+        _showRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Top)
-            .Command(ViewModel.ToggleBottomPanelCommand);
+            .Command(ViewModel.ToggleRightPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = LeftChevronGlyph,
+            });
+
+        _hideRightPanelButton = new Button()
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Command(ViewModel.ToggleRightPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = RightChevronGlyph,
+            });
+
+        _showBottomPanelButton = new Button()
+            .HorizontalAlignment(HorizontalAlignment.Right)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Command(ViewModel.ToggleBottomPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = UpChevronGlyph,
+            });
+
+        _hideBottomPanelButton = new Button()
+            .HorizontalAlignment(HorizontalAlignment.Right)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Command(ViewModel.ToggleBottomPanelCommand)
+            .Content(new FontIcon
+            {
+                FontFamily = IconFontFamily,
+                Glyph = DownChevronGlyph,
+            });
+
+        //
+        // Define workspace panels
+        //
 
         _leftPanel = new Grid()
             .Grid(column: 0, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Red);
+            .Background(Colors.Red)
+            .Children(_hideLeftPanelButton);
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(Colors.Green)
-            .Children(_toggleLeftPanelButton, _toggleRightPanelButton);
+            .Children(_showLeftPanelButton, _showRightPanelButton);
+
+        _rightPanel = new Grid()
+            .Grid(column: 2, row: 0, rowSpan: 3)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Background(Colors.Blue)
+            .Children(_hideRightPanelButton);
 
         _bottomPanel = new Grid()
             .Grid(column: 1, row: 1)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Cyan);
+            .Background(Colors.Cyan)
+            .Children(_hideBottomPanelButton);
 
         _statusPanel = new Grid()
             .Grid(column: 1, row: 2)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(Colors.DarkGreen)
-            .Children(_toggleBottomPanelButton);
-
-        _rightPanel = new Grid()
-            .Grid(column: 2, row: 0, rowSpan: 3)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Blue);
+            .Children(_showBottomPanelButton);
 
 #if WINDOWS
 
-        // GridSplitters are not working on Skia. Attempting to instantiate the control causes
-        // an exception to be thrown.
+        //
+        // Define grid splitters
+        // Note: GridSplitters are not working on Skia. Attempting to instantiate the control causes
+        // an exception to be thrown. Only instantiate GridSplitters on Windows for now.
+        //
 
-        _leftSplitter = new GridSplitter()
+        _leftPanelSplitter = new GridSplitter()
         {
             HorizontalAlignment = HorizontalAlignment.Right,
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
@@ -91,7 +160,7 @@ public sealed partial class WorkspacePage : Page
         .Grid(column:0);
 
 
-        _rightSplitter = new GridSplitter()
+        _rightPanelSplitter = new GridSplitter()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
@@ -99,7 +168,7 @@ public sealed partial class WorkspacePage : Page
         }
         .Grid(column: 2);
 
-        _bottomSplitter = new GridSplitter()
+        _bottomPanelSplitter = new GridSplitter()
         {
             VerticalAlignment = VerticalAlignment.Top,
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
@@ -108,14 +177,22 @@ public sealed partial class WorkspacePage : Page
         .Grid(column: 1, row: 1);
 #endif
 
+        //
+        // Define Layout Root
+        //
+
         _layoutRoot = new Grid()
             .ColumnDefinitions("200, *, 200")
             .RowDefinitions("*, 200, 28")
             .Children(_leftPanel, _centerPanel, _bottomPanel, _statusPanel, _rightPanel
 #if WINDOWS
-            , _leftSplitter, _rightSplitter, _bottomSplitter
+            , _leftPanelSplitter, _rightPanelSplitter, _bottomPanelSplitter
 #endif
             );
+
+        //
+        // Set min size for resizing the splitter panels
+        //
 
         _leftPanelColumn = _layoutRoot.ColumnDefinitions[0];
         _leftPanelColumn.MinWidth = 100;
@@ -126,6 +203,10 @@ public sealed partial class WorkspacePage : Page
         _bottomPanelRow = _layoutRoot.RowDefinitions[1];
         _bottomPanelRow.MinHeight = 100;
 
+        //
+        // Set the data context and page content
+        // 
+
         this.DataContext(ViewModel, (page, vm) => page
             .Background(Theme.Brushes.Background.Default)
             .Content(_layoutRoot)
@@ -133,7 +214,6 @@ public sealed partial class WorkspacePage : Page
 
         Loaded += WorkspacePage_Loaded;
         Unloaded += WorkspacePage_Unloaded;
-
     }
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
@@ -155,7 +235,7 @@ public sealed partial class WorkspacePage : Page
             _bottomPanelRow.Height = new GridLength(bottomPanelHeight);
         }
 
-        UpdateExpandedPanels();
+        UpdatePanels();
 
         _leftPanel.SizeChanged += (s, e) => ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
         _rightPanel.SizeChanged += (s, e) => ViewModel.RightPanelWidth = (float)e.NewSize.Width;
@@ -176,43 +256,37 @@ public sealed partial class WorkspacePage : Page
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.LeftPanelExpanded):
-            case nameof(ViewModel.RightPanelExpanded):
-            case nameof(ViewModel.BottomPanelExpanded):
-                UpdateExpandedPanels();
+            case nameof(ViewModel.LeftPanelVisible):
+            case nameof(ViewModel.RightPanelVisible):
+            case nameof(ViewModel.BottomPanelVisible):
+                UpdatePanels();
                 break;
         }
     }
 
-    private void UpdateExpandedPanels()
+    private void UpdatePanels()
     {
-        const string LeftChevron = "\ue76b";
-        const string RightChevron = "\ue76c";
-        const string DownChevron = "\ue70d";
-        const string UpChevron = "\ue70e";
+        //
+        // Update button visibility based on panel visibility state
+        //
 
-        _toggleLeftPanelButton.Content = new FontIcon
-        {
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            Glyph = ViewModel.LeftPanelExpanded ? LeftChevron : RightChevron,
-        };
+        _showLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _toggleRightPanelButton.Content = new FontIcon
-        {
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            Glyph = ViewModel.RightPanelExpanded ? RightChevron : LeftChevron,
-        };
+        _showRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _toggleBottomPanelButton.Content = new FontIcon
-        {
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            Glyph = ViewModel.BottomPanelExpanded ? DownChevron : UpChevron,
-        };
+        _showBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        if (ViewModel.LeftPanelExpanded)
+        //
+        // Update panel and splitter visibility based on the panel visibility state
+        //
+
+        if (ViewModel.LeftPanelVisible)
         {
 #if WINDOWS
-            _leftSplitter.Visibility = Visibility.Visible;
+            _leftPanelSplitter.Visibility = Visibility.Visible;
 #endif
             _leftPanel.Visibility = Visibility.Visible;
             _leftPanelColumn.MinWidth = 100;
@@ -221,17 +295,17 @@ public sealed partial class WorkspacePage : Page
         else
         {
 #if WINDOWS
-            _leftSplitter.Visibility = Visibility.Collapsed;
+            _leftPanelSplitter.Visibility = Visibility.Collapsed;
 #endif
             _leftPanel.Visibility = Visibility.Collapsed;
             _leftPanelColumn.MinWidth = 0;
             _leftPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.RightPanelExpanded)
+        if (ViewModel.RightPanelVisible)
         {
 #if WINDOWS
-            _rightSplitter.Visibility = Visibility.Visible;
+            _rightPanelSplitter.Visibility = Visibility.Visible;
 #endif
             _rightPanel.Visibility = Visibility.Visible;
             _rightPanelColumn.MinWidth = 100;
@@ -240,17 +314,17 @@ public sealed partial class WorkspacePage : Page
         else
         {
 #if WINDOWS
-            _rightSplitter.Visibility = Visibility.Collapsed;
+            _rightPanelSplitter.Visibility = Visibility.Collapsed;
 #endif
             _rightPanel.Visibility = Visibility.Collapsed;
             _rightPanelColumn.MinWidth = 0;
             _rightPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.BottomPanelExpanded)
+        if (ViewModel.BottomPanelVisible)
         {
 #if WINDOWS
-            _bottomSplitter.Visibility = Visibility.Visible;
+            _bottomPanelSplitter.Visibility = Visibility.Visible;
 #endif
             _bottomPanel.Visibility = Visibility.Visible;
             _bottomPanelRow.MinHeight = 100;
@@ -259,7 +333,7 @@ public sealed partial class WorkspacePage : Page
         else
         {
 #if WINDOWS
-            _bottomSplitter.Visibility = Visibility.Collapsed;
+            _bottomPanelSplitter.Visibility = Visibility.Collapsed;
 #endif
             _bottomPanel.Visibility = Visibility.Collapsed;
             _bottomPanelRow.MinHeight = 0;
