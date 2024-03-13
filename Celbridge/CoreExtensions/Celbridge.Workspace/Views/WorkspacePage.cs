@@ -116,31 +116,39 @@ public sealed partial class WorkspacePage : Page
         _leftPanel = new Grid()
             .Grid(column: 0, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Red)
+            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .BorderThickness(new Thickness(1, 0, 1, 0))
             .Children(_hideLeftPanelButton);
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Green)
+            .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Children(_showLeftPanelButton, _showRightPanelButton);
 
         _rightPanel = new Grid()
             .Grid(column: 2, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Blue)
+            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .BorderThickness(new Thickness(1, 0, 1, 0))
             .Children(_hideRightPanelButton);
 
         _bottomPanel = new Grid()
             .Grid(column: 1, row: 1)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.Cyan)
+            .Background(StaticResource.Get<Brush>("PanelBackgroundBBrush"))
+            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .BorderThickness(new Thickness(0, 1, 0, 0))
             .Children(_hideBottomPanelButton);
 
         _statusPanel = new Grid()
             .Grid(column: 1, row: 2)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(Colors.DarkGreen)
+            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .BorderThickness(new Thickness(0, 1, 0, 0))
             .Children(_showBottomPanelButton);
 
 #if WINDOWS
@@ -157,8 +165,8 @@ public sealed partial class WorkspacePage : Page
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
             ResizeBehavior = GridSplitter.GridResizeBehavior.BasedOnAlignment,
         }
-        .Grid(column:0);
-
+        .Grid(column:0)
+        .Foreground(StaticResource.Get<Brush>("PanelBackgroundBBrush"));
 
         _rightPanelSplitter = new GridSplitter()
         {
@@ -166,7 +174,8 @@ public sealed partial class WorkspacePage : Page
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
             ResizeBehavior = GridSplitter.GridResizeBehavior.BasedOnAlignment,
         }
-        .Grid(column: 2);
+        .Grid(column: 2)
+        .Foreground(StaticResource.Get<Brush>("PanelBackgroundBBrush"));
 
         _bottomPanelSplitter = new GridSplitter()
         {
@@ -174,7 +183,8 @@ public sealed partial class WorkspacePage : Page
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
             ResizeBehavior = GridSplitter.GridResizeBehavior.BasedOnAlignment,
         }
-        .Grid(column: 1, row: 1);
+        .Grid(column: 1, row: 1)
+        .Foreground(StaticResource.Get<Brush>("PanelBackgroundBBrush"));
 #endif
 
         //
@@ -183,7 +193,7 @@ public sealed partial class WorkspacePage : Page
 
         _layoutRoot = new Grid()
             .ColumnDefinitions("200, *, 200")
-            .RowDefinitions("*, 200, 28")
+            .RowDefinitions("*, 200, 32")
             .Children(_leftPanel, _centerPanel, _bottomPanel, _statusPanel, _rightPanel
 #if WINDOWS
             , _leftPanelSplitter, _rightPanelSplitter, _bottomPanelSplitter
