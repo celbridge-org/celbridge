@@ -5,7 +5,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:utils="using:Celbridge.Legacy.Utils"
     xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Background="{ThemeResource ApplicationBackgroundBrush}"
     DataContext="{x:Bind ViewModel}">
 
     <Grid Background="{ThemeResource PanelBackgroundABrush}"
