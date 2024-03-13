@@ -1,15 +1,13 @@
-﻿using Celbridge.BaseLibrary.Core;
-using Celbridge.BaseLibrary.Settings;
-using CommunityToolkit.Diagnostics;
+﻿using Celbridge.BaseLibrary.Settings;
 using Newtonsoft.Json;
 
-namespace Celbridge.Tests.Fakes;
+namespace Celbridge.Services.Settings;
 
 /// <summary>
-/// A fake implementation of ISettingsGroup for use with automated tests.
-/// We can't use the real SettingsGroup class because it has a dependency on Windows.Storage which isn't supported for unit testing.
+/// A non-persistent implementation of ISettingsGroup for use with automated tests and other unpackaged builds.
+/// Any properties stored in this class are discarded after the application exits.
 /// </summary>
-public class FakeSettingsGroup : ISettingsGroup
+public class TempSettingsGroup : ISettingsGroup
 {
     private string? _groupName;
     private Dictionary<string, object> _container = new();
