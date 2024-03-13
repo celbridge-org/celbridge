@@ -27,18 +27,18 @@
         </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="32"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="40"/>
+            <ColumnDefinition Width="32"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <Image Source="ms-appx:///Assets/Icons/Logo.png"
-               Height="28"
-               Width="28"
-               Margin="0"
+               Height="16"
+               Width="16"
+               Margin="16 0 0 0"
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
     </Grid>
