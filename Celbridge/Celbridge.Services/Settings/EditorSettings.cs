@@ -8,10 +8,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         : base(settingsGroup, nameof(EditorSettings))
     {}
 
-    public bool LeftPanelExpanded
+    public bool LeftPanelVisible
     {
-        get => GetValue<bool>(nameof(LeftPanelExpanded), true);
-        set => SetValue(nameof(LeftPanelExpanded), value);
+        get => GetValue<bool>(nameof(LeftPanelVisible), true);
+        set => SetValue(nameof(LeftPanelVisible), value);
     }
 
     public float LeftPanelWidth
@@ -20,10 +20,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(LeftPanelWidth), value);
     }
 
-    public bool RightPanelExpanded
+    public bool RightPanelVisible
     {
-        get => GetValue<bool>(nameof(RightPanelExpanded), true);
-        set => SetValue(nameof(RightPanelExpanded), value);
+        get => GetValue<bool>(nameof(RightPanelVisible), true);
+        set => SetValue(nameof(RightPanelVisible), value);
     }
 
     public float RightPanelWidth
@@ -32,10 +32,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(RightPanelWidth), value);
     }
 
-    public bool BottomPanelExpanded
+    public bool BottomPanelVisible
     {
-        get => GetValue<bool>(nameof(BottomPanelExpanded), true);
-        set => SetValue(nameof(BottomPanelExpanded), value);
+        get => GetValue<bool>(nameof(BottomPanelVisible), true);
+        set => SetValue(nameof(BottomPanelVisible), value);
     }
 
     public float BottomPanelHeight
