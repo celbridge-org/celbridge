@@ -45,6 +45,6 @@ public class EditorSettingsTests
         editorSettings.Theme.Should().Be(ApplicationColorTheme.Light.ToString());
 
         // Check the default value system is working
-        editorSettings.LeftPanelExpanded.Should().BeTrue();
+        editorSettings.LeftPanelVisible.Should().BeTrue();
     }
 }

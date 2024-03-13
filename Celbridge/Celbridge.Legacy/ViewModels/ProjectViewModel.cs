@@ -247,7 +247,7 @@ public partial class ProjectViewModel : ObservableObject
     {
         // Toggle the left toolbar expanded state
         Guard.IsNotNull(_settingsService.EditorSettings);
-        _settingsService.EditorSettings.LeftPanelExpanded = false;
+        _settingsService.EditorSettings.LeftPanelVisible = false;
     }
 
     private void OnProjectFolderChanged(object recipient, FolderChangedMessage message)

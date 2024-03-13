@@ -7,15 +7,15 @@ namespace Celbridge.BaseLibrary.Settings;
 /// </summary>
 public interface IEditorSettings : INotifyPropertyChanged
 {
-    bool LeftPanelExpanded { get; set; }
+    bool LeftPanelVisible { get; set; }
 
     float LeftPanelWidth { get; set; }
 
-    bool RightPanelExpanded { get; set; }
+    bool RightPanelVisible { get; set; }
 
     float RightPanelWidth { get; set; }
 
-    bool BottomPanelExpanded { get; set; }
+    bool BottomPanelVisible { get; set; }
 
     float BottomPanelHeight { get; set; }
 

@@ -163,6 +163,6 @@ public partial class InspectorViewModel : ObservableObject
         Guard.IsNotNull(_settingsService.EditorSettings);
 
         // Toggle the left toolbar expanded state
-        _settingsService.EditorSettings.RightPanelExpanded = false;
+        _settingsService.EditorSettings.RightPanelVisible = false;
     }
 }
