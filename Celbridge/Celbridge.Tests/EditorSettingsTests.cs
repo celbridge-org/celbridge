@@ -1,6 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Settings;
 using Celbridge.Services.Settings;
-using Celbridge.Tests.Fakes;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +15,7 @@ public class EditorSettingsTests
     {
         var services = new ServiceCollection();
 
-        services.AddTransient<ISettingsGroup, FakeSettingsGroup>();
+        services.AddTransient<ISettingsGroup, TempSettingsGroup>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -27,24 +26,21 @@ public class EditorSettingsTests
     {}
 
     [Test]
-    public void ICanCanGetAndSetTheApplicationTheme()
+    public void ICanCanGetAndSetEditorSettings()
     {
         Guard.IsNotNull(_serviceProvider);
 
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
-        // Get the default value
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light.ToString());
-
-        // Set a new value
-        editorSettings.Theme = ApplicationColorTheme.Dark.ToString();
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Dark.ToString());
-
-        // Reset the settings
-        editorSettings.Reset();
-        editorSettings.Theme.Should().Be(ApplicationColorTheme.Light.ToString());
-
         // Check the default value system is working
+        editorSettings.LeftPanelVisible.Should().BeTrue();
+
+        // Set a property
+        editorSettings.LeftPanelVisible = false;
+        editorSettings.LeftPanelVisible.Should().BeFalse();
+
+        // Reset the property to default
+        editorSettings.Reset();
         editorSettings.LeftPanelVisible.Should().BeTrue();
     }
 }
