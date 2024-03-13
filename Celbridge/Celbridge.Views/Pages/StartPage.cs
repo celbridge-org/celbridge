@@ -17,7 +17,6 @@ public sealed partial class StartPage : Page
         DataContext = ViewModel;
 
         this.DataContext<StartPageViewModel>((page, vm) => page
-            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .Children(
