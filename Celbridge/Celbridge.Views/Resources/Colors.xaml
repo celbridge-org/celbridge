@@ -1,42 +1,42 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-					xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-	<ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary.ThemeDictionaries>
 
-		<!-- Light Theme -->
-		<ResourceDictionary x:Key="Light">
-			<Color x:Key="BackgroundColor">#FFFFFF</Color>
+        <!-- Light Theme -->
+        <ResourceDictionary x:Key="Light">
+            <Color x:Key="ApplicationBackgroundColor">#FFFFFF</Color>
             <Color x:Key="TitleBarActiveColor">#F3F3F3</Color>
             <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
             <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
             <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
             <Color x:Key="PanelBorderColor">#EBECF0</Color>
-		</ResourceDictionary>
+        </ResourceDictionary>
 
-		<!-- Dark Theme -->
-		<ResourceDictionary x:Key="Dark">
-			<Color x:Key="BackgroundColor">#121212</Color>
+        <!-- Dark Theme -->
+        <ResourceDictionary x:Key="Dark">
+            <Color x:Key="ApplicationBackgroundColor">#121212</Color>
             <Color x:Key="TitleBarActiveColor">#2B2D30</Color>
             <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
             <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
             <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
             <Color x:Key="PanelBorderColor">#1E1F22</Color>
         </ResourceDictionary>
-		
-	</ResourceDictionary.ThemeDictionaries>
+        
+    </ResourceDictionary.ThemeDictionaries>
+
+    <SolidColorBrush x:Key="ApplicationBackgroundBrush"
+                     Color="{ThemeResource ApplicationBackgroundColor}" />
 
     <SolidColorBrush x:Key="PanelBackgroundABrush"
-					 Color="{ThemeResource PanelBackgroundAColor}" />
+                     Color="{ThemeResource PanelBackgroundAColor}" />
 
     <SolidColorBrush x:Key="PanelBackgroundBBrush"
-					 Color="{ThemeResource PanelBackgroundBColor}" />
+                     Color="{ThemeResource PanelBackgroundBColor}" />
 
     <SolidColorBrush x:Key="PanelBorderBrush"
-					 Color="{ThemeResource PanelBorderColor}" />
+                     Color="{ThemeResource PanelBorderColor}" />
     
-	<SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"
-					 Color="{ThemeResource BackgroundColor}" />
-
     <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
     <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
     <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>

@@ -11,7 +11,7 @@
     xmlns:utils="using:Celbridge.Legacy.Utils"
     mc:Ignorable="d"
     DataContext="{x:Bind ViewModel}"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ApplicationBackgroundBrush}">
 
     <UserControl.Resources>
 

@@ -20,7 +20,7 @@
     </Page.Resources>
     
     <Grid x:Name="Root"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        Background="{ThemeResource ApplicationBackgroundBrush}">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
