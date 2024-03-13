@@ -5,6 +5,11 @@ using Windows.Storage;
 
 namespace Celbridge.Services.Settings;
 
+/// <summary>
+/// Persists a set of key value properties using the Uno Platform Storage API.
+/// The Storage API is not available in unpackaged Windows builds, but you can use TempSettingsGroup as a non-persistant
+/// replacement for unit tests, etc.
+/// </summary>
 public class SettingsGroup : ISettingsGroup
 {
     private ILoggingService _loggingService;
