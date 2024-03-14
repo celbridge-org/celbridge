@@ -5,8 +5,6 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Platforms", "Platforms", "{00CDDD2D-1203-45CC-AF20-A4F225B3840A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{DA49B39E-650B-4A1D-9297-AD7BFA7B8947}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Tests", "Celbridge.Tests\Celbridge.Tests.csproj", "{C3B7A13A-432B-4AB1-9CC4-28655EB769DD}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Skia.Gtk", "Celbridge.Skia.Gtk\Celbridge.Skia.Gtk.csproj", "{47B12570-9DC3-40FB-9A66-5C3A4741DAE3}"
@@ -43,7 +41,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.ViewModels", "Cel
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Views", "Celbridge.Views\Celbridge.Views.csproj", "{089967D2-7B37-43E8-9FF9-1C83751490FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.CoreExtension", "Celbridge.CoreExtension\Celbridge.CoreExtension.csproj", "{034019E9-A490-408E-A9EF-456A3A4FF451}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.CoreExtension", "Celbridge.CoreExtension\Celbridge.CoreExtension.csproj", "{034019E9-A490-408E-A9EF-456A3A4FF451}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -278,7 +276,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{C3B7A13A-432B-4AB1-9CC4-28655EB769DD} = {DA49B39E-650B-4A1D-9297-AD7BFA7B8947}
 		{47B12570-9DC3-40FB-9A66-5C3A4741DAE3} = {00CDDD2D-1203-45CC-AF20-A4F225B3840A}
 		{9CB54AA0-5202-43FF-BDB3-1184BD830EB7} = {00CDDD2D-1203-45CC-AF20-A4F225B3840A}
 		{9E592BB2-A8E3-43C2-8BF6-AF2F481BC255} = {00CDDD2D-1203-45CC-AF20-A4F225B3840A}
