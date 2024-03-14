@@ -24,7 +24,7 @@ public class NavigationService : INavigationService
         _messengerService = messengerService;
     }
 
-    public void SetMainWindow(Window mainWindow)
+    public void Initialize(Window mainWindow)
     {
         Guard.IsNotNull(mainWindow);
         Guard.IsNull(_mainWindow);
