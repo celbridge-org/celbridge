@@ -109,6 +109,10 @@ public class NavigationService : INavigationService
 
         // Navigate using the resolved page type
         var navigateResult = _navigationProvider.NavigateToPage(pageType);
+        if (navigateResult.IsFailure)
+        {
+            _loggingService.Error(navigateResult.Error);
+        }   
 
         return navigateResult;
     }
