@@ -1,6 +1,8 @@
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Workspace.Services;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
@@ -8,23 +10,23 @@ using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
-public partial class WorkspacePageViewModel : INotifyPropertyChanged, IWorkspace
+public partial class WorkspacePageViewModel : INotifyPropertyChanged
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IEditorSettings _editorSettings;
+    private readonly IWorkspaceService _workspaceService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public WorkspacePageViewModel(IServiceProvider serviceProvider,
-        IMessengerService messengerService,
+    public WorkspacePageViewModel(IMessengerService messengerService,
         IUserInterfaceService userInterface,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IWorkspaceService workspaceService)
     {
-        _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _userInterfaceService = userInterface;
+        _workspaceService = workspaceService; // Transient instance created at the same time as the view model
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
@@ -96,28 +98,29 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged, IWorkspace
     }
 
     /// <summary>
-    /// The view registers with this event to be notified when a workspace panel has been created.
+    /// The WorkspacePage registers with this event to be notified when a workspace panel has been created.
     /// </summary>
-    public event Action<WorkspacePanelType, UserControl>? WorkspacePanelAdded;
+    public event Action<Dictionary<WorkspacePanelType, UIElement>>? WorkspacePanelsCreated;
 
     public void OnWorkspacePageLoaded()
     {
+        // Use the concrete type to avoid exposing CreateWorkspacePanels() in the public API
+        var workspaceService = _workspaceService as WorkspaceService;
+        Guard.IsNotNull(workspaceService);
+
+        var panels = workspaceService.CreateWorkspacePanels();
+        WorkspacePanelsCreated?.Invoke(panels);
+
         // Inform the user interface service that the workspace page has loaded
-        var message = new WorkspacePageLoadedMessage(this);
+        var message = new WorkspaceLoadedMessage(_workspaceService);
         _messengerService.Send(message);
+    }
 
-        foreach (var config in _userInterfaceService.WorkspacePanelConfigs)
-        {
-            // Instantiate the panel
-            var panel = _serviceProvider.GetRequiredService(config.ViewType) as UserControl;
-            if (panel is null)
-            {
-                throw new Exception($"Failed to create a workspace panel of type '{config.ViewType}'");
-            }
-
-            // Attach the panel to the workspace UI
-            WorkspacePanelAdded?.Invoke(config.PanelType, panel);
-        }
+    public void OnWorkspacePageUnloaded()
+    {
+        // Inform the user interface service that the workspace page has been unloaded
+        var message = new WorkspaceUnloadedMessage();
+        _messengerService.Send(message);
     }
 }
 

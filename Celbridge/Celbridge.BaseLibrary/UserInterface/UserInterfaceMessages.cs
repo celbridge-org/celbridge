@@ -11,6 +11,13 @@ public record MainWindowActivatedMessage();
 public record MainWindowDeactivatedMessage();
 
 /// <summary>
-/// Sent when the workspace page has been loaded.
+/// Sent when the workspace has been loaded.
+/// The WorkspaceService has the same lifetime as the loaded workspace.
 /// </summary>
-public record WorkspacePageLoadedMessage(IWorkspace Workspace);
+public record WorkspaceLoadedMessage(IWorkspaceService WorkspaceService);
+
+/// <summary>
+/// Sent when the workspace has been unloaded.
+/// </summary>
+public record WorkspaceUnloadedMessage();
+
