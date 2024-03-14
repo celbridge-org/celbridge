@@ -75,11 +75,18 @@ public class App : Application
             MainWindow.Title = localizer["ApplicationName.Text"];
         }
 
-        // Initialize the user interface system
-        // Using the concrete class here to avoid exposing a setter for Window in the interface.
+        //
+        // Initialize the user interface and page navigation services
+        // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
+        //
+
+        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
+        Guard.IsNotNull(userInterfaceService);
+        userInterfaceService.Initialize();
+
         var navigationService = Host.Services.GetRequiredService<INavigationService>() as NavigationService;
         Guard.IsNotNull(navigationService);
-        navigationService.SetMainWindow(MainWindow);
+        navigationService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
