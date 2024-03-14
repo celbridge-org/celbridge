@@ -43,8 +43,20 @@ public sealed partial class ConsolePanel : UserControl
                 new TextBlock()
                     .Grid(column: 0)
                     .Text(Title)
+                    .Margin(6, 0, 0, 0)
                     .VerticalAlignment(VerticalAlignment.Center),
                 clearButton);
+
+        var scrollViewer = new ScrollViewer()
+            .Grid(row: 1)
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
+            .Padding(6)
+            .Content(new TextBlock()
+                .TextWrapping(TextWrapping.Wrap)
+                .VerticalAlignment(VerticalAlignment.Bottom)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .IsTextSelectionEnabled(true)
+                .Text("Placeholder"));
 
         var inputTextBox = new TextBox()
             .Grid(row: 2)
@@ -58,7 +70,7 @@ public sealed partial class ConsolePanel : UserControl
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *, 32")
-            .Children(titleBar, inputTextBox);
+            .Children(titleBar, scrollViewer, inputTextBox);
            
         //
         // Set the data context and page content

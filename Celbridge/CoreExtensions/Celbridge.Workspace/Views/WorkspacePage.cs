@@ -2,7 +2,6 @@
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
-using Uno.Themes.Markup;
 
 namespace Celbridge.Workspace.Views;
 
@@ -150,7 +149,6 @@ public sealed partial class WorkspacePage : Page
 
         _bottomPanel = new Grid()
             .Grid(column: 1, row: 1)
-            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
@@ -160,6 +158,8 @@ public sealed partial class WorkspacePage : Page
                     .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
                     .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
                     .BorderThickness(0, 1, 0, 1)
+                    .Height(40)
+                    .VerticalAlignment(VerticalAlignment.Top)
                     .Children(_hideBottomPanelButton));
 
         _statusPanel = new Grid()
