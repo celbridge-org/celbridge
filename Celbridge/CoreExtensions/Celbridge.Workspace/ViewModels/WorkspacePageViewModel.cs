@@ -1,18 +1,31 @@
+using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
+using Celbridge.BaseLibrary.UserInterface;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
-public partial class WorkspacePageViewModel : INotifyPropertyChanged
+public partial class WorkspacePageViewModel : INotifyPropertyChanged, IWorkspace
 {
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
+    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IEditorSettings _editorSettings;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public WorkspacePageViewModel(IEditorSettings editorSettings)
+    public WorkspacePageViewModel(IServiceProvider serviceProvider,
+        IMessengerService messengerService,
+        IUserInterfaceService userInterface,
+        IEditorSettings editorSettings)
     {
+        _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
+        _userInterfaceService = userInterface;
+
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
     }
@@ -80,6 +93,31 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.BottomPanelVisible = !_editorSettings.BottomPanelVisible;
+    }
+
+    /// <summary>
+    /// The view registers with this event to be notified when a workspace panel has been created.
+    /// </summary>
+    public event Action<WorkspacePanelType, UserControl>? WorkspacePanelAdded;
+
+    public void OnWorkspacePageLoaded()
+    {
+        // Inform the user interface service that the workspace page has loaded
+        var message = new WorkspacePageLoadedMessage(this);
+        _messengerService.Send(message);
+
+        foreach (var config in _userInterfaceService.WorkspacePanelConfigs)
+        {
+            // Instantiate the panel
+            var panel = _serviceProvider.GetRequiredService(config.ViewType) as UserControl;
+            if (panel is null)
+            {
+                throw new Exception($"Failed to create a workspace panel of type '{config.ViewType}'");
+            }
+
+            // Attach the panel to the workspace UI
+            WorkspacePanelAdded?.Invoke(config.PanelType, panel);
+        }
     }
 }
 

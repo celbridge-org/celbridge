@@ -1,4 +1,5 @@
-﻿using Celbridge.Workspace.ViewModels;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Uno.Themes.Markup;
@@ -252,14 +253,29 @@ public sealed partial class WorkspacePage : Page
         _bottomPanel.SizeChanged += (s, e) => ViewModel.BottomPanelHeight = (float)e.NewSize.Height;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        ViewModel.WorkspacePanelAdded += ViewModel_WorkspacePanelAdded;
+
+        ViewModel.OnWorkspacePageLoaded();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        ViewModel.WorkspacePanelAdded -= ViewModel_WorkspacePanelAdded;
 
         Loaded -= WorkspacePage_Loaded;
         Unloaded -= WorkspacePage_Unloaded;
+    }
+
+    private void ViewModel_WorkspacePanelAdded(WorkspacePanelType panelType, UserControl panel)
+    {
+        // Add the newly instantiated panel to the appropriate container element
+        switch (panelType)
+        {
+            case WorkspacePanelType.ConsolePanel:
+                _bottomPanel.Children.Add(panel);
+                break;
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
