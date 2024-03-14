@@ -6,6 +6,7 @@ public class UserInterfaceService : IUserInterfaceService
 {
     private IMessengerService _messengerService;
     private ILoggingService _loggingService;
+    private IWorkspaceService? _workspaceService;
 
     public UserInterfaceService(IMessengerService messengerService, 
         ILoggingService loggingService)
@@ -16,24 +17,29 @@ public class UserInterfaceService : IUserInterfaceService
 
     public void Initialize()
     {
-        _messengerService.Register<WorkspacePageLoadedMessage>(this, OnWorkspacePageLoaded);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
-    private void OnWorkspacePageLoaded(object recipient, WorkspacePageLoadedMessage loadedMessage)
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
     {
-        _workspace = loadedMessage.Workspace;
+        _workspaceService = loadedMessage.WorkspaceService;
     }
 
-    private IWorkspace? _workspace;
-    public IWorkspace Workspace
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    {
+        _workspaceService = null;
+    }
+
+    public IWorkspaceService Workspace
     {
         get
         {
-            if (_workspace is null)
+            if (_workspaceService is null)
             {
                 throw new InvalidOperationException("Failed to acquire workspace because no workspace has been loaded");
             }
-            return _workspace;
+            return _workspaceService;
         }
     }
 
