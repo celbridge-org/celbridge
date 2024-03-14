@@ -3,7 +3,7 @@
 SymbolIcon is handy but pretty limited. Font Icon is more awkward to use, but give you more flexibility, such as being able to set the size.
 
 The Symbol enum is listed here. Copy the unicode value on the right hand side of that table for the icon you want to display.
-https://learn.microsoft.com/en-us/uwp/api/windows.ui.xaml.controls.symbol?view=winrt-22621
+https://learn.microsoft.com/en-us/windows/apps/design/style/segoe-ui-symbol-font
 
 To specify the icon directly in XAML, reference the unicode value like this:
 

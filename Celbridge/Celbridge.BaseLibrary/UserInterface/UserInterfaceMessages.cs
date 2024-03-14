@@ -9,3 +9,15 @@ public record MainWindowActivatedMessage();
 /// Sent when the main window has been deactivated (i.e. lost focus).
 /// </summary>
 public record MainWindowDeactivatedMessage();
+
+/// <summary>
+/// Sent when the workspace has been loaded.
+/// The WorkspaceService has the same lifetime as the loaded workspace.
+/// </summary>
+public record WorkspaceLoadedMessage(IWorkspaceService WorkspaceService);
+
+/// <summary>
+/// Sent when the workspace has been unloaded.
+/// </summary>
+public record WorkspaceUnloadedMessage();
+
