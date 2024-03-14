@@ -62,7 +62,7 @@ public sealed partial class WorkspacePage : Page
 
         _hideLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon
             {
@@ -81,8 +81,8 @@ public sealed partial class WorkspacePage : Page
             });
 
         _hideRightPanelButton = new Button()
-            .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Top)
+            .HorizontalAlignment(HorizontalAlignment.Right)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleRightPanelCommand)
             .Content(new FontIcon
             {
@@ -102,7 +102,7 @@ public sealed partial class WorkspacePage : Page
 
         _hideBottomPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleBottomPanelCommand)
             .Content(new FontIcon
             {
@@ -116,11 +116,17 @@ public sealed partial class WorkspacePage : Page
 
         _leftPanel = new Grid()
             .Grid(column: 0, row: 0, rowSpan: 3)
+            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(1, 0, 1, 0))
-            .Children(_hideLeftPanelButton);
+            .Children(
+                new Grid()
+                    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+                    .BorderThickness(0, 0, 0, 1)
+                    .Children(_hideLeftPanelButton));
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
@@ -130,19 +136,31 @@ public sealed partial class WorkspacePage : Page
 
         _rightPanel = new Grid()
             .Grid(column: 2, row: 0, rowSpan: 3)
+            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(1, 0, 1, 0))
-            .Children(_hideRightPanelButton);
+            .Children(
+                new Grid()
+                    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+                    .BorderThickness(0, 0, 0, 1)
+                    .Children(_hideRightPanelButton));
 
         _bottomPanel = new Grid()
             .Grid(column: 1, row: 1)
+            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(0, 1, 0, 0))
-            .Children(_hideBottomPanelButton);
+            .Children(
+                new Grid()
+                    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+                    .BorderThickness(0, 1, 0, 1)
+                    .Children(_hideBottomPanelButton));
 
         _statusPanel = new Grid()
             .Grid(column: 1, row: 2)
@@ -166,7 +184,7 @@ public sealed partial class WorkspacePage : Page
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
             ResizeBehavior = GridSplitter.GridResizeBehavior.BasedOnAlignment,
         }
-        .Grid(column:0)
+        .Grid(column:0, rowSpan:3)
         .Foreground(StaticResource.Get<Brush>("PanelBackgroundBBrush"));
 
         _rightPanelSplitter = new GridSplitter()
@@ -175,7 +193,7 @@ public sealed partial class WorkspacePage : Page
             ResizeDirection = GridSplitter.GridResizeDirection.Auto,
             ResizeBehavior = GridSplitter.GridResizeBehavior.BasedOnAlignment,
         }
-        .Grid(column: 2)
+        .Grid(column: 2, rowSpan: 3)
         .Foreground(StaticResource.Get<Brush>("PanelBackgroundBBrush"));
 
         _bottomPanelSplitter = new GridSplitter()
@@ -217,11 +235,8 @@ public sealed partial class WorkspacePage : Page
         //
         // Set the data context and page content
         // 
-
         this.DataContext(ViewModel, (page, vm) => page
-            .Background(Theme.Brushes.Background.Default)
-            .Content(_layoutRoot)
-            );
+            .Content(_layoutRoot));
 
         Loaded += WorkspacePage_Loaded;
         Unloaded += WorkspacePage_Unloaded;
