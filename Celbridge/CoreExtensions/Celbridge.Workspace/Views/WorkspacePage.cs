@@ -116,38 +116,38 @@ public sealed partial class WorkspacePage : Page
         _leftPanel = new Grid()
             .Grid(column: 0, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
-            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(1, 0, 1, 0))
             .Children(_hideLeftPanelButton);
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
+            .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Children(_showLeftPanelButton, _showRightPanelButton);
 
         _rightPanel = new Grid()
             .Grid(column: 2, row: 0, rowSpan: 3)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
-            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(1, 0, 1, 0))
             .Children(_hideRightPanelButton);
 
         _bottomPanel = new Grid()
             .Grid(column: 1, row: 1)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(StaticResource.Get<Brush>("PanelBackgroundBBrush"))
-            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
+            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(0, 1, 0, 0))
             .Children(_hideBottomPanelButton);
 
         _statusPanel = new Grid()
             .Grid(column: 1, row: 2)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
-            .BorderBrush(StaticResource.Get<Brush>("PanelBorderBrush"))
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(0, 1, 0, 0))
             .Children(_showBottomPanelButton);
 
