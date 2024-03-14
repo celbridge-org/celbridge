@@ -76,6 +76,24 @@ The Fluent Palette section in the [Uno Gallery](https://gallery.platform.uno/) l
 This works, but then crashes when I change the system theme with a named resource not found exception.
 I prefer a fixed color scheme similar to Rider's that the default Fluent palette, which will probably change completely in the next update of Windows anyway. This may still be useful if we want to use the system accent color for a UI element, but I wonder how many people bother to customize that?
 
+# Theme Resources
+
+On the Skia + Gtk project head, I hit a problem with referencing resources for the `.BorderBrush` property. On Windows, I can use `StaticResource.Get` to acquire the brush, which makes sense because that resource is not defined inside a `<ThemeResource>` section. `StaticResource.Get` causes a low level COM exception however when run on Skia + Gtk. Weirdly, this only seems to affect the `.BorderBrush` property, using `StaticResource.Get` works fine for the `.Background` property.
+
+In the end, I found that using `ThemeResource.Get` instead of `StaticResource.Get` solves the problem, even though it shouldn't be necessary. 
+
+> I also found that switching between Dark and Light mode via the OS settings would trigger a crash in the Skia + Gtk build on Windows 10, again related to this `.BorderBrush` property. I'm not planning to look into that further however because we're not supporting Skia + Gtk builds on Windows. 
+
+````
+_leftPanel = new Grid()
+    .Grid(column: 0, row: 0, rowSpan: 3)
+    .HorizontalAlignment(HorizontalAlignment.Stretch)
+    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+    .BorderThickness(new Thickness(1, 0, 1, 0))
+    .Children(_hideLeftPanelButton);
+````
+
 # Theme Switching
 
 I get a crash when changing the system dark/light if I specify the background color of a page using `.Background(Theme.Brushes.Background.Default)`. As far as I can tell, the `Theme.Brushes` approach is only valid when using the `Material` style, and shouldn't be used for `Fluent` style applications.
