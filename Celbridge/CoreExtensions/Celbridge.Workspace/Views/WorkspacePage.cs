@@ -253,7 +253,7 @@ public sealed partial class WorkspacePage : Page
         _bottomPanel.SizeChanged += (s, e) => ViewModel.BottomPanelHeight = (float)e.NewSize.Height;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelAdded += ViewModel_WorkspacePanelAdded;
+        ViewModel.WorkspacePanelsCreated += ViewModel_WorkspacePanelsCreated;
 
         ViewModel.OnWorkspacePageLoaded();
     }
@@ -261,20 +261,23 @@ public sealed partial class WorkspacePage : Page
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelAdded -= ViewModel_WorkspacePanelAdded;
+        ViewModel.WorkspacePanelsCreated -= ViewModel_WorkspacePanelsCreated;
 
         Loaded -= WorkspacePage_Loaded;
         Unloaded -= WorkspacePage_Unloaded;
     }
 
-    private void ViewModel_WorkspacePanelAdded(WorkspacePanelType panelType, UserControl panel)
+    private void ViewModel_WorkspacePanelsCreated(Dictionary<WorkspacePanelType, UIElement> panels)
     {
-        // Add the newly instantiated panel to the appropriate container element
-        switch (panelType)
+        // Add the newly instantiated panels to the appropriate container element
+        foreach (var (panelType, panel) in panels)
         {
-            case WorkspacePanelType.ConsolePanel:
-                _bottomPanel.Children.Add(panel);
-                break;
+            switch (panelType)
+            {
+                case WorkspacePanelType.ConsolePanel:
+                    _bottomPanel.Children.Add(panel);
+                    break;
+            }
         }
     }
 
