@@ -18,6 +18,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
 
         if (IsStorageAPIAvailable)
         {

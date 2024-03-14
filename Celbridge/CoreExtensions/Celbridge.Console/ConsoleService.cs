@@ -1,6 +1,4 @@
 ﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
 
 namespace Celbridge.Console;
 
