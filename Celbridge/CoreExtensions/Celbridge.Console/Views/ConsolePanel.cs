@@ -46,9 +46,19 @@ public sealed partial class ConsolePanel : UserControl
                     .VerticalAlignment(VerticalAlignment.Center),
                 clearButton);
 
+        var inputTextBox = new TextBox()
+            .Grid(row: 2)
+            .Text("Placeholder")
+            // KeyDown = "CommandTextBox_KeyDown"
+            // KeyUp = "CommandTextBox_KeyUp"
+            // Text = "{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .IsSpellCheckEnabled(false);
+
         var panelGrid = new Grid()
             .RowDefinitions("40, *, 32")
-            .Children(titleBar);
+            .Children(titleBar, inputTextBox);
            
         //
         // Set the data context and page content
