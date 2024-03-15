@@ -8,10 +8,10 @@ public sealed partial class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; }
 
-    public string Home => _stringLocalizer.GetString($"{nameof(MainPage)}.{nameof(Home)}");
-    public string NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}.{nameof(NewProject)}");
-    public string OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}.{nameof(OpenProject)}");
-    public string LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}.{nameof(LegacyApp)}");
+    public LocalizedString Home => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(Home)}");
+    public LocalizedString NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(NewProject)}");
+    public LocalizedString OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(OpenProject)}");
+    public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
 
     private IStringLocalizer _stringLocalizer;
     private INavigationService _navigationService;

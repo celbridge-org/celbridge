@@ -8,8 +8,8 @@ public sealed partial class ConsolePanel : UserControl
     private readonly FontFamily IconFontFamily = new FontFamily("Segoe MDL2 Assets");
     private const string StrokeEraseGlyph = "\ued60";
 
-    public string Title => _stringLocalizer.GetString($"{nameof(ConsolePanel)}.{nameof(Title)}");
-    public string ClearButtonTooltip => _stringLocalizer.GetString($"{nameof(ConsolePanel)}.{nameof(ClearButtonTooltip)}");
+    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(Title)}");
+    public LocalizedString ClearButtonTooltip => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(ClearButtonTooltip)}");
 
     private IStringLocalizer _stringLocalizer;
 

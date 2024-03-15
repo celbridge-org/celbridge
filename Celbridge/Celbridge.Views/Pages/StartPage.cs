@@ -4,7 +4,7 @@ public sealed partial class StartPage : Page
 {
     public StartPageViewModel ViewModel { get; }
 
-    public string OpenWorkspace => _stringLocalizer.GetString($"{nameof(StartPage)}.{nameof(OpenWorkspace)}");
+    public LocalizedString OpenWorkspace => _stringLocalizer.GetString($"{nameof(StartPage)}_{nameof(OpenWorkspace)}");
 
     private IStringLocalizer _stringLocalizer;
 
