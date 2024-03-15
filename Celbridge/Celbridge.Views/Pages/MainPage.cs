@@ -38,7 +38,7 @@ public sealed partial class MainPage : Page
             .Grid(row: 1)
             .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
             .IsBackButtonVisible(NavigationViewBackButtonVisible.Collapsed)
-            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftCompact)
+            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftMinimal)
             .MenuItems(
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))

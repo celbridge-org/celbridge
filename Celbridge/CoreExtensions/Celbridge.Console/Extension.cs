@@ -6,7 +6,7 @@ using Celbridge.Console.Views;
 
 namespace Celbridge.Console;
 
-public class ConsoleExtension : IExtension
+public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
