@@ -20,6 +20,7 @@ public class App : Application
         // Load Extensions
         _extensionLoader.LoadExtension("Celbridge.Workspace");
         _extensionLoader.LoadExtension("Celbridge.Console");
+        _extensionLoader.LoadExtension("Celbridge.Status");
 
         var builder = this.CreateBuilder(args)
             .Configure(host => host
