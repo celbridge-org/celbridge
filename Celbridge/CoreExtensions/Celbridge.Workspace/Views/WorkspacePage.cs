@@ -299,6 +299,9 @@ public sealed partial class WorkspacePage : Page
                 case WorkspacePanelType.ProjectPanel:
                     _leftPanel.Children.Add(panel);
                     break;
+                case WorkspacePanelType.InspectorPanel:
+                    _rightPanel.Children.Add(panel);
+                    break;
             }
         }
     }

@@ -126,6 +126,9 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
+  <data name="InspectorPanel_Title" xml:space="preserve">
+    <value>Inspector</value>
+  </data>
   <data name="MainPage_Home" xml:space="preserve">
     <value>Home</value>
   </data>

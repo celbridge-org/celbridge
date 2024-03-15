@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.Inspector;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.UserInterface;
@@ -30,6 +31,13 @@ public class WorkspaceService : IWorkspaceService
     { 
         get => _consoleService!;
         private set => _consoleService = value; 
+    }
+
+    private IInspectorService? _inspectorService;
+    public IInspectorService InspectorService
+    {
+        get => _inspectorService!;
+        private set => _inspectorService = value;
     }
 
     public WorkspaceService(IServiceProvider serviceProvider,
@@ -79,6 +87,10 @@ public class WorkspaceService : IWorkspaceService
 
             case IConsoleService consoleService:
                 ConsoleService = consoleService;
+                break;
+
+            case IInspectorService inspectorService:
+                InspectorService = inspectorService;
                 break;
 
             default:
