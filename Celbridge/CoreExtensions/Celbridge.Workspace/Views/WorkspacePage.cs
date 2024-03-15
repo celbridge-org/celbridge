@@ -293,6 +293,9 @@ public sealed partial class WorkspacePage : Page
                 case WorkspacePanelType.ConsolePanel:
                     _bottomPanel.Children.Add(panel);
                     break;
+                case WorkspacePanelType.StatusPanel:
+                    _statusPanel.Children.Add(panel);
+                    break;
             }
         }
     }
