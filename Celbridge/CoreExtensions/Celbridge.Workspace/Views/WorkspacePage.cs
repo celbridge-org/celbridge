@@ -52,6 +52,7 @@ public sealed partial class WorkspacePage : Page
         _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
             .VerticalAlignment(VerticalAlignment.Top)
+            .Margin(48, 6, 0, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon
             {
@@ -291,6 +292,9 @@ public sealed partial class WorkspacePage : Page
             {
                 case WorkspacePanelType.ConsolePanel:
                     _bottomPanel.Children.Add(panel);
+                    break;
+                case WorkspacePanelType.StatusPanel:
+                    _statusPanel.Children.Add(panel);
                     break;
             }
         }
