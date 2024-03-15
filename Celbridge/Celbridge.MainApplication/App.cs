@@ -30,7 +30,7 @@ public class App : Application
                 .UseConfiguration(configure: configBuilder =>
                     configBuilder
                         .EmbeddedSource<App>()
-                        .Section<AppConfig>()
+                        .Section<MainApplication.Config.AppConfig>()
                 )
                 // Enable localization (see appsettings.json for supported languages)
                 .UseLocalization()
@@ -45,10 +45,6 @@ public class App : Application
                 })
             );
         MainWindow = builder.Window;
-
-#if DEBUG
-        MainWindow.EnableHotReload();
-#endif
 
         Host = builder.Build();
 
@@ -72,7 +68,7 @@ public class App : Application
             MainWindow.Content = rootFrame;
 
             var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
-            MainWindow.Title = localizer["ApplicationName.Text"];
+            MainWindow.Title = localizer["ApplicationName"];
         }
 
         //
@@ -98,6 +94,10 @@ public class App : Application
         rootFrame.Loaded += (s, e) =>
         {
             _legacyApp?.OnFrameLoaded(rootFrame);
+
+#if DEBUG
+            MainWindow.EnableHotReload();
+#endif
         };
 
         if (rootFrame.Content == null)
