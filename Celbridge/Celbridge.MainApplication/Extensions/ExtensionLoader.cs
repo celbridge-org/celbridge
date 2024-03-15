@@ -32,12 +32,41 @@ public class ExtensionLoader : IDisposable
 
         try
         {
-            // Note: AssemblyLoadContext.Assemblies should contain a list of the loaded assemblies, but I think the Visual Studio debugger
-            // is causing the default context to load the assembly rather than our custom context. This means the Assemblies list is empty when
-            // you query it while debugging. To workaround this, iterate over the list of extension objects and get the assembly for each type.
-            var loadedAssembly = _loadContext.LoadFromAssemblyName(new AssemblyName(assemblyName));
+            //
+            // Acquire the assembly by name
+            //
 
-            var extensionResult = AcquireExtensionInstance(loadedAssembly);
+            // First check if the assembly is already loaded
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var assembly = assemblies.FirstOrDefault(a =>
+            {
+                var name = a.GetName().Name;
+                if (string.IsNullOrEmpty(name))
+                {
+                    return false;
+                }
+                return name.Equals(assemblyName);
+            });
+
+            if (assembly is null)
+            {
+                // Assembly is not already loaded, so load it now.
+                // Note: AssemblyLoadContext.Assemblies should contain a list of the loaded assemblies, but I think the Visual Studio debugger
+                // is causing the default context to load the assembly rather than our custom context. This means that the Assemblies list property is empty
+                // when you query it while debugging. To workaround this, you can iterate over the list of extension objects and get the assembly for each type.
+                assembly = _loadContext.LoadFromAssemblyName(new AssemblyName(assemblyName));
+            }
+
+            //
+            // Acquire the extension details from the loaded assembly
+            //
+
+            if (assembly is null)
+            {
+                return Result<IExtension>.Fail($"Failed to load extension assembly '{assemblyName}'. Unable to locate an assembly with this name.");
+            }
+
+            var extensionResult = AcquireExtensionInstance(assembly);
             if (extensionResult.IsFailure)
             {
                 var errorResult = Result<IExtension>.Fail("Failed to load extension assembly. Unable to acquire extension instance from loaded assembly.") as Result;
@@ -57,6 +86,8 @@ public class ExtensionLoader : IDisposable
 
     private Result<IExtension> AcquireExtensionInstance(Assembly extensionAssembly)
     {
+        Guard.IsNotNull(extensionAssembly);
+
         // Find all types that implement the IExtension interface
         var extensionTypes = extensionAssembly.GetTypes()
             .Where(t => typeof(IExtension).IsAssignableFrom(t) &&
