@@ -4,7 +4,7 @@ public sealed partial class SettingsPage : Page
 {
     public SettingsPageViewModel ViewModel { get; }
 
-    public string Title => _stringLocalizer.GetString($"{nameof(SettingsPage)}.{nameof(Title)}");
+    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(SettingsPage)}_{nameof(Title)}");
 
     private IStringLocalizer _stringLocalizer;
 
