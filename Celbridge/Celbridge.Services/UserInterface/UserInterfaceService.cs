@@ -23,15 +23,17 @@ public class UserInterfaceService : IUserInterfaceService
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
     {
+        Guard.IsNull(_workspaceService);
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
+        Guard.IsNotNull(_workspaceService);
         _workspaceService = null;
     }
 
-    public IWorkspaceService Workspace
+    public IWorkspaceService WorkspaceService
     {
         get
         {
@@ -43,6 +45,10 @@ public class UserInterfaceService : IUserInterfaceService
         }
     }
 
+    /// 
+    /// All the workspace panel configurations must be registered before we can load the workspace, so they are registered
+    /// with the user interface service which has the same lifetime scope as the application.
+    /// 
     private List<WorkspacePanelConfig> _workspacePanelConfigs = new();
     public IEnumerable<WorkspacePanelConfig> WorkspacePanelConfigs => _workspacePanelConfigs;
 
