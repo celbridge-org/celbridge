@@ -1,4 +1,7 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Status;
+using Celbridge.BaseLibrary.UserInterface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Services;
@@ -7,6 +10,27 @@ public class WorkspaceService : IWorkspaceService
 {
     public IServiceProvider _serviceProvider;
     public IUserInterfaceService _userInterfaceService;
+
+    private IProjectService? _projectService;
+    public IProjectService ProjectService 
+    {
+        get => _projectService!;
+        private set => _projectService = value; 
+    }
+
+    private IStatusService? _statusService;
+    public IStatusService StatusService 
+    { 
+        get => _statusService!;
+        private set => _statusService = value; 
+    }
+
+    private IConsoleService? _consoleService;
+    public IConsoleService ConsoleService 
+    { 
+        get => _consoleService!;
+        private set => _consoleService = value; 
+    }
 
     public WorkspaceService(IServiceProvider serviceProvider,
         IUserInterfaceService userInterfaceService)
@@ -39,5 +63,26 @@ public class WorkspaceService : IWorkspaceService
         }
 
         return panels;
+    }
+
+    public void RegisterService(object workspaceService)
+    {
+        switch (workspaceService)
+        {
+            case IProjectService projectService:
+                ProjectService = projectService;
+                break;
+
+            case IStatusService statusService:
+                StatusService = statusService;
+                break;
+
+            case IConsoleService consoleService:
+                ConsoleService = consoleService;
+                break;
+
+            default:
+                throw new InvalidOperationException($"Failed to register workspace service because the service type '{workspaceService.GetType()}' is not recognized");
+        }
     }
 }

@@ -1,0 +1,13 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <DotNetVersion Condition=" $(DotNetVersion) == '' ">net8.0</DotNetVersion>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);$(DotNetVersion)-windows10.0.19041</TargetFrameworks>
+    <TargetFrameworks>$(TargetFrameworks);$(DotNetVersion);$(DotNetVersion)-ios;$(DotNetVersion)-maccatalyst;$(DotNetVersion)-android</TargetFrameworks>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Celbridge.CoreExtension\Celbridge.CoreExtension.csproj" />
+  </ItemGroup>
+  
+</Project>

@@ -26,7 +26,7 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
     {
         _messengerService = messengerService;
         _userInterfaceService = userInterface;
-        _workspaceService = workspaceService; // Transient instance created at the same time as the view model
+        _workspaceService = workspaceService; // Transient instance created by DI
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
@@ -108,12 +108,12 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         var workspaceService = _workspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        var panels = workspaceService.CreateWorkspacePanels();
-        WorkspacePanelsCreated?.Invoke(panels);
-
         // Inform the user interface service that the workspace page has loaded
         var message = new WorkspaceLoadedMessage(_workspaceService);
         _messengerService.Send(message);
+
+        var panels = workspaceService.CreateWorkspacePanels();
+        WorkspacePanelsCreated?.Invoke(panels);
     }
 
     public void OnWorkspacePageUnloaded()
