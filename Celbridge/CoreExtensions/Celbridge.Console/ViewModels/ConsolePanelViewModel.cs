@@ -1,12 +1,23 @@
-﻿namespace Celbridge.Console.ViewModels;
+﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.UserInterface;
+
+namespace Celbridge.Console.ViewModels;
 
 public class ConsolePanelViewModel
 {
-    ILoggingService _loggingService;
+    private readonly ILoggingService _loggingService;
+    private readonly IConsoleService _consoleService;
 
-    public ConsolePanelViewModel(ILoggingService loggingService)
+    public ConsolePanelViewModel(
+        IUserInterfaceService userInterfaceService, 
+        ILoggingService loggingService,
+        IConsoleService consoleService)
     {
         _loggingService = loggingService;
+        _consoleService = consoleService;  // Transient instance created via DI
+
+        // Register the console service with the workspace service
+        userInterfaceService.WorkspaceService.RegisterService(_consoleService);
     }
 
     public ICommand ClearCommand => new RelayCommand(Clear_Executed);

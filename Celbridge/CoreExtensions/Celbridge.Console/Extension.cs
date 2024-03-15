@@ -10,10 +10,9 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddSingleton<IConsoleService, ConsoleService>();
-
         config.AddTransient<ConsolePanel>();
         config.AddTransient<ConsolePanelViewModel>();
+        config.AddTransient<IConsoleService, ConsoleService>();
     }
 
     public Result Initialize()

@@ -49,6 +49,7 @@
     <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
     <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
+    <ProjectReference Include="..\CoreExtensions\Celbridge.Project\Celbridge.Project.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.StatusBar\Celbridge.Status.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
