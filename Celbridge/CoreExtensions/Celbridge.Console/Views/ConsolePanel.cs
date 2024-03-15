@@ -56,11 +56,11 @@ public sealed partial class ConsolePanel : UserControl
                 .VerticalAlignment(VerticalAlignment.Bottom)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .IsTextSelectionEnabled(true)
-                .Text("Placeholder"));
+                .Text("<Placeholder text>"));
 
         var inputTextBox = new TextBox()
             .Grid(row: 2)
-            .Text("Placeholder")
+            .Text("<Placeholder text>")
             // KeyDown = "CommandTextBox_KeyDown"
             // KeyUp = "CommandTextBox_KeyUp"
             // Text = "{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
