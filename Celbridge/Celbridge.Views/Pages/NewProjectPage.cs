@@ -4,7 +4,7 @@ public sealed partial class NewProjectPage : Page
 {
     public SettingsPageViewModel ViewModel { get; }
 
-    public string Title => _stringLocalizer.GetString($"{nameof(NewProjectPage)}.{nameof(Title)}");
+    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(NewProjectPage)}_{nameof(Title)}");
 
     private IStringLocalizer _stringLocalizer;
 
