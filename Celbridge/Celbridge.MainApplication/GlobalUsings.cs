@@ -1,4 +1,3 @@
-global using Celbridge.Legacy.Models;
 global using CommunityToolkit.Diagnostics;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
