@@ -276,11 +276,12 @@ public sealed partial class WorkspacePage : Page
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelsCreated -= ViewModel_WorkspacePanelsCreated;
-
         Loaded -= WorkspacePage_Loaded;
         Unloaded -= WorkspacePage_Unloaded;
+
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        ViewModel.WorkspacePanelsCreated -= ViewModel_WorkspacePanelsCreated;
+        ViewModel.OnWorkspacePageUnloaded();
     }
 
     private void ViewModel_WorkspacePanelsCreated(Dictionary<WorkspacePanelType, UIElement> panels)

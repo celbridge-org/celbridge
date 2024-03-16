@@ -4,7 +4,6 @@ using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Workspace.Services;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Windows.Input;
 
@@ -13,7 +12,6 @@ namespace Celbridge.Workspace.ViewModels;
 public partial class WorkspacePageViewModel : INotifyPropertyChanged
 {
     private readonly IMessengerService _messengerService;
-    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
 
@@ -25,7 +23,6 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         IWorkspaceService workspaceService)
     {
         _messengerService = messengerService;
-        _userInterfaceService = userInterface;
         _workspaceService = workspaceService; // Transient instance created by DI
 
         _editorSettings = editorSettings;
@@ -112,6 +109,8 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         var message = new WorkspaceLoadedMessage(_workspaceService);
         _messengerService.Send(message);
 
+        // As each WorkspacePanel is instantiated, it creates its own service and registers it with
+        // the WorkspaceService via the UserInterface service.
         var panels = workspaceService.CreateWorkspacePanels();
         WorkspacePanelsCreated?.Invoke(panels);
     }
