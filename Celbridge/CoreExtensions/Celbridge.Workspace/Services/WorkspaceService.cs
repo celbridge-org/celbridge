@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Inspector;
+using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.UserInterface;
@@ -9,8 +10,9 @@ namespace Celbridge.Workspace.Services;
 
 public class WorkspaceService : IWorkspaceService
 {
-    public IServiceProvider _serviceProvider;
-    public IUserInterfaceService _userInterfaceService;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     private IProjectService? _projectService;
     public IProjectService ProjectService 
@@ -41,10 +43,27 @@ public class WorkspaceService : IWorkspaceService
     }
 
     public WorkspaceService(IServiceProvider serviceProvider,
+        IMessengerService messengerService,
         IUserInterfaceService userInterfaceService)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
         _userInterfaceService = userInterfaceService;
+
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+    }
+
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    {
+        // Clients should not reference a WorkspaceService after the workspace is unloaded.
+        // This ensures that even if they do, all the subservices will no longer be available.
+
+        _projectService = null;
+        _statusService = null;
+        _consoleService = null;
+        _inspectorService = null;
+
+        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
     }
 
     /// <summary>
