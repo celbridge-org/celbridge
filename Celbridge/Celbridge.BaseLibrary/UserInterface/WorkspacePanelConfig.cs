@@ -9,7 +9,7 @@ public enum WorkspacePanelType
     ConsolePanel,
     InspectorPanel,
     StatusPanel,
-    DocumentPanel
+    DocumentsPanel
 }
 
 /// <summary>
