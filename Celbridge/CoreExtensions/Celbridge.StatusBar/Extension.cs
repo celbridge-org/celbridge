@@ -10,10 +10,9 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddSingleton<IStatusService, StatusService>();
-
         config.AddTransient<StatusPanel>();
         config.AddTransient<StatusPanelViewModel>();
+        config.AddTransient<IStatusService, StatusService>();
     }
 
     public Result Initialize()

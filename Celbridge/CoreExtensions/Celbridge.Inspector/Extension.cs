@@ -10,10 +10,9 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddSingleton<IInspectorService, InspectorService>();
-
         config.AddTransient<InspectorPanel>();
         config.AddTransient<InspectorPanelViewModel>();
+        config.AddTransient<IInspectorService, InspectorService>();
     }
 
     public Result Initialize()
