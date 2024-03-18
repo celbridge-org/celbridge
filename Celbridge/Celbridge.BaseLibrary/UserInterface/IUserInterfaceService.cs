@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Workspace;
+
+namespace Celbridge.BaseLibrary.UserInterface;
 
 public interface IUserInterfaceService
 {

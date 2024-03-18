@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;
 
