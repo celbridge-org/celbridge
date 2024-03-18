@@ -104,27 +104,27 @@ public sealed partial class Shell : Page
         Guard.IsNotNull(_settings);
         Guard.IsNotNull(_settings.EditorSettings);
 
-        if (e.PropertyName == "LeftPanelExpanded")
+        if (e.PropertyName == "IsLeftPanelVisible")
         {
-            if (!_settings.EditorSettings.LeftPanelVisible)
+            if (!_settings.EditorSettings.IsLeftPanelVisible)
             {
                 // Record the current width before collapsing the panel
                 _settings.EditorSettings.LeftPanelWidth = (float)LeftPanelColumn.Width.Value;
             }
             UpdateSidePanels();
         }
-        else if (e.PropertyName == "RightPanelExpanded")
+        else if (e.PropertyName == "IsRightPanelVisible")
         {
-            if (!_settings.EditorSettings.RightPanelVisible)
+            if (!_settings.EditorSettings.IsRightPanelVisible)
             {
                 // Record the current width before collapsing the panel
                 _settings.EditorSettings.RightPanelWidth = (float)RightPanelColumn.Width.Value;
             }
             UpdateSidePanels();
         }
-        else if (e.PropertyName == "BottomPanelExpanded")
+        else if (e.PropertyName == "IsBottomPanelVisible")
         {
-            if (!_settings.EditorSettings.BottomPanelVisible)
+            if (!_settings.EditorSettings.IsBottomPanelVisible)
             {
                 // Record the current height before collapsing the panel
                 _settings.EditorSettings.BottomPanelHeight = (float)BottomPanelRow.Height.Value;
@@ -141,7 +141,7 @@ public sealed partial class Shell : Page
         // The trick here is to set the panel to collapsed _before_ setting the width to 0.
         // This avoids an exception in Skia.Gtk where it tries to perform layout on a 0 sized control.
 
-        var leftPanelExpanded = _settings.EditorSettings.LeftPanelVisible;
+        var leftPanelExpanded = _settings.EditorSettings.IsLeftPanelVisible;
         if (leftPanelExpanded)
         {
             LeftSplitter.Visibility = Visibility.Visible;
@@ -157,7 +157,7 @@ public sealed partial class Shell : Page
             LeftPanelColumn.Width = new GridLength(0);
         }
 
-        var rightPanelExpanded = _settings.EditorSettings.RightPanelVisible;
+        var rightPanelExpanded = _settings.EditorSettings.IsRightPanelVisible;
         if (rightPanelExpanded)
         {
             RightSplitter.Visibility = Visibility.Visible;
@@ -173,7 +173,7 @@ public sealed partial class Shell : Page
             RightPanelColumn.Width = new GridLength(0);
         }
 
-        var bottomPanelExpanded = _settings.EditorSettings.BottomPanelVisible;
+        var bottomPanelExpanded = _settings.EditorSettings.IsBottomPanelVisible;
         if (bottomPanelExpanded)
         {
             BottomSplitter.Visibility = Visibility.Visible;

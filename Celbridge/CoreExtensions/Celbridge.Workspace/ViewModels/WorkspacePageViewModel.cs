@@ -40,15 +40,15 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         switch (e.PropertyName)
         {
-            case nameof(LeftPanelVisible):
-            case nameof(RightPanelVisible):
-            case nameof(BottomPanelVisible):
+            case nameof(IsLeftPanelVisible):
+            case nameof(IsRightPanelVisible):
+            case nameof(IsBottomPanelVisible):
 
                 // Notify listeners that the visibility state of the workspace panels has changed
                 var message = new WorkspacePanelVisibilityChangedMessage(
-                    IsLeftPanelVisible: this.LeftPanelVisible,
-                    IsRightPanelVisible: this.RightPanelVisible,
-                    IsBottomPanelVisible: this.BottomPanelVisible);
+                    IsLeftPanelVisible: this.IsLeftPanelVisible,
+                    IsRightPanelVisible: this.IsRightPanelVisible,
+                    IsBottomPanelVisible: this.IsBottomPanelVisible);
                 _messengerService.Send(message);
 
                 break;
@@ -73,40 +73,40 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.BottomPanelHeight = value;
     }
 
-    public bool LeftPanelVisible
+    public bool IsLeftPanelVisible
     {
-        get => _editorSettings.LeftPanelVisible;
-        set => _editorSettings.LeftPanelVisible = value;
+        get => _editorSettings.IsLeftPanelVisible;
+        set => _editorSettings.IsLeftPanelVisible = value;
     }
 
-    public bool RightPanelVisible
+    public bool IsRightPanelVisible
     {
-        get => _editorSettings.RightPanelVisible;
-        set => _editorSettings.RightPanelVisible = value;
+        get => _editorSettings.IsRightPanelVisible;
+        set => _editorSettings.IsRightPanelVisible = value;
     }
 
-    public bool BottomPanelVisible
+    public bool IsBottomPanelVisible
     {
-        get => _editorSettings.BottomPanelVisible;
-        set => _editorSettings.BottomPanelVisible = value;
+        get => _editorSettings.IsBottomPanelVisible;
+        set => _editorSettings.IsBottomPanelVisible = value;
     }
 
     public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
     private void ToggleLeftPanel_Executed()
     {
-        _editorSettings.LeftPanelVisible = !_editorSettings.LeftPanelVisible;
+        _editorSettings.IsLeftPanelVisible = !_editorSettings.IsLeftPanelVisible;
     }
 
     public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
     private void ToggleRightPanel_Executed()
     {
-        _editorSettings.RightPanelVisible = !_editorSettings.RightPanelVisible;
+        _editorSettings.IsRightPanelVisible = !_editorSettings.IsRightPanelVisible;
     }
 
     public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
     private void ToggleBottomPanel_Executed()
     {
-        _editorSettings.BottomPanelVisible = !_editorSettings.BottomPanelVisible;
+        _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
         // Send a "fake" panel visibility change message so that the workspace panels can configure
         // themselves based on the initial panel visibility state.
-        OnPropertyChanged(nameof(LeftPanelVisible));
+        OnPropertyChanged(nameof(IsLeftPanelVisible));
     }
 
     public void OnWorkspacePageUnloaded()
