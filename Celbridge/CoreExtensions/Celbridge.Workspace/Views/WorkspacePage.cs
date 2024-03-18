@@ -130,6 +130,7 @@ public sealed partial class WorkspacePage : Page
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
+            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Children(_showLeftPanelButton, _showRightPanelButton);
@@ -302,6 +303,9 @@ public sealed partial class WorkspacePage : Page
                     break;
                 case WorkspacePanelType.InspectorPanel:
                     _rightPanel.Children.Add(panel);
+                    break;
+                case WorkspacePanelType.DocumentsPanel:
+                    _centerPanel.Children.Add(panel);
                     break;
             }
         }

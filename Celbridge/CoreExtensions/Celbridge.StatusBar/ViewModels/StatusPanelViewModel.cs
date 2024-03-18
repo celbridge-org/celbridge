@@ -7,7 +7,8 @@ public class StatusPanelViewModel
 {
     IStatusService _statusService;
 
-    public StatusPanelViewModel(IUserInterfaceService userInterfaceService,
+    public StatusPanelViewModel(
+        IUserInterfaceService userInterfaceService,
         IStatusService statusService)
     {
         _statusService = statusService; // Transient instance created via DI

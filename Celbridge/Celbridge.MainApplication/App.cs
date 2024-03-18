@@ -23,6 +23,7 @@ public class App : Application
         _extensionLoader.LoadExtension("Celbridge.Status");
         _extensionLoader.LoadExtension("Celbridge.Project");
         _extensionLoader.LoadExtension("Celbridge.Inspector");
+        _extensionLoader.LoadExtension("Celbridge.Documents");
 
         var builder = this.CreateBuilder(args)
             .Configure(host => host
