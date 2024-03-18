@@ -10,10 +10,9 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddSingleton<IProjectService, ProjectService>();
-
         config.AddTransient<ProjectPanel>();
         config.AddTransient<ProjectPanelViewModel>();
+        config.AddTransient<IProjectService, ProjectService>();
     }
 
     public Result Initialize()
