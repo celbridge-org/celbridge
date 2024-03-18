@@ -5,6 +5,7 @@ using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Services;
