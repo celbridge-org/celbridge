@@ -315,9 +315,9 @@ public sealed partial class WorkspacePage : Page
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.LeftPanelVisible):
-            case nameof(ViewModel.RightPanelVisible):
-            case nameof(ViewModel.BottomPanelVisible):
+            case nameof(ViewModel.IsLeftPanelVisible):
+            case nameof(ViewModel.IsRightPanelVisible):
+            case nameof(ViewModel.IsBottomPanelVisible):
                 UpdatePanels();
                 break;
         }
@@ -329,20 +329,20 @@ public sealed partial class WorkspacePage : Page
         // Update button visibility based on panel visibility state
         //
 
-        _showLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _showRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _showBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
         //
         // Update panel and splitter visibility based on the panel visibility state
         //
 
-        if (ViewModel.LeftPanelVisible)
+        if (ViewModel.IsLeftPanelVisible)
         {
 #if WINDOWS
             _leftPanelSplitter.Visibility = Visibility.Visible;
@@ -361,7 +361,7 @@ public sealed partial class WorkspacePage : Page
             _leftPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.RightPanelVisible)
+        if (ViewModel.IsRightPanelVisible)
         {
 #if WINDOWS
             _rightPanelSplitter.Visibility = Visibility.Visible;
@@ -380,7 +380,7 @@ public sealed partial class WorkspacePage : Page
             _rightPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.BottomPanelVisible)
+        if (ViewModel.IsBottomPanelVisible)
         {
 #if WINDOWS
             _bottomPanelSplitter.Visibility = Visibility.Visible;
