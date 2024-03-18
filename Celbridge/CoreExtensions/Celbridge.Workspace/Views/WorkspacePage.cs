@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;

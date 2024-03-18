@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Documents;
 
