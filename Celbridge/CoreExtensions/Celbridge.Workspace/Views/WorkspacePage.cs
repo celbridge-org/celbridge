@@ -51,8 +51,8 @@ public sealed partial class WorkspacePage : Page
 
         _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .Margin(48, 6, 0, 0)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Margin(48, 0, 0, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon
             {
@@ -72,7 +72,7 @@ public sealed partial class WorkspacePage : Page
 
         _showRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleRightPanelCommand)
             .Content(new FontIcon
             {
@@ -305,7 +305,8 @@ public sealed partial class WorkspacePage : Page
                     _rightPanel.Children.Add(panel);
                     break;
                 case WorkspacePanelType.DocumentsPanel:
-                    _centerPanel.Children.Add(panel);
+                    // Todo: Explain order here
+                    _centerPanel.Children.Insert(0, panel);
                     break;
             }
         }

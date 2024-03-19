@@ -21,7 +21,7 @@ public sealed partial class ProjectPanel : UserControl
         var titleBar = new Grid()
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
-            .BorderThickness(0, 1, 0, 1)
+            .BorderThickness(0, 0, 0, 1)
             .ColumnDefinitions("Auto, *, Auto, 48")
             .Children(
                 new TextBlock()
