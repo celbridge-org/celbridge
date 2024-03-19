@@ -1,8 +1,9 @@
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.MainApplication.Extensions;
+using Celbridge.MainApplication;
 using Celbridge.Services.UserInterface;
 using Celbridge.Views.Pages;
-using Celbridge.MainApplication;
-using Celbridge.MainApplication.Extensions;
 using Uno.UI;
 
 namespace Celbridge;
@@ -23,6 +24,7 @@ public class App : Application
         _extensionLoader.LoadExtension("Celbridge.Status");
         _extensionLoader.LoadExtension("Celbridge.Project");
         _extensionLoader.LoadExtension("Celbridge.Inspector");
+        _extensionLoader.LoadExtension("Celbridge.Documents");
 
         var builder = this.CreateBuilder(args)
             .Configure(host => host

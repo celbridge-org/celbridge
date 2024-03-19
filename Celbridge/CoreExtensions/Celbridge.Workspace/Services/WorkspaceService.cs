@@ -1,15 +1,22 @@
 ﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.Inspector;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceService : IWorkspaceService
 {
+    public bool IsLeftPanelVisible { get; }
+    public bool IsRightPanelVisible { get; }
+    public bool IsBottomPanelVisible { get; }
+
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
@@ -40,6 +47,13 @@ public class WorkspaceService : IWorkspaceService
     {
         get => _inspectorService!;
         private set => _inspectorService = value;
+    }
+
+    private IDocumentsService? _documentsService;
+    public IDocumentsService DocumentsService
+    {
+        get => _documentsService!;
+        private set => _documentsService = value;
     }
 
     public WorkspaceService(IServiceProvider serviceProvider,
@@ -110,6 +124,10 @@ public class WorkspaceService : IWorkspaceService
 
             case IInspectorService inspectorService:
                 InspectorService = inspectorService;
+                break;
+
+            case IDocumentsService documentsService:
+                DocumentsService = documentsService;
                 break;
 
             default:

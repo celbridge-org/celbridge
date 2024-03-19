@@ -1,24 +1,24 @@
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.Services;
 using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
 using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
-public partial class WorkspacePageViewModel : INotifyPropertyChanged
+public partial class WorkspacePageViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public WorkspacePageViewModel(IMessengerService messengerService,
-        IUserInterfaceService userInterface,
+    public WorkspacePageViewModel(
+        IMessengerService messengerService,
         IEditorSettings editorSettings,
         IWorkspaceService workspaceService)
     {
@@ -27,17 +27,33 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
+
+        PropertyChanged += OnViewModel_PropertyChanged;
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Forward the change notification to the view
-        PropertyChanged?.Invoke(this, e);
+        // Forward editor setting change notifications to this View Model class
+        OnPropertyChanged(e);
     }
 
-    public void OnView_Unloaded()
+    private void OnViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
+        switch (e.PropertyName)
+        {
+            case nameof(IsLeftPanelVisible):
+            case nameof(IsRightPanelVisible):
+            case nameof(IsBottomPanelVisible):
+
+                // Notify listeners that the visibility state of the workspace panels has changed
+                var message = new WorkspacePanelVisibilityChangedMessage(
+                    IsLeftPanelVisible: this.IsLeftPanelVisible,
+                    IsRightPanelVisible: this.IsRightPanelVisible,
+                    IsBottomPanelVisible: this.IsBottomPanelVisible);
+                _messengerService.Send(message);
+
+                break;
+        }
     }
 
     public float LeftPanelWidth
@@ -58,44 +74,44 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         set => _editorSettings.BottomPanelHeight = value;
     }
 
-    public bool LeftPanelVisible
+    public bool IsLeftPanelVisible
     {
-        get => _editorSettings.LeftPanelVisible;
-        set => _editorSettings.LeftPanelVisible = value;
+        get => _editorSettings.IsLeftPanelVisible;
+        set => _editorSettings.IsLeftPanelVisible = value;
     }
 
-    public bool RightPanelVisible
+    public bool IsRightPanelVisible
     {
-        get => _editorSettings.RightPanelVisible;
-        set => _editorSettings.RightPanelVisible = value;
+        get => _editorSettings.IsRightPanelVisible;
+        set => _editorSettings.IsRightPanelVisible = value;
     }
 
-    public bool BottomPanelVisible
+    public bool IsBottomPanelVisible
     {
-        get => _editorSettings.BottomPanelVisible;
-        set => _editorSettings.BottomPanelVisible = value;
+        get => _editorSettings.IsBottomPanelVisible;
+        set => _editorSettings.IsBottomPanelVisible = value;
     }
 
     public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
     private void ToggleLeftPanel_Executed()
     {
-        _editorSettings.LeftPanelVisible = !_editorSettings.LeftPanelVisible;
+        _editorSettings.IsLeftPanelVisible = !_editorSettings.IsLeftPanelVisible;
     }
 
     public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
     private void ToggleRightPanel_Executed()
     {
-        _editorSettings.RightPanelVisible = !_editorSettings.RightPanelVisible;
+        _editorSettings.IsRightPanelVisible = !_editorSettings.IsRightPanelVisible;
     }
 
     public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
     private void ToggleBottomPanel_Executed()
     {
-        _editorSettings.BottomPanelVisible = !_editorSettings.BottomPanelVisible;
+        _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
     }
 
     /// <summary>
-    /// The WorkspacePage registers with this event to be notified when a workspace panel has been created.
+    /// The WorkspacePage registers with this event to be notified when the workspace panels have been created.
     /// </summary>
     public event Action<Dictionary<WorkspacePanelType, UIElement>>? WorkspacePanelsCreated;
 
@@ -105,19 +121,29 @@ public partial class WorkspacePageViewModel : INotifyPropertyChanged
         var workspaceService = _workspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        // Inform the user interface service that the workspace page has loaded
+        // Inform the user interface service that the workspace page has loaded.
+        // At this point, the workspace does not yet contain any workspace panels.
         var message = new WorkspaceLoadedMessage(_workspaceService);
         _messengerService.Send(message);
 
+        // Create the previously registered workspace panels.
         // As each WorkspacePanel is instantiated, it creates its own service and registers it with
-        // the WorkspaceService via the UserInterface service.
+        // the WorkspaceService.
         var panels = workspaceService.CreateWorkspacePanels();
         WorkspacePanelsCreated?.Invoke(panels);
+
+        // Send a "fake" panel visibility change message so that the workspace panels can configure
+        // themselves based on the initial panel visibility state.
+        OnPropertyChanged(nameof(IsLeftPanelVisible));
     }
 
     public void OnWorkspacePageUnloaded()
     {
-        // Inform the user interface service that the workspace page has been unloaded
+        _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
+        PropertyChanged -= OnViewModel_PropertyChanged;
+
+        // Notify listeners that the workspace page has been unloaded.
+        // All workspace related resources must be released at this point.
         var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);
     }

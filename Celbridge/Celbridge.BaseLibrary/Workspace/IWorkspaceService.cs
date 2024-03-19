@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 
-namespace Celbridge.BaseLibrary.UserInterface;
+namespace Celbridge.BaseLibrary.Workspace;
 
 /// <summary>
 /// Service for interacting with the sub-services of a loaded workspace.

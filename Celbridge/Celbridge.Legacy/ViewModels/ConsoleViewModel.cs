@@ -38,7 +38,7 @@ public partial class ConsoleViewModel : ObservableObject
     {
         // Toggle the bottom toolbar expanded state
         Guard.IsNotNull(_settingsService.EditorSettings);
-        _settingsService.EditorSettings.BottomPanelVisible = false;
+        _settingsService.EditorSettings.IsBottomPanelVisible = false;
     }
 
     public event Action? OnClearMessages;

@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;

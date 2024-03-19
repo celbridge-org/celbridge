@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Inspector;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
 
@@ -10,10 +11,9 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddSingleton<IInspectorService, InspectorService>();
-
         config.AddTransient<InspectorPanel>();
         config.AddTransient<InspectorPanelViewModel>();
+        config.AddTransient<IInspectorService, InspectorService>();
     }
 
     public Result Initialize()
