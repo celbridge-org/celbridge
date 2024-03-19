@@ -24,12 +24,14 @@ public class UserInterfaceService : IUserInterfaceService
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
     {
+        // Comment out this assert to enable hot reload
         Guard.IsNull(_workspaceService);
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
+        // Comment out this assert to enable hot reload
         Guard.IsNotNull(_workspaceService);
         _workspaceService = null;
     }
