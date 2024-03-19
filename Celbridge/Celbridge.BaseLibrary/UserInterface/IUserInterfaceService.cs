@@ -19,5 +19,5 @@ public interface IUserInterfaceService
     /// The workspace that is currently loaded.
     /// Attempting to access this property when no workspace is loaded will throw an InvalidOperationException.
     /// </summary>
-    public IWorkspaceService WorkspaceService { get; }
+    IWorkspaceService WorkspaceService { get; }
 }
