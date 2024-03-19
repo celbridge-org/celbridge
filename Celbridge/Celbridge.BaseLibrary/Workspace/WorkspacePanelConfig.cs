@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.BaseLibrary.Workspace;
 
 /// <summary>
 /// The types of panel that can be displayed in the workspace.
@@ -9,7 +9,7 @@ public enum WorkspacePanelType
     ConsolePanel,
     InspectorPanel,
     StatusPanel,
-    DocumentPanel
+    DocumentsPanel
 }
 
 /// <summary>

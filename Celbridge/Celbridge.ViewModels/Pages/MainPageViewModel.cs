@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.Services.UserInterface;
 using CommunityToolkit.Diagnostics;
 

@@ -1,19 +1,19 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Documents.ViewModels;
+using Celbridge.Documents.Views;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Project.ViewModels;
-using Celbridge.Project.Views;
 
-namespace Celbridge.Project;
+namespace Celbridge.Documents;
 
 public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddTransient<ProjectPanel>();
-        config.AddTransient<ProjectPanelViewModel>();
-        config.AddTransient<IProjectService, ProjectService>();
+        config.AddTransient<DocumentsPanel>();
+        config.AddTransient<DocumentsPanelViewModel>();
+        config.AddTransient<IDocumentsService, DocumentsService>();
     }
 
     public Result Initialize()
@@ -21,7 +21,7 @@ public class Extension : IExtension
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
 
         userInterfaceService.RegisterWorkspacePanelConfig(
-            new WorkspacePanelConfig(WorkspacePanelType.ProjectPanel, typeof(ProjectPanel)));
+            new WorkspacePanelConfig(WorkspacePanelType.DocumentsPanel, typeof(DocumentsPanel)));
 
         return Result.Ok();
     }

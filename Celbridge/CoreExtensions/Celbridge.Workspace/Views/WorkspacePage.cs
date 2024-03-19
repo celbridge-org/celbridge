@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,8 +51,8 @@ public sealed partial class WorkspacePage : Page
 
         _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .Margin(48, 6, 0, 0)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Margin(48, 0, 0, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon
             {
@@ -72,7 +72,7 @@ public sealed partial class WorkspacePage : Page
 
         _showRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleRightPanelCommand)
             .Content(new FontIcon
             {
@@ -130,6 +130,7 @@ public sealed partial class WorkspacePage : Page
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
+            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Children(_showLeftPanelButton, _showRightPanelButton);
@@ -303,6 +304,11 @@ public sealed partial class WorkspacePage : Page
                 case WorkspacePanelType.InspectorPanel:
                     _rightPanel.Children.Add(panel);
                     break;
+                case WorkspacePanelType.DocumentsPanel:
+                    // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
+                    // in the center panel take priority for accepting input.
+                    _centerPanel.Children.Insert(0, panel);
+                    break;
             }
         }
     }
@@ -311,9 +317,9 @@ public sealed partial class WorkspacePage : Page
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.LeftPanelVisible):
-            case nameof(ViewModel.RightPanelVisible):
-            case nameof(ViewModel.BottomPanelVisible):
+            case nameof(ViewModel.IsLeftPanelVisible):
+            case nameof(ViewModel.IsRightPanelVisible):
+            case nameof(ViewModel.IsBottomPanelVisible):
                 UpdatePanels();
                 break;
         }
@@ -325,20 +331,20 @@ public sealed partial class WorkspacePage : Page
         // Update button visibility based on panel visibility state
         //
 
-        _showLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideLeftPanelButton.Visibility = ViewModel.LeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _showRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideRightPanelButton.Visibility = ViewModel.RightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        _showBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        _hideBottomPanelButton.Visibility = ViewModel.BottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        _showBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        _hideBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
         //
         // Update panel and splitter visibility based on the panel visibility state
         //
 
-        if (ViewModel.LeftPanelVisible)
+        if (ViewModel.IsLeftPanelVisible)
         {
 #if WINDOWS
             _leftPanelSplitter.Visibility = Visibility.Visible;
@@ -357,7 +363,7 @@ public sealed partial class WorkspacePage : Page
             _leftPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.RightPanelVisible)
+        if (ViewModel.IsRightPanelVisible)
         {
 #if WINDOWS
             _rightPanelSplitter.Visibility = Visibility.Visible;
@@ -376,7 +382,7 @@ public sealed partial class WorkspacePage : Page
             _rightPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.BottomPanelVisible)
+        if (ViewModel.IsBottomPanelVisible)
         {
 #if WINDOWS
             _bottomPanelSplitter.Visibility = Visibility.Visible;
