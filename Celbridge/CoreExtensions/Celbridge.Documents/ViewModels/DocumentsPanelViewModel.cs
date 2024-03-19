@@ -9,10 +9,16 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
 
-    // The document tabs are offset to the right when the left panel is
-    // visible to avoid overlapping the main menu button.
+    //
+    // We offset the tab strips header & footer when the left and right panels are visible
+    // to avoid overlapping the workspace buttons.
+    //
+
     [ObservableProperty]
     private bool _isLeftPanelVisible;
+
+    [ObservableProperty]
+    private bool _isRightPanelVisible;
 
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
@@ -42,5 +48,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private void OnWorkspacePanelVisibilityChanged(object recipient, WorkspacePanelVisibilityChangedMessage message)
     {
         IsLeftPanelVisible = message.IsLeftPanelVisible;
+        IsRightPanelVisible = message.IsRightPanelVisible;
     }
 }
