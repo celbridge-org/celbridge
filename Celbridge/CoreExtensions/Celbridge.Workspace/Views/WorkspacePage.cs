@@ -305,7 +305,8 @@ public sealed partial class WorkspacePage : Page
                     _rightPanel.Children.Add(panel);
                     break;
                 case WorkspacePanelType.DocumentsPanel:
-                    // Todo: Explain order here
+                    // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
+                    // in the center panel take priority for accepting input.
                     _centerPanel.Children.Insert(0, panel);
                     break;
             }
