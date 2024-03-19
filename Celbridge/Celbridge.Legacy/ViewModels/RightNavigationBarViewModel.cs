@@ -17,6 +17,6 @@ public partial class RightNavigationBarViewModel : ObservableObject
     {
         // Toggle the inspector panel
         Guard.IsNotNull(_settingsService.EditorSettings);
-        _settingsService.EditorSettings.RightPanelVisible = !_settingsService.EditorSettings.RightPanelVisible;
+        _settingsService.EditorSettings.IsRightPanelVisible = !_settingsService.EditorSettings.IsRightPanelVisible;
     }
 }

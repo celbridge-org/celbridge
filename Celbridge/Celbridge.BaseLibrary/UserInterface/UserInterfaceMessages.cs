@@ -1,5 +1,7 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
-﻿
+﻿using Celbridge.BaseLibrary.Workspace;
+
+namespace Celbridge.BaseLibrary.UserInterface;
+
 /// <summary>
 /// Sent when the main window has been activated (i.e. received focus).
 /// </summary>
@@ -21,3 +23,7 @@ public record WorkspaceLoadedMessage(IWorkspaceService WorkspaceService);
 /// </summary>
 public record WorkspaceUnloadedMessage();
 
+/// <summary>
+/// Sent when any workspace panel's visibility has changed.
+/// </summary>
+public record WorkspacePanelVisibilityChangedMessage(bool IsLeftPanelVisible, bool IsRightPanelVisible, bool IsBottomPanelVisible);
