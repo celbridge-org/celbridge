@@ -5,6 +5,7 @@ using Celbridge.MainApplication;
 using Celbridge.Services.UserInterface;
 using Celbridge.Views.Pages;
 using Uno.UI;
+using Celbridge.Services.Navigation;
 
 namespace Celbridge;
 
