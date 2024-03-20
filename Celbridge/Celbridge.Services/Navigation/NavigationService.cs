@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
 
-namespace Celbridge.Services.UserInterface;
+namespace Celbridge.Services.Navigation;
 
 public class NavigationService : INavigationService
 {
@@ -14,8 +14,8 @@ public class NavigationService : INavigationService
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
- 
-   
+
+
     private Dictionary<string, Type> _pageTypes = new();
 
     public NavigationService(ILoggingService loggingService,
@@ -70,7 +70,7 @@ public class NavigationService : INavigationService
     {
         if (_pageTypes.ContainsKey(pageName))
         {
-            return Result.Fail($"Failed to register page name '{pageName}' because it is already registered."); 
+            return Result.Fail($"Failed to register page name '{pageName}' because it is already registered.");
         }
 
         if (!pageType.IsAssignableTo(typeof(Page)))
@@ -113,7 +113,7 @@ public class NavigationService : INavigationService
         if (navigateResult.IsFailure)
         {
             _loggingService.Error(navigateResult.Error);
-        }   
+        }
 
         return navigateResult;
     }
