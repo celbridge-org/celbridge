@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;
+using Celbridge.Services.Navigation;
 using Celbridge.Services.Settings;
 using Celbridge.Services.UserInterface;
 
