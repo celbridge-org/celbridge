@@ -135,6 +135,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Send a "fake" panel visibility change message so that the workspace panels can configure
         // themselves based on the initial panel visibility state.
         OnPropertyChanged(nameof(IsLeftPanelVisible));
+        OnPropertyChanged(nameof(IsRightPanelVisible));
     }
 
     public void OnWorkspacePageUnloaded()
