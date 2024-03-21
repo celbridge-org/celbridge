@@ -5,7 +5,6 @@ namespace Celbridge.Console.Views;
 
 public sealed partial class ConsolePanel : UserControl
 {
-    private readonly FontFamily IconFontFamily = new FontFamily("Segoe MDL2 Assets");
     private const string StrokeEraseGlyph = "\ued60";
 
     public LocalizedString Title => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(Title)}");
@@ -22,14 +21,15 @@ public sealed partial class ConsolePanel : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
 
+        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
         var clearButton = new Button()
             .Grid(column: 2)
             .Command(ViewModel.ClearCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = StrokeEraseGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(StrokeEraseGlyph)
+            );
 
         ToolTipService.SetToolTip(clearButton, ClearButtonTooltip);
         ToolTipService.SetPlacement(clearButton, PlacementMode.Top);

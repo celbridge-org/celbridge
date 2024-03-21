@@ -7,8 +7,6 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    private readonly FontFamily IconFontFamily = new FontFamily("Segoe MDL2 Assets");
-
     private const string LeftChevronGlyph = "\ue76b";
     private const string RightChevronGlyph = "\ue76c";
     private const string DownChevronGlyph = "\ue70d";
@@ -49,66 +47,63 @@ public sealed partial class WorkspacePage : Page
         // Define panel visibility buttons
         //
 
+        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
         _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
             .VerticalAlignment(VerticalAlignment.Center)
             .Margin(48, 0, 0, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = RightChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(RightChevronGlyph)
+            );
 
         _hideLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleLeftPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = LeftChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(LeftChevronGlyph)
+            );
 
         _showRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleRightPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = LeftChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(LeftChevronGlyph)
+            );
 
         _hideRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleRightPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = RightChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(RightChevronGlyph)
+            );
 
         _showBottomPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Top)
             .Command(ViewModel.ToggleBottomPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = UpChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(UpChevronGlyph)
+            );
+
 
         _hideBottomPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
             .Command(ViewModel.ToggleBottomPanelCommand)
-            .Content(new FontIcon
-            {
-                FontFamily = IconFontFamily,
-                Glyph = DownChevronGlyph,
-            });
+            .Content(new FontIcon()
+                .FontFamily(fontFamily)
+                .Glyph(DownChevronGlyph)
+            );
 
         //
         // Define workspace panels
