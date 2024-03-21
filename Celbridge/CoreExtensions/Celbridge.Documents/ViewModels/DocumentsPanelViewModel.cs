@@ -49,5 +49,10 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         IsLeftPanelVisible = message.IsLeftPanelVisible;
         IsRightPanelVisible = message.IsRightPanelVisible;
+
+        // Force the documents panel to update even if the visibility value hasn't actually changed
+        // This is redundant, but it ensures that the documents panel is always in the correct state at startup.
+        OnPropertyChanged(nameof(IsLeftPanelVisible));
+        OnPropertyChanged(nameof(IsRightPanelVisible));
     }
 }
