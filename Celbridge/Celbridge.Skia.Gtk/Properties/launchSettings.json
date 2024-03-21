@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Celbridge.Skia.Gtk": {
+      "commandName": "Project"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    }
+  }
+}
