@@ -22,8 +22,3 @@ public record WorkspaceLoadedMessage(IWorkspaceService WorkspaceService);
 /// Sent when the workspace has been unloaded.
 /// </summary>
 public record WorkspaceUnloadedMessage();
-
-/// <summary>
-/// Sent when any workspace panel's visibility has changed.
-/// </summary>
-public record WorkspacePanelVisibilityChangedMessage(bool IsLeftPanelVisible, bool IsRightPanelVisible, bool IsBottomPanelVisible);

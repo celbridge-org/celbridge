@@ -1,5 +1,4 @@
 ﻿using Celbridge.Documents.ViewModels;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
 
@@ -39,6 +38,8 @@ public sealed partial class DocumentsPanel : UserControl
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(_tabView));
 
+        UpdateTabstripEnds();
+
         // Listen for property changes on the ViewModel
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -62,34 +63,37 @@ public sealed partial class DocumentsPanel : UserControl
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.IsLeftPanelVisible))
+        if (e.PropertyName == nameof(ViewModel.IsLeftPanelVisible) ||
+            e.PropertyName == nameof(ViewModel.IsRightPanelVisible))
         {
-            // When the left and right workspace panels are visible, the panel visibility toggle buttons overlap the
-            // TabView in the center panel. To fix this, we dynamically add an invisible TabStripHeader and TabStripFooter
-            // which offsets the position of the tabs so that they don't overlap these buttons.
+            UpdateTabstripEnds();
+        }
+    }
 
-            if (ViewModel.IsLeftPanelVisible)
-            {
-                _tabView.TabStripHeader = null;
-            }
-            else
-            {
-                _tabView.TabStripHeader = new Grid()
-                    .Width(96);
-            }
+    private void UpdateTabstripEnds()
+    {
+        // When the left and right workspace panels are hidden, the panel visibility toggle buttons may overlap the
+        // TabStrip at the top of the center panel. To fix this, we dynamically add an invisible TabStripHeader and
+        // TabStripFooter which adjusts the position of the tabs so that they don't overlap the toggle buttons.
+
+        if (ViewModel.IsLeftPanelVisible)
+        {
+            _tabView.TabStripHeader = null;
+        }
+        else
+        {
+            _tabView.TabStripHeader = new Grid()
+                .Width(96);
         }
 
-        if (e.PropertyName == nameof(ViewModel.IsRightPanelVisible))
+        if (ViewModel.IsRightPanelVisible)
         {
-            if (ViewModel.IsRightPanelVisible)
-            {
-                _tabView.TabStripFooter = null;
-            }
-            else
-            {
-                _tabView.TabStripFooter = new Grid()
-                    .Width(48);
-            }
+            _tabView.TabStripFooter = null;
+        }
+        else
+        {
+            _tabView.TabStripFooter = new Grid()
+                .Width(48);
         }
     }
 }

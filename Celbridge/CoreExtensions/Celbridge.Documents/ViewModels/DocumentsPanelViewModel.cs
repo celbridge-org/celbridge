@@ -1,40 +1,35 @@
 ﻿using Celbridge.BaseLibrary.Documents;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
 public partial class DocumentsPanelViewModel : ObservableObject
 {
-    private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
+    private readonly IEditorSettings _editorSettings;
 
-    //
-    // We offset the tab strips header & footer when the left and right panels are visible
-    // to avoid overlapping the workspace buttons.
-    //
+    public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
-    [ObservableProperty]
-    private bool _isLeftPanelVisible;
-
-    [ObservableProperty]
-    private bool _isRightPanelVisible;
+    public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
 
     public DocumentsPanelViewModel(
-        IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
+        IEditorSettings editorSettings,
         IDocumentsService documentsService)
     {
-        _messengerService = messengerService;
+        _editorSettings = editorSettings;
         _documentsService = documentsService; // Transient instance created via DI
 
         // Register the project service with the workspace service
         userInterfaceService.WorkspaceService.RegisterService(_documentsService);
 
-        // Listen for Left Panel visibility changes
-        // We have to register for this in the constuctor because we send a "fake" visibility changed message
-        // when the workspace opens to set the initial state of IsLeftPanelVisible.
-        _messengerService.Register<WorkspacePanelVisibilityChangedMessage>(this, OnWorkspacePanelVisibilityChanged);
+        var settings = _editorSettings as INotifyPropertyChanged;
+        Guard.IsNotNull(settings);
+        settings.PropertyChanged += EditorSettings_PropertyChanged;
     }
 
     public void OnViewLoaded()
@@ -42,17 +37,23 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void OnViewUnloaded()
     {
-        _messengerService.Unregister<WorkspacePanelVisibilityChangedMessage>(this);
+        var settings = _editorSettings as INotifyPropertyChanged;
+        Guard.IsNotNull(settings);
+        settings.PropertyChanged -= EditorSettings_PropertyChanged;
     }
 
-    private void OnWorkspacePanelVisibilityChanged(object recipient, WorkspacePanelVisibilityChangedMessage message)
+    private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        IsLeftPanelVisible = message.IsLeftPanelVisible;
-        IsRightPanelVisible = message.IsRightPanelVisible;
-
-        // Force the documents panel to update even if the visibility value hasn't actually changed
-        // This is redundant, but it ensures that the documents panel is always in the correct state at startup.
-        OnPropertyChanged(nameof(IsLeftPanelVisible));
-        OnPropertyChanged(nameof(IsRightPanelVisible));
+        // 
+        // Map the changed editor setting to the corresponding view model property.
+        //
+        if (e.PropertyName == nameof(IEditorSettings.IsLeftPanelVisible))
+        {
+            OnPropertyChanged(nameof(IsLeftPanelVisible));
+        }
+        else if (e.PropertyName == nameof(IEditorSettings.IsRightPanelVisible))
+        {
+            OnPropertyChanged(nameof(IsRightPanelVisible));
+        }
     }
 }
