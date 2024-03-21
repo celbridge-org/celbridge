@@ -5,7 +5,6 @@ namespace Celbridge.StatusBar.Views;
 
 public class StatusPanel : UserControl
 {
-    private readonly FontFamily IconFontFamily = new FontFamily("Segoe MDL2 Assets");
     private const string SaveGlyph = "\ue74e";
 
     private IStringLocalizer _stringLocalizer;
@@ -19,6 +18,8 @@ public class StatusPanel : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<StatusPanelViewModel>();
 
+        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
         var panelGrid = new Grid()
             .ColumnDefinitions("*, Auto, Auto, 48")
             .VerticalAlignment(VerticalAlignment.Center)
@@ -27,16 +28,12 @@ public class StatusPanel : UserControl
                     .Grid(column: 1)
                     .Margin(6, 3)
                     .Text("<Placeholder text>"),
-
                 new Button()
                     .Grid(column: 2)
-                    .Content(
-                        new FontIcon
-                        {
-                            FontFamily = IconFontFamily,
-                            Glyph = SaveGlyph,
-                        }
-                )
+                    .Content(new FontIcon()
+                        .FontFamily(fontFamily)
+                        .Glyph(SaveGlyph)
+                    )
             );
 
         //
