@@ -27,33 +27,12 @@ public partial class WorkspacePageViewModel : ObservableObject
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
-
-        PropertyChanged += OnViewModel_PropertyChanged;
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
-    }
-
-    private void OnViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        switch (e.PropertyName)
-        {
-            case nameof(IsLeftPanelVisible):
-            case nameof(IsRightPanelVisible):
-            case nameof(IsBottomPanelVisible):
-
-                // Notify listeners that the visibility state of the workspace panels has changed
-                var message = new WorkspacePanelVisibilityChangedMessage(
-                    IsLeftPanelVisible: this.IsLeftPanelVisible,
-                    IsRightPanelVisible: this.IsRightPanelVisible,
-                    IsBottomPanelVisible: this.IsBottomPanelVisible);
-                _messengerService.Send(message);
-
-                break;
-        }
     }
 
     public float LeftPanelWidth
@@ -131,17 +110,11 @@ public partial class WorkspacePageViewModel : ObservableObject
         // the WorkspaceService.
         var panels = workspaceService.CreateWorkspacePanels();
         WorkspacePanelsCreated?.Invoke(panels);
-
-        // Send a "fake" panel visibility change message so that the workspace panels can configure
-        // themselves based on the initial panel visibility state.
-        OnPropertyChanged(nameof(IsLeftPanelVisible));
-        OnPropertyChanged(nameof(IsRightPanelVisible));
     }
 
     public void OnWorkspacePageUnloaded()
     {
         _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
-        PropertyChanged -= OnViewModel_PropertyChanged;
 
         // Notify listeners that the workspace page has been unloaded.
         // All workspace related resources must be released at this point.
