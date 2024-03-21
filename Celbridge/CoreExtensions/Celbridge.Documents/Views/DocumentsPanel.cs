@@ -77,7 +77,10 @@ public sealed partial class DocumentsPanel : UserControl
                 _tabView.TabStripHeader = new Grid()
                     .Width(96);
             }
+        }
 
+        if (e.PropertyName == nameof(ViewModel.IsRightPanelVisible))
+        {
             if (ViewModel.IsRightPanelVisible)
             {
                 _tabView.TabStripFooter = null;
