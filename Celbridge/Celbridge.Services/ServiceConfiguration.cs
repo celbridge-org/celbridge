@@ -1,6 +1,8 @@
-﻿using Celbridge.BaseLibrary.Navigation;
+﻿using Celbridge.BaseLibrary.Dialogs;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Services.Dialogs;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;
 using Celbridge.Services.Navigation;
@@ -21,6 +23,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<IDialogService, DialogService>();
 
         if (IsStorageAPIAvailable)
         {
