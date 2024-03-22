@@ -2,5 +2,6 @@
 
 public interface IDialogService
 {
-    Task<Result<string>> ShowFileOpenPicker();
+    Task<Result<string>> PickSingleFileAsync(IEnumerable<string> fileExtensions);
+    Task<Result<string>> PickSingleFolderAsync();
 }
