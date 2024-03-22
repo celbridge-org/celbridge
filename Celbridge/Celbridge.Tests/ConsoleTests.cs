@@ -37,11 +37,11 @@ public class ConsoleTests
     }
 
     [Test]
-    public async Task TestPrintCommand()
+    public async Task TestPrintCommandAsync()
     {
         var consoleService = _serviceProvider!.GetRequiredService<IConsoleService>();
 
-        var result = await consoleService.Execute("print");
+        var result = await consoleService.ExecuteAsync("print");
 
         result.IsSuccess.Should().BeTrue();
     }
