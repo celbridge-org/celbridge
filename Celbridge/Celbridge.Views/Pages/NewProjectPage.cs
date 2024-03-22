@@ -28,7 +28,10 @@ public sealed partial class NewProjectPage : Page
                                 .Text(Title),
                             new Button()
                                 .Content("Select file")
-                                .Command(ViewModel.SelectFileCommand)
+                                .Command(ViewModel.SelectFileCommand),
+                            new Button()
+                                .Content("Select folder")
+                                .Command(ViewModel.SelectFolderCommand)
                         )
                     )
                 )

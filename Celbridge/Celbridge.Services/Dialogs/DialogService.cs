@@ -7,14 +7,17 @@ namespace Celbridge.Services.Dialogs;
 
 public class DialogService : IDialogService
 {
-    public async Task<Result<string>> ShowFileOpenPicker()
+    public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
     {
         var fileOpenPicker = new FileOpenPicker
         {
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
         };
 
-        fileOpenPicker.FileTypeFilter.Add(".txt");
+        foreach (var extension in extensions)
+        {
+            fileOpenPicker.FileTypeFilter.Add(extension);
+        }
 
 #if WINDOWS
         // For Uno.WinUI-based apps
@@ -38,4 +41,33 @@ public class DialogService : IDialogService
 
         return Result<string>.Ok(file.Path);
     }
+
+    public async Task<Result<string>> PickSingleFolderAsync()
+    {
+        var folderPicker = new FolderPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary
+        };
+
+        folderPicker.FileTypeFilter.Add("*");
+
+#if WINDOWS
+        // For Uno.WinUI-based apps
+        var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
+        var mainWindow = navigationService.MainWindow;
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
+        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+#endif
+
+        StorageFolder folder = await folderPicker.PickSingleFolderAsync();
+        if (folder == null)
+        {
+            return Result<string>.Fail("No folder selected");
+        }
+
+        var folderPath = folder.Path;
+
+        return Result<string>.Ok(folderPath);
+    }
+
 }
