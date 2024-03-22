@@ -13,7 +13,7 @@ public class ConsoleService : IConsoleService
         _loggingService = loggingService;
     }
 
-    public async Task<Result> Execute(string command)
+    public async Task<Result> ExecuteAsync(string command)
     {
         if (command == "print")
         {
