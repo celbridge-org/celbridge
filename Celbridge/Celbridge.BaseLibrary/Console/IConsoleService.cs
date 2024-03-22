@@ -2,7 +2,7 @@
 
 public interface IConsoleService
 {
-    Task<Result> Execute(string command);
+    Task<Result> ExecuteAsync(string command);
 
     string GetTestString();
 }
