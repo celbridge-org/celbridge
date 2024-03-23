@@ -2,7 +2,7 @@
 
 public sealed partial class NewProjectPage : Page
 {
-    public SettingsPageViewModel ViewModel { get; }
+    public NewProjectPageViewModel ViewModel { get; }
 
     public LocalizedString Title => _stringLocalizer.GetString($"{nameof(NewProjectPage)}_{nameof(Title)}");
 
@@ -13,18 +13,29 @@ public sealed partial class NewProjectPage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
-        ViewModel = serviceProvider.GetRequiredService<SettingsPageViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<NewProjectPageViewModel>();
         DataContext = ViewModel;
 
         this.DataContext<StartPageViewModel>((page, vm) => page
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
-                .MinHeight(400)
                 .Children(
-                    new TextBlock()
-                        .Text(Title)
-            )));
+                    new StackPanel()
+                        .Spacing(6)
+                        .Children(
+                            new TextBlock()
+                                .Text(Title),
+                            new Button()
+                                .Content("Select file")
+                                .Command(ViewModel.SelectFileCommand),
+                            new Button()
+                                .Content("Select folder")
+                                .Command(ViewModel.SelectFolderCommand)
+                        )
+                    )
+                )
+            );
     }
 }
 
