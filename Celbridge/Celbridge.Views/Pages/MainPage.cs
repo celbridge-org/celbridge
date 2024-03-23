@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Navigation;
+﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Views.UserControls;
 
 namespace Celbridge.Views.Pages;
@@ -13,7 +13,7 @@ public sealed partial class MainPage : Page
     public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
 
     private IStringLocalizer _stringLocalizer;
-    private INavigationService _navigationService;
+    private IUserInterfaceService _userInterfaceService;
 
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
@@ -23,7 +23,7 @@ public sealed partial class MainPage : Page
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        _navigationService = serviceProvider.GetRequiredService<INavigationService>();
+        _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
         ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
         DataContext = ViewModel;
@@ -79,7 +79,7 @@ public sealed partial class MainPage : Page
         var titleBar = serviceProvider.GetRequiredService<TitleBar>();
         _layoutRoot.Children.Add(titleBar);
 
-        var mainWindow = _navigationService.MainWindow as Window;
+        var mainWindow = _userInterfaceService.MainWindow as Window;
         mainWindow!.ExtendsContentIntoTitleBar = true;
         mainWindow!.SetTitleBar(titleBar);
 #endif

@@ -1,11 +1,9 @@
-using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.MainApplication.Extensions;
 using Celbridge.MainApplication;
 using Celbridge.Services.UserInterface;
 using Celbridge.Views.Pages;
 using Uno.UI;
-using Celbridge.Services.Navigation;
 
 namespace Celbridge;
 
@@ -84,11 +82,7 @@ public class App : Application
 
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
         Guard.IsNotNull(userInterfaceService);
-        userInterfaceService.Initialize();
-
-        var navigationService = Host.Services.GetRequiredService<INavigationService>() as NavigationService;
-        Guard.IsNotNull(navigationService);
-        navigationService.Initialize(MainWindow);
+        userInterfaceService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
