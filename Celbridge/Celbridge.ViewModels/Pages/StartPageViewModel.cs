@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.ViewModels.Pages;
