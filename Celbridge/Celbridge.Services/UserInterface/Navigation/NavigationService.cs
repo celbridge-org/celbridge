@@ -1,23 +1,19 @@
-﻿using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface.Navigation;
 
-namespace Celbridge.Services.Navigation;
+namespace Celbridge.Services.UserInterface.Navigation;
 
 public class NavigationService : INavigationService
 {
     private ILoggingService _loggingService;
-    private IMessengerService _messengerService;
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
 
     private Dictionary<string, Type> _pageTypes = new();
 
-    public NavigationService(ILoggingService loggingService,
-        IMessengerService messengerService)
+    public NavigationService(ILoggingService loggingService)
     {
         _loggingService = loggingService;
-        _messengerService = messengerService;
     }
 
     // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
