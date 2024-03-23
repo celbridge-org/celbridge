@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
 
 public interface IDialogService
 {
