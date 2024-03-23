@@ -1,19 +1,19 @@
-﻿using Celbridge.BaseLibrary.Dialogs;
-using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.ViewModels.Pages;
 
 public partial class NewProjectPageViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
-    private readonly IDialogService _dialogService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     public NewProjectPageViewModel(
         ILoggingService loggingService,
-        IDialogService dialogService)
+        IUserInterfaceService userInterfaceService)
     {
         _loggingService = loggingService;
-        _dialogService = dialogService;
+        _userInterfaceService = userInterfaceService;
     }
 
     public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
@@ -23,7 +23,10 @@ public partial class NewProjectPageViewModel : ObservableObject
         {
             ".txt"
         };
-        var result = await _dialogService.PickSingleFileAsync(extensions);
+
+        var filePickerService = _userInterfaceService.FilePickerService;
+
+        var result = await filePickerService.PickSingleFileAsync(extensions);
         if (result.IsFailure)
         {
             _loggingService.Error(result.Error);
@@ -37,7 +40,9 @@ public partial class NewProjectPageViewModel : ObservableObject
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
     private async Task SelectFolder_ExecutedAsync()
     {
-        var result = await _dialogService.PickSingleFolderAsync();
+        var filePickerService = _userInterfaceService.FilePickerService;
+
+        var result = await filePickerService.PickSingleFolderAsync();
         if (result.IsFailure)
         {
             _loggingService.Error(result.Error);

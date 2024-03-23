@@ -1,6 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Dialogs;
+﻿namespace Celbridge.BaseLibrary.UserInterface;
 
-public interface IDialogService
+public interface IFilePickerService
 {
     Task<Result<string>> PickSingleFileAsync(IEnumerable<string> fileExtensions);
     Task<Result<string>> PickSingleFolderAsync();
