@@ -71,5 +71,13 @@ public partial class StartPageViewModel : ObservableObject
         var path = result.Value;
         _loggingService.Info($"Path is : {path}");
     }
+
+    public ICommand ShowAlertCommand => new AsyncRelayCommand(ShowAlert_ExecutedAsync);
+    private async Task ShowAlert_ExecutedAsync()
+    {
+        var dialogService = _userInterfaceService.DialogService;
+
+        await dialogService.ShowAlertAsync("Some message");
+    }
 }
 
