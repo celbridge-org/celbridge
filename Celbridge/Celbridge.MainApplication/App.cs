@@ -84,11 +84,7 @@ public class App : Application
 
         var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
         Guard.IsNotNull(userInterfaceService);
-        userInterfaceService.Initialize();
-
-        var navigationService = Host.Services.GetRequiredService<INavigationService>() as NavigationService;
-        Guard.IsNotNull(navigationService);
-        navigationService.Initialize(MainWindow);
+        userInterfaceService.Initialize(MainWindow);
 
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
