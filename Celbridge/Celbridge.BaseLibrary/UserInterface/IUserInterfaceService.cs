@@ -30,4 +30,9 @@ public interface IUserInterfaceService
     /// Service for displaying the system file and folder picker dialog.
     /// </summary>
     IFilePickerService FilePickerService { get; }
+
+    /// <summary>
+    /// Service for displaying various dialogs, e.g. alerts, confirmation, modal progress
+    /// </summary>
+    IDialogService DialogService { get; }
 }

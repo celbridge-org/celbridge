@@ -20,7 +20,12 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
+
+        // Register user interface services
+        // These services can be acquired via the getters on IUserInterfaceService for convenient access.
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IFilePickerService, FilePickerService>();
 
         if (IsStorageAPIAvailable)
         {
