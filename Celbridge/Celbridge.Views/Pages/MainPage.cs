@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Views.UserControls;
 
 namespace Celbridge.Views.Pages;

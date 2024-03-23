@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 
