@@ -6,11 +6,6 @@
 public interface INavigationService
 {
     /// <summary>
-    /// Returns the main window of the application.
-    /// </summary>
-    object MainWindow { get; }
-
-    /// <summary>
     /// Returns the page navigation provider.
     /// </summary>
     INavigationProvider NavigationProvider { get; }
