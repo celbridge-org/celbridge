@@ -12,13 +12,22 @@ public class UserInterfaceService : IUserInterfaceService
     private Window? _mainWindow;
     public object MainWindow => _mainWindow!;
 
-    public IFilePickerService FilePickerService { get; private set; } = new FilePickerService();
+    //
+    // These properties provide convenient access to various user interface related services
+    //
+    public IFilePickerService FilePickerService { get; private set; }
+    public IDialogService DialogService { get; private set;  }
 
-    public UserInterfaceService(IMessengerService messengerService, 
-        ILoggingService loggingService)
+    public UserInterfaceService(
+        IMessengerService messengerService, 
+        ILoggingService loggingService,
+        IFilePickerService filePickerService,
+        IDialogService dialogService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
+        FilePickerService = filePickerService;
+        DialogService = dialogService;
     }
 
     public void Initialize(Window mainWindow)
