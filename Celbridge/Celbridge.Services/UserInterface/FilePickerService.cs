@@ -1,11 +1,11 @@
-﻿using Celbridge.BaseLibrary.Dialogs;
-using Celbridge.BaseLibrary.Navigation;
+﻿using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.UserInterface;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 
-namespace Celbridge.Services.Dialogs;
+namespace Celbridge.Services.UserInterface;
 
-public class DialogService : IDialogService
+public class FilePickerService : IFilePickerService
 {
     public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
     {

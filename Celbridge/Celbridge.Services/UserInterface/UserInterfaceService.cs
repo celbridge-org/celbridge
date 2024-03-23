@@ -9,6 +9,8 @@ public class UserInterfaceService : IUserInterfaceService
     private ILoggingService _loggingService;
     private IWorkspaceService? _workspaceService;
 
+    public IFilePickerService FilePickerService { get; private set; } = new FilePickerService();
+
     public UserInterfaceService(IMessengerService messengerService, 
         ILoggingService loggingService)
     {

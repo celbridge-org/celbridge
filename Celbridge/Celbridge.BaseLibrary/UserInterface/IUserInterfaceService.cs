@@ -20,4 +20,9 @@ public interface IUserInterfaceService
     /// Attempting to access this property when no workspace is loaded will throw an InvalidOperationException.
     /// </summary>
     IWorkspaceService WorkspaceService { get; }
+
+    /// <summary>
+    /// Service for displaying the system file and folder picker dialog.
+    /// </summary>
+    IFilePickerService FilePickerService { get; }
 }
