@@ -9,6 +9,9 @@ public class UserInterfaceService : IUserInterfaceService
     private ILoggingService _loggingService;
     private IWorkspaceService? _workspaceService;
 
+    private Window? _mainWindow;
+    public object MainWindow => _mainWindow!;
+
     public IFilePickerService FilePickerService { get; private set; } = new FilePickerService();
 
     public UserInterfaceService(IMessengerService messengerService, 
@@ -18,11 +21,40 @@ public class UserInterfaceService : IUserInterfaceService
         _loggingService = loggingService;
     }
 
-    public void Initialize()
+    public void Initialize(Window mainWindow)
     {
+        Guard.IsNotNull(mainWindow);
+        Guard.IsNull(_mainWindow);
+
+        _mainWindow = mainWindow;
+
+#if WINDOWS
+        // Broadcast a message whenever the main window acquires or loses focus (Windows only).
+        _mainWindow.Activated += MainWindow_Activated;
+#endif
+
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
+
+#if WINDOWS
+    private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
+    {
+        var activationState = e.WindowActivationState;
+
+        if (activationState == WindowActivationState.Deactivated)
+        {
+            var message = new MainWindowDeactivatedMessage();
+            _messengerService.Send(message);
+        }
+        else if (activationState == WindowActivationState.PointerActivated ||
+                 activationState == WindowActivationState.CodeActivated)
+        {
+            var message = new MainWindowActivatedMessage();
+            _messengerService.Send(message);
+        }
+    }
+#endif
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
     {

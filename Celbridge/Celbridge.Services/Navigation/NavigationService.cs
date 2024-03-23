@@ -8,13 +8,8 @@ public class NavigationService : INavigationService
     private ILoggingService _loggingService;
     private IMessengerService _messengerService;
 
-    private Window? _mainWindow;
-    public object MainWindow => _mainWindow!;
-
-
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
-
 
     private Dictionary<string, Type> _pageTypes = new();
 
@@ -24,38 +19,6 @@ public class NavigationService : INavigationService
         _loggingService = loggingService;
         _messengerService = messengerService;
     }
-
-    public void Initialize(Window mainWindow)
-    {
-        Guard.IsNotNull(mainWindow);
-        Guard.IsNull(_mainWindow);
-
-        _mainWindow = mainWindow;
-
-#if WINDOWS
-        // Broadcast a message whenever the main window acquires or loses focus (Windows only).
-        _mainWindow.Activated += MainWindow_Activated;
-#endif
-    }
-
-#if WINDOWS
-    private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
-    {
-        var activationState = e.WindowActivationState;
-
-        if (activationState == WindowActivationState.Deactivated)
-        {
-            var message = new MainWindowDeactivatedMessage();
-            _messengerService.Send(message);
-        }
-        else if (activationState == WindowActivationState.PointerActivated ||
-                 activationState == WindowActivationState.CodeActivated)
-        {
-            var message = new MainWindowActivatedMessage();
-            _messengerService.Send(message);
-        }
-    }
-#endif
 
     // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
     // instance is not available until the Main Page has finished loading. This method is used to set this dependency.

@@ -5,6 +5,11 @@ namespace Celbridge.BaseLibrary.UserInterface;
 public interface IUserInterfaceService
 {
     /// <summary>
+    /// Returns the main window of the application.
+    /// </summary>
+    object MainWindow { get; }
+
+    /// <summary>
     /// The list of registered workspace panel configurations.
     /// </summary>
     IEnumerable<WorkspacePanelConfig> WorkspacePanelConfigs { get; }
