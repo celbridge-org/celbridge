@@ -32,8 +32,10 @@ public sealed partial class StartPage : Page
                                 .Command(ViewModel.SelectFileCommand),
                             new Button()
                                 .Content("Select folder")
-                                .Command(ViewModel.SelectFolderCommand)
-                        )
+                                .Command(ViewModel.SelectFolderCommand),
+                            new Button()
+                                .Content("Show Alert")
+                                .Command(ViewModel.ShowAlertCommand))
                     )
                 )
             );
