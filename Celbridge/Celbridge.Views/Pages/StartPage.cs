@@ -19,12 +19,27 @@ public sealed partial class StartPage : Page
         this.DataContext<StartPageViewModel>((page, vm) => page
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
+                .VerticalAlignment(VerticalAlignment.Center)
                 .Children(
-                    new Button()
-                        .Content(OpenWorkspace)
-                        .Command(() => vm.OpenWorkspacePageCommand)
-            )));
-    }
+                    new StackPanel()
+                        .Spacing(6)
+                        .Children(
+                            new Button()
+                                .Content(OpenWorkspace)
+                                .Command(() => vm.OpenWorkspacePageCommand),
+                            new Button()
+                                .Content("Select file")
+                                .Command(ViewModel.SelectFileCommand),
+                            new Button()
+                                .Content("Select folder")
+                                .Command(ViewModel.SelectFolderCommand),
+                            new Button()
+                                .Content("Show Alert")
+                                .Command(ViewModel.ShowAlertCommand))
+                    )
+                )
+            );
+        }
 }
 
 

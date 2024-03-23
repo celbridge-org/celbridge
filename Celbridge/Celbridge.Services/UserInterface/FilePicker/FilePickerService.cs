@@ -1,8 +1,9 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.UserInterface.FilePicker;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 
-namespace Celbridge.Services.UserInterface;
+namespace Celbridge.Services.UserInterface.FilePicker;
 
 public class FilePickerService : IFilePickerService
 {
