@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.BaseLibrary.UserInterface.FilePicker;
 
 public interface IFilePickerService
 {
