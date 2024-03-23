@@ -1,4 +1,6 @@
-﻿using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
+using Celbridge.BaseLibrary.UserInterface.FilePicker;
+using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.BaseLibrary.UserInterface;
 
