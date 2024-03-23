@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.Services.Navigation;
+using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels.Pages;
