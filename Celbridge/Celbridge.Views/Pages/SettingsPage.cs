@@ -14,9 +14,8 @@ public sealed partial class SettingsPage : Page
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<SettingsPageViewModel>();
-        DataContext = ViewModel;
 
-        this.DataContext<StartPageViewModel>((page, vm) => page
+        this.DataContext(ViewModel, (page, vm) => page
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
