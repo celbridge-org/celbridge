@@ -12,4 +12,11 @@ public class DialogFactory : IDialogFactory
         dialog.CloseText = closeText;
         return dialog;
     }
+
+    public IProgressDialog CreateProgressDialog(string titleText)
+    {
+        var dialog = new ProgressDialog();
+        dialog.Title = titleText;
+        return dialog;
+    }
 }

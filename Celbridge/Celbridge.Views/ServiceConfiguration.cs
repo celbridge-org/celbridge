@@ -1,6 +1,5 @@
 ﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
-using Celbridge.ViewModels.Dialogs;
 using Celbridge.Views.Dialogs;
 using Celbridge.Views.Pages;
 using Celbridge.Views.UserControls;
@@ -13,7 +12,6 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddTransient<TitleBar>();
-        services.AddTransient<AlertDialogViewModel>();
     }
 
     public static void Initialize()
