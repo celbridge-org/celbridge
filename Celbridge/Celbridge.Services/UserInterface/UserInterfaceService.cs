@@ -12,7 +12,9 @@ public class UserInterfaceService : IUserInterfaceService
     private IWorkspaceService? _workspaceService;
 
     private Window? _mainWindow;
+    private XamlRoot? _xamlRoot;
     public object MainWindow => _mainWindow!;
+    public object XamlRoot => _xamlRoot!;
 
     //
     // These properties provide convenient access to various user interface related services
@@ -32,12 +34,14 @@ public class UserInterfaceService : IUserInterfaceService
         DialogService = dialogService;
     }
 
-    public void Initialize(Window mainWindow)
+    public void Initialize(Window mainWindow, XamlRoot xamlRoot)
     {
-        Guard.IsNotNull(mainWindow);
+        // Ensure these are only set once
         Guard.IsNull(_mainWindow);
+        Guard.IsNull(_xamlRoot);
 
         _mainWindow = mainWindow;
+        _xamlRoot = xamlRoot;
 
 #if WINDOWS
         // Broadcast a message whenever the main window acquires or loses focus (Windows only).
