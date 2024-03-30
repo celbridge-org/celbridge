@@ -77,7 +77,7 @@ public partial class StartPageViewModel : ObservableObject
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        await dialogService.ShowAlertAsync("Some message");
+        await dialogService.ShowAlertAsync("Some title", "Some message", "Ok");
     }
 }
 
