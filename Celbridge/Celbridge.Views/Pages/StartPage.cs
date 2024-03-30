@@ -33,11 +33,15 @@ public sealed partial class StartPage : Page
                                 .Content("Select folder")
                                 .Command(ViewModel.SelectFolderCommand),
                             new Button()
-                                .Content("Show Alert")
-                                .Command(ViewModel.ShowAlertCommand))
-                    )
-                )
-            );
+                                .Content("Show Alert Dialog")
+                                .Command(ViewModel.ShowAlertDialogCommand),
+                            new Button()
+                                .Content("Show Progress Dialog")
+                                .Command(ViewModel.ShowProgressDialogCommand)
+                                )
+                            )
+                        )
+                    );
         }
 }
 

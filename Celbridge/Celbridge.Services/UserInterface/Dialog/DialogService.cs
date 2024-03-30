@@ -12,9 +12,16 @@ public class DialogService : IDialogService
         _dialogFactory = dialogFactory;
     }
 
-    public async Task ShowAlertAsync(string titleText, string messageText, string closeText)
+    public async Task ShowAlertDialogAsync(string titleText, string messageText, string closeText)
     {
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText, closeText);
+
+        await dialog.ShowDialogAsync();
+    }
+
+    public async Task ShowProgressDialogAsync(string titleText)
+    {
+        var dialog = _dialogFactory.CreateProgressDialog(titleText);
 
         await dialog.ShowDialogAsync();
     }
