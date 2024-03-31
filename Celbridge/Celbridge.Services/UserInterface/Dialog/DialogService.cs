@@ -4,17 +4,25 @@ namespace Celbridge.Services.UserInterface.Dialog;
 
 public class DialogService : IDialogService
 {
-    ILoggingService _loggingService;
+    private readonly IDialogFactory _dialogFactory;
 
-    public DialogService(ILoggingService loggingService)
+    public DialogService(
+        IDialogFactory dialogFactory)
     {
-        _loggingService = loggingService;
+        _dialogFactory = dialogFactory;
     }
 
-    public async Task ShowAlertAsync(string message)
+    public async Task ShowAlertDialogAsync(string titleText, string messageText, string closeText)
     {
-        await Task.Delay(500);
+        var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText, closeText);
 
-        _loggingService.Info(message);
+        await dialog.ShowDialogAsync();
+    }
+
+    public async Task ShowProgressDialogAsync(string titleText, string cancelText)
+    {
+        var dialog = _dialogFactory.CreateProgressDialog(titleText, cancelText);
+
+        await dialog.ShowDialogAsync();
     }
 }

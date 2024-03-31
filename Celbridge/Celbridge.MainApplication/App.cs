@@ -75,15 +75,6 @@ public class App : Application
             MainWindow.Title = localizer["ApplicationName"];
         }
 
-        //
-        // Initialize the user interface and page navigation services
-        // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
-        //
-
-        var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
-        Guard.IsNotNull(userInterfaceService);
-        userInterfaceService.Initialize(MainWindow);
-
         _legacyApp?.Initialize(Host.Services, MainWindow);
 
         MainWindow.Closed += (s, e) =>
@@ -94,6 +85,19 @@ public class App : Application
         rootFrame.Loaded += (s, e) =>
         {
             _legacyApp?.OnFrameLoaded(rootFrame);
+
+            //
+            // Initialize the user interface and page navigation services
+            // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
+            //
+
+            var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
+            Guard.IsNotNull(userInterfaceService);
+
+            XamlRoot xamlRoot = rootFrame.XamlRoot!;
+            Guard.IsNotNull(xamlRoot);
+
+            userInterfaceService.Initialize(MainWindow, xamlRoot);
 
 #if DEBUG
             MainWindow.EnableHotReload();

@@ -72,12 +72,20 @@ public partial class StartPageViewModel : ObservableObject
         _loggingService.Info($"Path is : {path}");
     }
 
-    public ICommand ShowAlertCommand => new AsyncRelayCommand(ShowAlert_ExecutedAsync);
-    private async Task ShowAlert_ExecutedAsync()
+    public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);
+    private async Task ShowAlertDialog_ExecutedAsync()
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        await dialogService.ShowAlertAsync("Some message");
+        await dialogService.ShowAlertDialogAsync("Some title", "Some message", "Ok");
+    }
+
+    public ICommand ShowProgressDialogCommand => new AsyncRelayCommand(ShowProgressDialog_ExecutedAsync);
+    private async Task ShowProgressDialog_ExecutedAsync()
+    {
+        var dialogService = _userInterfaceService.DialogService;
+
+        await dialogService.ShowProgressDialogAsync("Some title", "Cancel");
     }
 }
 
