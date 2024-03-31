@@ -12,6 +12,13 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddTransient<TitleBar>();
+
+        //
+        // Register dialog views
+        //
+
+        services.AddTransient<IAlertDialog, AlertDialog>();
+        services.AddTransient<IProgressDialog, ProgressDialog>();
     }
 
     public static void Initialize()
