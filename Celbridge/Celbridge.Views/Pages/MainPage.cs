@@ -25,9 +25,6 @@ public sealed partial class MainPage : Page
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
-        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
-        DataContext = ViewModel;
-
         _contentFrame = new Frame()
             .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
@@ -64,7 +61,9 @@ public sealed partial class MainPage : Page
             .RowDefinitions("Auto, *")
             .Children(_mainNavigation);
 
-        this.DataContext<MainPageViewModel>((page, vm) => page
+        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
+
+        this.DataContext(ViewModel, (page, vm) => page
             .Content(_layoutRoot));
 
         Loaded += OnMainPage_Loaded;

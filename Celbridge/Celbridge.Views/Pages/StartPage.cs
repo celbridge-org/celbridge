@@ -14,9 +14,8 @@ public sealed partial class StartPage : Page
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();
-        DataContext = ViewModel;
 
-        this.DataContext<StartPageViewModel>((page, vm) => page
+        this.DataContext(ViewModel, (page, vm) => page
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
@@ -34,11 +33,15 @@ public sealed partial class StartPage : Page
                                 .Content("Select folder")
                                 .Command(ViewModel.SelectFolderCommand),
                             new Button()
-                                .Content("Show Alert")
-                                .Command(ViewModel.ShowAlertCommand))
-                    )
-                )
-            );
+                                .Content("Show Alert Dialog")
+                                .Command(ViewModel.ShowAlertDialogCommand),
+                            new Button()
+                                .Content("Show Progress Dialog")
+                                .Command(ViewModel.ShowProgressDialogCommand)
+                                )
+                            )
+                        )
+                    );
         }
 }
 
