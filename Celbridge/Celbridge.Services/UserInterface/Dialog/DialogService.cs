@@ -19,9 +19,9 @@ public class DialogService : IDialogService
         await dialog.ShowDialogAsync();
     }
 
-    public async Task ShowProgressDialogAsync(string titleText)
+    public async Task ShowProgressDialogAsync(string titleText, string cancelText)
     {
-        var dialog = _dialogFactory.CreateProgressDialog(titleText);
+        var dialog = _dialogFactory.CreateProgressDialog(titleText, cancelText);
 
         await dialog.ShowDialogAsync();
     }

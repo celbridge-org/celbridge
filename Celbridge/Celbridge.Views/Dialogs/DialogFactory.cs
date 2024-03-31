@@ -7,16 +7,17 @@ public class DialogFactory : IDialogFactory
     public IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText)
     {
         var dialog = new AlertDialog();
-        dialog.Title = titleText;
+        dialog.TitleText = titleText;
         dialog.MessageText = messageText;
         dialog.CloseText = closeText;
         return dialog;
     }
 
-    public IProgressDialog CreateProgressDialog(string titleText)
+    public IProgressDialog CreateProgressDialog(string titleText, string cancelText)
     {
         var dialog = new ProgressDialog();
-        dialog.Title = titleText;
+        dialog.TitleText = titleText;
+        dialog.CancelText = cancelText;
         return dialog;
     }
 }
