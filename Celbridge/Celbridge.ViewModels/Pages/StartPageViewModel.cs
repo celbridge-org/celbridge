@@ -85,7 +85,7 @@ public partial class StartPageViewModel : ObservableObject
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        await dialogService.ShowProgressDialogAsync("Some title");
+        await dialogService.ShowProgressDialogAsync("Some title", "Cancel");
     }
 }
 

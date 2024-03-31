@@ -14,6 +14,12 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
         set => ViewModel.TitleText = value;
     }
 
+    public string CancelText
+    {
+        get => ViewModel.CancelText;
+        set => ViewModel.CancelText = value;
+    }
+
     public ProgressDialog()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
@@ -26,6 +32,7 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .PrimaryButtonCommand(x => x.Bind(() => ViewModel.CancelCommand))
+            .PrimaryButtonText(x => x.Bind(() => ViewModel.CancelText).Mode(BindingMode.OneWay))
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
