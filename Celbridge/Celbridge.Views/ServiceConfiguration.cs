@@ -1,4 +1,6 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Navigation;
+﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
+using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.Views.Dialogs;
 using Celbridge.Views.Pages;
 using Celbridge.Views.UserControls;
 
@@ -8,6 +10,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddTransient<TitleBar>();
     }
 

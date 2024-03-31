@@ -11,6 +11,13 @@ public interface IUserInterfaceService
     /// </summary>
     object MainWindow { get; }
 
+
+    /// <summary>
+    /// Returns the XamlRoot of the the application.
+    /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
+    /// </summary>
+    object XamlRoot { get; }
+
     /// <summary>
     /// The list of registered workspace panel configurations.
     /// </summary>
