@@ -7,13 +7,14 @@ public class ParallelTaskGroup : ITaskGroup
     private readonly List<ITask> _tasks = new List<ITask>();
 
     public event EventHandler<TaskProgressEventArgs>? ProgressChanged;
+    public CancellationToken CancellationToken { get; } = new();
 
     public void AddTask(ITask task) => _tasks.Add(task);
 
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    public async Task ExecuteAsync()
     {
         var tasksWithProgress = _tasks
-            .Select(task => ExecuteTaskAsync(task, cancellationToken))
+            .Select(task => ExecuteTaskAsync(task, CancellationToken))
             .ToList();
 
         await Task.WhenAll(tasksWithProgress);
