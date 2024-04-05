@@ -7,21 +7,22 @@ public class SerialTaskGroup : ITaskGroup
     private readonly List<ITask> _tasks = new List<ITask>();
 
     public event EventHandler<TaskProgressEventArgs>? ProgressChanged;
+    public CancellationToken CancellationToken { get; } = new();
 
     public void AddTask(ITask task) => _tasks.Add(task);
 
-    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    public async Task ExecuteAsync()
     {
         foreach (var task in _tasks)
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (CancellationToken.IsCancellationRequested)
             {
                 return;
             }
 
             try
             {
-                await task.ExecuteAsync(cancellationToken);
+                await task.ExecuteAsync(CancellationToken);
                 ProgressChanged?.Invoke(this, new TaskProgressEventArgs(true, task));
             }
             catch
