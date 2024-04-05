@@ -2,7 +2,6 @@
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;
-using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
@@ -35,7 +34,7 @@ public class MessagingTests
     public record TestMessage;
 
     [Test]
-    public void TestSendMessage()
+    public void ICanSendAndReceiveAMessage()
     {
         var messengerService = _serviceProvider!.GetRequiredService<IMessengerService>();
         var loggingService = _serviceProvider!.GetRequiredService<ILoggingService>();
