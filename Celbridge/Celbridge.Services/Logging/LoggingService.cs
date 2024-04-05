@@ -4,12 +4,8 @@ namespace Celbridge.Services.Logging;
 
 public class LoggingService : ILoggingService
 {
-    private IMessengerService _messengerService;
-
-    public LoggingService(IMessengerService messengerService)
+    public LoggingService()
     {
-        _messengerService = messengerService;
-
         Log.Logger = new LoggerConfiguration()
             //.WriteTo.ConsoleService(this) // Our custom sink that writes to the Console panel in the app
             .WriteTo.Debug() // Writes to the Visual Studio debug Output window (uses a Nuget package)
@@ -21,8 +17,6 @@ public class LoggingService : ILoggingService
         Log.Information(logMessage);
 
         var message = new WroteLogMessage(LogMessageType.Info, logMessage);
-        _messengerService.Send(message);
-
     }
 
     public void Warn(string logMessage)
@@ -30,7 +24,6 @@ public class LoggingService : ILoggingService
         Log.Warning(logMessage);
 
         var message = new WroteLogMessage(LogMessageType.Warning, logMessage);
-        _messengerService.Send(message);
     }
 
     public void Error(string logMessage)
@@ -38,6 +31,5 @@ public class LoggingService : ILoggingService
         Log.Error(logMessage);
 
         var message = new WroteLogMessage(LogMessageType.Error, logMessage);
-        _messengerService.Send(message);
     }
 }
