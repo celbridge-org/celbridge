@@ -2,6 +2,7 @@
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Tasks;
+using Celbridge.BaseLibrary.UserInterface.Dialog;
 
 namespace Celbridge.ViewModels.Pages;
 
@@ -89,7 +90,7 @@ public partial class StartPageViewModel : ObservableObject
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        dialogService.ShowProgressDialog("Some title");
+        dialogService.AcquireProgressDialog("Some title");
     }
 
     public ICommand ScheduleTaskCommand => new RelayCommand(ScheduleTask_Executed);
@@ -97,16 +98,16 @@ public partial class StartPageViewModel : ObservableObject
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        _schedulerService.ScheduleFunction(async () =>
-        {
-            dialogService.ShowProgressDialog("Doing stuff");
-            await Task.Delay(1000);            
-            dialogService.HideProgressDialog();
-        });
+        IProgressDialogToken? token;
 
         _schedulerService.ScheduleFunction(async () =>
         {
+            token = dialogService.AcquireProgressDialog("Doing stuff");
+            await Task.Delay(1000);            
+            // Displaying this alert automatically suppresses the progress dialog until the alert is dismissed
             await dialogService.ShowAlertDialogAsync("Scheduled Alert", "An alert message", "Ok");
+            await Task.Delay(1000);
+            dialogService.ReleaseProgressDialog(token);
         });
     }
 }

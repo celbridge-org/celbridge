@@ -8,9 +8,16 @@ public interface IDialogService
     Task ShowAlertDialogAsync(string titleText, string messageText, string closeText);
 
     /// <summary>
-    /// Display a Progress Dialog with configurable title and cancel button text.
+    /// Aqcuire a progress dialog token.
+    /// The progress dialog will be displayed as long as any token is active, and will display the title of the
+    /// most recently acquired token that is still active. The progress dialog is temporarily hidden while any other type 
+    /// of dialog is displayed.
     /// </summary>
-    void ShowProgressDialog(string titleText);
+    IProgressDialogToken AcquireProgressDialog(string titleText);
 
-    void HideProgressDialog();
+    /// <summary>
+    /// Release a previously acquired progress dialog token.
+    /// The progress dialog is hidden when all tokens are released.
+    /// </summary>
+    void ReleaseProgressDialog(IProgressDialogToken token);
 }
