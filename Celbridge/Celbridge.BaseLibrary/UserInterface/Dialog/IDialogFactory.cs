@@ -11,5 +11,5 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Progress Dialog with configurable title..
     /// </summary>
-    IProgressDialog CreateProgressDialog(string titleText, string canceltext);
+    IProgressDialog CreateProgressDialog(string titleText);
 }

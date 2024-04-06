@@ -37,7 +37,10 @@ public sealed partial class StartPage : Page
                                 .Command(ViewModel.ShowAlertDialogCommand),
                             new Button()
                                 .Content("Show Progress Dialog")
-                                .Command(ViewModel.ShowProgressDialogCommand)
+                                .Command(ViewModel.ShowProgressDialogCommand),
+                            new Button()
+                                .Content("Schedule Task")
+                                .Command(ViewModel.ScheduleTaskCommand)
                                 )
                             )
                         )
