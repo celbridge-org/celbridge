@@ -42,7 +42,7 @@ public class TaskSchedulerTests
 
         public async Task<Result> ExecuteAsync(CancellationToken cancellationToken)
         {
-            await Task.Delay(100);
+            await Task.Delay(10);
 
             Completed = true;
 
@@ -60,9 +60,29 @@ public class TaskSchedulerTests
 
         while (!myTask.Completed)
         {
-            await Task.Delay(50);
+            await Task.Delay(100);
         }
 
         myTask.Completed.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ICanScheduleAndExecuteAFunction()
+    {
+        bool completed = false;
+
+        _schedulerService!.ScheduleFunction(async () =>
+        {
+            completed = true;
+
+            await Task.CompletedTask;
+        });
+
+        while (!completed)
+        {
+            await Task.Delay(100);
+        }
+
+        completed.Should().BeTrue();
     }
 }
