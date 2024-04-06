@@ -9,7 +9,7 @@ public interface IDialogFactory
 
 
     /// <summary>
-    /// Create an Progress Dialog with configurable title..
+    /// Create an Progress Dialog.
     /// </summary>
-    IProgressDialog CreateProgressDialog(string titleText);
+    IProgressDialog CreateProgressDialog();
 }
