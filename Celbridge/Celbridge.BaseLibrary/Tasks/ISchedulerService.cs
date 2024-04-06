@@ -6,17 +6,22 @@ namespace Celbridge.BaseLibrary.Tasks;
 public interface ISchedulerService
 {
     /// <summary>
-    /// Schedule a single task for execution.
+    /// Schedule a single task for execution in serial order.
     /// </summary>
     void ScheduleTask(ITask task);
 
     /// <summary>
-    /// Schedule a list of tasks to be executed in serial order.
+    /// Schedule a single async function for execution in serial order.
     /// </summary>
-    void ScheduleSerialTasks(List<ITask> tasks);
+    void ScheduleFunction(Func<Task> task);
 
     /// <summary>
     /// Schedule a list of tasks to be executed in parallel.
     /// </summary>
-    void ScheduleParallelTasks(List<ITask> tasks);
+    void ScheduleParallelTasks(IEnumerable<ITask> tasks);
+
+    /// <summary>
+    /// Schedule a list of async functions to be executed in parallel.
+    /// </summary>
+    void ScheduleParallelFunctions(IEnumerable<Func<Task>> tasks);
 }

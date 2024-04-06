@@ -10,6 +10,8 @@ using Celbridge.Services.UserInterface.Dialog;
 using Celbridge.Services.UserInterface.FilePicker;
 using Celbridge.Services.UserInterface.Navigation;
 using Celbridge.Services.UserInterface;
+using Celbridge.BaseLibrary.Tasks;
+using Celbridge.Services.Tasks;
 
 namespace Celbridge.Services;
 
@@ -24,6 +26,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<ISchedulerService, SchedulerService>();
 
         // Register user interface services
         // These services can be acquired via the getters on IUserInterfaceService for convenient access.

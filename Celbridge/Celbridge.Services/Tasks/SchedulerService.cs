@@ -17,18 +17,22 @@ public class SchedulerService : ISchedulerService
         _loggingService = loggingService;
     }
 
-    public void ScheduleTask(ITask task)
+    public void ScheduleFunction(Func<Task> task)
     {
-        var taskList = new List<ITask>
-        {
-            task
-        };
-        ScheduleSerialTasks(taskList);
+        var functionTask = new FunctionTask(task);
+        ScheduleTask(functionTask);
     }
 
-    public void ScheduleSerialTasks(List<ITask> tasks)
+    public void ScheduleTask(ITask task)
     {
         var taskGroup = new SerialTaskGroup();
+        taskGroup.AddTask(task);
+        ScheduleTaskGroup(taskGroup);
+    }
+
+    public void ScheduleParallelTasks(IEnumerable<ITask> tasks)
+    {
+        var taskGroup = new ParallelTaskGroup();
         foreach (var task in tasks)
         {
             taskGroup.AddTask(task);
@@ -36,12 +40,13 @@ public class SchedulerService : ISchedulerService
         ScheduleTaskGroup(taskGroup);
     }
 
-    public void ScheduleParallelTasks(List<ITask> tasks)
+    public void ScheduleParallelFunctions(IEnumerable<Func<Task>> tasks)
     {
         var taskGroup = new ParallelTaskGroup();
         foreach (var task in tasks)
         {
-            taskGroup.AddTask(task);
+            var functionTask = new FunctionTask(task);
+            taskGroup.AddTask(functionTask);
         }
         ScheduleTaskGroup(taskGroup);
     }
@@ -57,7 +62,9 @@ public class SchedulerService : ISchedulerService
         if (!_isProcessing)
         {
             _isProcessing = true;
-            Task.Run(ProcessTasksAsync);
+
+            // Todo: We may need to ensure that this async task is executed on the main thread
+            var _ = ProcessTasksAsync();
         }
     }
 
