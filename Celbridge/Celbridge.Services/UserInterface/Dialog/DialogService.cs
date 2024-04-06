@@ -5,6 +5,9 @@ namespace Celbridge.Services.UserInterface.Dialog;
 public class DialogService : IDialogService
 {
     private readonly IDialogFactory _dialogFactory;
+    private IProgressDialog? _progressDialog;
+    private bool _supressProgressDialog;
+    private List<IProgressDialogToken> _progressDialogTokens = new();
 
     public DialogService(
         IDialogFactory dialogFactory)
@@ -16,24 +19,55 @@ public class DialogService : IDialogService
     {
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText, closeText);
 
+        SuppressProgressDialog(true);
+
         await dialog.ShowDialogAsync();
+
+        SuppressProgressDialog(false);
     }
 
-    private IProgressDialog? _progressDialog;
-
-    public void ShowProgressDialog(string titleText)
+    public IProgressDialogToken AcquireProgressDialog(string titleText)
     {
-        Guard.IsNull(_progressDialog);
-
-        _progressDialog = _dialogFactory.CreateProgressDialog(titleText);     
-        _progressDialog.ShowDialog();
+        var token = new ProgressDialogToken(titleText);
+        _progressDialogTokens.Add(token);
+        UpdateProgressDialog();
+        return token;
     }
 
-    public void HideProgressDialog()
+    public void ReleaseProgressDialog(IProgressDialogToken token)
     {
-        Guard.IsNotNull(_progressDialog);
+        _progressDialogTokens.Remove(token);
+        UpdateProgressDialog();
+    }
 
-        _progressDialog.HideDialog();
-        _progressDialog = null;
+    private void SuppressProgressDialog(bool suppressed)
+    {
+        _supressProgressDialog = suppressed;
+        UpdateProgressDialog();
+    }
+
+    private void UpdateProgressDialog()
+    {
+        bool showDialog = _progressDialogTokens.Any() && !_supressProgressDialog;
+
+        if (showDialog)
+        {
+            if (_progressDialog is null)
+            {
+                _progressDialog = _dialogFactory.CreateProgressDialog();
+                _progressDialog.ShowDialog();
+            }
+
+            // Use the title text from the most recent token added
+            _progressDialog.TitleText = _progressDialogTokens.Last().DialogTitle;
+        }
+        else
+        {
+            if (_progressDialog is not null)
+            {
+                _progressDialog.HideDialog();
+                _progressDialog = null;
+            }
+        }
     }
 }
