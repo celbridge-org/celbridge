@@ -15,12 +15,11 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IProgressDialog CreateProgressDialog(string titleText, string cancelText)
+    public IProgressDialog CreateProgressDialog(string titleText)
     {
         var dialog = ServiceLocator.ServiceProvider.GetRequiredService<IProgressDialog>();
 
         dialog.TitleText = titleText;
-        dialog.CancelText = cancelText;
  
         return dialog;
     }

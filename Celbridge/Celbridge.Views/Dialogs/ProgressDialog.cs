@@ -8,16 +8,12 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
 {
     public ProgressDialogViewModel ViewModel { get; }
 
+    private bool _isShowing;
+
     public string TitleText
     {
         get => ViewModel.TitleText;
         set => ViewModel.TitleText = value;
-    }
-
-    public string CancelText
-    {
-        get => ViewModel.CancelText;
-        set => ViewModel.CancelText = value;
     }
 
     public ProgressDialog()
@@ -31,8 +27,6 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .PrimaryButtonCommand(x => x.Bind(() => ViewModel.CancelCommand))
-            .PrimaryButtonText(x => x.Bind(() => ViewModel.CancelText).Mode(BindingMode.OneWay))
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
@@ -46,8 +40,24 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
             );
     }
 
-    public async Task ShowDialogAsync()
+    public void ShowDialog()
     {
-        await ShowAsync();
+        if (_isShowing)
+        {
+            return;
+        }
+
+        _isShowing = true;
+        var _ = ShowAsync();
+    }
+
+    public void HideDialog()
+    {
+        if (!_isShowing)
+        {
+            return;
+        }
+        Hide();
+        _isShowing = false;
     }
 }
