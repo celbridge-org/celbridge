@@ -8,14 +8,12 @@ public interface IProgressDialog
     string TitleText { get; set; }
 
     /// <summary>
-    /// The text displayed on the cancel button.
-    /// If this is empty, the cancel button is not displayed.
+    /// Present the progress dialog to the user.
     /// </summary>
-    string CancelText { get; set; }
+    void ShowDialog();
 
     /// <summary>
-    /// Present the progress dialog to the user.
-    /// The async call completes when the dialog closes.
+    /// Hide the progress dialog.
     /// </summary>
-    Task ShowDialogAsync();
+    void HideDialog();
 }
