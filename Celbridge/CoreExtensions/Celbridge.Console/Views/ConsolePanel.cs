@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
+using Windows.System;
 
 namespace Celbridge.Console.Views;
 
@@ -62,12 +63,15 @@ public sealed partial class ConsolePanel : UserControl
             .Grid(row: 2)
             .Text("<Placeholder text>")
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
-            // KeyDown = "CommandTextBox_KeyDown"
-            // KeyUp = "CommandTextBox_KeyUp"
-            // Text = "{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            .Text(x => x.Bind(() => ViewModel.InputText)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .VerticalAlignment(VerticalAlignment.Bottom)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .IsSpellCheckEnabled(false);
+
+        inputTextBox.KeyDown += CommandTextBox_KeyDown;
+        inputTextBox.KeyUp += CommandTextBox_KeyUp;
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *, 32")
@@ -79,5 +83,29 @@ public sealed partial class ConsolePanel : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(panelGrid));
+    }
+
+    public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
+    {
+        //if (e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
+        //{
+        //    if (e.Key == VirtualKey.Up)
+        //    {
+        //        ViewModel.CycleHistoryCommand.Execute(false);
+        //    }
+        //    else if (e.Key == VirtualKey.Down)
+        //    {
+        //        ViewModel.CycleHistoryCommand.Execute(true);
+        //    }
+        //    e.Handled = true; // Mark the event as handled to prevent further processing
+        //}
+    }
+
+    public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            ViewModel.SubmitCommand.Execute(null);
+        }
     }
 }
