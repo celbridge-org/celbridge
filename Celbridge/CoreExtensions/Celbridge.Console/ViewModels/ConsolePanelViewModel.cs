@@ -7,7 +7,6 @@ namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject
 {
-    private readonly ILoggingService _loggingService;
     private readonly IConsoleService _consoleService;
 
     [ObservableProperty]
@@ -26,10 +25,8 @@ public partial class ConsolePanelViewModel : ObservableObject
 
     public ConsolePanelViewModel(
         IUserInterfaceService userInterfaceService, 
-        ILoggingService loggingService,
         IConsoleService consoleService)
     {
-        _loggingService = loggingService;
         _consoleService = consoleService;  // Transient instance created via DI
 
         // Register the console service with the workspace service
