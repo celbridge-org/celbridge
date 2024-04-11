@@ -51,16 +51,25 @@ public sealed partial class ConsolePanel : UserControl
         var scrollViewer = new ScrollViewer()
             .Grid(row: 1)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
-            .Padding(6)
             .Content(new ListView()
                 .ItemTemplate(() =>
                 {
                     var textBlock = new TextBlock()
-                        .Text(x => x.Bind(() => x));
-                    //textBlock.SetBinding(TextBlock.TextProperty, new Binding());
+                        .Text(x => x.Bind(() => x))
+                        .Margin(0)
+                        .Padding(0);
                     return textBlock;
                 })
                 .ItemsSource(x => x.Bind(() => ViewModel.OutputItems).OneWay())
+                .ItemContainerStyle(new Style(typeof(ListViewItem))
+                {
+                    Setters =
+                    {
+                        new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
+                        new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
+                        new Setter(FrameworkElement.MinHeightProperty, 24),
+                    }
+                })
             );
 
         var inputTextBox = new TextBox()
