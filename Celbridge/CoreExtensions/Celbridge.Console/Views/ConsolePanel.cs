@@ -52,12 +52,16 @@ public sealed partial class ConsolePanel : UserControl
             .Grid(row: 1)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
             .Padding(6)
-            .Content(new TextBlock()
-                .TextWrapping(TextWrapping.Wrap)
-                .VerticalAlignment(VerticalAlignment.Bottom)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .IsTextSelectionEnabled(true)
-                .Text("<Placeholder text>"));
+            .Content(new ListView()
+                .ItemTemplate(() =>
+                {
+                    var textBlock = new TextBlock()
+                        .Text(x => x.Bind(() => x));
+                    //textBlock.SetBinding(TextBlock.TextProperty, new Binding());
+                    return textBlock;
+                })
+                .ItemsSource(x => x.Bind(() => ViewModel.OutputItems).OneWay())
+            );
 
         var inputTextBox = new TextBox()
             .Grid(row: 2)
