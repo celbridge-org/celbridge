@@ -68,6 +68,7 @@ public sealed partial class ConsolePanel : UserControl
                         new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
                         new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
                         new Setter(FrameworkElement.MinHeightProperty, 24),
+                        new Setter(FrameworkElement.HeightProperty, 24),
                     }
                 })
             );
