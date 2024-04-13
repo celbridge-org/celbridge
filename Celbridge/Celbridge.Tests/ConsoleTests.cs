@@ -37,12 +37,23 @@ public class ConsoleTests
     }
 
     [Test]
-    public async Task TestPrintCommandAsync()
+    public void ICanMoveThroughConsoleHistory()
     {
-        var consoleService = _serviceProvider!.GetRequiredService<IConsoleService>();
+        var consoleHistory = new ConsoleHistory();
 
-        var result = await consoleService.ExecuteAsync("print");
+        consoleHistory.Add("A");
+        consoleHistory.Add("B");
 
-        result.IsSuccess.Should().BeTrue();
+        var goBackResult1 = consoleHistory.CycleBackward();
+        goBackResult1.IsSuccess.Should().BeTrue();
+        goBackResult1.Value.Should().Be("B");
+
+        var goBackResult2 = consoleHistory.CycleBackward();
+        goBackResult2.IsSuccess.Should().BeTrue();
+        goBackResult2.Value.Should().Be("A");
+
+        var goForwardResult1 = consoleHistory.CycleForward();
+        goForwardResult1.IsSuccess.Should().BeTrue();
+        goForwardResult1.Value.Should().Be("B");
     }
 }
