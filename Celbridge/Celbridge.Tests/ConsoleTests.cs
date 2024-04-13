@@ -37,23 +37,36 @@ public class ConsoleTests
     }
 
     [Test]
-    public void ICanMoveThroughConsoleHistory()
+    public void ICanMoveThroughCommandHistory()
     {
-        var consoleHistory = new ConsoleHistory();
+        var commandHistory = new CommandHistory() as ICommandHistory;
 
-        consoleHistory.Add("A");
-        consoleHistory.Add("B");
+        // Add 2 commands to the history
+        commandHistory.AddCommand("A");
+        commandHistory.AddCommand("B");
 
-        var goBackResult1 = consoleHistory.CycleBackward();
-        goBackResult1.IsSuccess.Should().BeTrue();
-        goBackResult1.Value.Should().Be("B");
+        // Check current command is "B"
+        commandHistory.HistorySize.Should().Be(2);
+        commandHistory.GetCurrentCommand().Value.Should().Be("B");
+        commandHistory.CanMoveToNextCommand.Should().BeFalse();
+        commandHistory.CanMoveToPreviousCommand.Should().BeTrue();
 
-        var goBackResult2 = consoleHistory.CycleBackward();
-        goBackResult2.IsSuccess.Should().BeTrue();
-        goBackResult2.Value.Should().Be("A");
+        // Move to the previous command "A"
+        commandHistory.MoveToPreviousCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetCurrentCommand().Value.Should().Be("A");
+        commandHistory.CanMoveToNextCommand.Should().BeTrue();
+        commandHistory.CanMoveToPreviousCommand.Should().BeFalse();
 
-        var goForwardResult1 = consoleHistory.CycleForward();
-        goForwardResult1.IsSuccess.Should().BeTrue();
-        goForwardResult1.Value.Should().Be("B");
+        // Move to the next command "B"
+        commandHistory.MoveToNextCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetCurrentCommand().Value.Should().Be("B");
+        commandHistory.CanMoveToNextCommand.Should().BeFalse();
+        commandHistory.CanMoveToPreviousCommand.Should().BeTrue();
+
+        // Clear the command history
+        commandHistory.Clear();
+        commandHistory.HistorySize.Should().Be(0);
+        commandHistory.CanMoveToNextCommand.Should().BeFalse();
+        commandHistory.CanMoveToPreviousCommand.Should().BeFalse();
     }
 }
