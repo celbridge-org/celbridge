@@ -6,18 +6,19 @@ public class DialogFactory : IDialogFactory
 {
     public IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText)
     {
-        var dialog = ServiceLocator.ServiceProvider.GetRequiredService<IAlertDialog>();
-
-        dialog.TitleText = titleText;
-        dialog.MessageText = messageText;
-        dialog.CloseText = closeText;
+        var dialog = new AlertDialog
+        {
+            TitleText = titleText,
+            MessageText = messageText,
+            CloseText = closeText
+        };
 
         return dialog;
     }
 
     public IProgressDialog CreateProgressDialog()
     {
-        var dialog = ServiceLocator.ServiceProvider.GetRequiredService<IProgressDialog>();
+        var dialog = new ProgressDialog();
         return dialog;
     }
 }
