@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
+using Windows.System;
 
 namespace Celbridge.Console.Views;
 
@@ -11,6 +12,9 @@ public sealed partial class ConsolePanel : UserControl
     public LocalizedString ClearButtonTooltip => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(ClearButtonTooltip)}");
 
     private IStringLocalizer _stringLocalizer;
+
+    private ScrollViewer _scrollViewer;
+    private TextBox _commandTextBox;
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -47,37 +51,82 @@ public sealed partial class ConsolePanel : UserControl
                     .VerticalAlignment(VerticalAlignment.Center),
                 clearButton);
 
-        var scrollViewer = new ScrollViewer()
+        _scrollViewer = new ScrollViewer()
             .Grid(row: 1)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
-            .Padding(6)
-            .Content(new TextBlock()
-                .TextWrapping(TextWrapping.Wrap)
-                .VerticalAlignment(VerticalAlignment.Bottom)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .IsTextSelectionEnabled(true)
-                .Text("<Placeholder text>"));
+            .Content(new ListView()
+                .ItemTemplate(() =>
+                {
+                    var textBlock = new TextBlock()
+                        .Text(x => x.Bind(() => x))
+                        .Margin(0)
+                        .Padding(0);
+                    return textBlock;
+                })
+                .ItemsSource(x => x.Bind(() => ViewModel.OutputItems).OneWay())
+                .ItemContainerStyle(new Style(typeof(ListViewItem))
+                {
+                    Setters =
+                    {
+                        new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
+                        new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
+                        new Setter(FrameworkElement.MinHeightProperty, 24),
+                        new Setter(FrameworkElement.HeightProperty, 24),
+                    }
+                })
+            );
 
-        var inputTextBox = new TextBox()
+        _commandTextBox = new TextBox()
             .Grid(row: 2)
-            .Text("<Placeholder text>")
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
-            // KeyDown = "CommandTextBox_KeyDown"
-            // KeyUp = "CommandTextBox_KeyUp"
-            // Text = "{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            .Text(x => x.Bind(() => ViewModel.CommandText)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .VerticalAlignment(VerticalAlignment.Bottom)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .IsSpellCheckEnabled(false);
 
+        _commandTextBox.KeyDown += CommandTextBox_KeyDown;
+        _commandTextBox.KeyUp += CommandTextBox_KeyUp;
+
         var panelGrid = new Grid()
             .RowDefinitions("40, *, 32")
-            .Children(titleBar, scrollViewer, inputTextBox);
-           
+            .Children(titleBar, _scrollViewer, _commandTextBox);
+
         //
         // Set the data context and page content
         // 
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(panelGrid));
+    }
+
+    public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Up)
+        {
+            ViewModel.SelectPreviousCommand.Execute(this);
+            e.Handled = true; // Mark the event as handled to prevent further processing
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
+        else if (e.Key == VirtualKey.Down)
+        {
+            ViewModel.SelectNextCommand.Execute(this);
+            e.Handled = true;
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
+    }
+
+    public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            ViewModel.SubmitCommand.Execute(this);
+            e.Handled = true;
+
+            // Scroll to the end of the output list
+            _scrollViewer.UpdateLayout();
+            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+        }
     }
 }
