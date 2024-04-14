@@ -47,3 +47,11 @@ https://www.linkedin.com/pulse/how-rename-solution-project-visual-studio-/
 
 The rename feature in Visual Studio doesn't modify the folder name on disk, so you manually have to change
 it via Windows Explorer and then fix up all the references in the Visual Studio project.
+
+# Unit tests take minutes to start
+
+Running tests in the Test Explorer window should be a quick operation, but apparently it can take a long time to discover tests if you have a lot of .nuget packages cached.
+
+https://stackoverflow.com/questions/30933277/how-can-i-clear-the-nuget-package-cache-using-the-command-line
+
+This didn't seem to immediately make much difference, so I also restarted Visual Studio and deleted the .vs folder at the solution root. The tests run much quicker now.
