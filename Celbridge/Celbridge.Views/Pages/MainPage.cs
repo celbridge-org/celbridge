@@ -75,7 +75,8 @@ public sealed partial class MainPage : Page
 #if WINDOWS
         // Setup the custom title bar (Windows only)
         var serviceProvider = ServiceLocator.ServiceProvider;
-        var titleBar = serviceProvider.GetRequiredService<TitleBar>();
+        var messengerService = serviceProvider.GetRequiredService<IMessengerService>();
+        var titleBar = new TitleBar(messengerService);
         _layoutRoot.Children.Add(titleBar);
 
         var mainWindow = _userInterfaceService.MainWindow as Window;
