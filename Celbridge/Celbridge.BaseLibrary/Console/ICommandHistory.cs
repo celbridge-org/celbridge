@@ -5,12 +5,12 @@ public interface ICommandHistory
     /// <summary>
     /// The maximum number of commands to store in the history.
     /// </summary>
-    uint HistorySizeMax { get; set; }
+    uint MaxHistorySize { get; set; }
 
     /// <summary>
-    /// The nember of commands currently stored in the history.
+    /// The number of commands currently stored in the history.
     /// </summary>
-    uint HistorySize { get; }
+    uint NumCommands { get; }
 
     /// <summary>
     /// Remove all commands from the history.
@@ -25,27 +25,27 @@ public interface ICommandHistory
     void AddCommand(string command);
 
     /// <summary>
-    /// Returns the currently active command in the history.
+    /// Returns the currently selected command in the history.
     /// </summary>
-    Result<string> GetCurrentCommand();
+    Result<string> GetSelectedCommand();
 
     /// <summary>
     /// Returns true if there is a next command in the command history that can be selected.
     /// </summary>
-    bool CanMoveToNextCommand { get; }
+    bool CanSelectNextCommand { get; }
 
     /// <summary>
-    /// Move to the next command in the history.
+    /// Select the next command in the history.
     /// </summary>
-    Result MoveToNextCommand();
+    Result SelectNextCommand();
 
     /// <summary>
     /// Returns true if there is a previous command in the history that can be selected.
     /// </summary>
-    bool CanMoveToPreviousCommand { get; }
+    bool CanSelectPreviousCommand { get; }
 
     /// <summary>
-    /// Move to the previous command in the history.
+    /// Select the previous command in the history.
     /// </summary>
-    Result MoveToPreviousCommand();
+    Result SelectPreviousCommand();
 }
