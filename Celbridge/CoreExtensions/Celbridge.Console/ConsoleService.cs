@@ -4,12 +4,11 @@ namespace Celbridge.Console;
 
 public class ConsoleService : IConsoleService
 {
-    private IMessengerService _messengerService;
-    private ILoggingService _loggingService;
+    public ConsoleService()
+    {}
 
-    public ConsoleService(IMessengerService messengerService, ILoggingService loggingService)
+    public ICommandHistory CreateCommandHistory()
     {
-        _messengerService = messengerService;
-        _loggingService = loggingService;
+        return new CommandHistory();
     }
 }

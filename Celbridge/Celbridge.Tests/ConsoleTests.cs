@@ -37,36 +37,51 @@ public class ConsoleTests
     }
 
     [Test]
-    public void ICanMoveThroughCommandHistory()
+    public void ICanSelectNextAndPreviousCommandHistory()
     {
         var commandHistory = new CommandHistory() as ICommandHistory;
 
-        // Add 2 commands to the history
+        // Add command "A" to the history
         commandHistory.AddCommand("A");
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
+        commandHistory.CanSelectNextCommand.Should().BeFalse();
+
+        // Add command "B" to the history
         commandHistory.AddCommand("B");
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
+        commandHistory.CanSelectNextCommand.Should().BeFalse();
 
-        // Check current command is "B"
-        commandHistory.HistorySize.Should().Be(2);
-        commandHistory.GetCurrentCommand().Value.Should().Be("B");
-        commandHistory.CanMoveToNextCommand.Should().BeFalse();
-        commandHistory.CanMoveToPreviousCommand.Should().BeTrue();
+        commandHistory.NumCommands.Should().Be(2);
 
-        // Move to the previous command "A"
-        commandHistory.MoveToPreviousCommand().IsSuccess.Should().BeTrue();
-        commandHistory.GetCurrentCommand().Value.Should().Be("A");
-        commandHistory.CanMoveToNextCommand.Should().BeTrue();
-        commandHistory.CanMoveToPreviousCommand.Should().BeFalse();
+        // Current command should be the empty string
+        commandHistory.GetSelectedCommand().Value.Should().Be(string.Empty);
+        commandHistory.CanSelectNextCommand.Should().BeFalse();
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
 
-        // Move to the next command "B"
-        commandHistory.MoveToNextCommand().IsSuccess.Should().BeTrue();
-        commandHistory.GetCurrentCommand().Value.Should().Be("B");
-        commandHistory.CanMoveToNextCommand.Should().BeFalse();
-        commandHistory.CanMoveToPreviousCommand.Should().BeTrue();
+        // Select previous command "B"
+        commandHistory.SelectPreviousCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetSelectedCommand().Value.Should().Be("B");
+        commandHistory.CanSelectNextCommand.Should().BeTrue();
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
 
-        // Clear the command history
-        commandHistory.Clear();
-        commandHistory.HistorySize.Should().Be(0);
-        commandHistory.CanMoveToNextCommand.Should().BeFalse();
-        commandHistory.CanMoveToPreviousCommand.Should().BeFalse();
+        // Select previous command "A"
+        commandHistory.SelectPreviousCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetSelectedCommand().Value.Should().Be("A");
+        commandHistory.CanSelectNextCommand.Should().BeTrue();
+        commandHistory.CanSelectPreviousCommand.Should().BeFalse();
+        commandHistory.SelectPreviousCommand().IsFailure.Should().BeTrue();
+
+        // Select next command "B"
+        commandHistory.SelectNextCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetSelectedCommand().Value.Should().Be("B");
+        commandHistory.CanSelectNextCommand.Should().BeTrue();
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
+
+        // Select next command <empty>
+        commandHistory.SelectNextCommand().IsSuccess.Should().BeTrue();
+        commandHistory.GetSelectedCommand().Value.Should().Be(string.Empty);
+        commandHistory.CanSelectNextCommand.Should().BeFalse();
+        commandHistory.CanSelectPreviousCommand.Should().BeTrue();
+        commandHistory.SelectNextCommand().IsFailure.Should().BeTrue();
     }
 }
