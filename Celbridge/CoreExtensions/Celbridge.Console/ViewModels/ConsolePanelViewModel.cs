@@ -14,14 +14,14 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private string _commandText = string.Empty;
 
-    private ObservableCollection<string> _outputItems = new ();
-    public ObservableCollection<string> OutputItems
+    private ObservableCollection<ConsoleLogItem> _consoleLogItems = new();
+    public ObservableCollection<ConsoleLogItem> ConsoleLogItems
     {
-        get => _outputItems;
+        get => _consoleLogItems;
         set
         {
-            _outputItems = value;
-            OnPropertyChanged(nameof(OutputItems));
+            _consoleLogItems = value;
+            OnPropertyChanged(nameof(ConsoleLogItems));
         }
     }
 
@@ -40,13 +40,16 @@ public partial class ConsolePanelViewModel : ObservableObject
     public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     private void Clear_Executed()
     {
-        _outputItems.Clear();
+        _consoleLogItems.Clear();
     }
 
     public ICommand SubmitCommand => new RelayCommand(Submit_Executed);
     private void Submit_Executed()
     {
-        _outputItems.Add(CommandText);
+        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, CommandText, DateTime.Now));
+
+        // _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, CommandText, DateTime.Now));
+
         _commandHistory.AddCommand(CommandText);
 
         CommandText = string.Empty;
