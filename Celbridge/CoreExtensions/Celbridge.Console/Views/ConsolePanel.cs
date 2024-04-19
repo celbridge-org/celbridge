@@ -7,6 +7,10 @@ namespace Celbridge.Console.Views;
 public sealed partial class ConsolePanel : UserControl
 {
     private const string StrokeEraseGlyph = "\ued60";
+    private const string ChevronRightGlyph = "\ue76C";
+    private const string InfoGlyph = "\ue946";
+    private const string WarningGlyph = "\ue7BA";
+    private const string ErrorGlyph = "\ue783";
 
     public LocalizedString Title => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(Title)}");
     public LocalizedString ClearButtonTooltip => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(ClearButtonTooltip)}");
@@ -55,15 +59,25 @@ public sealed partial class ConsolePanel : UserControl
             .Grid(row: 1)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
             .Content(new ListView()
-                .ItemTemplate(() =>
+                .ItemTemplate<ConsoleLogItem>(item =>
                 {
-                    var textBlock = new TextBlock()
-                        .Text(x => x.Bind(() => x))
-                        .Margin(0)
-                        .Padding(0);
-                    return textBlock;
+                    return new StackPanel()
+                        .Orientation(Orientation.Horizontal)
+                        .Children(
+                            new FontIcon()
+                                .FontFamily(fontFamily)
+                                .FontSize(12)
+                                .Foreground(() => item.Color)
+                                .VerticalAlignment(VerticalAlignment.Center)
+                                .Margin(0)
+                                .Glyph(() => item.Glyph),
+                            new TextBlock()
+                                .Text(() => item.LogText)
+                                .Margin(6, 0, 0, 0)
+                                .Padding(0)
+                            );
                 })
-                .ItemsSource(x => x.Bind(() => ViewModel.OutputItems).OneWay())
+                .ItemsSource(x => x.Bind(() => ViewModel.ConsoleLogItems).OneWay())
                 .ItemContainerStyle(new Style(typeof(ListViewItem))
                 {
                     Setters =
