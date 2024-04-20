@@ -7,79 +7,43 @@ namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConsoleService _consoleService;
 
-    private readonly ICommandHistory _commandHistory;
-
-    [ObservableProperty]
-    private string _commandText = string.Empty;
-
-    private ObservableCollection<ConsoleLogItem> _consoleLogItems = new();
-    public ObservableCollection<ConsoleLogItem> ConsoleLogItems
-    {
-        get => _consoleLogItems;
-        set
-        {
-            _consoleLogItems = value;
-            OnPropertyChanged(nameof(ConsoleLogItems));
-        }
-    }
+    public ObservableCollection<ConsoleTabItemViewModel> ConsoleTabs { get; } = new();
 
     public ConsolePanelViewModel(
+        IServiceProvider serviceProvider,
         IUserInterfaceService userInterfaceService, 
         IConsoleService consoleService)
     {
-        _consoleService = consoleService;  // Transient instance created via DI
+        _serviceProvider = serviceProvider;
+        _consoleService = consoleService;
 
-        // Register the console service with the workspace service
+        // Register the singleton console service with the workspace service
         userInterfaceService.WorkspaceService.RegisterService(_consoleService);
-
-        _commandHistory = _consoleService.CreateCommandHistory();
     }
 
-    public ICommand ClearCommand => new RelayCommand(Clear_Executed);
-    private void Clear_Executed()
+    public ICommand ClearCommand => new RelayCommand(ClearCommand_Executed);
+    private void ClearCommand_Executed()
+    {}
+
+    public ICommand AddConsoleTabCommand => new RelayCommand(AddConsoleTabCommand_Executed);
+    private void AddConsoleTabCommand_Executed()
     {
-        _consoleLogItems.Clear();
+        var consoleTabItem = _serviceProvider.GetRequiredService<ConsoleTabItemViewModel>();
+        ConsoleTabs.Add(consoleTabItem);
     }
 
-    public ICommand SubmitCommand => new RelayCommand(Submit_Executed);
-    private void Submit_Executed()
+    public ICommand CloseConsoleTabCommand => new RelayCommand(CloseConsoleTabCommand_Executed);
+    private void CloseConsoleTabCommand_Executed()
     {
-        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, CommandText, DateTime.Now));
-
-        // _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, CommandText, DateTime.Now));
-
-        _commandHistory.AddCommand(CommandText);
-
-        CommandText = string.Empty;
+        // Todo: Remove the console tab from the collection
+        // I think the tab itself has to request this?
     }
 
-    public ICommand SelectNextCommand => new RelayCommand(SelectNextCommand_Executed);
-    private void SelectNextCommand_Executed()
+    public override string ToString()
     {
-        if (_commandHistory.CanSelectNextCommand)
-        {
-            _commandHistory.SelectNextCommand();
-            var result = _commandHistory.GetSelectedCommand();
-            if (result.IsSuccess)
-            {
-                CommandText = result.Value;
-            }
-        }
-    }
-
-    public ICommand SelectPreviousCommand => new RelayCommand(SelectPreviousCommand_Executed);
-    private void SelectPreviousCommand_Executed()
-    {
-        if (_commandHistory.CanSelectPreviousCommand)
-        {
-            _commandHistory.SelectPreviousCommand();
-            var result = _commandHistory.GetSelectedCommand();
-            if (result.IsSuccess)
-            {
-                CommandText = result.Value;
-            }
-        }
+        return "Console";
     }
 }

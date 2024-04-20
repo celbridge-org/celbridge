@@ -4,7 +4,7 @@ using Windows.System;
 
 namespace Celbridge.Console.Views;
 
-public class ConsoleTabItem : UserControl
+public class ConsoleTabItem : TabViewItem
 {
     private ScrollViewer _scrollViewer;
     private TextBox _commandTextBox;
@@ -73,11 +73,11 @@ public class ConsoleTabItem : UserControl
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, 32")
+            .VerticalAlignment(VerticalAlignment.Stretch)
             .Children(_scrollViewer, _commandTextBox);
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
-    .       Content(consoleGrid));
-
+            .Content(consoleGrid));
     }
 
     public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
