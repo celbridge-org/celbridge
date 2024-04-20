@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Console.Views;
 
@@ -11,6 +12,8 @@ public sealed partial class ConsolePanel : UserControl
     public LocalizedString ClearButtonTooltip => _stringLocalizer.GetString($"{nameof(ConsolePanel)}_{nameof(ClearButtonTooltip)}");
 
     private IStringLocalizer _stringLocalizer;
+
+    private TabView _tabView;
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -47,18 +50,45 @@ public sealed partial class ConsolePanel : UserControl
                     .VerticalAlignment(VerticalAlignment.Center),
                 clearButton);
 
-        var consoleTabItem = new ConsoleTabItem()
-            .Grid(row: 1);
+        //var consolePanelGrid = new Grid()
+        //    .RowDefinitions("40, *")
+        //    .Children(titleBar, consoleTabItem);
 
-        var consolePanelGrid = new Grid()
-            .RowDefinitions("40, *")
-            .Children(titleBar, consoleTabItem);
+        _tabView = new TabView()
+            .TabItemsSource(x => x.Bind(() => ViewModel.ConsoleTabs).OneWay())
+            .TabStripHeader("Console")
+            .TabItemTemplate<ConsoleTabItemViewModel>(item => 
+            {
+                //var headerText = new TextBlock()
+                //     .Text(x => x.Bind(() => item.HeaderText));
+
+                //var header = new StackPanel()
+                //    .Orientation(Orientation.Horizontal)
+                //    .Children(headerText);
+
+                var tabItem = new ConsoleTabItem()
+                    //.HeaderTemplate(() => new TextBlock().Text("Console"))
+                    .VerticalAlignment(VerticalAlignment.Bottom);
+
+                return tabItem;
+            })
+            .TabWidthMode(TabViewWidthMode.SizeToContent)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
+            .IsAddTabButtonVisible(true)
+            .AddTabButtonCommand(ViewModel.AddConsoleTabCommand);
+
+        //_tabView.TabCloseRequested += ConsolePanel_TabCloseRequested;
 
         //
         // Set the data context and page content
         // 
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(consolePanelGrid));
+            .Content(_tabView));
+    }
+
+    private void ConsolePanel_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    {
     }
 }

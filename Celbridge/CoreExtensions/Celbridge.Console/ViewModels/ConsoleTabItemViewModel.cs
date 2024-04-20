@@ -14,6 +14,8 @@ public partial class ConsoleTabItemViewModel : ObservableObject
     [ObservableProperty]
     private string _commandText = string.Empty;
 
+    public string HeaderText => "Console";
+
     private ObservableCollection<ConsoleLogItem> _consoleLogItems = new();
     public ObservableCollection<ConsoleLogItem> ConsoleLogItems
     {
