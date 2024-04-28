@@ -4,21 +4,21 @@ using Windows.System;
 
 namespace Celbridge.Console.Views;
 
-public class ConsoleTabItem : TabViewItem
+public class ConsoleView : UserControl
 {
     private ScrollViewer _scrollViewer;
     private TextBox _commandTextBox;
 
     private IStringLocalizer _stringLocalizer;
 
-    public ConsoleTabItemViewModel ViewModel { get; }
+    public ConsoleViewModel ViewModel { get; }
 
-    public ConsoleTabItem()
+    public ConsoleView()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
-        ViewModel = serviceProvider.GetRequiredService<ConsoleTabItemViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<ConsoleViewModel>();
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 

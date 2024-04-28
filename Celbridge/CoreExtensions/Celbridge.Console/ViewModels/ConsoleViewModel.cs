@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace Celbridge.Console.ViewModels;
 
-public partial class ConsoleTabItemViewModel : ObservableObject
+public partial class ConsoleViewModel : ObservableObject
 {
     private readonly IConsoleService _consoleService;
 
@@ -14,7 +14,7 @@ public partial class ConsoleTabItemViewModel : ObservableObject
     [ObservableProperty]
     private string _commandText = string.Empty;
 
-    public string HeaderText => "Console";
+    public string Title => "Console";
 
     private ObservableCollection<ConsoleLogItem> _consoleLogItems = new();
     public ObservableCollection<ConsoleLogItem> ConsoleLogItems
@@ -27,7 +27,7 @@ public partial class ConsoleTabItemViewModel : ObservableObject
         }
     }
 
-    public ConsoleTabItemViewModel(
+    public ConsoleViewModel(
         IUserInterfaceService userInterfaceService, 
         IConsoleService consoleService)
     {
@@ -79,5 +79,11 @@ public partial class ConsoleTabItemViewModel : ObservableObject
                 CommandText = result.Value;
             }
         }
+    }
+
+    public ICommand CloseCommand => new RelayCommand(CloseCommand_Executed);
+    private void CloseCommand_Executed()
+    {
+        // Todo: Handle user request to close the console - e.g. push an undo operation to reopen the console
     }
 }
