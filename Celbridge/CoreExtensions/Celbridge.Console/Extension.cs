@@ -13,7 +13,9 @@ public class Extension : IExtension
     {
         config.AddTransient<ConsolePanel>();
         config.AddTransient<ConsolePanelViewModel>();
-        config.AddTransient<IConsoleService, ConsoleService>();
+        config.AddTransient<ConsoleView>();
+        config.AddTransient<ConsoleViewModel>();
+        config.AddSingleton<IConsoleService, ConsoleService>();
     }
 
     public Result Initialize()
