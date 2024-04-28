@@ -1,6 +1,8 @@
 ﻿using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Input;
 using Windows.System;
+using Windows.UI.Core;
 
 namespace Celbridge.Console.Views;
 
@@ -40,7 +42,8 @@ public class ConsoleView : UserControl
                             .Margin(0)
                             .Glyph(() => item.Glyph),
                         new TextBlock()
-                            .Text(() => item.LogText)
+                            // Todo: Convert to a single line of text with escaped returns. Json?
+                            .Text(() => item.LogTextAsOneLine)
                             .Margin(6, 0, 0, 0)
                             .Padding(0)
                     );
@@ -66,13 +69,15 @@ public class ConsoleView : UserControl
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .VerticalAlignment(VerticalAlignment.Bottom)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .IsSpellCheckEnabled(false);
+            .IsSpellCheckEnabled(false)
+            .TextWrapping(TextWrapping.Wrap)
+            .AcceptsReturn(true);
 
         _commandTextBox.KeyDown += CommandTextBox_KeyDown;
         _commandTextBox.KeyUp += CommandTextBox_KeyUp;
 
         var consoleGrid = new Grid()
-            .RowDefinitions("*, 32")
+            .RowDefinitions("*, auto")
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Children(_scrollViewer, _commandTextBox);
 
@@ -98,7 +103,10 @@ public class ConsoleView : UserControl
 
     public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Enter)
+        CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+        if (e.Key == VirtualKey.Enter && !shift)
         {
             ViewModel.SubmitCommand.Execute(this);
             e.Handled = true;
@@ -108,4 +116,5 @@ public class ConsoleView : UserControl
             _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
         }
     }
+
 }

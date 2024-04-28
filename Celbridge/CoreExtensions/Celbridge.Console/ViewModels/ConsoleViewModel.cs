@@ -45,10 +45,13 @@ public partial class ConsoleViewModel : ObservableObject
     public ICommand SubmitCommand => new RelayCommand(Submit_Executed);
     private void Submit_Executed()
     {
-        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, CommandText, DateTime.Now));
-        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, CommandText, DateTime.Now));
+        // Remove leading and trailing whitespace from the entered text
+        var command = CommandText.Trim();
 
-        _commandHistory.AddCommand(CommandText);
+        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, command, DateTime.Now));
+        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, command, DateTime.Now));
+
+        _commandHistory.AddCommand(command);
 
         CommandText = string.Empty;
     }
