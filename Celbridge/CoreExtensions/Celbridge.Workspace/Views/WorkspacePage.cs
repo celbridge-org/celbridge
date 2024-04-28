@@ -152,10 +152,6 @@ public sealed partial class WorkspacePage : Page
             .BorderThickness(new Thickness(0, 1, 0, 0))
             .Children(
                 new Grid()
-                    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
-                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
-                    .BorderThickness(0, 1, 0, 1)
-                    .Height(40)
                     .VerticalAlignment(VerticalAlignment.Top)
                     .Children(_hideBottomPanelButton));
 
@@ -288,7 +284,9 @@ public sealed partial class WorkspacePage : Page
             switch (panelType)
             {
                 case WorkspacePanelType.ConsolePanel:
-                    _bottomPanel.Children.Add(panel);
+                    // Insert the console panel at the start of the children collection so that the panel toggle button
+                    // in the bottom panel take priority for accepting input.
+                    _bottomPanel.Children.Insert(0, panel);
                     break;
                 case WorkspacePanelType.StatusPanel:
                     _statusPanel.Children.Add(panel);
