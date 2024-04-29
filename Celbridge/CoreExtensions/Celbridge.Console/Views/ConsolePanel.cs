@@ -79,8 +79,10 @@ public sealed partial class ConsolePanel : UserControl
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .IsAddTabButtonVisible(true)
             .AddTabButtonCommand(ViewModel.AddConsoleTabCommand)
+#if WINDOWS
             .CanReorderTabs(true)
             .CanDragTabs(true)
+#endif
             .TabStripFooter
             (
                 new Grid()
