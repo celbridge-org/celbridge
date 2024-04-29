@@ -71,6 +71,7 @@ public class ConsoleView : UserControl
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .IsSpellCheckEnabled(false)
             .TextWrapping(TextWrapping.Wrap)
+            .Height(72)
             .AcceptsReturn(true);
 
         _commandTextBox.KeyDown += CommandTextBox_KeyDown;
