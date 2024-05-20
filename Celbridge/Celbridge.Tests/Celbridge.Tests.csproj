@@ -18,5 +18,6 @@
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
+    <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />
   </ItemGroup>
 </Project>
