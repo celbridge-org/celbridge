@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 
-namespace Celbridge.Scripting.EchoScript;
+namespace Celbridge.Scripting.FakeScript;
 
 public class FakeScriptContextFactory : IScriptContextFactory
 {

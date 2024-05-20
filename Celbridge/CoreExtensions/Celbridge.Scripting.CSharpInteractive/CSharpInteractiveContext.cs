@@ -1,8 +1,8 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 
-namespace Celbridge.Scripting.FakeScript;
+namespace Celbridge.Scripting.CSharpInteractive;
 
-public class FakeScriptContext : IScriptContext
+public class CSharpInteractiveContext : IScriptContext
 {
     public Result<ScriptExecutionContext> CreateExecutionContext(string command)
     {
@@ -11,8 +11,13 @@ public class FakeScriptContext : IScriptContext
             return Result<ScriptExecutionContext>.Fail("Command cannot be null or empty.");
         }
 
-        var scriptExecutionContext = new FakeScriptExecutionContext(command);
+        var scriptExecutionContext = new CSharpInteractiveExecutionContext(command);
 
         return Result<ScriptExecutionContext>.Ok(scriptExecutionContext);
+    }
+
+    Result<ScriptExecutionContext> IScriptContext.CreateExecutionContext(string command)
+    {
+        throw new NotImplementedException();
     }
 }
