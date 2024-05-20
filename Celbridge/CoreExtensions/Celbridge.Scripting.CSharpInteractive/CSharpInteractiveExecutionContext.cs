@@ -1,10 +1,10 @@
-﻿namespace Celbridge.Scripting.FakeScript;
+﻿namespace Celbridge.Scripting.CSharpInteractive;
 
-public class FakeScriptExecutionContext : ScriptExecutionContext
+public class CSharpInteractiveExecutionContext : ScriptExecutionContext
 {
-    public FakeScriptExecutionContext(string command)
+    public CSharpInteractiveExecutionContext(string command)
         : base(command)
-    {}
+    { }
 
     public override async Task<Result> ExecuteAsync()
     {
@@ -17,6 +17,8 @@ public class FakeScriptExecutionContext : ScriptExecutionContext
         {
             return Result.Fail($"Failed to execute ScriptExecutionContext because it is in the '{Status}' status.");
         }
+
+        // Todo: Execute the script using C# Interactive
 
         // Mirror the command to the output
         WriteOutput(Command);

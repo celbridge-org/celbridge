@@ -55,5 +55,6 @@
     <ProjectReference Include="..\CoreExtensions\Celbridge.StatusBar\Celbridge.Status.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Workspace\Celbridge.Workspace.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />
+    <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting.CSharpInteractive\Celbridge.Scripting.CSharpInteractive.csproj" />
   </ItemGroup>
 </Project>

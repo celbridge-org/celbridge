@@ -7,7 +7,7 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddTransient<IScriptingService, ScriptingService>();
+        config.AddSingleton<IScriptingService, ScriptingService>();
     }
 
     public Result Initialize()
