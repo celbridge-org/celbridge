@@ -2,12 +2,12 @@
 
 namespace Celbridge.Scripting.EchoScript;
 
-public class EchoScriptContextFactory : IScriptContextFactory
+public class FakeScriptContextFactory : IScriptContextFactory
 {
     public string Language { get; } = "echo";
 
     public IScriptContext CreateScriptContext()
     {
-        return new EchoScriptContext();
+        return new FakeScriptContext();
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace Celbridge.Scripting.EchoScript;
 
-public class EchoScriptExecutionContext : IScriptExecutionContext
+public class FakeScriptExecutionContext : IScriptExecutionContext
 {
     public string Command { get; } = string.Empty;
 
