@@ -4,7 +4,7 @@ namespace Celbridge.Scripting.FakeScript;
 
 public class FakeScriptContextFactory : IScriptContextFactory
 {
-    public string Language { get; } = "fake";
+    public string Language { get; } = "FakeScript";
 
     public IScriptContext CreateScriptContext()
     {
