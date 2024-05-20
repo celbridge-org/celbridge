@@ -15,9 +15,4 @@ public class CSharpInteractiveContext : IScriptContext
 
         return Result<ScriptExecutionContext>.Ok(scriptExecutionContext);
     }
-
-    Result<ScriptExecutionContext> IScriptContext.CreateExecutionContext(string command)
-    {
-        throw new NotImplementedException();
-    }
 }

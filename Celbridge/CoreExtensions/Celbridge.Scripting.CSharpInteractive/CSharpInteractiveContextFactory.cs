@@ -4,7 +4,7 @@ namespace Celbridge.Scripting.CSharpInteractive;
 
 public class CSharpInteractiveContextFactory : IScriptContextFactory
 {
-    public string Language { get; } = "fake";
+    public string Language { get; } = "CSharpInteractive";
 
     public IScriptContext CreateScriptContext()
     {
