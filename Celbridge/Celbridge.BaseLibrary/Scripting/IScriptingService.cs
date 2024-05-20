@@ -5,4 +5,7 @@
 /// </summary>
 public interface IScriptingService
 {
+    Result RegisterScriptContextFactory(IScriptContextFactory factory);
+
+    Result<IScriptContext> AcquireScriptContext(string language);
 }
