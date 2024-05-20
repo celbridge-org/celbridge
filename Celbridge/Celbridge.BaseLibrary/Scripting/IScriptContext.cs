@@ -4,5 +4,5 @@ namespace Celbridge.BaseLibrary.Scripting;
 
 public interface IScriptContext
 {
-    Result<IScriptExecutionContext> Execute(string command);
+    Result<ScriptExecutionContext> CreateExecutionContext(string command);
 }
