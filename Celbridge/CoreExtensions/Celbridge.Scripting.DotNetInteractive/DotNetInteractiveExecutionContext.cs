@@ -1,8 +1,8 @@
-﻿namespace Celbridge.Scripting.CSharpInteractive;
+﻿namespace Celbridge.Scripting.DotNetInteractive;
 
-public class CSharpInteractiveExecutionContext : ScriptExecutionContext
+public class DotNetInteractiveExecutionContext : ScriptExecutionContext
 {
-    public CSharpInteractiveExecutionContext(string command)
+    public DotNetInteractiveExecutionContext(string command)
         : base(command)
     { }
 

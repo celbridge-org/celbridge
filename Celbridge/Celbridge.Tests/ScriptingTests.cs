@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 using Celbridge.Scripting;
-using Celbridge.Scripting.CSharpInteractive;
+using Celbridge.Scripting.DotNetInteractive;
 using Celbridge.Scripting.FakeScript;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,16 +59,16 @@ public class ScriptingTests
     }
 
     [Test]
-    public async Task ICanExecuteCSharpInteractiveScript()
+    public async Task ICanExecuteADotNetInteractiveScript()
     {
         Guard.IsNotNull(_scriptingService);
 
-        var scriptContextFactory = new CSharpInteractiveContextFactory();
+        var scriptContextFactory = new DotNetInteractiveContextFactory();
 
         var registerResult = _scriptingService.RegisterScriptContextFactory(scriptContextFactory);
         registerResult.IsSuccess.Should().BeTrue();
 
-        var scriptContext = _scriptingService.AcquireScriptContext("CSharpInteractive").Value;
+        var scriptContext = _scriptingService.AcquireScriptContext("DotNetInteractive").Value;
 
         var scriptText = "Console.WriteLine(\"Hello, World!\");";
 
