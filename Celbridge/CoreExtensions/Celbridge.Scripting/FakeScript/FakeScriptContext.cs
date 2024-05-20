@@ -2,7 +2,7 @@
 
 namespace Celbridge.Scripting.EchoScript;
 
-public class EchoScriptContext : IScriptContext
+public class FakeScriptContext : IScriptContext
 {
     public Result<IScriptExecutionContext> Execute(string command)
     {
