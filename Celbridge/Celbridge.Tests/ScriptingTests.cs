@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 using Celbridge.Scripting;
 using Celbridge.Scripting.DotNetInteractive;
-using Celbridge.Scripting.FakeScript;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
