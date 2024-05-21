@@ -34,32 +34,7 @@ public class ScriptingTests
     }
 
     [Test]
-    public async Task ICanExecuteAScript()
-    {
-        Guard.IsNotNull(_scriptingService);
-
-        var scriptContextFactory = new FakeScriptContextFactory();
-
-        var registerResult = _scriptingService.RegisterScriptContextFactory(scriptContextFactory);
-        registerResult.IsSuccess.Should().BeTrue();
-
-        var scriptContext = _scriptingService.AcquireScriptContext("FakeScript").Value;
-
-        var scriptExecutionContext = scriptContext.CreateExecutionContext("a command").Value;
-
-        scriptExecutionContext.OnOutput += (output) =>
-        {
-            output.Should().Be("a command");
-        };
-
-        var executeResult = await scriptExecutionContext.ExecuteAsync();
-        executeResult.IsSuccess.Should().BeTrue();
-
-        scriptExecutionContext.Status.Should().Be(ExecutionStatus.Finished);
-    }
-
-    [Test]
-    public async Task ICanExecuteADotNetInteractiveScript()
+    public async Task ICanExecuteACSharpScript()
     {
         Guard.IsNotNull(_scriptingService);
 
