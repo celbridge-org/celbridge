@@ -11,4 +11,17 @@
     <ProjectReference Include="..\..\Celbridge.CoreExtension\Celbridge.CoreExtension.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- .Net Interactive-->
+    <PackageReference Include="Microsoft.DotNet.Interactive" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.CSharp" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.FSharp" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.PowerShell" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.Documents" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.Browser" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.Http" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.PackageManagement" />
+    <PackageReference Include="Microsoft.DotNet.Interactive.Formatting" />
+  </ItemGroup>
+
 </Project>
