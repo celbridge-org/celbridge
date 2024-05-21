@@ -6,18 +6,15 @@ namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IConsoleService _consoleService;
 
     public event Action? OnClearConsole;
     public event Action? OnAddConsoleTab;
 
     public ConsolePanelViewModel(
-        IServiceProvider serviceProvider,
         IUserInterfaceService userInterfaceService, 
         IConsoleService consoleService)
     {
-        _serviceProvider = serviceProvider;
         _consoleService = consoleService;
 
         // Register the singleton console service with the workspace service
