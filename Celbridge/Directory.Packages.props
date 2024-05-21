@@ -49,7 +49,9 @@
     <!-- <PackageVersion Include="Microsoft.Dotnet.Interactive.Http" Version="1.0.0-beta.23403.1" /> -->
     <PackageVersion Include="Microsoft.Dotnet.Interactive.PackageManagement" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
-    
+    <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
+
     <!-- Legacy dependencies -->
     <PackageVersion Include="IronPython" Version="2.7.12" />
     <PackageVersion Include="IronPython.StdLib" Version="2.7.12" />
