@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Scripting;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
@@ -8,8 +8,8 @@ namespace Celbridge.Console.ViewModels;
 public partial class ConsoleViewModel : ObservableObject
 {
     private readonly IConsoleService _consoleService;
-
     private readonly ICommandHistory _commandHistory;
+    private readonly IScriptContext _scriptContext;
 
     [ObservableProperty]
     private string _commandText = string.Empty;
@@ -28,10 +28,11 @@ public partial class ConsoleViewModel : ObservableObject
     }
 
     public ConsoleViewModel(
-        IUserInterfaceService userInterfaceService, 
-        IConsoleService consoleService)
+        IConsoleService consoleService,
+        IScriptingService scriptingService)
     {
         _consoleService = consoleService;
+        _scriptContext = scriptingService.CreateScriptContext();
 
         _commandHistory = _consoleService.CreateCommandHistory();
     }
@@ -42,16 +43,30 @@ public partial class ConsoleViewModel : ObservableObject
         _consoleLogItems.Clear();
     }
 
-    public ICommand SubmitCommand => new RelayCommand(Submit_Executed);
-    private void Submit_Executed()
+    public ICommand SubmitCommand => new AsyncRelayCommand(Submit_Executed);
+    private async Task Submit_Executed()
     {
         // Remove leading and trailing whitespace from the entered text
         var command = CommandText.Trim();
 
-        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, command, DateTime.Now));
-        _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, command, DateTime.Now));
+        var createResult = _scriptContext.CreateExecutor(command);
 
-        _commandHistory.AddCommand(command);
+        if (createResult.IsSuccess)
+        {
+            var executor = createResult.Value;
+            _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, command, DateTime.Now));
+
+            executor.OnOutput += (output) =>
+            {
+                _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, output, DateTime.Now));
+            };
+
+            var executeResult = await executor.ExecuteAsync();
+            if (executeResult.IsSuccess)
+            {
+               _commandHistory.AddCommand(command);
+            }
+        }
 
         CommandText = string.Empty;
     }
