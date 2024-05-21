@@ -43,7 +43,7 @@ public class ScriptingTests
         var registerResult = _scriptingService.RegisterScriptContextFactory(scriptContextFactory);
         registerResult.IsSuccess.Should().BeTrue();
 
-        var scriptContext = _scriptingService.AcquireScriptContext("fake").Value;
+        var scriptContext = _scriptingService.AcquireScriptContext("FakeScript").Value;
 
         var scriptExecutionContext = scriptContext.CreateExecutionContext("a command").Value;
 

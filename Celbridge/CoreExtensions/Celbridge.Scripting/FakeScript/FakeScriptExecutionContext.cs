@@ -1,9 +1,11 @@
-﻿namespace Celbridge.Scripting.FakeScript;
+﻿using Celbridge.BaseLibrary.Scripting;
+
+namespace Celbridge.Scripting.FakeScript;
 
 public class FakeScriptExecutionContext : ScriptExecutionContext
 {
-    public FakeScriptExecutionContext(string command)
-        : base(command)
+    public FakeScriptExecutionContext(IScriptContext scriptContext, string command)
+        : base(scriptContext, command)
     {}
 
     public override async Task<Result> ExecuteAsync()

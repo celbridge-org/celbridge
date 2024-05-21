@@ -1,4 +1,5 @@
-﻿using Microsoft.DotNet.Interactive;
+﻿using Celbridge.BaseLibrary.Scripting;
+using CommunityToolkit.Diagnostics;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.CSharp;
 using Microsoft.DotNet.Interactive.Events;
@@ -7,8 +8,8 @@ namespace Celbridge.Scripting.DotNetInteractive;
 
 public class DotNetInteractiveExecutionContext : ScriptExecutionContext
 {
-    public DotNetInteractiveExecutionContext(string command)
-        : base(command)
+    public DotNetInteractiveExecutionContext(IScriptContext scriptContext, string command)
+        : base(scriptContext, command)
     { }
 
     public override async Task<Result> ExecuteAsync()
@@ -23,11 +24,12 @@ public class DotNetInteractiveExecutionContext : ScriptExecutionContext
             return Result.Fail($"Failed to execute ScriptExecutionContext because it is in the '{Status}' status.");
         }
 
-        // Execute the script using .Net Interactive
+        // Execute the command using .Net Interactive
 
-        //var code = @"var a = 2+2; Console.WriteLine($""Value: {a}"");";
+        var dotNetInteractiveContext = ScriptContext as DotNetInteractiveContext;
+        Guard.IsNotNull(dotNetInteractiveContext);
+        CSharpKernel kernel = dotNetInteractiveContext.Kernel;
 
-        CSharpKernel kernel = new();
         var result = await kernel.SendAsync(new SubmitCode(Command));
 
         if (result.Events.OfType<CommandFailed>().Any())
@@ -38,7 +40,6 @@ public class DotNetInteractiveExecutionContext : ScriptExecutionContext
             }
             Status = ExecutionStatus.Error;
 
-            // Todo: Should this fail?
             return Result.Ok();
         }
 
