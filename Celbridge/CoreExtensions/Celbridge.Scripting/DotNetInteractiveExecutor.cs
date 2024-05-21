@@ -4,15 +4,37 @@ using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.CSharp;
 using Microsoft.DotNet.Interactive.Events;
 
-namespace Celbridge.Scripting.DotNetInteractive;
+namespace Celbridge.Scripting;
 
-public class DotNetInteractiveExecutionContext : ScriptExecutionContext
+public class DotNetInteractiveExecutor : IScriptExecutor
 {
-    public DotNetInteractiveExecutionContext(IScriptContext scriptContext, string command)
-        : base(scriptContext, command)
-    { }
+    public IScriptContext ScriptContext { get; init; }
 
-    public override async Task<Result> ExecuteAsync()
+    public string Command { get; init; }
+
+    public ExecutionStatus Status { get; protected set; } = ExecutionStatus.NotStarted;
+
+    public event Action<string>? OnOutput;
+
+    public event Action<string>? OnError;
+
+    public DotNetInteractiveExecutor(IScriptContext scriptContext, string command)
+    {
+        ScriptContext = scriptContext;
+        Command = command;
+    }
+
+    protected virtual void WriteOutput(string output)
+    {
+        OnOutput?.Invoke(output);
+    }
+
+    protected virtual void WriteError(string error)
+    {
+        OnError?.Invoke(error);
+    }
+
+    public virtual async Task<Result> ExecuteAsync()
     {
         if (string.IsNullOrEmpty(Command))
         {
@@ -56,7 +78,7 @@ public class DotNetInteractiveExecutionContext : ScriptExecutionContext
 
                     var outputText = formattedValue.Value;
                     if (!string.IsNullOrEmpty(outputText))
-                    {                    
+                    {
                         WriteOutput(outputText.TrimEnd());
                     }
                 }
@@ -75,7 +97,7 @@ public class DotNetInteractiveExecutionContext : ScriptExecutionContext
                 }
             }
         }
-        
+
         Status = ExecutionStatus.Finished;
 
         return Result.Ok();
