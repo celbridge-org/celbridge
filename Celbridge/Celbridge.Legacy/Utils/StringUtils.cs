@@ -1,9 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.CSharp;
-using System.Text;
-using Microsoft.CodeAnalysis;
-
-namespace Celbridge.Legacy.Utils;
+﻿namespace Celbridge.Legacy.Utils;
 
 public static class StringUtils
 {
@@ -58,43 +53,5 @@ public static class StringUtils
         {
             return new ErrorResult<string>($"Failed to extract brace content. {ex.Message}");
         }
-    }
-
-    public static bool IsValidCSharpIdentifier(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return false;
-        }
-
-        var identifierNode = SyntaxFactory.ParseName(input);
-        if (identifierNode is IdentifierNameSyntax identifierSyntax)
-        {
-            var token = identifierSyntax.ToString();
-            return token == input;
-        }
-
-        return false;
-    }
-
-    public static bool IsValidCSharpExpression(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return false;
-        }
-
-        // Use Roslyn to parse the input string as a C# expression
-        var root = SyntaxFactory.ParseExpression(input);
-        var diagnostics = root.GetDiagnostics();
-        foreach (var diagnostic in diagnostics)
-        {
-            if (diagnostic.Severity == DiagnosticSeverity.Error)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
