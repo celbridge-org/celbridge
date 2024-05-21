@@ -45,7 +45,8 @@
     <PackageVersion Include="Microsoft.Dotnet.Interactive.PowerShell" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Documents" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Browser" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.Http" Version="1.0.0-beta.23403.1" />
+    <!-- Http is used to communicate with remote instances of .Net Interactive. Removing cause of version warning -->
+    <!-- <PackageVersion Include="Microsoft.Dotnet.Interactive.Http" Version="1.0.0-beta.23403.1" /> -->
     <PackageVersion Include="Microsoft.Dotnet.Interactive.PackageManagement" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
     
