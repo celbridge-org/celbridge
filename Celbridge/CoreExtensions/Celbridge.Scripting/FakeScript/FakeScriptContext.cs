@@ -11,7 +11,7 @@ public class FakeScriptContext : IScriptContext
             return Result<ScriptExecutionContext>.Fail("Command cannot be null or empty.");
         }
 
-        var scriptExecutionContext = new FakeScriptExecutionContext(command);
+        var scriptExecutionContext = new FakeScriptExecutionContext(this, command);
 
         return Result<ScriptExecutionContext>.Ok(scriptExecutionContext);
     }

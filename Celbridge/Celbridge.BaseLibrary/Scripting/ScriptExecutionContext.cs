@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Scripting;
+﻿using Celbridge.BaseLibrary.Scripting;
+
+namespace Celbridge.Scripting;
 
 public enum ExecutionStatus
 {
@@ -10,14 +12,17 @@ public enum ExecutionStatus
 
 public abstract class ScriptExecutionContext
 {
+    protected IScriptContext ScriptContext { get; init; }
+
     public string Command { get; init; }
 
     public event Action<string>? OnOutput;
 
     public event Action<string>? OnError;
 
-    public ScriptExecutionContext(string command)
+    public ScriptExecutionContext(IScriptContext scriptContext, string command)
     {
+        ScriptContext = scriptContext;
         Command = command;
     }
 
