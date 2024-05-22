@@ -38,12 +38,12 @@ public class ConsoleView : UserControl
                             .FontFamily(fontFamily)
                             .FontSize(12)
                             .Foreground(() => item.Color)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                            .Margin(0)
+                            .VerticalAlignment(VerticalAlignment.Top)
+                            .Margin(0,6,0,0)
                             .Glyph(() => item.Glyph),
                         new TextBlock()
-                            // Todo: Convert to a single line of text with escaped returns. Json?
-                            .Text(() => item.LogTextAsOneLine)
+                            .Text(() => item.LogText)
+                            .TextWrapping(TextWrapping.Wrap)
                             .Margin(6, 0, 0, 0)
                             .Padding(0)
                     );
@@ -56,7 +56,6 @@ public class ConsoleView : UserControl
                     new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
                     new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
                     new Setter(FrameworkElement.MinHeightProperty, 24),
-                    new Setter(FrameworkElement.HeightProperty, 24),
                 }
             })
         );
