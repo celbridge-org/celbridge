@@ -8,6 +8,8 @@ namespace Celbridge.Console.Views;
 
 public class ConsoleView : UserControl
 {
+    private const string PlayGlyph = "\ue768";
+
     private ScrollViewer _scrollViewer;
     private TextBox _commandTextBox;
 
@@ -38,12 +40,12 @@ public class ConsoleView : UserControl
                             .FontFamily(fontFamily)
                             .FontSize(12)
                             .Foreground(() => item.Color)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                            .Margin(0)
+                            .VerticalAlignment(VerticalAlignment.Top)
+                            .Margin(0,6,0,0)
                             .Glyph(() => item.Glyph),
                         new TextBlock()
-                            // Todo: Convert to a single line of text with escaped returns. Json?
-                            .Text(() => item.LogTextAsOneLine)
+                            .Text(() => item.LogText)
+                            .TextWrapping(TextWrapping.Wrap)
                             .Margin(6, 0, 0, 0)
                             .Padding(0)
                     );
@@ -56,13 +58,12 @@ public class ConsoleView : UserControl
                     new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
                     new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
                     new Setter(FrameworkElement.MinHeightProperty, 24),
-                    new Setter(FrameworkElement.HeightProperty, 24),
                 }
             })
         );
 
         _commandTextBox = new TextBox()
-            .Grid(row: 1)
+            .Grid(column: 0)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Text(x => x.Bind(() => ViewModel.CommandText)
                         .Mode(BindingMode.TwoWay)
@@ -71,27 +72,89 @@ public class ConsoleView : UserControl
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .IsSpellCheckEnabled(false)
             .TextWrapping(TextWrapping.Wrap)
-            .Height(72)
             .AcceptsReturn(true);
 
         _commandTextBox.KeyDown += CommandTextBox_KeyDown;
-        _commandTextBox.KeyUp += CommandTextBox_KeyUp;
+
+#if WINDOWS
+        // On Windows, AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
+        // use PreviewKeyDown to intercept it.
+        _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
+#endif
+
+        var submitButton = new Button()
+            .Grid(column: 1)
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .Command(ViewModel.SubmitCommand)
+            .Content
+            (
+                new FontIcon()
+                    .FontFamily(fontFamily)
+                    .Glyph(PlayGlyph)
+            );
+
+        ToolTipService.SetToolTip(submitButton, "Shift + Enter to run command");
+
+        var commandLine = new Grid()
+            .Grid(row: 1)
+            .ColumnDefinitions("*, auto")
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(_commandTextBox, submitButton);
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .Children(_scrollViewer, _commandTextBox);
+            .Children(_scrollViewer, commandLine);
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(consoleGrid));
     }
 
+#if WINDOWS
+    private void CommandTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+            if (shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
+
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+
+                e.Handled = true;
+            }
+        }
+    }
+#endif
+
     public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Up)
+        if (e.Key == VirtualKey.Enter)
+        {
+            // This does not get called on Windows, because of the issue with AcceptsReturn described above.
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+            if (shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
+
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Up)
         {
             ViewModel.SelectPreviousCommand.Execute(this);
-            e.Handled = true; // Mark the event as handled to prevent further processing
+            e.Handled = true;
             _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
         }
         else if (e.Key == VirtualKey.Down)
@@ -101,21 +164,4 @@ public class ConsoleView : UserControl
             _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
         }
     }
-
-    public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
-    {
-        CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
-
-        if (e.Key == VirtualKey.Enter && !shift)
-        {
-            ViewModel.SubmitCommand.Execute(this);
-            e.Handled = true;
-
-            // Scroll to the end of the output list
-            _scrollViewer.UpdateLayout();
-            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-        }
-    }
-
 }

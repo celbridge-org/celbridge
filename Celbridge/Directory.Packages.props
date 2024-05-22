@@ -37,10 +37,24 @@
     <PackageVersion Include="Uno.WinUI.Markup" Version="5.1.5" />
     <PackageVersion Include="Uno.WinUI.Skia.Gtk" Version="$(UnoVersion)" />
 
+    <!-- .Net Interactive-->
+    
+    <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.CSharp" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.FSharp" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.PowerShell" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.Documents" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.Browser" Version="1.0.0-beta.24229.4" />
+    <!-- Http is used to communicate with remote instances of .Net Interactive. Removing cause of version warning -->
+    <!-- <PackageVersion Include="Microsoft.Dotnet.Interactive.Http" Version="1.0.0-beta.23403.1" /> -->
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.PackageManagement" Version="1.0.0-beta.24229.4" />
+    <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
+    <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
+
     <!-- Legacy dependencies -->
     <PackageVersion Include="IronPython" Version="2.7.12" />
     <PackageVersion Include="IronPython.StdLib" Version="2.7.12" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
     <PackageVersion Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform" Version="4.1.0" />
     <PackageVersion Include="OpenAI" Version="1.10.0" />
     <PackageVersion Include="Scriban" Version="5.9.1" />
