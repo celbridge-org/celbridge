@@ -5,7 +5,7 @@ namespace Celbridge.Scripting;
 
 public class DotNetInteractiveContext : IScriptContext
 {
-    public CompositeKernel Kernel { get; init; } = KernelBuilder.CreateKernel("fsharp");
+    public CompositeKernel Kernel { get; init; } = KernelBuilder.CreateKernel("csharp");
 
     public Result<IScriptExecutor> CreateExecutor(string command)
     {
