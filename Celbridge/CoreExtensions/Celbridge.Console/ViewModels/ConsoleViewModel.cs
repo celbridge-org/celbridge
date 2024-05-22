@@ -61,6 +61,11 @@ public partial class ConsoleViewModel : ObservableObject
                 _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, output, DateTime.Now));
             };
 
+            executor.OnError += (error) =>
+            {
+                _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Error, error, DateTime.Now));
+            };
+
             var executeResult = await executor.ExecuteAsync();
             if (executeResult.IsSuccess)
             {
