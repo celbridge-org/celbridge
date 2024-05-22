@@ -71,11 +71,12 @@ public class ConsoleView : UserControl
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .IsSpellCheckEnabled(false)
             .TextWrapping(TextWrapping.Wrap)
-            .Height(72)
             .AcceptsReturn(true);
 
+        // AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
+        // use PreviewKeyDown to intercept it.
+        _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
         _commandTextBox.KeyDown += CommandTextBox_KeyDown;
-        _commandTextBox.KeyUp += CommandTextBox_KeyUp;
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
@@ -86,12 +87,32 @@ public class ConsoleView : UserControl
             .Content(consoleGrid));
     }
 
+    private void CommandTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+            if (!shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
+
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+                    
+                e.Handled = true;
+            }
+        }
+    }
+
     public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Up)
         {
             ViewModel.SelectPreviousCommand.Execute(this);
-            e.Handled = true; // Mark the event as handled to prevent further processing
+            e.Handled = true;
             _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
         }
         else if (e.Key == VirtualKey.Down)
@@ -101,21 +122,4 @@ public class ConsoleView : UserControl
             _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
         }
     }
-
-    public void CommandTextBox_KeyUp(object? sender, KeyRoutedEventArgs e)
-    {
-        CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
-
-        if (e.Key == VirtualKey.Enter && !shift)
-        {
-            ViewModel.SubmitCommand.Execute(this);
-            e.Handled = true;
-
-            // Scroll to the end of the output list
-            _scrollViewer.UpdateLayout();
-            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-        }
-    }
-
 }
