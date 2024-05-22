@@ -13,7 +13,6 @@
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
     <PackageReference Include="IronPython" />
     <PackageReference Include="IronPython.StdLib" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="OpenAI" />
