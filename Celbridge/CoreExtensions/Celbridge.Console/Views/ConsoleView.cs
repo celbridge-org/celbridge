@@ -8,6 +8,8 @@ namespace Celbridge.Console.Views;
 
 public class ConsoleView : UserControl
 {
+    private const string PlayGlyph = "\ue768";
+
     private ScrollViewer _scrollViewer;
     private TextBox _commandTextBox;
 
@@ -61,7 +63,7 @@ public class ConsoleView : UserControl
         );
 
         _commandTextBox = new TextBox()
-            .Grid(row: 1)
+            .Grid(column: 0)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Text(x => x.Bind(() => ViewModel.CommandText)
                         .Mode(BindingMode.TwoWay)
@@ -80,10 +82,29 @@ public class ConsoleView : UserControl
         _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
 #endif
 
+        var submitButton = new Button()
+            .Grid(column: 1)
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .Command(ViewModel.SubmitCommand)
+            .Content
+            (
+                new FontIcon()
+                    .FontFamily(fontFamily)
+                    .Glyph(PlayGlyph)
+            );
+
+        ToolTipService.SetToolTip(submitButton, "Shift + Enter to run command");
+
+        var commandLine = new Grid()
+            .Grid(row: 1)
+            .ColumnDefinitions("*, auto")
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(_commandTextBox, submitButton);
+
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .Children(_scrollViewer, _commandTextBox);
+            .Children(_scrollViewer, commandLine);
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(consoleGrid));
@@ -104,7 +125,7 @@ public class ConsoleView : UserControl
                 // Scroll to the end of the output list
                 _scrollViewer.UpdateLayout();
                 _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-                    
+
                 e.Handled = true;
             }
         }
@@ -115,6 +136,7 @@ public class ConsoleView : UserControl
     {
         if (e.Key == VirtualKey.Enter)
         {
+            // This does not get called on Windows, because of the issue with AcceptsReturn described above.
             CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
             bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
 
