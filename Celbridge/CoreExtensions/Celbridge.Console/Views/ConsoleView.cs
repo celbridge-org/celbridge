@@ -73,10 +73,13 @@ public class ConsoleView : UserControl
             .TextWrapping(TextWrapping.Wrap)
             .AcceptsReturn(true);
 
-        // AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
+        _commandTextBox.KeyDown += CommandTextBox_KeyDown;
+
+#if WINDOWS
+        // On Windows, AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
         // use PreviewKeyDown to intercept it.
         _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
-        _commandTextBox.KeyDown += CommandTextBox_KeyDown;
+#endif
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
@@ -87,6 +90,7 @@ public class ConsoleView : UserControl
             .Content(consoleGrid));
     }
 
+#if WINDOWS
     private void CommandTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)
@@ -94,7 +98,7 @@ public class ConsoleView : UserControl
             CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
             bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
 
-            if (!shift)
+            if (shift)
             {
                 ViewModel.SubmitCommand.Execute(this);
 
@@ -106,10 +110,27 @@ public class ConsoleView : UserControl
             }
         }
     }
+#endif
 
     public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Up)
+        if (e.Key == VirtualKey.Enter)
+        {
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+            if (shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
+
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Up)
         {
             ViewModel.SelectPreviousCommand.Execute(this);
             e.Handled = true;
