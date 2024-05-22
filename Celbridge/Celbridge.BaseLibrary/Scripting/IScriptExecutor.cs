@@ -10,6 +10,9 @@ public enum ExecutionStatus
     Error
 }
 
+/// <summary>
+/// Manages state for an executing scripting command.
+/// </summary>
 public interface IScriptExecutor
 {
     IScriptContext ScriptContext { get; init; }
