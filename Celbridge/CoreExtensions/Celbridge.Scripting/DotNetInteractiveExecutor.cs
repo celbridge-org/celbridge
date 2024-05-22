@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 using CommunityToolkit.Diagnostics;
 using Microsoft.DotNet.Interactive.Commands;
-using Microsoft.DotNet.Interactive.CSharp;
 using Microsoft.DotNet.Interactive.Events;
 
 namespace Celbridge.Scripting;
@@ -53,7 +52,7 @@ public class DotNetInteractiveExecutor : IScriptExecutor
     {
         var dotNetInteractiveContext = ScriptContext as DotNetInteractiveContext;
         Guard.IsNotNull(dotNetInteractiveContext);
-        CSharpKernel kernel = dotNetInteractiveContext.Kernel;
+        var kernel = dotNetInteractiveContext.Kernel;
 
         try
         {

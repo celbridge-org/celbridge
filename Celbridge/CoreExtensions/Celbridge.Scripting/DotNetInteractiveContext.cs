@@ -1,11 +1,11 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
-using Microsoft.DotNet.Interactive.CSharp;
+using Microsoft.DotNet.Interactive;
 
 namespace Celbridge.Scripting;
 
 public class DotNetInteractiveContext : IScriptContext
 {
-    public CSharpKernel Kernel { get; } = new();
+    public CompositeKernel Kernel { get; init; } = KernelBuilder.CreateKernel("fsharp");
 
     public Result<IScriptExecutor> CreateExecutor(string command)
     {
