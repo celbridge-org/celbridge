@@ -46,59 +46,69 @@ public class DotNetInteractiveExecutor : IScriptExecutor
             return Result.Fail($"Failed to execute ScriptExecutionContext because it is in the '{Status}' status.");
         }
 
-        // Execute the command using .Net Interactive
+        return await ExecuteCommand();
+    }
 
+    protected virtual async Task<Result> ExecuteCommand()
+    {
         var dotNetInteractiveContext = ScriptContext as DotNetInteractiveContext;
         Guard.IsNotNull(dotNetInteractiveContext);
         CSharpKernel kernel = dotNetInteractiveContext.Kernel;
 
-        var result = await kernel.SendAsync(new SubmitCode(Command));
-
-        if (result.Events.OfType<CommandFailed>().Any())
+        try
         {
-            foreach (var error in result.Events.OfType<CommandFailed>())
+            var result = await kernel.SendAsync(new SubmitCode(Command));
+
+            if (result.Events.OfType<CommandFailed>().Any())
             {
-                WriteError(error.Message);
+                foreach (var error in result.Events.OfType<CommandFailed>())
+                {
+                    WriteError(error.Message);
+                }
+                Status = ExecutionStatus.Error;
+
+                return Result.Fail("Command script failed to compile.");
             }
+
+            if (result.Events.OfType<StandardOutputValueProduced>().Any())
+            {
+                foreach (var output in result.Events.OfType<StandardOutputValueProduced>())
+                {
+                    foreach (var formattedValue in output.FormattedValues)
+                    {
+                        if (formattedValue is null)
+                        {
+                            continue;
+                        }
+
+                        var outputText = formattedValue.Value;
+                        if (!string.IsNullOrEmpty(outputText))
+                        {
+                            WriteOutput(outputText.TrimEnd());
+                        }
+                    }
+                }
+            }
+
+            if (result.Events.OfType<ReturnValueProduced>().Any())
+            {
+                var returnValue = result.Events.OfType<ReturnValueProduced>().First().Value;
+                if (returnValue is not null)
+                {
+                    var returnText = returnValue.ToString();
+                    if (!string.IsNullOrEmpty(returnText))
+                    {
+                        WriteOutput(returnText);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteError(ex.Message);
             Status = ExecutionStatus.Error;
-
-            return Result.Ok();
+            return Result.Fail(ex.Message);
         }
-
-        if (result.Events.OfType<StandardOutputValueProduced>().Any())
-        {
-            foreach (var output in result.Events.OfType<StandardOutputValueProduced>())
-            {
-                foreach (var formattedValue in output.FormattedValues)
-                {
-                    if (formattedValue is null)
-                    {
-                        continue;
-                    }
-
-                    var outputText = formattedValue.Value;
-                    if (!string.IsNullOrEmpty(outputText))
-                    {
-                        WriteOutput(outputText.TrimEnd());
-                    }
-                }
-            }
-        }
-
-        if (result.Events.OfType<ReturnValueProduced>().Any())
-        {
-            var returnValue = result.Events.OfType<ReturnValueProduced>().First().Value;
-            if (returnValue is not null)
-            {
-                var returnText = returnValue.ToString();
-                if (!string.IsNullOrEmpty(returnText))
-                {
-                    WriteOutput(returnText);
-                }
-            }
-        }
-
-        Status = ExecutionStatus.Finished;
 
         return Result.Ok();
     }
