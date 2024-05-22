@@ -24,6 +24,7 @@ public class App : Application
         _extensionLoader.LoadExtension("Celbridge.Project");
         _extensionLoader.LoadExtension("Celbridge.Inspector");
         _extensionLoader.LoadExtension("Celbridge.Documents");
+        _extensionLoader.LoadExtension("Celbridge.Scripting");
 
         var builder = this.CreateBuilder(args)
             .Configure(host => host
