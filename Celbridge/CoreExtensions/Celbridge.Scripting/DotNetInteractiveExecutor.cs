@@ -45,10 +45,12 @@ public class DotNetInteractiveExecutor : IScriptExecutor
             return Result.Fail($"Failed to execute ScriptExecutionContext because it is in the '{Status}' status.");
         }
 
-        return await ExecuteCommand();
+        await ExecuteCommand();
+
+        return Result.Ok();
     }
 
-    protected virtual async Task<Result> ExecuteCommand()
+    protected virtual async Task ExecuteCommand()
     {
         var dotNetInteractiveContext = ScriptContext as DotNetInteractiveContext;
         Guard.IsNotNull(dotNetInteractiveContext);
@@ -64,9 +66,11 @@ public class DotNetInteractiveExecutor : IScriptExecutor
                 {
                     WriteError(error.Message);
                 }
+
+                // Command script failed to compile
                 Status = ExecutionStatus.Error;
 
-                return Result.Fail("Command script failed to compile.");
+                return;
             }
 
             if (result.Events.OfType<StandardOutputValueProduced>().Any())
@@ -106,9 +110,6 @@ public class DotNetInteractiveExecutor : IScriptExecutor
         {
             WriteError(ex.Message);
             Status = ExecutionStatus.Error;
-            return Result.Fail(ex.Message);
         }
-
-        return Result.Ok();
     }
 }
