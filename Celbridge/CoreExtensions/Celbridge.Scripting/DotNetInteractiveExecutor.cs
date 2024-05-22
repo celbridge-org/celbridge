@@ -58,6 +58,8 @@ public class DotNetInteractiveExecutor : IScriptExecutor
 
         try
         {
+            Status = ExecutionStatus.InProgress;
+
             var result = await kernel.SendAsync(new SubmitCode(Command));
 
             if (result.Events.OfType<CommandFailed>().Any())
@@ -67,9 +69,7 @@ public class DotNetInteractiveExecutor : IScriptExecutor
                     WriteError(error.Message);
                 }
 
-                // Command script failed to compile
                 Status = ExecutionStatus.Error;
-
                 return;
             }
 
@@ -111,5 +111,7 @@ public class DotNetInteractiveExecutor : IScriptExecutor
             WriteError(ex.Message);
             Status = ExecutionStatus.Error;
         }
+
+        Status = ExecutionStatus.Finished;
     }
 }
