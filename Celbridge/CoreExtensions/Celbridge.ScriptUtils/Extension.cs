@@ -18,7 +18,7 @@ public class Extension : IExtension
         var scriptingService = ServiceLocator.ServiceProvider.GetRequiredService<IScriptingService>();
 
         scriptingService.AddContextSetupCommand("#r \"Celbridge.ScriptUtils\"");
-        scriptingService.AddContextSetupCommand("static using Celbridge.ScriptUtils.CommonUtils;");
+        scriptingService.AddContextSetupCommand("using static Celbridge.ScriptUtils.CommonUtils;");
 
         return Result.Ok();
     }
