@@ -5,5 +5,7 @@
 /// </summary>
 public interface IScriptingService
 {
-    IScriptContext CreateScriptContext();
+    Task<IScriptContext> CreateScriptContext();
+
+    void AddContextSetupCommand(string command);
 }

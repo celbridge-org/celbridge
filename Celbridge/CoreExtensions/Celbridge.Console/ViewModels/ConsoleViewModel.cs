@@ -9,7 +9,7 @@ public partial class ConsoleViewModel : ObservableObject
 {
     private readonly IConsoleService _consoleService;
     private readonly ICommandHistory _commandHistory;
-    private readonly IScriptContext _scriptContext;
+    private IScriptContext? _scriptContext;
 
     [ObservableProperty]
     private string _commandText = string.Empty;
@@ -32,12 +32,18 @@ public partial class ConsoleViewModel : ObservableObject
         IScriptingService scriptingService)
     {
         _consoleService = consoleService;
-        _scriptContext = scriptingService.CreateScriptContext();
+
+        async Task InitScriptContext()
+        {
+            _scriptContext = await scriptingService.CreateScriptContext();
+        }
+
+        var _ = InitScriptContext();
 
         _commandHistory = _consoleService.CreateCommandHistory();
     }
 
-    public ICommand ClearCommand => new RelayCommand(Clear_Executed);
+public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     private void Clear_Executed()
     {
         _consoleLogItems.Clear();
@@ -46,6 +52,12 @@ public partial class ConsoleViewModel : ObservableObject
     public ICommand SubmitCommand => new AsyncRelayCommand(Submit_Executed);
     private async Task Submit_Executed()
     {
+        if (_scriptContext is null)
+        {
+            // Todo: Wait for a while to allow the context to finish initializing, but fail if it takes too long.
+            return;
+        }
+
         // Remove leading and trailing whitespace from the entered text
         var command = CommandText.Trim();
 
