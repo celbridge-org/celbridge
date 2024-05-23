@@ -18,13 +18,14 @@ public class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Load Extensions
+        _extensionLoader.LoadExtension("Celbridge.Scripting");
+        _extensionLoader.LoadExtension("Celbridge.ScriptUtils");
         _extensionLoader.LoadExtension("Celbridge.Workspace");
         _extensionLoader.LoadExtension("Celbridge.Console");
         _extensionLoader.LoadExtension("Celbridge.Status");
         _extensionLoader.LoadExtension("Celbridge.Project");
         _extensionLoader.LoadExtension("Celbridge.Inspector");
         _extensionLoader.LoadExtension("Celbridge.Documents");
-        _extensionLoader.LoadExtension("Celbridge.Scripting");
 
         var builder = this.CreateBuilder(args)
             .Configure(host => host
