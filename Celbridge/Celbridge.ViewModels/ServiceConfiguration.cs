@@ -13,7 +13,6 @@ public static class ServiceConfiguration
         services.AddTransient<MainPageViewModel>();
         services.AddTransient<StartPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
-        services.AddTransient<NewProjectPageViewModel>();
 
         //
         // Register dialog view models

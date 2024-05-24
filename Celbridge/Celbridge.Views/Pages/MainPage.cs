@@ -8,7 +8,7 @@ public sealed partial class MainPage : Page
     public MainPageViewModel ViewModel { get; }
 
     public LocalizedString Home => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(Home)}");
-    public LocalizedString NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(NewProject)}");
+    public LocalizedString NewProject => _stringLocalizer.GetString("NewProjectDialog_Title");
     public LocalizedString OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(OpenProject)}");
     public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
 
@@ -38,16 +38,16 @@ public sealed partial class MainPage : Page
             .MenuItems(
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
-                    .Tag("StartPage")
+                    .Tag("Start")
                     .Content(Home),
                 new NavigationViewItemSeparator(),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.NewFolder))
-                    .Tag("NewProjectPage")
+                    .Tag("NewProject")
                     .Content(NewProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.OpenFile))
-                    .Tag("OpenProjectPage")
+                    .Tag("OpenProject")
                     .Content(OpenProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
@@ -123,7 +123,7 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsPageName);
+            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsTag);
             return;
         }
 
@@ -133,10 +133,10 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         Guard.IsNotNull(navigationItemTag);
 
-        var pageName = navigationItemTag.ToString();
-        Guard.IsNotNullOrEmpty(pageName);
+        var tag = navigationItemTag.ToString();
+        Guard.IsNotNullOrEmpty(tag);
 
-        ViewModel.SelectNavigationItem(pageName);
+        ViewModel.SelectNavigationItem(tag);
     }
 
     public void Navigate(Type pageType)
