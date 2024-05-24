@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.Services.UserInterface.Navigation;
@@ -10,16 +11,20 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
     public const string StartTag = "Start";
     public const string NewProjectTag = "NewProject";
+    public const string OpenProjectTag = "OpenProject";
     public const string SettingsTag = "Settings";
 
-    private ILoggingService _loggingService;
+    private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
+    private readonly IProjectManagerService _projectManagerService;
 
     public MainPageViewModel(ILoggingService loggingService, 
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IProjectManagerService projectManagerService)
     {
         _loggingService = loggingService;
         _navigationService = navigationService;
+        _projectManagerService = projectManagerService;
     }
 
     public event Func<Type, Result>? OnNavigate;
@@ -52,6 +57,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
+        if (tag == OpenProjectTag)
+        {
+            _ = OpenProject();
+            return;
+        }
+
         var navigationResult = _navigationService.NavigateToPage(tag);
         if (navigationResult.IsSuccess)
         {
@@ -59,6 +70,18 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
 
         _loggingService.Error($"Failed to navigate to item {tag}.");
+    }
+
+    private async Task OpenProject()
+    {
+        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        var filePickerService = userInterfaceService.FilePickerService;
+        var result = await filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
+        if (result.IsSuccess)
+        {
+            var projectPath = result.Value;
+            _projectManagerService.OpenProject(projectPath);
+        } 
     }
 }
 
