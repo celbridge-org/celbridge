@@ -70,4 +70,15 @@ public class DialogService : IDialogService
             }
         }
     }
+
+    public async Task ShowNewProjectDialogAsync()
+    {
+        var dialog = _dialogFactory.CreateNewProjectDialog();
+
+        SuppressProgressDialog(true);
+
+        await dialog.ShowDialogAsync();
+
+        SuppressProgressDialog(false);
+    }
 }

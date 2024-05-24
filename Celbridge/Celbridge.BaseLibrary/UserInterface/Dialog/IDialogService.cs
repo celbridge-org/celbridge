@@ -20,4 +20,9 @@ public interface IDialogService
     /// The progress dialog is hidden when all tokens are released.
     /// </summary>
     void ReleaseProgressDialog(IProgressDialogToken token);
+
+    /// <summary>
+    /// Display a New Project Dialog.
+    /// </summary>
+    Task ShowNewProjectDialogAsync();
 }
