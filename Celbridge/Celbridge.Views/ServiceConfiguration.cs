@@ -19,6 +19,5 @@ public static class ServiceConfiguration
 
         navigationService.RegisterPage(nameof(StartPage), typeof(StartPage));
         navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
-        navigationService.RegisterPage(nameof(NewProjectPage), typeof(NewProjectPage));
     }
 }
