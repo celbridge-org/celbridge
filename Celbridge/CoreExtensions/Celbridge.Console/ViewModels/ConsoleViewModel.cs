@@ -9,7 +9,7 @@ public partial class ConsoleViewModel : ObservableObject
 {
     private readonly IConsoleService _consoleService;
     private readonly ICommandHistory _commandHistory;
-    private readonly IScriptContext _scriptContext;
+    private IScriptContext? _scriptContext;
 
     [ObservableProperty]
     private string _commandText = string.Empty;
@@ -32,12 +32,18 @@ public partial class ConsoleViewModel : ObservableObject
         IScriptingService scriptingService)
     {
         _consoleService = consoleService;
-        _scriptContext = scriptingService.CreateScriptContext();
+
+        async Task InitScriptContext()
+        {
+            _scriptContext = await scriptingService.CreateScriptContext();
+        }
+
+        var _ = InitScriptContext();
 
         _commandHistory = _consoleService.CreateCommandHistory();
     }
 
-    public ICommand ClearCommand => new RelayCommand(Clear_Executed);
+public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     private void Clear_Executed()
     {
         _consoleLogItems.Clear();
@@ -46,6 +52,16 @@ public partial class ConsoleViewModel : ObservableObject
     public ICommand SubmitCommand => new AsyncRelayCommand(Submit_Executed);
     private async Task Submit_Executed()
     {
+        if (_scriptContext is null)
+        {
+            // Wait a short period to allow the context to initialize before we give up and throw an exception
+            await Task.Delay(2000);
+            if (_scriptContext is null)
+            {
+                throw new InvalidOperationException("The script context is not yet initialized.");
+            }
+        }
+
         // Remove leading and trailing whitespace from the entered text
         var command = CommandText.Trim();
 

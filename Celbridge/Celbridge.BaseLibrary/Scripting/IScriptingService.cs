@@ -5,5 +5,13 @@
 /// </summary>
 public interface IScriptingService
 {
-    IScriptContext CreateScriptContext();
+    /// <summary>
+    /// Create a new ScriptContext to maintain state across command executions.
+    /// </summary>
+    Task<IScriptContext> CreateScriptContext();
+
+    /// <summary>
+    /// Add a command to be executed when the ScriptContext is created.
+    /// </summary>
+    void AddContextSetupCommand(string command);
 }
