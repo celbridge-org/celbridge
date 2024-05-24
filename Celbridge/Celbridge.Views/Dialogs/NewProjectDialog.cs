@@ -11,7 +11,6 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public NewProjectDialogViewModel ViewModel { get; }
 
     public LocalizedString TitleText => _stringLocalizer.GetString($"NewProjectDialog_Title");
-
     public LocalizedString CreateText => _stringLocalizer.GetString($"DialogButton_Create");
     public LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
     public LocalizedString ProjectNameText => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
