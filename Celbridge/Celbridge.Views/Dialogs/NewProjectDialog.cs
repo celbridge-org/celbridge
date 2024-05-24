@@ -15,6 +15,8 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
     public LocalizedString ProjectNameText => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
     public LocalizedString ProjectNamePlaceholderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
+    public LocalizedString ProjectFolderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
+    public LocalizedString ProjectFolderPlaceholderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
 
     public NewProjectDialog()
     {
@@ -29,19 +31,39 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         var newProjectName = 
             new TextBox()
-                .Header(new TextBlock()
-                            .Text(ProjectNameText))
+                .Header(new TextBlock().Text(ProjectNameText))
                 .Text(x => x.Bind(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
                 .MinWidth(200)
                 .PlaceholderText(ProjectNamePlaceholderText);
 
+
+        var selectFolder = new Grid()
+            .ColumnDefinitions("*, 50")
+            .Children(
+                new TextBox()
+                    .Grid(column: 0)
+                    .Header(new TextBlock().Text(ProjectFolderText))
+                    .MinWidth(200)
+                    .PlaceholderText(ProjectFolderPlaceholderText)
+                    .Margin(4)
+                    .IsSpellCheckEnabled(false)
+                    .Text(x => x.Bind(() => ViewModel.ProjectFolder)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)),
+                new Button()
+                    .Grid(column: 1)
+                    .VerticalAlignment(VerticalAlignment.Bottom)
+                    .Content(new SymbolIcon(Symbol.Folder))
+                    .Command(ViewModel.SelectFolderCommand)
+                );
+
         var stackPanel = 
             new StackPanel()
                 .Orientation(Orientation.Vertical)
                 .HorizontalAlignment(HorizontalAlignment.Left)
-                .Children(newProjectName);
+                .Children(newProjectName, selectFolder);
 
         this.DataContext(ViewModel, (dialog, vm) => 
             dialog
