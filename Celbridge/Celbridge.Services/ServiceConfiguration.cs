@@ -12,6 +12,8 @@ using Celbridge.Services.UserInterface.Navigation;
 using Celbridge.Services.UserInterface;
 using Celbridge.BaseLibrary.Tasks;
 using Celbridge.Services.Tasks;
+using Celbridge.BaseLibrary.Project;
+using Celbridge.Services.Project;
 
 namespace Celbridge.Services;
 
@@ -27,6 +29,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ISchedulerService, SchedulerService>();
+        services.AddSingleton<IProjectManagerService, ProjectManagerService>();
 
         // Register user interface services
         // These services can be acquired via the getters on IUserInterfaceService for convenient access.
