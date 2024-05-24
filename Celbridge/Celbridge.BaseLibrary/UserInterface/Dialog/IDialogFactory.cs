@@ -7,9 +7,13 @@ public interface IDialogFactory
     /// </summary>
     IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText);
 
-
     /// <summary>
     /// Create an Progress Dialog.
     /// </summary>
     IProgressDialog CreateProgressDialog();
+
+    /// <summary>
+    /// Create an New Project Dialog.
+    /// </summary>
+    INewProjectDialog CreateNewProjectDialog();
 }
