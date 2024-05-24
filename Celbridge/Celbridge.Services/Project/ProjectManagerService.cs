@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface.Navigation;
 using LiteDB;
 
 namespace Celbridge.Services.Project;
@@ -6,10 +7,14 @@ namespace Celbridge.Services.Project;
 public class ProjectManagerService : IProjectManagerService
 {
     private readonly ILoggingService _loggingService;
+    private readonly INavigationService _navigationService;
 
-    public ProjectManagerService(ILoggingService loggingService)
+    public ProjectManagerService(
+        ILoggingService loggingService,
+        INavigationService navigationService)
     {
         _loggingService = loggingService;
+        _navigationService = navigationService;
     }
 
     public Result CreateProject(string folder, string projectName)
@@ -43,4 +48,36 @@ public class ProjectManagerService : IProjectManagerService
 
         return Result.Ok();
     }
+
+    public Result OpenProject(string projectPath)
+    {
+        /*
+        try
+        {
+            // Check the project file is valid
+            // Todo: Handle version upgrades here
+            using (var db = new LiteDatabase(projectPath))
+            {
+                var col = db.GetCollection<ProjectConfig>("ProjectConfig");
+                var projectConfig = col.FindAll().FirstOrDefault();
+
+                if (projectConfig == null)
+                {
+                    _loggingService.Error($"Project config not found in: {projectPath}");
+                    return Result.Fail($"Project config not found in: {projectPath}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _loggingService.Error($"Failed to open project: {projectPath}. {ex.Message}");
+            return Result.Fail(ex.Message);
+        }
+        */
+
+        _navigationService.NavigateToPage("WorkspacePage");
+
+        return Result.Ok();
+    }
+
 }
