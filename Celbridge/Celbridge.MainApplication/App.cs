@@ -44,12 +44,17 @@ public class App : Application
                 {
                     _legacyApp?.RegisterServices(services);
 
+                    // Register the IDispatcher service to support running code on the UI thread.
+                    // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
+                    services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
+
                     // Configure all services and loaded extensions
                     Guard.IsNotNull(_extensionLoader);
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
                     ServiceConfiguration.ConfigureServices(services, extensions);
                 })
             );
+
         MainWindow = builder.Window;
 
         Host = builder.Build();
