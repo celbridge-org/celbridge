@@ -126,6 +126,12 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
+  <data name="DialogButton_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DialogButton_Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
@@ -143,6 +149,9 @@
   </data>
   <data name="MainPage_OpenProject" xml:space="preserve">
     <value>Open Project</value>
+  </data>
+  <data name="NewProjectDialog_Title" xml:space="preserve">
+    <value>New Project</value>
   </data>
   <data name="NewProjectPage_Title" xml:space="preserve">
     <value>New Project</value>
