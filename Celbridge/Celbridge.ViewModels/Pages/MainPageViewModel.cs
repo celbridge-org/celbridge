@@ -8,9 +8,9 @@ namespace Celbridge.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    public const string StartPageName = "StartPage";
-    public const string NewProjectPageName = "NewProjectPage";
-    public const string SettingsPageName = "SettingsPage";
+    public const string StartTag = "Start";
+    public const string NewProjectTag = "NewProject";
+    public const string SettingsTag = "Settings";
 
     private ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
@@ -37,14 +37,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage(StartPageName);
+        _navigationService.NavigateToPage("StartPage");
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
-    public void SelectNavigationItem(string pageName)
+    public void SelectNavigationItem(string tag)
     {
-        if (pageName == NewProjectPageName)
+        if (tag == NewProjectTag)
         {
             var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
             var dialogService = userInterfaceService.DialogService;
@@ -52,13 +52,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        var navigationResult = _navigationService.NavigateToPage(pageName);
+        var navigationResult = _navigationService.NavigateToPage(tag);
         if (navigationResult.IsSuccess)
         {
             return;
         }
 
-        _loggingService.Error($"Failed to navigate to page {pageName}.");
+        _loggingService.Error($"Failed to navigate to item {tag}.");
     }
 }
 
