@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using LiteDB;
 
 namespace Celbridge.Services.Project;
 
@@ -20,7 +21,17 @@ public class ProjectManagerService : IProjectManagerService
             Directory.CreateDirectory(projectFolder);
 
             var dbPath = Path.Combine(projectFolder, $"{projectName}.celbridge");
-            File.WriteAllText(dbPath, "<project>");
+            using (var db = new LiteDatabase(dbPath))
+            {
+                var col = db.GetCollection<ProjectConfig>("ProjectConfig");
+
+                var projectConfig = new ProjectConfig
+                {
+                    Version = 1
+                };
+
+                col.Insert(projectConfig);
+            }
 
             _loggingService.Info($"Created project: {dbPath}");
         }
