@@ -2,5 +2,5 @@
 
 public interface IProjectManagerService
 {
-    void CreateProject(string projectName);
+    Result CreateProject(string folder, string projectName);
 }

@@ -150,6 +150,12 @@
   <data name="MainPage_OpenProject" xml:space="preserve">
     <value>Open Project</value>
   </data>
+  <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+    <value>Project Folder</value>
+  </data>
+  <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
+    <value>Select folder</value>
+  </data>
   <data name="NewProjectDialog_ProjectName" xml:space="preserve">
     <value>Project Name</value>
   </data>
