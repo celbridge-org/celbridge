@@ -21,4 +21,10 @@ public class DialogFactory : IDialogFactory
         var dialog = new ProgressDialog();
         return dialog;
     }
+
+    public INewProjectDialog CreateNewProjectDialog()
+    {
+        var dialog = new NewProjectDialog();
+        return dialog;
+    }
 }

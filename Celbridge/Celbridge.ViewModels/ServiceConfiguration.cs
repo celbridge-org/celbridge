@@ -20,5 +20,6 @@ public static class ServiceConfiguration
         //
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();
+        services.AddTransient<NewProjectDialogViewModel>();
     }
 }
