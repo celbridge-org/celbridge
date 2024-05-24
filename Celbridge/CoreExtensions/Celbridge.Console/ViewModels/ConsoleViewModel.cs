@@ -54,8 +54,12 @@ public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     {
         if (_scriptContext is null)
         {
-            // Todo: Wait for a while to allow the context to finish initializing, but fail if it takes too long.
-            return;
+            // Wait a short period to allow the context to initialize before we give up and throw an exception
+            await Task.Delay(2000);
+            if (_scriptContext is null)
+            {
+                throw new InvalidOperationException("The script context is not yet initialized.");
+            }
         }
 
         // Remove leading and trailing whitespace from the entered text
