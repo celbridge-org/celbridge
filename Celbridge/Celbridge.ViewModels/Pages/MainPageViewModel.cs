@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
@@ -43,6 +44,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem(string pageName)
     {
+        if (pageName == NewProjectPageName)
+        {
+            var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+            var dialogService = userInterfaceService.DialogService;
+            dialogService.ShowNewProjectDialogAsync();
+            return;
+        }
+
         var navigationResult = _navigationService.NavigateToPage(pageName);
         if (navigationResult.IsSuccess)
         {
