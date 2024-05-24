@@ -26,18 +26,28 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         ViewModel = serviceProvider.GetRequiredService<NewProjectDialogViewModel>();
 
-        this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(TitleText)
-            .PrimaryButtonText(CreateText)
-            .SecondaryButtonText(CancelText)
-            .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Center)
-                .VerticalAlignment(VerticalAlignment.Center)
-                .Children(
-                    new TextBlock()
-                        .Text("New Project details")
-                         )
-                )
+        var newProjectName = 
+            new TextBox()
+                .Header("Project Name")
+                .Text(x => x.Bind(() => ViewModel.ProjectName)
+                    .Mode(BindingMode.TwoWay)
+                    .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+                .MinWidth(200)
+                .PlaceholderText("Enter project name");
+
+        var stackPanel = 
+            new StackPanel()
+                .Orientation(Orientation.Vertical)
+                .HorizontalAlignment(HorizontalAlignment.Left)
+                .Children(newProjectName);
+
+        this.DataContext(ViewModel, (dialog, vm) => 
+            dialog
+                .Title(TitleText)
+                .PrimaryButtonText(CreateText)
+                .SecondaryButtonText(CancelText)
+                .IsPrimaryButtonEnabled(x => x.Bind(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))
+                .Content(stackPanel)
             );
 
         PrimaryButtonClick += CreateButtonClick;
