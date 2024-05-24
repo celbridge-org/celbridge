@@ -14,6 +14,8 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
     public LocalizedString CreateText => _stringLocalizer.GetString($"DialogButton_Create");
     public LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
+    public LocalizedString ProjectNameText => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
+    public LocalizedString ProjectNamePlaceholderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
 
     public NewProjectDialog()
     {
@@ -28,12 +30,13 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         var newProjectName = 
             new TextBox()
-                .Header("Project Name")
+                .Header(new TextBlock()
+                            .Text(ProjectNameText))
                 .Text(x => x.Bind(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
                 .MinWidth(200)
-                .PlaceholderText("Enter project name");
+                .PlaceholderText(ProjectNamePlaceholderText);
 
         var stackPanel = 
             new StackPanel()
