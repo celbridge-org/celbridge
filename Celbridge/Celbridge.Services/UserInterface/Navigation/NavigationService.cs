@@ -54,7 +54,7 @@ public class NavigationService : INavigationService
         return Result.Ok();
     }
 
-    public Result NavigateToPage(string pageName)
+    public Result NavigateToPage(string pageName, object parameter)
     {
         Guard.IsNotNull(_navigationProvider);
 
@@ -68,7 +68,7 @@ public class NavigationService : INavigationService
         }
 
         // Navigate using the resolved page type
-        var navigateResult = _navigationProvider.NavigateToPage(pageType);
+        var navigateResult = _navigationProvider.NavigateToPage(pageType, parameter);
         if (navigateResult.IsFailure)
         {
             _loggingService.Error(navigateResult.Error);

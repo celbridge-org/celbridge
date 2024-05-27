@@ -5,7 +5,7 @@ namespace Celbridge.ViewModels.Dialogs;
 
 public partial class NewProjectDialogViewModel : ObservableObject
 {
-    private readonly IProjectManagerService _projectManagerService;
+    private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
 
     [ObservableProperty]
@@ -17,12 +17,13 @@ public partial class NewProjectDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _projectFolder = string.Empty;
 
+    public string ProjectDataPath { get; private set; } = string.Empty;
 
     public NewProjectDialogViewModel(
-        IProjectManagerService projectManagerService,
+        IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService)
     {
-        _projectManagerService = projectManagerService;
+        _projectDataService = projectDataService;
         _userInterfaceService = userInterfaceService;   
 
         PropertyChanged += (sender, args) =>
@@ -52,7 +53,12 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var path = Path.Combine(ProjectFolder, ProjectName) + ".celbridge";
-        _projectManagerService.CreateProject(ProjectFolder, ProjectName);
+        var projectDataPath = Path.Combine(ProjectFolder, ProjectName) + ".celbridge";
+        var createResult = _projectDataService.CreateProjectData(ProjectFolder, ProjectName, 1);
+        if (createResult.IsSuccess)
+        {
+            // Populate the property if the project created successfully
+            ProjectDataPath = projectDataPath;
+        }
     }
 }

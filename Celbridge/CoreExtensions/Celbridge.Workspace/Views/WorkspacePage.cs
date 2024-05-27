@@ -1,5 +1,7 @@
-﻿using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,6 +39,15 @@ public sealed partial class WorkspacePage : Page
     private GridSplitter _rightPanelSplitter;
     private GridSplitter _bottomPanelSplitter;
 #endif
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        var projectData = e.Parameter as IProjectData;
+        Guard.IsNotNull(projectData);
+
+        // Todo: Store a reference to the Project Data in the workspace
+        // Todo: Dispose the Project Data reference when the workspace closes
+    }
 
     public WorkspacePage()
     {
