@@ -31,13 +31,13 @@ public partial class StartPageViewModel : ObservableObject
     public ICommand OpenWorkspacePageCommand => new RelayCommand(OpenWorkspacePageCommand_Executed);
     private void OpenWorkspacePageCommand_Executed()
     {
-        _navigationService.NavigateToPage(WorkspacePageName);
+        _navigationService.NavigateToPage(WorkspacePageName, string.Empty);
     }
 
     public ICommand LegacyInterfaceCommand => new RelayCommand(LegacyInterfaceCommand_Executed);
     private void LegacyInterfaceCommand_Executed()
     {
-        _navigationService.NavigateToPage(ShellName);
+        _navigationService.NavigateToPage(ShellName, string.Empty);
     }
 
     public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
