@@ -16,22 +16,22 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
-    private readonly IProjectManagerService _projectManagerService;
+    private readonly IProjectDataService _projectDataService;
 
     public MainPageViewModel(ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectManagerService projectManagerService)
+        IProjectDataService projectDataService)
     {
         _loggingService = loggingService;
         _navigationService = navigationService;
-        _projectManagerService = projectManagerService;
+        _projectDataService = projectDataService;
     }
 
-    public event Func<Type, Result>? OnNavigate;
+    public event Func<Type, object, Result>? OnNavigate;
 
-    public Result NavigateToPage(Type pageType)
+    public Result NavigateToPage(Type pageType, object parameter)
     {
-        return OnNavigate?.Invoke(pageType)!;
+        return OnNavigate?.Invoke(pageType, parameter)!;
     }
 
     public void OnMainPage_Loaded()
@@ -42,7 +42,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage("StartPage");
+        _navigationService.NavigateToPage("StartPage", string.Empty);
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
@@ -51,9 +51,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         if (tag == NewProjectTag)
         {
-            var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-            var dialogService = userInterfaceService.DialogService;
-            dialogService.ShowNewProjectDialogAsync();
+            _ = NewProject();
             return;
         }
 
@@ -63,13 +61,26 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        var navigationResult = _navigationService.NavigateToPage(tag);
+        var navigationResult = _navigationService.NavigateToPage(tag, string.Empty);
         if (navigationResult.IsSuccess)
         {
             return;
         }
 
         _loggingService.Error($"Failed to navigate to item {tag}.");
+    }
+
+    private async Task NewProject()
+    {
+        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        var dialogService = userInterfaceService.DialogService;
+
+        var showResult = await dialogService.ShowNewProjectDialogAsync();
+        if (showResult.IsSuccess)
+        {
+            var projectPath = showResult.Value;
+            _projectDataService.OpenProjectWorkspace(projectPath);
+        }
     }
 
     private async Task OpenProject()
@@ -80,7 +91,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            _projectManagerService.OpenProject(projectPath);
+            _projectDataService.OpenProjectWorkspace(projectPath);
         } 
     }
 }

@@ -103,7 +103,7 @@ public sealed partial class MainPage : Page
         Unloaded -= OnMainPage_Unloaded;
     }
 
-    private Result OnViewModel_Navigate(Type pageType)
+    private Result OnViewModel_Navigate(Type pageType, object parameter)
     {
         if (_contentFrame.Content != null &&
             _contentFrame.Content.GetType() == pageType)
@@ -112,7 +112,7 @@ public sealed partial class MainPage : Page
             return Result.Ok();
         }
 
-        if (_contentFrame.Navigate(pageType))
+        if (_contentFrame.Navigate(pageType, parameter))
         {
             return Result.Ok();
         }
@@ -139,14 +139,14 @@ public sealed partial class MainPage : Page
         ViewModel.SelectNavigationItem(tag);
     }
 
-    public void Navigate(Type pageType)
+    public void Navigate(Type pageType, object parameter)
     {
         Guard.IsNotNull(_contentFrame);
 
         if (_contentFrame.Content is null ||
             _contentFrame.Content.GetType() != pageType)
         {
-            _contentFrame.Navigate(pageType);
+            _contentFrame.Navigate(pageType, parameter);
         }
     }
 }

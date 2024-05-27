@@ -8,5 +8,5 @@ public interface INavigationProvider
     /// <summary>
     /// Navigate the main application UI to the requested page.
     /// </summary>
-    Result NavigateToPage(Type pageType);
+    Result NavigateToPage(Type pageType, object parameter);
 }

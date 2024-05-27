@@ -25,5 +25,5 @@ public interface INavigationService
     /// <summary>
     /// Navigates the top-level UI to display the specified page.
     /// </summary>
-    Result NavigateToPage(string pageName);
+    Result NavigateToPage(string pageName, object parameter);
 }

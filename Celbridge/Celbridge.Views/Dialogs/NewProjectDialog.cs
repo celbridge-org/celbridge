@@ -88,9 +88,16 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         ViewModel.CreateProjectCommand.Execute(null);
     }
 
-    public async Task ShowDialogAsync()
+    public async Task<Result<string>> ShowDialogAsync()
     {
         await ShowAsync();
+
+        if (string.IsNullOrEmpty(ViewModel.ProjectDataPath))
+        {
+            return Result<string>.Fail("Failed to create new project");
+        }
+
+        return Result<string>.Ok(ViewModel.ProjectDataPath);
     }
 }
 

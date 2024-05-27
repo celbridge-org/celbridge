@@ -36,10 +36,13 @@ public class ScriptingTests
     {
         Guard.IsNotNull(_scriptingService);
 
-        var scriptContext = _scriptingService.CreateScriptContext();
+        var scriptContext = await _scriptingService.CreateScriptContext();
 
         var scriptText = "Console.WriteLine(\"Hello, World!\");";
-        var scriptExecutor = scriptContext.CreateExecutor(scriptText).Value;
+        var createResult = scriptContext.CreateExecutor(scriptText);
+        createResult.IsSuccess.Should().BeTrue();
+
+        var scriptExecutor = createResult.Value;
 
         scriptExecutor.OnOutput += (output) =>
         {
