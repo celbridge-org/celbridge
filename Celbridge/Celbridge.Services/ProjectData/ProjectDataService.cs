@@ -53,7 +53,7 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(databasePath, 1);
+            var createResult = await ProjectData.CreateProjectDataAsync(projectName, databasePath, 1);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");
@@ -67,11 +67,15 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result<IProjectData> LoadProjectData(string databasePath)
+    public Result<IProjectData> LoadProjectData(string projectName, string databasePath)
     {
+        Guard.IsNotNullOrWhiteSpace(projectName);
+        Guard.IsNotNullOrWhiteSpace(databasePath);
+
+
         try
         {
-            var loadResult = ProjectData.LoadProjectData(databasePath);
+            var loadResult = ProjectData.LoadProjectData(projectName, databasePath);
             if (loadResult.IsFailure)
             {
                 return Result<IProjectData>.Fail($"Failed to load project data: {databasePath}");
@@ -87,11 +91,10 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result OpenProjectWorkspace(string projectPath)
+    public Result OpenProjectWorkspace(string projectName, string projectPath)
     {
         // Load the project first, then open the workspace because projects may use more than
         // one editor UI in future.
-
         try
         {
             var projectJsonData = File.ReadAllText(projectPath);
@@ -102,7 +105,7 @@ public class ProjectDataService : IProjectDataService
             string relativePath = jsonObject["projectDataFile"]!.ToString();
             string databasePath = Path.Combine(projectFolder, relativePath);
 
-            var loadResult = LoadProjectData(databasePath);
+            var loadResult = LoadProjectData(projectName, databasePath);
             if (loadResult.IsFailure)
             {
                 return loadResult;

@@ -13,5 +13,5 @@ public interface IProjectDataService
     /// <summary>
     /// Load the project at the specified path and open it in a workspace.
     /// </summary>
-    Result OpenProjectWorkspace(string projectPath);
+    Result OpenProjectWorkspace(string projectName, string projectPath);
 }

@@ -48,8 +48,8 @@ public class UserInterfaceService : IUserInterfaceService
         _mainWindow.Activated += MainWindow_Activated;
 #endif
 
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<WorkspaceServiceCreatedMessage>(this, OnWorkspaceServiceCreated);
+        _messengerService.Register<WorkspaceServiceDestroyedMessage>(this, OnWorkspaceServiceDestroyed);
     }
 
 #if WINDOWS
@@ -71,14 +71,14 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
+    private void OnWorkspaceServiceCreated(object recipient, WorkspaceServiceCreatedMessage loadedMessage)
     {
         // Comment out this assert to enable hot reload
         Guard.IsNull(_workspaceService);
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    private void OnWorkspaceServiceDestroyed(object recipient, WorkspaceServiceDestroyedMessage message)
     {
         // Comment out this assert to enable hot reload
         Guard.IsNotNull(_workspaceService);
