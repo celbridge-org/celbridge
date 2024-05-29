@@ -21,6 +21,12 @@ public class ProjectDataService : IProjectDataService
         try
         {
             var projectFolder = Path.Combine(folder, projectName);
+
+            if (Directory.Exists(projectFolder))
+            {
+                return Result<string>.Fail($"Project folder already exists: {projectFolder}");
+            }
+
             Directory.CreateDirectory(projectFolder);
 
             //
