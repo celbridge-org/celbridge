@@ -8,5 +8,5 @@ public interface IProjectData
     /// <summary>
     /// Returns the configuration data for the project.
     /// </summary>
-    public ProjectConfig Config { get; }
+    public IProjectConfig Config { get; }
 }
