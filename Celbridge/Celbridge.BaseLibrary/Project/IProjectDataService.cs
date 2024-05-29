@@ -8,7 +8,7 @@ public interface IProjectDataService
     /// <summary>
     /// Create a new project data file in the specified folder.
     /// </summary>
-    Result<IProjectData> CreateProjectData(string folder, string projectName, int version);
+    Result<string> CreateProjectData(string folder, string projectName, int version);
 
     /// <summary>
     /// Load the project at the specified path and open it in a workspace.
