@@ -171,4 +171,7 @@
   <data name="SettingsPage_Title" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="WorkspacePage_LoadingWorkspace" xml:space="preserve">
+    <value>Loading workspace</value>
+  </data>
 </root>

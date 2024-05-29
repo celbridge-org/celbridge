@@ -8,5 +8,10 @@ public interface IProjectData
     /// <summary>
     /// Returns the configuration data for the project.
     /// </summary>
-    public IProjectConfig Config { get; }
+    Task<IProjectConfig> GetConfigAsync();
+
+    /// <summary>
+    /// Updates the configuration data for the project.
+    /// </summary>
+    Task SetConfigAsync(IProjectConfig config);
 }

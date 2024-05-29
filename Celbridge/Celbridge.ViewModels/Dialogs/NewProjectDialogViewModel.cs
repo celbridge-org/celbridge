@@ -50,10 +50,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
-    private void CreateCommand_Execute()
+    public ICommand CreateProjectCommand => new AsyncRelayCommand(CreateCommand_ExecuteAsync);
+    private async Task CreateCommand_ExecuteAsync()
     {
-        var createResult = _projectDataService.CreateProjectData(ProjectFolder, ProjectName, 1);
+        var createResult = await _projectDataService.CreateProjectDataAsync(ProjectFolder, ProjectName, 1);
         if (createResult.IsSuccess)
         {
             // Populate the property if the project created successfully

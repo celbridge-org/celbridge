@@ -16,7 +16,7 @@ public class ProjectDataService : IProjectDataService
         _navigationService = navigationService;
     }
 
-    public Result<string> CreateProjectData(string folder, string projectName, int version)
+    public async Task<Result<string>> CreateProjectDataAsync(string folder, string projectName, int version)
     {
         try
         {
@@ -47,7 +47,7 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = ProjectData.CreateProjectData(databasePath, 1);
+            var createResult = await ProjectData.CreateProjectDataAsync(databasePath, 1);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");
