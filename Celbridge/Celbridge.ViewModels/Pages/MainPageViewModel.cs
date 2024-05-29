@@ -19,20 +19,20 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectAdminService _projectAdminService;
     private readonly ISchedulerService _schedulerService;
 
     public MainPageViewModel(
         IMessengerService messengerService,
         ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectDataService projectDataService,
+        IProjectAdminService projectAdminService,
         ISchedulerService schedulerService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
-        _projectDataService = projectDataService;
+        _projectAdminService = projectAdminService;
         _schedulerService = schedulerService;
     }
 
@@ -109,7 +109,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (showResult.IsSuccess)
         {
             var projectPath = showResult.Value;
-            var projectDataService = _projectDataService; // Avoid capturing this
+            var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
             _schedulerService.ScheduleFunction(async () =>
             {
@@ -118,7 +118,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
                 Guard.IsNotNullOrWhiteSpace(projectName);
 
-                projectDataService.OpenProjectWorkspace(projectName, projectPath);
+                projectAdminService.OpenProjectWorkspace(projectName, projectPath);
                 await Task.CompletedTask;
             });
         }
@@ -132,7 +132,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            var projectDataService = _projectDataService; // Avoid capturing this
+            var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
             _schedulerService.ScheduleFunction(async () =>
             {
@@ -141,7 +141,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
                 Guard.IsNotNullOrWhiteSpace(projectName);
 
-                projectDataService.OpenProjectWorkspace(projectName, projectPath);
+                projectAdminService.OpenProjectWorkspace(projectName, projectPath);
                 await Task.CompletedTask;
             });
 
@@ -150,14 +150,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CloseProject()
     {
-        var projectDataService = _projectDataService; // Avoid capturing this
+        var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
         _schedulerService.ScheduleFunction(async () =>
         {
-            // Todo: Who's in charge of closing the workspace?
-            // The ProjectDataService opens it, should probably close it as well?
-
-            //projectDataService.CloseProjectWorkspace();
+            projectAdminService.CloseProjectWorkspace();
         });
 
         await Task.CompletedTask;

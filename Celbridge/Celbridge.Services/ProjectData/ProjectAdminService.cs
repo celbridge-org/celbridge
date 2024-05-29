@@ -4,19 +4,21 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.ProjectData;
 
-public class ProjectDataService : IProjectDataService
+public class ProjectAdminService : IProjectAdminService
 {
+    private const int ProjectVersion = 1;
+
     private readonly INavigationService _navigationService;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
-    public ProjectDataService(
+    public ProjectAdminService(
         INavigationService navigationService)
     {
         _navigationService = navigationService;
     }
 
-    public async Task<Result<string>> CreateProjectDataAsync(string folder, string projectName, int version)
+    public async Task<Result<string>> CreateProjectAsync(string folder, string projectName)
     {
         try
         {
@@ -53,7 +55,7 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(projectName, databasePath, 1);
+            var createResult = await ProjectData.CreateProjectDataAsync(projectName, databasePath, ProjectVersion);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");
@@ -71,7 +73,6 @@ public class ProjectDataService : IProjectDataService
     {
         Guard.IsNotNullOrWhiteSpace(projectName);
         Guard.IsNotNullOrWhiteSpace(databasePath);
-
 
         try
         {
@@ -121,7 +122,10 @@ public class ProjectDataService : IProjectDataService
         {
             return Result.Fail($"Failed to load project. {ex.Message}");
         }
-
     }
 
+    public Result CloseProjectWorkspace()
+    {
+        throw new NotImplementedException();
+    }
 }
