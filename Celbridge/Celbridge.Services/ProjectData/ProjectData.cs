@@ -5,7 +5,7 @@ namespace Celbridge.Services.ProjectData;
 
 public class ProjectData : IDisposable, IProjectData
 {
-    private SQLiteConnection _connection;
+    private SQLiteAsyncConnection _connection;
     private bool _disposed = false;
 
     private ProjectData(string databasePath)
@@ -15,41 +15,38 @@ public class ProjectData : IDisposable, IProjectData
             throw new ArgumentException("Database path cannot be null or empty", nameof(databasePath));
         }
 
-        _connection = new SQLiteConnection(databasePath);
+        _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public IProjectConfig Config
+    public async Task<IProjectConfig> GetConfigAsync()
     {
-        get
+        if (_disposed)
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(_connection));
-            }
-
-            var config = _connection.Table<ProjectConfig>().FirstOrDefault();
-            if (config == null)
-            {
-                throw new InvalidOperationException("ProjectConfig table not found in database.");
-            }
-
-            return config;
+            throw new ObjectDisposedException(nameof(_connection));
         }
 
-        set
+        var config = await _connection.Table<ProjectConfig>().FirstOrDefaultAsync();
+        if (config == null)
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(_connection));
-            }
-
-            if (value == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            _connection.Update(value);
+            throw new InvalidOperationException("ProjectConfig table not found in database.");
         }
+
+        return config;
+    }
+
+    public async Task SetConfigAsync(IProjectConfig config)
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(_connection));
+        }
+
+        if (config == null)
+        {
+            throw new ArgumentNullException();
+        }
+
+        await _connection.InsertAsync(config);
     }
 
     public static Result<IProjectData> LoadProjectData(string databasePath)
@@ -65,7 +62,7 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IProjectData>.Ok(project);
     }
 
-    public static Result CreateProjectData(string databasePath, int version)
+    public static async Task<Result> CreateProjectDataAsync(string databasePath, int version)
     {
         if (string.IsNullOrWhiteSpace(databasePath))
         {
@@ -80,8 +77,8 @@ public class ProjectData : IDisposable, IProjectData
             Version = version 
         };
 
-        project._connection.CreateTable<ProjectConfig>();
-        project._connection.Insert(config);
+        await project._connection.CreateTableAsync<ProjectConfig>();
+        await project._connection.InsertAsync(config);
 
         // Close the database after creating it
         project.Dispose();
@@ -102,7 +99,7 @@ public class ProjectData : IDisposable, IProjectData
             if (disposing)
             {
                 // Dispose managed resources
-                _connection?.Close();
+                _connection?.CloseAsync().Wait();
             }
 
             // Dispose unmanaged resources here if any

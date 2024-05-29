@@ -1,7 +1,4 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.Services.ProjectData;
-using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Celbridge.Services.ProjectData;
 using Uno.Disposables;
 
 namespace Celbridge.Tests;
@@ -18,19 +15,23 @@ public class ProjectTests
     {}
 
     [Test]
-    public void ICanCreateAndLoadAProject()
+    public async Task ICanCreateAndLoadAProjectAsync()
     {
         var folder = System.IO.Path.GetTempPath();
-        var projectName = "TestProject.celbridge";
+        var projectName = "ProjectData.db";
         var projectPath = System.IO.Path.Combine(folder, projectName);
 
-        var createResult = ProjectData.CreateProjectData(projectPath, new ProjectConfig(Version: 1));
+        var createResult = await ProjectData.CreateProjectDataAsync(projectPath, 1);
         createResult.IsSuccess.Should().BeTrue();
 
-        var project = createResult.Value;
-        project.Config.Version.Should().Be(1);
+        var loadResult = ProjectData.LoadProjectData(projectPath);
+        loadResult.IsSuccess.Should().BeTrue();
+        var projectData = loadResult.Value;
+        
+        var config = await projectData.GetConfigAsync();
+        config.Version.Should().Be(1);
 
-        project.TryDispose();
+        projectData.TryDispose();
 
         File.Delete(projectPath);
         File.Exists(projectPath).Should().BeFalse();
