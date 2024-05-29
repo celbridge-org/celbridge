@@ -55,6 +55,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                 new Button()
                     .Grid(column: 1)
                     .VerticalAlignment(VerticalAlignment.Bottom)
+                    .Margin(0,0,0,4)
                     .Content(new SymbolIcon(Symbol.Folder))
                     .Command(ViewModel.SelectFolderCommand)
                 );
