@@ -13,23 +13,31 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string StartTag = "Start";
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
+    public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
 
+    private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
     private readonly ISchedulerService _schedulerService;
 
-    public MainPageViewModel(ILoggingService loggingService, 
+    public MainPageViewModel(
+        IMessengerService messengerService,
+        ILoggingService loggingService, 
         INavigationService navigationService,
         IProjectDataService projectDataService,
         ISchedulerService schedulerService)
     {
+        _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
         _schedulerService = schedulerService;
     }
+
+    [ObservableProperty]
+    private bool _isProjectLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
 
@@ -40,6 +48,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
+        _messengerService.Register<ProjectServiceCreatedMessage>(this, OnProjectServiceCreated);
+        // Todo: Register for project service destroyed message
+
         // Register this class as the navigation provider for the application
         var navigationService = _navigationService as NavigationService;
         Guard.IsNotNull(navigationService);
@@ -49,6 +60,16 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _navigationService.NavigateToPage("StartPage", string.Empty);
 
         // Todo: Add a user setting to automatically open the previously loaded project.
+    }
+
+    public void OnMainPage_Unloaded()
+    {
+        _messengerService.Unregister<ProjectServiceCreatedMessage>(this);
+    }
+
+    private void OnProjectServiceCreated(object recipient, ProjectServiceCreatedMessage message)
+    {
+        IsProjectLoaded = true;
     }
 
     public void SelectNavigationItem(string tag)
@@ -63,6 +84,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         {
             _ = OpenProject();
             return;
+        }
+
+        if (tag == CloseProjectTag)
+        {
+            _ = CloseProject();
         }
 
         var navigationResult = _navigationService.NavigateToPage(tag, string.Empty);
@@ -120,6 +146,21 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             });
 
         }
+    }
+
+    private async Task CloseProject()
+    {
+        var projectDataService = _projectDataService; // Avoid capturing this
+
+        _schedulerService.ScheduleFunction(async () =>
+        {
+            // Todo: Who's in charge of closing the workspace?
+            // The ProjectDataService opens it, should probably close it as well?
+
+            //projectDataService.CloseProjectWorkspace();
+        });
+
+        await Task.CompletedTask;
     }
 }
 
