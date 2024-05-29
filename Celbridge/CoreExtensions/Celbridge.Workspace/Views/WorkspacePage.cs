@@ -7,7 +7,6 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using System;
 
 namespace Celbridge.Workspace.Views;
 
@@ -44,13 +43,14 @@ public sealed partial class WorkspacePage : Page
     private GridSplitter _bottomPanelSplitter;
 #endif
 
+    private IProjectData? _projectData;
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         var projectData = e.Parameter as IProjectData;
         Guard.IsNotNull(projectData);
 
-        // Todo: Store a reference to the Project Data in the workspace
-        // Todo: Dispose the Project Data reference when the workspace closes
+        // Store a temporary reference to the project data until the project service is setup
+        _projectData = projectData;
     }
 
     private IStringLocalizer _stringLocalizer;
@@ -62,7 +62,6 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _dialogService = serviceProvider.GetRequiredService<IUserInterfaceService>().DialogService;
-
 
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
@@ -284,39 +283,13 @@ public sealed partial class WorkspacePage : Page
         _bottomPanel.SizeChanged += (s, e) => ViewModel.BottomPanelHeight = (float)e.NewSize.Height;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelsCreated += ViewModel_WorkspacePanelsCreated;
 
-        ViewModel.OnWorkspacePageLoaded();
+        // Create the previously registered workspace panels.
+        // As each WorkspacePanel is instantiated, it creates its own service and registers it with
+        // the WorkspaceService.
+        var workspaceService = ViewModel.InitializeWorkspaceService();
+        var panels = workspaceService.CreateWorkspacePanels();
 
-        _ = InitializeWorkspace();
-    }
-
-    private async Task InitializeWorkspace()
-    {
-        // Show the progress dialog
-        var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
-
-        // Todo: Setup the workspace here
-        await Task.Delay(1000);
-
-        // Hide the progress dialog
-        _dialogService.ReleaseProgressDialog(_progressDialogToken);
-    }
-
-    private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
-    {
-        Loaded -= WorkspacePage_Loaded;
-        Unloaded -= WorkspacePage_Unloaded;
-
-        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelsCreated -= ViewModel_WorkspacePanelsCreated;
-        ViewModel.OnWorkspacePageUnloaded();
-    }
-
-    private void ViewModel_WorkspacePanelsCreated(Dictionary<WorkspacePanelType, UIElement> panels)
-    {
-        // Add the newly instantiated panels to the appropriate container element
         foreach (var (panelType, panel) in panels)
         {
             switch (panelType)
@@ -342,6 +315,35 @@ public sealed partial class WorkspacePage : Page
                     break;
             }
         }
+
+        _ = InitializeWorkspaceAsync();
+    }
+
+    private async Task InitializeWorkspaceAsync()
+    {
+        // Show the progress dialog
+        var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
+
+        // Populate the project service with the stored project data
+        Guard.IsNotNull(_projectData);
+        IProjectService projectService = ServiceLocator.ServiceProvider.GetRequiredService<IProjectService>();
+        projectService.Initialize(_projectData);
+        _projectData = null;
+
+        await ViewModel.InitializeWorkspaceAsync();
+
+        // Hide the progress dialog
+        _dialogService.ReleaseProgressDialog(_progressDialogToken);
+    }
+
+    private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= WorkspacePage_Loaded;
+        Unloaded -= WorkspacePage_Unloaded;
+
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        ViewModel.OnWorkspacePageUnloaded();
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

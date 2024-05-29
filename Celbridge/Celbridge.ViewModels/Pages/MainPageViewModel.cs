@@ -89,7 +89,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             {
                 // Todo: Close any open project first
 
-                projectDataService.OpenProjectWorkspace(projectPath);
+                var projectName = Path.GetFileNameWithoutExtension(projectPath);
+                Guard.IsNotNullOrWhiteSpace(projectName);
+
+                projectDataService.OpenProjectWorkspace(projectName, projectPath);
                 await Task.CompletedTask;
             });
         }
@@ -109,7 +112,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             {
                 // Todo: Close any open project first
 
-                projectDataService.OpenProjectWorkspace(projectPath);
+                var projectName = Path.GetFileNameWithoutExtension(projectPath);
+                Guard.IsNotNullOrWhiteSpace(projectName);
+
+                projectDataService.OpenProjectWorkspace(projectName, projectPath);
                 await Task.CompletedTask;
             });
 

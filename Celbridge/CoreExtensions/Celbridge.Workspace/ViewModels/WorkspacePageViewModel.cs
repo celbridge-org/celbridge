@@ -1,4 +1,5 @@
 using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
@@ -84,42 +85,40 @@ public partial class WorkspacePageViewModel : ObservableObject
     }
 
     public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
+
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
     }
 
-    /// <summary>
-    /// The WorkspacePage registers with this event to be notified when the workspace panels have been created.
-    /// </summary>
-    public event Action<Dictionary<WorkspacePanelType, UIElement>>? WorkspacePanelsCreated;
-
-    public void OnWorkspacePageLoaded()
+    public WorkspaceService InitializeWorkspaceService()
     {
         // Use the concrete type to avoid exposing CreateWorkspacePanels() in the public API
         var workspaceService = _workspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        // Inform the user interface service that the workspace page has loaded.
+        // Inform the user interface service that the workspace service has been created.
         // At this point, the workspace does not yet contain any workspace panels.
-        var message = new WorkspaceLoadedMessage(_workspaceService);
+        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
 
-        // Create the previously registered workspace panels.
-        // As each WorkspacePanel is instantiated, it creates its own service and registers it with
-        // the WorkspaceService.
-        var panels = workspaceService.CreateWorkspacePanels();
-        WorkspacePanelsCreated?.Invoke(panels);
+        return workspaceService;
     }
 
     public void OnWorkspacePageUnloaded()
     {
         _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
 
-        // Notify listeners that the workspace page has been unloaded.
+        // Notify listeners that the workspace service has been destroyed.
         // All workspace related resources must be released at this point.
-        var message = new WorkspaceUnloadedMessage();
+        var message = new WorkspaceServiceDestroyedMessage();
         _messengerService.Send(message);
+    }
+
+    public async Task InitializeWorkspaceAsync()
+    {
+        // Todo: Setup the workspace here
+        await Task.Delay(1000);
     }
 }
 

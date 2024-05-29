@@ -64,10 +64,10 @@ public class WorkspaceService : IWorkspaceService
         _messengerService = messengerService;
         _userInterfaceService = userInterfaceService;
 
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<WorkspaceServiceDestroyedMessage>(this, OnWorkspaceServiceDestroyed);
     }
 
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    private void OnWorkspaceServiceDestroyed(object recipient, WorkspaceServiceDestroyedMessage message)
     {
         // Clients should not reference a WorkspaceService after the workspace is unloaded.
         // This ensures that even if they do, all the subservices will no longer be available.
@@ -76,8 +76,6 @@ public class WorkspaceService : IWorkspaceService
         _statusService = null;
         _consoleService = null;
         _inspectorService = null;
-
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
     }
 
     /// <summary>
