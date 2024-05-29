@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Tasks;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.Services.UserInterface.Navigation;
@@ -17,14 +18,17 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
+    private readonly ISchedulerService _schedulerService;
 
     public MainPageViewModel(ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectDataService projectDataService)
+        IProjectDataService projectDataService,
+        ISchedulerService schedulerService)
     {
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
+        _schedulerService = schedulerService;
     }
 
     public event Func<Type, object, Result>? OnNavigate;
@@ -79,7 +83,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (showResult.IsSuccess)
         {
             var projectPath = showResult.Value;
-            _projectDataService.OpenProjectWorkspace(projectPath);
+            var projectDataService = _projectDataService; // Avoid capturing this
+
+            _schedulerService.ScheduleFunction(async () =>
+            {
+                // Todo: Close any open project first
+
+                projectDataService.OpenProjectWorkspace(projectPath);
+                await Task.CompletedTask;
+            });
         }
     }
 
@@ -91,8 +103,17 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            _projectDataService.OpenProjectWorkspace(projectPath);
-        } 
+            var projectDataService = _projectDataService; // Avoid capturing this
+
+            _schedulerService.ScheduleFunction(async () =>
+            {
+                // Todo: Close any open project first
+
+                projectDataService.OpenProjectWorkspace(projectPath);
+                await Task.CompletedTask;
+            });
+
+        }
     }
 }
 
