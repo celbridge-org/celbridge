@@ -53,12 +53,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var projectDataPath = Path.Combine(ProjectFolder, ProjectName) + ".celbridge";
         var createResult = _projectDataService.CreateProjectData(ProjectFolder, ProjectName, 1);
         if (createResult.IsSuccess)
         {
             // Populate the property if the project created successfully
-            ProjectDataPath = projectDataPath;
+            ProjectDataPath = createResult.Value;
         }
     }
 }
