@@ -5,11 +5,12 @@ namespace Celbridge.Views.Pages;
 
 public sealed partial class MainPage : Page
 {
-    public MainPageViewModel ViewModel { get; }
+    public MainPageViewModel ViewModel { get; private set; }
 
     public LocalizedString Home => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(Home)}");
     public LocalizedString NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(NewProject)}");
     public LocalizedString OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(OpenProject)}");
+    public LocalizedString CloseProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(CloseProject)}");
     public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
 
     private IStringLocalizer _stringLocalizer;
@@ -24,6 +25,8 @@ public sealed partial class MainPage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+
+        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
 
         _contentFrame = new Frame()
             .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
@@ -50,6 +53,11 @@ public sealed partial class MainPage : Page
                     .Tag("OpenProject")
                     .Content(OpenProject),
                 new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Cancel))
+                    .Tag("CloseProject")
+                    .IsEnabled(x => x.Bind(() => ViewModel.IsProjectLoaded))
+                    .Content(CloseProject),
+                new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
                     .Tag("Shell")
                     .Content(LegacyApp)
@@ -60,8 +68,6 @@ public sealed partial class MainPage : Page
             .Name("LayoutRoot")
             .RowDefinitions("Auto, *")
             .Children(_mainNavigation);
-
-        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
 
         this.DataContext(ViewModel, (page, vm) => page
             .Content(_layoutRoot));
@@ -93,6 +99,8 @@ public sealed partial class MainPage : Page
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
     {
+        ViewModel.OnMainPage_Unloaded();
+
         // Unregister all event handlers to avoid memory leaks
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
