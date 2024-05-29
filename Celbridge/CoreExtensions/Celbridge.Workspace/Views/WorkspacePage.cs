@@ -1,9 +1,13 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using System;
 
 namespace Celbridge.Workspace.Views;
 
@@ -49,9 +53,17 @@ public sealed partial class WorkspacePage : Page
         // Todo: Dispose the Project Data reference when the workspace closes
     }
 
+    private IStringLocalizer _stringLocalizer;
+    private IDialogService _dialogService;
+    private IProgressDialogToken? _progressDialogToken;
+
     public WorkspacePage()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _dialogService = serviceProvider.GetRequiredService<IUserInterfaceService>().DialogService;
+
+
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
         //
@@ -275,6 +287,21 @@ public sealed partial class WorkspacePage : Page
         ViewModel.WorkspacePanelsCreated += ViewModel_WorkspacePanelsCreated;
 
         ViewModel.OnWorkspacePageLoaded();
+
+        _ = InitializeWorkspace();
+    }
+
+    private async Task InitializeWorkspace()
+    {
+        // Show the progress dialog
+        var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
+
+        // Todo: Setup the workspace here
+        await Task.Delay(1000);
+
+        // Hide the progress dialog
+        _dialogService.ReleaseProgressDialog(_progressDialogToken);
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
