@@ -1,10 +1,12 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.ViewModels.Dialogs;
 
 public partial class NewProjectDialogViewModel : ObservableObject
 {
+    private readonly IEditorSettings _editorSettings;
     private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
 
@@ -20,20 +22,35 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public string ProjectDataPath { get; private set; } = string.Empty;
 
     public NewProjectDialogViewModel(
+        IEditorSettings editorSettings,
         IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService)
     {
+        _editorSettings = editorSettings;
         _projectDataService = projectDataService;
-        _userInterfaceService = userInterfaceService;   
+        _userInterfaceService = userInterfaceService;
 
-        PropertyChanged += (sender, args) =>
+        _projectFolder = _editorSettings.PreviousNewProjectFolder;
+
+        PropertyChanged += NewProjectDialogViewModel_PropertyChanged;
+    }
+
+    private void NewProjectDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        var parentFolderExists = Directory.Exists(ProjectFolder);
+        var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolder, ProjectName));
+
+        // Todo: Validate that the project name is valid on all platforms
+        var projectNameIsValid = !projectFolderExists && !string.IsNullOrWhiteSpace(ProjectName);
+
+        // Todo: Show a message explaining why the create button is disabled
+        IsCreateButtonEnabled = parentFolderExists && projectNameIsValid;
+
+        if (e.PropertyName == nameof(ProjectFolder) && parentFolderExists)
         {
-            if (args.PropertyName == nameof(ProjectName))
-            {
-                // Todo: Check if project name is valid
-                IsCreateButtonEnabled = !string.IsNullOrWhiteSpace(ProjectName);
-            }
-        };
+            // Remember the newly selected folder
+            _editorSettings.PreviousNewProjectFolder = ProjectFolder;
+        }
     }
 
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolderCommand_ExecuteAsync);
