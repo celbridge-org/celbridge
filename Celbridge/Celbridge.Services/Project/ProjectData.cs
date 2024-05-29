@@ -1,7 +1,7 @@
 ﻿using SQLite;
 using Celbridge.BaseLibrary.Project;
 
-namespace Celbridge.Services.ProjectData;
+namespace Celbridge.Services.Project;
 
 public class ProjectData : IDisposable, IProjectData
 {

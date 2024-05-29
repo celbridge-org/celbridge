@@ -1,6 +1,7 @@
-﻿using SQLite;
+﻿using Celbridge.BaseLibrary.Project;
+using SQLite;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Services.Project;
 
 public class ProjectConfig : IProjectConfig
 {
