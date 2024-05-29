@@ -18,13 +18,14 @@ public class ProjectTests
     public async Task ICanCreateAndLoadAProjectAsync()
     {
         var folder = System.IO.Path.GetTempPath();
-        var projectName = "ProjectData.db";
-        var projectPath = System.IO.Path.Combine(folder, projectName);
+        var projectDatabaseName = "ProjectData.db";
+        var projectPath = System.IO.Path.Combine(folder, projectDatabaseName);
+        var projectName = "TestProject";
 
-        var createResult = await ProjectData.CreateProjectDataAsync(projectPath, 1);
+        var createResult = await ProjectData.CreateProjectDataAsync(projectName, projectPath, 1);
         createResult.IsSuccess.Should().BeTrue();
 
-        var loadResult = ProjectData.LoadProjectData(projectPath);
+        var loadResult = ProjectData.LoadProjectData(projectName, projectPath);
         loadResult.IsSuccess.Should().BeTrue();
         var projectData = loadResult.Value;
         
