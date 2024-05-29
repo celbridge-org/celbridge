@@ -48,7 +48,7 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IProjectData>.Ok(project);
     }
 
-    public static Result<IProjectData> CreateProjectData(string databasePath, ProjectConfig config)
+    public static Result CreateProjectData(string databasePath, ProjectConfig config)
     {
         if (string.IsNullOrWhiteSpace(databasePath))
         {
@@ -60,7 +60,10 @@ public class ProjectData : IDisposable, IProjectData
 
         project.Config = config;
 
-        return Result<IProjectData>.Ok(project);
+        // Close the database after creating it
+        project.Dispose();
+
+        return Result.Ok();
     }
 
     public void Dispose()
