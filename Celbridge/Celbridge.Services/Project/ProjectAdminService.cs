@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.Services.ProjectData;
+namespace Celbridge.Services.Project;
 
 public class ProjectAdminService : IProjectAdminService
 {

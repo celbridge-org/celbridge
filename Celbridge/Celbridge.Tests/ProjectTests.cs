@@ -1,4 +1,4 @@
-﻿using Celbridge.Services.ProjectData;
+﻿using Celbridge.Services.Project;
 using Uno.Disposables;
 
 namespace Celbridge.Tests;
