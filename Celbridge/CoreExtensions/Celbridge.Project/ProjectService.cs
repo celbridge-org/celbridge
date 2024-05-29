@@ -29,7 +29,7 @@ public class ProjectService : IProjectService
 
         _projectData = projectData;
 
-        var message = new ProjectDataInitializedMessage(projectData);
+        var message = new ProjectServiceCreatedMessage(projectData);
         _messengerService.Send(message);
     }
 }

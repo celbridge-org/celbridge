@@ -3,4 +3,4 @@
 /// <summary>
 /// Sent when the project service has been initialized with the loaded project data.
 /// </summary>
-public record ProjectDataInitializedMessage(IProjectData ProjectData);
+public record ProjectServiceCreatedMessage(IProjectData ProjectData);

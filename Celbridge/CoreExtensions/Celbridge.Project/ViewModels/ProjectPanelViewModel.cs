@@ -23,10 +23,10 @@ public partial class ProjectPanelViewModel : ObservableObject
         // Register the project service with the workspace service
         userInterfaceService.WorkspaceService.RegisterService(_projectService);
 
-        _messengerService.Register<ProjectDataInitializedMessage>(this, OnProjectDataInitialized);
+        _messengerService.Register<ProjectServiceCreatedMessage>(this, OnProjectDataInitialized);
     }
 
-    private void OnProjectDataInitialized(object recipient, ProjectDataInitializedMessage message)
+    private void OnProjectDataInitialized(object recipient, ProjectServiceCreatedMessage message)
     {
         TitleText = message.ProjectData.ProjectName;
     }
