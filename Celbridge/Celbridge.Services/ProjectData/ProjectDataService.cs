@@ -47,8 +47,7 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var config = new ProjectConfig(Version: version);
-            var createResult = ProjectData.CreateProjectData(databasePath, config);
+            var createResult = ProjectData.CreateProjectData(databasePath, 1);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");

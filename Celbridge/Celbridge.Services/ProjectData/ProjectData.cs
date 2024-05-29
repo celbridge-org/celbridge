@@ -1,29 +1,12 @@
-﻿using LiteDB;
+﻿using SQLite;
 using Celbridge.BaseLibrary.Project;
 
 namespace Celbridge.Services.ProjectData;
 
 public class ProjectData : IDisposable, IProjectData
 {
-    private LiteDatabase _database;
+    private SQLiteConnection _connection;
     private bool _disposed = false;
-
-    public ProjectConfig Config
-    {
-        get
-        {
-            var collection = _database.GetCollection<ProjectConfig>();
-            var projectConfig = collection.FindAll().FirstOrDefault();
-            return projectConfig ?? new ProjectConfig(0);
-        }
-
-        set
-        {
-            var collection = _database.GetCollection<ProjectConfig>();
-            collection.DeleteAll();
-            collection.Insert(value);
-        }
-    }
 
     private ProjectData(string databasePath)
     {
@@ -32,7 +15,41 @@ public class ProjectData : IDisposable, IProjectData
             throw new ArgumentException("Database path cannot be null or empty", nameof(databasePath));
         }
 
-        _database = new LiteDatabase(databasePath);
+        _connection = new SQLiteConnection(databasePath);
+    }
+
+    public IProjectConfig Config
+    {
+        get
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(_connection));
+            }
+
+            var config = _connection.Table<ProjectConfig>().FirstOrDefault();
+            if (config == null)
+            {
+                throw new InvalidOperationException("ProjectConfig table not found in database.");
+            }
+
+            return config;
+        }
+
+        set
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(_connection));
+            }
+
+            if (value == null)
+            {
+                throw new ArgumentNullException();
+            }
+
+            _connection.Update(value);
+        }
     }
 
     public static Result<IProjectData> LoadProjectData(string databasePath)
@@ -48,7 +65,7 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IProjectData>.Ok(project);
     }
 
-    public static Result CreateProjectData(string databasePath, ProjectConfig config)
+    public static Result CreateProjectData(string databasePath, int version)
     {
         if (string.IsNullOrWhiteSpace(databasePath))
         {
@@ -58,7 +75,13 @@ public class ProjectData : IDisposable, IProjectData
         var project = new ProjectData(databasePath);
         Guard.IsNotNull(project);
 
-        project.Config = config;
+        var config = new ProjectConfig 
+        { 
+            Version = version 
+        };
+
+        project._connection.CreateTable<ProjectConfig>();
+        project._connection.Insert(config);
 
         // Close the database after creating it
         project.Dispose();
@@ -79,7 +102,7 @@ public class ProjectData : IDisposable, IProjectData
             if (disposing)
             {
                 // Dispose managed resources
-                _database?.Dispose();
+                _connection?.Close();
             }
 
             // Dispose unmanaged resources here if any
