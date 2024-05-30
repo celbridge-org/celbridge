@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Project.ViewModels;
@@ -23,11 +24,13 @@ public partial class ProjectPanelViewModel : ObservableObject
         // Register the project service with the workspace service
         userInterfaceService.WorkspaceService.RegisterService(_projectService);
 
-        _messengerService.Register<ProjectServiceCreatedMessage>(this, OnProjectDataInitialized);
+        _messengerService.Register<WorkspaceInitializedMessage>(this, OnWorkspaceInitialized);
     }
 
-    private void OnProjectDataInitialized(object recipient, ProjectServiceCreatedMessage message)
+    private void OnWorkspaceInitialized(object recipient, WorkspaceInitializedMessage message)
     {
-        TitleText = message.ProjectData.ProjectName;
+        var projectData = _projectService.ProjectData;
+
+        TitleText = projectData.ProjectName;
     }
 }

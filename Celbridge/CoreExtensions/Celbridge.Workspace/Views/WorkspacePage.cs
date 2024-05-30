@@ -43,16 +43,6 @@ public sealed partial class WorkspacePage : Page
     private GridSplitter _bottomPanelSplitter;
 #endif
 
-    private IProjectData? _projectData;
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        var projectData = e.Parameter as IProjectData;
-        Guard.IsNotNull(projectData);
-
-        // Store a temporary reference to the project data until the project service is setup
-        _projectData = projectData;
-    }
-
     private IStringLocalizer _stringLocalizer;
     private IDialogService _dialogService;
     private IProgressDialogToken? _progressDialogToken;
@@ -325,11 +315,6 @@ public sealed partial class WorkspacePage : Page
         var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
         _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
 
-        // Populate the project service with the stored project data
-        Guard.IsNotNull(_projectData);
-        IProjectService projectService = ServiceLocator.ServiceProvider.GetRequiredService<IProjectService>();
-        projectService.Initialize(_projectData);
-        _projectData = null;
 
         await ViewModel.InitializeWorkspaceAsync();
 

@@ -10,3 +10,8 @@ public record WorkspaceServiceCreatedMessage(IWorkspaceService WorkspaceService)
 /// Sent when the workspace service has been destroyed.
 /// </summary>
 public record WorkspaceServiceDestroyedMessage();
+
+/// <summary>
+/// Sent when the workspace has been initialized and is ready to be used.
+/// </summary>
+public record WorkspaceInitializedMessage();
