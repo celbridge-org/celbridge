@@ -6,6 +6,11 @@
 public interface IProjectAdminService
 {
     /// <summary>
+    /// Returns the currently loaded project data, if any.
+    /// </summary>
+    public IProjectData? ProjectData { get; }
+
+    /// <summary>
     /// Create a new project in the specified folder.
     /// </summary>
     Task<Result<string>> CreateProjectAsync(string folder, string projectName);

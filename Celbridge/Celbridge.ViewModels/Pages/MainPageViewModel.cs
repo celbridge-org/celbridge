@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Tasks;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
 
@@ -48,7 +49,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<ProjectServiceCreatedMessage>(this, OnProjectServiceCreated);
+        _messengerService.Register<WorkspaceInitializedMessage>(this, OnWorkspaceInitialized);
         // Todo: Register for project service destroyed message
 
         // Register this class as the navigation provider for the application
@@ -64,10 +65,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Unloaded()
     {
-        _messengerService.Unregister<ProjectServiceCreatedMessage>(this);
+        _messengerService.Unregister<WorkspaceInitializedMessage>(this);
     }
 
-    private void OnProjectServiceCreated(object recipient, ProjectServiceCreatedMessage message)
+    private void OnWorkspaceInitialized(object recipient, WorkspaceInitializedMessage message)
     {
         IsProjectLoaded = true;
     }
@@ -88,7 +89,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         if (tag == CloseProjectTag)
         {
-            _ = CloseProject();
+            CloseProject();
+            return;
         }
 
         var navigationResult = _navigationService.NavigateToPage(tag, string.Empty);
@@ -148,16 +150,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
     }
 
-    private async Task CloseProject()
+    private void CloseProject()
     {
         var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
         _schedulerService.ScheduleFunction(async () =>
         {
             projectAdminService.CloseProjectWorkspace();
+            await Task.CompletedTask;
         });
-
-        await Task.CompletedTask;
     }
 }
 

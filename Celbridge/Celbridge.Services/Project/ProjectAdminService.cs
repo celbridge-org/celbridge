@@ -18,6 +18,8 @@ public class ProjectAdminService : IProjectAdminService
         _navigationService = navigationService;
     }
 
+    public IProjectData? ProjectData { get; private set; }
+
     public async Task<Result<string>> CreateProjectAsync(string folder, string projectName)
     {
         try
@@ -55,7 +57,7 @@ public class ProjectAdminService : IProjectAdminService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(projectName, databasePath, ProjectVersion);
+            var createResult = await Project.ProjectData.CreateProjectDataAsync(projectName, databasePath, ProjectVersion);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");
@@ -76,7 +78,7 @@ public class ProjectAdminService : IProjectAdminService
 
         try
         {
-            var loadResult = ProjectData.LoadProjectData(projectName, databasePath);
+            var loadResult = Project.ProjectData.LoadProjectData(projectName, databasePath);
             if (loadResult.IsFailure)
             {
                 return Result<IProjectData>.Fail($"Failed to load project data: {databasePath}");
@@ -112,9 +114,9 @@ public class ProjectAdminService : IProjectAdminService
                 return loadResult;
             }
 
-            var projectData = loadResult.Value;
+            ProjectData = loadResult.Value;
 
-            _navigationService.NavigateToPage("WorkspacePage", projectData);
+            _navigationService.NavigateToPage("WorkspacePage", string.Empty);
             
             return Result.Ok();
         }
