@@ -119,6 +119,9 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         // Todo: Setup the workspace here
         await Task.Delay(1000);
+
+        var message = new WorkspaceInitializedMessage();
+        _messengerService.Send(message);
     }
 }
 
