@@ -154,6 +154,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
+        // Todo: Notify the workspace that it is about to close.
+        // The workspace may want to schedule some operations (e.g. save changes) before we close the project workspace.
+
         _schedulerService.ScheduleFunction(async () =>
         {
             projectAdminService.CloseProjectWorkspace();

@@ -18,7 +18,7 @@ public class ProjectAdminService : IProjectAdminService
         _navigationService = navigationService;
     }
 
-    public IProjectData? ProjectData { get; private set; }
+    public IProjectData? LoadedProjectData { get; private set; }
 
     public async Task<Result<string>> CreateProjectAsync(string folder, string projectName)
     {
@@ -114,7 +114,7 @@ public class ProjectAdminService : IProjectAdminService
                 return loadResult;
             }
 
-            ProjectData = loadResult.Value;
+            LoadedProjectData = loadResult.Value;
 
             _navigationService.NavigateToPage("WorkspacePage", string.Empty);
             
@@ -128,6 +128,21 @@ public class ProjectAdminService : IProjectAdminService
 
     public Result CloseProjectWorkspace()
     {
-        throw new NotImplementedException();
+        if (LoadedProjectData is null)
+        {
+            // Closing a project that is not open is a no-op
+            return Result.Ok();
+        }
+
+        var disposable = LoadedProjectData as IDisposable;
+        Guard.IsNotNull(disposable);
+
+        disposable.Dispose();
+
+        LoadedProjectData = null;
+
+        _navigationService.NavigateToPage("StartPage", string.Empty);
+
+        return Result.Ok();
     }
 }
