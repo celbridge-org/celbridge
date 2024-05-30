@@ -29,7 +29,7 @@ public partial class ProjectPanelViewModel : ObservableObject
 
     private void OnWorkspaceInitialized(object recipient, WorkspaceInitializedMessage message)
     {
-        var projectData = _projectService.ProjectData;
+        var projectData = _projectService.LoadedProjectData;
 
         TitleText = projectData.ProjectName;
     }
