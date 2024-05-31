@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 
@@ -15,8 +16,5 @@ public interface IWorkspaceService
 
     public IConsoleService ConsoleService { get; }
 
-    /// <summary>
-    /// Register a workspace service (ProjectService, ConsoleService, StatusService, etc.) with the workspace service.
-    /// </summary>
-    void RegisterService(object workspaceService);
+    public IDocumentsService DocumentsService { get; }
 }

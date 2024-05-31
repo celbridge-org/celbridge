@@ -1,12 +1,9 @@
 using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Workspace.Services;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Windows.Input;
 
@@ -19,15 +16,19 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceService _workspaceService;
 
     public WorkspacePageViewModel(
+        IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
-        IWorkspaceService workspaceService)
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
-        _workspaceService = workspaceService; // Transient instance created by DI
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
+
+        // Create the workspace service and notify the user interface service
+        _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
+        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
+        _messengerService.Send(message);
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -89,20 +90,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
-    }
-
-    public WorkspaceService InitializeWorkspaceService()
-    {
-        // Use the concrete type to avoid exposing CreateWorkspacePanels() in the public API
-        var workspaceService = _workspaceService as WorkspaceService;
-        Guard.IsNotNull(workspaceService);
-
-        // Inform the user interface service that the workspace service has been created.
-        // At this point, the workspace does not yet contain any workspace panels.
-        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
-        _messengerService.Send(message);
-
-        return workspaceService;
     }
 
     public void OnWorkspacePageUnloaded()
