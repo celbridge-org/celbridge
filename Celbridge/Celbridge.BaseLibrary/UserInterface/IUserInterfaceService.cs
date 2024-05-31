@@ -11,23 +11,11 @@ public interface IUserInterfaceService
     /// </summary>
     object MainWindow { get; }
 
-
     /// <summary>
     /// Returns the XamlRoot of the the application.
     /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
     /// </summary>
     object XamlRoot { get; }
-
-    /// <summary>
-    /// The list of registered workspace panel configurations.
-    /// </summary>
-    IEnumerable<WorkspacePanelConfig> WorkspacePanelConfigs { get; }
-
-    /// <summary>
-    /// Registers a workspace panel configuration.
-    /// These configurations are used to create the workspace panels when the workspace is loaded.
-    /// </summary>
-    Result RegisterWorkspacePanelConfig(WorkspacePanelConfig workspacePanelConfig);
 
     /// <summary>
     /// The workspace that is currently loaded.

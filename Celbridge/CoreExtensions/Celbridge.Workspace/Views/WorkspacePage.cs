@@ -1,8 +1,5 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Dialog;
-using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
@@ -250,6 +247,10 @@ public sealed partial class WorkspacePage : Page
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
+        //
+        // Initialize the workspace panel sizes
+        //
+
         var leftPanelWidth = ViewModel.LeftPanelWidth;
         var rightPanelWidth = ViewModel.RightPanelWidth;
         var bottomPanelHeight = ViewModel.BottomPanelHeight;
@@ -275,41 +276,33 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        // Create the previously registered workspace panels.
-        // Todo: Creating the panels should be handled directly by the WorkspaceService (i.e. remove the registration stuff).
-        // Call a method on each sub-service to create its panel and insert it as a child of the UI element provided.
+        //
+        // Populate the workspace panels.
+        //
 
         var serviceProvider = ServiceLocator.ServiceProvider;
         var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
         var workspaceService = userInterfaceService.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        var panels = workspaceService.CreateWorkspacePanels();
-        foreach (var (panelType, panel) in panels)
-        {
-            switch (panelType)
-            {
-                case WorkspacePanelType.ConsolePanel:
-                    // Insert the console panel at the start of the children collection so that the panel toggle button
-                    // in the bottom panel take priority for accepting input.
-                    _bottomPanel.Children.Insert(0, panel);
-                    break;
-                case WorkspacePanelType.StatusPanel:
-                    _statusPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.ProjectPanel:
-                    _leftPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.InspectorPanel:
-                    _rightPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.DocumentsPanel:
-                    // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
-                    // in the center panel take priority for accepting input.
-                    _centerPanel.Children.Insert(0, panel);
-                    break;
-            }
-        }
+        // Insert the console panel at the start of the children collection so that the panel toggle button
+        // in the bottom panel take priority for accepting input.
+        var consolePanel = workspaceService.ConsoleService.CreateConsolePanel() as UIElement;
+        _bottomPanel.Children.Insert(0, consolePanel);
+
+        // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
+        // in the center panel take priority for accepting input.
+        var documentsPanel = workspaceService.DocumentsService.CreateDocumentsPanel() as UIElement;
+        _centerPanel.Children.Insert(0, documentsPanel);
+
+        var inspectorPanel = workspaceService.InspectorService.CreateInspectorPanel() as UIElement;
+        _rightPanel.Children.Add(inspectorPanel);
+
+        var projectPanel = workspaceService.ProjectService.CreateProjectPanel() as UIElement;
+        _leftPanel.Children.Add(projectPanel);
+
+        var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
+        _statusPanel.Children.Add(statusPanel);
 
         async Task InitializeWorkspaceAsync()
         {

@@ -96,28 +96,4 @@ public class UserInterfaceService : IUserInterfaceService
             return _workspaceService;
         }
     }
-
-    /// 
-    /// All the workspace panel configurations must be registered before we can load the workspace, so they are registered
-    /// with the user interface service which has the same lifetime scope as the application.
-    /// 
-    private List<WorkspacePanelConfig> _workspacePanelConfigs = new();
-    public IEnumerable<WorkspacePanelConfig> WorkspacePanelConfigs => _workspacePanelConfigs;
-
-    public Result RegisterWorkspacePanelConfig(WorkspacePanelConfig workspacePanelConfig)
-    {
-        foreach (var config in _workspacePanelConfigs)
-        {
-            if (config.PanelType == workspacePanelConfig.PanelType)
-            {
-                var errorMessage = $"Panel type '{workspacePanelConfig.PanelType}' is already registered.";
-                _loggingService.Error(errorMessage);
-
-                return Result.Fail(errorMessage);
-            }
-        }
-
-        _workspacePanelConfigs.Add(workspacePanelConfig);
-        return Result.Ok();
-    }
 }
