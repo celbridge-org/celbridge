@@ -113,10 +113,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = showResult.Value;
             var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
+            CloseProject();
+
             _schedulerService.ScheduleFunction(async () =>
             {
-                // Todo: Close any open project first
-
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
                 Guard.IsNotNullOrWhiteSpace(projectName);
 
@@ -136,10 +136,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = result.Value;
             var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
+            CloseProject();
+
+            while (projectAdminService.LoadedProjectData is not null)
+            {
+                await Task.Delay(100);
+            }
+
             _schedulerService.ScheduleFunction(async () =>
             {
-                // Todo: Close any open project first
-
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
                 Guard.IsNotNullOrWhiteSpace(projectName);
 
