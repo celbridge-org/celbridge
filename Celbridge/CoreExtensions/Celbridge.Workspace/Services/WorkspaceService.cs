@@ -16,45 +16,15 @@ public class WorkspaceService : IWorkspaceService
     public bool IsRightPanelVisible { get; }
     public bool IsBottomPanelVisible { get; }
 
-
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    private IProjectService? _projectService;
-    public IProjectService ProjectService 
-    {
-        get => _projectService!;
-        private set => _projectService = value; 
-    }
-
-    private IStatusService? _statusService;
-    public IStatusService StatusService 
-    { 
-        get => _statusService!;
-        private set => _statusService = value; 
-    }
-
-    private IConsoleService? _consoleService;
-    public IConsoleService ConsoleService 
-    { 
-        get => _consoleService!;
-        private set => _consoleService = value; 
-    }
-
-    private IInspectorService? _inspectorService;
-    public IInspectorService InspectorService
-    {
-        get => _inspectorService!;
-        private set => _inspectorService = value;
-    }
-
-    private IDocumentsService? _documentsService;
-    public IDocumentsService DocumentsService
-    {
-        get => _documentsService!;
-        private set => _documentsService = value;
-    }
+    public IProjectService ProjectService { get; }
+    public IStatusService StatusService { get; }
+    public IConsoleService ConsoleService { get; }
+    public IInspectorService InspectorService { get; }
+    public IDocumentsService DocumentsService { get; }
 
     public WorkspaceService(IServiceProvider serviceProvider,
         IMessengerService messengerService,
@@ -64,6 +34,13 @@ public class WorkspaceService : IWorkspaceService
         _messengerService = messengerService;
         _userInterfaceService = userInterfaceService;
 
+        // Create instances of the required sub-services
+        ProjectService = _serviceProvider.GetRequiredService<IProjectService>();
+        StatusService = _serviceProvider.GetRequiredService<IStatusService>();
+        ConsoleService = _serviceProvider.GetRequiredService<IConsoleService>();
+        InspectorService = _serviceProvider.GetRequiredService<IInspectorService>();
+        DocumentsService = _serviceProvider.GetRequiredService<IDocumentsService>();
+
         _messengerService.Register<WorkspaceServiceDestroyedMessage>(this, OnWorkspaceServiceDestroyed);
     }
 
@@ -72,10 +49,7 @@ public class WorkspaceService : IWorkspaceService
         // Clients should not reference a WorkspaceService after the workspace is unloaded.
         // This ensures that even if they do, all the subservices will no longer be available.
 
-        _projectService = null;
-        _statusService = null;
-        _consoleService = null;
-        _inspectorService = null;
+        // Todo: Consider making the sub-sevices be IDisposable and dispose them here.
     }
 
     /// <summary>
@@ -102,34 +76,5 @@ public class WorkspaceService : IWorkspaceService
         }
 
         return panels;
-    }
-
-    public void RegisterService(object workspaceService)
-    {
-        switch (workspaceService)
-        {
-            case IProjectService projectService:
-                ProjectService = projectService;
-                break;
-
-            case IStatusService statusService:
-                StatusService = statusService;
-                break;
-
-            case IConsoleService consoleService:
-                ConsoleService = consoleService;
-                break;
-
-            case IInspectorService inspectorService:
-                InspectorService = inspectorService;
-                break;
-
-            case IDocumentsService documentsService:
-                DocumentsService = documentsService;
-                break;
-
-            default:
-                throw new InvalidOperationException($"Failed to register workspace service because the service type '{workspaceService.GetType()}' is not recognized");
-        }
     }
 }

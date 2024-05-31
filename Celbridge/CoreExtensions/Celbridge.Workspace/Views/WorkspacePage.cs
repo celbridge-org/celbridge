@@ -2,6 +2,7 @@
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
@@ -275,11 +276,15 @@ public sealed partial class WorkspacePage : Page
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Create the previously registered workspace panels.
-        // As each WorkspacePanel is instantiated, it creates its own service and registers it with
-        // the WorkspaceService.
-        var workspaceService = ViewModel.InitializeWorkspaceService();
-        var panels = workspaceService.CreateWorkspacePanels();
+        // Todo: Creating the panels should be handled directly by the WorkspaceService (i.e. remove the registration stuff).
+        // Call a method on each sub-service to create its panel and insert it as a child of the UI element provided.
 
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var workspaceService = userInterfaceService.WorkspaceService as WorkspaceService;
+        Guard.IsNotNull(workspaceService);
+
+        var panels = workspaceService.CreateWorkspacePanels();
         foreach (var (panelType, panel) in panels)
         {
             switch (panelType)
@@ -306,20 +311,19 @@ public sealed partial class WorkspacePage : Page
             }
         }
 
+        async Task InitializeWorkspaceAsync()
+        {
+            // Show the progress dialog
+            var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+            _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
+
+            await ViewModel.InitializeWorkspaceAsync();
+
+            // Hide the progress dialog
+            _dialogService.ReleaseProgressDialog(_progressDialogToken);
+        }
+
         _ = InitializeWorkspaceAsync();
-    }
-
-    private async Task InitializeWorkspaceAsync()
-    {
-        // Show the progress dialog
-        var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
-
-
-        await ViewModel.InitializeWorkspaceAsync();
-
-        // Hide the progress dialog
-        _dialogService.ReleaseProgressDialog(_progressDialogToken);
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
