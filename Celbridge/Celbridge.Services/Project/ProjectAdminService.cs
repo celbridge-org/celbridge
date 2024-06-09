@@ -116,7 +116,7 @@ public class ProjectAdminService : IProjectAdminService
 
             LoadedProjectData = loadResult.Value;
 
-            _navigationService.NavigateToPage("WorkspacePage", string.Empty);
+            _navigationService.NavigateToPage("WorkspacePage");
             
             return Result.Ok();
         }
@@ -141,7 +141,7 @@ public class ProjectAdminService : IProjectAdminService
 
         LoadedProjectData = null;
 
-        _navigationService.NavigateToPage("StartPage", string.Empty);
+        _navigationService.NavigateToPage("StartPage");
 
         return Result.Ok();
     }

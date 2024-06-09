@@ -38,9 +38,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     }
 
     [ObservableProperty]
-    private bool _isProjectLoaded;
+    private bool _isWorkspaceLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
+
+    public Result NavigateToPage(Type pageType)
+    {
+        // Pass the empty string to avoid making the parameter nullable.
+        return NavigateToPage(pageType, string.Empty);
+    }
 
     public Result NavigateToPage(Type pageType, object parameter)
     {
@@ -49,7 +55,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceInitializedMessage>(this, OnWorkspaceInitialized);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceInitialized);
         // Todo: Register for project service destroyed message
 
         // Register this class as the navigation provider for the application
@@ -58,19 +64,19 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage("StartPage", string.Empty);
+        _navigationService.NavigateToPage("StartPage");
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
     public void OnMainPage_Unloaded()
     {
-        _messengerService.Unregister<WorkspaceInitializedMessage>(this);
+        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
     }
 
-    private void OnWorkspaceInitialized(object recipient, WorkspaceInitializedMessage message)
+    private void OnWorkspaceInitialized(object recipient, WorkspaceLoadedMessage message)
     {
-        IsProjectLoaded = true;
+        IsWorkspaceLoaded = true;
     }
 
     public void SelectNavigationItem(string tag)
@@ -93,7 +99,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        var navigationResult = _navigationService.NavigateToPage(tag, string.Empty);
+        var navigationResult = _navigationService.NavigateToPage(tag);
         if (navigationResult.IsSuccess)
         {
             return;
@@ -138,6 +144,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             CloseProject();
 
+            // Todo: Change this to use an await or listen for an event
             while (projectAdminService.LoadedProjectData is not null)
             {
                 await Task.Delay(100);
