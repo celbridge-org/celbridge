@@ -95,9 +95,9 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
 
-        // Notify listeners that the workspace service has been destroyed.
-        // All workspace related resources must be released at this point.
-        var message = new WorkspaceServiceDestroyedMessage();
+        // Notify listeners that the workspace has been unloaded.
+        // All workspace related resources must be released by this point.
+        var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);
     }
 

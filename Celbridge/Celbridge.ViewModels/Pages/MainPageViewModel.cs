@@ -55,8 +55,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceInitialized);
-        // Todo: Register for project service destroyed message
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
 
         // Register this class as the navigation provider for the application
         var navigationService = _navigationService as NavigationService;
@@ -72,11 +72,17 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public void OnMainPage_Unloaded()
     {
         _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+        _messengerService.Unregister<WorkspaceUnloadedMessage>(this);
     }
 
-    private void OnWorkspaceInitialized(object recipient, WorkspaceLoadedMessage message)
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         IsWorkspaceLoaded = true;
+    }
+
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    {
+        IsWorkspaceLoaded = false;
     }
 
     public void SelectNavigationItem(string tag)
@@ -119,7 +125,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = showResult.Value;
             var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
-            CloseProject();
+            await CloseProjectAsync();
 
             _schedulerService.ScheduleFunction(async () =>
             {
@@ -142,13 +148,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = result.Value;
             var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
-            CloseProject();
-
-            // Todo: Change this to use an await or listen for an event
-            while (projectAdminService.LoadedProjectData is not null)
-            {
-                await Task.Delay(100);
-            }
+            await CloseProjectAsync();
 
             _schedulerService.ScheduleFunction(async () =>
             {
@@ -159,6 +159,18 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 await Task.CompletedTask;
             });
 
+        }
+    }
+
+    private async Task CloseProjectAsync()
+    {
+        CloseProject();
+
+        // Wait until we receive the WorkspaceUnloadedMessage
+
+        while (IsWorkspaceLoaded)
+        {
+            await Task.Delay(100);
         }
     }
 
