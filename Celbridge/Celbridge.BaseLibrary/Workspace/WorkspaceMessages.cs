@@ -12,6 +12,6 @@ public record WorkspaceServiceCreatedMessage(IWorkspaceService WorkspaceService)
 public record WorkspaceServiceDestroyedMessage();
 
 /// <summary>
-/// Sent when the workspace has been initialized and is ready to be used.
+/// Sent when the workspace has finished loading and is ready to be used.
 /// </summary>
-public record WorkspaceInitializedMessage();
+public record WorkspaceLoadedMessage();

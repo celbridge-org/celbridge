@@ -54,6 +54,11 @@ public class NavigationService : INavigationService
         return Result.Ok();
     }
 
+    public Result NavigateToPage(string pageName)
+    {
+        return NavigateToPage(pageName, string.Empty);
+    }
+
     public Result NavigateToPage(string pageName, object parameter)
     {
         Guard.IsNotNull(_navigationProvider);
