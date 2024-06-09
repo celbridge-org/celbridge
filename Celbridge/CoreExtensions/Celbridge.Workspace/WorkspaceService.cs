@@ -36,15 +36,5 @@ public class WorkspaceService : IWorkspaceService
         ConsoleService = _serviceProvider.GetRequiredService<IConsoleService>();
         InspectorService = _serviceProvider.GetRequiredService<IInspectorService>();
         DocumentsService = _serviceProvider.GetRequiredService<IDocumentsService>();
-
-        _messengerService.Register<WorkspaceServiceDestroyedMessage>(this, OnWorkspaceServiceDestroyed);
-    }
-
-    private void OnWorkspaceServiceDestroyed(object recipient, WorkspaceServiceDestroyedMessage message)
-    {
-        // Clients should not reference a WorkspaceService after the workspace is unloaded.
-        // This ensures that even if they do, all the subservices will no longer be available.
-
-        // Todo: Make the workspace sub-services IDisposable and dispose them here.
     }
 }

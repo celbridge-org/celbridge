@@ -8,7 +8,6 @@ namespace Celbridge.Services.UserInterface;
 public class UserInterfaceService : IUserInterfaceService
 {
     private IMessengerService _messengerService;
-    private ILoggingService _loggingService;
     private IWorkspaceService? _workspaceService;
 
     private Window? _mainWindow;
@@ -24,12 +23,10 @@ public class UserInterfaceService : IUserInterfaceService
 
     public UserInterfaceService(
         IMessengerService messengerService, 
-        ILoggingService loggingService,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {
         _messengerService = messengerService;
-        _loggingService = loggingService;
         FilePickerService = filePickerService;
         DialogService = dialogService;
     }
@@ -49,7 +46,7 @@ public class UserInterfaceService : IUserInterfaceService
 #endif
 
         _messengerService.Register<WorkspaceServiceCreatedMessage>(this, OnWorkspaceServiceCreated);
-        _messengerService.Register<WorkspaceServiceDestroyedMessage>(this, OnWorkspaceServiceDestroyed);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloadedMessage);
     }
 
 #if WINDOWS
@@ -78,7 +75,7 @@ public class UserInterfaceService : IUserInterfaceService
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
-    private void OnWorkspaceServiceDestroyed(object recipient, WorkspaceServiceDestroyedMessage message)
+    private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
     {
         // Comment out this assert to enable hot reload
         Guard.IsNotNull(_workspaceService);
