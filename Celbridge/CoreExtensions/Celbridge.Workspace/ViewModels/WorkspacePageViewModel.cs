@@ -86,7 +86,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     }
 
     public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
-
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
@@ -102,12 +101,12 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public async Task InitializeWorkspaceAsync()
+    public async Task LoadWorkspaceAsync()
     {
-        // Todo: Setup the workspace here
+        // Todo: Load the workspace here
         await Task.Delay(1000);
 
-        var message = new WorkspaceInitializedMessage();
+        var message = new WorkspaceLoadedMessage();
         _messengerService.Send(message);
     }
 }

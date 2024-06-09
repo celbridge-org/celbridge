@@ -248,7 +248,7 @@ public sealed partial class WorkspacePage : Page
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
         //
-        // Initialize the workspace panel sizes
+        // Initialize the workspace panel splitter sizes
         //
 
         var leftPanelWidth = ViewModel.LeftPanelWidth;
@@ -304,19 +304,19 @@ public sealed partial class WorkspacePage : Page
         var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
         _statusPanel.Children.Add(statusPanel);
 
-        async Task InitializeWorkspaceAsync()
+        async Task LoadWorkspaceAsync()
         {
             // Show the progress dialog
             var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
             _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
 
-            await ViewModel.InitializeWorkspaceAsync();
+            await ViewModel.LoadWorkspaceAsync();
 
             // Hide the progress dialog
             _dialogService.ReleaseProgressDialog(_progressDialogToken);
         }
 
-        _ = InitializeWorkspaceAsync();
+        _ = LoadWorkspaceAsync();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
