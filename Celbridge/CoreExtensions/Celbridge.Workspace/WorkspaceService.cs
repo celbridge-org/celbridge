@@ -45,6 +45,6 @@ public class WorkspaceService : IWorkspaceService
         // Clients should not reference a WorkspaceService after the workspace is unloaded.
         // This ensures that even if they do, all the subservices will no longer be available.
 
-        // Todo: Consider making the sub-sevices be IDisposable and dispose them here.
+        // Todo: Make the workspace sub-services IDisposable and dispose them here.
     }
 }
