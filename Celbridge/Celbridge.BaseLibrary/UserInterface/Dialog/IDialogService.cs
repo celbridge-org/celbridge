@@ -23,7 +23,7 @@ public interface IDialogService
 
     /// <summary>
     /// Display a New Project Dialog.
-    /// Returns the path to the new project file, or the empty string if creation failed.
+    /// Returns the path to the new project file if the project was successfully created.
     /// </summary>
     Task<Result<string>> ShowNewProjectDialogAsync();
 }
