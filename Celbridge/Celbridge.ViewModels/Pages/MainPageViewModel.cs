@@ -134,7 +134,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             await CloseProjectAsync();
 
-            var openResult = projectDataService.OpenProjectData(projectPath);
+            var openResult = projectDataService.LoadProjectData(projectPath);
             if (openResult.IsFailure)
             {
                 _loggingService.Error($"Failed to open project: {openResult.Error}");
@@ -164,7 +164,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             await CloseProjectAsync();
 
-            var openResult = projectDataService.OpenProjectData(projectPath);
+            var openResult = projectDataService.LoadProjectData(projectPath);
             if (openResult.IsFailure)
             {
                 _loggingService.Error($"Failed to open project: {openResult.Error}");
@@ -183,28 +183,29 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        var projectDataService = _projectDataService; // Avoid capturing "this"
-
         // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to schedule some operations (e.g. save changes) before we close the project workspace.
+        // The workspace may want to schedule some operations (e.g. save changes) before we close it.
 
+        // Force the Workspace page to unload by navigating to an empty page.
+        _navigationService.NavigateToPage(EmptyPageName);
+
+        // Wait until the workspace is fully unloaded
+        while (_userInterfaceService.IsWorkspaceLoaded)
+        {
+            await Task.Delay(50);
+        }
+
+        // We can now unload the project data.
+
+        var projectDataService = _projectDataService; // Avoid capturing "this"
         _schedulerService.ScheduleFunction(async () =>
         {
-            projectDataService.CloseProjectData();
+            projectDataService.UnloadProjectData();
             await Task.CompletedTask;
         });
 
         // Wait until the project data is unloaded
         while (IsProjectDataLoaded)
-        {
-            await Task.Delay(50);
-        }
-
-        // Force the Workspace page to unload and destroy the workspace service
-        _navigationService.NavigateToPage(EmptyPageName);
-
-        // Wait until the workspace service is destroyed
-        while (_userInterfaceService.IsWorkspaceLoaded)
         {
             await Task.Delay(50);
         }
