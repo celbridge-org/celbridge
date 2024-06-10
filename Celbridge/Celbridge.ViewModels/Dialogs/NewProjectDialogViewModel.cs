@@ -7,7 +7,7 @@ namespace Celbridge.ViewModels.Dialogs;
 public partial class NewProjectDialogViewModel : ObservableObject
 {
     private readonly IEditorSettings _editorSettings;
-    private readonly IProjectAdminService _projectAdminService;
+    private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
 
     [ObservableProperty]
@@ -23,11 +23,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
-        IProjectAdminService projectAdminService,
+        IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService)
     {
         _editorSettings = editorSettings;
-        _projectAdminService = projectAdminService;
+        _projectDataService = projectDataService;
         _userInterfaceService = userInterfaceService;
 
         _projectFolder = _editorSettings.PreviousNewProjectFolder;
@@ -70,7 +70,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new AsyncRelayCommand(CreateCommand_ExecuteAsync);
     private async Task CreateCommand_ExecuteAsync()
     {
-        var createResult = await _projectAdminService.CreateProjectAsync(ProjectFolder, ProjectName);
+        var createResult = await _projectDataService.CreateProjectDataAsync(ProjectFolder, ProjectName);
         if (createResult.IsSuccess)
         {
             // Populate the property if the project created successfully
