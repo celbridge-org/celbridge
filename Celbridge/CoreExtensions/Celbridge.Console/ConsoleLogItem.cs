@@ -1,14 +1,8 @@
-﻿namespace Celbridge.Console;
+﻿using Celbridge.BaseLibrary.Console;
 
-public enum ConsoleLogType
-{
-    Command,
-    Info,
-    Warning,
-    Error,
-}
+namespace Celbridge.Console;
 
-public record ConsoleLogItem(ConsoleLogType LogType, string LogText, DateTime Timestamp)
+public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Timestamp)
 {
     private const string ChevronRightGlyph = "\ue76C";
     private const string InfoGlyph = "\ue946";
@@ -21,14 +15,14 @@ public record ConsoleLogItem(ConsoleLogType LogType, string LogText, DateTime Ti
         {
             switch (LogType)
             {
-                case ConsoleLogType.Command:
+                case MessageType.Command:
                     return "LightBlue";
                 default:
-                case ConsoleLogType.Info:
+                case MessageType.Info:
                     return "LightGreen";
-                case ConsoleLogType.Warning:
+                case MessageType.Warning:
                     return "Yellow";
-                case ConsoleLogType.Error:
+                case MessageType.Error:
                     return "Red";
 
             }
@@ -41,14 +35,14 @@ public record ConsoleLogItem(ConsoleLogType LogType, string LogText, DateTime Ti
         {
             switch (LogType)
             {
-                case ConsoleLogType.Command:
+                case MessageType.Command:
                     return ChevronRightGlyph;
                 default:
-                case ConsoleLogType.Info:
+                case MessageType.Info:
                     return InfoGlyph;
-                case ConsoleLogType.Warning:
+                case MessageType.Warning:
                     return WarningGlyph;
-                case ConsoleLogType.Error:
+                case MessageType.Error:
                     return ErrorGlyph;
             }
         }
