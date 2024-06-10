@@ -3,7 +3,7 @@ using Celbridge.Project.Views;
 
 namespace Celbridge.Project;
 
-public class ProjectService : IProjectService
+public class ProjectService : IProjectService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IProjectDataService _projectDataService;
@@ -22,5 +22,31 @@ public class ProjectService : IProjectService
     public object CreateProjectPanel()
     {
         return _serviceProvider.GetRequiredService<ProjectPanel>();
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~ProjectService()
+    {
+        Dispose(false);
     }
 }
