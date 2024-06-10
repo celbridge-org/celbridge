@@ -145,6 +145,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = result.Value;
             var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
+            if (_projectAdminService.LoadedProjectData?.ProjectPath == projectPath)
+            {
+                // The project is already loaded.
+                // We can just early out here as we're already in the expected end state.
+                return;
+            }
+
             await CloseProjectAsync();
 
             _schedulerService.ScheduleFunction(async () =>
