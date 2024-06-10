@@ -17,28 +17,34 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
 
+    public const string EmptyPageName = "EmptyPage";
+    public const string StartPageName = "StartPage";
+    public const string WorkspacePageName = "WorkspacePage";
+
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
-    private readonly IProjectAdminService _projectAdminService;
+    private readonly IProjectDataService _projectDataService;
+    private readonly IUserInterfaceService _userInterfaceService;
     private readonly ISchedulerService _schedulerService;
 
     public MainPageViewModel(
         IMessengerService messengerService,
         ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectAdminService projectAdminService,
+        IProjectDataService projectDataService,
+        IUserInterfaceService userInterfaceService,
         ISchedulerService schedulerService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
-        _projectAdminService = projectAdminService;
+        _projectDataService = projectDataService;
+        _userInterfaceService = userInterfaceService;
         _schedulerService = schedulerService;
     }
 
-    [ObservableProperty]
-    private bool _isWorkspaceLoaded;
+    public bool IsProjectDataLoaded => _projectDataService.LoadedProjectData is not null;
 
     public event Func<Type, object, Result>? OnNavigate;
 
@@ -55,8 +61,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, (r,m) => 
+        { 
+            OnPropertyChanged(nameof(IsProjectDataLoaded)); 
+        });
+
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
+        {
+            OnPropertyChanged(nameof(IsProjectDataLoaded));
+        });
 
         // Register this class as the navigation provider for the application
         var navigationService = _navigationService as NavigationService;
@@ -64,44 +77,36 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage("StartPage");
+        _navigationService.NavigateToPage(StartPageName);
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
     public void OnMainPage_Unloaded()
-    {
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
-        _messengerService.Unregister<WorkspaceUnloadedMessage>(this);
-    }
-
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        IsWorkspaceLoaded = true;
-    }
-
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
-    {
-        IsWorkspaceLoaded = false;
-    }
+    {}
 
     public void SelectNavigationItem(string tag)
     {
         if (tag == NewProjectTag)
         {
-            _ = NewProject();
+            _ = CreateProjectAsync();
             return;
         }
 
         if (tag == OpenProjectTag)
         {
-            _ = OpenProject();
+            _ = OpenProjectAsync();
             return;
         }
 
         if (tag == CloseProjectTag)
         {
-            CloseProject();
+            async Task CloseAsync()
+            {
+                await CloseProjectAsync();
+                _navigationService.NavigateToPage(StartPageName);
+            }
+            _ = CloseAsync();
             return;
         }
 
@@ -114,28 +119,33 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _loggingService.Error($"Failed to navigate to item {tag}.");
     }
 
-    private async Task NewProject()
+    private async Task CreateProjectAsync()
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var dialogService = userInterfaceService.DialogService;
+
+        // The new project dialog takes care of creating the project folder and the project data file.
 
         var showResult = await dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
         {
             var projectPath = showResult.Value;
-            var projectAdminService = _projectAdminService; // Avoid capturing "this"
+            var projectDataService = _projectDataService; // Avoid capturing "this"
 
             await CloseProjectAsync();
 
-            _schedulerService.ScheduleFunction(async () =>
+            var openResult = projectDataService.LoadProjectData(projectPath);
+            if (openResult.IsFailure)
             {
-                projectAdminService.OpenProjectWorkspace(projectPath);
-                await Task.CompletedTask;
-            });
+                _loggingService.Error($"Failed to open project: {openResult.Error}");
+                return;
+            }
+
+            _navigationService.NavigateToPage(WorkspacePageName);
         }
     }
 
-    private async Task OpenProject()
+    private async Task OpenProjectAsync()
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var filePickerService = userInterfaceService.FilePickerService;
@@ -143,9 +153,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            var projectAdminService = _projectAdminService; // Avoid capturing "this"
+            var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            if (_projectAdminService.LoadedProjectData?.ProjectPath == projectPath)
+            if (_projectDataService.LoadedProjectData?.ProjectPath == projectPath)
             {
                 // The project is already loaded.
                 // We can just early out here as we're already in the expected end state.
@@ -154,39 +164,51 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             await CloseProjectAsync();
 
-            _schedulerService.ScheduleFunction(async () =>
+            var openResult = projectDataService.LoadProjectData(projectPath);
+            if (openResult.IsFailure)
             {
-                projectAdminService.OpenProjectWorkspace(projectPath);
-                await Task.CompletedTask;
-            });
+                _loggingService.Error($"Failed to open project: {openResult.Error}");
+                return;
+            }
 
+            _navigationService.NavigateToPage(WorkspacePageName);
         }
     }
 
     private async Task CloseProjectAsync()
     {
-        CloseProject();
-
-        // Wait until we receive the WorkspaceUnloadedMessage
-
-        while (IsWorkspaceLoaded)
+        if (!IsProjectDataLoaded && !_userInterfaceService.IsWorkspaceLoaded)
         {
-            await Task.Delay(100);
+            // No project loaded so nothing to do here.
+            return;
         }
-    }
-
-    private void CloseProject()
-    {
-        var projectAdminService = _projectAdminService; // Avoid capturing "this"
 
         // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to schedule some operations (e.g. save changes) before we close the project workspace.
+        // The workspace may want to schedule some operations (e.g. save changes) before we close it.
 
+        // Force the Workspace page to unload by navigating to an empty page.
+        _navigationService.NavigateToPage(EmptyPageName);
+
+        // Wait until the workspace is fully unloaded
+        while (_userInterfaceService.IsWorkspaceLoaded)
+        {
+            await Task.Delay(50);
+        }
+
+        // We can now unload the project data.
+
+        var projectDataService = _projectDataService; // Avoid capturing "this"
         _schedulerService.ScheduleFunction(async () =>
         {
-            projectAdminService.CloseProjectWorkspace();
+            projectDataService.UnloadProjectData();
             await Task.CompletedTask;
         });
+
+        // Wait until the project data is unloaded
+        while (IsProjectDataLoaded)
+        {
+            await Task.Delay(50);
+        }
     }
 }
 

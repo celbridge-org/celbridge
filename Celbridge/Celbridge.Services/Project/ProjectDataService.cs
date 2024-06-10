@@ -1,26 +1,30 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.Project;
 
-public class ProjectAdminService : IProjectAdminService
+public class ProjectDataService : IProjectDataService
 {
     private const int ProjectVersion = 1;
 
     private readonly INavigationService _navigationService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
-    public ProjectAdminService(
-        INavigationService navigationService)
+    public ProjectDataService(
+        INavigationService navigationService,
+        IUserInterfaceService userInterfaceService)
     {
         _navigationService = navigationService;
+        _userInterfaceService = userInterfaceService;
     }
 
     public IProjectData? LoadedProjectData { get; private set; }
 
-    public async Task<Result<string>> CreateProjectAsync(string folder, string projectName)
+    public async Task<Result<string>> CreateProjectDataAsync(string folder, string projectName)
     {
         try
         {
@@ -71,33 +75,8 @@ public class ProjectAdminService : IProjectAdminService
         }
     }
 
-    public Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
+    public Result LoadProjectData(string projectPath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectPath);
-        Guard.IsNotNullOrWhiteSpace(databasePath);
-
-        try
-        {
-            var loadResult = ProjectData.LoadProjectData(projectPath, databasePath);
-            if (loadResult.IsFailure)
-            {
-                return Result<IProjectData>.Fail($"Failed to load project data: {databasePath}");
-            }
-
-            var projectData = loadResult.Value;
-
-            return Result<IProjectData>.Ok(projectData);
-        }
-        catch (Exception ex)
-        {
-            return Result<IProjectData>.Fail($"Failed to load project data: {databasePath}. {ex.Message}");
-        }
-    }
-
-    public Result OpenProjectWorkspace(string projectPath)
-    {
-        // Load the project first, then open the workspace because projects may use more than
-        // one editor UI in future.
         try
         {
             var projectJsonData = File.ReadAllText(projectPath);
@@ -108,15 +87,13 @@ public class ProjectAdminService : IProjectAdminService
             string relativePath = jsonObject["projectDataFile"]!.ToString();
             string databasePath = Path.Combine(projectFolder, relativePath);
 
-            var loadResult = LoadProjectData(projectPath, databasePath);
+            var loadResult = ProjectData.LoadProjectData(projectPath, databasePath);
             if (loadResult.IsFailure)
             {
-                return loadResult;
+                return Result.Fail($"Failed to load project data: {databasePath}");
             }
 
             LoadedProjectData = loadResult.Value;
-
-            _navigationService.NavigateToPage("WorkspacePage");
             
             return Result.Ok();
         }
@@ -126,22 +103,20 @@ public class ProjectAdminService : IProjectAdminService
         }
     }
 
-    public Result CloseProjectWorkspace()
+    public Result UnloadProjectData()
     {
         if (LoadedProjectData is null)
         {
-            // Closing a project that is not open is a no-op
+            // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
 
-        var disposable = LoadedProjectData as IDisposable;
-        Guard.IsNotNull(disposable);
+        var disposableProjectData = LoadedProjectData as IDisposable;
+        Guard.IsNotNull(disposableProjectData);
 
-        disposable.Dispose();
+        disposableProjectData.Dispose();
 
         LoadedProjectData = null;
-
-        _navigationService.NavigateToPage("StartPage");
 
         return Result.Ok();
     }
