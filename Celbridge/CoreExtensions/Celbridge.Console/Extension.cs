@@ -1,7 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;
 
@@ -20,11 +18,6 @@ public class Extension : IExtension
 
     public Result Initialize()
     {
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-
-        userInterfaceService.RegisterWorkspacePanelConfig(
-            new WorkspacePanelConfig(WorkspacePanelType.ConsolePanel, typeof(ConsolePanel)));
-
         return Result.Ok();
     }
 }

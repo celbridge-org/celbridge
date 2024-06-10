@@ -1,6 +1,4 @@
-﻿using Celbridge.BaseLibrary.Documents;
-using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Settings;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -9,7 +7,6 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class DocumentsPanelViewModel : ObservableObject
 {
-    private readonly IDocumentsService _documentsService;
     private readonly IEditorSettings _editorSettings;
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
@@ -17,15 +14,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
 
     public DocumentsPanelViewModel(
-        IUserInterfaceService userInterfaceService,
-        IEditorSettings editorSettings,
-        IDocumentsService documentsService)
+        IEditorSettings editorSettings)
     {
         _editorSettings = editorSettings;
-        _documentsService = documentsService; // Transient instance created via DI
-
-        // Register the project service with the workspace service
-        userInterfaceService.WorkspaceService.RegisterService(_documentsService);
 
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);

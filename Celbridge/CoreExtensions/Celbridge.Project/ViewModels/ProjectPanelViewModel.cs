@@ -1,19 +1,26 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Project.ViewModels;
 
-public class ProjectPanelViewModel
+public partial class ProjectPanelViewModel : ObservableObject
 {
-    IProjectService _projectService;
+    private readonly IUserInterfaceService _userInterfaceService;
+
+    [ObservableProperty]
+    private string _titleText = string.Empty;
 
     public ProjectPanelViewModel(
-        IUserInterfaceService userInterfaceService,
-        IProjectService projectService)
+        IUserInterfaceService userInterfaceService)
     {
-        _projectService = projectService; // Transient instance created via DI
+        _userInterfaceService = userInterfaceService;
 
-        // Register the project service with the workspace service
-        userInterfaceService.WorkspaceService.RegisterService(_projectService);
+        // The project data is guaranteed to have been loaded at this point, so it's safe to just
+        // acquire a reference via the ProjectService.
+        var projectService = _userInterfaceService.WorkspaceService.ProjectService;
+        var projectData = projectService.LoadedProjectData;
+
+        TitleText = projectData.ProjectName;
     }
 }

@@ -5,16 +5,11 @@ namespace Celbridge.Project.Views;
 
 public sealed partial class ProjectPanel : UserControl
 {
-    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(ProjectPanel)}_{nameof(Title)}");
-
-    private IStringLocalizer _stringLocalizer;
-
     public ProjectPanelViewModel ViewModel { get; }
 
     public ProjectPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<ProjectPanelViewModel>();
 
@@ -26,7 +21,7 @@ public sealed partial class ProjectPanel : UserControl
             .Children(
                 new TextBlock()
                     .Grid(column: 0)
-                    .Text(Title)
+                    .Text(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
                     .Margin(48, 0, 0, 0)
                     .VerticalAlignment(VerticalAlignment.Center)
             );

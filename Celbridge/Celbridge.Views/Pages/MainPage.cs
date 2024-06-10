@@ -5,11 +5,12 @@ namespace Celbridge.Views.Pages;
 
 public sealed partial class MainPage : Page
 {
-    public MainPageViewModel ViewModel { get; }
+    public MainPageViewModel ViewModel { get; private set; }
 
     public LocalizedString Home => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(Home)}");
     public LocalizedString NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(NewProject)}");
     public LocalizedString OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(OpenProject)}");
+    public LocalizedString CloseProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(CloseProject)}");
     public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
 
     private IStringLocalizer _stringLocalizer;
@@ -25,6 +26,8 @@ public sealed partial class MainPage : Page
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
 
+        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
+
         _contentFrame = new Frame()
             .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
@@ -38,17 +41,22 @@ public sealed partial class MainPage : Page
             .MenuItems(
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
-                    .Tag("StartPage")
+                    .Tag("Start")
                     .Content(Home),
                 new NavigationViewItemSeparator(),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.NewFolder))
-                    .Tag("NewProjectPage")
+                    .Tag("NewProject")
                     .Content(NewProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.OpenFile))
-                    .Tag("OpenProjectPage")
+                    .Tag("OpenProject")
                     .Content(OpenProject),
+                new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Cancel))
+                    .Tag("CloseProject")
+                    .IsEnabled(x => x.Bind(() => ViewModel.IsWorkspaceLoaded))
+                    .Content(CloseProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
                     .Tag("Shell")
@@ -60,8 +68,6 @@ public sealed partial class MainPage : Page
             .Name("LayoutRoot")
             .RowDefinitions("Auto, *")
             .Children(_mainNavigation);
-
-        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
 
         this.DataContext(ViewModel, (page, vm) => page
             .Content(_layoutRoot));
@@ -93,6 +99,8 @@ public sealed partial class MainPage : Page
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
     {
+        ViewModel.OnMainPage_Unloaded();
+
         // Unregister all event handlers to avoid memory leaks
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
@@ -103,7 +111,7 @@ public sealed partial class MainPage : Page
         Unloaded -= OnMainPage_Unloaded;
     }
 
-    private Result OnViewModel_Navigate(Type pageType)
+    private Result OnViewModel_Navigate(Type pageType, object parameter)
     {
         if (_contentFrame.Content != null &&
             _contentFrame.Content.GetType() == pageType)
@@ -112,7 +120,7 @@ public sealed partial class MainPage : Page
             return Result.Ok();
         }
 
-        if (_contentFrame.Navigate(pageType))
+        if (_contentFrame.Navigate(pageType, parameter))
         {
             return Result.Ok();
         }
@@ -123,7 +131,7 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsPageName);
+            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsTag);
             return;
         }
 
@@ -133,20 +141,20 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         Guard.IsNotNull(navigationItemTag);
 
-        var pageName = navigationItemTag.ToString();
-        Guard.IsNotNullOrEmpty(pageName);
+        var tag = navigationItemTag.ToString();
+        Guard.IsNotNullOrEmpty(tag);
 
-        ViewModel.SelectNavigationItem(pageName);
+        ViewModel.SelectNavigationItem(tag);
     }
 
-    public void Navigate(Type pageType)
+    public void Navigate(Type pageType, object parameter)
     {
         Guard.IsNotNull(_contentFrame);
 
         if (_contentFrame.Content is null ||
             _contentFrame.Content.GetType() != pageType)
         {
-            _contentFrame.Navigate(pageType);
+            _contentFrame.Navigate(pageType, parameter);
         }
     }
 }

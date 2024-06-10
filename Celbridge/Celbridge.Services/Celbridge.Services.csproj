@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="sqlite-net-pcl" />
     <PackageReference Include="Uno.WinUI" />
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="CommunityToolkit.MVVM" />

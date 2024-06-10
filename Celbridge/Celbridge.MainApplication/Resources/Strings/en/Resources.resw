@@ -138,6 +138,9 @@
   <data name="InspectorPanel_Title" xml:space="preserve">
     <value>Inspector</value>
   </data>
+  <data name="MainPage_CloseProject" xml:space="preserve">
+    <value>Close Project</value>
+  </data>
   <data name="MainPage_Home" xml:space="preserve">
     <value>Home</value>
   </data>
@@ -150,6 +153,12 @@
   <data name="MainPage_OpenProject" xml:space="preserve">
     <value>Open Project</value>
   </data>
+  <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+    <value>Project Folder</value>
+  </data>
+  <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
+    <value>Select folder</value>
+  </data>
   <data name="NewProjectDialog_ProjectName" xml:space="preserve">
     <value>Project Name</value>
   </data>
@@ -159,16 +168,13 @@
   <data name="NewProjectDialog_Title" xml:space="preserve">
     <value>New Project</value>
   </data>
-  <data name="NewProjectPage_Title" xml:space="preserve">
-    <value>New Project</value>
-  </data>
   <data name="ProjectPanel_Title" xml:space="preserve">
     <value>Project</value>
   </data>
   <data name="SettingsPage_Title" xml:space="preserve">
     <value>Settings</value>
   </data>
-  <data name="StartPage_OpenWorkspace" xml:space="preserve">
-    <value>Open workspace</value>
+  <data name="WorkspacePage_LoadingWorkspace" xml:space="preserve">
+    <value>Loading workspace</value>
   </data>
 </root>
