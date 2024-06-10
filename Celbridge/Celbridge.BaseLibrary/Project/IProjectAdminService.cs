@@ -18,7 +18,7 @@ public interface IProjectAdminService
     /// <summary>
     /// Load the project at the specified path and open it in a workspace for editing.
     /// </summary>
-    Result OpenProjectWorkspace(string projectName, string projectPath);
+    Result OpenProjectWorkspace(string projectPath);
 
     /// <summary>
     /// Closes the currently opened project workspace
