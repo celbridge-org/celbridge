@@ -82,13 +82,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         if (tag == NewProjectTag)
         {
-            _ = NewProject();
+            _ = CreateProjectAsync();
             return;
         }
 
         if (tag == OpenProjectTag)
         {
-            _ = OpenProject();
+            _ = OpenProjectAsync();
             return;
         }
 
@@ -107,7 +107,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _loggingService.Error($"Failed to navigate to item {tag}.");
     }
 
-    private async Task NewProject()
+    private async Task CreateProjectAsync()
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var dialogService = userInterfaceService.DialogService;
@@ -128,7 +128,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
     }
 
-    private async Task OpenProject()
+    private async Task OpenProjectAsync()
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var filePickerService = userInterfaceService.FilePickerService;
