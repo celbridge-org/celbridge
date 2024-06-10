@@ -11,6 +11,11 @@ public interface IProjectData
     string ProjectName { get; }
 
     /// <summary>
+    /// Returns the path to the loaded project file
+    /// </summary>
+    string ProjectPath { get; }
+
+    /// <summary>
     /// Returns the configuration data for the project.
     /// </summary>
     Task<IProjectConfig> GetConfigAsync();
