@@ -1,7 +1,10 @@
-﻿using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.Workspace.ViewModels;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;
 
@@ -38,9 +41,16 @@ public sealed partial class WorkspacePage : Page
     private GridSplitter _bottomPanelSplitter;
 #endif
 
+    private IStringLocalizer _stringLocalizer;
+    private IDialogService _dialogService;
+    private IProgressDialogToken? _progressDialogToken;
+
     public WorkspacePage()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _dialogService = serviceProvider.GetRequiredService<IUserInterfaceService>().DialogService;
+
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
         //
@@ -237,6 +247,10 @@ public sealed partial class WorkspacePage : Page
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
+        //
+        // Initialize the workspace panel splitter sizes
+        //
+
         var leftPanelWidth = ViewModel.LeftPanelWidth;
         var rightPanelWidth = ViewModel.RightPanelWidth;
         var bottomPanelHeight = ViewModel.BottomPanelHeight;
@@ -261,9 +275,48 @@ public sealed partial class WorkspacePage : Page
         _bottomPanel.SizeChanged += (s, e) => ViewModel.BottomPanelHeight = (float)e.NewSize.Height;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelsCreated += ViewModel_WorkspacePanelsCreated;
 
-        ViewModel.OnWorkspacePageLoaded();
+        //
+        // Populate the workspace panels.
+        //
+
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var workspaceService = userInterfaceService.WorkspaceService as WorkspaceService;
+        Guard.IsNotNull(workspaceService);
+
+        // Insert the console panel at the start of the children collection so that the panel toggle button
+        // in the bottom panel take priority for accepting input.
+        var consolePanel = workspaceService.ConsoleService.CreateConsolePanel() as UIElement;
+        _bottomPanel.Children.Insert(0, consolePanel);
+
+        // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
+        // in the center panel take priority for accepting input.
+        var documentsPanel = workspaceService.DocumentsService.CreateDocumentsPanel() as UIElement;
+        _centerPanel.Children.Insert(0, documentsPanel);
+
+        var inspectorPanel = workspaceService.InspectorService.CreateInspectorPanel() as UIElement;
+        _rightPanel.Children.Add(inspectorPanel);
+
+        var projectPanel = workspaceService.ProjectService.CreateProjectPanel() as UIElement;
+        _leftPanel.Children.Add(projectPanel);
+
+        var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
+        _statusPanel.Children.Add(statusPanel);
+
+        async Task LoadWorkspaceAsync()
+        {
+            // Show the progress dialog
+            var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+            _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
+
+            await ViewModel.LoadWorkspaceAsync();
+
+            // Hide the progress dialog
+            _dialogService.ReleaseProgressDialog(_progressDialogToken);
+        }
+
+        _ = LoadWorkspaceAsync();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
@@ -272,38 +325,7 @@ public sealed partial class WorkspacePage : Page
         Unloaded -= WorkspacePage_Unloaded;
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        ViewModel.WorkspacePanelsCreated -= ViewModel_WorkspacePanelsCreated;
         ViewModel.OnWorkspacePageUnloaded();
-    }
-
-    private void ViewModel_WorkspacePanelsCreated(Dictionary<WorkspacePanelType, UIElement> panels)
-    {
-        // Add the newly instantiated panels to the appropriate container element
-        foreach (var (panelType, panel) in panels)
-        {
-            switch (panelType)
-            {
-                case WorkspacePanelType.ConsolePanel:
-                    // Insert the console panel at the start of the children collection so that the panel toggle button
-                    // in the bottom panel take priority for accepting input.
-                    _bottomPanel.Children.Insert(0, panel);
-                    break;
-                case WorkspacePanelType.StatusPanel:
-                    _statusPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.ProjectPanel:
-                    _leftPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.InspectorPanel:
-                    _rightPanel.Children.Add(panel);
-                    break;
-                case WorkspacePanelType.DocumentsPanel:
-                    // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
-                    // in the center panel take priority for accepting input.
-                    _centerPanel.Children.Insert(0, panel);
-                    break;
-            }
-        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
