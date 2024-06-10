@@ -20,25 +20,24 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
-    private readonly IProjectAdminService _projectAdminService;
+    private readonly IProjectDataService _projectDataService;
     private readonly ISchedulerService _schedulerService;
 
     public MainPageViewModel(
         IMessengerService messengerService,
         ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectAdminService projectAdminService,
+        IProjectDataService projectDataService,
         ISchedulerService schedulerService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
-        _projectAdminService = projectAdminService;
+        _projectDataService = projectDataService;
         _schedulerService = schedulerService;
     }
 
-    [ObservableProperty]
-    private bool _isWorkspaceLoaded;
+    public bool IsProjectLoaded => _projectDataService.LoadedProjectData is not null;
 
     public event Func<Type, object, Result>? OnNavigate;
 
@@ -55,8 +54,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, (r,m) => 
+        { 
+            OnPropertyChanged(nameof(IsProjectLoaded)); 
+        });
+
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
+        {
+            OnPropertyChanged(nameof(IsProjectLoaded));
+        });
 
         // Register this class as the navigation provider for the application
         var navigationService = _navigationService as NavigationService;
@@ -70,20 +76,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     }
 
     public void OnMainPage_Unloaded()
-    {
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
-        _messengerService.Unregister<WorkspaceUnloadedMessage>(this);
-    }
-
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        IsWorkspaceLoaded = true;
-    }
-
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
-    {
-        IsWorkspaceLoaded = false;
-    }
+    {}
 
     public void SelectNavigationItem(string tag)
     {
@@ -101,7 +94,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         if (tag == CloseProjectTag)
         {
-            CloseProject();
+            _ = CloseProjectAsync();
             return;
         }
 
@@ -123,13 +116,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (showResult.IsSuccess)
         {
             var projectPath = showResult.Value;
-            var projectAdminService = _projectAdminService; // Avoid capturing "this"
+            var projectDataService = _projectDataService; // Avoid capturing "this"
 
             await CloseProjectAsync();
 
             _schedulerService.ScheduleFunction(async () =>
             {
-                projectAdminService.OpenProjectWorkspace(projectPath);
+                projectDataService.OpenProjectData(projectPath);
                 await Task.CompletedTask;
             });
         }
@@ -143,9 +136,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            var projectAdminService = _projectAdminService; // Avoid capturing "this"
+            var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            if (_projectAdminService.LoadedProjectData?.ProjectPath == projectPath)
+            if (_projectDataService.LoadedProjectData?.ProjectPath == projectPath)
             {
                 // The project is already loaded.
                 // We can just early out here as we're already in the expected end state.
@@ -156,7 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             _schedulerService.ScheduleFunction(async () =>
             {
-                projectAdminService.OpenProjectWorkspace(projectPath);
+                projectDataService.OpenProjectData(projectPath);
                 await Task.CompletedTask;
             });
 
@@ -165,28 +158,22 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CloseProjectAsync()
     {
-        CloseProject();
-
-        // Wait until we receive the WorkspaceUnloadedMessage
-
-        while (IsWorkspaceLoaded)
-        {
-            await Task.Delay(100);
-        }
-    }
-
-    private void CloseProject()
-    {
-        var projectAdminService = _projectAdminService; // Avoid capturing "this"
+        var projectDataService = _projectDataService; // Avoid capturing "this"
 
         // Todo: Notify the workspace that it is about to close.
         // The workspace may want to schedule some operations (e.g. save changes) before we close the project workspace.
 
         _schedulerService.ScheduleFunction(async () =>
         {
-            projectAdminService.CloseProjectWorkspace();
+            projectDataService.CloseProjectData();
             await Task.CompletedTask;
         });
+
+        // Wait until we receive the WorkspaceUnloadedMessage
+        while (IsProjectLoaded)
+        {
+            await Task.Delay(100);
+        }
     }
 }
 

@@ -29,7 +29,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ISchedulerService, SchedulerService>();
-        services.AddSingleton<IProjectAdminService, ProjectAdminService>();
+        services.AddSingleton<IProjectDataService, ProjectDataService>();
 
         // Register user interface services
         // These services can be acquired via the getters on IUserInterfaceService for convenient access.

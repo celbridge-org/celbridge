@@ -6,17 +6,17 @@ namespace Celbridge.Project;
 public class ProjectService : IProjectService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IProjectAdminService _projectAdminService;
+    private readonly IProjectDataService _projectDataService;
 
     // Convenience accessor for getting the loaded project data
-    public IProjectData LoadedProjectData => _projectAdminService.LoadedProjectData!;
+    public IProjectData LoadedProjectData => _projectDataService.LoadedProjectData!;
 
     public ProjectService(
         IServiceProvider serviceProvider,
-        IProjectAdminService projectAdminService)
+        IProjectDataService projectDataService)
     {
         _serviceProvider = serviceProvider;
-        _projectAdminService = projectAdminService;
+        _projectDataService = projectDataService;
     }
 
     public object CreateProjectPanel()

@@ -55,7 +55,7 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Cancel))
                     .Tag("CloseProject")
-                    .IsEnabled(x => x.Bind(() => ViewModel.IsWorkspaceLoaded))
+                    .IsEnabled(x => x.Bind(() => ViewModel.IsProjectLoaded))
                     .Content(CloseProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
