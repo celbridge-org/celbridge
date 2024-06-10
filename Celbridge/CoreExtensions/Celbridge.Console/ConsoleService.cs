@@ -3,7 +3,7 @@ using Celbridge.Console.Views;
 
 namespace Celbridge.Console;
 
-public class ConsoleService : IConsoleService
+public class ConsoleService : IConsoleService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
 
@@ -20,5 +20,31 @@ public class ConsoleService : IConsoleService
     public ICommandHistory CreateCommandHistory()
     {
         return new CommandHistory();
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~ConsoleService()
+    {
+        Dispose(false);
     }
 }

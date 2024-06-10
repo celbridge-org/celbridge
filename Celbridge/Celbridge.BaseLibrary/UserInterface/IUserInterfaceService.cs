@@ -18,6 +18,11 @@ public interface IUserInterfaceService
     object XamlRoot { get; }
 
     /// <summary>
+    /// Returns trues if a project workspace is currently loaded.
+    /// </summary>
+    bool IsWorkspaceLoaded { get; }
+
+    /// <summary>
     /// The workspace that is currently loaded.
     /// Attempting to access this property when no workspace is loaded will throw an InvalidOperationException.
     /// </summary>

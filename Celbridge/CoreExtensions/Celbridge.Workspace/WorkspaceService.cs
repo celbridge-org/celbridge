@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.Inspector;
-using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.Workspace;
@@ -9,32 +8,58 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace;
 
-public class WorkspaceService : IWorkspaceService
+public class WorkspaceService : IWorkspaceService, IDisposable
 {
     public bool IsLeftPanelVisible { get; }
     public bool IsRightPanelVisible { get; }
     public bool IsBottomPanelVisible { get; }
 
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IMessengerService _messengerService;
-
+    public IConsoleService ConsoleService { get; }
+    public IDocumentsService DocumentsService { get; }
+    public IInspectorService InspectorService { get; }
     public IProjectService ProjectService { get; }
     public IStatusService StatusService { get; }
-    public IConsoleService ConsoleService { get; }
-    public IInspectorService InspectorService { get; }
-    public IDocumentsService DocumentsService { get; }
 
-    public WorkspaceService(IServiceProvider serviceProvider,
-        IMessengerService messengerService)
+    public WorkspaceService(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
-        _messengerService = messengerService;
-
         // Create instances of the required sub-services
-        ProjectService = _serviceProvider.GetRequiredService<IProjectService>();
-        StatusService = _serviceProvider.GetRequiredService<IStatusService>();
-        ConsoleService = _serviceProvider.GetRequiredService<IConsoleService>();
-        InspectorService = _serviceProvider.GetRequiredService<IInspectorService>();
-        DocumentsService = _serviceProvider.GetRequiredService<IDocumentsService>();
+        ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
+        DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
+        InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
+        ProjectService = serviceProvider.GetRequiredService<IProjectService>();
+        StatusService = serviceProvider.GetRequiredService<IStatusService>();
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
+                // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+
+                (ConsoleService as IDisposable)!.Dispose();
+                (DocumentsService as IDisposable)!.Dispose();
+                (InspectorService as IDisposable)!.Dispose();
+                (ProjectService as IDisposable)!.Dispose();
+                (StatusService as IDisposable)!.Dispose();
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~WorkspaceService()
+    {
+        Dispose(false);
     }
 }
