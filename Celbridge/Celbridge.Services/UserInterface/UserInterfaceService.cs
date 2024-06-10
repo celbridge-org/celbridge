@@ -8,7 +8,6 @@ namespace Celbridge.Services.UserInterface;
 public class UserInterfaceService : IUserInterfaceService
 {
     private IMessengerService _messengerService;
-    private ILoggingService _loggingService;
     private IWorkspaceService? _workspaceService;
 
     private Window? _mainWindow;
@@ -24,12 +23,10 @@ public class UserInterfaceService : IUserInterfaceService
 
     public UserInterfaceService(
         IMessengerService messengerService, 
-        ILoggingService loggingService,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {
         _messengerService = messengerService;
-        _loggingService = loggingService;
         FilePickerService = filePickerService;
         DialogService = dialogService;
     }
@@ -48,8 +45,8 @@ public class UserInterfaceService : IUserInterfaceService
         _mainWindow.Activated += MainWindow_Activated;
 #endif
 
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<WorkspaceServiceCreatedMessage>(this, OnWorkspaceServiceCreated);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloadedMessage);
     }
 
 #if WINDOWS
@@ -71,14 +68,14 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage loadedMessage)
+    private void OnWorkspaceServiceCreated(object recipient, WorkspaceServiceCreatedMessage loadedMessage)
     {
         // Comment out this assert to enable hot reload
         Guard.IsNull(_workspaceService);
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
     {
         // Comment out this assert to enable hot reload
         Guard.IsNotNull(_workspaceService);
@@ -95,29 +92,5 @@ public class UserInterfaceService : IUserInterfaceService
             }
             return _workspaceService;
         }
-    }
-
-    /// 
-    /// All the workspace panel configurations must be registered before we can load the workspace, so they are registered
-    /// with the user interface service which has the same lifetime scope as the application.
-    /// 
-    private List<WorkspacePanelConfig> _workspacePanelConfigs = new();
-    public IEnumerable<WorkspacePanelConfig> WorkspacePanelConfigs => _workspacePanelConfigs;
-
-    public Result RegisterWorkspacePanelConfig(WorkspacePanelConfig workspacePanelConfig)
-    {
-        foreach (var config in _workspacePanelConfigs)
-        {
-            if (config.PanelType == workspacePanelConfig.PanelType)
-            {
-                var errorMessage = $"Panel type '{workspacePanelConfig.PanelType}' is already registered.";
-                _loggingService.Error(errorMessage);
-
-                return Result.Fail(errorMessage);
-            }
-        }
-
-        _workspacePanelConfigs.Add(workspacePanelConfig);
-        return Result.Ok();
     }
 }

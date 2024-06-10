@@ -18,11 +18,6 @@ public class Extension : IExtension
 
     public Result Initialize()
     {
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-
-        userInterfaceService.RegisterWorkspacePanelConfig(
-            new WorkspacePanelConfig(WorkspacePanelType.InspectorPanel, typeof(InspectorPanel)));
-
         return Result.Ok();
     }
 }

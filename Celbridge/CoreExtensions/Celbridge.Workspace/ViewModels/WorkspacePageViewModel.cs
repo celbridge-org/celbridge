@@ -1,11 +1,9 @@
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Workspace.Services;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Windows.Input;
 
@@ -18,15 +16,19 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceService _workspaceService;
 
     public WorkspacePageViewModel(
+        IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
-        IWorkspaceService workspaceService)
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
-        _workspaceService = workspaceService; // Transient instance created by DI
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
+
+        // Create the workspace service and notify the user interface service
+        _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
+        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
+        _messengerService.Send(message);
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -89,36 +91,22 @@ public partial class WorkspacePageViewModel : ObservableObject
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
     }
 
-    /// <summary>
-    /// The WorkspacePage registers with this event to be notified when the workspace panels have been created.
-    /// </summary>
-    public event Action<Dictionary<WorkspacePanelType, UIElement>>? WorkspacePanelsCreated;
-
-    public void OnWorkspacePageLoaded()
-    {
-        // Use the concrete type to avoid exposing CreateWorkspacePanels() in the public API
-        var workspaceService = _workspaceService as WorkspaceService;
-        Guard.IsNotNull(workspaceService);
-
-        // Inform the user interface service that the workspace page has loaded.
-        // At this point, the workspace does not yet contain any workspace panels.
-        var message = new WorkspaceLoadedMessage(_workspaceService);
-        _messengerService.Send(message);
-
-        // Create the previously registered workspace panels.
-        // As each WorkspacePanel is instantiated, it creates its own service and registers it with
-        // the WorkspaceService.
-        var panels = workspaceService.CreateWorkspacePanels();
-        WorkspacePanelsCreated?.Invoke(panels);
-    }
-
     public void OnWorkspacePageUnloaded()
     {
         _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
 
-        // Notify listeners that the workspace page has been unloaded.
-        // All workspace related resources must be released at this point.
+        // Notify listeners that the workspace has been unloaded.
+        // All workspace related resources must be released by this point.
         var message = new WorkspaceUnloadedMessage();
+        _messengerService.Send(message);
+    }
+
+    public async Task LoadWorkspaceAsync()
+    {
+        // Todo: Load the workspace here
+        await Task.Delay(1000);
+
+        var message = new WorkspaceLoadedMessage();
         _messengerService.Send(message);
     }
 }

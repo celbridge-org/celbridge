@@ -17,6 +17,7 @@
     <PackageVersion Include="Serilog.Sinks.Debug" Version="2.0.0" />
     <PackageVersion Include="SkiaSharp.Skottie" Version="2.88.7" />
     <PackageVersion Include="SkiaSharp.Views.Uno.WinUI" Version="2.88.7" />
+    <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageVersion Include="Uno.Core.Extensions.Logging.Singleton" Version="4.0.1" />
     <PackageVersion Include="Uno.Extensions.Configuration" Version="4.0.0" />
     <PackageVersion Include="Uno.Extensions.Core.WinUI" Version="4.0.0" />
@@ -36,9 +37,7 @@
     <PackageVersion Include="Uno.WinUI.Lottie" Version="$(UnoVersion)" />
     <PackageVersion Include="Uno.WinUI.Markup" Version="5.1.5" />
     <PackageVersion Include="Uno.WinUI.Skia.Gtk" Version="$(UnoVersion)" />
-
     <!-- .Net Interactive-->
-    
     <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.CSharp" Version="1.0.0-beta.24229.4" />
     <PackageVersion Include="Microsoft.Dotnet.Interactive.FSharp" Version="1.0.0-beta.24229.4" />
@@ -51,7 +50,6 @@
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
     <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
-
     <!-- Legacy dependencies -->
     <PackageVersion Include="IronPython" Version="2.7.12" />
     <PackageVersion Include="IronPython.StdLib" Version="2.7.12" />

@@ -22,12 +22,18 @@ public class CommonUtils
     {
         // UI code must be run on the UI thread
         var dispatcher = ServiceLocator.ServiceProvider.GetRequiredService<IDispatcher>();
-        dispatcher.ExecuteAsync(() =>
+        dispatcher.ExecuteAsync(async () =>
         {
             var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
             var dialogService = userInterfaceService.DialogService;
 
-            dialogService.ShowNewProjectDialogAsync();
+            var showResult = await dialogService.ShowNewProjectDialogAsync();
+            if (showResult.IsSuccess)
+            {
+                var projectPath = showResult.Value;
+
+                Alert("New Project Path", projectPath);
+            }
         });
     }
 }

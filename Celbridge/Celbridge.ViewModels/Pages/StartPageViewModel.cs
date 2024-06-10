@@ -8,9 +8,6 @@ namespace Celbridge.ViewModels.Pages;
 
 public partial class StartPageViewModel : ObservableObject
 {
-    private readonly string WorkspacePageName = "WorkspacePage";
-    private readonly string ShellName = "Shell";
-
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IUserInterfaceService _userInterfaceService;
@@ -26,18 +23,6 @@ public partial class StartPageViewModel : ObservableObject
         _loggingService = loggingService;
         _userInterfaceService = userInterfaceService;
         _schedulerService = schedulerService;
-    }
-
-    public ICommand OpenWorkspacePageCommand => new RelayCommand(OpenWorkspacePageCommand_Executed);
-    private void OpenWorkspacePageCommand_Executed()
-    {
-        _navigationService.NavigateToPage(WorkspacePageName);
-    }
-
-    public ICommand LegacyInterfaceCommand => new RelayCommand(LegacyInterfaceCommand_Executed);
-    private void LegacyInterfaceCommand_Executed()
-    {
-        _navigationService.NavigateToPage(ShellName);
     }
 
     public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
