@@ -22,6 +22,13 @@ public class ConsoleService : IConsoleService, IDisposable
         return new CommandHistory();
     }
 
+    public event Action<MessageType, string>? OnPrint;
+
+    public void Print(MessageType printType, string message)
+    {
+        OnPrint?.Invoke(printType, message);
+    }
+
     private bool _disposed;
 
     public void Dispose()
