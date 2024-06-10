@@ -1,13 +1,15 @@
-﻿using Serilog;
+﻿using Celbridge.BaseLibrary.Console;
+using Celbridge.BaseLibrary.UserInterface;
+using Serilog;
 
 namespace Celbridge.Services.Logging;
 
 public class LoggingService : ILoggingService
 {
-    public LoggingService()
+    public LoggingService(IUserInterfaceService userInterfaceService)
     {
         Log.Logger = new LoggerConfiguration()
-            //.WriteTo.ConsoleService(this) // Our custom sink that writes to the Console panel in the app
+            .WriteTo.ConsoleService(userInterfaceService) // A custom log event sink that writes to the console panel
             .WriteTo.Debug() // Writes to the Visual Studio debug Output window (uses a Nuget package)
         .CreateLogger();
     }
@@ -15,21 +17,15 @@ public class LoggingService : ILoggingService
     public void Info(string logMessage)
     {
         Log.Information(logMessage);
-
-        var message = new WroteLogMessage(LogMessageType.Info, logMessage);
     }
 
     public void Warn(string logMessage)
     {
         Log.Warning(logMessage);
-
-        var message = new WroteLogMessage(LogMessageType.Warning, logMessage);
     }
 
     public void Error(string logMessage)
     {
         Log.Error(logMessage);
-
-        var message = new WroteLogMessage(LogMessageType.Error, logMessage);
     }
 }

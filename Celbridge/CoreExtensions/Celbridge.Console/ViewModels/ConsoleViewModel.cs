@@ -41,9 +41,16 @@ public partial class ConsoleViewModel : ObservableObject
         var _ = InitScriptContext();
 
         _commandHistory = _consoleService.CreateCommandHistory();
+
+        _consoleService.OnPrint += Print;
     }
 
-public ICommand ClearCommand => new RelayCommand(Clear_Executed);
+    public void ConsoleView_Unloaded()
+    {
+        _consoleService.OnPrint -= Print;
+    }
+
+    public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     private void Clear_Executed()
     {
         _consoleLogItems.Clear();
@@ -70,16 +77,16 @@ public ICommand ClearCommand => new RelayCommand(Clear_Executed);
         if (createResult.IsSuccess)
         {
             var executor = createResult.Value;
-            _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Command, command, DateTime.Now));
+            Print(MessageType.Command, command);
 
             executor.OnOutput += (output) =>
             {
-                _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Info, output, DateTime.Now));
+                Print(MessageType.Info, output);
             };
 
             executor.OnError += (error) =>
             {
-                _consoleLogItems.Add(new ConsoleLogItem(ConsoleLogType.Error, error, DateTime.Now));
+                Print(MessageType.Error, error);
             };
 
             var executeResult = await executor.ExecuteAsync();
@@ -124,5 +131,10 @@ public ICommand ClearCommand => new RelayCommand(Clear_Executed);
     private void CloseCommand_Executed()
     {
         // Todo: Handle user request to close the console - e.g. push an undo operation to reopen the console
+    }
+
+    private void Print(MessageType messageType, string message)
+    {
+        _consoleLogItems.Add(new ConsoleLogItem(messageType, message, DateTime.Now));
     }
 }

@@ -24,6 +24,11 @@ public class ConsoleView : UserControl
         ViewModel = serviceProvider.GetRequiredService<ConsoleViewModel>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
+        Unloaded += (sender, e) =>
+        {
+            ViewModel.ConsoleView_Unloaded();
+        };
+
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
         _scrollViewer = new ScrollViewer()
