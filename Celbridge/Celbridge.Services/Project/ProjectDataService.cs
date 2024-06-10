@@ -96,8 +96,6 @@ public class ProjectDataService : IProjectDataService
             }
 
             LoadedProjectData = loadResult.Value;
-
-            _navigationService.NavigateToPage("WorkspacePage");
             
             return Result.Ok();
         }
@@ -121,8 +119,6 @@ public class ProjectDataService : IProjectDataService
         disposableProjectData.Dispose();
 
         LoadedProjectData = null;
-
-        _navigationService.NavigateToPage("StartPage");
 
         return Result.Ok();
     }
