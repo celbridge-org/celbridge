@@ -17,6 +17,7 @@ public static class ServiceConfiguration
     {
         var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
 
+        navigationService.RegisterPage(nameof(EmptyPage), typeof(EmptyPage));
         navigationService.RegisterPage(nameof(StartPage), typeof(StartPage));
         navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
     }

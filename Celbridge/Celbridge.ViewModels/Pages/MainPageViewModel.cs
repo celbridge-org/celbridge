@@ -17,10 +17,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
 
+    public const string EmptyPageName = "EmptyPage";
+    public const string StartPageName = "StartPage";
+    public const string WorkspacePageName = "WorkspacePage";
+
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
+    private readonly IUserInterfaceService _userInterfaceService;
     private readonly ISchedulerService _schedulerService;
 
     public MainPageViewModel(
@@ -28,16 +33,18 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         ILoggingService loggingService, 
         INavigationService navigationService,
         IProjectDataService projectDataService,
+        IUserInterfaceService userInterfaceService,
         ISchedulerService schedulerService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
+        _userInterfaceService = userInterfaceService;
         _schedulerService = schedulerService;
     }
 
-    public bool IsProjectLoaded => _projectDataService.LoadedProjectData is not null;
+    public bool IsProjectDataLoaded => _projectDataService.LoadedProjectData is not null;
 
     public event Func<Type, object, Result>? OnNavigate;
 
@@ -56,12 +63,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, (r,m) => 
         { 
-            OnPropertyChanged(nameof(IsProjectLoaded)); 
+            OnPropertyChanged(nameof(IsProjectDataLoaded)); 
         });
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
         {
-            OnPropertyChanged(nameof(IsProjectLoaded));
+            OnPropertyChanged(nameof(IsProjectDataLoaded));
         });
 
         // Register this class as the navigation provider for the application
@@ -70,7 +77,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Navigate to the start page at startup
-        _navigationService.NavigateToPage("StartPage");
+        _navigationService.NavigateToPage(StartPageName);
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
@@ -94,7 +101,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         if (tag == CloseProjectTag)
         {
-            _ = CloseProjectAsync();
+            async Task CloseAsync()
+            {
+                await CloseProjectAsync();
+                _navigationService.NavigateToPage(StartPageName);
+            }
+            _ = CloseAsync();
             return;
         }
 
@@ -112,6 +124,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var dialogService = userInterfaceService.DialogService;
 
+        // The new project dialog takes care of creating the project folder and the project data file.
+
         var showResult = await dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
         {
@@ -120,11 +134,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             await CloseProjectAsync();
 
-            _schedulerService.ScheduleFunction(async () =>
+            var openResult = projectDataService.OpenProjectData(projectPath);
+            if (openResult.IsFailure)
             {
-                projectDataService.OpenProjectData(projectPath);
-                await Task.CompletedTask;
-            });
+                _loggingService.Error($"Failed to open project: {openResult.Error}");
+                return;
+            }
+
+            _navigationService.NavigateToPage(WorkspacePageName);
         }
     }
 
@@ -147,17 +164,25 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             await CloseProjectAsync();
 
-            _schedulerService.ScheduleFunction(async () =>
+            var openResult = projectDataService.OpenProjectData(projectPath);
+            if (openResult.IsFailure)
             {
-                projectDataService.OpenProjectData(projectPath);
-                await Task.CompletedTask;
-            });
+                _loggingService.Error($"Failed to open project: {openResult.Error}");
+                return;
+            }
 
+            _navigationService.NavigateToPage(WorkspacePageName);
         }
     }
 
     private async Task CloseProjectAsync()
     {
+        if (!IsProjectDataLoaded && !_userInterfaceService.IsWorkspaceLoaded)
+        {
+            // No project loaded so nothing to do here.
+            return;
+        }
+
         var projectDataService = _projectDataService; // Avoid capturing "this"
 
         // Todo: Notify the workspace that it is about to close.
@@ -169,10 +194,19 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             await Task.CompletedTask;
         });
 
-        // Wait until we receive the WorkspaceUnloadedMessage
-        while (IsProjectLoaded)
+        // Wait until the project data is unloaded
+        while (IsProjectDataLoaded)
         {
-            await Task.Delay(100);
+            await Task.Delay(50);
+        }
+
+        // Force the Workspace page to unload and destroy the workspace service
+        _navigationService.NavigateToPage(EmptyPageName);
+
+        // Wait until the workspace service is destroyed
+        while (_userInterfaceService.IsWorkspaceLoaded)
+        {
+            await Task.Delay(50);
         }
     }
 }

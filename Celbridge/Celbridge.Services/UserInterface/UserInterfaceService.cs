@@ -83,6 +83,8 @@ public class UserInterfaceService : IUserInterfaceService
         _workspaceService = null;
     }
 
+    public bool IsWorkspaceLoaded => _workspaceService is not null;
+
     public IWorkspaceService WorkspaceService
     {
         get
