@@ -70,14 +70,15 @@ public class UserInterfaceService : IUserInterfaceService
 
     private void OnWorkspaceServiceCreated(object recipient, WorkspaceServiceCreatedMessage loadedMessage)
     {
-        // Comment out this assert to enable hot reload
+        // The workspace service is populated at the start of the workspace loading process.
+        // This allows other systems to access the workspace service while they are loading in.
         Guard.IsNull(_workspaceService);
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
     private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
     {
-        // Comment out this assert to enable hot reload
+        // Clear the reference to the workspace service when the workspace is unloaded.
         Guard.IsNotNull(_workspaceService);
         _workspaceService = null;
     }
