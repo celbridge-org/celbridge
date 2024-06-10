@@ -75,10 +75,8 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result OpenProjectData(string projectPath)
+    public Result LoadProjectData(string projectPath)
     {
-        // Load the project first, then open the workspace because projects may use more than
-        // one editor UI in future.
         try
         {
             var projectJsonData = File.ReadAllText(projectPath);
@@ -105,11 +103,11 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result CloseProjectData()
+    public Result UnloadProjectData()
     {
         if (LoadedProjectData is null)
         {
-            // Closing a project that is not open is a no-op
+            // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
 

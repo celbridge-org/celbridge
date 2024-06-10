@@ -18,10 +18,10 @@ public interface IProjectDataService
     /// <summary>
     /// Load the project data at the specified path.
     /// </summary>
-    Result OpenProjectData(string projectPath);
+    Result LoadProjectData(string projectPath);
 
     /// <summary>
-    /// Closes the currently opened project data.
+    /// Unloads the currently loaded project data.
     /// </summary>
-    Result CloseProjectData();
+    Result UnloadProjectData();
 }
