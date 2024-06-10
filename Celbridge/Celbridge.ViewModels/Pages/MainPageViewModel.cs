@@ -129,10 +129,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             _schedulerService.ScheduleFunction(async () =>
             {
-                var projectName = Path.GetFileNameWithoutExtension(projectPath);
-                Guard.IsNotNullOrWhiteSpace(projectName);
-
-                projectAdminService.OpenProjectWorkspace(projectName, projectPath);
+                projectAdminService.OpenProjectWorkspace(projectPath);
                 await Task.CompletedTask;
             });
         }
@@ -152,10 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             _schedulerService.ScheduleFunction(async () =>
             {
-                var projectName = Path.GetFileNameWithoutExtension(projectPath);
-                Guard.IsNotNullOrWhiteSpace(projectName);
-
-                projectAdminService.OpenProjectWorkspace(projectName, projectPath);
+                projectAdminService.OpenProjectWorkspace(projectPath);
                 await Task.CompletedTask;
             });
 

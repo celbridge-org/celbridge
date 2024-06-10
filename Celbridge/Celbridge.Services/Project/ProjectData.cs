@@ -5,21 +5,26 @@ namespace Celbridge.Services.Project;
 
 public class ProjectData : IDisposable, IProjectData
 {
-
     private SQLiteAsyncConnection _connection;
     private bool _disposed = false;
 
-    private ProjectData(string projectName, string databasePath)
+    public string ProjectName { get; init; }
+    public string ProjectPath { get; init; }
+    public string DatabasePath { get; init; }
+
+    private ProjectData(string projectPath, string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectName);
+        Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        ProjectName = projectName;
+        ProjectName = Path.GetFileNameWithoutExtension(projectPath);
+        Guard.IsNotNullOrWhiteSpace(ProjectName);
+
+        ProjectPath = projectPath;
+        DatabasePath = databasePath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
     }
-
-    public string ProjectName { get; init; }
 
     public async Task<IProjectConfig> GetConfigAsync()
     {
@@ -52,23 +57,22 @@ public class ProjectData : IDisposable, IProjectData
         await _connection.InsertAsync(config);
     }
 
-    public static Result<IProjectData> LoadProjectData(string projectName, string databasePath)
+    public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectName);
+        Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var project = new ProjectData(projectName, databasePath);
+        var project = new ProjectData(projectPath, databasePath);
         Guard.IsNotNull(project);
 
         return Result<IProjectData>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectName, string databasePath, int version)
+    public static async Task<Result> CreateProjectDataAsync(string projectPath, string databasePath, int version)
     {
-        Guard.IsNotNullOrWhiteSpace(projectName);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var project = new ProjectData(projectName, databasePath);
+        var project = new ProjectData(projectPath, databasePath);
         Guard.IsNotNull(project);
 
         var config = new ProjectConfig 

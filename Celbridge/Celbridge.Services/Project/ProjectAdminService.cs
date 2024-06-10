@@ -37,14 +37,14 @@ public class ProjectAdminService : IProjectAdminService
             // Write the .celbridge Json file in the project folder
             //
 
-            var projectJsonPath = Path.Combine(projectFolder, $"{projectName}.celbridge");
-            var projectJsonData = $$"""
+            var projectPath = Path.Combine(projectFolder, $"{projectName}.celbridge");
+            var projectJson = $$"""
                 {
                     "projectDataFile": "{{DefaultProjectDataPath}}"
                 }
                 """;
 
-            File.WriteAllText(projectJsonPath, projectJsonData);
+            await File.WriteAllTextAsync(projectPath, projectJson);
 
             //
             // Create a database file inside a folder named after the project
@@ -57,13 +57,13 @@ public class ProjectAdminService : IProjectAdminService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await Project.ProjectData.CreateProjectDataAsync(projectName, databasePath, ProjectVersion);
+            var createResult = await ProjectData.CreateProjectDataAsync(projectPath, databasePath, ProjectVersion);
             if (createResult.IsFailure)
             {
                 return Result<string>.Fail($"Failed to create project: {projectName}");
             }
 
-            return Result<string>.Ok(projectJsonPath);
+            return Result<string>.Ok(projectPath);
         }
         catch (Exception ex)
         {
@@ -71,14 +71,14 @@ public class ProjectAdminService : IProjectAdminService
         }
     }
 
-    public Result<IProjectData> LoadProjectData(string projectName, string databasePath)
+    public Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectName);
+        Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
         try
         {
-            var loadResult = Project.ProjectData.LoadProjectData(projectName, databasePath);
+            var loadResult = ProjectData.LoadProjectData(projectPath, databasePath);
             if (loadResult.IsFailure)
             {
                 return Result<IProjectData>.Fail($"Failed to load project data: {databasePath}");
@@ -94,7 +94,7 @@ public class ProjectAdminService : IProjectAdminService
         }
     }
 
-    public Result OpenProjectWorkspace(string projectName, string projectPath)
+    public Result OpenProjectWorkspace(string projectPath)
     {
         // Load the project first, then open the workspace because projects may use more than
         // one editor UI in future.
@@ -108,7 +108,7 @@ public class ProjectAdminService : IProjectAdminService
             string relativePath = jsonObject["projectDataFile"]!.ToString();
             string databasePath = Path.Combine(projectFolder, relativePath);
 
-            var loadResult = LoadProjectData(projectName, databasePath);
+            var loadResult = LoadProjectData(projectPath, databasePath);
             if (loadResult.IsFailure)
             {
                 return loadResult;
