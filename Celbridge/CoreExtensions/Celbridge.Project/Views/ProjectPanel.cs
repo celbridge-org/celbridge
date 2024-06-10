@@ -23,6 +23,12 @@ public sealed partial class ProjectPanel : UserControl
                     .Grid(column: 0)
                     .Text(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
                     .Margin(48, 0, 0, 0)
+                    .VerticalAlignment(VerticalAlignment.Center),
+                new Button()
+                    .Grid(column: 2)
+                    .Content(new SymbolIcon(Symbol.Refresh))
+                    .Command(ViewModel.RefreshProjectCommand)
+                    .Margin(0, 0, 8, 0)
                     .VerticalAlignment(VerticalAlignment.Center)
             );
 
