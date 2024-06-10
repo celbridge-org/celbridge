@@ -1,6 +1,7 @@
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -95,8 +96,13 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
 
+        // Dispose the workspace service
+        // This disposes all the sub-services and releases all resources held by the workspace.
+        var disposableWorkspace = _workspaceService as IDisposable;
+        Guard.IsNotNull(disposableWorkspace);
+        disposableWorkspace.Dispose();
+
         // Notify listeners that the workspace has been unloaded.
-        // All workspace related resources must be released by this point.
         var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);
     }
