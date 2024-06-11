@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Resource;
+﻿using Celbridge.BaseLibrary.Resources;
 using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.Resources;

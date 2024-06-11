@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Resource;
+﻿using Celbridge.BaseLibrary.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Project.Resources;

@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Resource;
+﻿using Celbridge.BaseLibrary.Resources;
 using CommunityToolkit.Diagnostics;
 using System.Collections.ObjectModel;
 
@@ -6,16 +6,15 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Project.Resources;
 
-public class ResourceRegistry
+public class ResourceRegistry : IResourceRegistry
 {
     private readonly string _projectFolder;
-    private FolderResource? _rootFolder;
+    private FolderResource _rootFolder = new(string.Empty);
 
     public ObservableCollection<IResource> Resources
     {
         get
         {
-            Guard.IsNotNull(_rootFolder);
             return _rootFolder.Children;
         }
     }
@@ -33,19 +32,13 @@ public class ResourceRegistry
             return Result.Fail(scanResult.Error);
         }
 
-        if (_rootFolder is null)
+        // Update the root folder rather than replacing it so observers can see the changes.
+        // Todo: Only update the changed parts of the tree.
+
+        _rootFolder.Children.Clear();
+        foreach (var child in scanResult.Value.Children)
         {
-            // First time scanning the root folder
-            _rootFolder = scanResult.Value;
-        }
-        else
-        {
-            // Update the existing root folder
-            _rootFolder.Children.Clear();
-            foreach (var child in scanResult.Value.Children)
-            {
-                _rootFolder.AddChild(child);
-            }
+            _rootFolder.AddChild(child);
         }
 
         return Result.Ok();
