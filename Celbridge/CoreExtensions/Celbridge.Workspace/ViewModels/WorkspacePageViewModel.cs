@@ -109,6 +109,11 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public async Task LoadWorkspaceAsync()
     {
+        //
+        // Scan the project resources and update the resource tree view.
+        //
+        _workspaceService.ProjectService.ResourceRegistry.UpdateRegistry();
+
         // Todo: Load the workspace here
         await Task.Delay(1000);
 
