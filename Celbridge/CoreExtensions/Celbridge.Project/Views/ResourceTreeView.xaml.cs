@@ -3,16 +3,16 @@ using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Project.Views;
 
-public sealed partial class ProjectTreeView : UserControl
+public sealed partial class ResourceTreeView : UserControl
 {
-    public ProjectTreeViewModel ViewModel { get; }
+    public ResourceTreeViewModel ViewModel { get; }
 
-    public ProjectTreeView()
+    public ResourceTreeView()
     {
         this.InitializeComponent();
 
         var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<ProjectTreeViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
 
         ResourcesTreeView.Loaded += ResourcesTreeView_Loaded;
     }
