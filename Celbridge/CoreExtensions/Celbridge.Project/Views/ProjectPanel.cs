@@ -1,5 +1,6 @@
 ﻿using Celbridge.Project.ViewModels;
 using Microsoft.Extensions.Localization;
+using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.Views;
 
@@ -41,7 +42,8 @@ public sealed partial class ProjectPanel : UserControl
                 refreshProjectButton
             );
 
-        var treeView = CreateProjectTreeView();
+        var treeView = new ProjectTreeView()
+            .Grid(row:1);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
@@ -54,15 +56,5 @@ public sealed partial class ProjectPanel : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(panelGrid));
-    }
-
-    private UIElement CreateProjectTreeView()
-    {
-        var treeView = new TextBlock()
-            .Grid(row: 1)
-            .Text("Tree View")
-            .VerticalAlignment(VerticalAlignment.Top);
-
-        return treeView;
     }
 }
