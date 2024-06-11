@@ -93,15 +93,15 @@ public abstract class Entity : ObservableObject, IEntity, ITreeNode
     [JsonIgnore]
     public Entity? Parent { get; set; }
 
-		private ObservableCollection<Entity> _children;
-		public ObservableCollection<Entity> Children
+	private ObservableCollection<Entity> _children;
+	public ObservableCollection<Entity> Children
+	{
+		get
 		{
-			get
-			{
-				return _children;
-			}
-			set
-			{
+			return _children;
+		}
+		set
+		{
             SetProperty(ref _children, value);
         }
     }
