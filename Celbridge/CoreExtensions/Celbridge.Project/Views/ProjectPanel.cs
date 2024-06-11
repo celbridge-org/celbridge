@@ -31,7 +31,7 @@ public sealed partial class ProjectPanel : UserControl
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(0, 0, 0, 1)
-            .ColumnDefinitions("Auto, *, Auto, 48")
+            .ColumnDefinitions("Auto, *, Auto, 44")
             .Children(
                 new TextBlock()
                     .Grid(column: 0)
@@ -41,9 +41,12 @@ public sealed partial class ProjectPanel : UserControl
                 refreshProjectButton
             );
 
+        var treeView = CreateProjectTreeView();
+
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
-            .Children(titleBar);
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Children(titleBar, treeView);
            
         //
         // Set the data context and page content
@@ -51,5 +54,15 @@ public sealed partial class ProjectPanel : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(panelGrid));
+    }
+
+    private UIElement CreateProjectTreeView()
+    {
+        var treeView = new TextBlock()
+            .Grid(row: 1)
+            .Text("Tree View")
+            .VerticalAlignment(VerticalAlignment.Top);
+
+        return treeView;
     }
 }
