@@ -1,17 +1,18 @@
-﻿using System.Collections.ObjectModel;
+﻿using Celbridge.BaseLibrary.Resource;
+using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.Resources;
 
 public class FolderResource : Resource
 {
-    public ObservableCollection<Resource> Children { get; set; }
+    public ObservableCollection<IResource> Children { get; set; }
 
     public FolderResource(string name) : base(name)
     {
-        Children = new ObservableCollection<Resource>();
+        Children = new();
     }
 
-    public void AddChild(Resource resource)
+    public void AddChild(IResource resource)
     {
         Children.Add(resource);
     }

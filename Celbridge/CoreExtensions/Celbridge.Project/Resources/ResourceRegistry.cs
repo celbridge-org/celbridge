@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using Celbridge.BaseLibrary.Resource;
+using CommunityToolkit.Diagnostics;
 using System.Collections.ObjectModel;
 
 using Path = System.IO.Path;
@@ -10,7 +11,7 @@ public class ResourceRegistry
     private readonly string _projectFolder;
     private FolderResource? _rootFolder;
 
-    public ObservableCollection<Resource> Resources
+    public ObservableCollection<IResource> Resources
     {
         get
         {
