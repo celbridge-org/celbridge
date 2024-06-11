@@ -41,13 +41,15 @@ public partial class ResourceTreeViewModel : ObservableObject
         var projectFolder = _projectService.LoadedProjectData.ProjectFolder;
         _loggingService.Info($"Scanning {projectFolder}");
 
-        var scanResult = ResourceScanner.ScanFolderResources(projectFolder);
+        var resourceRegistry = new ResourceRegistry(projectFolder);
+
+        var scanResult = resourceRegistry.ScanResources();
         if (scanResult.IsFailure)
         {
             _loggingService.Error(scanResult.Error);
             return;
         }
 
-        _children = scanResult.Value;
+        _children = resourceRegistry.Resources;
     }
 }
