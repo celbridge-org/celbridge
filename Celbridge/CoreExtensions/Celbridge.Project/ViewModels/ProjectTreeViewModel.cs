@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.Project.Models;
+using Celbridge.Project.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
@@ -36,8 +36,18 @@ public partial class ProjectTreeViewModel : ObservableObject
 
     private void ScanProjectFolder()
     {
-        var projectFolder = _projectService.LoadedProjectData.ProjectFolder;
+        _children.Clear();
 
-        _loggingService.Info(projectFolder);
+        var projectFolder = _projectService.LoadedProjectData.ProjectFolder;
+        _loggingService.Info($"Scanning {projectFolder}");
+
+        var scanResult = ResourceScanner.ScanFolderResources(projectFolder);
+        if (scanResult.IsFailure)
+        {
+            _loggingService.Error(scanResult.Error);
+            return;
+        }
+
+        _children = scanResult.Value;
     }
 }
