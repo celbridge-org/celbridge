@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resource;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Project.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,8 +12,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly ILoggingService _loggingService;
     private readonly IProjectService _projectService;
 
-    private ObservableCollection<Resource> _children = new();
-    public ObservableCollection<Resource> Children
+    private ObservableCollection<IResource> _children = new();
+    public ObservableCollection<IResource> Children
     {
         get
         {
