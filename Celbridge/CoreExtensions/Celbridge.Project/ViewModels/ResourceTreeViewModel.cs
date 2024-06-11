@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resource;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.Project.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,18 +12,9 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly ILoggingService _loggingService;
     private readonly IProjectService _projectService;
 
-    private ObservableCollection<IResource> _children = new();
-    public ObservableCollection<IResource> Children
-    {
-        get
-        {
-            return _children;
-        }
-        set
-        {
-            SetProperty(ref _children, value);
-        }
-    }
+    private IResourceRegistry _resourceRegistry;
+
+    public ObservableCollection<IResource> Children => _resourceRegistry.Resources;
 
     public ResourceTreeViewModel(
         ILoggingService loggingService,
@@ -32,25 +23,16 @@ public partial class ResourceTreeViewModel : ObservableObject
         _loggingService = loggingService;
         _projectService = userInterface.WorkspaceService.ProjectService;
 
-        ScanProjectFolder();
-    }
-
-    private void ScanProjectFolder()
-    {
-        _children.Clear();
-
         var projectFolder = _projectService.LoadedProjectData.ProjectFolder;
         _loggingService.Info($"Scanning {projectFolder}");
 
-        var resourceRegistry = new ResourceRegistry(projectFolder);
+        _resourceRegistry = new ResourceRegistry(projectFolder);
 
-        var scanResult = resourceRegistry.ScanResources();
+        // Todo: Refresh this via a method on the ProjectService instead of here
+        var scanResult = _resourceRegistry.ScanResources();
         if (scanResult.IsFailure)
         {
             _loggingService.Error(scanResult.Error);
-            return;
         }
-
-        _children = resourceRegistry.Resources;
     }
 }
