@@ -13,7 +13,7 @@ public class Extension : IExtension
     {
         config.AddTransient<ProjectPanel>();
         config.AddTransient<ProjectPanelViewModel>();
-        config.AddTransient<ProjectTreeViewModel>();
+        config.AddTransient<ResourceTreeViewModel>();
         config.AddTransient<IProjectService, ProjectService>();
     }
 

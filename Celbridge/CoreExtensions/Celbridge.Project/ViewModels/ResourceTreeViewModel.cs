@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.ViewModels;
 
-public partial class ProjectTreeViewModel : ObservableObject
+public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
     private readonly IProjectService _projectService;
@@ -24,7 +24,7 @@ public partial class ProjectTreeViewModel : ObservableObject
         }
     }
 
-    public ProjectTreeViewModel(
+    public ResourceTreeViewModel(
         ILoggingService loggingService,
         IUserInterfaceService userInterface)
     {
