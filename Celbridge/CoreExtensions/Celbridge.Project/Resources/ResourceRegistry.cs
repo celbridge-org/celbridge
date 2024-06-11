@@ -1,24 +1,56 @@
-﻿using System.Collections.ObjectModel;
+﻿using CommunityToolkit.Diagnostics;
+using System.Collections.ObjectModel;
 
 using Path = System.IO.Path;
 
 namespace Celbridge.Project.Resources;
 
-public static class ResourceScanner
+public class ResourceRegistry
 {
-    public static Result<ObservableCollection<Resource>> ScanFolderResources(string path)
-    {
-        var scanResult = ScanFolder(path);
-        if (scanResult.IsFailure)
-        {
-            return Result<ObservableCollection<Resource>>.Fail(scanResult.Error);
-        }
+    private readonly string _projectFolder;
+    private FolderResource? _rootFolder;
 
-        var scannedFolder = scanResult.Value;
-        return Result<ObservableCollection<Resource>>.Ok(scannedFolder.Children);
+    public ObservableCollection<Resource> Resources
+    {
+        get
+        {
+            Guard.IsNotNull(_rootFolder);
+            return _rootFolder.Children;
+        }
     }
 
-    private static Result<FolderResource> ScanFolder(string path)
+    public ResourceRegistry(string projectFolder)
+    {
+        _projectFolder = projectFolder;
+    }
+
+    public Result ScanResources()
+    {
+        var scanResult = ScanFolder(_projectFolder);
+        if (scanResult.IsFailure)
+        {
+            return Result.Fail(scanResult.Error);
+        }
+
+        if (_rootFolder is null)
+        {
+            // First time scanning the root folder
+            _rootFolder = scanResult.Value;
+        }
+        else
+        {
+            // Update the existing root folder
+            _rootFolder.Children.Clear();
+            foreach (var child in scanResult.Value.Children)
+            {
+                _rootFolder.AddChild(child);
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    private Result<FolderResource> ScanFolder(string path)
     {
         try
         {
