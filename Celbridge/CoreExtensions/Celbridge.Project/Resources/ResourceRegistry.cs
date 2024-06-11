@@ -24,7 +24,7 @@ public class ResourceRegistry : IResourceRegistry
         _projectFolder = projectFolder;
     }
 
-    public Result ScanResources()
+    public Result UpdateRegistry()
     {
         var scanResult = ScanFolder(_projectFolder);
         if (scanResult.IsFailure)
