@@ -56,14 +56,15 @@ public class ResourceScannerTests
         // Scan the files and folders
         //
 
-        var scanResult = ResourceScanner.ScanFolderResources(_resourceFolder);
+        var resourceRegistry = new ResourceRegistry(_resourceFolder);
+        var scanResult = resourceRegistry.ScanResources();
         scanResult.IsSuccess.Should().BeTrue();
 
         //
         // Check the scanned resources match the files we wrote earlier
         //
 
-        ObservableCollection<Resource> resources = scanResult.Value;
+        var resources = resourceRegistry.Resources;
         resources.Count.Should().Be(2);
 
         (resources[0] is FolderResource).Should().BeTrue();
