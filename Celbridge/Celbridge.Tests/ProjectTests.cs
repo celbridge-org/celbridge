@@ -1,40 +1,47 @@
-﻿using Celbridge.Services.Project;
-using Uno.Disposables;
+﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.Services.Project;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tests;
 
 [TestFixture]
 public class ProjectTests
 {
+    private IProjectDataService? _projectDataService;
+
     [SetUp]
     public void Setup()
-    {}
+    {
+        _projectDataService = new ProjectDataService();
+    }
 
     [TearDown]
     public void TearDown()
     {}
 
     [Test]
-    public async Task ICanCreateAndLoadAProjectAsync()
+    public async Task ICanCreateAndLoadProjectDataAsync()
     {
-        var folder = System.IO.Path.GetTempPath();
-        var projectDatabaseName = "ProjectData.db";
-        var projectPath = System.IO.Path.Combine(folder, projectDatabaseName);
-        var projectName = "TestProject";
+        Guard.IsNotNull(_projectDataService);
 
-        var createResult = await ProjectData.CreateProjectDataAsync(projectName, projectPath, 1);
+        var projectFolder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "TestProject");
+
+        var createResult = await _projectDataService.CreateProjectDataAsync(projectFolder, "TestA");
         createResult.IsSuccess.Should().BeTrue();
 
-        var loadResult = ProjectData.LoadProjectData(projectName, projectPath);
+        var projectPath = createResult.Value;
+
+        var loadResult = _projectDataService.LoadProjectData(projectPath);
         loadResult.IsSuccess.Should().BeTrue();
-        var projectData = loadResult.Value;
-        
-        var config = await projectData.GetConfigAsync();
-        config.Version.Should().Be(1);
 
-        projectData.TryDispose();
+        var projectData = _projectDataService.LoadedProjectData!;
+        projectData.Should().NotBeNull();
+        projectData.ProjectName.Should().Be("TestA");
 
-        File.Delete(projectPath);
+        _projectDataService.UnloadProjectData();
+        _projectDataService.LoadedProjectData.Should().BeNull();
+
+        Directory.Delete(projectFolder, true);
         File.Exists(projectPath).Should().BeFalse();
     }
 }
