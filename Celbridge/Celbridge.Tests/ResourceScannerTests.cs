@@ -57,7 +57,7 @@ public class ResourceScannerTests
         //
 
         var resourceRegistry = new ResourceRegistry(_resourceFolder);
-        var scanResult = resourceRegistry.ScanResources();
+        var scanResult = resourceRegistry.UpdateRegistry();
         scanResult.IsSuccess.Should().BeTrue();
 
         //

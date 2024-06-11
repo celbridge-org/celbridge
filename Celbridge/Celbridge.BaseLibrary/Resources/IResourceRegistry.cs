@@ -13,7 +13,7 @@ public interface IResourceRegistry
     ObservableCollection<IResource> Resources { get; }
 
     /// <summary>
-    /// Scans the project folder for resources.
+    /// Updates the registry with the current state of the resources in the project folder.
     /// </summary>
-    Result ScanResources();
+    Result UpdateRegistry();
 }
