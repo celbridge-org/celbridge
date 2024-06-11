@@ -42,7 +42,7 @@ public sealed partial class ProjectPanel : UserControl
                 refreshProjectButton
             );
 
-        var treeView = new ProjectTreeView()
+        var treeView = new ResourceTreeView()
             .Grid(row:1);
 
         var panelGrid = new Grid()
