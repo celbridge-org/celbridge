@@ -1,0 +1,73 @@
+﻿<UserControl
+    x:Class="Celbridge.Project.Views.ProjectTreeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Project.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:models="using:Celbridge.Project.Models"
+    mc:Ignorable="d"
+    DataContext="{x:Bind ViewModel}"
+    Background="{ThemeResource ApplicationBackgroundBrush}">
+
+    <UserControl.Resources>
+
+        <MenuFlyout x:Name="FolderResourceContextMenu"
+                    Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Add Resource" 
+                            Icon="Add"
+                            Click="AddResourceToProject"/>
+            <MenuFlyoutItem Text="Delete" 
+                            Icon="Delete"
+                            Click="DeleteResource"/>
+        </MenuFlyout>
+
+        <MenuFlyout x:Name="FileResourceContextMenu"
+                    Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Open" 
+                            Icon="OpenFile"
+                            Click="OpenResource"/>
+            <MenuFlyoutItem Text="Delete" 
+                            Icon="Delete"
+                            Click="DeleteResource"/>
+        </MenuFlyout>
+        
+        <DataTemplate x:Key="FolderTemplate"
+					  x:DataType="models:FolderResource">
+            <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
+							   ItemsSource="{x:Bind Children}"
+							   IsExpanded="False"
+                               ContextFlyout="{StaticResource FolderResourceContextMenu}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="0,0,10,0" />
+                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                </StackPanel>
+            </muxc:TreeViewItem>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FileTemplate"
+					  x:DataType="models:FileResource">
+            <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name,Mode=OneWay}"
+                               ContextFlyout="{StaticResource FileResourceContextMenu}"
+                               DoubleTapped="DoubleTappedItem">
+                <StackPanel Orientation="Horizontal"
+                            ToolTipService.Placement="Bottom">
+                    <TextBlock Margin="0,0,6,0" />
+                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                </StackPanel>
+            </muxc:TreeViewItem>
+        </DataTemplate>
+
+        <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
+            FolderTemplate="{StaticResource FolderTemplate}"
+            FileTemplate="{StaticResource FileTemplate}" />
+    </UserControl.Resources>
+
+    <muxc:TreeView x:Name="ResourcesTreeView"
+                    Grid.Row="3" 
+                    ItemsSource="{x:Bind ViewModel.Children}"
+                    ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
+                    CanReorderItems="False"
+                    CanDrag="False"/>
+</UserControl>
