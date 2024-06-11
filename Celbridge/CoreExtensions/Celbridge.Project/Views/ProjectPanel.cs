@@ -1,6 +1,5 @@
 ﻿using Celbridge.Project.ViewModels;
 using Microsoft.Extensions.Localization;
-using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.Views;
 
