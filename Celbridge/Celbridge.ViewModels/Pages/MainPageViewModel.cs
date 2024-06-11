@@ -155,7 +155,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             var projectPath = result.Value;
             var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            if (_projectDataService.LoadedProjectData?.ProjectPath == projectPath)
+            if (_projectDataService.LoadedProjectData?.ProjectFilePath == projectPath)
             {
                 // The project is already loaded.
                 // We can just early out here as we're already in the expected end state.
