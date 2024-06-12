@@ -7,6 +7,7 @@ namespace Celbridge.Project.ViewModels;
 public partial class ProjectPanelViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
+    private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
 
     [ObservableProperty]
@@ -14,9 +15,11 @@ public partial class ProjectPanelViewModel : ObservableObject
 
     public ProjectPanelViewModel(
         ILoggingService loggingService,
+        IMessengerService messengerService,
         IUserInterfaceService userInterfaceService)
     {
         _loggingService = loggingService;
+        _messengerService = messengerService;
 
         _projectService = userInterfaceService.WorkspaceService.ProjectService;
 
@@ -30,10 +33,7 @@ public partial class ProjectPanelViewModel : ObservableObject
     public ICommand RefreshProjectCommand => new RelayCommand(RefreshProjectCommand_ExecuteAsync);
     private void RefreshProjectCommand_ExecuteAsync()
     {
-        var updateResult = _projectService.ResourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            _loggingService.Error(updateResult.Error);
-        }
+        var message = new RequestProjectRefreshMessage();
+        _messengerService.Send(message);
     }
 }

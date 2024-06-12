@@ -14,11 +14,11 @@ public sealed partial class ResourceTreeView : UserControl
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
 
-        ResourcesTreeView.Loaded += ResourcesTreeView_Loaded;
+        Unloaded += (s,e) =>
+        {
+            ViewModel.ResourceTreeView_Unloaded();
+        };
     }
-
-    private void ResourcesTreeView_Loaded(object? sender, RoutedEventArgs e)
-    {}
 
     private void OpenResource(object? sender, RoutedEventArgs e)
     {

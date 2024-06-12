@@ -33,18 +33,18 @@ public class ResourceRegistry : IResourceRegistry
 
         var newRootFolder = scanResult.Value;
 
-        return UpdateFolderResource(_rootFolder, newRootFolder);
+        UpdateFolderResource(_rootFolder, newRootFolder);
+
+        return Result.Ok();
     }
 
     /// <summary>
-    // Updates only the changed parts of the resource tree, leaving unmodified parts of the tree untouched.
+    // Updates the changed parts of the resource tree, leaving unmodified parts of the tree untouched.
     /// </summary>
     private Result UpdateFolderResource(FolderResource currentFolder, FolderResource newFolder)
     {
         try
         {
-            bool isSortRequired = false;
-
             // Update files
             var currentFiles = currentFolder.Children.OfType<FileResource>().ToList();
             var newFiles = newFolder.Children.OfType<FileResource>().ToList();
@@ -63,8 +63,7 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (!currentFiles.Any(f => f.Name == file.Name))
                 {
-                    currentFolder.Children.Add(file);
-                    isSortRequired = true;
+                    InsertResource(currentFolder.Children, file);
                 }
             }
 
@@ -92,31 +91,8 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (!currentFolders.Any(f => f.Name == folder.Name))
                 {
-                    currentFolder.Children.Add(folder);
-                    isSortRequired = true;
+                    InsertResource(currentFolder.Children, folder);
                 }
-            }
-
-            if (isSortRequired)
-            {
-                // Sort resources so they are listed alphabetically, with folders appearing before files.
-                // This is an in-place bubble sort, so it might struggle if N gets large.
-                // Todo: Implement a more efficient in-place sort that minizes changes to the collection.
-                //for (int i = 0; i < currentFolder.Children.Count - 1; i++)
-                //{
-                //    for (int j = i + 1; j < currentFolder.Children.Count; j++)
-                //    {
-                //        var resource1 = currentFolder.Children[i];
-                //        var resource2 = currentFolder.Children[j];
-                //        bool shouldSwap = (resource1 is FileResource && resource2 is FolderResource) ||
-                //                          (resource1.GetType() == resource2.GetType() && string.Compare(resource1.Name, resource2.Name) > 0);
-                //        if (shouldSwap)
-                //        {
-                //            currentFolder.Children.Move(j, i);
-                //            currentFolder.Children.Move(i + 1, j);
-                //        }
-                //    }
-                //}
             }
         }
         catch (Exception ex)
@@ -125,6 +101,31 @@ public class ResourceRegistry : IResourceRegistry
         }
 
         return Result.Ok();
+    }
+
+    private void InsertResource(ObservableCollection<IResource> collection, IResource resource)
+    {
+        int index = 0;
+        while (index < collection.Count)
+        {
+            IResource item = collection[index];
+
+            if (resource is FolderResource && item is not FolderResource)
+            {
+                // Folders appear before files
+                break;
+            }
+
+            if (resource.GetType() == item.GetType() && string.Compare(resource.Name, item.Name, StringComparison.InvariantCulture) < 0)
+            {
+                // Alphabetical order
+                break;
+            }
+
+            index++;
+        }
+
+        collection.Insert(index, resource);
     }
 
     private Result<FolderResource> ScanFolder(string path)
