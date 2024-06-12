@@ -36,12 +36,11 @@
         <DataTemplate x:Key="FolderTemplate"
 					  x:DataType="models:FolderResource">
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
-							   ItemsSource="{x:Bind Children}"
-							   IsExpanded="False"
+							   ItemsSource="{x:Bind Children, Mode=OneWay}"
+							   IsExpanded="{x:Bind Expanded, Mode=OneWay}"
                                ContextFlyout="{StaticResource FolderResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0,0,10,0" />
-                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                    <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>
             </muxc:TreeViewItem>
         </DataTemplate>
@@ -53,8 +52,7 @@
                                DoubleTapped="DoubleTappedItem">
                 <StackPanel Orientation="Horizontal"
                             ToolTipService.Placement="Bottom">
-                    <TextBlock Margin="0,0,6,0" />
-                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                    <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>
             </muxc:TreeViewItem>
         </DataTemplate>
@@ -66,8 +64,9 @@
 
     <muxc:TreeView x:Name="ResourcesTreeView"
                     Grid.Row="3" 
-                    ItemsSource="{x:Bind ViewModel.Children}"
+                    ItemsSource="{x:Bind ViewModel.Resources, Mode=OneWay}"
                     ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
-                    CanReorderItems="False"
-                    CanDrag="False"/>
+                    CanReorderItems="True"
+                    CanDrag="False"
+                    SelectionMode="Single"/>
 </UserControl>
