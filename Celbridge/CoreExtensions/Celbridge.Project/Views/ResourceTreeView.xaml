@@ -40,7 +40,11 @@
 							   IsExpanded="{x:Bind Expanded, Mode=OneWay}"
                                ContextFlyout="{StaticResource FolderResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE8B7;" 
+                              FontSize="14" />
+                    <TextBlock Margin="8 0 0 0" 
+                               Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>
             </muxc:TreeViewItem>
         </DataTemplate>
@@ -50,10 +54,7 @@
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name,Mode=OneWay}"
                                ContextFlyout="{StaticResource FileResourceContextMenu}"
                                DoubleTapped="DoubleTappedItem">
-                <StackPanel Orientation="Horizontal"
-                            ToolTipService.Placement="Bottom">
-                    <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
-                </StackPanel>
+                <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
             </muxc:TreeViewItem>
         </DataTemplate>
 
