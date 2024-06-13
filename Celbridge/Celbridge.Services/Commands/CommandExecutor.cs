@@ -1,16 +1,16 @@
 ﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.Project;
 
 namespace Celbridge.Services.Commands;
 
 public class CommandExecutor : ICommandExecutor
 {
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public CommandExecutor(IUserInterfaceService userInterfaceService)
+    public CommandExecutor(IWorkspaceWrapper workspaceWrapper)
     {
-        _userInterfaceService = userInterfaceService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public bool CanExecuteCommand(CommandBase command)
@@ -20,7 +20,7 @@ public class CommandExecutor : ICommandExecutor
             return true;
         }
 
-        if (_userInterfaceService.IsWorkspaceLoaded)
+        if (_workspaceWrapper.IsWorkspaceLoaded)
         {
             // Todo: Check if the workspace executor can execute the command
         }
@@ -35,7 +35,7 @@ public class CommandExecutor : ICommandExecutor
             return await unloadProjectDataCommand.ExecuteAsync();
         }
 
-        if (_userInterfaceService.IsWorkspaceLoaded)
+        if (_workspaceWrapper.IsWorkspaceLoaded)
         {
             // Todo: Execute the command via the workspace executor
         }

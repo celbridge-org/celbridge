@@ -14,6 +14,8 @@ using Celbridge.BaseLibrary.Project;
 using Celbridge.Services.Project;
 using Celbridge.BaseLibrary.Commands;
 using Celbridge.Services.Commands;
+using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Services.Workspace;
 
 namespace Celbridge.Services;
 
@@ -36,6 +38,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
+        services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<ICommandExecutor, CommandExecutor>();
 
         if (IsStorageAPIAvailable)
