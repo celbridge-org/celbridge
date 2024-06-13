@@ -9,7 +9,7 @@ public class CommandService : ICommandService
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
-    private readonly List<ICommandExecutor> _executors = new();
+    private readonly ICommandExecutor _commandExecutor;
 
     private object _lock = new object();
 
@@ -17,31 +17,9 @@ public class CommandService : ICommandService
 
     private bool _stopped = false;
 
-    public CommandService()
-    {}
-
-    public Result RegisterExecutor(ICommandExecutor commandExecutor)
+    public CommandService(ICommandExecutor commandExecutor)
     {
-        if (_executors.Contains(commandExecutor))
-        {
-            return Result.Fail("Executor already registered");
-        }
-
-        _executors.Add(commandExecutor);
-
-        return Result.Ok();
-    }
-
-    public Result UnregisterExecutor(ICommandExecutor commandExecutor)
-    {
-        if (!_executors.Contains(commandExecutor))
-        {
-            return Result.Fail("Executor is not registered");
-        }
-
-        _executors.Remove(commandExecutor);
-
-        return Result.Ok();
+        _commandExecutor = commandExecutor;
     }
 
     public Result ExecuteCommand(CommandBase command)
@@ -158,21 +136,26 @@ public class CommandService : ICommandService
             // Attempt to execute the command
             if (command is not null)
             {
-                foreach (var executor in _executors)
+                if (_commandExecutor.CanExecuteCommand(command))
                 {
-                    if (executor.CanExecuteCommand(command))
+                    try
                     {
-                        var executeResult = await executor.ExecuteCommand(command);
+                        var executeResult = await _commandExecutor.ExecuteCommand(command);
                         if (executeResult.IsFailure)
                         {
                             Log($"Command '{command}' failed: {executeResult.Error}");
                         }
-                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Command '{command}' failed: {ex.Message}");
                     }
                 }
-
-                // Log the error and attempt to continue
-                Log($"Command '{command}' failed because no registered executor could execute it.");
+                else
+                { 
+                    // Log the error and discard this command
+                    Log($"Command '{command}' failed because no registered executor could execute it.");
+                }
             }
 
             await Task.Delay(1);
@@ -189,5 +172,4 @@ public class CommandService : ICommandService
         // Todo: Log to a file
         Console.WriteLine(message);
     }
-
 }
