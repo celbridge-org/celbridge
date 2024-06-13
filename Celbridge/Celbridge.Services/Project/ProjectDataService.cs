@@ -1,6 +1,4 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.Project;
@@ -9,18 +7,10 @@ public class ProjectDataService : IProjectDataService
 {
     private const int ProjectVersion = 1;
 
-    private readonly INavigationService _navigationService;
-    private readonly IUserInterfaceService _userInterfaceService;
-
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
-    public ProjectDataService(
-        INavigationService navigationService,
-        IUserInterfaceService userInterfaceService)
-    {
-        _navigationService = navigationService;
-        _userInterfaceService = userInterfaceService;
-    }
+    public ProjectDataService()
+    {}
 
     public IProjectData? LoadedProjectData { get; private set; }
 
