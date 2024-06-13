@@ -1,16 +1,24 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Project;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.Project;
 
-public class ProjectDataService : IProjectDataService
+public class ProjectDataService : IProjectDataService, ICommandExecutor
 {
     private const int ProjectVersion = 1;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
-    public ProjectDataService()
-    {}
+    private readonly ICommandService _commandService;
+
+    public ProjectDataService(ICommandService commandService)
+    {
+        _commandService = commandService;
+
+        // No need to unregister because this service has application lifetime
+        _commandService.RegisterExecutor(this); 
+    }
 
     public IProjectData? LoadedProjectData { get; private set; }
 
@@ -109,5 +117,19 @@ public class ProjectDataService : IProjectDataService
         LoadedProjectData = null;
 
         return Result.Ok();
+    }
+
+    public bool CanExecuteCommand(CommandBase command)
+    {
+        return command is UnloadProjectDataCommand;
+    }
+
+    public async Task<Result> ExecuteCommand(CommandBase command)
+    {
+        if (command is UnloadProjectDataCommand unloadCommand)
+        {
+            return await unloadCommand.ExecuteAsync();
+        }
+        return Result.Fail($"Unknown command type {command}");
     }
 }

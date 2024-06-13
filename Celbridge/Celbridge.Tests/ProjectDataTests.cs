@@ -1,4 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Project;
+using Celbridge.Services.Commands;
 using Celbridge.Services.Project;
 using CommunityToolkit.Diagnostics;
 
@@ -8,6 +10,8 @@ namespace Celbridge.Tests;
 public class ProjectDataTests
 {
     private IProjectDataService? _projectDataService;
+    private ICommandService? _commandService;
+
     private string? _projectFolder;
 
     [SetUp]
@@ -19,13 +23,18 @@ public class ProjectDataTests
             Directory.Delete(_projectFolder, true);
         }
 
-        _projectDataService = new ProjectDataService();
+        _commandService = new CommandService();
+        _projectDataService = new ProjectDataService(_commandService);
+
+        _commandService.StartExecutingCommands();
     }
 
     [TearDown]
     public void TearDown()
     {
-        _projectDataService = null;
+        Guard.IsNotNull(_commandService);
+        _commandService.StopExecutingCommands();
+
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder!, true);
@@ -35,6 +44,7 @@ public class ProjectDataTests
     [Test]
     public async Task ICanCreateAndLoadProjectDataAsync()
     {
+        Guard.IsNotNull(_commandService);
         Guard.IsNotNull(_projectDataService);
         Guard.IsNotNullOrEmpty(_projectFolder);
 
@@ -50,7 +60,18 @@ public class ProjectDataTests
         projectData.Should().NotBeNull();
         projectData.ProjectName.Should().Be("TestProjectA");
 
-        _projectDataService.UnloadProjectData();
+        var unloadProjectDataCommand = new UnloadProjectDataCommand(_projectDataService);
+        _commandService.ExecuteCommand(unloadProjectDataCommand);
+        
+        for (int i = 0; i < 10; i++)
+        {
+            if (_projectDataService.LoadedProjectData is null)
+            {
+                break;
+            }
+            await Task.Delay(10);
+        }
+
         _projectDataService.LoadedProjectData.Should().BeNull();
 
         Directory.Delete(_projectFolder, true);
