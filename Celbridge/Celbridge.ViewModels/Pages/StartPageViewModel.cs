@@ -9,9 +9,7 @@ namespace Celbridge.ViewModels.Pages;
 public partial class StartPageViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
-    private readonly INavigationService _navigationService;
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly ISchedulerService _schedulerService;
 
     public StartPageViewModel(
         INavigationService navigationService,
@@ -19,10 +17,8 @@ public partial class StartPageViewModel : ObservableObject
         IUserInterfaceService userInterfaceService,
         ISchedulerService schedulerService)
     {
-        _navigationService = navigationService;
         _loggingService = loggingService;
         _userInterfaceService = userInterfaceService;
-        _schedulerService = schedulerService;
     }
 
     public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
@@ -76,24 +72,6 @@ public partial class StartPageViewModel : ObservableObject
         var dialogService = _userInterfaceService.DialogService;
 
         dialogService.AcquireProgressDialog("Some title");
-    }
-
-    public ICommand ScheduleTaskCommand => new RelayCommand(ScheduleTask_Executed);
-    private void ScheduleTask_Executed()
-    {
-        var dialogService = _userInterfaceService.DialogService;
-
-        IProgressDialogToken? token;
-
-        _schedulerService.ScheduleFunction(async () =>
-        {
-            token = dialogService.AcquireProgressDialog("Doing stuff");
-            await Task.Delay(1000);            
-            // Displaying this alert automatically suppresses the progress dialog until the alert is dismissed
-            await dialogService.ShowAlertDialogAsync("Scheduled Alert", "An alert message", "Ok");
-            await Task.Delay(1000);
-            dialogService.ReleaseProgressDialog(token);
-        });
     }
 }
 
