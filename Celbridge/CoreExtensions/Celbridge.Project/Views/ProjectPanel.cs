@@ -41,13 +41,13 @@ public sealed partial class ProjectPanel : UserControl
                 refreshProjectButton
             );
 
-        var treeView = new ResourceTreeView()
+        var resourceTreeView = new ResourceTreeView()
             .Grid(row:1);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
             .VerticalAlignment(VerticalAlignment.Top)
-            .Children(titleBar, treeView);
+            .Children(titleBar, resourceTreeView);
            
         //
         // Set the data context and page content
