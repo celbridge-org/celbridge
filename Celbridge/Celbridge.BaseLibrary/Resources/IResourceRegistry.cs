@@ -8,12 +8,12 @@ namespace Celbridge.BaseLibrary.Resources;
 public interface IResourceRegistry
 {
     /// <summary>
-    /// An observable collection of the resources in the project folder.
+    /// An observable collection representing the resources in the project folder.
     /// </summary>
     ObservableCollection<IResource> Resources { get; }
 
     /// <summary>
-    /// Updates the registry with the current state of the resources in the project folder.
+    /// Updates the registry to mirror the current state of the resources in the project folder.
     /// </summary>
     Result UpdateRegistry();
 }

@@ -23,7 +23,7 @@ public class ProjectService : IProjectService, IDisposable
         _projectDataService = projectDataService;
 
         // Create the resource registry for the project.
-        // This is populated later once the workspace UI is fully loaded.
+        // The registry is populated later once the workspace UI is fully loaded.
         var projectFolder = _projectDataService.LoadedProjectData!.ProjectFolder;
         ResourceRegistry = new ResourceRegistry(projectFolder);
     }
