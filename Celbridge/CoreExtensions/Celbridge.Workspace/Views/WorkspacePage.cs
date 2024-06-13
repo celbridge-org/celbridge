@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Dialog;
+using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
@@ -279,8 +280,8 @@ public sealed partial class WorkspacePage : Page
         //
 
         var serviceProvider = ServiceLocator.ServiceProvider;
-        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
-        var workspaceService = userInterfaceService.WorkspaceService as WorkspaceService;
+        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
         // Insert the child panels at the start of the children collection so that the panel toggle

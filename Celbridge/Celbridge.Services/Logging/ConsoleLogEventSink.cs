@@ -4,6 +4,7 @@ using Serilog.Events;
 using Serilog.Configuration;
 using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Services.Logging;
 
@@ -13,22 +14,22 @@ namespace Celbridge.Services.Logging;
 public class ConsoleLogEventSink : ILogEventSink
 {
     private readonly IFormatProvider _formatProvider;
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ConsoleLogEventSink(IFormatProvider formatProvider, IUserInterfaceService userInterfaceService)
+    public ConsoleLogEventSink(IFormatProvider formatProvider, IWorkspaceWrapper workspaceWrapper)
     {
         _formatProvider = formatProvider;
-        _userInterfaceService = userInterfaceService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public void Emit(LogEvent logEvent)
     {
-        if (!_userInterfaceService.IsWorkspaceLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
 
-        var consoleService = _userInterfaceService.WorkspaceService.ConsoleService;
+        var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
 
         var message = logEvent.RenderMessage(_formatProvider);
         consoleService.Print(MessageType.Info, message);
@@ -39,9 +40,9 @@ public static class ConsoleServiceEventSinkExtensions
 {
     public static LoggerConfiguration ConsoleService(
         this LoggerSinkConfiguration loggerConfiguration,
-        IUserInterfaceService userInterfaceService,
+        IWorkspaceWrapper workspaceWrapper,
         IFormatProvider? formatProvider = null)
     {
-        return loggerConfiguration.Sink(new ConsoleLogEventSink(formatProvider!, userInterfaceService));
+        return loggerConfiguration.Sink(new ConsoleLogEventSink(formatProvider!, workspaceWrapper));
     }
 }

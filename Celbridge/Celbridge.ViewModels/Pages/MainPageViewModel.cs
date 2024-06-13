@@ -27,6 +27,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public MainPageViewModel(
@@ -35,6 +36,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         INavigationService navigationService,
         IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService,
+        IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
         _messengerService = messengerService;
@@ -42,6 +44,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _navigationService = navigationService;
         _projectDataService = projectDataService;
         _userInterfaceService = userInterfaceService;
+        _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
 
@@ -125,8 +128,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CreateProjectAsync()
     {
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-        var dialogService = userInterfaceService.DialogService;
+        var dialogService = _userInterfaceService.DialogService;
 
         // The new project dialog takes care of creating the project folder and the project data file.
 
@@ -181,7 +183,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CloseProjectAsync()
     {
-        if (!IsProjectDataLoaded && !_userInterfaceService.IsWorkspaceLoaded)
+        if (!IsProjectDataLoaded && !_workspaceWrapper.IsWorkspaceLoaded)
         {
             // No project loaded so nothing to do here.
             return;
@@ -194,7 +196,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _navigationService.NavigateToPage(EmptyPageName);
 
         // Wait until the workspace is fully unloaded
-        while (_userInterfaceService.IsWorkspaceLoaded)
+        while (_workspaceWrapper.IsWorkspaceLoaded)
         {
             await Task.Delay(50);
         }

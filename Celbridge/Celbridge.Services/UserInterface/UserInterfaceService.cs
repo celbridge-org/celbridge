@@ -1,14 +1,12 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.BaseLibrary.UserInterface.FilePicker;
-using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Services.UserInterface;
 
 public class UserInterfaceService : IUserInterfaceService
 {
     private IMessengerService _messengerService;
-    private IWorkspaceService? _workspaceService;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -44,9 +42,6 @@ public class UserInterfaceService : IUserInterfaceService
         // Broadcast a message whenever the main window acquires or loses focus (Windows only).
         _mainWindow.Activated += MainWindow_Activated;
 #endif
-
-        _messengerService.Register<WorkspaceServiceCreatedMessage>(this, OnWorkspaceServiceCreated);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloadedMessage);
     }
 
 #if WINDOWS
@@ -67,33 +62,4 @@ public class UserInterfaceService : IUserInterfaceService
         }
     }
 #endif
-
-    private void OnWorkspaceServiceCreated(object recipient, WorkspaceServiceCreatedMessage loadedMessage)
-    {
-        // The workspace service is populated at the start of the workspace loading process.
-        // This allows other systems to access the workspace service while they are loading in.
-        Guard.IsNull(_workspaceService);
-        _workspaceService = loadedMessage.WorkspaceService;
-    }
-
-    private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
-    {
-        // Clear the reference to the workspace service when the workspace is unloaded.
-        Guard.IsNotNull(_workspaceService);
-        _workspaceService = null;
-    }
-
-    public bool IsWorkspaceLoaded => _workspaceService is not null;
-
-    public IWorkspaceService WorkspaceService
-    {
-        get
-        {
-            if (_workspaceService is null)
-            {
-                throw new InvalidOperationException("Failed to acquire workspace because no workspace has been loaded");
-            }
-            return _workspaceService;
-        }
-    }
 }
