@@ -8,17 +8,14 @@ public partial class ProjectPanelViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
-    private readonly ILoggingService _loggingService;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
 
     public ProjectPanelViewModel(
-        ILoggingService loggingService,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService)
     {
-        _loggingService = loggingService;
         _messengerService = messengerService;
 
         _projectService = userInterfaceService.WorkspaceService.ProjectService;
