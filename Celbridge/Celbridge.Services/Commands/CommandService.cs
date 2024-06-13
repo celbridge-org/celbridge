@@ -9,18 +9,11 @@ public class CommandService : ICommandService
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
-    private readonly ICommandExecutor _commandExecutor;
-
     private object _lock = new object();
 
     private readonly Stopwatch _stopwatch = new();
 
     private bool _stopped = false;
-
-    public CommandService(ICommandExecutor commandExecutor)
-    {
-        _commandExecutor = commandExecutor;
-    }
 
     public Result ExecuteCommand(CommandBase command)
     {
@@ -133,29 +126,25 @@ public class CommandService : ICommandService
                 }
             }
 
-            // Attempt to execute the command
             if (command is not null)
             {
-                if (_commandExecutor.CanExecuteCommand(command))
+                try
                 {
-                    try
+                    // Attempt to execute the command
+                    var executeResult = await command.ExecuteAsync();
+                    if (executeResult.IsFailure)
                     {
-                        var executeResult = await _commandExecutor.ExecuteCommand(command);
-                        if (executeResult.IsFailure)
-                        {
-                            Log($"Command '{command}' failed: {executeResult.Error}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"Command '{command}' failed: {ex.Message}");
+                        Log($"Command '{command}' failed: {executeResult.Error}");
                     }
                 }
-                else
-                { 
-                    // Log the error and discard this command
-                    Log($"Command '{command}' failed because no registered executor could execute it.");
+                catch (Exception ex)
+                {
+                    Log($"Command '{command}' failed: {ex.Message}");
                 }
+            }
+            else
+            { 
+                Log($"Command '{command}' failed because no registered executor could execute it.");
             }
 
             await Task.Delay(1);
