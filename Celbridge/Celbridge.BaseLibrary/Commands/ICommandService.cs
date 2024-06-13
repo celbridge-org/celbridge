@@ -16,16 +16,6 @@ public interface ICommandService
     public void StopExecutingCommands();
 
     /// <summary>
-    /// Register an executor that can execute commands.
-    /// </summary>
-    public Result RegisterExecutor(ICommandExecutor commandExecutor);
-
-    /// <summary>
-    /// Unregister an executor that can execute commands.
-    /// </summary>
-    public Result UnregisterExecutor(ICommandExecutor commandExecutor);
-
-    /// <summary>
     /// Execute a command.
     /// The command is added to the command queue and executed when it reaches the front of the queue.
     /// </summary>
