@@ -1,6 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.Services.Commands;
+﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.Services.Project;
 using CommunityToolkit.Diagnostics;
 
@@ -10,7 +8,6 @@ namespace Celbridge.Tests;
 public class ProjectDataTests
 {
     private IProjectDataService? _projectDataService;
-    private ICommandService? _commandService;
 
     private string? _projectFolder;
 
@@ -23,18 +20,12 @@ public class ProjectDataTests
             Directory.Delete(_projectFolder, true);
         }
 
-        _commandService = new CommandService();
-        _projectDataService = new ProjectDataService(_commandService);
-
-        _commandService.StartExecutingCommands();
+        _projectDataService = new ProjectDataService();
     }
 
     [TearDown]
     public void TearDown()
     {
-        Guard.IsNotNull(_commandService);
-        _commandService.StopExecutingCommands();
-
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder!, true);
@@ -44,7 +35,6 @@ public class ProjectDataTests
     [Test]
     public async Task ICanCreateAndLoadProjectDataAsync()
     {
-        Guard.IsNotNull(_commandService);
         Guard.IsNotNull(_projectDataService);
         Guard.IsNotNullOrEmpty(_projectFolder);
 
@@ -60,18 +50,7 @@ public class ProjectDataTests
         projectData.Should().NotBeNull();
         projectData.ProjectName.Should().Be("TestProjectA");
 
-        var unloadProjectDataCommand = new UnloadProjectDataCommand(_projectDataService);
-        _commandService.ExecuteCommand(unloadProjectDataCommand);
-        
-        for (int i = 0; i < 10; i++)
-        {
-            if (_projectDataService.LoadedProjectData is null)
-            {
-                break;
-            }
-            await Task.Delay(10);
-        }
-
+        _projectDataService.UnloadProjectData();
         _projectDataService.LoadedProjectData.Should().BeNull();
 
         Directory.Delete(_projectFolder, true);

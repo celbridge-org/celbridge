@@ -36,6 +36,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
+        services.AddSingleton<ICommandExecutor, CommandExecutor>();
 
         if (IsStorageAPIAvailable)
         {
