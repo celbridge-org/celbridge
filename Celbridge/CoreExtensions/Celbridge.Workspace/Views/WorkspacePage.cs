@@ -72,6 +72,7 @@ public sealed partial class WorkspacePage : Page
         _hideLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
+            .Margin(0, 3, 4, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon()
                 .FontFamily(fontFamily)
@@ -121,16 +122,13 @@ public sealed partial class WorkspacePage : Page
 
         _leftPanel = new Grid()
             .Grid(column: 0, row: 0, rowSpan: 3)
-            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(new Thickness(1, 0, 1, 0))
             .Children(
                 new Grid()
-                    .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
-                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
-                    .BorderThickness(0, 0, 0, 1)
+                    .VerticalAlignment(VerticalAlignment.Top)
                     .Children(_hideLeftPanelButton));
 
         _centerPanel = new Grid()
@@ -285,13 +283,12 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = userInterfaceService.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        // Insert the console panel at the start of the children collection so that the panel toggle button
-        // in the bottom panel take priority for accepting input.
+        // Insert the child panels at the start of the children collection so that the panel toggle
+        // buttons take priority for accepting input.
+
         var consolePanel = workspaceService.ConsoleService.CreateConsolePanel() as UIElement;
         _bottomPanel.Children.Insert(0, consolePanel);
 
-        // Insert the documents panel at the start of the children collection so that the left/right toggle buttons
-        // in the center panel take priority for accepting input.
         var documentsPanel = workspaceService.DocumentsService.CreateDocumentsPanel() as UIElement;
         _centerPanel.Children.Insert(0, documentsPanel);
 
@@ -299,7 +296,7 @@ public sealed partial class WorkspacePage : Page
         _rightPanel.Children.Add(inspectorPanel);
 
         var projectPanel = workspaceService.ProjectService.CreateProjectPanel() as UIElement;
-        _leftPanel.Children.Add(projectPanel);
+        _leftPanel.Children.Insert(0, projectPanel);
 
         var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
         _statusPanel.Children.Add(statusPanel);

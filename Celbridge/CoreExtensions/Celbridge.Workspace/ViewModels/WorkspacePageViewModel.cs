@@ -1,4 +1,5 @@
 using Celbridge.BaseLibrary.Messaging;
+using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -109,6 +110,11 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public async Task LoadWorkspaceAsync()
     {
+        //
+        // Scan the project resources and update the resource tree view.
+        //
+        _messengerService.Send(new RequestProjectRefreshMessage());
+
         // Todo: Load the workspace here
         await Task.Delay(1000);
 

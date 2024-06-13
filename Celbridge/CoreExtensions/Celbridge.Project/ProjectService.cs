@@ -1,4 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
+using Celbridge.Project.Resources;
 using Celbridge.Project.Views;
 
 namespace Celbridge.Project;
@@ -11,12 +13,19 @@ public class ProjectService : IProjectService, IDisposable
     // Convenience accessor for getting the loaded project data
     public IProjectData LoadedProjectData => _projectDataService.LoadedProjectData!;
 
+    public IResourceRegistry ResourceRegistry { get; init; }
+
     public ProjectService(
         IServiceProvider serviceProvider,
         IProjectDataService projectDataService)
     {
         _serviceProvider = serviceProvider;
         _projectDataService = projectDataService;
+
+        // Create the resource registry for the project.
+        // The registry is populated later once the workspace UI is fully loaded.
+        var projectFolder = _projectDataService.LoadedProjectData!.ProjectFolder;
+        ResourceRegistry = new ResourceRegistry(projectFolder);
     }
 
     public object CreateProjectPanel()

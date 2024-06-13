@@ -6,10 +6,10 @@ namespace Celbridge.Services.Project;
 public class ProjectData : IDisposable, IProjectData
 {
     private SQLiteAsyncConnection _connection;
-    private bool _disposed = false;
 
     public string ProjectName { get; init; }
-    public string ProjectPath { get; init; }
+    public string ProjectFilePath { get; init; }
+    public string ProjectFolder { get; init; }
     public string DatabasePath { get; init; }
 
     private ProjectData(string projectPath, string databasePath)
@@ -20,7 +20,10 @@ public class ProjectData : IDisposable, IProjectData
         ProjectName = Path.GetFileNameWithoutExtension(projectPath);
         Guard.IsNotNullOrWhiteSpace(ProjectName);
 
-        ProjectPath = projectPath;
+        ProjectFolder = Path.GetDirectoryName(projectPath)!;
+        Guard.IsNotNullOrWhiteSpace(ProjectFolder);
+
+        ProjectFilePath = projectPath;
         DatabasePath = databasePath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
@@ -88,6 +91,8 @@ public class ProjectData : IDisposable, IProjectData
 
         return Result.Ok();
     }
+
+    private bool _disposed = false;
 
     public void Dispose()
     {

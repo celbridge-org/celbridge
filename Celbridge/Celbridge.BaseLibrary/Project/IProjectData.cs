@@ -11,9 +11,14 @@ public interface IProjectData
     string ProjectName { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project file
+    /// Returns the path to the loaded project file.
     /// </summary>
-    string ProjectPath { get; }
+    string ProjectFilePath { get; }
+
+    /// <summary>
+    /// Returns the path to the folder containing the loaded project.
+    /// </summary>
+    string ProjectFolder { get; }
 
     /// <summary>
     /// Returns the configuration data for the project.
