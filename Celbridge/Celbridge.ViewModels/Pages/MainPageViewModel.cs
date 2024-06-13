@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Tasks;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
