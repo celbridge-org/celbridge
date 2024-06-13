@@ -17,7 +17,7 @@
                     Placement="RightEdgeAlignedTop">
             <MenuFlyoutItem Text="Add Resource" 
                             Icon="Add"
-                            Click="AddResourceToProject"/>
+                            Click="AddResource"/>
             <MenuFlyoutItem Text="Delete" 
                             Icon="Delete"
                             Click="DeleteResource"/>
@@ -42,7 +42,8 @@
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                               Glyph="&#xE8B7;" 
-                              FontSize="14" />
+                              FontSize="14" 
+                              Foreground="#FFCC40"/>
                     <TextBlock Margin="8 0 0 0" 
                                Text="{x:Bind Name, Mode=OneWay}" />
                 </StackPanel>
@@ -53,7 +54,7 @@
 					  x:DataType="models:FileResource">
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name,Mode=OneWay}"
                                ContextFlyout="{StaticResource FileResourceContextMenu}"
-                               DoubleTapped="DoubleTappedItem">
+                               DoubleTapped="DoubleTappedResource">
                 <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
             </muxc:TreeViewItem>
         </DataTemplate>
