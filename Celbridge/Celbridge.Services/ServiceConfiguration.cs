@@ -14,6 +14,8 @@ using Celbridge.BaseLibrary.Tasks;
 using Celbridge.Services.Tasks;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.Services.Project;
+using Celbridge.BaseLibrary.Commands;
+using Celbridge.Services.Commands;
 
 namespace Celbridge.Services;
 
@@ -29,6 +31,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ISchedulerService, SchedulerService>();
+        services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IProjectDataService, ProjectDataService>();
 
         // Register user interface services

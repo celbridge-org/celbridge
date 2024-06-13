@@ -1,9 +1,11 @@
-﻿using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Tasks;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Services.Project;
 using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
 
@@ -26,7 +28,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly ISchedulerService _schedulerService;
+    private readonly ICommandService _commandService;
 
     public MainPageViewModel(
         IMessengerService messengerService,
@@ -34,14 +36,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         INavigationService navigationService,
         IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService,
-        ISchedulerService schedulerService)
+        ICommandService commandService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
         _userInterfaceService = userInterfaceService;
-        _schedulerService = schedulerService;
+        _commandService = commandService;
     }
 
     public bool IsProjectDataLoaded => _projectDataService.LoadedProjectData is not null;
@@ -78,6 +80,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         // Navigate to the start page at startup
         _navigationService.NavigateToPage(StartPageName);
+
+        // Start executing queued commands
+        _commandService.StartExecutingCommands();
 
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
@@ -196,13 +201,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
 
         // We can now unload the project data.
-
-        var projectDataService = _projectDataService; // Avoid capturing "this"
-        _schedulerService.ScheduleFunction(async () =>
-        {
-            projectDataService.UnloadProjectData();
-            await Task.CompletedTask;
-        });
+        var unloadProjectDataCommand = new UnloadProjectDataCommand(_projectDataService);
+        _commandService.ExecuteCommand(unloadProjectDataCommand);
 
         // Wait until the project data is unloaded
         while (IsProjectDataLoaded)
