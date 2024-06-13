@@ -8,7 +8,7 @@ namespace Celbridge.Project.Resources;
 public class ResourceRegistry : IResourceRegistry
 {
     private readonly string _projectFolder;
-    private FolderResource _rootFolder = new(string.Empty);
+    private FolderResource _rootFolder = new("Root");
 
     public ObservableCollection<IResource> Resources
     {
@@ -63,6 +63,7 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (!currentFiles.Any(f => f.Name == file.Name))
                 {
+                    // Insert file resource in sorted order
                     InsertResource(currentFolder.Children, file);
                 }
             }
@@ -91,6 +92,7 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (!currentFolders.Any(f => f.Name == folder.Name))
                 {
+                    // Insert folder resource in sorted order
                     InsertResource(currentFolder.Children, folder);
                 }
             }
