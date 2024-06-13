@@ -26,7 +26,7 @@ public sealed partial class ResourceTreeView : UserControl
         Guard.IsNotNull(element);
     }
 
-    private void AddResourceToProject(object? sender, RoutedEventArgs e)
+    private void AddResource(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
@@ -38,7 +38,7 @@ public sealed partial class ResourceTreeView : UserControl
         Guard.IsNotNull(element);
     }
 
-    private void DoubleTappedItem(object? sender, DoubleTappedRoutedEventArgs e)
+    private void DoubleTappedResource(object? sender, DoubleTappedRoutedEventArgs e)
     {
         var element = sender as FrameworkElement;
         Guard.IsNotNull(element);
