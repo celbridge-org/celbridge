@@ -46,6 +46,7 @@ public abstract class CommandBase
     /// </summary>
     public virtual async Task<Result> Undo()
     {
+        await Task.CompletedTask;
         throw new NotImplementedException();
     }
 }

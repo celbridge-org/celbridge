@@ -10,8 +10,6 @@ using Celbridge.Services.UserInterface.Dialog;
 using Celbridge.Services.UserInterface.FilePicker;
 using Celbridge.Services.UserInterface.Navigation;
 using Celbridge.Services.UserInterface;
-using Celbridge.BaseLibrary.Tasks;
-using Celbridge.Services.Tasks;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.Services.Project;
 using Celbridge.BaseLibrary.Commands;
@@ -30,7 +28,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
-        services.AddSingleton<ISchedulerService, SchedulerService>();
         services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IProjectDataService, ProjectDataService>();
 
