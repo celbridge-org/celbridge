@@ -1,8 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Tasks;
-using Celbridge.BaseLibrary.UserInterface.Dialog;
 
 namespace Celbridge.ViewModels.Pages;
 
@@ -14,8 +12,7 @@ public partial class StartPageViewModel : ObservableObject
     public StartPageViewModel(
         INavigationService navigationService,
         ILoggingService loggingService,
-        IUserInterfaceService userInterfaceService,
-        ISchedulerService schedulerService)
+        IUserInterfaceService userInterfaceService)
     {
         _loggingService = loggingService;
         _userInterfaceService = userInterfaceService;
