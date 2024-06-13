@@ -18,7 +18,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
 
-    public const string EmptyPageName = "EmptyPage";
     public const string StartPageName = "StartPage";
     public const string WorkspacePageName = "WorkspacePage";
 
@@ -189,21 +188,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to schedule some operations (e.g. save changes) before we close it.
-
-        // Force the Workspace page to unload by navigating to an empty page.
-        _navigationService.NavigateToPage(EmptyPageName);
-
-        // Wait until the workspace is fully unloaded
-        while (_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            await Task.Delay(50);
-        }
-
-        // We can now unload the project data.
-        var unloadProjectDataCommand = new UnloadProjectDataCommand(_projectDataService);
-        _commandService.ExecuteCommand(unloadProjectDataCommand);
+        var command = new UnloadProjectCommand();
+        _commandService.ExecuteCommand(command);
 
         // Wait until the project data is unloaded
         while (IsProjectDataLoaded)
