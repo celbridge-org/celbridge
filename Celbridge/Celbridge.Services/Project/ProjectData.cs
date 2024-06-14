@@ -12,18 +12,18 @@ public class ProjectData : IDisposable, IProjectData
     public string ProjectFolder { get; init; }
     public string DatabasePath { get; init; }
 
-    private ProjectData(string projectPath, string databasePath)
+    private ProjectData(string projectFilePath, string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectPath);
+        Guard.IsNotNullOrWhiteSpace(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        ProjectName = Path.GetFileNameWithoutExtension(projectPath);
+        ProjectName = Path.GetFileNameWithoutExtension(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(ProjectName);
 
-        ProjectFolder = Path.GetDirectoryName(projectPath)!;
+        ProjectFolder = Path.GetDirectoryName(projectFilePath)!;
         Guard.IsNotNullOrWhiteSpace(ProjectFolder);
 
-        ProjectFilePath = projectPath;
+        ProjectFilePath = projectFilePath;
         DatabasePath = databasePath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
@@ -71,23 +71,23 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IProjectData>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectPath, string databasePath, int version)
+    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath, int version)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var project = new ProjectData(projectPath, databasePath);
-        Guard.IsNotNull(project);
+        var projectData = new ProjectData(projectFilePath, databasePath);
+        Guard.IsNotNull(projectData);
 
         var config = new ProjectConfig 
         { 
             Version = version 
         };
 
-        await project._connection.CreateTableAsync<ProjectConfig>();
-        await project._connection.InsertAsync(config);
+        await projectData._connection.CreateTableAsync<ProjectConfig>();
+        await projectData._connection.InsertAsync(config);
 
         // Close the database after creating it
-        project.Dispose();
+        projectData.Dispose();
 
         return Result.Ok();
     }

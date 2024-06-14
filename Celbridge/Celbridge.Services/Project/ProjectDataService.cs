@@ -14,54 +14,89 @@ public class ProjectDataService : IProjectDataService
 
     public IProjectData? LoadedProjectData { get; private set; }
 
-    public async Task<Result<string>> CreateProjectDataAsync(string folder, string projectName)
+    public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
+        if (config is null)
+        {
+            return Result.Fail("New project config is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(config.Folder))
+        {
+            return Result.Fail("Project folder is empty.");
+        }
+
+        return ValidateProjectName(config.ProjectName);
+    }
+
+    public Result ValidateProjectName(string projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Result.Fail("Project name is empty.");
+        }
+
+        // It's pretty much impossible to robustly check for invalid characters in a path in a way that
+        // works on all platforms. As a "best effort" solution, we do a basic check for invalid characters.
+        var invalidChars = Path.GetInvalidFileNameChars();
+        foreach (var c in projectName)
+        {
+            if (invalidChars.Contains(c))
+            {
+                return Result.Fail($"Project name '{projectName}' contains invalid characters.");
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> CreateProjectDataAsync(NewProjectConfig config)
+    {
+        // Todo: Check that the config is valid
+
         try
         {
-            var projectFolder = Path.Combine(folder, projectName);
-
-            if (Directory.Exists(projectFolder))
+            if (Directory.Exists(config.ProjectFolder))
             {
-                return Result<string>.Fail($"Project folder already exists: {projectFolder}");
+                return Result<string>.Fail($"Project folder already exists: {config.ProjectFolder}");
             }
 
-            Directory.CreateDirectory(projectFolder);
+            Directory.CreateDirectory(config.ProjectFolder);
 
             //
             // Write the .celbridge Json file in the project folder
             //
 
-            var projectPath = Path.Combine(projectFolder, $"{projectName}.celbridge");
             var projectJson = $$"""
                 {
                     "projectDataFile": "{{DefaultProjectDataPath}}"
                 }
                 """;
 
-            await File.WriteAllTextAsync(projectPath, projectJson);
+            await File.WriteAllTextAsync(config.ProjectFilePath, projectJson);
 
             //
             // Create a database file inside a folder named after the project
             //
 
-            var databasePath = Path.Combine(projectFolder, DefaultProjectDataPath);
+            var databasePath = Path.Combine(config.ProjectFolder, DefaultProjectDataPath);
             string? dataFolder = Path.GetDirectoryName(databasePath);
             if (!string.IsNullOrEmpty(dataFolder))
             {
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(projectPath, databasePath, ProjectVersion);
+            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectVersion);
             if (createResult.IsFailure)
             {
-                return Result<string>.Fail($"Failed to create project: {projectName}");
+                return Result.Fail($"Failed to create project: {config.ProjectName}");
             }
 
-            return Result<string>.Ok(projectPath);
+            return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Failed to create project: {projectName}. {ex.Message}");
+            return Result.Fail($"Failed to create project: {config.ProjectName}. {ex.Message}");
         }
     }
 

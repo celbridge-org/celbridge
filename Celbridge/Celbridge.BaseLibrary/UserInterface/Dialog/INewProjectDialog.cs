@@ -1,11 +1,14 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿using Celbridge.BaseLibrary.Project;
+
+namespace Celbridge.BaseLibrary.UserInterface.Dialog;
 
 public interface INewProjectDialog
 {
     /// <summary>
     /// Present the New Project dialog to the user.
     /// The async call completes when the user closes the dialog.
-    /// Returns the path to the new project file if the project was successfully created.
+    /// Returns the config information specified by the the user to create the new project.
     /// </summary>
-    Task<Result<string>> ShowDialogAsync();
+    Task<Result<NewProjectConfig>> ShowDialogAsync();
+
 }
