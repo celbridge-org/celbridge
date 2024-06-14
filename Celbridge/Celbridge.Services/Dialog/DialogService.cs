@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface.Dialog;
+using Celbridge.BaseLibrary.Dialog;
 
-namespace Celbridge.Services.UserInterface.Dialog;
+namespace Celbridge.Services.Dialog;
 
 public class DialogService : IDialogService
 {
@@ -79,7 +79,7 @@ public class DialogService : IDialogService
         SuppressProgressDialog(true);
         var showResult = await dialog.ShowDialogAsync();
         SuppressProgressDialog(false);
-         
-        return showResult; 
+
+        return showResult;
     }
 }

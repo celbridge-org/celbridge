@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.UserInterface.Dialog;
+using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
@@ -50,7 +50,7 @@ public sealed partial class WorkspacePage : Page
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        _dialogService = serviceProvider.GetRequiredService<IUserInterfaceService>().DialogService;
+        _dialogService = serviceProvider.GetRequiredService<IDialogService>();
 
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
