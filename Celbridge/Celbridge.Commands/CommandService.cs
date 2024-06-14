@@ -15,6 +15,19 @@ public class CommandService : ICommandService
 
     private bool _stopped = false;
 
+    public Result Execute<T>(Action<T> configure) where T : ICommand
+    {
+        var command = CreateCommand<T>();
+        configure.Invoke(command);
+        return EnqueueCommand(command);
+    }
+
+    public Result Execute<T>() where T : ICommand
+    {
+        var command = CreateCommand<T>();
+        return EnqueueCommand(command);
+    }
+
     public T CreateCommand<T>() where T : ICommand
     {
         var serviceProvider = ServiceLocator.ServiceProvider;

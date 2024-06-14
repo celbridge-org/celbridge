@@ -6,6 +6,17 @@
 public interface ICommandService
 {
     /// <summary>
+    /// Create, configure and enqueue a command in one step.
+    /// </summary>
+    Result Execute<T>(Action<T> configure) where T : ICommand;
+
+    /// <summary>
+    /// Create and enqueue a command in one step.
+    /// Use this for commands that don't need to be configured.
+    /// </summary>
+    Result Execute<T>() where T : ICommand;
+
+    /// <summary>
     /// Create a new command via the dependency injection system.
     /// </summary>
     T CreateCommand<T>() where T : ICommand;
