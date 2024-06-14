@@ -17,6 +17,7 @@ public readonly struct CommandId : IComparable<CommandId>
 
     /// <summary>
     /// Factory method to create a new command id.
+    /// Each call to Create will return a new unique id.
     /// </summary>
     public static CommandId Create()
     {
@@ -30,13 +31,11 @@ public readonly struct CommandId : IComparable<CommandId>
         return Id.CompareTo(other.Id);
     }
 
-    // Override the equality operator
     public static bool operator ==(CommandId lhs, CommandId rhs)
     {
         return lhs.Equals(rhs);
     }
 
-    // Override the inequality operator
     public static bool operator !=(CommandId lhs, CommandId rhs)
     {
         return !lhs.Equals(rhs);
@@ -51,7 +50,6 @@ public readonly struct CommandId : IComparable<CommandId>
         return false;
     }
 
-    // Implement the IEquatable<MyStruct> interface
     public bool Equals(CommandId other)
     {
         return Id == other.Id;
