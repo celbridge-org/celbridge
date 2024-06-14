@@ -4,6 +4,7 @@ namespace Celbridge.Services.Commands;
 
 public class CommandService : ICommandService
 {
+    // ExecutionTime is the time in milliseconds when the command should be executed
     private record QueuedCommand(ICommand Command, long ExecutionTime);
 
     private readonly List<QueuedCommand> _commandQueue = new();
