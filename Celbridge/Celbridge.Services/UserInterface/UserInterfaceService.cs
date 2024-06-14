@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.UserInterface.Dialog;
-using Celbridge.BaseLibrary.UserInterface.FilePicker;
+using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.FilePicker;
 
 namespace Celbridge.Services.UserInterface;
 

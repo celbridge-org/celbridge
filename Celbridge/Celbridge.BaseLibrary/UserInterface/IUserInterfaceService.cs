@@ -1,9 +1,8 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
-using Celbridge.BaseLibrary.UserInterface.FilePicker;
-using Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.BaseLibrary.UserInterface;
 
-namespace Celbridge.BaseLibrary.UserInterface;
-
+/// <summary>
+/// Provides access to core application UI elements.
+/// </summary>
 public interface IUserInterfaceService
 {
     /// <summary>
@@ -16,14 +15,4 @@ public interface IUserInterfaceService
     /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
     /// </summary>
     object XamlRoot { get; }
-
-    /// <summary>
-    /// Service for displaying the system file and folder picker dialog.
-    /// </summary>
-    IFilePickerService FilePickerService { get; }
-
-    /// <summary>
-    /// Service for displaying various dialogs, e.g. alerts, confirmation, modal progress
-    /// </summary>
-    IDialogService DialogService { get; }
 }

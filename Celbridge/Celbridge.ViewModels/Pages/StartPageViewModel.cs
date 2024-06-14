@@ -1,21 +1,25 @@
-﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
-using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.FilePicker;
+using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Navigation;
 
 namespace Celbridge.ViewModels.Pages;
 
 public partial class StartPageViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IFilePickerService _filePickerService;
+    private readonly IDialogService _dialogService;
 
     public StartPageViewModel(
         INavigationService navigationService,
         ILoggingService loggingService,
-        IUserInterfaceService userInterfaceService)
+        IFilePickerService filePickerService,
+        IDialogService dialogService)
     {
         _loggingService = loggingService;
-        _userInterfaceService = userInterfaceService;
+        _filePickerService = filePickerService;
+        _dialogService = dialogService;
     }
 
     public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
@@ -26,9 +30,7 @@ public partial class StartPageViewModel : ObservableObject
             ".txt"
         };
 
-        var filePickerService = _userInterfaceService.FilePickerService;
-
-        var result = await filePickerService.PickSingleFileAsync(extensions);
+        var result = await _filePickerService.PickSingleFileAsync(extensions);
         if (result.IsFailure)
         {
             _loggingService.Error(result.Error);
@@ -42,9 +44,7 @@ public partial class StartPageViewModel : ObservableObject
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
     private async Task SelectFolder_ExecutedAsync()
     {
-        var filePickerService = _userInterfaceService.FilePickerService;
-
-        var result = await filePickerService.PickSingleFolderAsync();
+        var result = await _filePickerService.PickSingleFolderAsync();
         if (result.IsFailure)
         {
             _loggingService.Error(result.Error);
@@ -58,17 +58,13 @@ public partial class StartPageViewModel : ObservableObject
     public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);
     private async Task ShowAlertDialog_ExecutedAsync()
     {
-        var dialogService = _userInterfaceService.DialogService;
-
-        await dialogService.ShowAlertDialogAsync("Some title", "Some message", "Ok");
+        await _dialogService.ShowAlertDialogAsync("Some title", "Some message", "Ok");
     }
 
     public ICommand ShowProgressDialogCommand => new RelayCommand(ShowProgressDialog_Executed);
     private void ShowProgressDialog_Executed()
     {
-        var dialogService = _userInterfaceService.DialogService;
-
-        dialogService.AcquireProgressDialog("Some title");
+        _dialogService.AcquireProgressDialog("Some title");
     }
 }
 

@@ -1,18 +1,18 @@
-﻿using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.UserInterface.Dialog;
-using Celbridge.BaseLibrary.UserInterface.FilePicker;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
+﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.FilePicker;
+using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Services.Dialog;
+using Celbridge.Services.FilePicker;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;
-using Celbridge.Services.Settings;
-using Celbridge.Services.UserInterface.Dialog;
-using Celbridge.Services.UserInterface.FilePicker;
-using Celbridge.Services.UserInterface.Navigation;
-using Celbridge.Services.UserInterface;
-using Celbridge.BaseLibrary.Project;
+using Celbridge.Services.Navigation;
 using Celbridge.Services.Project;
-using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Services.Settings;
+using Celbridge.Services.UserInterface;
 using Celbridge.Services.Workspace;
 
 namespace Celbridge.Services;
@@ -24,17 +24,17 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IEditorSettings, EditorSettings>();
-        services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<IMessengerService, MessengerService>();
+        services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProjectDataService, ProjectDataService>();
 
         // Register user interface services
         // These services can be acquired via the getters on IUserInterfaceService for convenient access.
-        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
+        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
 
         if (IsStorageAPIAvailable)
