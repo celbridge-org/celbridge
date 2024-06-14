@@ -1,5 +1,8 @@
 ﻿namespace Celbridge.BaseLibrary.Commands;
 
+/// <summary>
+/// A command that can be executed via the command service.
+/// </summary>
 public interface ICommand
 {
     /// <summary>

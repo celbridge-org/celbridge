@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.BaseLibrary.Commands;
 
 /// <summary>
-/// A command that can be executed and undone.
+/// Base class for commands that can be executed via the command service.
 /// </summary>
 public abstract class CommandBase : ICommand
 {
