@@ -23,7 +23,7 @@ public interface IEditorSettings : INotifyPropertyChanged
 
     string PreviousNewProjectFolder { get; set; }
 
-    string PreviousActiveProjectPath { get; set; }
+    string PreviousLoadedProject { get; set; }
 
     List<string> PreviousOpenDocuments { get; set; }
 

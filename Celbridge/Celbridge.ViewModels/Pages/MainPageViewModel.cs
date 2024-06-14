@@ -4,6 +4,7 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.Navigation;
 using CommunityToolkit.Diagnostics;
@@ -18,7 +19,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string SettingsTag = "Settings";
     public const string LegacyTag = "Legacy";
 
-    private const string StartPageName = "StartPage";
+    private const string HomePageName = "StartPage";
     private const string SettingsPageName = "SettingsPage";
     private const string LegacyPageName = "Shell";
 
@@ -29,6 +30,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IFilePickerService _filePickerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
+    private readonly IEditorSettings _editorSettings;
 
     public MainPageViewModel(
         IMessengerService messengerService,
@@ -37,7 +39,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IDialogService dialogService,
         IFilePickerService filePickerService,
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
@@ -46,6 +49,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _filePickerService = filePickerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+        _editorSettings = editorSettings;
     }
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
@@ -80,10 +84,21 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         Guard.IsNotNull(navigationService);
         navigationService.SetNavigationProvider(this);
 
-        // Todo: Add a user setting to automatically open the previously loaded project instead of the start page
-
-        // Navigate to the start page at startup
-        _navigationService.NavigateToPage(StartPageName);
+        // Open the previous project if one was loaded last time we ran the application.
+        var previousProjectFile = _editorSettings.PreviousLoadedProject;
+        if (!string.IsNullOrEmpty(previousProjectFile) &&
+            File.Exists(previousProjectFile))
+        {
+            _commandService.Execute<ILoadProjectCommand>((command) =>
+            {
+                command.ProjectPath = previousProjectFile;
+            });
+        }
+        else
+        {
+            // No previous project to load, so navigate to the home page
+            _ = NavigateToHomeAsync();
+        }
     }
 
     public void OnMainPage_Unloaded()
@@ -158,7 +173,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             }
         }
 
-        _navigationService.NavigateToPage(StartPageName);
+        // Clear the previous project so we don't try to reload it next time the application starts
+        _editorSettings.PreviousLoadedProject = string.Empty;
+        _navigationService.NavigateToPage(HomePageName);
     }
 }
 
