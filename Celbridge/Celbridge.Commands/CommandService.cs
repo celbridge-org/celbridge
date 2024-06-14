@@ -1,9 +1,12 @@
+using Celbridge.BaseLibrary.Logging;
 using System.Diagnostics;
 
 namespace Celbridge.Services.Commands;
 
 public class CommandService : ICommandService
 {
+    private readonly ILoggingService _loggingService;
+
     // ExecutionTime is the time in milliseconds when the command should be executed
     private record QueuedCommand(ICommand Command, long ExecutionTime);
 
@@ -14,6 +17,11 @@ public class CommandService : ICommandService
     private readonly Stopwatch _stopwatch = new();
 
     private bool _stopped = false;
+
+    public CommandService(ILoggingService loggingService)
+    {
+        _loggingService = loggingService;
+    }
 
     public Result Execute<T>(Action<T> configure) where T : ICommand
     {
@@ -138,12 +146,12 @@ public class CommandService : ICommandService
                     var executeResult = await command.ExecuteAsync();
                     if (executeResult.IsFailure)
                     {
-                        Log($"Command '{command}' failed: {executeResult.Error}");
+                        _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log($"Command '{command}' failed: {ex.Message}");
+                    _loggingService.Error($"Command '{command}' failed. {ex.Message}");
                 }
             }
 
@@ -154,11 +162,5 @@ public class CommandService : ICommandService
     public void StopExecution()
     {
         _stopped = true;
-    }
-
-    private void Log(string message)
-    {
-        // Todo: Log to a file
-        Console.WriteLine(message);
     }
 }
