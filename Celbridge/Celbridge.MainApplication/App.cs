@@ -4,6 +4,9 @@ using Celbridge.MainApplication;
 using Celbridge.Services.UserInterface;
 using Celbridge.Views.Pages;
 using Uno.UI;
+using Celbridge.BaseLibrary.Commands;
+using Celbridge.Services.Commands;
+using Windows.ApplicationModel.Core;
 
 namespace Celbridge;
 
@@ -87,6 +90,15 @@ public class App : Application
         MainWindow.Closed += (s, e) =>
         {
             _legacyApp?.OnMainWindowClosed();
+
+            // Todo: This doesn't get called on Skia+Gtk at all on exit.
+            // Ideally on all platforms we would stop executing commands as soon as the application starts exiting.
+            // This callback is supposedly implemented in CoreApplication already but it doesn't seem to work.
+            // If we get reports of crashes on exit then this is where I would start looking.
+            // https://github.com/unoplatform/uno/pull/10001/files
+            var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
+            Guard.IsNotNull(commandService);
+            commandService.StopExecution();
         };
 
         rootFrame.Loaded += (s, e) =>
@@ -109,6 +121,11 @@ public class App : Application
 #if DEBUG
             MainWindow.EnableHotReload();
 #endif
+
+            // Start executing commands
+            var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
+            Guard.IsNotNull(commandService);
+            commandService.StartExecution();
         };
 
         if (rootFrame.Content == null)
