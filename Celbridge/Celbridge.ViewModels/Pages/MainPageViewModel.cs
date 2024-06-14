@@ -83,13 +83,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         Guard.IsNotNull(navigationService);
         navigationService.SetNavigationProvider(this);
 
+        // Todo: Add a user setting to automatically open the previously loaded project instead of the start page
+
         // Navigate to the start page at startup
         _navigationService.NavigateToPage(StartPageName);
-
-        // Start executing queued commands
-        _commandService.StartExecutingCommands();
-
-        // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
     public void OnMainPage_Unloaded()

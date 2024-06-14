@@ -70,12 +70,12 @@ public class CommandService : ICommandService
         return Result.Fail("Command not found");
     }
 
-    public void StartExecutingCommands()
+    public void StartExecution()
     {
-        _ = StartCommandExecution();
+        _ = StartExecutionAsync();
     }
 
-    private async Task StartCommandExecution()
+    private async Task StartExecutionAsync()
     {
         _stopwatch.Start();
 
@@ -133,16 +133,12 @@ public class CommandService : ICommandService
                     Log($"Command '{command}' failed: {ex.Message}");
                 }
             }
-            else
-            { 
-                Log($"Command '{command}' failed because no registered executor could execute it.");
-            }
 
             await Task.Delay(1);
         }
     }
 
-    public void StopExecutingCommands()
+    public void StopExecution()
     {
         _stopped = true;
     }
