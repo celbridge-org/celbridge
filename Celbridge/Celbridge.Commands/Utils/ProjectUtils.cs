@@ -9,6 +9,41 @@ public static class ProjectUtils
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageName = "WorkspacePage";
 
+    public static async Task<Result> CreateProjectAsync(
+        IProjectDataService projectDataService,
+        NewProjectConfig newProjectConfig)
+    {
+        var createResult = await projectDataService.CreateProjectDataAsync(newProjectConfig);
+        if (createResult.IsSuccess)
+        {
+            return Result.Ok();
+        }
+
+        return Result.Fail($"Failed to create new project. {createResult.Error}");
+    }
+
+    public static async Task<Result> LoadProjectAsync(
+        IWorkspaceWrapper workspaceWrapper,
+        INavigationService navigationService, 
+        IProjectDataService projectDataService, 
+        string projectPath)
+    {
+        var openResult = projectDataService.LoadProjectData(projectPath);
+        if (openResult.IsFailure)
+        {
+            return Result.Fail($"Failed to open project '{projectPath}'. {openResult.Error}");
+        }
+
+        navigationService.NavigateToPage(WorkspacePageName);
+
+        while (!workspaceWrapper.IsWorkspaceLoaded)
+        {
+            await Task.Delay(50);
+        }
+
+        return Result.Ok();
+    }
+
     public static async Task<Result> UnloadProjectAsync(
         IWorkspaceWrapper workspaceWrapper,
         INavigationService navigationService,
@@ -37,18 +72,5 @@ public static class ProjectUtils
         }
 
         return projectDataService.UnloadProjectData();
-    }
-
-    public static Result LoadProject(INavigationService navigationService, IProjectDataService projectDataService, string projectPath)
-    {
-        var openResult = projectDataService.LoadProjectData(projectPath);
-        if (openResult.IsFailure)
-        {
-            return Result.Fail($"Failed to open project '{projectPath}'. {openResult.Error}");
-        }
-
-        navigationService.NavigateToPage(WorkspacePageName);
-
-        return Result.Ok();
     }
 }

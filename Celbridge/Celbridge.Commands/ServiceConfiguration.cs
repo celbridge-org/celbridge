@@ -9,6 +9,7 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ICommandService, CommandService>();
+        services.AddTransient<ICreateProjectCommand, CreateProjectCommand>();
         services.AddTransient<ILoadProjectCommand, LoadProjectCommand>();
         services.AddTransient<IUnloadProjectCommand, UnloadProjectCommand>();
     }

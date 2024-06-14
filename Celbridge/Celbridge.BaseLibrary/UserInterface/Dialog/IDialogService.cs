@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿using Celbridge.BaseLibrary.Project;
+
+namespace Celbridge.BaseLibrary.UserInterface.Dialog;
 
 public interface IDialogService
 {
@@ -23,7 +25,6 @@ public interface IDialogService
 
     /// <summary>
     /// Display a New Project Dialog.
-    /// Returns the path to the new project file if the project was successfully created.
     /// </summary>
-    Task<Result<string>> ShowNewProjectDialogAsync();
+    Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync();
 }

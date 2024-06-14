@@ -123,15 +123,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         var dialogService = _userInterfaceService.DialogService;
 
-        // The new project dialog takes care of creating the project folder and the project data file.
-
         var showResult = await dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
         {
-            var projectPath = showResult.Value;
+            var projectConfig = showResult.Value;
 
-            var command = _commandService.CreateCommand<ILoadProjectCommand>();
-            command.ProjectPath = projectPath;
+            var command = _commandService.CreateCommand<ICreateProjectCommand>();
+            command.Config = projectConfig;
             _commandService.EnqueueCommand(command);
         }
     }
@@ -140,6 +138,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var filePickerService = userInterfaceService.FilePickerService;
+
         var result = await filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
         if (result.IsSuccess)
         {
