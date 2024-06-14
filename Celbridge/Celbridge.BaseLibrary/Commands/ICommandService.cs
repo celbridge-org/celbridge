@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.BaseLibrary.Commands;
 
 /// <summary>
-/// Service for managing a command queue.
+/// An asynchronous command queue service.
 /// </summary>
 public interface ICommandService
 {
@@ -11,15 +11,15 @@ public interface ICommandService
     T CreateCommand<T>() where T : ICommand;
 
     /// <summary>
-    /// Execute a command.
-    /// The command is added to the command queue and executed when it reaches the front of the queue.
+    /// Add the command to the queue.
+    /// It will be executed when it reaches the front of the queue.
     /// </summary>
     Result EnqueueCommand(ICommand command);
 
     /// <summary>
-    /// Execute a command after a delay.
-    /// Delay is the minimum time (in milliseconds) before the command should execute. 
-    /// Actual execution might take longer than the delay time, depending on what other commands are ahead of it in the queue.
+    /// Add the command to the queue, with a delay.
+    /// The delay is the minimum time (in milliseconds) before the command will execute. 
+    /// Actual execution might take longer than the delay time, depending on what other commands execute ahead of it in the queue.
     /// </summary>
     Result EnqueueCommand(ICommand command, uint Delay);
 
