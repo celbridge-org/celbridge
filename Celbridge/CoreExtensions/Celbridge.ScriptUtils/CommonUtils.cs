@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.UserInterface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.ScriptUtils;
@@ -11,9 +12,7 @@ public class CommonUtils
         var dispatcher = ServiceLocator.ServiceProvider.GetRequiredService<IDispatcher>();
         dispatcher.ExecuteAsync(() =>
         {
-            var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-            var dialogService = userInterfaceService.DialogService;
-
+            var dialogService = ServiceLocator.ServiceProvider.GetRequiredService<IDialogService>();
             dialogService.ShowAlertDialogAsync(title, message, "Ok");
         });
     }
