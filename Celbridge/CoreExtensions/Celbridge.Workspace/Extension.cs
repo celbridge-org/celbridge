@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;

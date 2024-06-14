@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.BaseLibrary.Navigation;
 
 namespace Celbridge.MainApplication;
 

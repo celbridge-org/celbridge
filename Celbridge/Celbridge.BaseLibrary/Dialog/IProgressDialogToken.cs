@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿namespace Celbridge.BaseLibrary.Dialog;
 
 /// <summary>
 /// A token representing an active progress dialog.

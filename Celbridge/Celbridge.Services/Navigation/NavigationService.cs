@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Navigation;
+﻿using Celbridge.BaseLibrary.Navigation;
 
-namespace Celbridge.Services.UserInterface.Navigation;
+namespace Celbridge.Services.Navigation;
 
 public class NavigationService : INavigationService
 {

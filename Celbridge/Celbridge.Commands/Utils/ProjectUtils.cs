@@ -1,5 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Commands.Utils;

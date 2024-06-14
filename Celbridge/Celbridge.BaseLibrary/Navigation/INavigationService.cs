@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Navigation;
+﻿namespace Celbridge.BaseLibrary.Navigation;
 
 /// <summary>
 /// A service that supports page UI navigation.
