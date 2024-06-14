@@ -1,7 +1,10 @@
 ﻿using Celbridge.BaseLibrary.Project;
 
-namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+namespace Celbridge.BaseLibrary.Dialog;
 
+/// <summary>
+/// A modal dialog that allows the user to specify the configuration for a new project.
+/// </summary>
 public interface INewProjectDialog
 {
     /// <summary>

@@ -1,5 +1,8 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿namespace Celbridge.BaseLibrary.Dialog;
 
+/// <summary>
+/// Provides factory methods for creating various types of modal dialogs.
+/// </summary>
 public interface IDialogFactory
 {
     /// <summary>

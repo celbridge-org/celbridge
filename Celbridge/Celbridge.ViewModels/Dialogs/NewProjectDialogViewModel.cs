@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.FilePicker;
+using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.UserInterface;
 
@@ -8,7 +9,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
 {
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectDataService _projectDataService;
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IFilePickerService _filePickerService;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -24,11 +25,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
         IProjectDataService projectDataService,
-        IUserInterfaceService userInterfaceService)
+        IFilePickerService filePickerService)
     {
         _editorSettings = editorSettings;
         _projectDataService = projectDataService;
-        _userInterfaceService = userInterfaceService;
+        _filePickerService = filePickerService;
 
         _projectFolder = _editorSettings.PreviousNewProjectFolder;
 
@@ -55,7 +56,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolderCommand_ExecuteAsync);
     private async Task SelectFolderCommand_ExecuteAsync()
     {
-        var pickResult = await _userInterfaceService.FilePickerService.PickSingleFolderAsync();
+        var pickResult = await _filePickerService.PickSingleFolderAsync();
         if (pickResult.IsSuccess)
         {
             var folder = pickResult.Value;

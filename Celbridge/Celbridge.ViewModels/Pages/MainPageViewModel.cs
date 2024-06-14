@@ -1,11 +1,13 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Commands.Project;
+﻿using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Services.UserInterface.Navigation;
+using Celbridge.Services.Navigation;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.ViewModels.Pages;
@@ -24,7 +26,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IDialogService _dialogService;
+    private readonly IFilePickerService _filePickerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
@@ -33,7 +36,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         ILoggingService loggingService, 
         INavigationService navigationService,
         IProjectDataService projectDataService,
-        IUserInterfaceService userInterfaceService,
+        IDialogService dialogService,
+        IFilePickerService filePickerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
@@ -41,7 +45,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
-        _userInterfaceService = userInterfaceService;
+        _dialogService = dialogService;
+        _filePickerService = filePickerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
@@ -121,9 +126,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CreateProjectAsync()
     {
-        var dialogService = _userInterfaceService.DialogService;
-
-        var showResult = await dialogService.ShowNewProjectDialogAsync();
+        var showResult = await _dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
         {
             var projectConfig = showResult.Value;
@@ -136,10 +139,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task OpenProjectAsync()
     {
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-        var filePickerService = userInterfaceService.FilePickerService;
-
-        var result = await filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
+        var result = await _filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
         if (result.IsSuccess)
         {
             var projectPath = result.Value;

@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿using Celbridge.BaseLibrary.Dialog;
 
 public record ProgressDialogToken : IProgressDialogToken
 {
