@@ -1,4 +1,4 @@
-<Project Sdk="Uno.Sdk">
+﻿<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <DotNetVersion Condition=" $(DotNetVersion) == '' ">net8.0</DotNetVersion>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);$(DotNetVersion)-windows10.0.19041</TargetFrameworks>
@@ -9,27 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
-    <PackageReference Include="CommunityToolkit.MVVM" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Uno.Extensions.Configuration" />
-    <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
-    <PackageReference Include="Uno.Extensions.Localization.WinUI" />
-    <PackageReference Include="Uno.Toolkit.WinUI" />
-    <PackageReference Include="Uno.WinUI" />
-
-    <PackageReference Include="Uno.WinUI.Markup" />
-    <PackageReference Include="Uno.Extensions.Markup.Generators">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Uno.Themes.WinUI.Markup" />
-
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.ViewModels\Celbridge.ViewModels.csproj" />
-    <ProjectReference Include="..\CoreApplication\Celbridge.Services\Celbridge.Services.csproj" />
+    <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
   </ItemGroup>
 
   <Choose>
