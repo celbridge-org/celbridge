@@ -124,9 +124,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         {
             var projectConfig = showResult.Value;
 
-            var command = _commandService.CreateCommand<ICreateProjectCommand>();
-            command.Config = projectConfig;
-            _commandService.EnqueueCommand(command);
+            _commandService.Execute<ICreateProjectCommand>((command) =>
+            {
+                command.Config = projectConfig;
+            });
         }
     }
 
@@ -137,9 +138,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         {
             var projectPath = result.Value;
 
-            var command = _commandService.CreateCommand<ILoadProjectCommand>();
-            command.ProjectPath = projectPath;
-            _commandService.EnqueueCommand(command);
+            _commandService.Execute<ILoadProjectCommand>((command) =>
+            {
+                command.ProjectPath = projectPath;
+            });
         }
     }
 
@@ -147,8 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         if (IsWorkspaceLoaded)
         {
-            var command = _commandService.CreateCommand<IUnloadProjectCommand>();
-            _commandService.EnqueueCommand(command);
+            _commandService.Execute<IUnloadProjectCommand>();
 
             // Wait until the project is unloaded before navigating
             while (IsWorkspaceLoaded)
