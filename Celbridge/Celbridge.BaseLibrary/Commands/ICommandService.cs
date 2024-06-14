@@ -27,14 +27,4 @@ public interface ICommandService
     /// Remove a command from the queue.
     /// </summary>
     Result RemoveCommand(ICommand command);
-
-    /// <summary>
-    /// Starts the service executing commands.
-    /// </summary>
-    void StartExecutingCommands();
-
-    /// <summary>
-    /// Stop the service executing commands.
-    /// </summary>
-    void StopExecutingCommands();
 }
