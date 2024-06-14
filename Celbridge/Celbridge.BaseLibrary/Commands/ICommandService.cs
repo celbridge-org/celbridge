@@ -6,40 +6,35 @@
 public interface ICommandService
 {
     /// <summary>
-    /// Starts the service executing commands.
+    /// Create a new command via the dependency injection system.
     /// </summary>
-    public void StartExecutingCommands();
-
-    /// <summary>
-    /// Stop the service executing commands.
-    /// </summary>
-    public void StopExecutingCommands();
+    T CreateCommand<T>() where T : ICommand;
 
     /// <summary>
     /// Execute a command.
     /// The command is added to the command queue and executed when it reaches the front of the queue.
     /// </summary>
-    public Result ExecuteCommand(CommandBase command);
+    Result EnqueueCommand(ICommand command);
 
     /// <summary>
     /// Execute a command after a delay.
     /// Delay is the minimum time (in milliseconds) before the command should execute. 
     /// Actual execution might take longer than the delay time, depending on what other commands are ahead of it in the queue.
     /// </summary>
-    public Result ExecuteCommand(CommandBase command, uint Delay);
+    Result EnqueueCommand(ICommand command, uint Delay);
 
     /// <summary>
-    /// Undo a previously executed command.
+    /// Remove a command from the queue.
     /// </summary>
-    public Result UndoCommand(CommandBase command);
+    Result RemoveCommand(ICommand command);
 
     /// <summary>
-    /// Redo a previously executed command.
+    /// Starts the service executing commands.
     /// </summary>
-    public Result RedoCommand(CommandBase command);
+    void StartExecutingCommands();
 
     /// <summary>
-    /// Cancel a pending or in-progress command.
+    /// Stop the service executing commands.
     /// </summary>
-    public Result CancelCommand(CommandId commandId);
+    void StopExecutingCommands();
 }
