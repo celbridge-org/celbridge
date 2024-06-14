@@ -19,7 +19,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _projectFolder = string.Empty;
 
-    public string ProjectDataPath { get; private set; } = string.Empty;
+    public NewProjectConfig? NewProjectConfig { get; private set; }
 
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
@@ -40,11 +40,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         var parentFolderExists = Directory.Exists(ProjectFolder);
         var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolder, ProjectName));
 
-        // Todo: Validate that the project name is valid on all platforms
-        var projectNameIsValid = !projectFolderExists && !string.IsNullOrWhiteSpace(ProjectName);
+        var validateResult = _projectDataService.ValidateProjectName(ProjectName);
 
         // Todo: Show a message explaining why the create button is disabled
-        IsCreateButtonEnabled = parentFolderExists && projectNameIsValid;
+        IsCreateButtonEnabled = validateResult.IsSuccess && parentFolderExists && !projectFolderExists;
 
         if (e.PropertyName == nameof(ProjectFolder) && parentFolderExists)
         {
@@ -67,14 +66,14 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand CreateProjectCommand => new AsyncRelayCommand(CreateCommand_ExecuteAsync);
-    private async Task CreateCommand_ExecuteAsync()
+    public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
+    private void CreateCommand_Execute()
     {
-        var createResult = await _projectDataService.CreateProjectDataAsync(ProjectFolder, ProjectName);
-        if (createResult.IsSuccess)
+        var config = new NewProjectConfig(ProjectName, ProjectFolder);
+        if (_projectDataService.ValidateNewProjectConfig(config).IsSuccess)
         {
-            // Populate the property if the project created successfully
-            ProjectDataPath = createResult.Value;
+            // If the config is not valid then NewProjectConfig will remain null
+            NewProjectConfig = config;
         }
     }
 }
