@@ -4,7 +4,7 @@ using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Services.Project;
+using Celbridge.Services.Commands;
 using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
 
