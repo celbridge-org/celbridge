@@ -19,7 +19,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _projectFolder = string.Empty;
 
-    public string ProjectDataPath { get; private set; } = string.Empty;
+    public NewProjectConfig? NewProjectConfig { get; private set; }
 
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
@@ -67,14 +67,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand CreateProjectCommand => new AsyncRelayCommand(CreateCommand_ExecuteAsync);
-    private async Task CreateCommand_ExecuteAsync()
+    public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
+    private void CreateCommand_Execute()
     {
-        var createResult = await _projectDataService.CreateProjectDataAsync(ProjectFolder, ProjectName);
-        if (createResult.IsSuccess)
-        {
-            // Populate the property if the project created successfully
-            ProjectDataPath = createResult.Value;
-        }
+        // Todo: Validate that the new project config is valid
+        NewProjectConfig = new NewProjectConfig(ProjectName, ProjectFolder);
     }
 }

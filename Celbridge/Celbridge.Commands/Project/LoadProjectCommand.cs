@@ -43,6 +43,6 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
 
         // Load the project
-        return ProjectUtils.LoadProject(_navigationService, _projectDataService, ProjectPath);
+        return await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService, ProjectPath);
     }
 }
