@@ -40,11 +40,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         var parentFolderExists = Directory.Exists(ProjectFolder);
         var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolder, ProjectName));
 
-        // Todo: Validate that the project name is valid on all platforms
-        var projectNameIsValid = !projectFolderExists && !string.IsNullOrWhiteSpace(ProjectName);
+        var validateResult = _projectDataService.ValidateProjectName(ProjectName);
 
         // Todo: Show a message explaining why the create button is disabled
-        IsCreateButtonEnabled = parentFolderExists && projectNameIsValid;
+        IsCreateButtonEnabled = validateResult.IsSuccess && parentFolderExists && !projectFolderExists;
 
         if (e.PropertyName == nameof(ProjectFolder) && parentFolderExists)
         {
@@ -70,7 +69,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        // Todo: Validate that the new project config is valid
-        NewProjectConfig = new NewProjectConfig(ProjectName, ProjectFolder);
+        var config = new NewProjectConfig(ProjectName, ProjectFolder);
+        if (_projectDataService.ValidateNewProjectConfig(config).IsSuccess)
+        {
+            // If the config is not valid then NewProjectConfig will remain null
+            NewProjectConfig = config;
+        }
     }
 }

@@ -57,4 +57,29 @@ public class ProjectDataTests
         Directory.Delete(_projectFolder, true);
         File.Exists(projectFilePath).Should().BeFalse();
     }
+
+    [Test]
+    public void ICanValidateANewProjectConfig()
+    {
+        Guard.IsNotNull(_projectDataService);
+        Guard.IsNotNullOrEmpty(_projectFolder);
+
+        { 
+            var config = new NewProjectConfig("TestProjectA", _projectFolder);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeTrue();
+        }
+
+        {
+            var config = new NewProjectConfig("Test/ProjectA", _projectFolder);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        {
+            var config = new NewProjectConfig("TestProjectA", string.Empty);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeFalse();
+        }
+    }
 }
