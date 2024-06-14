@@ -139,7 +139,7 @@ public class ProjectService : IProjectService, ISaveData
 
             // Remember last opened project
             Guard.IsNotNull(_settingsService.EditorSettings);
-            _settingsService.EditorSettings.PreviousActiveProjectPath = projectPath;
+            _settingsService.EditorSettings.PreviousLoadedProject = projectPath;
 
             var message = new ProjectCreatedMessage(project);
             _messengerService.Send(message); 
@@ -349,7 +349,7 @@ public class ProjectService : IProjectService, ISaveData
         ActiveProject = null;
         Guard.IsNotNull(_settingsService.EditorSettings);
 
-        _settingsService.EditorSettings.PreviousActiveProjectPath = string.Empty;
+        _settingsService.EditorSettings.PreviousLoadedProject = string.Empty;
 
         var activeProjectChanged = new ActiveProjectChangedMessage(null);
         _messengerService.Send(activeProjectChanged);
@@ -361,7 +361,7 @@ public class ProjectService : IProjectService, ISaveData
     {
         Guard.IsNotNull(_settingsService.EditorSettings);
 
-        var previousProjectPath = _settingsService.EditorSettings.PreviousActiveProjectPath;
+        var previousProjectPath = _settingsService.EditorSettings.PreviousLoadedProject;
         if (string.IsNullOrEmpty(previousProjectPath))
         {
             return new ErrorResult("No previously opened project");
