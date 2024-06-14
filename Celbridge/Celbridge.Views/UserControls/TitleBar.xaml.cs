@@ -5,12 +5,17 @@ namespace Celbridge.Views.UserControls;
 public sealed partial class TitleBar : UserControl
 {
     private readonly IMessengerService _messengerService;
+    private IStringLocalizer _stringLocalizer;
 
-    public TitleBar(IMessengerService messengerService)
+    public LocalizedString TitleBarText => _stringLocalizer.GetString("ApplicationName");
+
+    public TitleBar()
     {
         InitializeComponent();
 
-        _messengerService = messengerService;
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         Loaded += OnTitleBar_Loaded;
         Unloaded += OnTitleBar_Unloaded;
