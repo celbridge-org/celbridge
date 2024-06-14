@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface.Dialog;
 
 namespace Celbridge.Services.UserInterface.Dialog;
 
@@ -71,7 +72,7 @@ public class DialogService : IDialogService
         }
     }
 
-    public async Task<Result<string>> ShowNewProjectDialogAsync()
+    public async Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync()
     {
         var dialog = _dialogFactory.CreateNewProjectDialog();
 

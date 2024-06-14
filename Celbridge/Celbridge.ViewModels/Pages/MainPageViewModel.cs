@@ -1,6 +1,7 @@
-﻿using Celbridge.BaseLibrary.Logging;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Tasks;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
@@ -17,16 +18,15 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
 
-    public const string EmptyPageName = "EmptyPage";
     public const string StartPageName = "StartPage";
-    public const string WorkspacePageName = "WorkspacePage";
 
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
     private readonly IProjectDataService _projectDataService;
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly ISchedulerService _schedulerService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ICommandService _commandService;
 
     public MainPageViewModel(
         IMessengerService messengerService,
@@ -34,14 +34,16 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         INavigationService navigationService,
         IProjectDataService projectDataService,
         IUserInterfaceService userInterfaceService,
-        ISchedulerService schedulerService)
+        IWorkspaceWrapper workspaceWrapper,
+        ICommandService commandService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
         _projectDataService = projectDataService;
         _userInterfaceService = userInterfaceService;
-        _schedulerService = schedulerService;
+        _workspaceWrapper = workspaceWrapper;
+        _commandService = commandService;
     }
 
     public bool IsProjectDataLoaded => _projectDataService.LoadedProjectData is not null;
@@ -79,6 +81,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         // Navigate to the start page at startup
         _navigationService.NavigateToPage(StartPageName);
 
+        // Start executing queued commands
+        _commandService.StartExecutingCommands();
+
         // Todo: Add a user setting to automatically open the previously loaded project.
     }
 
@@ -101,12 +106,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         if (tag == CloseProjectTag)
         {
-            async Task CloseAsync()
-            {
-                await CloseProjectAsync();
-                _navigationService.NavigateToPage(StartPageName);
-            }
-            _ = CloseAsync();
+            _ = CloseProjectAsync();
             return;
         }
 
@@ -121,27 +121,16 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task CreateProjectAsync()
     {
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
-        var dialogService = userInterfaceService.DialogService;
-
-        // The new project dialog takes care of creating the project folder and the project data file.
+        var dialogService = _userInterfaceService.DialogService;
 
         var showResult = await dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
         {
-            var projectPath = showResult.Value;
-            var projectDataService = _projectDataService; // Avoid capturing "this"
+            var projectConfig = showResult.Value;
 
-            await CloseProjectAsync();
-
-            var openResult = projectDataService.LoadProjectData(projectPath);
-            if (openResult.IsFailure)
-            {
-                _loggingService.Error($"Failed to open project: {openResult.Error}");
-                return;
-            }
-
-            _navigationService.NavigateToPage(WorkspacePageName);
+            var command = _commandService.CreateCommand<ICreateProjectCommand>();
+            command.Config = projectConfig;
+            _commandService.EnqueueCommand(command);
         }
     }
 
@@ -149,66 +138,36 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
         var filePickerService = userInterfaceService.FilePickerService;
+
         var result = await filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            if (_projectDataService.LoadedProjectData?.ProjectFilePath == projectPath)
-            {
-                // The project is already loaded.
-                // We can just early out here as we're already in the expected end state.
-                return;
-            }
-
-            await CloseProjectAsync();
-
-            var openResult = projectDataService.LoadProjectData(projectPath);
-            if (openResult.IsFailure)
-            {
-                _loggingService.Error($"Failed to open project: {openResult.Error}");
-                return;
-            }
-
-            _navigationService.NavigateToPage(WorkspacePageName);
+            var command = _commandService.CreateCommand<ILoadProjectCommand>();
+            command.ProjectPath = projectPath;
+            _commandService.EnqueueCommand(command);
         }
     }
 
     private async Task CloseProjectAsync()
     {
-        if (!IsProjectDataLoaded && !_userInterfaceService.IsWorkspaceLoaded)
+        if (!IsProjectDataLoaded && !_workspaceWrapper.IsWorkspaceLoaded)
         {
             // No project loaded so nothing to do here.
             return;
         }
 
-        // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to schedule some operations (e.g. save changes) before we close it.
+        var command = _commandService.CreateCommand<IUnloadProjectCommand>();
+        _commandService.EnqueueCommand(command);
 
-        // Force the Workspace page to unload by navigating to an empty page.
-        _navigationService.NavigateToPage(EmptyPageName);
-
-        // Wait until the workspace is fully unloaded
-        while (_userInterfaceService.IsWorkspaceLoaded)
-        {
-            await Task.Delay(50);
-        }
-
-        // We can now unload the project data.
-
-        var projectDataService = _projectDataService; // Avoid capturing "this"
-        _schedulerService.ScheduleFunction(async () =>
-        {
-            projectDataService.UnloadProjectData();
-            await Task.CompletedTask;
-        });
-
-        // Wait until the project data is unloaded
+        // Wait until the project is unloaded before navigating
         while (IsProjectDataLoaded)
         {
             await Task.Delay(50);
         }
+
+        _navigationService.NavigateToPage(StartPageName);
     }
 }
 

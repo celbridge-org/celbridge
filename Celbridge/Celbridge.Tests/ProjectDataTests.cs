@@ -8,6 +8,7 @@ namespace Celbridge.Tests;
 public class ProjectDataTests
 {
     private IProjectDataService? _projectDataService;
+
     private string? _projectFolder;
 
     [SetUp]
@@ -25,7 +26,6 @@ public class ProjectDataTests
     [TearDown]
     public void TearDown()
     {
-        _projectDataService = null;
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder!, true);
@@ -38,12 +38,13 @@ public class ProjectDataTests
         Guard.IsNotNull(_projectDataService);
         Guard.IsNotNullOrEmpty(_projectFolder);
 
-        var createResult = await _projectDataService.CreateProjectDataAsync(_projectFolder, "TestProjectA");
+        var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolder);
+        var projectFilePath = newProjectConfig.ProjectFilePath;
+
+        var createResult = await _projectDataService.CreateProjectDataAsync(newProjectConfig);
         createResult.IsSuccess.Should().BeTrue();
 
-        var projectPath = createResult.Value;
-
-        var loadResult = _projectDataService.LoadProjectData(projectPath);
+        var loadResult = _projectDataService.LoadProjectData(projectFilePath);
         loadResult.IsSuccess.Should().BeTrue();
 
         var projectData = _projectDataService.LoadedProjectData!;
@@ -54,6 +55,31 @@ public class ProjectDataTests
         _projectDataService.LoadedProjectData.Should().BeNull();
 
         Directory.Delete(_projectFolder, true);
-        File.Exists(projectPath).Should().BeFalse();
+        File.Exists(projectFilePath).Should().BeFalse();
+    }
+
+    [Test]
+    public void ICanValidateANewProjectConfig()
+    {
+        Guard.IsNotNull(_projectDataService);
+        Guard.IsNotNullOrEmpty(_projectFolder);
+
+        { 
+            var config = new NewProjectConfig("TestProjectA", _projectFolder);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeTrue();
+        }
+
+        {
+            var config = new NewProjectConfig("Test/ProjectA", _projectFolder);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        {
+            var config = new NewProjectConfig("TestProjectA", string.Empty);
+            var result = _projectDataService.ValidateNewProjectConfig(config);
+            result.IsSuccess.Should().BeFalse();
+        }
     }
 }

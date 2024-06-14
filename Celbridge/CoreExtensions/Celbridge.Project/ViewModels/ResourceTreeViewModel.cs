@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
@@ -17,12 +18,11 @@ public partial class ResourceTreeViewModel : ObservableObject
     public ResourceTreeViewModel(
         IMessengerService messengerService,
         ILoggingService loggingService,
-        IUserInterfaceService userInterface)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
-
-        _projectService = userInterface.WorkspaceService.ProjectService;
+        _projectService = workspaceWrapper.WorkspaceService.ProjectService;
 
         _messengerService.Register<RequestProjectRefreshMessage>(this, OnRefreshProjectRequested);
     }

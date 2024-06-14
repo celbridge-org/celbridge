@@ -11,9 +11,19 @@ public interface IProjectDataService
     public IProjectData? LoadedProjectData { get; }
 
     /// <summary>
-    /// Create a new project in the specified folder.
+    /// Checks if a new project config is valid.
     /// </summary>
-    Task<Result<string>> CreateProjectDataAsync(string folder, string projectName);
+    public Result ValidateNewProjectConfig(NewProjectConfig config);
+
+    /// <summary>
+    /// Checks if a project name is valid.
+    /// </summary>
+    public Result ValidateProjectName(string projectName);
+
+    /// <summary>
+    /// Create a new project using the specified config information.
+    /// </summary>
+    Task<Result> CreateProjectDataAsync(NewProjectConfig config);
 
     /// <summary>
     /// Load the project data at the specified path.
