@@ -11,7 +11,7 @@ public static class ServiceConfiguration
         // Register page view models
         //
         services.AddTransient<MainPageViewModel>();
-        services.AddTransient<StartPageViewModel>();
+        services.AddTransient<HomePageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
 
         //

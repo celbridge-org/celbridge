@@ -44,7 +44,7 @@ public class LoadProjectTask
 
         // Remember this as the last opened project
         Guard.IsNotNull(_settingsService.EditorSettings);
-        _settingsService.EditorSettings.PreviousActiveProjectPath = projectPath;
+        _settingsService.EditorSettings.PreviousLoadedProject = projectPath;
 
         // Populate the resource registry
         var updateRegistryResult = await _resourceService.UpdateProjectResources(project);

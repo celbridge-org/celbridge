@@ -56,10 +56,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewProjectFolder), value);
     }
 
-    public string PreviousActiveProjectPath
+    public string PreviousLoadedProject
     {
-        get => GetValue<string>(nameof(PreviousActiveProjectPath), string.Empty);
-        set => SetValue(nameof(PreviousActiveProjectPath), value);
+        get => GetValue<string>(nameof(PreviousLoadedProject), string.Empty);
+        set => SetValue(nameof(PreviousLoadedProject), value);
     }
 
     public List<string> PreviousOpenDocuments

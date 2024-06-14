@@ -44,7 +44,8 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
                 .Children(
                     new TextBlock()
                         .Text(x => x.Bind(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
-                         )
+                        .TextWrapping(TextWrapping.WrapWholeWords)
+                    )
                 )
             );
     }
