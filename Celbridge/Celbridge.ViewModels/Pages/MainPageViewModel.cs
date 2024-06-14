@@ -4,8 +4,6 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.Navigation;
 using CommunityToolkit.Diagnostics;
@@ -14,18 +12,19 @@ namespace Celbridge.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    public const string StartTag = "Start";
+    public const string HomeTag = "Home";
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
-    public const string CloseProjectTag = "CloseProject";
     public const string SettingsTag = "Settings";
+    public const string LegacyTag = "Legacy";
 
-    public const string StartPageName = "StartPage";
+    private const string StartPageName = "StartPage";
+    private const string SettingsPageName = "SettingsPage";
+    private const string LegacyPageName = "Shell";
 
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly INavigationService _navigationService;
-    private readonly IProjectDataService _projectDataService;
     private readonly IDialogService _dialogService;
     private readonly IFilePickerService _filePickerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -35,7 +34,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IMessengerService messengerService,
         ILoggingService loggingService, 
         INavigationService navigationService,
-        IProjectDataService projectDataService,
         IDialogService dialogService,
         IFilePickerService filePickerService,
         IWorkspaceWrapper workspaceWrapper,
@@ -44,14 +42,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _messengerService = messengerService;
         _loggingService = loggingService;
         _navigationService = navigationService;
-        _projectDataService = projectDataService;
         _dialogService = dialogService;
         _filePickerService = filePickerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
 
-    public bool IsProjectDataLoaded => _projectDataService.LoadedProjectData is not null;
+    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
 
@@ -70,12 +67,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, (r,m) => 
         { 
-            OnPropertyChanged(nameof(IsProjectDataLoaded)); 
+            OnPropertyChanged(nameof(IsWorkspaceLoaded)); 
         });
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
         {
-            OnPropertyChanged(nameof(IsProjectDataLoaded));
+            OnPropertyChanged(nameof(IsWorkspaceLoaded));
         });
 
         // Register this class as the navigation provider for the application
@@ -94,28 +91,27 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void SelectNavigationItem(string tag)
     {
-        if (tag == NewProjectTag)
+        switch (tag)
         {
-            _ = CreateProjectAsync();
-            return;
-        }
+            case HomeTag:
+                _ = NavigateToHomeAsync();
+                return;
 
-        if (tag == OpenProjectTag)
-        {
-            _ = OpenProjectAsync();
-            return;
-        }
+            case NewProjectTag:
+                _ = CreateProjectAsync();
+                return;
 
-        if (tag == CloseProjectTag)
-        {
-            _ = CloseProjectAsync();
-            return;
-        }
+            case OpenProjectTag:
+                _ = OpenProjectAsync();
+                return;
 
-        var navigationResult = _navigationService.NavigateToPage(tag);
-        if (navigationResult.IsSuccess)
-        {
-            return;
+            case SettingsTag:
+                _navigationService.NavigateToPage(SettingsPageName);
+                break;
+
+            case LegacyTag:
+                _navigationService.NavigateToPage(LegacyPageName);
+                break;
         }
 
         _loggingService.Error($"Failed to navigate to item {tag}.");
@@ -147,21 +143,18 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
     }
 
-    private async Task CloseProjectAsync()
+    private async Task NavigateToHomeAsync()
     {
-        if (!IsProjectDataLoaded && !_workspaceWrapper.IsWorkspaceLoaded)
+        if (IsWorkspaceLoaded)
         {
-            // No project loaded so nothing to do here.
-            return;
-        }
+            var command = _commandService.CreateCommand<IUnloadProjectCommand>();
+            _commandService.EnqueueCommand(command);
 
-        var command = _commandService.CreateCommand<IUnloadProjectCommand>();
-        _commandService.EnqueueCommand(command);
-
-        // Wait until the project is unloaded before navigating
-        while (IsProjectDataLoaded)
-        {
-            await Task.Delay(50);
+            // Wait until the project is unloaded before navigating
+            while (IsWorkspaceLoaded)
+            {
+                await Task.Delay(50);
+            }
         }
 
         _navigationService.NavigateToPage(StartPageName);
