@@ -1,5 +1,8 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+﻿namespace Celbridge.BaseLibrary.Dialog;
 
+/// <summary>
+/// A modal dialog that displays an alert to the user.
+/// </summary>
 public interface IAlertDialog
 {
     /// <summary>

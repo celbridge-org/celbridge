@@ -1,7 +1,10 @@
 ﻿using Celbridge.BaseLibrary.Project;
 
-namespace Celbridge.BaseLibrary.UserInterface.Dialog;
+namespace Celbridge.BaseLibrary.Dialog;
 
+/// <summary>
+/// Manages the display of modal dialogs to the user.
+/// </summary>
 public interface IDialogService
 {
     /// <summary>

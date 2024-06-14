@@ -1,8 +1,7 @@
-﻿using Celbridge.BaseLibrary.UserInterface.Dialog;
-using Celbridge.BaseLibrary.UserInterface.Navigation;
+﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.Navigation;
 using Celbridge.Views.Dialogs;
 using Celbridge.Views.Pages;
-using Celbridge.Views.UserControls;
 
 namespace Celbridge.Views;
 
