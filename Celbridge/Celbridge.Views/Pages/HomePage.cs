@@ -1,15 +1,15 @@
 ﻿namespace Celbridge.Views.Pages;
 
-public sealed partial class StartPage : Page
+public sealed partial class HomePage : Page
 {
-    public StartPageViewModel ViewModel { get; }
+    public HomePageViewModel ViewModel { get; }
 
 
-    public StartPage()
+    public HomePage()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
-        ViewModel = serviceProvider.GetRequiredService<StartPageViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<HomePageViewModel>();
 
         this.DataContext(ViewModel, (page, vm) => page
             .Content(new Grid()

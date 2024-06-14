@@ -19,7 +19,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string SettingsTag = "Settings";
     public const string LegacyTag = "Legacy";
 
-    private const string HomePageName = "StartPage";
+    private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
     private const string LegacyPageName = "Shell";
 
