@@ -41,25 +41,20 @@ public sealed partial class MainPage : Page
             .MenuItems(
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
-                    .Tag("Start")
+                    .Tag(MainPageViewModel.HomeTag)
                     .Content(Home),
-                new NavigationViewItemSeparator(),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.NewFolder))
-                    .Tag("NewProject")
+                    .Tag(MainPageViewModel.NewProjectTag)
                     .Content(NewProject),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.OpenFile))
-                    .Tag("OpenProject")
+                    .Tag(MainPageViewModel.OpenProjectTag)
                     .Content(OpenProject),
-                new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.Cancel))
-                    .Tag("CloseProject")
-                    .IsEnabled(x => x.Bind(() => ViewModel.IsProjectDataLoaded))
-                    .Content(CloseProject),
+                new NavigationViewItemSeparator(),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
-                    .Tag("Shell")
+                    .Tag(MainPageViewModel.LegacyTag)
                     .Content(LegacyApp)
                 )
                 .Content(_contentFrame);
