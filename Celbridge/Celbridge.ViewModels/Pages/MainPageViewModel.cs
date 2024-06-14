@@ -19,7 +19,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string SettingsTag = "Settings";
 
     public const string StartPageName = "StartPage";
-    public const string WorkspacePageName = "WorkspacePage";
 
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
@@ -107,12 +106,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         if (tag == CloseProjectTag)
         {
-            async Task CloseAsync()
-            {
-                await CloseProjectAsync();
-                _navigationService.NavigateToPage(StartPageName);
-            }
-            _ = CloseAsync();
+            _ = CloseProjectAsync();
             return;
         }
 
@@ -135,18 +129,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (showResult.IsSuccess)
         {
             var projectPath = showResult.Value;
-            var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            await CloseProjectAsync();
-
-            var openResult = projectDataService.LoadProjectData(projectPath);
-            if (openResult.IsFailure)
-            {
-                _loggingService.Error($"Failed to open project: {openResult.Error}");
-                return;
-            }
-
-            _navigationService.NavigateToPage(WorkspacePageName);
+            var command = _commandService.CreateCommand<ILoadProjectCommand>();
+            command.ProjectPath = projectPath;
+            _commandService.EnqueueCommand(command);
         }
     }
 
@@ -158,25 +144,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         if (result.IsSuccess)
         {
             var projectPath = result.Value;
-            var projectDataService = _projectDataService; // Avoid capturing "this"
 
-            if (_projectDataService.LoadedProjectData?.ProjectFilePath == projectPath)
-            {
-                // The project is already loaded.
-                // We can just early out here as we're already in the expected end state.
-                return;
-            }
-
-            await CloseProjectAsync();
-
-            var openResult = projectDataService.LoadProjectData(projectPath);
-            if (openResult.IsFailure)
-            {
-                _loggingService.Error($"Failed to open project: {openResult.Error}");
-                return;
-            }
-
-            _navigationService.NavigateToPage(WorkspacePageName);
+            var command = _commandService.CreateCommand<ILoadProjectCommand>();
+            command.ProjectPath = projectPath;
+            _commandService.EnqueueCommand(command);
         }
     }
 
@@ -191,11 +162,13 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var command = _commandService.CreateCommand<IUnloadProjectCommand>();
         _commandService.EnqueueCommand(command);
 
-        // Wait until the project data is unloaded
+        // Wait until the project is unloaded before navigating
         while (IsProjectDataLoaded)
         {
             await Task.Delay(50);
         }
+
+        _navigationService.NavigateToPage(StartPageName);
     }
 }
 

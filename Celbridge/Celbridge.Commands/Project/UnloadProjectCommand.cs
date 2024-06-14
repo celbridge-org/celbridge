@@ -2,43 +2,34 @@
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Commands.Utils;
 
 namespace Celbridge.Commands.Project;
 
 public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 {
-    private const string EmptyPageName = "EmptyPage";
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly INavigationService _navigationService;
+    private readonly IProjectDataService _projectDataService;
+
+    public UnloadProjectCommand(
+        IWorkspaceWrapper workspaceWrapper,
+        INavigationService navigationService,
+        IProjectDataService projectDataService)
+    {
+        _workspaceWrapper = workspaceWrapper;
+        _navigationService = navigationService;
+        _projectDataService = projectDataService;
+    }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        var navigationService = serviceProvider.GetRequiredService<INavigationService>();
-        var projectDataService = serviceProvider.GetRequiredService<IProjectDataService>();
-
-        if (!workspaceWrapper.IsWorkspaceLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded && _projectDataService.LoadedProjectData is null)
         {
-            return Result.Fail("Failed to unload project data because no project is loaded");
+            // We're already in the desired state so we can early out.
+            return Result.Ok();
         }
 
-        // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to perform some operations (e.g. save changes) before we close it.
-
-        // Force the Workspace page to unload by navigating to an empty page.
-        navigationService.NavigateToPage(EmptyPageName);
-
-        // Wait until the workspace is fully unloaded
-        while (workspaceWrapper.IsWorkspaceLoaded)
-        {
-            await Task.Delay(50);
-        }
-
-        if (projectDataService.LoadedProjectData is null)
-        {
-            return Result.Fail("Failed to unload project data because no project is loaded");
-        }
-
-        return projectDataService.UnloadProjectData();
+        return await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
     }
 }
