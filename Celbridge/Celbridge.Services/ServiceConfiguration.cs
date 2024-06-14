@@ -12,8 +12,6 @@ using Celbridge.Services.UserInterface.Navigation;
 using Celbridge.Services.UserInterface;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.Services.Project;
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.Services.Commands;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.Workspace;
 
@@ -30,7 +28,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
-        services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IProjectDataService, ProjectDataService>();
 
         // Register user interface services

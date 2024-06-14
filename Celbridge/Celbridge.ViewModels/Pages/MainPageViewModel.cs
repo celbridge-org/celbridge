@@ -1,10 +1,10 @@
 ﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Commands.Project;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Navigation;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Services.Commands;
 using Celbridge.Services.UserInterface.Navigation;
 using CommunityToolkit.Diagnostics;
 
@@ -188,8 +188,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             return;
         }
 
-        var command = new UnloadProjectCommand();
-        _commandService.ExecuteCommand(command);
+        var command = _commandService.CreateCommand<IUnloadProjectCommand>();
+        _commandService.EnqueueCommand(command);
 
         // Wait until the project data is unloaded
         while (IsProjectDataLoaded)

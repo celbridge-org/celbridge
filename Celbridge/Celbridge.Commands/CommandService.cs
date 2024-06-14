@@ -1,11 +1,10 @@
-using Celbridge.BaseLibrary.Commands;
 using System.Diagnostics;
 
 namespace Celbridge.Services.Commands;
 
 public class CommandService : ICommandService
 {
-    private record QueuedCommand(CommandBase Command, long ExecutionTime);
+    private record QueuedCommand(ICommand Command, long ExecutionTime);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
@@ -15,12 +14,20 @@ public class CommandService : ICommandService
 
     private bool _stopped = false;
 
-    public Result ExecuteCommand(CommandBase command)
+    public T CreateCommand<T>() where T : ICommand
     {
-        return ExecuteCommand(command, 0);
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        T command = serviceProvider.GetRequiredService<T>();
+
+        return command;
     }
 
-    public Result ExecuteCommand(CommandBase command, uint delay)
+    public Result EnqueueCommand(ICommand command)
+    {
+        return EnqueueCommand(command, 0);
+    }
+
+    public Result EnqueueCommand(ICommand command, uint delay)
     {
         lock (_lock)
         {
@@ -36,45 +43,28 @@ public class CommandService : ICommandService
         return Result.Ok();
     }
 
-    public Result UndoCommand(CommandBase command)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Result RedoCommand(CommandBase command)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Result CancelCommand(CommandId commandId)
+    public Result RemoveCommand(ICommand command)
     {
         lock (_lock)
         {
-            int commandIndex = -1;
+            int removeIndex = -1;
             for (int i = 0; i < _commandQueue.Count; i++)
             {
                 var queuedCommand = _commandQueue[i];
-                if (queuedCommand.Command.Id == commandId)
+                if (queuedCommand.Command.Id == command.Id)
                 {
-                    var command = queuedCommand.Command;
-                    if (command.State == CommandState.NotStarted ||
-                        command.State == CommandState.InProgress)
-                    {
-                        commandIndex = i;
-                        break;
-                    }
+                    removeIndex = i;
+                    break;
                 }
             }
 
-            if (commandIndex > -1)
+            if (removeIndex > -1)
             {
-                var command = _commandQueue[commandIndex].Command;
-                command.CancellationToken.Cancel();
-                _commandQueue.RemoveAt(commandIndex);
-
+                _commandQueue.RemoveAt(removeIndex);
                 return Result.Ok();
             }
         }
+
 
         return Result.Fail("Command not found");
     }
@@ -103,7 +93,7 @@ public class CommandService : ICommandService
             var currentTime = _stopwatch.ElapsedMilliseconds;
 
             // Find the first command that is ready to execute
-            CommandBase? command = null;
+            ICommand? command = null;
 
             lock (_lock)
             {
