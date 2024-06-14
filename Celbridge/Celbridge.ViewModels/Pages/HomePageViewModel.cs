@@ -5,13 +5,13 @@ using Celbridge.BaseLibrary.Navigation;
 
 namespace Celbridge.ViewModels.Pages;
 
-public partial class StartPageViewModel : ObservableObject
+public partial class HomePageViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
 
-    public StartPageViewModel(
+    public HomePageViewModel(
         INavigationService navigationService,
         ILoggingService loggingService,
         IFilePickerService filePickerService,
