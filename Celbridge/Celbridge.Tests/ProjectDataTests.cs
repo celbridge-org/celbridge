@@ -38,12 +38,13 @@ public class ProjectDataTests
         Guard.IsNotNull(_projectDataService);
         Guard.IsNotNullOrEmpty(_projectFolder);
 
-        var createResult = await _projectDataService.CreateProjectDataAsync(_projectFolder, "TestProjectA");
+        var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolder);
+        var projectFilePath = newProjectConfig.ProjectFilePath;
+
+        var createResult = await _projectDataService.CreateProjectDataAsync(newProjectConfig);
         createResult.IsSuccess.Should().BeTrue();
 
-        var projectPath = createResult.Value;
-
-        var loadResult = _projectDataService.LoadProjectData(projectPath);
+        var loadResult = _projectDataService.LoadProjectData(projectFilePath);
         loadResult.IsSuccess.Should().BeTrue();
 
         var projectData = _projectDataService.LoadedProjectData!;
@@ -54,6 +55,6 @@ public class ProjectDataTests
         _projectDataService.LoadedProjectData.Should().BeNull();
 
         Directory.Delete(_projectFolder, true);
-        File.Exists(projectPath).Should().BeFalse();
+        File.Exists(projectFilePath).Should().BeFalse();
     }
 }

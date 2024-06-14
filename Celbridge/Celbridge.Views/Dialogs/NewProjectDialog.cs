@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
+﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.UserInterface.Dialog;
 using Celbridge.ViewModels.Dialogs;
 
@@ -89,16 +90,17 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         ViewModel.CreateProjectCommand.Execute(null);
     }
 
-    public async Task<Result<string>> ShowDialogAsync()
+    public async Task<Result<NewProjectConfig>> ShowDialogAsync()
     {
-        await ShowAsync();
+        var contentDialogResult = await ShowAsync();
 
-        if (string.IsNullOrEmpty(ViewModel.ProjectDataPath))
+        if (contentDialogResult == ContentDialogResult.Primary && 
+            ViewModel.NewProjectConfig is not null)
         {
-            return Result<string>.Fail("Failed to create new project");
+            return Result<NewProjectConfig>.Ok(ViewModel.NewProjectConfig);
         }
 
-        return Result<string>.Ok(ViewModel.ProjectDataPath);
+        return Result<NewProjectConfig>.Fail("Failed to create new project config");
     }
 }
 
