@@ -4,6 +4,8 @@ using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Commands.Utils;
 using Celbridge.BaseLibrary.Settings;
+using Celbridge.BaseLibrary.Dialog;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Commands.Project;
 
@@ -13,17 +15,23 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IProjectDataService _projectDataService;
     private readonly INavigationService _navigationService;
     private readonly IEditorSettings _editorSettings;
+    private readonly IDialogService _dialogService;
+    private readonly IStringLocalizer _stringLocalizer;
 
     public LoadProjectCommand(
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         INavigationService navigationService,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IDialogService dialogService,
+        IStringLocalizer stringLocalizer)
     {
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _navigationService = navigationService;
         _editorSettings = editorSettings;
+        _dialogService = dialogService;
+        _stringLocalizer = stringLocalizer;
     }
 
     public string ProjectPath { get; set; } = string.Empty;
@@ -51,9 +59,15 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         if (loadResult.IsFailure)
         {
-            // Todo: Show an error alert to the user
             _editorSettings.PreviousLoadedProject = string.Empty;
-            return Result.Fail($"Failed to load project: {ProjectPath}");
+
+            var titleString = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
+            var bodyString = _stringLocalizer.GetString("LoadProjectFailedAlert_Body", ProjectPath);
+            var okString = _stringLocalizer.GetString("DialogButton_Ok");
+
+            await _dialogService.ShowAlertDialogAsync(titleString, bodyString, okString);
+
+            return Result.Fail($"Failed to load project: {ProjectPath}. {loadResult.Error}.");
         }
 
         _editorSettings.PreviousLoadedProject = ProjectPath;
