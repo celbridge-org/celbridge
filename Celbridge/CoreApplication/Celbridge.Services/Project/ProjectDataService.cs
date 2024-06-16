@@ -5,9 +5,11 @@ namespace Celbridge.Services.Project;
 
 public class ProjectDataService : IProjectDataService
 {
-    private const int ProjectVersion = 1;
+    private const int ProjectDataVersion = 1;
+    private const int ProjectUserDataVersion = 1;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
+    private const string DefaultProjectUserDataPath = "Library/ProjectData/ProjectUserData.db";
 
     public ProjectDataService()
     {}
@@ -86,10 +88,21 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectVersion);
+            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectDataVersion);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project: {config.ProjectName}");
+            }
+
+            //
+            // Create a user data database file beside the project database
+            //
+
+            var userDatabasePath = Path.Combine(config.ProjectFolder, DefaultProjectUserDataPath);            
+            var createUserResult = await ProjectUserData.CreateProjectUserDataAsync(userDatabasePath, ProjectUserDataVersion);
+            if (createResult.IsFailure)
+            {
+                return Result.Fail($"Failed to create project user data: {config.ProjectName}");
             }
 
             return Result.Ok();
