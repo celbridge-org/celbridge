@@ -3,33 +3,21 @@ using Celbridge.BaseLibrary.Project;
 
 namespace Celbridge.Services.Project;
 
-public class ProjectData : IDisposable, IProjectData
+public class ProjectUserData : IDisposable, IProjectUserData
 {
     private SQLiteAsyncConnection _connection;
 
-    public string ProjectName { get; init; }
-    public string ProjectFilePath { get; init; }
-    public string ProjectFolder { get; init; }
     public string DatabasePath { get; init; }
 
-    private ProjectData(string projectFilePath, string databasePath)
+    private ProjectUserData(string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
-
-        ProjectName = Path.GetFileNameWithoutExtension(projectFilePath);
-        Guard.IsNotNullOrWhiteSpace(ProjectName);
-
-        ProjectFolder = Path.GetDirectoryName(projectFilePath)!;
-        Guard.IsNotNullOrWhiteSpace(ProjectFolder);
-
-        ProjectFilePath = projectFilePath;
         DatabasePath = databasePath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<Result<IDataVersion>> GetDataVersionAsync()
+    public async Task<IDataVersion> GetDataVersionAsync()
     {
         if (_disposed)
         {
@@ -39,10 +27,10 @@ public class ProjectData : IDisposable, IProjectData
         var config = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
         if (config == null)
         {
-            return Result<IDataVersion>.Fail($"Failed to load {nameof(DataVersion)} table");
+            throw new InvalidOperationException("ProjectConfig table not found in database.");
         }
 
-        return Result<IDataVersion>.Ok(config);
+        return config;
     }
 
     public async Task SetDataVersionAsync(IDataVersion config)
@@ -52,37 +40,41 @@ public class ProjectData : IDisposable, IProjectData
             throw new ObjectDisposedException(nameof(_connection));
         }
 
+        if (config == null)
+        {
+            throw new ArgumentNullException();
+        }
+
         await _connection.InsertAsync(config);
     }
 
-    public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
+    public static Result<IProjectUserData> LoadProjectUserData(string databasePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var project = new ProjectData(projectPath, databasePath);
-        Guard.IsNotNull(project);
+        var projectUserData = new ProjectUserData(databasePath);
+        Guard.IsNotNull(projectUserData);
 
-        return Result<IProjectData>.Ok(project);
+        return Result<IProjectUserData>.Ok(projectUserData);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath, int version)
+    public static async Task<Result> CreateProjectUserDataAsync(string databasePath, int version)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectData = new ProjectData(projectFilePath, databasePath);
-        Guard.IsNotNull(projectData);
+        var projectUserData = new ProjectUserData(databasePath);
+        Guard.IsNotNull(projectUserData);
 
         var dataVersion = new DataVersion 
         { 
             Version = version 
         };
 
-        await projectData._connection.CreateTableAsync<DataVersion>();
-        await projectData._connection.InsertAsync(dataVersion);
+        await projectUserData._connection.CreateTableAsync<DataVersion>();
+        await projectUserData._connection.InsertAsync(dataVersion);
 
         // Close the database after creating it
-        projectData.Dispose();
+        projectUserData.Dispose();
 
         return Result.Ok();
     }
@@ -111,7 +103,7 @@ public class ProjectData : IDisposable, IProjectData
         }
     }
 
-    ~ProjectData()
+    ~ProjectUserData()
     {
         Dispose(false);
     }

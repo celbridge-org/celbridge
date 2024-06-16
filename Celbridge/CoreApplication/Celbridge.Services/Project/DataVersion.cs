@@ -3,7 +3,7 @@ using SQLite;
 
 namespace Celbridge.Services.Project;
 
-public class ProjectConfig : IProjectConfig
+public class DataVersion : IDataVersion
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
