@@ -45,14 +45,14 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IDataVersion>.Ok(config);
     }
 
-    public async Task SetDataVersionAsync(IDataVersion config)
+    public async Task SetDataVersionAsync(IDataVersion dataVersion)
     {
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(_connection));
         }
 
-        await _connection.InsertAsync(config);
+        await _connection.InsertAsync(dataVersion);
     }
 
     public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
