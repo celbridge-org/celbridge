@@ -17,7 +17,7 @@ public class ProjectUserData : IDisposable, IProjectUserData
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<IDataVersion> GetDataVersionAsync()
+    public async Task<Result<IDataVersion>> GetDataVersionAsync()
     {
         if (_disposed)
         {
@@ -27,25 +27,25 @@ public class ProjectUserData : IDisposable, IProjectUserData
         var config = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
         if (config == null)
         {
-            throw new InvalidOperationException("ProjectConfig table not found in database.");
+            return Result<IDataVersion>.Fail($"Failed to load {nameof(DataVersion)} table");
         }
 
-        return config;
+        return Result<IDataVersion>.Ok(config);
     }
 
-    public async Task SetDataVersionAsync(IDataVersion config)
+    public async Task SetDataVersionAsync(IDataVersion dataVersion)
     {
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(_connection));
         }
 
-        if (config == null)
+        if (dataVersion == null)
         {
             throw new ArgumentNullException();
         }
 
-        await _connection.InsertAsync(config);
+        await _connection.InsertAsync(dataVersion);
     }
 
     public static Result<IProjectUserData> LoadProjectUserData(string databasePath)
