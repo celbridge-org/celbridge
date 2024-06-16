@@ -28,5 +28,5 @@ public interface IProjectData
     /// <summary>
     /// Updates the data version for the project.
     /// </summary>
-    Task SetDataVersionAsync(IDataVersion config);
+    Task SetDataVersionAsync(IDataVersion dataVersion);
 }

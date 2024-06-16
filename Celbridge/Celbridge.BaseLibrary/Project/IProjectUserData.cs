@@ -8,10 +8,10 @@ public interface IProjectUserData
     /// <summary>
     /// Returns the configuration data for the project.
     /// </summary>
-    Task<IDataVersion> GetDataVersionAsync();
+    Task<Result<IDataVersion>> GetDataVersionAsync();
 
     /// <summary>
     /// Updates the configuration data for the project.
     /// </summary>
-    Task SetDataVersionAsync(IDataVersion config);
+    Task SetDataVersionAsync(IDataVersion dataVersion);
 }
