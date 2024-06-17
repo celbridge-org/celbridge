@@ -3,10 +3,11 @@ using SQLite;
 
 namespace Celbridge.Services.Project;
 
-public class DataVersion
+public class ExpandedFolder
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
 
-    public int Version { get; set; }
+    public string Folder { get; set; } = string.Empty;
 }
+

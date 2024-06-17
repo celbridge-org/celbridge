@@ -51,8 +51,19 @@ public class ProjectDataTests
         projectData.Should().NotBeNull();
         projectData.ProjectName.Should().Be("TestProjectA");
 
+        var versionResultA = await projectData.GetDataVersionAsync();
+        versionResultA.IsSuccess.Should().BeTrue();
+
+        var projectUserData = _projectDataService.LoadedProjectUserData!;
+        projectUserData.Should().NotBeNull();
+        var versionResultB = await projectUserData.GetDataVersionAsync();
+        versionResultB.IsSuccess.Should().BeTrue();
+
+        versionResultA.Value.Should().Be(versionResultB.Value);
+
         _projectDataService.UnloadProjectData();
         _projectDataService.LoadedProjectData.Should().BeNull();
+        _projectDataService.LoadedProjectUserData.Should().BeNull();
 
         Directory.Delete(_projectFolder, true);
         File.Exists(projectFilePath).Should().BeFalse();

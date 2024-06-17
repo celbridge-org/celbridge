@@ -29,30 +29,30 @@ public class ProjectData : IDisposable, IProjectData
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<Result<IDataVersion>> GetDataVersionAsync()
+    public async Task<Result<int>> GetDataVersionAsync()
     {
-        if (_disposed)
+        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        if (dataVersion == null)
         {
-            throw new ObjectDisposedException(nameof(_connection));
+            return Result<int>.Fail($"Failed to get data version");
         }
 
-        var config = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return Result<IDataVersion>.Fail($"Failed to load {nameof(DataVersion)} table");
-        }
-
-        return Result<IDataVersion>.Ok(config);
+        return Result<int>.Ok(dataVersion.Version);
     }
 
-    public async Task SetDataVersionAsync(IDataVersion dataVersion)
+    public async Task<Result> SetDataVersionAsync(int version)
     {
-        if (_disposed)
+        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        if (dataVersion == null)
         {
-            throw new ObjectDisposedException(nameof(_connection));
+            return Result.Fail($"Failed to get data version");
         }
 
-        await _connection.InsertAsync(dataVersion);
+        dataVersion.Version = version;
+
+        await _connection.UpdateAsync(dataVersion);
+        
+        return Result.Ok();
     }
 
     public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
