@@ -15,6 +15,7 @@ public class ProjectDataService : IProjectDataService
     {}
 
     public IProjectData? LoadedProjectData { get; private set; }
+    public IProjectUserData? LoadedProjectUserData { get; private set; }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -58,6 +59,8 @@ public class ProjectDataService : IProjectDataService
 
         try
         {
+            // Todo: Create the data files in a temp directory and moved them into place if all operations succeed
+
             if (Directory.Exists(config.ProjectFolder))
             {
                 return Result<string>.Fail($"Project folder already exists: {config.ProjectFolder}");
@@ -71,7 +74,8 @@ public class ProjectDataService : IProjectDataService
 
             var projectJson = $$"""
                 {
-                    "projectDataFile": "{{DefaultProjectDataPath}}"
+                    "projectDataFile": "{{DefaultProjectDataPath}}",
+                    "projectUserDataFile": "{{DefaultProjectUserDataPath}}"
                 }
                 """;
 
@@ -122,17 +126,29 @@ public class ProjectDataService : IProjectDataService
             Guard.IsNotNull(jsonObject);
 
             var projectFolder = Path.GetDirectoryName(projectPath)!; 
-            string relativePath = jsonObject["projectDataFile"]!.ToString();
-            string databasePath = Path.Combine(projectFolder, relativePath);
 
-            var loadResult = ProjectData.LoadProjectData(projectPath, databasePath);
+            string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
+            string projectDataPath = Path.Combine(projectFolder, projectDataPathRelative);
+
+            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
             if (loadResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project data: {databasePath}");
+                return Result.Fail($"Failed to load project data: {projectDataPath}");
             }
 
+            string projectUserDataPathRelative = jsonObject["projectUserDataFile"]!.ToString();
+            string projectUserDataPath = Path.Combine(projectFolder, projectDataPathRelative);
+
+            var loadUserDataResult = ProjectUserData.LoadProjectUserData(projectUserDataPath);
+            if (loadUserDataResult.IsFailure)
+            {
+                return Result.Fail($"Failed to load project user data: {projectDataPath}");
+            }
+
+            // Both data files have successfully loaded, so we can now populate the member variables
             LoadedProjectData = loadResult.Value;
-            
+            LoadedProjectUserData = loadUserDataResult.Value;
+
             return Result.Ok();
         }
         catch (Exception ex)
@@ -145,16 +161,21 @@ public class ProjectDataService : IProjectDataService
     {
         if (LoadedProjectData is null)
         {
+            Guard.IsNull(LoadedProjectUserData);
+
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
 
         var disposableProjectData = LoadedProjectData as IDisposable;
         Guard.IsNotNull(disposableProjectData);
-
         disposableProjectData.Dispose();
-
         LoadedProjectData = null;
+
+        var disposableProjectUserData = LoadedProjectUserData as IDisposable;
+        Guard.IsNotNull(disposableProjectUserData);
+        disposableProjectUserData.Dispose();
+        LoadedProjectUserData = null;
 
         return Result.Ok();
     }
