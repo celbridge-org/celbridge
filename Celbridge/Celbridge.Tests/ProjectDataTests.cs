@@ -47,6 +47,10 @@ public class ProjectDataTests
         var loadResult = _projectDataService.LoadProjectData(projectFilePath);
         loadResult.IsSuccess.Should().BeTrue();
 
+        //
+        // ProjectData tests
+        //
+
         var projectData = _projectDataService.LoadedProjectData!;
         projectData.Should().NotBeNull();
         projectData.ProjectName.Should().Be("TestProjectA");
@@ -54,16 +58,43 @@ public class ProjectDataTests
         var versionResultA = await projectData.GetDataVersionAsync();
         versionResultA.IsSuccess.Should().BeTrue();
 
+        //
+        // ProjectUserData tests
+        //
+
         var projectUserData = _projectDataService.LoadedProjectUserData!;
         projectUserData.Should().NotBeNull();
         var versionResultB = await projectUserData.GetDataVersionAsync();
         versionResultB.IsSuccess.Should().BeTrue();
 
+        // 
+        // Set and get an expanded folders list in the project user data
+        //
+        var expandedFolders = new List<string>() { "a", "b", "c" };
+        var setFoldersResult = await projectUserData.SetExpandedFoldersAsync(expandedFolders);
+        setFoldersResult.IsSuccess.Should().BeTrue();
+
+        var getFoldersResult = await projectUserData.GetExpandedFoldersAsync();
+        getFoldersResult.IsSuccess.Should().BeTrue();
+
+        expandedFolders.SequenceEqual(getFoldersResult.Value);
+
+        //
+        // Check the project data and project user data versions match
+        //
         versionResultA.Value.Should().Be(versionResultB.Value);
+
+        //
+        // Unload the project databases
+        //
 
         _projectDataService.UnloadProjectData();
         _projectDataService.LoadedProjectData.Should().BeNull();
         _projectDataService.LoadedProjectUserData.Should().BeNull();
+
+        //
+        // Delete the project database files
+        //
 
         Directory.Delete(_projectFolder, true);
         File.Exists(projectFilePath).Should().BeFalse();
