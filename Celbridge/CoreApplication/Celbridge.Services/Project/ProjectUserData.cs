@@ -43,6 +43,37 @@ public class ProjectUserData : IDisposable, IProjectUserData
         return Result.Ok();
     }
 
+    public async Task<Result<List<string>>> GetExpandedFoldersAsync()
+    {
+        try
+        {
+            var expandedFolders = await _connection.Table<ExpandedFolder>().ToListAsync();
+            var folderNames = expandedFolders.Select(ef => ef.Folder).ToList();
+
+            return Result<List<string>>.Ok(folderNames);
+        }
+        catch (Exception ex)
+        {
+            return Result<List<string>>.Fail($"Failed to get expanded folders: {ex.Message}");
+        }
+    }
+
+    public async Task<Result> SetExpandedFoldersAsync(List<string> folderNames)
+    {
+        try
+        {
+            await _connection.DeleteAllAsync<ExpandedFolder>();
+            var expandedFolders = folderNames.Select(name => new ExpandedFolder { Folder = name }).ToList();
+            await _connection.InsertAllAsync(expandedFolders);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to set expanded folders: {ex.Message}");
+        }
+    }
+
     public static Result<IProjectUserData> LoadProjectUserData(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
@@ -60,15 +91,17 @@ public class ProjectUserData : IDisposable, IProjectUserData
         var projectUserData = new ProjectUserData(databasePath);
         Guard.IsNotNull(projectUserData);
 
+        await projectUserData._connection.CreateTableAsync<DataVersion>();
+
         var dataVersion = new DataVersion 
         { 
             Version = version 
         };
-
-        await projectUserData._connection.CreateTableAsync<DataVersion>();
         await projectUserData._connection.InsertAsync(dataVersion);
 
-        // Close the database after creating it
+        await projectUserData._connection.CreateTableAsync<ExpandedFolder>();
+
+        // Close the database
         projectUserData.Dispose();
 
         return Result.Ok();
@@ -88,11 +121,8 @@ public class ProjectUserData : IDisposable, IProjectUserData
         {
             if (disposing)
             {
-                // Dispose managed resources
                 _connection?.CloseAsync().Wait();
             }
-
-            // Dispose unmanaged resources here if any
 
             _disposed = true;
         }

@@ -137,7 +137,7 @@ public class ProjectDataService : IProjectDataService
             }
 
             string projectUserDataPathRelative = jsonObject["projectUserDataFile"]!.ToString();
-            string projectUserDataPath = Path.Combine(projectFolder, projectDataPathRelative);
+            string projectUserDataPath = Path.Combine(projectFolder, projectUserDataPathRelative);
 
             var loadUserDataResult = ProjectUserData.LoadProjectUserData(projectUserDataPath);
             if (loadUserDataResult.IsFailure)
