@@ -81,7 +81,7 @@ public class ProjectData : IDisposable, IProjectData
         await projectData._connection.CreateTableAsync<DataVersion>();
         await projectData._connection.InsertAsync(dataVersion);
 
-        // Close the database after creating it
+        // Close the database
         projectData.Dispose();
 
         return Result.Ok();
@@ -101,11 +101,8 @@ public class ProjectData : IDisposable, IProjectData
         {
             if (disposing)
             {
-                // Dispose managed resources
                 _connection?.CloseAsync().Wait();
             }
-
-            // Dispose unmanaged resources here if any
 
             _disposed = true;
         }
