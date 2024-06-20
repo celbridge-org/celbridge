@@ -11,10 +11,23 @@ public interface ICommandService
     Result Execute<T>(Action<T> configure) where T : ICommand;
 
     /// <summary>
+    /// Create, configure and enqueue a command in one step, with a delay.
+    /// The delay is the minimum time (in milliseconds) before the command will execute. 
+    /// </summary>
+    Result Execute<T>(Action<T> configure, uint delay) where T : ICommand;
+
+    /// <summary>
     /// Create and enqueue a command in one step.
     /// Use this for commands that don't need to be configured.
     /// </summary>
     Result Execute<T>() where T : ICommand;
+
+    /// <summary>
+    /// Create and enqueue a command in one step, with a delay.
+    /// Use this for commands that don't need to be configured.
+    /// The delay is the minimum time (in milliseconds) before the command will execute. 
+    /// </summary>
+    Result Execute<T>(uint delay) where T : ICommand;
 
     /// <summary>
     /// Create a new command via the dependency injection system.
@@ -35,7 +48,7 @@ public interface ICommandService
     Result EnqueueCommand(ICommand command, uint Delay);
 
     /// <summary>
-    /// Remove a command from the queue.
+    /// Removes all commands of the given type from the queue.
     /// </summary>
-    Result RemoveCommand(ICommand command);
+    public void RemoveCommandsOfType<T>() where T : notnull;
 }
