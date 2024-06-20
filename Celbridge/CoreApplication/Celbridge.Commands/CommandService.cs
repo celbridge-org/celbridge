@@ -25,15 +25,25 @@ public class CommandService : ICommandService
 
     public Result Execute<T>(Action<T> configure) where T : ICommand
     {
+        return Execute<T>(configure, 0);
+    }
+
+    public Result Execute<T>(Action<T> configure, uint delay) where T : ICommand
+    {
         var command = CreateCommand<T>();
         configure.Invoke(command);
-        return EnqueueCommand(command);
+        return EnqueueCommand(command, delay);
     }
 
     public Result Execute<T>() where T : ICommand
     {
+        return Execute<T>(0);
+    }
+
+    public Result Execute<T>(uint delay) where T : ICommand
+    {
         var command = CreateCommand<T>();
-        return EnqueueCommand(command);
+        return EnqueueCommand(command, delay);
     }
 
     public T CreateCommand<T>() where T : ICommand
@@ -65,30 +75,12 @@ public class CommandService : ICommandService
         return Result.Ok();
     }
 
-    public Result RemoveCommand(ICommand command)
+    public void RemoveCommandsOfType<T>() where T : notnull
     {
         lock (_lock)
         {
-            int removeIndex = -1;
-            for (int i = 0; i < _commandQueue.Count; i++)
-            {
-                var queuedCommand = _commandQueue[i];
-                if (queuedCommand.Command.Id == command.Id)
-                {
-                    removeIndex = i;
-                    break;
-                }
-            }
-
-            if (removeIndex > -1)
-            {
-                _commandQueue.RemoveAt(removeIndex);
-                return Result.Ok();
-            }
+            _commandQueue.RemoveAll(c => c.GetType().IsAssignableTo(typeof(T)) );
         }
-
-
-        return Result.Fail("Command not found");
     }
 
     public void StartExecution()
