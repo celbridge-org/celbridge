@@ -78,5 +78,14 @@ public class ResourceScannerTests
 
         subFolder.Children.Count.Should().Be(1);
         subFolder.Children[0].Name.Should().Be("ResourceFileB.txt");
+
+        //
+        // Expand a folder and retrieve it from the registry
+        //
+        var folder = (resources[0] as FolderResource)!;
+        folder.Expanded = true;
+        var expandedFolders = resourceRegistry.GetExpandedFolders();
+        expandedFolders.Count.Should().Be(1);
+        expandedFolders[0].Should().Be("ResourceFolder");
     }
 }

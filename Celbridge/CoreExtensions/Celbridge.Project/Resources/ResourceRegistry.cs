@@ -167,4 +167,55 @@ public class ResourceRegistry : IResourceRegistry
             return Result<FolderResource>.Fail($"Failed to scan folder '{path}'. {ex.Message}");
         }
     }
+
+    public List<String> GetExpandedFolders()
+    {
+        List<String> expandedFolders = new();
+
+        void VisitFolder(string path, FolderResource folder)
+        {
+            bool isRoot = folder == _rootFolder;
+
+            if (!isRoot && !folder.Expanded)
+            {
+                // Don't descend into unexpanded folders
+                return;
+            }
+
+            // Build the path to the folder (leaving out the root part).
+            string newPath = string.Empty;
+            if (!isRoot)
+            {
+                if (string.IsNullOrEmpty(path))
+                {
+                    newPath = folder.Name;
+                }
+                else
+                {
+                    newPath = path + "/" + folder.Name;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(newPath))
+            {
+                expandedFolders.Add(newPath);
+            }
+            foreach (var resource in folder.Children)
+            {
+                if (resource is FolderResource childFolder)
+                {
+                    VisitFolder(newPath, childFolder);
+                }
+            }
+        }
+
+        VisitFolder(string.Empty, _rootFolder);
+
+        return expandedFolders;
+    }
+
+    public void SetExpandedFolders(List<string> expandedFolders)
+    {
+        throw new NotImplementedException();
+    }
 }
