@@ -1,6 +1,7 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Commands.Workspace;
+using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
@@ -12,17 +13,20 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
     private readonly IProjectService _projectService;
+    private readonly ICommandService _commandService;
 
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.Resources;
 
     public ResourceTreeViewModel(
         IMessengerService messengerService,
         ILoggingService loggingService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ICommandService commandService)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
+        _commandService = commandService;
 
         _messengerService.Register<RequestProjectRefreshMessage>(this, OnRefreshProjectRequested);
     }
@@ -39,5 +43,15 @@ public partial class ResourceTreeViewModel : ObservableObject
         {
             _loggingService.Error(updateResult.Error);
         }
+    }
+
+    public void OnExpandedFoldersChanged()
+    {
+        _loggingService.Info("Collection changed");
+
+
+
+        _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
+        _commandService.Execute<ISaveWorkspaceStateCommand>(250);
     }
 }
