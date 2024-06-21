@@ -216,6 +216,44 @@ public class ResourceRegistry : IResourceRegistry
 
     public void SetExpandedFolders(List<string> expandedFolders)
     {
-        throw new NotImplementedException();
+        // Convert the folder list to a hash set for faster lookup
+        var folderSet = new HashSet<string>(expandedFolders);
+
+        void VisitFolder(string path, FolderResource folder)
+        {
+            bool isRoot = folder == _rootFolder;
+
+            // Build the path to the folder (leaving out the root part).
+            string newPath = string.Empty;
+            if (!isRoot)
+            {
+                if (string.IsNullOrEmpty(path))
+                {
+                    newPath = folder.Name;
+                }
+                else
+                {
+                    newPath = path + "/" + folder.Name;
+                }
+            }
+
+            // Expand this folder if it's in the expanded folder set
+            if (!string.IsNullOrEmpty(newPath) && 
+                folderSet.Contains(newPath))
+            {
+                folder.Expanded = true;
+            }
+
+            // Recursively visit every child folder resource
+            foreach (var resource in folder.Children)
+            {
+                if (resource is FolderResource childFolder)
+                {
+                    VisitFolder(newPath, childFolder);
+                }
+            }
+        }
+
+        VisitFolder(string.Empty, _rootFolder);
     }
 }
