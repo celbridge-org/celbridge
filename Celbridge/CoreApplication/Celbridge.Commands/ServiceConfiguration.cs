@@ -1,5 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Commands.Workspace;
 using Celbridge.Commands.Project;
+using Celbridge.Commands.Workspace;
 using Celbridge.Services.Commands;
 
 namespace Celbridge.Commands;
@@ -12,6 +14,7 @@ public static class ServiceConfiguration
         services.AddTransient<ICreateProjectCommand, CreateProjectCommand>();
         services.AddTransient<ILoadProjectCommand, LoadProjectCommand>();
         services.AddTransient<IUnloadProjectCommand, UnloadProjectCommand>();
+        services.AddTransient<ISaveWorkspaceStateCommand, SaveWorkspaceStateCommand>();
     }
 
     public static void Initialize()

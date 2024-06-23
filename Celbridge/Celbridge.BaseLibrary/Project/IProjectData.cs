@@ -21,12 +21,12 @@ public interface IProjectData
     string ProjectFolder { get; }
 
     /// <summary>
-    /// Returns the configuration data for the project.
+    /// Gets the data version for the project data.
     /// </summary>
-    Task<IProjectConfig> GetConfigAsync();
+    Task<Result<int>> GetDataVersionAsync();
 
     /// <summary>
-    /// Updates the configuration data for the project.
+    /// Sets the data version for the project data.
     /// </summary>
-    Task SetConfigAsync(IProjectConfig config);
+    Task<Result> SetDataVersionAsync(int version);
 }

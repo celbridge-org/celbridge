@@ -18,6 +18,10 @@ public sealed partial class ResourceTreeView : UserControl
         {
             ViewModel.ResourceTreeView_Unloaded();
         };
+
+
+        ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
+        ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
     }
 
     private void OpenResource(object? sender, RoutedEventArgs e)
@@ -42,5 +46,15 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var element = sender as FrameworkElement;
         Guard.IsNotNull(element);
+    }
+
+    private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
+    {
+        ViewModel.OnExpandedFoldersChanged();
+    }
+
+    private void ResourcesTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
+    {
+        ViewModel.OnExpandedFoldersChanged();
     }
 }
