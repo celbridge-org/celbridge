@@ -34,7 +34,7 @@ public class ProjectData : IDisposable, IProjectData
         var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
-            return Result<int>.Fail($"Failed to get data version");
+            return Result<int>.Fail($"Failed to get data version for Project Data");
         }
 
         return Result<int>.Ok(dataVersion.Version);
@@ -45,7 +45,7 @@ public class ProjectData : IDisposable, IProjectData
         var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
-            return Result.Fail($"Failed to get data version");
+            return Result.Fail($"Failed to set data version for Project Data");
         }
 
         dataVersion.Version = version;
