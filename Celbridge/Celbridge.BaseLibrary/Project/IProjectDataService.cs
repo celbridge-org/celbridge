@@ -8,17 +8,22 @@ public interface IProjectDataService
     /// <summary>
     /// Returns the currently loaded project data.
     /// </summary>
-    public IProjectData? LoadedProjectData { get; }
+    IProjectData? LoadedProjectData { get; }
+
+    /// <summary>
+    /// Returns the currently loaded project user data.
+    /// </summary>
+    IProjectUserData? LoadedProjectUserData { get; }
 
     /// <summary>
     /// Checks if a new project config is valid.
     /// </summary>
-    public Result ValidateNewProjectConfig(NewProjectConfig config);
+    Result ValidateNewProjectConfig(NewProjectConfig config);
 
     /// <summary>
     /// Checks if a project name is valid.
     /// </summary>
-    public Result ValidateProjectName(string projectName);
+    Result ValidateProjectName(string projectName);
 
     /// <summary>
     /// Create a new project using the specified config information.

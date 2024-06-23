@@ -11,15 +11,18 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly INavigationService _navigationService;
+    private readonly ICommandService _commandService;
 
     public CreateProjectCommand(
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ICommandService commandService)
     {
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _navigationService = navigationService;
+        _commandService = commandService;
     }
 
     public NewProjectConfig? Config { get; set; }
@@ -50,11 +53,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         }
 
         // Load the new project
-        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService, projectFilePath);
-        if (loadResult.IsFailure)
-        {
-            return Result.Fail($"Failed to load new project. {loadResult.Error}");
-        }
+        _commandService.Execute<ILoadProjectCommand>(command => command.ProjectPath = projectFilePath);
 
         return Result.Ok();
     }
