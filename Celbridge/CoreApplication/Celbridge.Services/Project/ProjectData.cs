@@ -29,35 +29,30 @@ public class ProjectData : IDisposable, IProjectData
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<IProjectConfig> GetConfigAsync()
+    public async Task<Result<int>> GetDataVersionAsync()
     {
-        if (_disposed)
+        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        if (dataVersion == null)
         {
-            throw new ObjectDisposedException(nameof(_connection));
+            return Result<int>.Fail($"Failed to get data version for Project Data");
         }
 
-        var config = await _connection.Table<ProjectConfig>().FirstOrDefaultAsync();
-        if (config == null)
-        {
-            throw new InvalidOperationException("ProjectConfig table not found in database.");
-        }
-
-        return config;
+        return Result<int>.Ok(dataVersion.Version);
     }
 
-    public async Task SetConfigAsync(IProjectConfig config)
+    public async Task<Result> SetDataVersionAsync(int version)
     {
-        if (_disposed)
+        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        if (dataVersion == null)
         {
-            throw new ObjectDisposedException(nameof(_connection));
+            return Result.Fail($"Failed to set data version for Project Data");
         }
 
-        if (config == null)
-        {
-            throw new ArgumentNullException();
-        }
+        dataVersion.Version = version;
 
-        await _connection.InsertAsync(config);
+        await _connection.UpdateAsync(dataVersion);
+        
+        return Result.Ok();
     }
 
     public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
@@ -78,15 +73,15 @@ public class ProjectData : IDisposable, IProjectData
         var projectData = new ProjectData(projectFilePath, databasePath);
         Guard.IsNotNull(projectData);
 
-        var config = new ProjectConfig 
+        var dataVersion = new DataVersion 
         { 
             Version = version 
         };
 
-        await projectData._connection.CreateTableAsync<ProjectConfig>();
-        await projectData._connection.InsertAsync(config);
+        await projectData._connection.CreateTableAsync<DataVersion>();
+        await projectData._connection.InsertAsync(dataVersion);
 
-        // Close the database after creating it
+        // Close the database
         projectData.Dispose();
 
         return Result.Ok();
@@ -106,11 +101,8 @@ public class ProjectData : IDisposable, IProjectData
         {
             if (disposing)
             {
-                // Dispose managed resources
                 _connection?.CloseAsync().Wait();
             }
-
-            // Dispose unmanaged resources here if any
 
             _disposed = true;
         }
