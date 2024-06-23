@@ -16,13 +16,16 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
+    private readonly IProjectDataService _projectDataService;
 
     public WorkspacePageViewModel(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IProjectDataService projectDataService)
     {
         _messengerService = messengerService;
+        _projectDataService = projectDataService;
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
@@ -114,6 +117,22 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Scan the project resources and update the resource tree view.
         //
         _messengerService.Send(new RequestProjectRefreshMessage());
+
+        //
+        // Restore the Project Panel view state
+        //
+
+        var projectUserData = _projectDataService.LoadedProjectUserData;
+        Guard.IsNotNull(projectUserData);
+
+        // Set expanded folders
+        var getFoldersResult = await projectUserData.GetExpandedFoldersAsync();
+        if (getFoldersResult.IsSuccess)
+        {
+            var expandedFolders = getFoldersResult.Value;
+            var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
+            resourceRegistry.SetExpandedFolders(expandedFolders);
+        }
 
         // Todo: Load the workspace here
         await Task.Delay(1000);
