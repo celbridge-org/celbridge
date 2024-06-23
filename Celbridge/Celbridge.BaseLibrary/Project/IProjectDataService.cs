@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Workspace;
+
+namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
 /// Provides services for managing project data.
@@ -11,9 +13,9 @@ public interface IProjectDataService
     IProjectData? LoadedProjectData { get; }
 
     /// <summary>
-    /// Returns the currently loaded project user data.
+    /// Returns the currently opened workspace data.
     /// </summary>
-    IProjectUserData? LoadedProjectUserData { get; }
+    IWorkspaceData? WorkspaceData { get; }
 
     /// <summary>
     /// Checks if a new project config is valid.

@@ -34,10 +34,10 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
 
         var expandedFolders = resourceRegistry.GetExpandedFolders();
 
-        var projectUserData = _projectDataService.LoadedProjectUserData;
-        Guard.IsNotNull(projectUserData);
+        var workspaceData = _projectDataService.WorkspaceData;
+        Guard.IsNotNull(workspaceData);
 
-        var setFoldersResult = await projectUserData.SetExpandedFoldersAsync(expandedFolders);
+        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
         if (setFoldersResult.IsFailure)
         {
             return Result.Fail($"Failed to Save Workspace State. {setFoldersResult.Error}");

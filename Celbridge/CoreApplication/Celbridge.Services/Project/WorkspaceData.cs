@@ -1,15 +1,15 @@
 ﻿using SQLite;
-using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Services.Project;
 
-public class ProjectUserData : IDisposable, IProjectUserData
+public class WorkspaceData : IDisposable, IWorkspaceData
 {
     private SQLiteAsyncConnection _connection;
 
     public string DatabasePath { get; init; }
 
-    private ProjectUserData(string databasePath)
+    private WorkspaceData(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
         DatabasePath = databasePath;
@@ -74,35 +74,35 @@ public class ProjectUserData : IDisposable, IProjectUserData
         }
     }
 
-    public static Result<IProjectUserData> LoadProjectUserData(string databasePath)
+    public static Result<IWorkspaceData> LoadWorkspaceData(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectUserData = new ProjectUserData(databasePath);
-        Guard.IsNotNull(projectUserData);
+        var workspaceData = new WorkspaceData(databasePath);
+        Guard.IsNotNull(workspaceData);
 
-        return Result<IProjectUserData>.Ok(projectUserData);
+        return Result<IWorkspaceData>.Ok(workspaceData);
     }
 
-    public static async Task<Result> CreateProjectUserDataAsync(string databasePath, int version)
+    public static async Task<Result> CreateWorkspaceDataAsync(string databasePath, int version)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectUserData = new ProjectUserData(databasePath);
-        Guard.IsNotNull(projectUserData);
+        var workspaceData = new WorkspaceData(databasePath);
+        Guard.IsNotNull(workspaceData);
 
-        await projectUserData._connection.CreateTableAsync<DataVersion>();
+        await workspaceData._connection.CreateTableAsync<DataVersion>();
 
         var dataVersion = new DataVersion 
         { 
             Version = version 
         };
-        await projectUserData._connection.InsertAsync(dataVersion);
+        await workspaceData._connection.InsertAsync(dataVersion);
 
-        await projectUserData._connection.CreateTableAsync<ExpandedFolder>();
+        await workspaceData._connection.CreateTableAsync<ExpandedFolder>();
 
         // Close the database
-        projectUserData.Dispose();
+        workspaceData.Dispose();
 
         return Result.Ok();
     }
@@ -128,7 +128,7 @@ public class ProjectUserData : IDisposable, IProjectUserData
         }
     }
 
-    ~ProjectUserData()
+    ~WorkspaceData()
     {
         Dispose(false);
     }

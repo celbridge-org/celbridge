@@ -10,11 +10,6 @@ public class ProjectService : IProjectService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IProjectDataService _projectDataService;
 
-    // Convenience accessor for getting the loaded project data
-    public IProjectData LoadedProjectData => _projectDataService.LoadedProjectData!;
-
-    public IProjectUserData LoadedProjectUserData => _projectDataService.LoadedProjectUserData!;
-
     public IResourceRegistry ResourceRegistry { get; init; }
 
     public ProjectService(

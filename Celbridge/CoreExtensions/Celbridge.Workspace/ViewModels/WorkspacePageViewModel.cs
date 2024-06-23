@@ -122,11 +122,11 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Restore the Project Panel view state
         //
 
-        var projectUserData = _projectDataService.LoadedProjectUserData;
-        Guard.IsNotNull(projectUserData);
+        var workspaceData = _projectDataService.WorkspaceData;
+        Guard.IsNotNull(workspaceData);
 
         // Set expanded folders
-        var getFoldersResult = await projectUserData.GetExpandedFoldersAsync();
+        var getFoldersResult = await workspaceData.GetExpandedFoldersAsync();
         if (getFoldersResult.IsSuccess)
         {
             var expandedFolders = getFoldersResult.Value;
