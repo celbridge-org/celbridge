@@ -13,14 +13,13 @@ public partial class ProjectPanelViewModel : ObservableObject
 
     public ProjectPanelViewModel(
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IProjectDataService projectDataService)
     {
         _messengerService = messengerService;
 
         // The project data is guaranteed to have been loaded at this point, so it's safe to just
-        // acquire a reference via the ProjectService.
-        var projectService = workspaceWrapper.WorkspaceService.ProjectService;
-        var projectData = projectService.LoadedProjectData;
+        // acquire a reference via the ProjectDataService.
+        var projectData = projectDataService.LoadedProjectData!;
 
         TitleText = projectData.ProjectName;
     }

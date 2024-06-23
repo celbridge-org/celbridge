@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Workspace;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.Project;
@@ -6,16 +7,16 @@ namespace Celbridge.Services.Project;
 public class ProjectDataService : IProjectDataService
 {
     private const int ProjectDataVersion = 1;
-    private const int ProjectUserDataVersion = 1;
+    private const int WorkspaceDataVersion = 1;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
-    private const string DefaultProjectUserDataPath = "Library/ProjectData/ProjectUserData.db";
+    private const string DefaultWorkspaceDataPath = "Library/ProjectData/WorkspaceData.db";
 
     public ProjectDataService()
     {}
 
     public IProjectData? LoadedProjectData { get; private set; }
-    public IProjectUserData? LoadedProjectUserData { get; private set; }
+    public IWorkspaceData? WorkspaceData { get; private set; }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -75,7 +76,7 @@ public class ProjectDataService : IProjectDataService
             var projectJson = $$"""
                 {
                     "projectDataFile": "{{DefaultProjectDataPath}}",
-                    "projectUserDataFile": "{{DefaultProjectUserDataPath}}"
+                    "workspaceDataFile": "{{DefaultWorkspaceDataPath}}"
                 }
                 """;
 
@@ -92,21 +93,21 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectDataVersion);
-            if (createResult.IsFailure)
+            var createProjectResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectDataVersion);
+            if (createProjectResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project: {config.ProjectName}");
+                return Result.Fail($"Failed to create project database: {config.ProjectName}");
             }
 
             //
             // Create a user data database file beside the project database
             //
 
-            var userDatabasePath = Path.Combine(config.ProjectFolder, DefaultProjectUserDataPath);            
-            var createUserResult = await ProjectUserData.CreateProjectUserDataAsync(userDatabasePath, ProjectUserDataVersion);
-            if (createResult.IsFailure)
+            var workspaceDatabasePath = Path.Combine(config.ProjectFolder, DefaultWorkspaceDataPath);            
+            var createWorkspaceResult = await Project.WorkspaceData.CreateWorkspaceDataAsync(workspaceDatabasePath, WorkspaceDataVersion);
+            if (createWorkspaceResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project user data: {config.ProjectName}");
+                return Result.Fail($"Failed to create workspace database: {config.ProjectName}");
             }
 
             return Result.Ok();
@@ -130,24 +131,24 @@ public class ProjectDataService : IProjectDataService
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
             string projectDataPath = Path.Combine(projectFolder, projectDataPathRelative);
 
-            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
-            if (loadResult.IsFailure)
+            var loadProjectResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
+            if (loadProjectResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project data: {projectDataPath}");
+                return Result.Fail($"Failed to load project database: {projectDataPath}");
             }
 
-            string projectUserDataPathRelative = jsonObject["projectUserDataFile"]!.ToString();
-            string projectUserDataPath = Path.Combine(projectFolder, projectUserDataPathRelative);
+            string workspaceDataPathRelative = jsonObject["workspaceDataFile"]!.ToString();
+            string workspaceDataPath = Path.Combine(projectFolder, workspaceDataPathRelative);
 
-            var loadUserDataResult = ProjectUserData.LoadProjectUserData(projectUserDataPath);
-            if (loadUserDataResult.IsFailure)
+            var loadWorkspaceResult = Project.WorkspaceData.LoadWorkspaceData(workspaceDataPath);
+            if (loadWorkspaceResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project user data: {projectDataPath}");
+                return Result.Fail($"Failed to load workspace database: {workspaceDataPath}");
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
-            LoadedProjectData = loadResult.Value;
-            LoadedProjectUserData = loadUserDataResult.Value;
+            LoadedProjectData = loadProjectResult.Value;
+            WorkspaceData = loadWorkspaceResult.Value;
 
             return Result.Ok();
         }
@@ -161,7 +162,7 @@ public class ProjectDataService : IProjectDataService
     {
         if (LoadedProjectData is null)
         {
-            Guard.IsNull(LoadedProjectUserData);
+            Guard.IsNull(WorkspaceData);
 
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
@@ -172,10 +173,10 @@ public class ProjectDataService : IProjectDataService
         disposableProjectData.Dispose();
         LoadedProjectData = null;
 
-        var disposableProjectUserData = LoadedProjectUserData as IDisposable;
-        Guard.IsNotNull(disposableProjectUserData);
-        disposableProjectUserData.Dispose();
-        LoadedProjectUserData = null;
+        var disposableWorkspaceData = WorkspaceData as IDisposable;
+        Guard.IsNotNull(disposableWorkspaceData);
+        disposableWorkspaceData.Dispose();
+        WorkspaceData = null;
 
         return Result.Ok();
     }
