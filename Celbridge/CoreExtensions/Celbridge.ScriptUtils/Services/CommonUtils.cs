@@ -4,7 +4,7 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.ScriptUtils;
+namespace Celbridge.ScriptUtils.Services;
 
 public class CommonUtils
 {
@@ -40,7 +40,7 @@ public class CommonUtils
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICreateProjectCommand>(command =>
         {
-            command.Config = new NewProjectConfig(projectName, folder); 
+            command.Config = new NewProjectConfig(projectName, folder);
         });
     }
 }

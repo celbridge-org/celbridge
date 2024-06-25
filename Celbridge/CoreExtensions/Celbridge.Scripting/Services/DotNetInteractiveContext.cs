@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Scripting;
 using Microsoft.DotNet.Interactive;
 
-namespace Celbridge.Scripting;
+namespace Celbridge.Scripting.Services;
 
 public class DotNetInteractiveContext : IScriptContext
 {
