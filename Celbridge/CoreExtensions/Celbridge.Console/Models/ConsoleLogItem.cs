@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Console;
 
-namespace Celbridge.Console;
+namespace Celbridge.Console.Models;
 
 public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Timestamp)
 {

@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Console;
 
-namespace Celbridge.Console;
+namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {
@@ -33,7 +33,7 @@ public class CommandHistory : ICommandHistory
         }
 
         // Limit how big the history can grow
-        while (_commands.Count > MaxHistorySize) 
+        while (_commands.Count > MaxHistorySize)
         {
             // This is potentially expensive, could replace with a linked list implementation.
             _commands.RemoveAt(0);

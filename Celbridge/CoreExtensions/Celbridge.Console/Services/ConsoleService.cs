@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Console;
 using Celbridge.Console.Views;
 
-namespace Celbridge.Console;
+namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
