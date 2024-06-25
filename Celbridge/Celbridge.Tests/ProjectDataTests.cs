@@ -59,7 +59,7 @@ public class ProjectDataTests
         versionResultA.IsSuccess.Should().BeTrue();
 
         //
-        // Unload the project databases
+        // Unload the project database
         //
 
         _projectDataService.UnloadProjectData();

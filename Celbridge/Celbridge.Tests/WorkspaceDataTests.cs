@@ -60,7 +60,7 @@ public class WorkspaceDataTests
         versionResult.Value.Should().Be(1);
 
         // 
-        // Set and get an expanded folders list in the project user data
+        // Set and get an expanded folders list in the workspace data
         //
         var expandedFolders = new List<string>() { "a", "b", "c" };
         var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
@@ -72,7 +72,7 @@ public class WorkspaceDataTests
         expandedFolders.SequenceEqual(getFoldersResult.Value);
 
         //
-        // Unload the project databases
+        // Unload the workspace database
         //
 
         _workspaceDataService.UnloadWorkspaceData();
