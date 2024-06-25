@@ -59,38 +59,11 @@ public class ProjectDataTests
         versionResultA.IsSuccess.Should().BeTrue();
 
         //
-        // WorkspaceData tests
-        //
-
-        var workspaceData = _projectDataService.WorkspaceData!;
-        workspaceData.Should().NotBeNull();
-        var versionResultB = await workspaceData.GetDataVersionAsync();
-        versionResultB.IsSuccess.Should().BeTrue();
-
-        // 
-        // Set and get an expanded folders list in the project user data
-        //
-        var expandedFolders = new List<string>() { "a", "b", "c" };
-        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
-        setFoldersResult.IsSuccess.Should().BeTrue();
-
-        var getFoldersResult = await workspaceData.GetExpandedFoldersAsync();
-        getFoldersResult.IsSuccess.Should().BeTrue();
-
-        expandedFolders.SequenceEqual(getFoldersResult.Value);
-
-        //
-        // Check the project data and project user data versions match
-        //
-        versionResultA.Value.Should().Be(versionResultB.Value);
-
-        //
         // Unload the project databases
         //
 
         _projectDataService.UnloadProjectData();
         _projectDataService.LoadedProjectData.Should().BeNull();
-        _projectDataService.WorkspaceData.Should().BeNull();
 
         //
         // Delete the project database files
