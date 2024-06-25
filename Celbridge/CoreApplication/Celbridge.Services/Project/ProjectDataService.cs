@@ -1,22 +1,18 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Workspace;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Services.Project;
 
 public class ProjectDataService : IProjectDataService
 {
-    private const int ProjectDataVersion = 1;
-    private const int WorkspaceDataVersion = 1;
+    private const int DataVersion = 1;
 
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
-    private const string DefaultWorkspaceDataPath = "Library/ProjectData/WorkspaceData.db";
 
     public ProjectDataService()
     {}
 
     public IProjectData? LoadedProjectData { get; private set; }
-    public IWorkspaceData? WorkspaceData { get; private set; }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -76,7 +72,6 @@ public class ProjectDataService : IProjectDataService
             var projectJson = $$"""
                 {
                     "projectDataFile": "{{DefaultProjectDataPath}}",
-                    "workspaceDataFile": "{{DefaultWorkspaceDataPath}}"
                 }
                 """;
 
@@ -93,21 +88,10 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createProjectResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectDataVersion);
+            var createProjectResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, DataVersion);
             if (createProjectResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project database: {config.ProjectName}");
-            }
-
-            //
-            // Create a user data database file beside the project database
-            //
-
-            var workspaceDatabasePath = Path.Combine(config.ProjectFolder, DefaultWorkspaceDataPath);            
-            var createWorkspaceResult = await Project.WorkspaceData.CreateWorkspaceDataAsync(workspaceDatabasePath, WorkspaceDataVersion);
-            if (createWorkspaceResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create workspace database: {config.ProjectName}");
             }
 
             return Result.Ok();
@@ -137,24 +121,14 @@ public class ProjectDataService : IProjectDataService
                 return Result.Fail($"Failed to load project database: {projectDataPath}");
             }
 
-            string workspaceDataPathRelative = jsonObject["workspaceDataFile"]!.ToString();
-            string workspaceDataPath = Path.Combine(projectFolder, workspaceDataPathRelative);
-
-            var loadWorkspaceResult = Project.WorkspaceData.LoadWorkspaceData(workspaceDataPath);
-            if (loadWorkspaceResult.IsFailure)
-            {
-                return Result.Fail($"Failed to load workspace database: {workspaceDataPath}");
-            }
-
             // Both data files have successfully loaded, so we can now populate the member variables
             LoadedProjectData = loadProjectResult.Value;
-            WorkspaceData = loadWorkspaceResult.Value;
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load project. {ex.Message}");
+            return Result.Fail($"Failed to load project database. {ex.Message}");
         }
     }
 
@@ -162,8 +136,6 @@ public class ProjectDataService : IProjectDataService
     {
         if (LoadedProjectData is null)
         {
-            Guard.IsNull(WorkspaceData);
-
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
@@ -172,11 +144,6 @@ public class ProjectDataService : IProjectDataService
         Guard.IsNotNull(disposableProjectData);
         disposableProjectData.Dispose();
         LoadedProjectData = null;
-
-        var disposableWorkspaceData = WorkspaceData as IDisposable;
-        Guard.IsNotNull(disposableWorkspaceData);
-        disposableWorkspaceData.Dispose();
-        WorkspaceData = null;
 
         return Result.Ok();
     }

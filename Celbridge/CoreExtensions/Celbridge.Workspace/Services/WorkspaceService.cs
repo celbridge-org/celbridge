@@ -4,9 +4,10 @@ using Celbridge.BaseLibrary.Inspector;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.Workspace;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Workspace;
+namespace Celbridge.Workspace.Services;
 
 public class WorkspaceService : IWorkspaceService, IDisposable
 {
@@ -14,20 +15,34 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public bool IsRightPanelVisible { get; }
     public bool IsBottomPanelVisible { get; }
 
+    public IWorkspaceDataService WorkspaceDataService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IProjectService ProjectService { get; }
     public IStatusService StatusService { get; }
 
-    public WorkspaceService(IServiceProvider serviceProvider)
+    public WorkspaceService(
+        IServiceProvider serviceProvider, 
+        IProjectDataService projectDataService)
     {
         // Create instances of the required sub-services
+        WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ProjectService = serviceProvider.GetRequiredService<IProjectService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
+
+        //
+        // Let the workspace data service know where to find the workspace database
+        //
+
+        var projectData = projectDataService.LoadedProjectData;
+        Guard.IsNotNull(projectData);
+        var databaseFolder = Path.GetDirectoryName(projectData.DatabasePath);
+        Guard.IsNotNullOrEmpty(databaseFolder);
+        WorkspaceDataService.DatabaseFolder = databaseFolder;
     }
 
     private bool _disposed;
@@ -47,6 +62,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
+                (WorkspaceDataService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
