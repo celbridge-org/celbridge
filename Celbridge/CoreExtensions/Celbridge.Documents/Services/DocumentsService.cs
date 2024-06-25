@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Documents;
 using Celbridge.Documents.Views;
 
-namespace Celbridge.Documents;
+namespace Celbridge.Documents.Services;
 
 public class DocumentsService : IDocumentsService, IDisposable
 {

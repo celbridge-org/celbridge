@@ -1,4 +1,5 @@
-﻿using Celbridge.Console.ViewModels;
+﻿using Celbridge.Console.Models;
+using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using Windows.System;

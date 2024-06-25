@@ -2,6 +2,7 @@
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Project.Services;
 using Celbridge.Project.ViewModels;
 using Celbridge.Project.Views;
 

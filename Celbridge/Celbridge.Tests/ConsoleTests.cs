@@ -5,6 +5,7 @@ using Celbridge.Services.Logging;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Console;
+using Celbridge.Console.Services;
 
 namespace Celbridge.Tests;
 
