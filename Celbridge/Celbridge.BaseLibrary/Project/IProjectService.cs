@@ -8,11 +8,6 @@ namespace Celbridge.BaseLibrary.Project;
 public interface IProjectService
 {
     /// <summary>
-    /// Returns the Project Data associated with the loaded project.
-    /// </summary>
-    IProjectData LoadedProjectData { get; }
-
-    /// <summary>
     /// Returns the Resource Registry associated with the loaded project.
     /// </summary>
     IResourceRegistry ResourceRegistry { get; }

@@ -11,22 +11,27 @@ namespace Celbridge.BaseLibrary.Workspace;
 public interface IWorkspaceService
 {
     /// <summary>
+    /// Returns the Workspace Data Service associated with the workspace.
+    /// </summary>
+    IWorkspaceDataService WorkspaceDataService { get; }
+
+    /// <summary>
     /// Returns the Console Service associated with the workspace.
     /// </summary>
-    public IConsoleService ConsoleService { get; }
+    IConsoleService ConsoleService { get; }
 
     /// <summary>
     /// Returns the Documents Service associated with the workspace.
     /// </summary>
-    public IDocumentsService DocumentsService { get; }
+    IDocumentsService DocumentsService { get; }
 
     /// <summary>
     /// Returns the Project Service associated with the workspace.
     /// </summary>
-    public IProjectService ProjectService { get; }
+    IProjectService ProjectService { get; }
 
     /// <summary>
     /// Returns the Status Service associated with the workspace.
     /// </summary>
-    public IStatusService StatusService { get; }
+    IStatusService StatusService { get; }
 }

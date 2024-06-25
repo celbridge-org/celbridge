@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ public class Extension : IExtension
     public void ConfigureServices(IExtensionServiceCollection config)
     {
         config.AddTransient<WorkspacePageViewModel>();
+        config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
     }
 

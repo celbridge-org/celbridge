@@ -1,17 +1,17 @@
-﻿namespace Celbridge.BaseLibrary.Project;
+﻿namespace Celbridge.BaseLibrary.Workspace;
 
 /// <summary>
-/// Manages the user data associated with a Celbridge project.
+/// Manages the workspace data associated with a loaded project.
 /// </summary>
-public interface IProjectUserData
+public interface IWorkspaceData
 {
     /// <summary>
-    /// Gets the data version for the project user data.
+    /// Gets the data version for the workspace data.
     /// </summary>
     Task<Result<int>> GetDataVersionAsync();
 
     /// <summary>
-    /// Sets the data version for the project user data.
+    /// Sets the data version for the workspace data.
     /// </summary>
     Task<Result> SetDataVersionAsync(int version);
 

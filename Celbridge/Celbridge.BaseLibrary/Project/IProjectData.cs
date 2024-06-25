@@ -6,7 +6,7 @@
 public interface IProjectData
 {
     /// <summary>
-    /// Returns the name of the project database.
+    /// Returns the name of the project.
     /// </summary>
     string ProjectName { get; }
 
@@ -19,6 +19,11 @@ public interface IProjectData
     /// Returns the path to the folder containing the loaded project.
     /// </summary>
     string ProjectFolder { get; }
+
+    /// <summary>
+    /// Returns the path to the loaded project database.
+    /// </summary>
+    string DatabasePath { get; }
 
     /// <summary>
     /// Gets the data version for the project data.
