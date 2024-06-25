@@ -1,4 +1,4 @@
-﻿namespace Celbridge.ViewModels.Pages;
+﻿namespace Celbridge.UserInterface.ViewModels;
 
 public partial class SettingsPageViewModel : ObservableObject
 {

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.ViewModels.Dialogs;
+﻿namespace Celbridge.UserInterface.ViewModels;
 
 public partial class ProgressDialogViewModel : ObservableObject
 {

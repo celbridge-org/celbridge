@@ -29,7 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
-    <ProjectReference Include="..\Celbridge.ViewModels\Celbridge.ViewModels.csproj" />
+    <ProjectReference Include="..\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
   </ItemGroup>
 
   <Choose>
