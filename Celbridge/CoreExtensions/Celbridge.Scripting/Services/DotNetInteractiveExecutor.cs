@@ -3,7 +3,7 @@ using CommunityToolkit.Diagnostics;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.Events;
 
-namespace Celbridge.Scripting;
+namespace Celbridge.Scripting.Services;
 
 public class DotNetInteractiveExecutor : IScriptExecutor
 {

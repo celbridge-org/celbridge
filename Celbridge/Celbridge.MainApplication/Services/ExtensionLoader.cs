@@ -3,7 +3,7 @@ using Celbridge.BaseLibrary.Extensions;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Celbridge.MainApplication.Extensions;
+namespace Celbridge.MainApplication.Services;
 
 /// <summary>
 /// A helper class that to load the extension assemblies for the current session.

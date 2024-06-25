@@ -1,7 +1,8 @@
 ﻿using Celbridge.BaseLibrary.Resources;
+using Celbridge.Project.Models;
 using System.Collections.ObjectModel;
 
-namespace Celbridge.Project.Resources;
+namespace Celbridge.Project.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
@@ -166,9 +167,9 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public List<String> GetExpandedFolders()
+    public List<string> GetExpandedFolders()
     {
-        List<String> expandedFolders = new();
+        List<string> expandedFolders = new();
 
         void VisitFolder(string path, FolderResource folder)
         {
@@ -236,7 +237,7 @@ public class ResourceRegistry : IResourceRegistry
             }
 
             // Expand this folder if it's in the expanded folder set
-            if (!string.IsNullOrEmpty(newPath) && 
+            if (!string.IsNullOrEmpty(newPath) &&
                 folderSet.Contains(newPath))
             {
                 folder.Expanded = true;

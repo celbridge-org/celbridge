@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Status;
 using Celbridge.StatusBar.Views;
 
-namespace Celbridge.StatusBar;
+namespace Celbridge.Status.Services;
 
 public class StatusService : IStatusService, IDisposable
 {

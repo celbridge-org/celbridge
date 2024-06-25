@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Inspector;
 using Celbridge.Inspector.Views;
 
-namespace Celbridge.Inspector;
+namespace Celbridge.Inspector.Services;
 
 public class InspectorService : IInspectorService, IDisposable
 {

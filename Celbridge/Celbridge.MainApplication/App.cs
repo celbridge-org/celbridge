@@ -1,12 +1,11 @@
+using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.MainApplication.Extensions;
+using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
+using Celbridge.Services.Commands;
 using Celbridge.Services.UserInterface;
 using Celbridge.Views.Pages;
 using Uno.UI;
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.Services.Commands;
-using Windows.ApplicationModel.Core;
 
 namespace Celbridge;
 

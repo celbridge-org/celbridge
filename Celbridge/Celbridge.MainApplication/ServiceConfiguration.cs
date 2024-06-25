@@ -1,5 +1,5 @@
 using Celbridge.BaseLibrary.Extensions;
-using Celbridge.MainApplication.Extensions;
+using Celbridge.MainApplication.Services;
 
 namespace Celbridge.MainApplication;
 
@@ -10,7 +10,7 @@ public class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services, List<IExtension> extensions)
     {
-        Services.ServiceConfiguration.ConfigureServices(services);
+        Celbridge.Services.ServiceConfiguration.ConfigureServices(services);
         Views.ServiceConfiguration.ConfigureServices(services);
         ViewModels.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
