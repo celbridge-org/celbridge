@@ -1,8 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Resources;
 using System.Collections.ObjectModel;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Project.Resources;
 
 public class ResourceRegistry : IResourceRegistry

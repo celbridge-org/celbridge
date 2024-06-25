@@ -5,17 +5,13 @@ namespace Celbridge.Services.Project;
 
 public class ProjectDataService : IProjectDataService
 {
-    private const int ProjectDataVersion = 1;
-    private const int ProjectUserDataVersion = 1;
-
+    private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
-    private const string DefaultProjectUserDataPath = "Library/ProjectData/ProjectUserData.db";
 
     public ProjectDataService()
     {}
 
     public IProjectData? LoadedProjectData { get; private set; }
-    public IProjectUserData? LoadedProjectUserData { get; private set; }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -74,8 +70,7 @@ public class ProjectDataService : IProjectDataService
 
             var projectJson = $$"""
                 {
-                    "projectDataFile": "{{DefaultProjectDataPath}}",
-                    "projectUserDataFile": "{{DefaultProjectUserDataPath}}"
+                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataPath}}",
                 }
                 """;
 
@@ -92,21 +87,10 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, ProjectDataVersion);
+            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath);
             if (createResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project: {config.ProjectName}");
-            }
-
-            //
-            // Create a user data database file beside the project database
-            //
-
-            var userDatabasePath = Path.Combine(config.ProjectFolder, DefaultProjectUserDataPath);            
-            var createUserResult = await ProjectUserData.CreateProjectUserDataAsync(userDatabasePath, ProjectUserDataVersion);
-            if (createResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create project user data: {config.ProjectName}");
+                return Result.Fail($"Failed to create project database: {config.ProjectName}");
             }
 
             return Result.Ok();
@@ -133,27 +117,17 @@ public class ProjectDataService : IProjectDataService
             var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
             if (loadResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project data: {projectDataPath}");
-            }
-
-            string projectUserDataPathRelative = jsonObject["projectUserDataFile"]!.ToString();
-            string projectUserDataPath = Path.Combine(projectFolder, projectUserDataPathRelative);
-
-            var loadUserDataResult = ProjectUserData.LoadProjectUserData(projectUserDataPath);
-            if (loadUserDataResult.IsFailure)
-            {
-                return Result.Fail($"Failed to load project user data: {projectDataPath}");
+                return Result.Fail($"Failed to load project database: {projectDataPath}");
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
             LoadedProjectData = loadResult.Value;
-            LoadedProjectUserData = loadUserDataResult.Value;
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load project. {ex.Message}");
+            return Result.Fail($"Failed to load project database. {ex.Message}");
         }
     }
 
@@ -161,8 +135,6 @@ public class ProjectDataService : IProjectDataService
     {
         if (LoadedProjectData is null)
         {
-            Guard.IsNull(LoadedProjectUserData);
-
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
@@ -171,11 +143,6 @@ public class ProjectDataService : IProjectDataService
         Guard.IsNotNull(disposableProjectData);
         disposableProjectData.Dispose();
         LoadedProjectData = null;
-
-        var disposableProjectUserData = LoadedProjectUserData as IDisposable;
-        Guard.IsNotNull(disposableProjectUserData);
-        disposableProjectUserData.Dispose();
-        LoadedProjectUserData = null;
 
         return Result.Ok();
     }
