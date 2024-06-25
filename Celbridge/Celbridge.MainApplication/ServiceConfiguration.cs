@@ -12,7 +12,7 @@ public class ServiceConfiguration
     {
         Celbridge.Services.ServiceConfiguration.ConfigureServices(services);
         Views.ServiceConfiguration.ConfigureServices(services);
-        ViewModels.ServiceConfiguration.ConfigureServices(services);
+        UserInterface.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
 
         // Register the services provided by each extension with the dependency injection framework.

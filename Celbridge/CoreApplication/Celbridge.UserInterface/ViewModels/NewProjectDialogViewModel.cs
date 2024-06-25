@@ -1,9 +1,8 @@
 ﻿using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.UserInterface;
 
-namespace Celbridge.ViewModels.Dialogs;
+namespace Celbridge.UserInterface.ViewModels;
 
 public partial class NewProjectDialogViewModel : ObservableObject
 {
