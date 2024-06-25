@@ -7,7 +7,7 @@ namespace Celbridge.Workspace.Services;
 
 public class WorkspaceData : IDisposable, IWorkspaceData
 {
-    const int DataVersion = 1;
+    private const int DataVersion = 1;
 
     private SQLiteAsyncConnection _connection;
 
