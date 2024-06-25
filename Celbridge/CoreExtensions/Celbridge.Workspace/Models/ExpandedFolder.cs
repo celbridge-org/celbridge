@@ -1,6 +1,6 @@
 ﻿using SQLite;
 
-namespace Celbridge.Workspace.Services;
+namespace Celbridge.Workspace.Models;
 
 public class ExpandedFolder
 {
