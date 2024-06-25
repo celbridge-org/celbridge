@@ -1,4 +1,4 @@
-﻿using Celbridge.Project.Resources;
+﻿using Celbridge.Project.Models;
 
 namespace Celbridge.Project.Views;
 

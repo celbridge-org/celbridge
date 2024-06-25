@@ -7,7 +7,7 @@ using Microsoft.DotNet.Interactive.CSharp;
 using Microsoft.DotNet.Interactive.FSharp;
 using Microsoft.DotNet.Interactive.PowerShell;
 
-namespace Celbridge.Scripting;
+namespace Celbridge.Scripting.Services;
 
 public static class KernelBuilder
 {
@@ -73,11 +73,11 @@ public static class KernelBuilder
 
         var (htmlKernel, jsKernel) = Task.Run(async () =>
         {
-            var htmlKernel = await playwrightConnector.CreateKernelAsync("html", BrowserKernelLanguage.Html );
+            var htmlKernel = await playwrightConnector.CreateKernelAsync("html", BrowserKernelLanguage.Html);
             var jsKernel = await playwrightConnector.CreateKernelAsync("javascript", BrowserKernelLanguage.JavaScript);
             return (htmlKernel, jsKernel);
         }).Result;
-        
+
         compositeKernel.Add(jsKernel, new[] { "js" });
         compositeKernel.Add(htmlKernel);
         compositeKernel.Add(new MarkdownKernel());

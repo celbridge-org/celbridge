@@ -1,6 +1,6 @@
-﻿using Celbridge.Project.Resources;
+﻿using Celbridge.Project.Models;
+using Celbridge.Project.Services;
 using CommunityToolkit.Diagnostics;
-using System.Collections.ObjectModel;
 
 namespace Celbridge.Tests;
 
@@ -12,7 +12,7 @@ public class ResourceScannerTests
     [SetUp]
     public void Setup()
     {
-        _resourceFolder = Path.Combine(System.IO.Path.GetTempPath(), $"Celbridge/{nameof(ResourceScannerTests)}");
+        _resourceFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceScannerTests)}");
         if (Directory.Exists(_resourceFolder))
         {
             Directory.Delete(_resourceFolder, true);

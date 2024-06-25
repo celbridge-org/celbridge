@@ -2,7 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
-namespace Celbridge.Project.Resources;
+namespace Celbridge.Project.Models;
 
 public partial class FolderResource : Resource
 {

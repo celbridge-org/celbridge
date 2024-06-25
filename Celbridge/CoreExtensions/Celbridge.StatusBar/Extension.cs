@@ -2,6 +2,7 @@
 using Celbridge.BaseLibrary.Status;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Status.Services;
 using Celbridge.StatusBar.ViewModels;
 using Celbridge.StatusBar.Views;
 
