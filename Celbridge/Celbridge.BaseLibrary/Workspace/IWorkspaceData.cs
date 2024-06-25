@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.BaseLibrary.Workspace;
 
 /// <summary>
-/// Manages the user data associated with a workspace.
+/// Manages the workspace data associated with a loaded project.
 /// </summary>
 public interface IWorkspaceData
 {
