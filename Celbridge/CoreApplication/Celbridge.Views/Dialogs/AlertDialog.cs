@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
-using Celbridge.ViewModels.Dialogs;
+using Celbridge.UserInterface.ViewModels;
 
 namespace Celbridge.Views.Dialogs;
 

@@ -1,7 +1,4 @@
-﻿using Celbridge.ViewModels.Dialogs;
-using Celbridge.ViewModels.Pages;
-
-namespace Celbridge.ViewModels;
+﻿namespace Celbridge.UserInterface;
 
 public static class ServiceConfiguration
 {

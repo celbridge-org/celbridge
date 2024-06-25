@@ -7,9 +7,8 @@ using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Services.Navigation;
-using CommunityToolkit.Diagnostics;
 
-namespace Celbridge.ViewModels.Pages;
+namespace Celbridge.UserInterface.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {

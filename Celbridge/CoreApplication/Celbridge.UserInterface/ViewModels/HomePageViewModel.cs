@@ -3,7 +3,7 @@ using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Navigation;
 
-namespace Celbridge.ViewModels.Pages;
+namespace Celbridge.UserInterface.ViewModels;
 
 public partial class HomePageViewModel : ObservableObject
 {
