@@ -59,6 +59,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.ViewModels", "Cor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Commands", "CoreApplication\Celbridge.Commands\Celbridge.Commands.csproj", "{81A0329D-94FF-441E-8760-44123B2912FA}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.UserInterface", "CoreApplication\Celbridge.UserInterface\Celbridge.UserInterface.csproj", "{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -399,6 +401,22 @@ Global
 		{81A0329D-94FF-441E-8760-44123B2912FA}.Release|x64.Build.0 = Release|Any CPU
 		{81A0329D-94FF-441E-8760-44123B2912FA}.Release|x86.ActiveCfg = Release|Any CPU
 		{81A0329D-94FF-441E-8760-44123B2912FA}.Release|x86.Build.0 = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|arm64.Build.0 = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|x64.Build.0 = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Debug|x86.Build.0 = Debug|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|arm64.ActiveCfg = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|arm64.Build.0 = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|x64.ActiveCfg = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|x64.Build.0 = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|x86.ActiveCfg = Release|Any CPU
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -420,6 +438,7 @@ Global
 		{EBDA6E37-7B39-493D-BA54-7B855A60CF6B} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 		{FC47540A-6744-4FFB-81DA-C4C358436123} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 		{81A0329D-94FF-441E-8760-44123B2912FA} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
+		{C8074DD1-49EC-4030-964B-8BDBA4ECACB6} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BC2D9CCD-052A-4E02-847C-B67BCD8A4F62}
