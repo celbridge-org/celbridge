@@ -7,7 +7,7 @@ using Microsoft.DotNet.Interactive;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.Events;
 
-namespace Celbridge.Scripting;
+namespace Celbridge.Scripting.Services;
 
 public class MarkdownKernel :
     Kernel,
@@ -21,9 +21,9 @@ public class MarkdownKernel :
     public Task HandleAsync(SubmitCode command, KernelInvocationContext context)
     {
         var @event = new DisplayedValueProduced(command.Code, command, new[] { new FormattedValue("text/plain", command.Code) });
-        
+
         context.Publish(@event);
-        
+
         return Task.CompletedTask;
     }
 }
