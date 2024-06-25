@@ -34,7 +34,7 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
 
         var expandedFolders = resourceRegistry.GetExpandedFolders();
 
-        var workspaceData = _projectDataService.WorkspaceData;
+        var workspaceData = workspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
 
         var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);

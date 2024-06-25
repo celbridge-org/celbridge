@@ -31,7 +31,7 @@ public class ProjectData : IDisposable, IProjectData
 
     public async Task<Result<int>> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result<int>.Fail($"Failed to get data version for Project Data");
@@ -42,7 +42,7 @@ public class ProjectData : IDisposable, IProjectData
 
     public async Task<Result> SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result.Fail($"Failed to set data version for Project Data");
@@ -73,12 +73,12 @@ public class ProjectData : IDisposable, IProjectData
         var projectData = new ProjectData(projectFilePath, databasePath);
         Guard.IsNotNull(projectData);
 
-        var dataVersion = new DataVersion 
+        var dataVersion = new ProjectDataVersion 
         { 
             Version = version 
         };
 
-        await projectData._connection.CreateTableAsync<DataVersion>();
+        await projectData._connection.CreateTableAsync<ProjectDataVersion>();
         await projectData._connection.InsertAsync(dataVersion);
 
         // Close the database

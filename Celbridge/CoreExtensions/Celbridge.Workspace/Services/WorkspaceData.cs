@@ -1,10 +1,13 @@
 ﻿using SQLite;
 using Celbridge.BaseLibrary.Workspace;
+using CommunityToolkit.Diagnostics;
 
-namespace Celbridge.Services.Project;
+namespace Celbridge.Workspace.Services;
 
 public class WorkspaceData : IDisposable, IWorkspaceData
 {
+    const int DataVersion = 1;
+
     private SQLiteAsyncConnection _connection;
 
     public string DatabasePath { get; init; }
@@ -19,7 +22,7 @@ public class WorkspaceData : IDisposable, IWorkspaceData
 
     public async Task<Result<int>> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result<int>.Fail($"Failed to get data version");
@@ -30,7 +33,7 @@ public class WorkspaceData : IDisposable, IWorkspaceData
 
     public async Task<Result> SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result.Fail($"Failed to get data version");
@@ -78,24 +81,31 @@ public class WorkspaceData : IDisposable, IWorkspaceData
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var workspaceData = new WorkspaceData(databasePath);
-        Guard.IsNotNull(workspaceData);
+        try
+        {
+            var workspaceData = new WorkspaceData(databasePath);
+            Guard.IsNotNull(workspaceData);
 
-        return Result<IWorkspaceData>.Ok(workspaceData);
+            return Result<IWorkspaceData>.Ok(workspaceData);
+        }
+        catch (Exception ex)
+        {
+            return Result<IWorkspaceData>.Fail($"Failed to load workspace database. {ex.Message}");
+        }
     }
 
-    public static async Task<Result> CreateWorkspaceDataAsync(string databasePath, int version)
+    public static async Task<Result> CreateWorkspaceDataAsync(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
         var workspaceData = new WorkspaceData(databasePath);
         Guard.IsNotNull(workspaceData);
 
-        await workspaceData._connection.CreateTableAsync<DataVersion>();
+        await workspaceData._connection.CreateTableAsync<WorkspaceDataVersion>();
 
-        var dataVersion = new DataVersion 
+        var dataVersion = new WorkspaceDataVersion 
         { 
-            Version = version 
+            Version = DataVersion
         };
         await workspaceData._connection.InsertAsync(dataVersion);
 
