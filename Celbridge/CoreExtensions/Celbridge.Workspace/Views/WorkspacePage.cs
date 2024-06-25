@@ -6,6 +6,7 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Celbridge.Workspace.Services;
 
 namespace Celbridge.Workspace.Views;
 
@@ -302,13 +303,19 @@ public sealed partial class WorkspacePage : Page
         var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
         _statusPanel.Children.Add(statusPanel);
 
+        // Todo: Use a command to do this and handle failure gracefully
+
         async Task LoadWorkspaceAsync()
         {
             // Show the progress dialog
             var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
             _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
 
-            await ViewModel.LoadWorkspaceAsync();
+            var loadResult = await ViewModel.LoadWorkspaceAsync();
+            if (loadResult.IsFailure)
+            {
+                // Todo: Handle failure case
+            }
 
             // Hide the progress dialog
             _dialogService.ReleaseProgressDialog(_progressDialogToken);

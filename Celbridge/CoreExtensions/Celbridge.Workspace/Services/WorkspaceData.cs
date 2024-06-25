@@ -1,15 +1,19 @@
 ﻿using SQLite;
-using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Workspace;
+using CommunityToolkit.Diagnostics;
+using Celbridge.Workspace.Models;
 
-namespace Celbridge.Services.Project;
+namespace Celbridge.Workspace.Services;
 
-public class ProjectUserData : IDisposable, IProjectUserData
+public class WorkspaceData : IDisposable, IWorkspaceData
 {
+    private const int DataVersion = 1;
+
     private SQLiteAsyncConnection _connection;
 
     public string DatabasePath { get; init; }
 
-    private ProjectUserData(string databasePath)
+    private WorkspaceData(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
         DatabasePath = databasePath;
@@ -19,7 +23,7 @@ public class ProjectUserData : IDisposable, IProjectUserData
 
     public async Task<Result<int>> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result<int>.Fail($"Failed to get data version");
@@ -30,7 +34,7 @@ public class ProjectUserData : IDisposable, IProjectUserData
 
     public async Task<Result> SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<DataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result.Fail($"Failed to get data version");
@@ -74,35 +78,42 @@ public class ProjectUserData : IDisposable, IProjectUserData
         }
     }
 
-    public static Result<IProjectUserData> LoadProjectUserData(string databasePath)
+    public static Result<IWorkspaceData> LoadWorkspaceData(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectUserData = new ProjectUserData(databasePath);
-        Guard.IsNotNull(projectUserData);
+        try
+        {
+            var workspaceData = new WorkspaceData(databasePath);
+            Guard.IsNotNull(workspaceData);
 
-        return Result<IProjectUserData>.Ok(projectUserData);
+            return Result<IWorkspaceData>.Ok(workspaceData);
+        }
+        catch (Exception ex)
+        {
+            return Result<IWorkspaceData>.Fail($"Failed to load workspace database. {ex.Message}");
+        }
     }
 
-    public static async Task<Result> CreateProjectUserDataAsync(string databasePath, int version)
+    public static async Task<Result> CreateWorkspaceDataAsync(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectUserData = new ProjectUserData(databasePath);
-        Guard.IsNotNull(projectUserData);
+        var workspaceData = new WorkspaceData(databasePath);
+        Guard.IsNotNull(workspaceData);
 
-        await projectUserData._connection.CreateTableAsync<DataVersion>();
+        await workspaceData._connection.CreateTableAsync<WorkspaceDataVersion>();
 
-        var dataVersion = new DataVersion 
+        var dataVersion = new WorkspaceDataVersion 
         { 
-            Version = version 
+            Version = DataVersion
         };
-        await projectUserData._connection.InsertAsync(dataVersion);
+        await workspaceData._connection.InsertAsync(dataVersion);
 
-        await projectUserData._connection.CreateTableAsync<ExpandedFolder>();
+        await workspaceData._connection.CreateTableAsync<ExpandedFolder>();
 
         // Close the database
-        projectUserData.Dispose();
+        workspaceData.Dispose();
 
         return Result.Ok();
     }
@@ -128,7 +139,7 @@ public class ProjectUserData : IDisposable, IProjectUserData
         }
     }
 
-    ~ProjectUserData()
+    ~WorkspaceData()
     {
         Dispose(false);
     }

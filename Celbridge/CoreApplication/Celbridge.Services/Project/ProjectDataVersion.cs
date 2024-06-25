@@ -1,9 +1,8 @@
-﻿using Celbridge.BaseLibrary.Project;
-using SQLite;
+﻿using SQLite;
 
 namespace Celbridge.Services.Project;
 
-public class DataVersion
+public class ProjectDataVersion
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }

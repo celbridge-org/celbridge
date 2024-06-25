@@ -111,7 +111,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public async Task LoadWorkspaceAsync()
+    public async Task<Result> LoadWorkspaceAsync()
     {
         //
         // Scan the project resources and update the resource tree view.
@@ -119,19 +119,35 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(new RequestProjectRefreshMessage());
 
         //
+        // Acquire the workspace database
+        //
+        var workspaceDataService = _workspaceService.WorkspaceDataService;
+        var acquireResult = await workspaceDataService.AcquireWorkspaceDataAsync();
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to load workspace. {acquireResult.Error}");
+        }
+
+        var workspaceData = workspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        //
         // Restore the Project Panel view state
         //
-
-        var projectUserData = _projectDataService.LoadedProjectUserData;
-        Guard.IsNotNull(projectUserData);
-
-        // Set expanded folders
-        var getFoldersResult = await projectUserData.GetExpandedFoldersAsync();
-        if (getFoldersResult.IsSuccess)
+        try
         {
-            var expandedFolders = getFoldersResult.Value;
-            var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
-            resourceRegistry.SetExpandedFolders(expandedFolders);
+            // Set expanded folders
+            var getFoldersResult = await workspaceData.GetExpandedFoldersAsync();
+            if (getFoldersResult.IsSuccess)
+            {
+                var expandedFolders = getFoldersResult.Value;
+                var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
+                resourceRegistry.SetExpandedFolders(expandedFolders);
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to restore Project Panel view state. {ex.Message}");
         }
 
         // Todo: Load the workspace here
@@ -139,6 +155,8 @@ public partial class WorkspacePageViewModel : ObservableObject
 
         var message = new WorkspaceLoadedMessage();
         _messengerService.Send(message);
+
+        return Result.Ok();
     }
 }
 
