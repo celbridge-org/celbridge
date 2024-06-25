@@ -12,7 +12,7 @@ public class ResourceScannerTests
     [SetUp]
     public void Setup()
     {
-        _resourceFolder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Celbridge/{nameof(ResourceScannerTests)}");
+        _resourceFolder = Path.Combine(System.IO.Path.GetTempPath(), $"Celbridge/{nameof(ResourceScannerTests)}");
         if (Directory.Exists(_resourceFolder))
         {
             Directory.Delete(_resourceFolder, true);
@@ -46,15 +46,15 @@ public class ResourceScannerTests
         Directory.CreateDirectory(_resourceFolder);
         Directory.Exists(_resourceFolder).Should().BeTrue();
 
-        var resourceFileA = System.IO.Path.Combine(_resourceFolder, FileNameA);
+        var resourceFileA = Path.Combine(_resourceFolder, FileNameA);
         File.WriteAllText(resourceFileA, FileContents);
         File.Exists(resourceFileA).Should().BeTrue();
 
-        var resourceFolder = System.IO.Path.Combine(_resourceFolder, FolderNameA);
+        var resourceFolder = Path.Combine(_resourceFolder, FolderNameA);
         Directory.CreateDirectory(resourceFolder);
         Directory.Exists(resourceFolder).Should().BeTrue();
 
-        var resourceFileB = System.IO.Path.Combine(_resourceFolder, FolderNameA, FileNameB);
+        var resourceFileB = Path.Combine(_resourceFolder, FolderNameA, FileNameB);
         File.WriteAllText(resourceFileB, FileContents);
         File.Exists(resourceFileB).Should().BeTrue();
 

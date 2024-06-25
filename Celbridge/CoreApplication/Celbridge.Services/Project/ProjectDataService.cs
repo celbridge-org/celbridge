@@ -5,8 +5,7 @@ namespace Celbridge.Services.Project;
 
 public class ProjectDataService : IProjectDataService
 {
-    private const int DataVersion = 1;
-
+    private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
     public ProjectDataService()
@@ -71,7 +70,7 @@ public class ProjectDataService : IProjectDataService
 
             var projectJson = $$"""
                 {
-                    "projectDataFile": "{{DefaultProjectDataPath}}",
+                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataPath}}",
                 }
                 """;
 
@@ -88,8 +87,8 @@ public class ProjectDataService : IProjectDataService
                 Directory.CreateDirectory(dataFolder);
             }
 
-            var createProjectResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, DataVersion);
-            if (createProjectResult.IsFailure)
+            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath);
+            if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project database: {config.ProjectName}");
             }
@@ -115,14 +114,14 @@ public class ProjectDataService : IProjectDataService
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
             string projectDataPath = Path.Combine(projectFolder, projectDataPathRelative);
 
-            var loadProjectResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
-            if (loadProjectResult.IsFailure)
+            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
+            if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load project database: {projectDataPath}");
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
-            LoadedProjectData = loadProjectResult.Value;
+            LoadedProjectData = loadResult.Value;
 
             return Result.Ok();
         }

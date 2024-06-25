@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.Services;
 using CommunityToolkit.Diagnostics;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tests;
 
@@ -15,7 +14,7 @@ public class WorkspaceDataTests
     [SetUp]
     public void Setup()
     {
-        _workspaceFolder = Path.Combine(System.IO.Path.GetTempPath(), "Celbridge", $"{nameof(WorkspaceDataTests)}");
+        _workspaceFolder = Path.Combine(Path.GetTempPath(), "Celbridge", $"{nameof(WorkspaceDataTests)}");
         if (Directory.Exists(_workspaceFolder))
         {
             Directory.Delete(_workspaceFolder, true);

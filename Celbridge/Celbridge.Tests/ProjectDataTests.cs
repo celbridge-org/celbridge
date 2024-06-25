@@ -14,7 +14,7 @@ public class ProjectDataTests
     [SetUp]
     public void Setup()
     {
-        _projectFolder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Celbridge/{nameof(ProjectDataTests)}");
+        _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ProjectDataTests)}");
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder, true);

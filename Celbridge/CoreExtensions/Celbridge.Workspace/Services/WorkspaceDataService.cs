@@ -66,13 +66,13 @@ public class WorkspaceDataService : IWorkspaceDataService, IDisposable
     {
         try
         {
-            var loadWorkspaceResult = WorkspaceData.LoadWorkspaceData(databasePath);
-            if (loadWorkspaceResult.IsFailure)
+            var loadResult = WorkspaceData.LoadWorkspaceData(databasePath);
+            if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load workspace database: {databasePath}");
             }
 
-            LoadedWorkspaceData = loadWorkspaceResult.Value;
+            LoadedWorkspaceData = loadResult.Value;
 
             return Result.Ok();
         }

@@ -5,6 +5,8 @@ namespace Celbridge.Services.Project;
 
 public class ProjectData : IDisposable, IProjectData
 {
+    private const int DataVersion = 1;
+
     private SQLiteAsyncConnection _connection;
 
     public string ProjectName { get; init; }
@@ -66,7 +68,7 @@ public class ProjectData : IDisposable, IProjectData
         return Result<IProjectData>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath, int version)
+    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
@@ -75,7 +77,7 @@ public class ProjectData : IDisposable, IProjectData
 
         var dataVersion = new ProjectDataVersion 
         { 
-            Version = version 
+            Version = DataVersion 
         };
 
         await projectData._connection.CreateTableAsync<ProjectDataVersion>();
