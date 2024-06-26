@@ -16,7 +16,4 @@ public static class ServiceConfiguration
         services.AddTransient<IUnloadProjectCommand, UnloadProjectCommand>();
         services.AddTransient<ISaveWorkspaceStateCommand, SaveWorkspaceStateCommand>();
     }
-
-    public static void Initialize()
-    {}
 }
