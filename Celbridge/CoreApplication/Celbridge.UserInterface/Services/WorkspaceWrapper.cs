@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Workspace;
 
-namespace Celbridge.Services.Workspace;
+namespace Celbridge.UserInterface.Services;
 
 public class WorkspaceWrapper : IWorkspaceWrapper
 {

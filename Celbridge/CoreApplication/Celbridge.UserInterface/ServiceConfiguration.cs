@@ -3,7 +3,6 @@ using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Services.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 

@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Messaging;
 using Celbridge.Logging.Services;
-using Celbridge.Services.Messaging;
+using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
