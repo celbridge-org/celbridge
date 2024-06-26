@@ -1,6 +1,6 @@
 ﻿using SQLite;
 
-namespace Celbridge.Services.Project;
+namespace Celbridge.ProjectAdmin.Models;
 
 public class ProjectDataVersion
 {

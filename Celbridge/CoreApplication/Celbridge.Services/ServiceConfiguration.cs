@@ -1,8 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.BaseLibrary.Settings;
 using Celbridge.Services.Logging;
 using Celbridge.Services.Messaging;
-using Celbridge.Services.Project;
 using Celbridge.Services.Settings;
 
 namespace Celbridge.Services;
@@ -17,7 +15,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<IProjectDataService, ProjectDataService>();
 
         if (IsStorageAPIAvailable)
         {
