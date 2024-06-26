@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Path = System.IO.Path;
 
 namespace Celbridge.Legacy.Resources;
 

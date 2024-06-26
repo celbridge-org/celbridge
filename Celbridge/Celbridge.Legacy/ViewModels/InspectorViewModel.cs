@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Scripting.Utils;
 using System.ComponentModel;
+using Path = System.IO.Path;
 
 namespace Celbridge.Legacy.ViewModels;
 

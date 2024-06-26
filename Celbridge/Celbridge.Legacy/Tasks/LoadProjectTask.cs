@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Legacy.Tasks;
+﻿using Path = System.IO.Path;
+
+namespace Celbridge.Legacy.Tasks;
 
 public class LoadProjectTask
 {

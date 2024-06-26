@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 using System.Security.Cryptography;
+using Path = System.IO.Path;
 
 namespace Celbridge.Legacy.Services;
 
