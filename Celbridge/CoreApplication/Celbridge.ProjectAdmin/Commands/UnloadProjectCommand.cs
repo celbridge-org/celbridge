@@ -32,4 +32,10 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 
         return await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
     }
+
+    public static void UnloadProject()
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<IUnloadProjectCommand>();
+    }
 }
