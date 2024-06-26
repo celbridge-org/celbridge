@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Commands;
 
@@ -40,5 +41,11 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
         }
 
         return Result.Ok();
+    }
+
+    public static void SaveWorkspaceState()
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ISaveWorkspaceStateCommand>();
     }
 }

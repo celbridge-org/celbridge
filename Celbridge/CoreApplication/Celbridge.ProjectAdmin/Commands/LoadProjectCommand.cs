@@ -74,4 +74,10 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         return Result.Ok();
     }
+
+    public static void LoadProject(string projectPath)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ILoadProjectCommand>(command => command.ProjectPath = projectPath);
+    }
 }

@@ -11,8 +11,10 @@ public class Extension : IExtension
 
     public Result Initialize()
     {
+        //
+        // Bind to the utilities defined in this assembly
+        //
         var scriptingService = ServiceLocator.ServiceProvider.GetRequiredService<IScriptingService>();
-
         scriptingService.AddContextSetupCommand("#r \"Celbridge.ScriptUtils\"");
         scriptingService.AddContextSetupCommand("using static Celbridge.ScriptUtils.Services.CommonUtils;");
 
