@@ -10,9 +10,9 @@ public class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services, List<IExtension> extensions)
     {
-        Celbridge.Services.ServiceConfiguration.ConfigureServices(services);
-        Views.ServiceConfiguration.ConfigureServices(services);
-        ViewModels.ServiceConfiguration.ConfigureServices(services);
+        CoreServices.ServiceConfiguration.ConfigureServices(services);
+        UserInterface.ServiceConfiguration.ConfigureServices(services);
+        ProjectAdmin.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
 
         // Register the services provided by each extension with the dependency injection framework.

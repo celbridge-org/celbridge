@@ -2,10 +2,11 @@ using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
-using Celbridge.Services.Commands;
-using Celbridge.Services.UserInterface;
-using Celbridge.Views.Pages;
+using Celbridge.UserInterface.Services;
+using Celbridge.UserInterface.Views;
 using Uno.UI;
+using Celbridge.Commands;
+using Celbridge.Commands.Services;
 
 namespace Celbridge;
 
@@ -53,7 +54,7 @@ public class App : Application
                     // Configure all services and loaded extensions
                     Guard.IsNotNull(_extensionLoader);
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
-                    ServiceConfiguration.ConfigureServices(services, extensions);
+                    MainApplication.ServiceConfiguration.ConfigureServices(services, extensions);
                 })
             );
 
@@ -65,7 +66,7 @@ public class App : Application
         BaseLibrary.Core.ServiceLocator.Initialize(Host.Services);
 
         // Initialize the UI system
-        Views.ServiceConfiguration.Initialize();
+        UserInterface.ServiceConfiguration.Initialize();
 
         // Tell the loaded extensions to initialize before the application starts.
         _extensionLoader.InitializeExtensions();
