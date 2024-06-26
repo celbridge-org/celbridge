@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands.Project;
-using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.Project.Commands;
 using Celbridge.Project.Services;
