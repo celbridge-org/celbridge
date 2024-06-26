@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Dialog;
 
-namespace Celbridge.Services.Dialog;
+namespace Celbridge.UserInterface.Services;
 
 public class DialogService : IDialogService
 {

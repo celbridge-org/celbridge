@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.FilePicker;
 
-namespace Celbridge.Services.UserInterface;
+namespace Celbridge.UserInterface.Services;
 
 public class UserInterfaceService : IUserInterfaceService
 {
