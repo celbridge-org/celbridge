@@ -5,7 +5,7 @@ namespace Celbridge.BaseLibrary.Commands.Project;
 /// <summary>
 /// Creates a new project using the specified config information.
 /// </summary>
-public interface ICreateProjectCommand : ICommand
+public interface ICreateProjectCommand : IExecutableCommand
 {
     NewProjectConfig? Config { get; set; }
 }

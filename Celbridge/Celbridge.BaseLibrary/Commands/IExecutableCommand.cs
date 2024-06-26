@@ -3,7 +3,7 @@
 /// <summary>
 /// A command that can be executed via the command service.
 /// </summary>
-public interface ICommand
+public interface IExecutableCommand
 {
     /// <summary>
     /// Unique identifier for the command.

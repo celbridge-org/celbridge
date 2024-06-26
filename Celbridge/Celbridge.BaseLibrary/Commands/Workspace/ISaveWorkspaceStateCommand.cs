@@ -3,5 +3,5 @@
 /// <summary>
 /// Saves the state to the current workspace to persistant storage.
 /// </summary>
-public interface ISaveWorkspaceStateCommand : ICommand
+public interface ISaveWorkspaceStateCommand : IExecutableCommand
 {}
