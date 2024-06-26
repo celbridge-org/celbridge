@@ -2,12 +2,13 @@
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Commands.Utils;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.Commands;
+using Celbridge.ProjectAdmin.Services;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Commands.Project;
+namespace Celbridge.ProjectAdmin.Commands;
 
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {

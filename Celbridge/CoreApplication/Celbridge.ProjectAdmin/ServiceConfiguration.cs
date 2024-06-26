@@ -1,4 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Project;
+using Celbridge.ProjectAdmin.Commands;
 using Celbridge.ProjectAdmin.Services;
 
 namespace Celbridge.ProjectAdmin;
@@ -11,5 +13,12 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddSingleton<IProjectDataService, ProjectDataService>();
+
+        //
+        // Register commands
+        //
+        services.AddTransient<ICreateProjectCommand, CreateProjectCommand>();
+        services.AddTransient<ILoadProjectCommand, LoadProjectCommand>();
+        services.AddTransient<IUnloadProjectCommand, UnloadProjectCommand>();
     }
 }
