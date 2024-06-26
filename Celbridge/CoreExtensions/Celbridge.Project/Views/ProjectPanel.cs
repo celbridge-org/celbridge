@@ -20,7 +20,7 @@ public sealed partial class ProjectPanel : UserControl
         var refreshProjectButton = new Button()
             .Grid(column: 2)
             .Content(new SymbolIcon(Symbol.Refresh))
-            .Command(ViewModel.RefreshProjectCommand)
+            .Command(ViewModel.RefreshResourceTreeCommand)
             .Margin(0, 0, 8, 0)
             .VerticalAlignment(VerticalAlignment.Center);
 
