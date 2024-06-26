@@ -1,6 +1,8 @@
-﻿using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Commands.Workspace;
+using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;
@@ -12,9 +14,17 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
+        //
+        // Register services
+        //
         config.AddTransient<WorkspacePageViewModel>();
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
+
+        //
+        // Register commands
+        //
+        config.AddTransient<ISaveWorkspaceStateCommand, SaveWorkspaceStateCommand>();
     }
 
     public Result Initialize()
