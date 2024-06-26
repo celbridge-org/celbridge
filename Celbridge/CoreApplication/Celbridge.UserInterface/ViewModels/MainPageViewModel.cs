@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands.Project;
-using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Logging;
@@ -7,6 +6,7 @@ using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.UserInterface.Services;
+using Celbridge.BaseLibrary.Project;
 
 namespace Celbridge.UserInterface.ViewModels;
 

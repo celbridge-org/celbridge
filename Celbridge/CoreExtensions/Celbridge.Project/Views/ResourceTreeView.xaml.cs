@@ -14,12 +14,6 @@ public sealed partial class ResourceTreeView : UserControl
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
 
-        Unloaded += (s,e) =>
-        {
-            ViewModel.ResourceTreeView_Unloaded();
-        };
-
-
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
     }
