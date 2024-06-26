@@ -1,6 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Settings;
 
-namespace Celbridge.Services.Settings;
+namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
 {

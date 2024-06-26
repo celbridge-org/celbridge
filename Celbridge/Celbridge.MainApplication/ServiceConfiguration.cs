@@ -10,7 +10,7 @@ public class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services, List<IExtension> extensions)
     {
-        Celbridge.Services.ServiceConfiguration.ConfigureServices(services);
+        CoreServices.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         ProjectAdmin.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);

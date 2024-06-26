@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Services;
+﻿namespace Celbridge.CoreServices;
 
 public static class ServiceConfiguration
 {

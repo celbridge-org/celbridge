@@ -1,7 +1,7 @@
 using Celbridge.BaseLibrary.Logging;
 using System.Diagnostics;
 
-namespace Celbridge.Services.Commands;
+namespace Celbridge.Commands.Services;
 
 public class CommandService : ICommandService
 {
@@ -25,7 +25,7 @@ public class CommandService : ICommandService
 
     public Result Execute<T>(Action<T> configure) where T : ICommand
     {
-        return Execute<T>(configure, 0);
+        return Execute(configure, 0);
     }
 
     public Result Execute<T>(Action<T> configure, uint delay) where T : ICommand
@@ -79,7 +79,7 @@ public class CommandService : ICommandService
     {
         lock (_lock)
         {
-            _commandQueue.RemoveAll(c => c.GetType().IsAssignableTo(typeof(T)) );
+            _commandQueue.RemoveAll(c => c.GetType().IsAssignableTo(typeof(T)));
         }
     }
 

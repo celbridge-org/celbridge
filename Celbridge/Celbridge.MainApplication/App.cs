@@ -2,10 +2,11 @@ using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
-using Celbridge.Services.Commands;
-using Uno.UI;
-using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface.Services;
+using Celbridge.UserInterface.Views;
+using Uno.UI;
+using Celbridge.Commands;
+using Celbridge.Commands.Services;
 
 namespace Celbridge;
 
@@ -53,7 +54,7 @@ public class App : Application
                     // Configure all services and loaded extensions
                     Guard.IsNotNull(_extensionLoader);
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
-                    ServiceConfiguration.ConfigureServices(services, extensions);
+                    MainApplication.ServiceConfiguration.ConfigureServices(services, extensions);
                 })
             );
 

@@ -3,7 +3,7 @@ using Celbridge.BaseLibrary.Settings;
 using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 
-namespace Celbridge.Services.Settings;
+namespace Celbridge.Settings.Services;
 
 /// <summary>
 /// A non-persistent implementation of ISettingsGroup for use with automated tests and other unpackaged builds.

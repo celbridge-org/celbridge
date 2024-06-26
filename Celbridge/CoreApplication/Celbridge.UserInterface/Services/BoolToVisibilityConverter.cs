@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Services;
+﻿namespace Celbridge.UserInterface.Services;
 
 public class BoolToVisibilityConverter : IValueConverter
 {
