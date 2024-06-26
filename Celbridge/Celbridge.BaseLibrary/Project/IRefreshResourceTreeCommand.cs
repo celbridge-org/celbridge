@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Commands.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+
+namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
 /// Refresh the resource tree in the project panel.

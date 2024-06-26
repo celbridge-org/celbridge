@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands.Project;
-using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.BaseLibrary.Settings;

@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Commands.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+
+namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
 /// Load the project at the specified path.
