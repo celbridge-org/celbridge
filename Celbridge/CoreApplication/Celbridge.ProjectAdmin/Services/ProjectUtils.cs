@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 
-namespace Celbridge.Commands.Utils;
+namespace Celbridge.ProjectAdmin.Services;
 
 public static class ProjectUtils
 {
