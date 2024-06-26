@@ -8,7 +8,7 @@ public class CommandService : ICommandService
     private readonly ILoggingService _loggingService;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
-    private record QueuedCommand(ICommand Command, long ExecutionTime);
+    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
@@ -23,30 +23,30 @@ public class CommandService : ICommandService
         _loggingService = loggingService;
     }
 
-    public Result Execute<T>(Action<T> configure) where T : ICommand
+    public Result Execute<T>(Action<T> configure) where T : IExecutableCommand
     {
         return Execute(configure, 0);
     }
 
-    public Result Execute<T>(Action<T> configure, uint delay) where T : ICommand
+    public Result Execute<T>(Action<T> configure, uint delay) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
         configure.Invoke(command);
         return EnqueueCommand(command, delay);
     }
 
-    public Result Execute<T>() where T : ICommand
+    public Result Execute<T>() where T : IExecutableCommand
     {
         return Execute<T>(0);
     }
 
-    public Result Execute<T>(uint delay) where T : ICommand
+    public Result Execute<T>(uint delay) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
         return EnqueueCommand(command, delay);
     }
 
-    public T CreateCommand<T>() where T : ICommand
+    public T CreateCommand<T>() where T : IExecutableCommand
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
         T command = serviceProvider.GetRequiredService<T>();
@@ -54,12 +54,12 @@ public class CommandService : ICommandService
         return command;
     }
 
-    public Result EnqueueCommand(ICommand command)
+    public Result EnqueueCommand(IExecutableCommand command)
     {
         return EnqueueCommand(command, 0);
     }
 
-    public Result EnqueueCommand(ICommand command, uint delay)
+    public Result EnqueueCommand(IExecutableCommand command, uint delay)
     {
         lock (_lock)
         {
@@ -107,7 +107,7 @@ public class CommandService : ICommandService
             var currentTime = _stopwatch.ElapsedMilliseconds;
 
             // Find the first command that is ready to execute
-            ICommand? command = null;
+            IExecutableCommand? command = null;
 
             lock (_lock)
             {

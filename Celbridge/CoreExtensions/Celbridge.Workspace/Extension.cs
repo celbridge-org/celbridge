@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands.Workspace;
-using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.Commands;
