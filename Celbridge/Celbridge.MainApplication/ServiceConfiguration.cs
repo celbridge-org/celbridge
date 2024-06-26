@@ -11,7 +11,6 @@ public class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services, List<IExtension> extensions)
     {
         Celbridge.Services.ServiceConfiguration.ConfigureServices(services);
-        Views.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
 

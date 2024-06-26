@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
+using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;
 

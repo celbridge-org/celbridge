@@ -1,9 +1,8 @@
-﻿namespace Celbridge.Views.Pages;
+﻿namespace Celbridge.UserInterface.Views;
 
 public sealed partial class HomePage : Page
 {
     public HomePageViewModel ViewModel { get; }
-
 
     public HomePage()
     {
