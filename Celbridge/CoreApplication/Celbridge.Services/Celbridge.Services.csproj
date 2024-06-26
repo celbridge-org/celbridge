@@ -6,21 +6,7 @@
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="sqlite-net-pcl" />
-    <PackageReference Include="Uno.WinUI" />
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
-    <PackageReference Include="CommunityToolkit.MVVM" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Newtonsoft.Json" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Sinks.Debug" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-  </ItemGroup>
+	
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
@@ -42,4 +28,13 @@
       </ItemGroup>
     </When>
   </Choose>
+	
+  <ItemGroup>
+    <ProjectReference Include="..\Celbridge.Messaging\Celbridge.Messaging.csproj" />
+    <ProjectReference Include="..\Celbridge.ProjectAdmin\Celbridge.ProjectAdmin.csproj" />
+    <ProjectReference Include="..\Celbridge.Settings\Celbridge.Settings.csproj" />
+    <ProjectReference Include="..\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\Celbridge.Logging\Celbridge.Logging.csproj" />
+    <ProjectReference Include="..\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+  </ItemGroup>
 </Project>
