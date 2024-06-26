@@ -1,21 +1,18 @@
-﻿using Celbridge.BaseLibrary.Commands.Workspace;
-using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Commands.Workspace;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 
-namespace Celbridge.Commands.Workspace;
+namespace Celbridge.Workspace.Commands;
 
 public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectDataService _projectDataService;
 
     public SaveWorkspaceStateCommand(
-        IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
-        _projectDataService = projectDataService;
     }
 
     public override async Task<Result> ExecuteAsync()
