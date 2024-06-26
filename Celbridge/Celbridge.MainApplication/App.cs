@@ -3,9 +3,9 @@ using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
 using Celbridge.Services.Commands;
-using Celbridge.Services.UserInterface;
 using Uno.UI;
 using Celbridge.UserInterface.Views;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge;
 
