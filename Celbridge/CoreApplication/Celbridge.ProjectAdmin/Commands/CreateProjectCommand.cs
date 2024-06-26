@@ -57,4 +57,13 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
         return Result.Ok();
     }
+
+    public static void CreateProject(string projectName, string folder)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ICreateProjectCommand>(command =>
+        {
+            command.Config = new NewProjectConfig(projectName, folder);
+        });
+    }
 }
