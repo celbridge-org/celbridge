@@ -1,5 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Project;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Project.ViewModels;
@@ -7,15 +8,18 @@ namespace Celbridge.Project.ViewModels;
 public partial class ProjectPanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
+    private readonly ICommandService _commandService;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
 
     public ProjectPanelViewModel(
         IMessengerService messengerService,
-        IProjectDataService projectDataService)
+        IProjectDataService projectDataService,
+        ICommandService commandService)
     {
         _messengerService = messengerService;
+        _commandService = commandService;
 
         // The project data is guaranteed to have been loaded at this point, so it's safe to just
         // acquire a reference via the ProjectDataService.
@@ -24,10 +28,9 @@ public partial class ProjectPanelViewModel : ObservableObject
         TitleText = projectData.ProjectName;
     }
 
-    public ICommand RefreshProjectCommand => new RelayCommand(RefreshProjectCommand_ExecuteAsync);
-    private void RefreshProjectCommand_ExecuteAsync()
+    public ICommand RefreshResourceTreeCommand => new RelayCommand(RefreshResourceTreeCommand_ExecuteAsync);
+    private void RefreshResourceTreeCommand_ExecuteAsync()
     {
-        var message = new RequestProjectRefreshMessage();
-        _messengerService.Send(message);
+        _commandService.Execute<IRefreshResourceTreeCommand>();
     }
 }
