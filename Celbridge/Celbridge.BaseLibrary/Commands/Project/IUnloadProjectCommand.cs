@@ -3,5 +3,5 @@
 /// <summary>
 /// Unload the loaded project.
 /// </summary>
-public interface IUnloadProjectCommand : ICommand
+public interface IUnloadProjectCommand : IExecutableCommand
 {}
