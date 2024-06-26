@@ -31,11 +31,6 @@
     <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Views\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
-
   <Choose>
     <When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
       <ItemGroup>
