@@ -1,9 +1,4 @@
-﻿using Celbridge.BaseLibrary.Settings;
-using Celbridge.Services.Logging;
-using Celbridge.Services.Messaging;
-using Celbridge.Services.Settings;
-
-namespace Celbridge.Services;
+﻿namespace Celbridge.Services;
 
 public static class ServiceConfiguration
 {
@@ -12,39 +7,11 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        services.AddSingleton<IEditorSettings, EditorSettings>();
-        services.AddSingleton<ILoggingService, LoggingService>();
-        services.AddSingleton<IMessengerService, MessengerService>();
 
-        if (IsStorageAPIAvailable)
-        {
-            services.AddTransient<ISettingsGroup, SettingsGroup>();
-        }
-        else
-        {
-            services.AddTransient<ISettingsGroup, TempSettingsGroup>();
-        }
-    }
-
-    private static bool IsStorageAPIAvailable
-    {
-        get
-        {
-#if WINDOWS
-            try
-            {
-                var package = Windows.ApplicationModel.Package.Current;
-                return package is not null;
-            }
-            catch (InvalidOperationException)
-            {
-                // Exception thrown if the app is unpackaged
-                return false;
-            }
-#else
-            return true;
-#endif
-        }
-
+        Celbridge.Settings.ServiceConfiguration.ConfigureServices(services);
+        Celbridge.Messaging.ServiceConfiguration.ConfigureServices(services);
+        Logging.ServiceConfiguration.ConfigureServices(services);
+        UserInterface.ServiceConfiguration.ConfigureServices(services);
+        Celbridge.Commands.ServiceConfiguration.ConfigureServices(services);
     }
 }

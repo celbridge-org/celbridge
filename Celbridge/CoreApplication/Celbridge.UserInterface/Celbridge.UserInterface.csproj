@@ -16,7 +16,6 @@
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
     <PackageReference Include="Uno.Toolkit.WinUI" />
     <PackageReference Include="Uno.WinUI" />
-
     <PackageReference Include="Uno.WinUI.Markup" />
     <PackageReference Include="Uno.Extensions.Markup.Generators">
       <PrivateAssets>all</PrivateAssets>
@@ -28,7 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.Services\Celbridge.Services.csproj" />
   </ItemGroup>
 
   <Choose>

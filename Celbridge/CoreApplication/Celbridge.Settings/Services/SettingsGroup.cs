@@ -1,9 +1,12 @@
+using Celbridge.BaseLibrary.Core;
+using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Settings;
+using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Windows.Foundation.Collections;
 using Windows.Storage;
 
-namespace Celbridge.Services.Settings;
+namespace Celbridge.Settings.Services;
 
 /// <summary>
 /// Persists a set of key value properties using the Uno Platform Storage API.

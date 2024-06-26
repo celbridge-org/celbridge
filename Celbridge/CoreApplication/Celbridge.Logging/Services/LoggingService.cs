@@ -1,7 +1,9 @@
-﻿using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
-namespace Celbridge.Services.Logging;
+namespace Celbridge.Logging.Services;
 
 public class LoggingService : ILoggingService
 {

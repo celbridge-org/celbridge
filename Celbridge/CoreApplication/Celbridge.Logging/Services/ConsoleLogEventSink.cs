@@ -3,10 +3,9 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Configuration;
 using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Workspace;
 
-namespace Celbridge.Services.Logging;
+namespace Celbridge.Logging.Services;
 
 /// <summary>
 /// A custom Serilog event sink that writes log messages to the console panel (if one is available).
