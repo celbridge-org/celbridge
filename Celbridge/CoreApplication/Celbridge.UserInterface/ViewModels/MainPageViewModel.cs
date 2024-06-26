@@ -6,7 +6,7 @@ using Celbridge.BaseLibrary.Logging;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Services.Navigation;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels;
 

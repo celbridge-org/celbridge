@@ -1,5 +1,9 @@
 ﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Navigation;
+using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Services.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 
@@ -13,6 +17,16 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddSingleton<IDialogFactory, DialogFactory>();
+        services.AddSingleton<INavigationService, NavigationService>();
+
+        //
+        // Register user interface services
+        // These services can be acquired via the getters on IUserInterfaceService for convenient access.
+        //
+        services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IFilePickerService, FilePickerService>();
+        services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
 
         //
         // Register page view models
