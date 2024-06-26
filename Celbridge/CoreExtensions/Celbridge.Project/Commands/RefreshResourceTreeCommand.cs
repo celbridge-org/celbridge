@@ -34,4 +34,10 @@ public class RefreshResourceTreeCommand : CommandBase, IRefreshResourceTreeComma
 
         return Result.Ok();
     }
+
+    public static void RefreshResourceTree()
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<IRefreshResourceTreeCommand>();
+    }
 }
