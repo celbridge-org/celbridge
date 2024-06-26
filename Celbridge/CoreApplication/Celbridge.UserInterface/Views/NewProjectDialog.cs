@@ -2,7 +2,7 @@
 using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
 
-namespace Celbridge.Views.Dialogs;
+namespace Celbridge.UserInterface.Views;
 
 public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 {

@@ -1,8 +1,7 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
-using Celbridge.UserInterface.ViewModels;
 
-namespace Celbridge.Views.Dialogs;
+namespace Celbridge.UserInterface.Views;
 
 public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 {

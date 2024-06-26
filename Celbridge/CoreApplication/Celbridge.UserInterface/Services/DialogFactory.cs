@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.UserInterface.Views;
 
-namespace Celbridge.Views.Dialogs;
+namespace Celbridge.UserInterface.Services;
 
 public class DialogFactory : IDialogFactory
 {
