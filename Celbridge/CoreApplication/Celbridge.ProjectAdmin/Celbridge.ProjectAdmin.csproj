@@ -1,4 +1,4 @@
-<Project Sdk="Uno.Sdk">
+﻿<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <DotNetVersion Condition=" $(DotNetVersion) == '' ">net8.0</DotNetVersion>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or '$(EnableWindowsTargeting)' == 'true'">$(TargetFrameworks);$(DotNetVersion)-windows10.0.19041</TargetFrameworks>
@@ -10,8 +10,10 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Newtonsoft.Json" />
+	<PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="sqlite-net-pcl" />
+	<PackageReference Include="Uno.Extensions.Localization.WinUI" />
+	<PackageReference Include="Uno.WinUI" />
   </ItemGroup>
 
   <ItemGroup>
