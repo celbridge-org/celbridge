@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Commands.Project;
+using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Project.Commands;
 using Celbridge.Project.Services;
 using Celbridge.Project.ViewModels;
 using Celbridge.Project.Views;
@@ -12,10 +12,26 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
+        //
+        // Register UI elements
+        //
         config.AddTransient<ProjectPanel>();
+
+        //
+        // Register View Models
+        //
         config.AddTransient<ProjectPanelViewModel>();
         config.AddTransient<ResourceTreeViewModel>();
+
+        //
+        // Register services
+        //
         config.AddTransient<IProjectService, ProjectService>();
+
+        //
+        // Register commands
+        //
+        config.AddTransient<IRefreshResourceTreeCommand, RefreshResourceTreeCommand>();
     }
 
     public Result Initialize()
