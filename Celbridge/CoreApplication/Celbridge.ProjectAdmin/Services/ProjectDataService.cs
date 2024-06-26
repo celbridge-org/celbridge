@@ -1,7 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.Services.Project;
+namespace Celbridge.ProjectAdmin.Services;
 
 public class ProjectDataService : IProjectDataService
 {
