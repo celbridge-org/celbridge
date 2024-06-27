@@ -16,7 +16,7 @@ public class RefreshResourceTreeCommand : CommandBase, IRefreshResourceTreeComma
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return Result.Fail($"Failed to execute {nameof(RefreshResourceTreeCommand)} because workspace is not loaded");
         }
