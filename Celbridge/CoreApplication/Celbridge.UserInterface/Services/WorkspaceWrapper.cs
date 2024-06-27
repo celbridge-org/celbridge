@@ -11,6 +11,7 @@ public class WorkspaceWrapper : IWorkspaceWrapper
     {
         _messengerService = messengerService;
         _messengerService.Register<WorkspaceServiceCreatedMessage>(this, OnWorkspaceServiceCreated);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloadedMessage);
     }
 
@@ -22,14 +23,20 @@ public class WorkspaceWrapper : IWorkspaceWrapper
         _workspaceService = loadedMessage.WorkspaceService;
     }
 
+    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
+    {
+        IsWorkspacePageLoaded = true;
+    }
+
     private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
     {
         // Clear the reference to the workspace service when the workspace is unloaded.
         Guard.IsNotNull(_workspaceService);
         _workspaceService = null;
+        IsWorkspacePageLoaded = false;
     }
 
-    public bool IsWorkspaceLoaded => _workspaceService is not null;
+    public bool IsWorkspacePageLoaded { get; private set; }
 
     public IWorkspaceService WorkspaceService
     {
@@ -37,7 +44,7 @@ public class WorkspaceWrapper : IWorkspaceWrapper
         {
             if (_workspaceService is null)
             {
-                throw new InvalidOperationException("Failed to acquire workspace because no project is loaded");
+                throw new InvalidOperationException("Failed to acquire workspace because no workspace is loaded");
             }
             return _workspaceService;
         }
