@@ -11,6 +11,8 @@ namespace Celbridge.ProjectAdmin.Commands;
 
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
+    private const string HomePageName = "HomePage";
+
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly INavigationService _navigationService;
@@ -66,6 +68,9 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             var okString = _stringLocalizer.GetString("DialogButton_Ok");
 
             await _dialogService.ShowAlertDialogAsync(titleString, bodyString, okString);
+
+            // Return to the home page so the user can decide what to do next
+            _navigationService.NavigateToPage(HomePageName);
 
             return Result.Fail($"Failed to load project: {ProjectPath}. {loadResult.Error}.");
         }

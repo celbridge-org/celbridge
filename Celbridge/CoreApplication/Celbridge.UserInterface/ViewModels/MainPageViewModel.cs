@@ -51,7 +51,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _editorSettings = editorSettings;
     }
 
-    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
+    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
 

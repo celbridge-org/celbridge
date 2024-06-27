@@ -17,7 +17,7 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return Result.Fail("Failed to Save Workspace State because workspace is not loaded");
         }
