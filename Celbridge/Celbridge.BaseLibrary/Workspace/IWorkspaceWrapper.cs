@@ -2,19 +2,21 @@
 
 /// <summary>
 /// Wrapper for the workspace service.
-/// The workspace service is only available when a project workspace is loaded.
+/// The workspace service is only available when a project is loaded.
 /// Use this wrapper to check if the workspace is loaded and to access it via dependency injection.
 /// </summary>
 public interface IWorkspaceWrapper
 {
     /// <summary>
-    /// Returns trues if a project workspace is currently loaded.
+    /// Returns true if the workspace page is currently loaded.
     /// </summary>
-    bool IsWorkspaceLoaded { get; }
+    bool IsWorkspacePageLoaded { get; }
 
     /// <summary>
-    /// The workspace that is currently loaded.
-    /// Attempting to access this property when no workspace is loaded will throw an InvalidOperationException.
+    /// Returns the workspace service for the currently loaded project.
+    /// This property is populated prior to the workspace page UI loading, so it can be accessed while the workspace 
+    /// is in the process of loading.
+    /// Attempting to access this property when no workspace service is present throws an InvalidOperationException.
     /// </summary>
     IWorkspaceService WorkspaceService { get; }
 }

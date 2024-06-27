@@ -34,11 +34,19 @@ public static class ProjectUtils
             return Result.Fail($"Failed to open project '{projectPath}'. {openResult.Error}");
         }
 
-        navigationService.NavigateToPage(WorkspacePageName);
+        var loadPageCancelationToken = new CancellationTokenSource();
+        navigationService.NavigateToPage(WorkspacePageName, loadPageCancelationToken);
 
-        while (!workspaceWrapper.IsWorkspaceLoaded)
+        // Wait until the workspace page either loads or cancels loading due to an error
+        while (!workspaceWrapper.IsWorkspacePageLoaded &&
+               !loadPageCancelationToken.IsCancellationRequested)
         {
             await Task.Delay(50);
+        }
+
+        if (loadPageCancelationToken.IsCancellationRequested)
+        {
+            return Result.Fail("Failed to open project because an error occured");
         }
 
         return Result.Ok();
@@ -49,7 +57,7 @@ public static class ProjectUtils
         INavigationService navigationService,
         IProjectDataService projectDataService)
     {
-        if (!workspaceWrapper.IsWorkspaceLoaded)
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
             return Result.Fail("Failed to unload project data because no project is loaded");
         }
@@ -61,7 +69,7 @@ public static class ProjectUtils
         navigationService.NavigateToPage(EmptyPageName);
 
         // Wait until the workspace is fully unloaded
-        while (workspaceWrapper.IsWorkspaceLoaded)
+        while (workspaceWrapper.IsWorkspacePageLoaded)
         {
             await Task.Delay(50);
         }

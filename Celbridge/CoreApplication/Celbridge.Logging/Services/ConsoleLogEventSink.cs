@@ -23,7 +23,7 @@ public class ConsoleLogEventSink : ILogEventSink
 
     public void Emit(LogEvent logEvent)
     {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return;
         }
