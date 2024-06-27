@@ -7,6 +7,7 @@ using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Celbridge.Workspace.Services;
+using System.Threading;
 
 namespace Celbridge.Workspace.Views;
 
@@ -245,6 +246,13 @@ public sealed partial class WorkspacePage : Page
         Unloaded += WorkspacePage_Unloaded;
     }
 
+    private CancellationTokenSource? _loadProjectCancellationToken;
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        _loadProjectCancellationToken = e.Parameter as CancellationTokenSource;
+    }
+
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
         //
@@ -312,13 +320,21 @@ public sealed partial class WorkspacePage : Page
             _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
 
             var loadResult = await ViewModel.LoadWorkspaceAsync();
-            if (loadResult.IsFailure)
-            {
-                // Todo: Handle failure case
-            }
 
             // Hide the progress dialog
             _dialogService.ReleaseProgressDialog(_progressDialogToken);
+
+            if (loadResult.IsFailure)
+            {
+                // Notify the waiting LoadProject async method that a failure has occured via the cancellation token.
+                if (_loadProjectCancellationToken is not null)
+                {
+                    _loadProjectCancellationToken.Cancel();
+                }
+            }
+
+            _progressDialogToken = null;
+            _loadProjectCancellationToken = null;
         }
 
         _ = LoadWorkspaceAsync();
