@@ -41,10 +41,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         var parentFolderExists = Directory.Exists(ProjectFolder);
         var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolder, ProjectName));
 
-        var validateResult = _projectDataService.ValidateProjectName(ProjectName);
+        var isValid = _projectDataService.IsPathSegmentValid(ProjectName);
 
         // Todo: Show a message explaining why the create button is disabled
-        IsCreateButtonEnabled = validateResult.IsSuccess && parentFolderExists && !projectFolderExists;
+        IsCreateButtonEnabled = isValid && parentFolderExists && !projectFolderExists;
 
         if (e.PropertyName == nameof(ProjectFolder) && parentFolderExists)
         {

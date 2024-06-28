@@ -16,9 +16,9 @@ public interface IProjectDataService
     Result ValidateNewProjectConfig(NewProjectConfig config);
 
     /// <summary>
-    /// Checks if a project name is valid.
+    /// Returns true if a path segment is valid (does not contain invalid characters).
     /// </summary>
-    Result ValidateProjectName(string projectName);
+    bool IsPathSegmentValid(string projectName);
 
     /// <summary>
     /// Create a new project file and database using the specified config information.
