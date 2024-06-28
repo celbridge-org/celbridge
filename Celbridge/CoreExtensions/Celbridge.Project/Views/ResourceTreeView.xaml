@@ -28,6 +28,9 @@
 
         <MenuFlyout x:Name="FileResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Add Folder" 
+                            Icon="Folder"
+                            Click="AddFolder"/>
             <MenuFlyoutItem Text="Open" 
                             Icon="OpenFile"
                             Click="OpenResource"/>
@@ -35,7 +38,17 @@
                             Icon="Delete"
                             Click="DeleteResource"/>
         </MenuFlyout>
-        
+
+        <MenuFlyout x:Name="EmptyAreaContextMenu"
+                    Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Add Folder" 
+                            Icon="Folder"
+                            Click="AddFolder"/>
+            <MenuFlyoutItem Text="Add Resource" 
+                            Icon="Add"
+                            Click="AddResource"/>
+        </MenuFlyout>
+
         <DataTemplate x:Key="FolderTemplate"
 					  x:DataType="models:FolderResource">
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
@@ -67,11 +80,16 @@
             FileTemplate="{StaticResource FileTemplate}" />
     </UserControl.Resources>
 
-    <muxc:TreeView x:Name="ResourcesTreeView"
-                    Grid.Row="3" 
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  Grid.Row="3"
+                  VerticalAlignment="Stretch"
+                  ContextFlyout="{StaticResource EmptyAreaContextMenu}">
+        <muxc:TreeView x:Name="ResourcesTreeView"
                     ItemsSource="{x:Bind ViewModel.Resources, Mode=OneWay}"
                     ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
                     CanReorderItems="True"
                     CanDrag="False"
                     SelectionMode="Single"/>
+    </ScrollViewer>
 </UserControl>
