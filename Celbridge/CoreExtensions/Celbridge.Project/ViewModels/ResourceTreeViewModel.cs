@@ -13,6 +13,7 @@ namespace Celbridge.Project.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILoggingService _loggingService;
+    private readonly IProjectDataService _projectDataService;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
@@ -25,12 +26,14 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public ResourceTreeViewModel(
         ILoggingService loggingService,
+        IProjectDataService projectDataService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _loggingService = loggingService;
+        _projectDataService = projectDataService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
         _commandService = commandService;
         _dialogService = dialogService;
@@ -53,9 +56,19 @@ public partial class ResourceTreeViewModel : ObservableObject
             var showResult = await _dialogService.ShowInputTextDialogAsync(AddFolderText, EnterNameText);
             if (showResult.IsSuccess)
             {
-                // Todo: Use a command to add a folder resource
+                var inputText = showResult.Value;
+
+                // Check the folder name is valid
+                if (!_projectDataService.IsPathSegmentValid(inputText))
+                {
+                    // Todo: Localize these strings
+                    await _dialogService.ShowAlertDialogAsync("Add Folder Failed", "Folder name is not valid", "Ok");
+                    return;
+                }
+
+                // Execute a command to add the folder resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _loggingService.Info($"Add new folder resource: {resourcePath}");
+                _commandService.Execute<IAddFolderCommand>(command => command.FolderPath = resourcePath);
             }
         }
 
