@@ -25,14 +25,19 @@ public class ProjectDataService : IProjectDataService
             return Result.Fail("Project folder is empty.");
         }
 
-        return ValidateProjectName(config.ProjectName);
+        if (!IsPathSegmentValid(config.ProjectName))
+        {
+            return Result.Fail($"Project name is not valid: {config.ProjectName}");
+        }
+
+        return Result.Ok();
     }
 
-    public Result ValidateProjectName(string projectName)
+    public bool IsPathSegmentValid(string projectName)
     {
         if (string.IsNullOrWhiteSpace(projectName))
         {
-            return Result.Fail("Project name is empty.");
+            return false;
         }
 
         // It's pretty much impossible to robustly check for invalid characters in a path in a way that
@@ -42,11 +47,11 @@ public class ProjectDataService : IProjectDataService
         {
             if (invalidChars.Contains(c))
             {
-                return Result.Fail($"Project name '{projectName}' contains invalid characters.");
+                return false;
             }
         }
 
-        return Result.Ok();
+        return true;
     }
 
     public async Task<Result> CreateProjectDataAsync(NewProjectConfig config)
