@@ -26,7 +26,21 @@ public sealed partial class ResourceTreeView : UserControl
 
         if (menuFlyoutItem.DataContext is FolderResource folderResource)
         {
+            // Add a folder to the selected folder
             ViewModel.OnAddFolder(folderResource);
+        }
+        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        {
+            // Add a folder to the folder containing the selected file
+            var parentFolder = fileResource.ParentFolder;
+            Guard.IsNotNull(parentFolder);
+
+            ViewModel.OnAddFolder(parentFolder);
+        }
+        else
+        {
+            // Add a folder at the root of the resource tree
+            ViewModel.OnAddFolder(null);
         }
     }
 

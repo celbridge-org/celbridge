@@ -32,12 +32,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ISaveWorkspaceStateCommand>(250);
     }
 
-    public void OnAddFolder(FolderResource folderResource)
+    public void OnAddFolder(FolderResource? folderResource)
     {
-        // Todo: This could probably be a static util instead?
         var resourceRegistry = _projectService.ResourceRegistry;
-        var path = resourceRegistry.GetResourcePath(folderResource);
+        var path = folderResource is null ? string.Empty : resourceRegistry.GetResourcePath(folderResource);
 
-        _loggingService.Info($"Add Folder: {path}");
+        _loggingService.Info($"Add Folder to: {path}");
     }
 }
