@@ -138,6 +138,12 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
+  <data name="InputTextDialog_AddFolder" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+  <data name="InputTextDialog_EnterName" xml:space="preserve">
+    <value>Enter name</value>
+  </data>
   <data name="InspectorPanel_Title" xml:space="preserve">
     <value>Inspector</value>
   </data>
