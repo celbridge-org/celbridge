@@ -2,6 +2,7 @@
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Project.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
@@ -29,5 +30,14 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
         _commandService.Execute<ISaveWorkspaceStateCommand>(250);
+    }
+
+    public void OnAddFolder(FolderResource folderResource)
+    {
+        // Todo: This could probably be a static util instead?
+        var resourceRegistry = _projectService.ResourceRegistry;
+        var path = resourceRegistry.GetResourcePath(folderResource);
+
+        _loggingService.Info($"Add Folder: {path}");
     }
 }
