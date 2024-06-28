@@ -46,7 +46,7 @@ public sealed partial class ProjectPanel : UserControl
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
-            .VerticalAlignment(VerticalAlignment.Top)
+            .VerticalAlignment(VerticalAlignment.Stretch)
             .Children(titleBar, resourceTreeView);
            
         //
