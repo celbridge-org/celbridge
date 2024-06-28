@@ -28,4 +28,14 @@ public class DialogFactory : IDialogFactory
         var dialog = new NewProjectDialog();
         return dialog;
     }
+
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText)
+    {
+        var dialog = new InputTextDialog
+        {
+            TitleText = titleText,
+            HeaderText = messageText,
+        };
+        return dialog;
+    }
 }

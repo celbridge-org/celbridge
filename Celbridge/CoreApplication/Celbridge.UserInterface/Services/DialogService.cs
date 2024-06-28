@@ -82,4 +82,17 @@ public class DialogService : IDialogService
 
         return showResult;
     }
+
+    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText)
+    {
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText);
+
+        SuppressProgressDialog(true);
+
+        var showResult = await dialog.ShowDialogAsync();
+
+        SuppressProgressDialog(false);
+
+        return showResult;
+    }
 }
