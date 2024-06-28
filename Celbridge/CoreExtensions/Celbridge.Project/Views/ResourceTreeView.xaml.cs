@@ -1,4 +1,5 @@
-﻿using Celbridge.Project.ViewModels;
+﻿using Celbridge.Project.Models;
+using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Project.Views;
@@ -16,6 +17,17 @@ public sealed partial class ResourceTreeView : UserControl
 
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
+    }
+
+    private void AddFolder(object? sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        if (menuFlyoutItem.DataContext is FolderResource folderResource)
+        {
+            ViewModel.OnAddFolder(folderResource);
+        }
     }
 
     private void OpenResource(object? sender, RoutedEventArgs e)

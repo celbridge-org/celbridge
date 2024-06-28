@@ -15,6 +15,9 @@
 
         <MenuFlyout x:Name="FolderResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
+            <MenuFlyoutItem Text="Add Folder" 
+                            Icon="Folder"
+                            Click="AddFolder"/>
             <MenuFlyoutItem Text="Add Resource" 
                             Icon="Add"
                             Click="AddResource"/>
