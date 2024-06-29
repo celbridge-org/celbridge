@@ -16,9 +16,9 @@ public class DialogService : IDialogService
         _dialogFactory = dialogFactory;
     }
 
-    public async Task ShowAlertDialogAsync(string titleText, string messageText, string closeText)
+    public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
-        var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText, closeText);
+        var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
 
         SuppressProgressDialog(true);
 

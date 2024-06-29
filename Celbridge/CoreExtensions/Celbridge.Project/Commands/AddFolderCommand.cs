@@ -39,10 +39,9 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         {
             var titleText = _stringLocalizer.GetString("ResourceTree_AddFolder");
             var bodyText = _stringLocalizer.GetString("ResourceTree_FailedToCreateFolder", FolderPath);
-            var okText = _stringLocalizer.GetString("DialogButton_Ok");
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText, okText);
+            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
         }
 
         return createResult;
