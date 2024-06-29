@@ -82,6 +82,23 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             return Result.Fail($"Failed to create folder. {updateResult.Error}");
         }
 
+        //
+        // Expand the folder containing the newly created folder
+        //
+        int lastSlashIndex = FolderPath.LastIndexOf('/');
+        if (lastSlashIndex > -1)
+        {
+            var parentFolder = FolderPath.Substring(0, lastSlashIndex);
+            if (!string.IsNullOrEmpty(parentFolder))
+            {
+                var expandedFolders = new List<string>() 
+                { 
+                    parentFolder 
+                };
+                resourceRegistry.SetExpandedFolders(expandedFolders);
+            }
+        }
+
         await Task.CompletedTask;
 
         return Result.Ok();
