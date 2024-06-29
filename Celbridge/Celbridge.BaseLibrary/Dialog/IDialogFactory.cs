@@ -23,5 +23,5 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Input Text Dialog.
     /// </summary>
-    IInputTextDialog CreateInputTextDialog(string titleText, string messageText);
+    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, char[] invalidCharacters);
 }
