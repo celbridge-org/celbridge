@@ -73,7 +73,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                             .AcceptsReturn(false),
                         new TextBlock()
                             .Text(InvalidCharactersText)
-                            .Foreground("red")
+                            .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
                             .Margin(6, 4, 0, 0)
                             .Opacity
                             (
