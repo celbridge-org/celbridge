@@ -5,6 +5,8 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     public AlertDialogViewModel ViewModel { get; }
 
     public string TitleText
@@ -19,15 +21,12 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
         set => ViewModel.MessageText = value; 
     }
 
-    public string CloseText
-    {
-        get => ViewModel.CloseText;
-        set => ViewModel.CloseText = value;
-    }
+    public string CloseText => _stringLocalizer.GetString("DialogButton_Ok");
 
     public AlertDialog()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
@@ -36,9 +35,9 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .CloseButtonText(x => x.Bind(() => ViewModel.CloseText).Mode(BindingMode.OneWay))
+            .CloseButtonText(CloseText)
             .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Center)
+                .HorizontalAlignment(HorizontalAlignment.Left)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .Children(
                     new TextBlock()

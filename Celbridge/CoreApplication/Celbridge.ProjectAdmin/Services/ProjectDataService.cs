@@ -1,15 +1,20 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Utilities;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.ProjectAdmin.Services;
 
 public class ProjectDataService : IProjectDataService
 {
+    private readonly IUtilityService _utilityService;
+
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
 
-    public ProjectDataService()
-    {}
+    public ProjectDataService(IUtilityService utilityService)
+    {
+        _utilityService = utilityService;
+    }
 
     public IProjectData? LoadedProjectData { get; private set; }
 
@@ -25,25 +30,9 @@ public class ProjectDataService : IProjectDataService
             return Result.Fail("Project folder is empty.");
         }
 
-        return ValidateProjectName(config.ProjectName);
-    }
-
-    public Result ValidateProjectName(string projectName)
-    {
-        if (string.IsNullOrWhiteSpace(projectName))
+        if (!_utilityService.IsPathSegmentValid(config.ProjectName))
         {
-            return Result.Fail("Project name is empty.");
-        }
-
-        // It's pretty much impossible to robustly check for invalid characters in a path in a way that
-        // works on all platforms. As a "best effort" solution, we do a basic check for invalid characters.
-        var invalidChars = Path.GetInvalidFileNameChars();
-        foreach (var c in projectName)
-        {
-            if (invalidChars.Contains(c))
-            {
-                return Result.Fail($"Project name '{projectName}' contains invalid characters.");
-            }
+            return Result.Fail($"Project name is not valid: {config.ProjectName}");
         }
 
         return Result.Ok();
