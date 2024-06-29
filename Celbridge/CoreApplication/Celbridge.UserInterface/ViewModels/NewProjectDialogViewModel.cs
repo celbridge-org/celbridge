@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Settings;
+using Celbridge.BaseLibrary.Utilities;
 using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -10,6 +11,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectDataService _projectDataService;
     private readonly IFilePickerService _filePickerService;
+    private readonly IUtilityService _utilityService;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -25,11 +27,13 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
         IProjectDataService projectDataService,
-        IFilePickerService filePickerService)
+        IFilePickerService filePickerService,
+        IUtilityService utilityService)
     {
         _editorSettings = editorSettings;
         _projectDataService = projectDataService;
         _filePickerService = filePickerService;
+        _utilityService = utilityService;
 
         _projectFolder = _editorSettings.PreviousNewProjectFolder;
 
@@ -41,10 +45,14 @@ public partial class NewProjectDialogViewModel : ObservableObject
         var parentFolderExists = Directory.Exists(ProjectFolder);
         var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolder, ProjectName));
 
-        var validateResult = _projectDataService.ValidateProjectName(ProjectName);
+        if (e.PropertyName == nameof(ProjectFolder) ||
+            e.PropertyName == nameof(ProjectName))
+        {
+            var isValid = _utilityService.IsPathSegmentValid(ProjectName);
 
-        // Todo: Show a message explaining why the create button is disabled
-        IsCreateButtonEnabled = validateResult.IsSuccess && parentFolderExists && !projectFolderExists;
+            // Todo: Show a message explaining why the create button is disabled
+            IsCreateButtonEnabled = isValid && parentFolderExists && !projectFolderExists;
+        }
 
         if (e.PropertyName == nameof(ProjectFolder) && parentFolderExists)
         {

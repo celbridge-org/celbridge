@@ -12,7 +12,7 @@ public class CommonUtils
         dispatcher.ExecuteAsync(() =>
         {
             var dialogService = ServiceLocator.ServiceProvider.GetRequiredService<IDialogService>();
-            dialogService.ShowAlertDialogAsync(title, message, "Ok");
+            dialogService.ShowAlertDialogAsync(title, message);
         });
     }
 }

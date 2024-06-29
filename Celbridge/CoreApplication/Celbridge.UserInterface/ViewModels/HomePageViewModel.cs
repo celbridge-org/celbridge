@@ -58,7 +58,7 @@ public partial class HomePageViewModel : ObservableObject
     public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);
     private async Task ShowAlertDialog_ExecutedAsync()
     {
-        await _dialogService.ShowAlertDialogAsync("Some title", "Some message", "Ok");
+        await _dialogService.ShowAlertDialogAsync("Some title", "Some message");
     }
 
     public ICommand ShowProgressDialogCommand => new RelayCommand(ShowProgressDialog_Executed);
