@@ -8,10 +8,11 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        Celbridge.Settings.ServiceConfiguration.ConfigureServices(services);
-        Celbridge.Messaging.ServiceConfiguration.ConfigureServices(services);
+        Commands.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
+        Messaging.ServiceConfiguration.ConfigureServices(services);
+        Settings.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
-        Celbridge.Commands.ServiceConfiguration.ConfigureServices(services);
+        Utilities.ServiceConfiguration.ConfigureServices(services);
     }
 }

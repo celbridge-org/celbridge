@@ -29,12 +29,13 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText)
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, char[] invalidCharacters)
     {
         var dialog = new InputTextDialog
         {
             TitleText = titleText,
             HeaderText = messageText,
+            InvalidCharacters = invalidCharacters,
         };
         return dialog;
     }

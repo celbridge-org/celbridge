@@ -53,18 +53,12 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         async Task ShowDialogAsync()
         {
-            var showResult = await _dialogService.ShowInputTextDialogAsync(AddFolderText, EnterNameText);
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+
+            var showResult = await _dialogService.ShowInputTextDialogAsync(AddFolderText, EnterNameText, invalidCharacters);
             if (showResult.IsSuccess)
             {
                 var inputText = showResult.Value;
-
-                // Check the folder name is valid
-                if (!_projectDataService.IsPathSegmentValid(inputText))
-                {
-                    // Todo: Localize these strings
-                    await _dialogService.ShowAlertDialogAsync("Add Folder Failed", "Folder name is not valid", "Ok");
-                    return;
-                }
 
                 // Execute a command to add the folder resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";

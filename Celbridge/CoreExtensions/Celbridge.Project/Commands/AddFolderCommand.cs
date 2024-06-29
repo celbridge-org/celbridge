@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 
@@ -11,13 +12,16 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
+    private readonly IUtilityService _utilityService;
 
     public AddFolderCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService)
+        IProjectDataService projectDataService,
+        IUtilityService utilityService)
     {
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
+        _utilityService = utilityService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -45,7 +49,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         var segments = FolderPath.Split('/');
         foreach (var segment in segments )
         {
-            if (!_projectDataService.IsPathSegmentValid(segment))
+            if (!_utilityService.IsPathSegmentValid(segment))
             {
                 return Result.Fail($"Failed to create folder. Folder name contains invalid characters");
             }

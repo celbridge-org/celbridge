@@ -36,5 +36,6 @@
     <ProjectReference Include="..\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\Celbridge.Utilities\Celbridge.Utilities.csproj" />
   </ItemGroup>
 </Project>
