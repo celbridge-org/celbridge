@@ -38,7 +38,7 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .CloseButtonText(x => x.Bind(() => ViewModel.CloseText).Mode(BindingMode.OneWay))
             .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Center)
+                .HorizontalAlignment(HorizontalAlignment.Left)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .Children(
                     new TextBlock()
