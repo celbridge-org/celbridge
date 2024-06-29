@@ -16,11 +16,6 @@ public interface IAlertDialog
     string MessageText { get; set; }
 
     /// <summary>
-    /// The text displayed on the close button of the alert dialog.
-    /// </summary>
-    string CloseText { get; set; }
-
-    /// <summary>
     /// Present the alert dialog to the user.
     /// The async call completes when the user closes the dialog.
     /// </summary>

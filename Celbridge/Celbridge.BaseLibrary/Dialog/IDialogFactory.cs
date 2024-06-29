@@ -6,9 +6,9 @@
 public interface IDialogFactory
 {
     /// <summary>
-    /// Create an Alert Dialog with configurable title, message and close button text.
+    /// Create an Alert Dialog with configurable title and message text.
     /// </summary>
-    IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText);
+    IAlertDialog CreateAlertDialog(string titleText, string messageText);
 
     /// <summary>
     /// Create a Progress Dialog.

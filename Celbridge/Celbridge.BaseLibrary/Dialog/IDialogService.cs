@@ -8,9 +8,9 @@ namespace Celbridge.BaseLibrary.Dialog;
 public interface IDialogService
 {
     /// <summary>
-    /// Display an Alert Dialog with configurable title, message and close button text.
+    /// Display an Alert Dialog with configurable title and message text.
     /// </summary>
-    Task ShowAlertDialogAsync(string titleText, string messageText, string closeText);
+    Task ShowAlertDialogAsync(string titleText, string messageText);
 
     /// <summary>
     /// Aqcuire a progress dialog token.

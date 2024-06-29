@@ -5,13 +5,12 @@ namespace Celbridge.UserInterface.Services;
 
 public class DialogFactory : IDialogFactory
 {
-    public IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText)
+    public IAlertDialog CreateAlertDialog(string titleText, string messageText)
     {
         var dialog = new AlertDialog
         {
             TitleText = titleText,
-            MessageText = messageText,
-            CloseText = closeText
+            MessageText = messageText
         };
 
         return dialog;
