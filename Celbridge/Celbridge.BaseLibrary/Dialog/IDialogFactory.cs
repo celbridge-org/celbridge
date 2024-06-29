@@ -6,17 +6,22 @@
 public interface IDialogFactory
 {
     /// <summary>
-    /// Create an Alert Dialog with configurable title, message and close button text.
+    /// Create an Alert Dialog with configurable title and message text.
     /// </summary>
-    IAlertDialog CreateAlertDialog(string titleText, string messageText, string closeText);
+    IAlertDialog CreateAlertDialog(string titleText, string messageText);
 
     /// <summary>
-    /// Create an Progress Dialog.
+    /// Create a Progress Dialog.
     /// </summary>
     IProgressDialog CreateProgressDialog();
 
     /// <summary>
-    /// Create an New Project Dialog.
+    /// Create a New Project Dialog.
     /// </summary>
     INewProjectDialog CreateNewProjectDialog();
+
+    /// <summary>
+    /// Create an Input Text Dialog.
+    /// </summary>
+    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, char[] invalidCharacters);
 }

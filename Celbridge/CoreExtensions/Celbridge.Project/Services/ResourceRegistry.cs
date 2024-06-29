@@ -1,13 +1,15 @@
 ﻿using Celbridge.BaseLibrary.Resources;
 using Celbridge.Project.Models;
+using CommunityToolkit.Diagnostics;
 using System.Collections.ObjectModel;
+using System.Text;
 
 namespace Celbridge.Project.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
     private readonly string _projectFolder;
-    private FolderResource _rootFolder = new("Root");
+    private FolderResource _rootFolder = new(string.Empty, null);
 
     public ObservableCollection<IResource> Resources
     {
@@ -22,9 +24,40 @@ public class ResourceRegistry : IResourceRegistry
         _projectFolder = projectFolder;
     }
 
+    public string GetResourcePath(IResource resource)
+    {
+        var pathResource = resource as Resource;
+        Guard.IsNotNull(pathResource);
+
+        var sb = new StringBuilder();
+        void AddPathSegment(Resource resource)
+        {
+            if (resource.ParentFolder is null)
+            {
+                return;
+            }
+
+            // Build path by recursively visiting each parent folders
+            AddPathSegment(resource.ParentFolder);
+
+            // The trick is to append the path segment after we've visited the parent.
+            // This ensures the path segments are appended in the right order.
+            if (sb.Length > 0)
+            {
+                sb.Append("/");
+            }
+            sb.Append(resource.Name);
+        }
+        AddPathSegment(pathResource);
+
+        var path = sb.ToString();
+
+        return path;
+    }
+
     public Result UpdateRegistry()
     {
-        var scanResult = ScanFolder(_projectFolder);
+        var scanResult = CreateFolderResource(_projectFolder);
         if (scanResult.IsFailure)
         {
             return Result.Fail(scanResult.Error);
@@ -129,7 +162,7 @@ public class ResourceRegistry : IResourceRegistry
         collection.Insert(index, resource);
     }
 
-    private Result<FolderResource> ScanFolder(string path)
+    private Result<FolderResource> CreateFolderResource(string path, FolderResource? parentFolder = null)
     {
         try
         {
@@ -138,28 +171,38 @@ public class ResourceRegistry : IResourceRegistry
                 return Result<FolderResource>.Fail($"Failed to scan folder. Path not found '{path}'");
             }
 
-            var folderResource = new FolderResource(Path.GetFileName(path));
+            //
+            // Create a new folder resource to represent the directory at this path
+            //
+            var newFolderResource = new FolderResource(Path.GetFileName(path), parentFolder);
 
+            //
+            // Create a new folder resource for each descendant folder and add it as a child of the new folder resource.
+            //
             var sortedDirectories = Directory.GetDirectories(path).OrderBy(d => d).ToList();
             foreach (var directory in sortedDirectories)
             {
-                var scanResult = ScanFolder(directory);
+                var scanResult = CreateFolderResource(directory, newFolderResource);
                 if (scanResult.IsFailure)
                 {
                     return scanResult;
                 }
                 var resource = scanResult.Value;
 
-                folderResource.AddChild(resource);
+                newFolderResource.AddChild(resource);
             }
 
+            //
+            // Create a new file resource for each descendent file and add it as a child of the new folder resource.
+            //
             var sortedFiles = Directory.GetFiles(path).OrderBy(f => f).ToList();
             foreach (var file in sortedFiles)
             {
-                folderResource.AddChild(new FileResource(Path.GetFileName(file)));
+                var newFileResource = new FileResource(Path.GetFileName(file), newFolderResource);
+                newFolderResource.AddChild(newFileResource);
             }
 
-            return Result<FolderResource>.Ok(folderResource);
+            return Result<FolderResource>.Ok(newFolderResource);
         }
         catch (Exception ex)
         {

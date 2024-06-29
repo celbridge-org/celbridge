@@ -16,9 +16,9 @@ public class DialogService : IDialogService
         _dialogFactory = dialogFactory;
     }
 
-    public async Task ShowAlertDialogAsync(string titleText, string messageText, string closeText)
+    public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
-        var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText, closeText);
+        var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
 
         SuppressProgressDialog(true);
 
@@ -78,6 +78,19 @@ public class DialogService : IDialogService
 
         SuppressProgressDialog(true);
         var showResult = await dialog.ShowDialogAsync();
+        SuppressProgressDialog(false);
+
+        return showResult;
+    }
+
+    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, char[] invalidCharacters)
+    {
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, invalidCharacters);
+
+        SuppressProgressDialog(true);
+
+        var showResult = await dialog.ShowDialogAsync();
+
         SuppressProgressDialog(false);
 
         return showResult;

@@ -16,11 +16,6 @@ public interface IProjectDataService
     Result ValidateNewProjectConfig(NewProjectConfig config);
 
     /// <summary>
-    /// Checks if a project name is valid.
-    /// </summary>
-    Result ValidateProjectName(string projectName);
-
-    /// <summary>
     /// Create a new project file and database using the specified config information.
     /// </summary>
     Task<Result> CreateProjectDataAsync(NewProjectConfig config);

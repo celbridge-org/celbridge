@@ -65,9 +65,8 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
             var titleString = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
             var bodyString = _stringLocalizer.GetString("LoadProjectFailedAlert_Body", ProjectPath);
-            var okString = _stringLocalizer.GetString("DialogButton_Ok");
 
-            await _dialogService.ShowAlertDialogAsync(titleString, bodyString, okString);
+            await _dialogService.ShowAlertDialogAsync(titleString, bodyString);
 
             // Return to the home page so the user can decide what to do next
             _navigationService.NavigateToPage(HomePageName);

@@ -13,6 +13,11 @@ public interface IResourceRegistry
     ObservableCollection<IResource> Resources { get; }
 
     /// <summary>
+    /// Returns the project relative path for a resource.
+    /// </summary>
+    public string GetResourcePath(IResource resource);
+
+    /// <summary>
     /// Updates the registry to mirror the current state of the resources in the project folder.
     /// </summary>
     Result UpdateRegistry();

@@ -11,7 +11,8 @@ public partial class FolderResource : Resource
     [ObservableProperty]
     private bool _expanded = false;
 
-    public FolderResource(string name) : base(name)
+    public FolderResource(string name, FolderResource? parentFolder) 
+        : base(name, parentFolder)
     {
         Children = new();
     }
