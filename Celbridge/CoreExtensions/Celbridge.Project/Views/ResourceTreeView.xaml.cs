@@ -1,12 +1,18 @@
 ﻿using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Views;
 
 public sealed partial class ResourceTreeView : UserControl
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     public ResourceTreeViewModel ViewModel { get; }
+    private LocalizedString AddFolderText => _stringLocalizer.GetString("ResourceTree_AddFolder");
+    private LocalizedString AddFileText => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString DeleteText => _stringLocalizer.GetString("ResourceTree_Delete");
 
     public ResourceTreeView()
     {
@@ -14,6 +20,7 @@ public sealed partial class ResourceTreeView : UserControl
 
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
@@ -50,7 +57,7 @@ public sealed partial class ResourceTreeView : UserControl
         Guard.IsNotNull(element);
     }
 
-    private void AddResource(object? sender, RoutedEventArgs e)
+    private void AddFile(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
