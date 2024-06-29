@@ -11,6 +11,7 @@
             <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
             <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
             <Color x:Key="PanelBorderColor">#EBECF0</Color>
+            <Color x:Key="ErrorColor">#FF0000</Color>
         </ResourceDictionary>
 
         <!-- Dark Theme -->
@@ -21,6 +22,7 @@
             <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
             <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
             <Color x:Key="PanelBorderColor">#1E1F22</Color>
+            <Color x:Key="ErrorTextColor">#FF0000</Color>
         </ResourceDictionary>
         
     </ResourceDictionary.ThemeDictionaries>
@@ -36,7 +38,10 @@
 
     <SolidColorBrush x:Key="PanelBorderBrush"
                      Color="{ThemeResource PanelBorderColor}" />
-    
+
+    <SolidColorBrush x:Key="ErrorTextBrush"
+                     Color="{ThemeResource ErrorTextColor}" />
+
     <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
     <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
     <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>
