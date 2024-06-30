@@ -18,8 +18,6 @@ public class ConsoleTests
     {
         var services = new ServiceCollection();
 
-        // Mimic your application's service registration
-        // For example, register a real service
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<IConsoleService, ConsoleService>();
         services.AddSingleton<ILoggingService, LoggingService>();
