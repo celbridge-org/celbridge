@@ -51,4 +51,24 @@ public interface ICommandService
     /// Removes all commands of the given type from the queue.
     /// </summary>
     public void RemoveCommandsOfType<T>() where T : notnull;
+
+    /// <summary>
+    /// Returns true if the specified undo stack is empty.
+    /// </summary>
+    bool IsUndoStackEmpty(string stackName);
+
+    /// <summary>
+    /// Returns true if the specified redo stack is empty.
+    /// </summary>
+    public bool IsRedoStackEmpty(string stackName);
+
+    /// <summary>
+    /// Pop the most recent command from an undo stack and execute it.
+    /// </summary>
+    Result Undo(string stackName);
+
+    /// <summary>
+    /// Pop the most recent command from a redo stack and execute it.
+    /// </summary>
+    public Result Redo(string stackName);
 }

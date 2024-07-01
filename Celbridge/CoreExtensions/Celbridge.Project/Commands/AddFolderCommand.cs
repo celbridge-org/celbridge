@@ -10,6 +10,8 @@ namespace Celbridge.Project.Commands;
 
 public class AddFolderCommand : CommandBase, IAddFolderCommand
 {
+    public override string StackName => CommandStackNames.Project;
+
     public string FolderPath { get; set; } = string.Empty;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -88,6 +90,8 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             var newFolderPath = Path.Combine(projectFolder, FolderPath);
             newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
+            // It's important to fail if the folder already exists, because undoing this command
+            // deletes the folder, which could lead to unexpected data loss.
             if (Directory.Exists(newFolderPath))
             {
                 return Result.Fail($"Failed to create folder. Folder already exists: {newFolderPath}");
@@ -101,7 +105,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         }
 
         //
-        // Update the registry to include the new folder
+        // Update the resource registry to include the new folder
         //
 
         var updateResult = resourceRegistry.UpdateRegistry();
@@ -125,6 +129,67 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
                 };
                 resourceRegistry.SetExpandedFolders(expandedFolders);
             }
+        }
+
+        await Task.CompletedTask;
+
+        return Result.Ok();
+    }
+
+    public override async Task<Result> UndoAsync()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail($"Failed to undo create folder because workspace is not loaded");
+        }
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
+        var loadedProjectData = _projectDataService.LoadedProjectData;
+
+        Guard.IsNotNull(loadedProjectData);
+
+        //
+        // Validate the folder path
+        //
+
+        if (string.IsNullOrEmpty(FolderPath))
+        {
+            return Result.Fail("Failed to undo create folder. Folder path is empty");
+        }
+
+        // We can assume the FolderPath segments are valid because the command already executed successfully.
+
+        //
+        // Delete the folder on disk
+        //
+
+        try
+        {
+            var projectFolder = loadedProjectData.ProjectFolder;
+            var newFolderPath = Path.Combine(projectFolder, FolderPath);
+            newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
+
+            if (!Directory.Exists(newFolderPath))
+            {
+                return Result.Fail($"Failed to undo create folder. Folder does not exist: {newFolderPath}");
+            }
+
+            Directory.Delete(newFolderPath, true);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to undo create folder. {ex.Message}");
+        }
+
+        //
+        // Update the resource registry to remove the folder
+        //
+
+        var updateResult = resourceRegistry.UpdateRegistry();
+        if (updateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to create folder. {updateResult.Error}");
         }
 
         await Task.CompletedTask;
