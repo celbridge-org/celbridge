@@ -8,7 +8,7 @@ public class CommandService : ICommandService
     private readonly ILoggingService _loggingService;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
-    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime);
+    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime, bool IsUndoCommand);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
@@ -17,6 +17,8 @@ public class CommandService : ICommandService
     private readonly Stopwatch _stopwatch = new();
 
     private bool _stopped = false;
+
+    private CommandStack _commandStack = new ();
 
     public CommandService(ILoggingService loggingService)
     {
@@ -61,6 +63,17 @@ public class CommandService : ICommandService
 
     public Result EnqueueCommand(IExecutableCommand command, uint delay)
     {
+        if (command.StackName != CommandStackNames.None)
+        {
+            // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
+            _commandStack.ClearRedoCommands(command.StackName);
+        }
+
+        return EnqueueCommandInternal(command, delay, false);
+    }
+
+    private Result EnqueueCommandInternal(IExecutableCommand command, uint delay, bool IsUndoCommand)
+    {
         lock (_lock)
         {
             if (_commandQueue.Any((item) => item.Command.Id == command.Id))
@@ -69,7 +82,7 @@ public class CommandService : ICommandService
             }
 
             long executionTime = _stopwatch.ElapsedMilliseconds + delay;
-            _commandQueue.Add(new QueuedCommand(command, executionTime));
+            _commandQueue.Add(new QueuedCommand(command, executionTime, IsUndoCommand));
         }
 
         return Result.Ok();
@@ -81,6 +94,80 @@ public class CommandService : ICommandService
         {
             _commandQueue.RemoveAll(c => c.GetType().IsAssignableTo(typeof(T)));
         }
+    }
+
+    public bool IsUndoStackEmpty(string stackName)
+    {
+        lock (_lock)
+        {
+            return _commandStack.GetUndoCount(stackName) == 0;
+        }
+    }
+
+    public bool IsRedoStackEmpty(string stackName)
+    {
+        lock (_lock)
+        {
+            return _commandStack.GetRedoCount(stackName) == 0;
+        }
+    }
+
+    public Result Undo(string stackName)
+    {
+        lock (_lock)
+        {
+            if (IsUndoStackEmpty(stackName))
+            {
+                return Result.Fail($"Failed to undo command. Undo stack '{stackName}' is empty");
+            }
+
+            // Pop command from the undo queue
+            var popResult = _commandStack.PopUndoCommand(stackName);
+            if (popResult.IsFailure)
+            {
+                return popResult;
+            }
+            var command = popResult.Value;
+
+            // Enqueue this command as an undo. 
+            // I'm assuming here that undos should always execute without delay, may not be correct.
+            var enqueueResult = EnqueueCommandInternal(command, 0, true);
+            if (enqueueResult.IsFailure)
+            {
+                return enqueueResult;
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    public Result Redo(string stackName)
+    {
+        lock (_lock)
+        {
+            if (IsRedoStackEmpty(stackName))
+            {
+                return Result.Fail($"Failed to redo command. Redo stack '{stackName}' is empty");
+            }
+
+            // Pop command from the redo queue
+            var popResult = _commandStack.PopRedoCommand(stackName);
+            if (popResult.IsFailure)
+            {
+                return popResult;
+            }
+            var command = popResult.Value;
+
+            // Enqueue this command as a redo (same as a normal execution).
+            // I'm assuming here that redos should always execute without delay, may not be correct.
+            var enqueueResult = EnqueueCommandInternal(command, 0, false);
+            if (enqueueResult.IsFailure)
+            {
+                return enqueueResult;
+            }
+        }
+
+        return Result.Ok();
     }
 
     public void StartExecution()
@@ -108,6 +195,7 @@ public class CommandService : ICommandService
 
             // Find the first command that is ready to execute
             IExecutableCommand? command = null;
+            bool isUndoCommand = false;
 
             lock (_lock)
             {
@@ -125,7 +213,9 @@ public class CommandService : ICommandService
 
                 if (commandIndex > -1)
                 {
-                    command = _commandQueue[commandIndex].Command;
+                    var item = _commandQueue[commandIndex];
+                    command = item.Command;
+                    isUndoCommand = item.IsUndoCommand;
                     _commandQueue.RemoveAt(commandIndex);
                 }
             }
@@ -134,11 +224,41 @@ public class CommandService : ICommandService
             {
                 try
                 {
-                    // Attempt to execute the command
-                    var executeResult = await command.ExecuteAsync();
-                    if (executeResult.IsFailure)
+                    if (isUndoCommand)
                     {
-                        _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
+                        //
+                        // Execute command as an undo
+                        //
+   
+                        var undoResult = await command.UndoAsync();
+                        if (undoResult.IsSuccess)
+                        {
+                            // Push the undone command onto the redo stack
+                            _commandStack.PushRedoCommand(command);
+                        }
+                        else
+                        {
+                            _loggingService.Error($"Failed to undo command '{command}': {undoResult.Error}");
+                        }
+                    }
+                    else
+                    {
+                        //
+                        // Execute the command
+                        //
+
+                        var executeResult = await command.ExecuteAsync();
+                        if (executeResult.IsSuccess)
+                        {
+                            if (command.StackName != CommandStackNames.None)
+                            {
+                                _commandStack.PushUndoCommand(command);
+                            }
+                        }
+                        else
+                        {
+                            _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
+                        }
                     }
                 }
                 catch (Exception ex)
