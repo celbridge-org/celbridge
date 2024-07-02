@@ -176,5 +176,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _editorSettings.PreviousLoadedProject = string.Empty;
         _navigationService.NavigateToPage(HomePageName);
     }
+
+    public void OnKeyboardShortcut()
+    {
+        // Todo: Pass through an enum to indicate the type of shortcut
+        _loggingService.Info($"Shortcut");
+    }
 }
 
