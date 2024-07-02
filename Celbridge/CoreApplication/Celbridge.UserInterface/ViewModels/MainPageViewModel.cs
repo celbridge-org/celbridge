@@ -7,6 +7,7 @@ using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -177,10 +178,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _navigationService.NavigateToPage(HomePageName);
     }
 
-    public void OnKeyboardShortcut()
+    public void OnShortcutAction(ShortcutAction shortcutAction)
     {
-        // Todo: Pass through an enum to indicate the type of shortcut
-        _loggingService.Info($"Shortcut");
+        _loggingService.Info($"Shortcut action: {shortcutAction}");
     }
 }
 

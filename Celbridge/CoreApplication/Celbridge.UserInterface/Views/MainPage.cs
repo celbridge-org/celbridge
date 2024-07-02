@@ -131,19 +131,33 @@ public sealed partial class MainPage : Page
     {
         // Use the HasFlag method to check if the control key is down.
         // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
-        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
-        if (state.HasFlag(CoreVirtualKeyStates.Down))
-        {
-            switch (key)
-            {
-                case VirtualKey.Z:
-                    ViewModel.OnKeyboardShortcut();
-                    return true;
+        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(CoreVirtualKeyStates.Down);
 
-                case VirtualKey.Y:
-                    ViewModel.OnKeyboardShortcut();
-                    return true;
-            }
+        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(CoreVirtualKeyStates.Down);
+
+        // All platforms redo shortcut
+        if (control && shift && key == VirtualKey.Z)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            return true;
+        }
+
+#if WINDOWS
+        // Windows only undo shortcut
+        if (control && key == VirtualKey.Y)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            return true;
+        }
+#endif
+
+        // All platforms undo shortcut
+        if (control && key == VirtualKey.Z)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Undo);
+            return true;
         }
 
         return false;
