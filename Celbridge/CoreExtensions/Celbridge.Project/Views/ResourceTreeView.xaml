@@ -28,13 +28,16 @@
 
         <MenuFlyout x:Name="FileResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="Add Folder" 
-                            Icon="Folder"
-                            Click="AddFolder"/>
             <MenuFlyoutItem Text="Open" 
                             Icon="OpenFile"
                             Click="OpenResource"/>
-            <MenuFlyoutItem Text="Delete" 
+            <MenuFlyoutItem Text="{x:Bind AddFolderText}" 
+                            Icon="Folder"
+                            Click="AddFolder"/>
+            <MenuFlyoutItem Text="{x:Bind AddFileText}" 
+                            Icon="Add"
+                            Click="AddFile"/>
+            <MenuFlyoutItem Text="{x:Bind DeleteText}" 
                             Icon="Delete"
                             Click="DeleteResource"/>
         </MenuFlyout>
