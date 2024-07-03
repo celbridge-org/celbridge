@@ -1,4 +1,7 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
+using Microsoft.UI.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -72,14 +75,16 @@ public sealed partial class MainPage : Page
 
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
+        var mainWindow = _userInterfaceService.MainWindow as Window;
+        Guard.IsNotNull(mainWindow);
+
 #if WINDOWS
         // Setup the custom title bar (Windows only)
         var titleBar = new TitleBar();
         _layoutRoot.Children.Add(titleBar);
 
-        var mainWindow = _userInterfaceService.MainWindow as Window;
-        mainWindow!.ExtendsContentIntoTitleBar = true;
-        mainWindow!.SetTitleBar(titleBar);
+        mainWindow.ExtendsContentIntoTitleBar = true;
+        mainWindow.SetTitleBar(titleBar);
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
@@ -87,6 +92,25 @@ public sealed partial class MainPage : Page
 
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
+
+        // Listen for keyboard input events
+#if WINDOWS
+        mainWindow.Content.KeyDown += (s, e) =>
+        {
+            if (OnKeyDown(e.Key))
+            {
+                e.Handled = true;
+            }
+        };
+#else
+        mainWindow.CoreWindow.KeyDown += (s, e) =>
+        {
+            if (OnKeyDown(e.VirtualKey))
+            {
+                e.Handled = true;
+            }
+        };
+#endif
     }
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -101,6 +125,42 @@ public sealed partial class MainPage : Page
 
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
+    }
+
+    private bool OnKeyDown(VirtualKey key)
+    {
+        // Use the HasFlag method to check if the control key is down.
+        // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
+        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(CoreVirtualKeyStates.Down);
+
+        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(CoreVirtualKeyStates.Down);
+
+        // All platforms redo shortcut
+        if (control && shift && key == VirtualKey.Z)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            return true;
+        }
+
+#if WINDOWS
+        // Windows only undo shortcut
+        if (control && key == VirtualKey.Y)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            return true;
+        }
+#endif
+
+        // All platforms undo shortcut
+        if (control && key == VirtualKey.Z)
+        {
+            ViewModel.OnShortcutAction(ShortcutAction.Undo);
+            return true;
+        }
+
+        return false;
     }
 
     private Result OnViewModel_Navigate(Type pageType, object parameter)

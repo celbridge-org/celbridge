@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.BaseLibrary.Commands;
 
 /// <summary>
-/// An asynchronous command queue service.
+/// An asynchronous command queue service with undo/redo support.
 /// </summary>
 public interface ICommandService
 {
@@ -50,7 +50,12 @@ public interface ICommandService
     /// <summary>
     /// Removes all commands of the given type from the queue.
     /// </summary>
-    public void RemoveCommandsOfType<T>() where T : notnull;
+    void RemoveCommandsOfType<T>() where T : notnull;
+
+    /// <summary>
+    /// The command stack associated with the most recently focussed UI element.
+    /// </summary>
+    string ActiveCommandStack { get; set; }
 
     /// <summary>
     /// Returns true if the specified undo stack is empty.
@@ -60,15 +65,31 @@ public interface ICommandService
     /// <summary>
     /// Returns true if the specified redo stack is empty.
     /// </summary>
-    public bool IsRedoStackEmpty(string stackName);
+    bool IsRedoStackEmpty(string stackName);
 
     /// <summary>
-    /// Pop the most recent command from an undo stack and execute it.
+    /// Pop the most recent command from the specified undo stack and execute it.
+    /// The call fails if no undo command was found in the redo stack.
     /// </summary>
     Result Undo(string stackName);
 
     /// <summary>
-    /// Pop the most recent command from a redo stack and execute it.
+    /// Attempt to pop the most recent undo command from the Active Command Stack and execute it.
+    /// The call will succeed whether an undo is performed or not (e.g. if the undo stack is empty).
+    /// The boolean return value indicates if an undo operation was actually performed.
     /// </summary>
-    public Result Redo(string stackName);
+    Result<bool> TryUndo();
+
+    /// <summary>
+    /// Pop the most recent command from the specified redo stack and execute it.
+    /// The call fails if no redo command was found in the redo stack.
+    /// </summary>
+    Result Redo(string stackName);
+
+    /// <summary>
+    /// Attempt to pop the most recent redo command from the Active Command Stack and execute it.
+    /// The call will succeed whether a redo is performed or not (e.g. if the redo stack is empty).
+    /// The boolean return value indicates if a redo operation was actually performed.
+    /// </summary>
+    Result<bool> TryRedo();
 }
