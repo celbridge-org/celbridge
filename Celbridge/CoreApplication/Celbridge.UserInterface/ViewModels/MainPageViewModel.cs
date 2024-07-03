@@ -99,6 +99,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             // No previous project to load, so navigate to the home page
             _ = NavigateToHomeAsync();
         }
+
+        // Todo: Support additional command stacks when we add functionality to other panels
+        // Hard coding it to use the Project command stack for now.
+        _commandService.ActiveCommandStack = CommandStackNames.Project;
     }
 
     public void OnMainPage_Unloaded()
@@ -180,7 +184,16 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnShortcutAction(ShortcutAction shortcutAction)
     {
-        _loggingService.Info($"Shortcut action: {shortcutAction}");
+        switch (shortcutAction)
+        {
+            case ShortcutAction.Undo:
+                _commandService.TryUndo();
+                break;
+
+            case ShortcutAction.Redo:
+                _commandService.TryRedo();
+                break;
+        }
     }
 }
 
