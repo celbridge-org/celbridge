@@ -7,5 +7,8 @@ namespace Celbridge.BaseLibrary.Project;
 /// </summary>
 public interface IAddFolderCommand : IExecutableCommand
 {
+    /// <summary>
+    /// Project-relative path to the new folder.
+    /// </summary>
     string FolderPath { get; set; }
 }

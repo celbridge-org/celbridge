@@ -51,16 +51,36 @@ public sealed partial class ResourceTreeView : UserControl
         }
     }
 
-    private void OpenResource(object? sender, RoutedEventArgs e)
-    {
-        var element = sender as FrameworkElement;
-        Guard.IsNotNull(element);
-    }
-
     private void AddFile(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
+
+        if (menuFlyoutItem.DataContext is FolderResource folderResource)
+        {
+            // Add a file to the selected folder
+            ViewModel.OnAddFile(folderResource);
+        }
+        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        {
+            // Add a file to the folder containing the selected file
+            var parentFolder = fileResource.ParentFolder;
+            Guard.IsNotNull(parentFolder);
+
+            ViewModel.OnAddFile(parentFolder);
+        }
+        else
+        {
+            // Add a folder at the root of the resource tree
+            ViewModel.OnAddFile(null);
+        }
+    }
+
+
+    private void OpenResource(object? sender, RoutedEventArgs e)
+    {
+        var element = sender as FrameworkElement;
+        Guard.IsNotNull(element);
     }
 
     private void DeleteResource(object? sender, RoutedEventArgs e)
