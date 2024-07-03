@@ -138,6 +138,9 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
+  <data name="InputTextDialog_AddFile" xml:space="preserve">
+    <value>Add file</value>
+  </data>
   <data name="InputTextDialog_AddFolder" xml:space="preserve">
     <value>Add folder</value>
   </data>
@@ -200,6 +203,9 @@
   </data>
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
+  </data>
+  <data name="ResourceTree_FailedToCreateFile" xml:space="preserve">
+    <value>Failed to create file '{0}'.</value>
   </data>
   <data name="ResourceTree_FailedToCreateFolder" xml:space="preserve">
     <value>Failed to create folder '{0}'.</value>

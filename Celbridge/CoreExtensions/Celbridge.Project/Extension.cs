@@ -32,6 +32,7 @@ public class Extension : IExtension
         //
         config.AddTransient<IRefreshResourceTreeCommand, RefreshResourceTreeCommand>();
         config.AddTransient<IAddFolderCommand, AddFolderCommand>();
+        config.AddTransient<IAddFileCommand, AddFileCommand>();
     }
 
     public Result Initialize()

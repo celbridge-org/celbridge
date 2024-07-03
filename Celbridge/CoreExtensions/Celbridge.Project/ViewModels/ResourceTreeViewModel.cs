@@ -22,6 +22,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.Resources;
 
     private LocalizedString AddFolderText => _stringLocalizer.GetString("InputTextDialog_AddFolder");
+    private LocalizedString AddFileText => _stringLocalizer.GetString("InputTextDialog_AddFile");
     private LocalizedString EnterNameText => _stringLocalizer.GetString("InputTextDialog_EnterName");
 
     public ResourceTreeViewModel(
@@ -63,6 +64,29 @@ public partial class ResourceTreeViewModel : ObservableObject
                 // Execute a command to add the folder resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
                 _commandService.Execute<IAddFolderCommand>(command => command.FolderPath = resourcePath);
+            }
+        }
+
+        _ = ShowDialogAsync();
+    }
+
+    public void OnAddFile(FolderResource folderResource)
+    {
+        var resourceRegistry = _projectService.ResourceRegistry;
+        var path = folderResource is null ? string.Empty : resourceRegistry.GetResourcePath(folderResource);
+
+        async Task ShowDialogAsync()
+        {
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+
+            var showResult = await _dialogService.ShowInputTextDialogAsync(AddFileText, EnterNameText, invalidCharacters);
+            if (showResult.IsSuccess)
+            {
+                var inputText = showResult.Value;
+
+                // Execute a command to add the file resource
+                var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
+                _commandService.Execute<IAddFileCommand>(command => command.FilePath = resourcePath);
             }
         }
 
