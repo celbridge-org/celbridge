@@ -96,6 +96,8 @@ public class CommandService : ICommandService
         }
     }
 
+    public string ActiveCommandStack { get; set; } = CommandStackNames.None;
+
     public bool IsUndoStackEmpty(string stackName)
     {
         lock (_lock)
@@ -168,6 +170,50 @@ public class CommandService : ICommandService
         }
 
         return Result.Ok();
+    }
+
+    public Result<bool> TryUndo()
+    {
+        string commandStack = ActiveCommandStack;
+        if (commandStack == CommandStackNames.None)
+        {
+            return Result<bool>.Ok(false);
+        }
+                
+        if (IsUndoStackEmpty(commandStack))
+        {
+            return Result<bool>.Ok(false);
+        }
+
+        var undoResult = Undo(commandStack);
+        if (undoResult.IsFailure)
+        {
+            return Result<bool>.Fail($"Failed to undo using command stack '{ActiveCommandStack}'. {undoResult.Error}");
+        }
+
+        return Result<bool>.Ok(true);
+    }
+
+    public Result<bool> TryRedo()
+    {
+        string commandStack = ActiveCommandStack;
+        if (commandStack == CommandStackNames.None)
+        {
+            return Result<bool>.Ok(false);
+        }
+
+        if (IsRedoStackEmpty(commandStack))
+        {
+            return Result<bool>.Ok(false);
+        }
+
+        var redoResult = Redo(commandStack);
+        if (redoResult.IsFailure)
+        {
+            return Result<bool>.Fail($"Failed to redo using command stack '{ActiveCommandStack}'. {redoResult.Error}");
+        }
+
+        return Result<bool>.Ok(true);
     }
 
     public void StartExecution()
