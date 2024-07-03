@@ -19,22 +19,26 @@ public class CommonUtils
 
     public static void Undo(string stackName)
     {
-        var dispatcher = ServiceLocator.ServiceProvider.GetRequiredService<IDispatcher>();
-        dispatcher.ExecuteAsync(() =>
-        {
-            var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-            commandService.Undo(stackName);
-        });
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Undo(stackName);
+    }
+
+    public static void Undo()
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.TryUndo();
     }
 
     public static void Redo(string stackName)
     {
-        var dispatcher = ServiceLocator.ServiceProvider.GetRequiredService<IDispatcher>();
-        dispatcher.ExecuteAsync(() =>
-        {
-            var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-            commandService.Redo(stackName);
-        });
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Redo(stackName);
+    }
+
+    public static void Redo()
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.TryRedo();
     }
 }
 
