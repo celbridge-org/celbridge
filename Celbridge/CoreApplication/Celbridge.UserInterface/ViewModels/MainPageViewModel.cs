@@ -7,6 +7,7 @@ using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.UserInterface;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -98,6 +99,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             // No previous project to load, so navigate to the home page
             _ = NavigateToHomeAsync();
         }
+
+        // Todo: Support additional command stacks when we add functionality to other panels
+        // Hard coding it to use the Project command stack for now.
+        _commandService.ActiveCommandStack = CommandStackNames.Project;
     }
 
     public void OnMainPage_Unloaded()
@@ -175,6 +180,20 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         // Clear the previous project so we don't try to reload it next time the application starts
         _editorSettings.PreviousLoadedProject = string.Empty;
         _navigationService.NavigateToPage(HomePageName);
+    }
+
+    public void OnShortcutAction(ShortcutAction shortcutAction)
+    {
+        switch (shortcutAction)
+        {
+            case ShortcutAction.Undo:
+                _commandService.TryUndo();
+                break;
+
+            case ShortcutAction.Redo:
+                _commandService.TryRedo();
+                break;
+        }
     }
 }
 
