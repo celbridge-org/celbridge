@@ -16,6 +16,17 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
+    public IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText)
+    {
+        var dialog = new ConfirmationDialog
+        {
+            TitleText = titleText,
+            MessageText = messageText
+        };
+
+        return dialog;
+    }
+
     public IProgressDialog CreateProgressDialog()
     {
         var dialog = new ProgressDialog();
