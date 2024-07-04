@@ -11,6 +11,12 @@ public interface IDialogFactory
     IAlertDialog CreateAlertDialog(string titleText, string messageText);
 
     /// <summary>
+    /// Create an Confirmation Dialog with configurable title and message text.
+    /// </summary>
+    IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText);
+
+
+    /// <summary>
     /// Create a Progress Dialog.
     /// </summary>
     IProgressDialog CreateProgressDialog();

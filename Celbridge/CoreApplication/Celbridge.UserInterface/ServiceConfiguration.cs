@@ -38,6 +38,7 @@ public static class ServiceConfiguration
         // Register dialog view models
         //
         services.AddTransient<AlertDialogViewModel>();
+        services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
