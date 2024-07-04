@@ -13,6 +13,11 @@ public interface IDialogService
     Task ShowAlertDialogAsync(string titleText, string messageText);
 
     /// <summary>
+    /// Display an Confirmation Dialog with configurable title and message text.
+    /// </summary>
+    Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText);
+
+    /// <summary>
     /// Aqcuire a progress dialog token.
     /// The progress dialog will be displayed as long as any token is active, and will display the title of the
     /// most recently acquired token that is still active. The progress dialog is temporarily hidden while any other type 

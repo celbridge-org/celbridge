@@ -34,7 +34,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is FolderResource folderResource)
         {
             // Add a folder to the selected folder
-            ViewModel.OnAddFolder(folderResource);
+            ViewModel.AddFolder(folderResource);
         }
         else if (menuFlyoutItem.DataContext is FileResource fileResource)
         {
@@ -42,12 +42,12 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.OnAddFolder(parentFolder);
+            ViewModel.AddFolder(parentFolder);
         }
         else
         {
             // Add a folder at the root of the resource tree
-            ViewModel.OnAddFolder(null);
+            ViewModel.AddFolder(null);
         }
     }
 
@@ -59,7 +59,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is FolderResource folderResource)
         {
             // Add a file to the selected folder
-            ViewModel.OnAddFile(folderResource);
+            ViewModel.AddFile(folderResource);
         }
         else if (menuFlyoutItem.DataContext is FileResource fileResource)
         {
@@ -67,23 +67,40 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.OnAddFile(parentFolder);
+            ViewModel.AddFile(parentFolder);
         }
         else
         {
             // Add a folder at the root of the resource tree
-            ViewModel.OnAddFile(null);
+            ViewModel.AddFile(null);
         }
     }
 
-
-    private void OpenResource(object? sender, RoutedEventArgs e)
+    private void DeleteFolder(object? sender, RoutedEventArgs e)
     {
-        var element = sender as FrameworkElement;
-        Guard.IsNotNull(element);
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        if (menuFlyoutItem.DataContext is FolderResource folderResource)
+        {
+            // Delete the selected folder
+            ViewModel.DeleteFolder(folderResource);
+        }
     }
 
-    private void DeleteResource(object? sender, RoutedEventArgs e)
+    private void DeleteFile(object? sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        if (menuFlyoutItem.DataContext is FileResource fileResource)
+        {
+            // Delete the selected file
+            ViewModel.DeleteFile(fileResource);
+        }
+    }
+
+    private void OpenResource(object? sender, RoutedEventArgs e)
     {
         var element = sender as FrameworkElement;
         Guard.IsNotNull(element);

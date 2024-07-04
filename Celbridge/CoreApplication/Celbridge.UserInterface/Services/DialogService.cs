@@ -27,6 +27,19 @@ public class DialogService : IDialogService
         SuppressProgressDialog(false);
     }
 
+    public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText)
+    {
+        var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText);
+
+        SuppressProgressDialog(true);
+
+        var showResult = await dialog.ShowDialogAsync();
+
+        SuppressProgressDialog(false);
+
+        return Result<bool>.Ok(showResult);
+    }
+
     public IProgressDialogToken AcquireProgressDialog(string titleText)
     {
         var token = new ProgressDialogToken(titleText);
