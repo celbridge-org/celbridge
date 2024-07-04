@@ -23,7 +23,7 @@
                             Click="AddFile"/>
             <MenuFlyoutItem Text="{x:Bind DeleteText}" 
                             Icon="Delete"
-                            Click="DeleteResource"/>
+                            Click="DeleteFolder"/>
         </MenuFlyout>
 
         <MenuFlyout x:Name="FileResourceContextMenu"
@@ -39,7 +39,7 @@
                             Click="AddFile"/>
             <MenuFlyoutItem Text="{x:Bind DeleteText}" 
                             Icon="Delete"
-                            Click="DeleteResource"/>
+                            Click="DeleteFile"/>
         </MenuFlyout>
 
         <MenuFlyout x:Name="EmptyAreaContextMenu"
