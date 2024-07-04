@@ -11,6 +11,7 @@
 		<PackageReference Include="CommunityToolkit.Diagnostics" />
 		<PackageReference Include="CommunityToolkit.MVVM" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Uno.WinUI" />		
 	</ItemGroup>
 
 	<ItemGroup>
