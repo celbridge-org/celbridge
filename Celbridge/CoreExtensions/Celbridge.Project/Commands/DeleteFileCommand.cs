@@ -12,6 +12,8 @@ namespace Celbridge.Project.Commands;
 
 public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
+    private const string DeletedFolderName = "DeletedFiles";
+
     public override string StackName => CommandStackNames.Project;
 
     public string FilePath { get; set; } = string.Empty;
@@ -90,7 +92,8 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
                 return Result.Fail($"Failed to delete file. File does not exist: {deleteFilePath}");
             }
 
-            _archivePath = GetArchivePath();
+            // Generate a random file name for the archive
+            _archivePath = _utilityService.GetTemporaryFilePath(DeletedFolderName, ".zip");
             if (File.Exists(_archivePath))
             {
                 File.Delete(_archivePath);
@@ -169,17 +172,6 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         await Task.CompletedTask;
 
         return Result.Ok();
-    }
-
-    private string GetArchivePath()
-    {
-        StorageFolder tempFolder = ApplicationData.Current.TemporaryFolder;
-        var tempFolderPath = tempFolder.Path;
-
-        var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
-        var archivePath = Path.Combine(tempFolderPath, "Deleted", randomName + ".zip");
-
-        return archivePath;
     }
 
     public static void DeleteFile(string filePath)
