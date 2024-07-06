@@ -5,7 +5,53 @@ namespace Celbridge.Messaging.Services;
 
 public class UtilityService : IUtilityService
 {
-    public bool IsPathSegmentValid(string segment)
+    public bool IsValidResourcePath(string resourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(resourcePath))
+        {
+            return false;
+        }
+
+        // Backslashes are not permitted
+        if (resourcePath.Contains("\\"))
+        {
+            return false;
+        }
+
+        // Resource paths must be specified relative to the project folder
+        if (Path.IsPathRooted(resourcePath))
+        {
+            return false;
+        }
+
+        // Resource paths may not contain parent or same directory references
+        if (resourcePath.Contains("..") || 
+            resourcePath.Contains("./") || 
+            resourcePath.Contains(".\\"))
+        {
+            return false;
+        }
+
+        // Resource paths may not start with a separator character
+        if (resourcePath[0] == '/')
+        {
+            return false;
+        }
+
+        // Each segment in the resource path must be a valid filename
+        var segments = resourcePath.Split('/');
+        foreach (var segment in segments)
+        {
+            if (!IsValidPathSegment(segment))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool IsValidPathSegment(string segment)
     {
         if (string.IsNullOrWhiteSpace(segment))
         {
@@ -14,7 +60,9 @@ public class UtilityService : IUtilityService
 
         // It's very difficult to robustly check for invalid characters in a way that works for every
         // platform. We do a basic check for invalid characters on the current platform.
+        // Note that we're using GetInvalidFileNameChars() instead of GetInvalidPathChars() here.
         var invalidChars = Path.GetInvalidFileNameChars();
+
         foreach (var c in segment)
         {
             if (invalidChars.Contains(c))
