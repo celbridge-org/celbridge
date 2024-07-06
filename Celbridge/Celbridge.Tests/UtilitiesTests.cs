@@ -7,7 +7,7 @@ namespace Celbridge.Tests;
 public class UtilitiesTests
 {
     [Test]
-    public void ICanValidatePathSegments()
+    public void ICanValidatePaths()
     {
         IUtilityService utilityService = new UtilityService();
 
