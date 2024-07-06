@@ -1,7 +1,4 @@
-﻿using Microsoft.UI;
-using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Input;
-using Windows.System;
+﻿using Windows.System;
 
 namespace Celbridge.Legacy.Views;
 
