@@ -5,14 +5,14 @@ using CommunityToolkit.Diagnostics;
 namespace Celbridge.Tests;
 
 [TestFixture]
-public class ResourceScannerTests
+public class ResourceRegistryTests
 {
     private string? _resourceFolder;
 
     [SetUp]
     public void Setup()
     {
-        _resourceFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceScannerTests)}");
+        _resourceFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceRegistryTests)}");
         if (Directory.Exists(_resourceFolder))
         {
             Directory.Delete(_resourceFolder, true);
@@ -97,5 +97,8 @@ public class ResourceScannerTests
         var expandedFoldersOut = resourceRegistry.GetExpandedFolders();
         expandedFoldersOut.Count.Should().Be(1);
         expandedFoldersOut[0].Should().Be(FolderNameA);
+
+        var folderPath = resourceRegistry.GetResourcePath(folder);
+        resourceRegistry.IsFolderExpanded(folderPath).Should().BeTrue();
     }
 }
