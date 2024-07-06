@@ -15,7 +15,13 @@ public interface IResourceRegistry
     /// <summary>
     /// Returns the project relative path for a resource.
     /// </summary>
-    public string GetResourcePath(IResource resource);
+    string GetResourcePath(IResource resource);
+
+    /// <summary>
+    /// Returns the resource corresponding a project relative path.
+    /// Fails if no matching resource is found.
+    /// </summary>
+    Result<IResource> GetResourceAtPath(string folderPath);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the resources in the project folder.
@@ -32,4 +38,9 @@ public interface IResourceRegistry
     /// Any folders that are not present in the registry are ignored.
     /// </summary>
     void SetExpandedFolders(List<string> expandedFolders);
+
+    /// <summary>
+    /// Returns true if the folder resource at the specified path is expanded.
+    /// </summary>
+    public bool IsFolderExpanded(string folderPath);
 }
