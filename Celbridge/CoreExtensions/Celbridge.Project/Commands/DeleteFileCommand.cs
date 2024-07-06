@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Utilities.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using System.IO.Compression;
@@ -12,8 +13,6 @@ namespace Celbridge.Project.Commands;
 
 public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
-    private const string DeletedFolderName = "DeletedFiles";
-
     public override string StackName => CommandStackNames.Project;
 
     public string FilePath { get; set; } = string.Empty;
@@ -93,7 +92,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
             }
 
             // Generate a random file name for the archive
-            _archivePath = _utilityService.GetTemporaryFilePath(DeletedFolderName, ".zip");
+            _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
             if (File.Exists(_archivePath))
             {
                 File.Delete(_archivePath);
@@ -153,6 +152,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         {
             ZipFile.ExtractToDirectory(_archivePath, projectFolder);
             File.Delete(_archivePath);
+            _archivePath = string.Empty;
         }
         catch (Exception ex)
         {
