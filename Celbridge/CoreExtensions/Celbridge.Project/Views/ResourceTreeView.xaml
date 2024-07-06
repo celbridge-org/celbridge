@@ -44,10 +44,10 @@
 
         <MenuFlyout x:Name="EmptyAreaContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="Add Folder" 
+            <MenuFlyoutItem Text="{x:Bind AddFolderText}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-            <MenuFlyoutItem Text="Add Resource" 
+            <MenuFlyoutItem Text="{x:Bind AddFileText}" 
                             Icon="Add"
                             Click="AddFile"/>
         </MenuFlyout>
