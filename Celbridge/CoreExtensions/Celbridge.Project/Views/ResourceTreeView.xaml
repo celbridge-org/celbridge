@@ -93,6 +93,7 @@
                     ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
                     CanReorderItems="True"
                     CanDrag="False"
-                    SelectionMode="Single"/>
+                    SelectionMode="Single"
+                    KeyDown="TreeView_KeyDown"/>
     </ScrollViewer>
 </UserControl>
