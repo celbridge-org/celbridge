@@ -3,16 +3,21 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Utilities.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using System.IO.Compression;
+using Windows.Storage;
 
 namespace Celbridge.Project.Commands;
 
 public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
-    public override string StackName => CommandStackNames.None;
+    public override string StackName => CommandStackNames.Project;
 
     public string FilePath { get; set; } = string.Empty;
+
+    private string _archivePath = string.Empty;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -86,6 +91,22 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
                 return Result.Fail($"Failed to delete file. File does not exist: {deleteFilePath}");
             }
 
+            // Generate a random file name for the archive
+            _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
+            if (File.Exists(_archivePath))
+            {
+                File.Delete(_archivePath);
+            }
+
+            var archiveFolder = Path.GetDirectoryName(_archivePath)!;
+            Directory.CreateDirectory(archiveFolder);
+
+            // Archive the file to temporary storage so we can undo the command
+            using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
+            {
+                archive.CreateEntryFromFile(deleteFilePath, FilePath);
+            }
+
             File.Delete(deleteFilePath);
         }
         catch (Exception ex)
@@ -101,6 +122,51 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         if (updateResult.IsFailure)
         {
             return Result.Fail($"Failed to delete file. {updateResult.Error}");
+        }
+
+        await Task.CompletedTask;
+
+        return Result.Ok();
+    }
+
+    public override async Task<Result> UndoAsync()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail($"Failed to undo delete file because workspace is not loaded");
+        }
+
+        if (!File.Exists(_archivePath))
+        {
+            return Result.Fail($"Failed to undo file delete. Archive does not exist: {_archivePath}");
+        }
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
+        var loadedProjectData = _projectDataService.LoadedProjectData;
+        Guard.IsNotNull(loadedProjectData);
+
+        var projectFolder = loadedProjectData.ProjectFolder;
+
+        try
+        {
+            ZipFile.ExtractToDirectory(_archivePath, projectFolder);
+            File.Delete(_archivePath);
+            _archivePath = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to undo file delete. {ex.Message}");
+        }
+
+        //
+        // Update the resource registry to add the restored file
+        //
+
+        var updateResult = resourceRegistry.UpdateRegistry();
+        if (updateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to undo file delete. {updateResult.Error}");
         }
 
         await Task.CompletedTask;
