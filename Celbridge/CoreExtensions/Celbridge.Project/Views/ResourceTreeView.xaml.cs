@@ -2,6 +2,7 @@
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Windows.System;
 
 namespace Celbridge.Project.Views;
 
@@ -120,5 +121,20 @@ public sealed partial class ResourceTreeView : UserControl
     private void ResourcesTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
         ViewModel.OnExpandedFoldersChanged();
+    }
+
+    private void TreeView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Delete)
+        {
+            if (ResourcesTreeView.SelectedItem is FileResource fileResource)
+            {
+                ViewModel.DeleteFile(fileResource);
+            }
+            else if (ResourcesTreeView.SelectedItem is FolderResource folderResource)
+            {
+                ViewModel.DeleteFolder(folderResource);
+            }
+        }
     }
 }
