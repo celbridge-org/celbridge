@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\CoreApplication\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
+    <ProjectReference Include="..\CoreApplication\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Project\Celbridge.Project.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />

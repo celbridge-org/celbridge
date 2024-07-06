@@ -71,13 +71,9 @@ public class AddFileCommand : CommandBase, IAddFileCommand
             return Result.Fail("Failed to create file. Path is empty");
         }
 
-        var segments = FilePath.Split('/');
-        foreach (var segment in segments)
+        if (!_utilityService.IsValidResourcePath(FilePath))
         {
-            if (!_utilityService.IsPathSegmentValid(segment))
-            {
-                return Result.Fail($"Failed to create file. Path contains invalid characters");
-            }
+            return Result.Fail($"Failed to create file. Resource path {FilePath} is not valid.");
         }
 
         //

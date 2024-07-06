@@ -30,7 +30,7 @@ public class ProjectDataService : IProjectDataService
             return Result.Fail("Project folder is empty.");
         }
 
-        if (!_utilityService.IsPathSegmentValid(config.ProjectName))
+        if (!_utilityService.IsValidPathSegment(config.ProjectName))
         {
             return Result.Fail($"Project name is not valid: {config.ProjectName}");
         }

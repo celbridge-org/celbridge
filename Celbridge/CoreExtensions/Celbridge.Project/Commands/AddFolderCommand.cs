@@ -71,13 +71,9 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             return Result.Fail("Failed to create folder. Folder path is empty");
         }
 
-        var segments = FolderPath.Split('/');
-        foreach (var segment in segments)
+        if (!_utilityService.IsValidResourcePath(FolderPath))
         {
-            if (!_utilityService.IsPathSegmentValid(segment))
-            {
-                return Result.Fail($"Failed to create folder. Folder name contains invalid characters");
-            }
+            return Result.Fail($"Failed to create file. Resource path {FolderPath} is not valid.");
         }
 
         //

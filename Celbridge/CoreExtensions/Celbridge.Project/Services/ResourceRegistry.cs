@@ -55,6 +55,61 @@ public class ResourceRegistry : IResourceRegistry
         return path;
     }
 
+    public Result<IResource> GetResourceAtPath(string folderPath)
+    {
+        if (string.IsNullOrEmpty(folderPath))
+        {
+            return Result<IResource>.Fail("Failed to get resource. Folder path is empty.");
+        }
+
+        var segments = folderPath.Split('/');
+        var folderResource = _rootFolder;
+
+        // Attempt to match each path segment with the corresponding resource in the tree
+        var segmentIndex = 0;
+        while (segmentIndex < segments.Length)
+        {
+            FolderResource? matchingFolder = null;
+            string segment = segments[segmentIndex];
+            foreach (var childResource in folderResource.Children)
+            {
+                if (childResource is FolderResource childFolder &&
+                    childFolder.Name == segment)
+                {
+                    if (segmentIndex == segments.Length - 1)
+                    {
+                        // The folder name matches the last segment in the path, so this is the
+                        // folder resource we're looking for.
+                        return Result<IResource>.Ok(childFolder);
+                    }
+
+                    // This folder resource matches a subfolder in the path, so we can move onto
+                    // searching for the next segment.
+                    matchingFolder = childFolder;
+                    break;
+                }
+                else if (childResource is FileResource childFile &&
+                         childFile.Name == segment &&
+                         segmentIndex == segments.Length - 1)
+                {
+                    // The file name matches the last segment in the path, so this is the
+                    // file resource we're looking for.
+                    return Result<IResource>.Ok(childFile);
+                }
+            }
+
+            if (matchingFolder is null)
+            {
+                break;
+            }
+
+            folderResource = matchingFolder;
+            segmentIndex++;
+        }
+
+        return Result<IResource>.Fail($"Failed to find a resource matching the path '{folderPath}'.");
+    }
+
     public Result UpdateRegistry()
     {
         var scanResult = CreateFolderResource(_projectFolder);
@@ -297,5 +352,22 @@ public class ResourceRegistry : IResourceRegistry
         }
 
         VisitFolder(string.Empty, _rootFolder);
+    }
+
+    public bool IsFolderExpanded(string folderPath)
+    {
+        var getResult = GetResourceAtPath(folderPath);
+        if (getResult.IsFailure)
+        {
+            return false;
+        }
+
+        var folderResource = getResult.Value as FolderResource;
+        if (folderResource is null)
+        {
+            return false;
+        }
+
+        return folderResource.Expanded;
     }
 }
