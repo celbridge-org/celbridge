@@ -17,6 +17,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
     public string FolderPath { get; set; } = string.Empty;
 
     private string _archivePath = string.Empty;
+    private bool _folderWasExpanded;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -103,6 +104,9 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
             // Archive the folder to temporary storage so we can undo the command
             ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
 
+            // Record if the folder was expanded so we can expand it again in the undo if needed
+            _folderWasExpanded = resourceRegistry.IsFolderExpanded(FolderPath);
+
             Directory.Delete(deleteFolderPath, true);
         }
         catch (Exception ex)
@@ -165,6 +169,12 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         if (updateResult.IsFailure)
         {
             return Result.Fail($"Failed to undo folder delete. {updateResult.Error}");
+        }
+
+        if (_folderWasExpanded)
+        {
+            // Expand the folder again if it was expanded when we deleted it
+            resourceRegistry.SetExpandedFolders(new List<string>(){ FolderPath });
         }
 
         await Task.CompletedTask;
