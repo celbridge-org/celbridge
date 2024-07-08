@@ -21,9 +21,12 @@
             <MenuFlyoutItem Text="{x:Bind AddFileText}" 
                             Icon="Add"
                             Click="AddFile"/>
+            <MenuFlyoutItem Text="{x:Bind RenameText}" 
+                            Icon="Edit"
+                            Click="RenameResource"/>
             <MenuFlyoutItem Text="{x:Bind DeleteText}" 
                             Icon="Delete"
-                            Click="DeleteFolder"/>
+                            Click="DeleteResource"/>
         </MenuFlyout>
 
         <MenuFlyout x:Name="FileResourceContextMenu"
@@ -37,9 +40,12 @@
             <MenuFlyoutItem Text="{x:Bind AddFileText}" 
                             Icon="Add"
                             Click="AddFile"/>
+            <MenuFlyoutItem Text="{x:Bind RenameText}" 
+                            Icon="Edit"
+                            Click="RenameResource"/>
             <MenuFlyoutItem Text="{x:Bind DeleteText}" 
                             Icon="Delete"
-                            Click="DeleteFile"/>
+                            Click="DeleteResource"/>
         </MenuFlyout>
 
         <MenuFlyout x:Name="EmptyAreaContextMenu"

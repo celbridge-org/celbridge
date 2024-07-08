@@ -138,13 +138,13 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
-  <data name="InputTextDialog_AddFile" xml:space="preserve">
+  <data name="ResourceTree_AddFile" xml:space="preserve">
     <value>Add file</value>
   </data>
-  <data name="InputTextDialog_AddFolder" xml:space="preserve">
+  <data name="ResourceTree_AddFolder" xml:space="preserve">
     <value>Add folder</value>
   </data>
-  <data name="InputTextDialog_EnterName" xml:space="preserve">
+  <data name="ResourceTree_EnterName" xml:space="preserve">
     <value>Enter name</value>
   </data>
   <data name="InputTextDialog_InvalidCharacters" xml:space="preserve">
@@ -195,12 +195,6 @@
   <data name="ProjectPanel_Title" xml:space="preserve">
     <value>Project</value>
   </data>
-  <data name="ResourceTree_AddFile" xml:space="preserve">
-    <value>Add file</value>
-  </data>
-  <data name="ResourceTree_AddFolder" xml:space="preserve">
-    <value>Add folder</value>
-  </data>
   <data name="ResourceTree_ConfirmDeleteFile" xml:space="preserve">
     <value>Delete '{0}' file?</value>
   </data>
@@ -211,10 +205,10 @@
     <value>Delete</value>
   </data>
   <data name="ResourceTree_FailedToCreateFile" xml:space="preserve">
-    <value>Failed to create file '{0}'.</value>
+    <value>Failed to create file '{0}'</value>
   </data>
   <data name="ResourceTree_FailedToCreateFolder" xml:space="preserve">
-    <value>Failed to create folder '{0}'.</value>
+    <value>Failed to create folder '{0}'</value>
   </data>
   <data name="ResourceTree_FailedToDeleteFile" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
@@ -222,10 +216,34 @@
   <data name="ResourceTree_FailedToDeleteFolder" xml:space="preserve">
     <value>Failed to delete folder '{0}'</value>
   </data>
+  <data name="ResourceTree_Rename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
   <data name="SettingsPage_Title" xml:space="preserve">
     <value>Settings</value>
   </data>
   <data name="WorkspacePage_LoadingWorkspace" xml:space="preserve">
     <value>Loading workspace</value>
+  </data>
+  <data name="ResourceTree_EnterNewName" xml:space="preserve">
+    <value>Enter a new name:</value>
+  </data>
+  <data name="ResourceTree_MoveFile" xml:space="preserve">
+    <value>Move file</value>
+  </data>
+  <data name="ResourceTree_MoveFolder" xml:space="preserve">
+    <value>Move folder</value>
+  </data>
+  <data name="ResourceTree_RenameFolder" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="ResourceTree_RenameResource" xml:space="preserve">
+    <value>Rename {0}</value>
+  </data>
+  <data name="ResourceTree_MoveFileFailed" xml:space="preserve">
+    <value>Failed to move file '{0}' to '{1}'</value>
+  </data>
+  <data name="ResourceTree_MoveFolderFailed" xml:space="preserve">
+    <value>Failed to move folder '{0}' to '{1}'</value>
   </data>
 </root>

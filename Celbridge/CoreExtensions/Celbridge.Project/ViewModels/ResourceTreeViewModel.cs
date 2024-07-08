@@ -21,10 +21,11 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.Resources;
 
-    private LocalizedString AddFolderText => _stringLocalizer.GetString("InputTextDialog_AddFolder");
-    private LocalizedString AddFileText => _stringLocalizer.GetString("InputTextDialog_AddFile");
-    private LocalizedString EnterNameText => _stringLocalizer.GetString("InputTextDialog_EnterName");
+    private LocalizedString AddFolderText => _stringLocalizer.GetString("ResourceTree_AddFolder");
+    private LocalizedString AddFileText => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString EnterNameText => _stringLocalizer.GetString("ResourceTree_EnterName");
     private LocalizedString DeleteText => _stringLocalizer.GetString("ResourceTree_Delete");
+    private LocalizedString EnterNewNameText => _stringLocalizer.GetString("ResourceTree_EnterNewName");
 
     public ResourceTreeViewModel(
         ILoggingService loggingService,
@@ -138,6 +139,78 @@ public partial class ResourceTreeViewModel : ObservableObject
                     // Execute a command to delete the file resource
                     _commandService.Execute<IDeleteFileCommand>(command => command.FilePath = resourcePath);
                 }
+            }
+        }
+
+        _ = ShowDialogAsync();
+    }
+
+    public void RenameFolder(FolderResource folderResource)
+    {
+        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourcePath = resourceRegistry.GetResourcePath(folderResource);
+
+        var resourceName = folderResource.Name;
+
+        async Task ShowDialogAsync()
+        {
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+
+            // Todo: Use a validator to check the string and display a localized error message.
+
+            var renameResourceText = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
+
+            var showResult = await _dialogService.ShowInputTextDialogAsync(renameResourceText, EnterNewNameText, invalidCharacters);
+            if (showResult.IsSuccess)
+            {
+                var inputText = showResult.Value;
+
+                var fromPath = resourcePath;
+                var toPath = Path.GetDirectoryName(resourcePath);
+                toPath = string.IsNullOrEmpty(toPath) ? inputText : toPath + "/" + inputText;
+
+                // Execute a command to rename the folder resource
+                _commandService.Execute<IMoveFolderCommand>(command =>
+                {
+                    command.FromFolderPath = resourcePath;
+                    command.ToFolderPath = toPath;
+                });
+            }
+        }
+
+        _ = ShowDialogAsync();
+    }
+
+    public void RenameFile(FileResource fileResource)
+    {
+        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourcePath = resourceRegistry.GetResourcePath(fileResource);
+
+        var resourceName = fileResource.Name;
+
+        async Task ShowDialogAsync()
+        {
+            var invalidCharacters = Path.GetInvalidFileNameChars();
+
+            // Todo: Use a validator to check the string and display a localized error message.
+
+            var renameResourceText = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
+
+            var showResult = await _dialogService.ShowInputTextDialogAsync(renameResourceText, EnterNewNameText, invalidCharacters);
+            if (showResult.IsSuccess)
+            {
+                var inputText = showResult.Value;
+
+                var fromPath = resourcePath;
+                var toPath = Path.GetDirectoryName(resourcePath);
+                toPath = string.IsNullOrEmpty(toPath) ? inputText : toPath + "/" + inputText;
+
+                // Execute a command to rename the folder resource
+                _commandService.Execute<IMoveFileCommand>(command =>
+                {
+                    command.FromFilePath = resourcePath;
+                    command.ToFilePath = toPath;
+                });
             }
         }
 
