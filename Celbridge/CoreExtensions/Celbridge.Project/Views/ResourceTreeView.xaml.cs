@@ -14,6 +14,7 @@ public sealed partial class ResourceTreeView : UserControl
     private LocalizedString AddFolderText => _stringLocalizer.GetString("ResourceTree_AddFolder");
     private LocalizedString AddFileText => _stringLocalizer.GetString("ResourceTree_AddFile");
     private LocalizedString DeleteText => _stringLocalizer.GetString("ResourceTree_Delete");
+    private LocalizedString RenameText => _stringLocalizer.GetString("ResourceTree_Rename");
 
     public ResourceTreeView()
     {
@@ -77,7 +78,7 @@ public sealed partial class ResourceTreeView : UserControl
         }
     }
 
-    private void DeleteFolder(object? sender, RoutedEventArgs e)
+    private void DeleteResource(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
@@ -87,17 +88,25 @@ public sealed partial class ResourceTreeView : UserControl
             // Delete the selected folder
             ViewModel.DeleteFolder(folderResource);
         }
+        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        {
+            // Delete the selected file
+            ViewModel.DeleteFile(fileResource);
+        }
     }
 
-    private void DeleteFile(object? sender, RoutedEventArgs e)
+    private void RenameResource(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FileResource fileResource)
+        if (menuFlyoutItem.DataContext is FolderResource folderResource)
         {
-            // Delete the selected file
-            ViewModel.DeleteFile(fileResource);
+            ViewModel.RenameFolder(folderResource);
+        }
+        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        {
+            ViewModel.RenameFile(fileResource);
         }
     }
 
