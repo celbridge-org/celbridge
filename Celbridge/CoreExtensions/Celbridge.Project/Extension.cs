@@ -35,6 +35,8 @@ public class Extension : IExtension
         config.AddTransient<IAddFileCommand, AddFileCommand>();
         config.AddTransient<IDeleteFolderCommand, DeleteFolderCommand>();
         config.AddTransient<IDeleteFileCommand, DeleteFileCommand>();
+        config.AddTransient<IMoveFolderCommand, MoveFolderCommand>();
+        config.AddTransient<IMoveFileCommand, MoveFileCommand>();
     }
 
     public Result Initialize()
