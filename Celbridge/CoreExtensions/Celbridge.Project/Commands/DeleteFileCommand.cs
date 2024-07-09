@@ -15,7 +15,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FilePath { get; set; } = string.Empty;
+    public string ResourcePath { get; set; } = string.Empty;
 
     private string _archivePath = string.Empty;
 
@@ -45,7 +45,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", FilePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", ResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -58,7 +58,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to delete file because workspace is not loaded");
+            return Result.Fail($"Failed to delete file. Workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
@@ -68,12 +68,12 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the file path
+        // Validate the resource path
         //
 
-        if (string.IsNullOrEmpty(FilePath))
+        if (string.IsNullOrEmpty(ResourcePath))
         {
-            return Result.Fail("Failed to delete file. File path is empty");
+            return Result.Fail("Failed to delete file. Resource path is empty");
         }
 
         //
@@ -83,7 +83,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var deleteFilePath = Path.Combine(projectFolder, FilePath);
+            var deleteFilePath = Path.Combine(projectFolder, ResourcePath);
             deleteFilePath = Path.GetFullPath(deleteFilePath); // Make separators consistent
 
             if (!File.Exists(deleteFilePath))
@@ -104,7 +104,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
             // Archive the file to temporary storage so we can undo the command
             using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
             {
-                archive.CreateEntryFromFile(deleteFilePath, FilePath);
+                archive.CreateEntryFromFile(deleteFilePath, ResourcePath);
             }
 
             File.Delete(deleteFilePath);
@@ -133,7 +133,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to undo delete file because workspace is not loaded");
+            return Result.Fail($"Failed to undo file delete. Workspace is not loaded");
         }
 
         if (!File.Exists(_archivePath))
@@ -174,9 +174,9 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         return Result.Ok();
     }
 
-    public static void DeleteFile(string filePath)
+    public static void DeleteFile(string resourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IDeleteFileCommand>(command => command.FilePath = filePath);
+        commandService.Execute<IDeleteFileCommand>(command => command.ResourcePath = resourcePath);
     }
 }

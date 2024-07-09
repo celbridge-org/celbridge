@@ -11,8 +11,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FromFilePath { get; set; } = string.Empty;
-    public string ToFilePath { get; set; } = string.Empty;
+    public string FromResourcePath { get; set; } = string.Empty;
+    public string ToResourcePath { get; set; } = string.Empty;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -35,14 +35,14 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to move file because workspace is not loaded");
+            return Result.Fail($"Failed to move file. Workspace is not loaded");
         }
 
-        var createResult = await MoveFileInternal(FromFilePath, ToFilePath);
+        var createResult = await MoveFileInternal(FromResourcePath, ToResourcePath);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", FromFilePath, ToFilePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", FromResourcePath, ToResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -55,14 +55,14 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to move file because workspace is not loaded");
+            return Result.Fail($"Failed to undo file move. Workspace is not loaded");
         }
 
-        var createResult = await MoveFileInternal(ToFilePath, FromFilePath);
+        var createResult = await MoveFileInternal(ToResourcePath, FromResourcePath);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", ToFilePath, FromFilePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", ToResourcePath, FromResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -72,10 +72,16 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
     }
 
     /// <summary>
-    /// Move the file resource at filePathA to filePathB.
+    /// Move the file at resourcePathA to resourcePathB.
     /// </summary>
-    private async Task<Result> MoveFileInternal(string filePathA, string filePathB)
+    private async Task<Result> MoveFileInternal(string resourcePathA, string resourcePathB)
     {
+        if (resourcePathA == resourcePathB)
+        {
+            // Moving to the same resource path is a no-op
+            return Result.Ok();
+        }
+
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
@@ -83,13 +89,13 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the file paths
+        // Validate the resource paths
         //
 
-        if (string.IsNullOrEmpty(filePathA) ||
-            string.IsNullOrEmpty(filePathB))
+        if (string.IsNullOrEmpty(resourcePathA) ||
+            string.IsNullOrEmpty(resourcePathB))
         {
-            return Result.Fail("Failed to move file. File path is empty.");
+            return Result.Fail("Failed to move file. Resource path is empty.");
         }
 
         //
@@ -99,31 +105,31 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var absoluteFilePathA = Path.Combine(projectFolder, filePathA);
-            absoluteFilePathA = Path.GetFullPath(absoluteFilePathA); // Make separators consistent
-            var absoluteFilePathB = Path.Combine(projectFolder, filePathB);
-            absoluteFilePathB = Path.GetFullPath(absoluteFilePathB);
+            var filePathA = Path.Combine(projectFolder, resourcePathA);
+            filePathA = Path.GetFullPath(filePathA); // Make separators consistent
+            var filePathB = Path.Combine(projectFolder, resourcePathB);
+            filePathB = Path.GetFullPath(filePathB);
 
-            if (!File.Exists(absoluteFilePathA))
+            if (!File.Exists(filePathA))
             {
-                return Result.Fail($"Failed to move file. File path does not exist: {filePathA}");
+                return Result.Fail($"Failed to move file. File does not exist: {resourcePathA}");
             }
 
-            if (File.Exists(absoluteFilePathB))
+            if (File.Exists(filePathB))
             {
-                return Result.Fail($"Failed to move file. File path already exists: {filePathB}");
+                return Result.Fail($"Failed to move file. File already exists: {resourcePathB}");
             }
 
-            var parentFolderB = Path.GetDirectoryName(absoluteFilePathB);
+            var parentFolderB = Path.GetDirectoryName(filePathB);
             if (!Directory.Exists(parentFolderB))
             {
                 // The parent folder of the target file path must exist before moving the file.
                 // It would be easy to create the missing parent folder(s) here automatically, but it's hard to
-                // undo this operation robustly.
+                // undo this operation robustly so we just don't allow it.
                 return Result.Fail($"Failed to move file. Target folder does not exist: {parentFolderB}");
             }
 
-            File.Move(absoluteFilePathA, absoluteFilePathB);
+            File.Move(filePathA, filePathB);
         }
         catch (Exception ex)
         {
@@ -145,21 +151,21 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         return Result.Ok();
     }
 
-    public static void MoveFile(string fromFilePath, string toFilePath)
+    public static void MoveFile(string fromResourcePath, string toResourcePath)
     {
-        if (Path.GetExtension(fromFilePath) != Path.GetExtension(toFilePath))
+        if (Path.GetExtension(fromResourcePath) != Path.GetExtension(toResourcePath))
         {
-            // If the "from" and "to" extensions don't match then we assume that the user intended to move the
-            // file to a folder, rather than moving/renaming to a file with no extension.
+            // If the "from" and "to" file extensions don't match then we assume that the user intended to
+            // move the file to a folder rather than to a file with no extension.
             // This means that this command cannot be used to remove the file extension from a file.
-            toFilePath = Path.Combine(toFilePath, Path.GetFileName(fromFilePath));
+            toResourcePath = Path.Combine(toResourcePath, Path.GetFileName(fromResourcePath));
         }
 
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IMoveFileCommand>(command =>
         {
-            command.FromFilePath = fromFilePath;
-            command.ToFilePath = toFilePath;
+            command.FromResourcePath = fromResourcePath;
+            command.ToResourcePath = toResourcePath;
         });
     }
 }

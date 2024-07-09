@@ -13,20 +13,21 @@ public interface IResourceRegistry
     ObservableCollection<IResource> Resources { get; }
 
     /// <summary>
-    /// Returns the project relative path for a resource.
+    /// Returns the resource path for a resource.
     /// </summary>
     string GetResourcePath(IResource resource);
 
     /// <summary>
     /// Returns the absolute path for a resource.
+    /// The path uses the directory separator character of the current platform.
     /// </summary>
-    string GetAbsolutePath(IResource resource);
+    string GetPath(IResource resource);
 
     /// <summary>
-    /// Returns the resource corresponding a project relative path.
+    /// Returns the resource at the specified resource path.
     /// Fails if no matching resource is found.
     /// </summary>
-    Result<IResource> GetResourceAtPath(string folderPath);
+    Result<IResource> GetResource(string resourcePath);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the resources in the project folder.
@@ -45,7 +46,7 @@ public interface IResourceRegistry
     void SetExpandedFolders(List<string> expandedFolders);
 
     /// <summary>
-    /// Returns true if the folder resource at the specified path is expanded.
+    /// Returns true if the folder at the specified resource path is expanded.
     /// </summary>
-    public bool IsFolderExpanded(string folderPath);
+    public bool IsFolderExpanded(string resourcePath);
 }
