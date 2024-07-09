@@ -39,10 +39,10 @@ public class UtilityService : IUtilityService
         }
 
         // Each segment in the resource path must be a valid filename
-        var segments = resourcePath.Split('/');
-        foreach (var segment in segments)
+        var resourcePathSegments = resourcePath.Split('/');
+        foreach (var segment in resourcePathSegments)
         {
-            if (!IsValidPathSegment(segment))
+            if (!IsValidResourcePathSegment(segment))
             {
                 return false;
             }
@@ -51,9 +51,9 @@ public class UtilityService : IUtilityService
         return true;
     }
 
-    public bool IsValidPathSegment(string segment)
+    public bool IsValidResourcePathSegment(string resourcePathSegment)
     {
-        if (string.IsNullOrWhiteSpace(segment))
+        if (string.IsNullOrWhiteSpace(resourcePathSegment))
         {
             return false;
         }
@@ -63,7 +63,7 @@ public class UtilityService : IUtilityService
         // Note that we're using GetInvalidFileNameChars() instead of GetInvalidPathChars() here.
         var invalidChars = Path.GetInvalidFileNameChars();
 
-        foreach (var c in segment)
+        foreach (var c in resourcePathSegment)
         {
             if (invalidChars.Contains(c))
             {

@@ -9,18 +9,18 @@ public class WorkspaceDataTests
 {
     private IWorkspaceDataService? _workspaceDataService;
 
-    private string? _workspaceFolder;
+    private string? _workspaceFolderPath;
 
     [SetUp]
     public void Setup()
     {
-        _workspaceFolder = Path.Combine(Path.GetTempPath(), "Celbridge", $"{nameof(WorkspaceDataTests)}");
-        if (Directory.Exists(_workspaceFolder))
+        _workspaceFolderPath = Path.Combine(Path.GetTempPath(), "Celbridge", $"{nameof(WorkspaceDataTests)}");
+        if (Directory.Exists(_workspaceFolderPath))
         {
-            Directory.Delete(_workspaceFolder, true);
+            Directory.Delete(_workspaceFolderPath, true);
         }
 
-        Directory.CreateDirectory(_workspaceFolder);
+        Directory.CreateDirectory(_workspaceFolderPath);
 
         _workspaceDataService = new WorkspaceDataService();
     }
@@ -28,9 +28,9 @@ public class WorkspaceDataTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_workspaceFolder))
+        if (Directory.Exists(_workspaceFolderPath))
         {
-            Directory.Delete(_workspaceFolder!, true);
+            Directory.Delete(_workspaceFolderPath!, true);
         }
     }
 
@@ -38,9 +38,9 @@ public class WorkspaceDataTests
     public async Task ICanCreateAndLoadWorkspaceDataAsync()
     {
         Guard.IsNotNull(_workspaceDataService);
-        Guard.IsNotNullOrEmpty(_workspaceFolder);
+        Guard.IsNotNullOrEmpty(_workspaceFolderPath);
 
-        var databasePath = Path.Combine(_workspaceFolder, "Workspace.db");
+        var databasePath = Path.Combine(_workspaceFolderPath, "Workspace.db");
 
         var createResult = await _workspaceDataService.CreateWorkspaceDataAsync(databasePath);
         createResult.IsSuccess.Should().BeTrue();
@@ -81,7 +81,7 @@ public class WorkspaceDataTests
         // Delete the workspace database files
         //
 
-        Directory.Delete(_workspaceFolder, true);
+        Directory.Delete(_workspaceFolderPath, true);
         File.Exists(databasePath).Should().BeFalse();
     }
 }
