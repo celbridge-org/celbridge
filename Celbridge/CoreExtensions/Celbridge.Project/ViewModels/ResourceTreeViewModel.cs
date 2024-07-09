@@ -65,7 +65,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
                 // Execute a command to add the folder resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFolderCommand>(command => command.FolderPath = resourcePath);
+                _commandService.Execute<IAddFolderCommand>(command => command.ResourcePath = resourcePath);
             }
         }
 
@@ -94,7 +94,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
                 // Execute a command to add the file resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFileCommand>(command => command.FilePath = resourcePath);
+                _commandService.Execute<IAddFileCommand>(command => command.ResourcePath = resourcePath);
             }
         }
 
@@ -118,7 +118,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                 if (confirmed)
                 {
                     // Execute a command to delete the folder resource
-                    _commandService.Execute<IDeleteFolderCommand>(command => command.FolderPath = resourcePath);
+                    _commandService.Execute<IDeleteFolderCommand>(command => command.ResourcePath = resourcePath);
                 }
             }
         }
@@ -143,7 +143,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                 if (confirmed)
                 {
                     // Execute a command to delete the file resource
-                    _commandService.Execute<IDeleteFileCommand>(command => command.FilePath = resourcePath);
+                    _commandService.Execute<IDeleteFileCommand>(command => command.ResourcePath = resourcePath);
                 }
             }
         }
@@ -175,15 +175,15 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 var inputText = showResult.Value;
 
-                var fromPath = resourcePath;
-                var toPath = Path.GetDirectoryName(resourcePath);
-                toPath = string.IsNullOrEmpty(toPath) ? inputText : toPath + "/" + inputText;
+                var fromResourcePath = resourcePath;
+                var toResourcePath = Path.GetDirectoryName(resourcePath);
+                toResourcePath = string.IsNullOrEmpty(toResourcePath) ? inputText : toResourcePath + "/" + inputText;
 
-                // Execute a command to rename the folder resource
+                // Execute a command to move the folder resource to perform the rename
                 _commandService.Execute<IMoveFolderCommand>(command =>
                 {
-                    command.FromFolderPath = resourcePath;
-                    command.ToFolderPath = toPath;
+                    command.FromResourcePath = fromResourcePath;
+                    command.ToResourcePath = toResourcePath;
                 });
             }
         }
@@ -216,15 +216,15 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 var inputText = showResult.Value;
 
-                var fromPath = resourcePath;
-                var toPath = Path.GetDirectoryName(resourcePath);
-                toPath = string.IsNullOrEmpty(toPath) ? inputText : toPath + "/" + inputText;
+                var fromResourcePath = resourcePath;
+                var toResourcePath = Path.GetDirectoryName(resourcePath);
+                toResourcePath = string.IsNullOrEmpty(toResourcePath) ? inputText : toResourcePath + "/" + inputText;
 
-                // Execute a command to rename the folder resource
+                // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<IMoveFileCommand>(command =>
                 {
-                    command.FromFilePath = resourcePath;
-                    command.ToFilePath = toPath;
+                    command.FromResourcePath = fromResourcePath;
+                    command.ToResourcePath = toResourcePath;
                 });
             }
         }
@@ -247,13 +247,13 @@ public partial class ResourceTreeViewModel : ObservableObject
             int resourceNumber = 1;
             while (true)
             {
-                var parentDir = resourceRegistry.GetAbsolutePath(parentFolder);
-                var candidateResourceName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
-                var candidateResourcePath = Path.Combine(parentDir, candidateResourceName);
-                if (!Directory.Exists(candidateResourcePath) &&
-                    !File.Exists(candidateResourcePath))
+                var parentFolderPath = resourceRegistry.GetPath(parentFolder);
+                var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
+                var candidatePath = Path.Combine(parentFolderPath, candidateName);
+                if (!Directory.Exists(candidatePath) &&
+                    !File.Exists(candidatePath))
                 {
-                    defaultResourceName = candidateResourceName;
+                    defaultResourceName = candidateName;
                     break;
                 }
                 resourceNumber++;

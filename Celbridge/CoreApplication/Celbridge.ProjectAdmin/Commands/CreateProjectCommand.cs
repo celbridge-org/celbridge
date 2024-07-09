@@ -38,7 +38,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
         if (File.Exists(projectFilePath))
         {
-            return Result.Fail($"Failed to create project because it already exists: {projectFilePath}");
+            return Result.Fail($"Failed to create project file at '{projectFilePath}' because the file already exists.");
         }
 
         // Close any open project.
@@ -53,7 +53,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         }
 
         // Load the new project
-        _commandService.Execute<ILoadProjectCommand>(command => command.ProjectPath = projectFilePath);
+        _commandService.Execute<ILoadProjectCommand>(command => command.ProjectFilePath = projectFilePath);
 
         return Result.Ok();
     }

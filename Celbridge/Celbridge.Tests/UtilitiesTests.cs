@@ -7,7 +7,7 @@ namespace Celbridge.Tests;
 public class UtilitiesTests
 {
     [Test]
-    public void ICanValidatePaths()
+    public void ICanValidateResourcePaths()
     {
         IUtilityService utilityService = new UtilityService();
 
@@ -15,14 +15,14 @@ public class UtilitiesTests
         // Check valid paths pass
         //
 
-        utilityService.IsValidPathSegment("ValidSegment").Should().BeTrue();
+        utilityService.IsValidResourcePathSegment("ValidSegment").Should().BeTrue();
         utilityService.IsValidResourcePath(@"Some/Path/File.txt").Should().BeTrue();
 
         //
         // Check invalid paths fail
         //
 
-        utilityService.IsValidPathSegment("Invalid\"Segment").Should().BeFalse();
+        utilityService.IsValidResourcePathSegment("Invalid\"Segment").Should().BeFalse();
         utilityService.IsValidResourcePath(@"C:\\AbsolutePath").Should().BeFalse();
         utilityService.IsValidResourcePath(@"\AbsolutePath").Should().BeFalse();
         utilityService.IsValidResourcePath(@"/Some/Path/File.txt").Should().BeFalse();

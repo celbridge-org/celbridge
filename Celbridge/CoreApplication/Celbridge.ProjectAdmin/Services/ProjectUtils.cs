@@ -26,12 +26,12 @@ public static class ProjectUtils
         IWorkspaceWrapper workspaceWrapper,
         INavigationService navigationService, 
         IProjectDataService projectDataService, 
-        string projectPath)
+        string projectFilePath)
     {
-        var openResult = projectDataService.LoadProjectData(projectPath);
-        if (openResult.IsFailure)
+        var loadResult = projectDataService.LoadProjectData(projectFilePath);
+        if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to open project '{projectPath}'. {openResult.Error}");
+            return Result.Fail($"Failed to open project file '{projectFilePath}'. {loadResult.Error}");
         }
 
         var loadPageCancelationToken = new CancellationTokenSource();
