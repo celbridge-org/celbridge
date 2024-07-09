@@ -143,25 +143,30 @@ public class ResourceRegistry : IResourceRegistry
         try
         {
             // Update files
-            var currentFiles = oldFolderResource.Children.OfType<FileResource>().ToList();
+            var oldFiles = oldFolderResource.Children.OfType<FileResource>().ToList();
             var newFiles = newFolderResource.Children.OfType<FileResource>().ToList();
 
-            // Remove deleted files
-            foreach (var file in currentFiles)
-            {
-                if (!newFiles.Any(f => f.Name == file.Name))
-                {
-                    oldFolderResource.Children.Remove(file);
-                }
-            }
+            // It's important to add new files before removing deleted files. 
+            // A move operation consists of deleting the old file and adding the new file.
+            // If we delete first, and this folder only contains a single item, the Tree View will observe this change
+            // and set the folder resource's Expanded property to false because the folder is (temporarily) empty.
 
             // Add new files
             foreach (var file in newFiles)
             {
-                if (!currentFiles.Any(f => f.Name == file.Name))
+                if (!oldFiles.Any(f => f.Name == file.Name))
                 {
                     // Insert file resource in sorted order
                     InsertResource(oldFolderResource.Children, file);
+                }
+            }
+
+            // Remove deleted files
+            foreach (var file in oldFiles)
+            {
+                if (!newFiles.Any(f => f.Name == file.Name))
+                {
+                    oldFolderResource.Children.Remove(file);
                 }
             }
 
