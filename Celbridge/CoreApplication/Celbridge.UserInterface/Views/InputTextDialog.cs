@@ -27,9 +27,9 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         set => ViewModel.InvalidCharacters = value;
     }
 
-    private LocalizedString OkText => _stringLocalizer.GetString($"DialogButton_Ok");
-    private LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
-    private LocalizedString InvalidCharactersText => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
+    private LocalizedString OkString => _stringLocalizer.GetString($"DialogButton_Ok");
+    private LocalizedString CancelSting => _stringLocalizer.GetString($"DialogButton_Cancel");
+    private LocalizedString InvalidCharactersString => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
 
     private TextBox _inputTextbox;
 
@@ -63,8 +63,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         (
             ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .PrimaryButtonText(OkText)
-            .SecondaryButtonText(CancelText)
+            .PrimaryButtonText(OkString)
+            .SecondaryButtonText(CancelSting)
             .IsPrimaryButtonEnabled(x => x.Bind(() => ViewModel.IsSubmitEnabled).Mode(BindingMode.OneWay))
             .Content
             (
@@ -76,7 +76,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                     (
                         _inputTextbox,
                         new TextBlock()
-                            .Text(InvalidCharactersText)
+                            .Text(InvalidCharactersString)
                             .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
                             .Margin(6, 4, 0, 0)
                             .Opacity

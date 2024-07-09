@@ -9,11 +9,11 @@ public sealed partial class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; private set; }
 
-    public LocalizedString Home => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(Home)}");
-    public LocalizedString NewProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(NewProject)}");
-    public LocalizedString OpenProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(OpenProject)}");
-    public LocalizedString CloseProject => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(CloseProject)}");
-    public LocalizedString LegacyApp => _stringLocalizer.GetString($"{nameof(MainPage)}_{nameof(LegacyApp)}");
+    public LocalizedString HomeString => _stringLocalizer.GetString($"MainPage_Home");
+    public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
+    public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
+    public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
+    public LocalizedString LegacyAppString => _stringLocalizer.GetString($"MainPage_LegacyApp");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -44,20 +44,20 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
                     .Tag(MainPageViewModel.HomeTag)
-                    .Content(Home),
+                    .Content(HomeString),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.NewFolder))
                     .Tag(MainPageViewModel.NewProjectTag)
-                    .Content(NewProject),
+                    .Content(NewProjectString),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.OpenFile))
                     .Tag(MainPageViewModel.OpenProjectTag)
-                    .Content(OpenProject),
+                    .Content(OpenProjectString),
                 new NavigationViewItemSeparator(),
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Admin))
                     .Tag(MainPageViewModel.LegacyTag)
-                    .Content(LegacyApp)
+                    .Content(LegacyAppString)
                 )
                 .Content(_contentFrame);
 

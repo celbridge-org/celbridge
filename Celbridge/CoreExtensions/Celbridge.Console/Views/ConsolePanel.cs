@@ -9,8 +9,8 @@ public sealed partial class ConsolePanel : UserControl
     private const string StrokeEraseGlyph = "\ued60";
 
     private IStringLocalizer _stringLocalizer;
-    private LocalizedString Title => _stringLocalizer.GetString("ConsolePanel_Title");
-    private LocalizedString ClearButtonTooltip => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
+    private LocalizedString TitleString => _stringLocalizer.GetString("ConsolePanel_Title");
+    private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
 
     private TabView _tabView;
 
@@ -26,7 +26,7 @@ public sealed partial class ConsolePanel : UserControl
         _tabView = CreateTabView();
 
         // Todo: Provide an extension point to add custom toolbar buttons here
-        var clearButton = CreateButton(StrokeEraseGlyph, ClearButtonTooltip, ViewModel.ClearCommand);
+        var clearButton = CreateButton(StrokeEraseGlyph, ClearButtonTooltipString, ViewModel.ClearCommand);
 
         // The third column here prevents the clear button from overlapping the panel collapse button
         var panelContent = new Grid()

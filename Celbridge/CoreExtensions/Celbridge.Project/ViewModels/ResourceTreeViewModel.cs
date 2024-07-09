@@ -19,11 +19,11 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.Resources;
 
-    private LocalizedString AddFolderText => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private LocalizedString AddFileText => _stringLocalizer.GetString("ResourceTree_AddFile");
-    private LocalizedString EnterNameText => _stringLocalizer.GetString("ResourceTree_EnterName");
-    private LocalizedString DeleteText => _stringLocalizer.GetString("ResourceTree_Delete");
-    private LocalizedString EnterNewNameText => _stringLocalizer.GetString("ResourceTree_EnterNewName");
+    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
+    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString EnterNameString => _stringLocalizer.GetString("ResourceTree_EnterName");
+    private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
+    private LocalizedString EnterNewNameString => _stringLocalizer.GetString("ResourceTree_EnterNewName");
 
     public ResourceTreeViewModel(
         IWorkspaceWrapper workspaceWrapper,
@@ -54,8 +54,8 @@ public partial class ResourceTreeViewModel : ObservableObject
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
-                AddFolderText, 
-                EnterNameText, 
+                AddFolderString, 
+                EnterNameString, 
                 defaultText,
                 ..,
                 invalidCharacters);
@@ -83,8 +83,8 @@ public partial class ResourceTreeViewModel : ObservableObject
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
-                AddFileText, 
-                EnterNameText, 
+                AddFileString, 
+                EnterNameString, 
                 defaultText,
                 .., // Select the entire range
                 invalidCharacters);
@@ -107,11 +107,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourcePath = resourceRegistry.GetResourcePath(folderResource);
 
         var resourceName = folderResource.Name;
-        var confirmDeleteText = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFolder", resourceName);
+        var confirmDeleteFolderString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFolder", resourceName);
 
         async Task ShowDialogAsync()
         {
-            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteText, confirmDeleteText);
+            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteFolderString);
             if (showResult.IsSuccess)
             {
                 var confirmed = showResult.Value;
@@ -132,11 +132,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourcePath = resourceRegistry.GetResourcePath(fileResource);
 
         var resourceName = fileResource.Name;
-        var confirmDeleteText = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFile", resourceName);
+        var confirmDeleteFileString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFile", resourceName);
 
         async Task ShowDialogAsync()
         {
-            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteText, confirmDeleteText);
+            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteFileString);
             if (showResult.IsSuccess)
             {
                 var confirmed = showResult.Value;
@@ -160,14 +160,14 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         async Task ShowDialogAsync()
         {
-            var renameResourceText = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
+            var renameResourceString = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
 
             var defaultText = resourceName;
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
-                renameResourceText, 
-                EnterNewNameText, 
+                renameResourceString, 
+                EnterNewNameString, 
                 defaultText,
                 .., // Select the entire range
                 invalidCharacters);
@@ -200,15 +200,15 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         async Task ShowDialogAsync()
         {
-            var renameResourceText = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
+            var renameResourceString = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
 
             var defaultText = resourceName;
             var selectedRange = new Range(0, Path.GetFileNameWithoutExtension(resourceName).Length); // Don't select extension
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
-                renameResourceText, 
-                EnterNewNameText, 
+                renameResourceString, 
+                EnterNewNameString, 
                 defaultText,
                 selectedRange,
                 invalidCharacters);
@@ -232,15 +232,15 @@ public partial class ResourceTreeViewModel : ObservableObject
         _ = ShowDialogAsync();
     }
 
+    // Find a localized default file/folder name that doesn't clash with an existing resource on disk.
     private string FindDefaultResourceName(string stringKey, FolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 
-        // Find a default name that doesn't clash with an existing resource on disk
-        string defaultName;
+        string defaultResourceName;
         if (parentFolder is null)
         {
-            defaultName = _stringLocalizer.GetString(stringKey, 1).ToString();
+            defaultResourceName = _stringLocalizer.GetString(stringKey, 1).ToString();
         }
         else
         {
@@ -248,18 +248,18 @@ public partial class ResourceTreeViewModel : ObservableObject
             while (true)
             {
                 var parentDir = resourceRegistry.GetAbsolutePath(parentFolder);
-                var checkName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
-                var checkPath = Path.Combine(parentDir, checkName);
-                if (!Directory.Exists(checkPath) &&
-                    !File.Exists(checkPath))
+                var candidateResourceName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
+                var candidateResourcePath = Path.Combine(parentDir, candidateResourceName);
+                if (!Directory.Exists(candidateResourcePath) &&
+                    !File.Exists(candidateResourcePath))
                 {
-                    defaultName = checkName;
+                    defaultResourceName = candidateResourceName;
                     break;
                 }
                 resourceNumber++;
             }
         }
 
-        return defaultName;
+        return defaultResourceName;
     }
 }

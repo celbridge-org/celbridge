@@ -11,10 +11,10 @@ public sealed partial class ResourceTreeView : UserControl
     private readonly IStringLocalizer _stringLocalizer;
 
     public ResourceTreeViewModel ViewModel { get; }
-    private LocalizedString AddFolderText => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private LocalizedString AddFileText => _stringLocalizer.GetString("ResourceTree_AddFile");
-    private LocalizedString DeleteText => _stringLocalizer.GetString("ResourceTree_Delete");
-    private LocalizedString RenameText => _stringLocalizer.GetString("ResourceTree_Rename");
+    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
+    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
+    private LocalizedString RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
 
     public ResourceTreeView()
     {

@@ -21,8 +21,8 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         set => ViewModel.MessageText = value; 
     }
 
-    public string OkText => _stringLocalizer.GetString("DialogButton_Ok");
-    public string CancelText => _stringLocalizer.GetString("DialogButton_Cancel");
+    public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
+    public string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
 
     public ConfirmationDialog()
     {
@@ -36,8 +36,8 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .PrimaryButtonText(OkText)
-            .SecondaryButtonText(CancelText)
+            .PrimaryButtonText(OkString)
+            .SecondaryButtonText(CancelString)
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Left)
                 .VerticalAlignment(VerticalAlignment.Center)
