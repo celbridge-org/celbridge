@@ -45,11 +45,11 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         var createResult = await MoveFolderInternal(FromFolderPath, ToFolderPath);
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromFolderPath, ToFolderPath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromFolderPath, ToFolderPath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;
@@ -65,11 +65,11 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         var createResult = await MoveFolderInternal(ToFolderPath, FromFolderPath);
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToFolderPath, FromFolderPath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToFolderPath, FromFolderPath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;

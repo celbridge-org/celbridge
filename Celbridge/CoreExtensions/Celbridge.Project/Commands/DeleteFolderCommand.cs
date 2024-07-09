@@ -44,11 +44,11 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         var createResult = await DeleteFolder();
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", FolderPath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", FolderPath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;
