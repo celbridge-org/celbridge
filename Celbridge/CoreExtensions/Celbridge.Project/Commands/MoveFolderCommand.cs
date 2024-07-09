@@ -12,8 +12,8 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FromFolderPath { get; set; } = string.Empty;
-    public string ToFolderPath { get; set; } = string.Empty;
+    public string FromResourcePath { get; set; } = string.Empty;
+    public string ToResourcePath { get; set; } = string.Empty;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -39,14 +39,14 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to move folder because workspace is not loaded");
+            return Result.Fail($"Failed to move folder. Workspace is not loaded");
         }
 
-        var createResult = await MoveFolderInternal(FromFolderPath, ToFolderPath);
+        var createResult = await MoveFolderInternal(FromResourcePath, ToResourcePath);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromFolderPath, ToFolderPath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromResourcePath, ToResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -59,14 +59,14 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to move folder because workspace is not loaded");
+            return Result.Fail($"Failed to undo move folder. Workspace is not loaded");
         }
 
-        var createResult = await MoveFolderInternal(ToFolderPath, FromFolderPath);
+        var createResult = await MoveFolderInternal(ToResourcePath, FromResourcePath);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToFolderPath, FromFolderPath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToResourcePath, FromResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -76,10 +76,16 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     }
 
     /// <summary>
-    /// Move the folder resource at folderPathA to folderPathB.
+    /// Move the folder at resourcePathA to resourcePathB.
     /// </summary>
-    private async Task<Result> MoveFolderInternal(string folderPathA, string folderPathB)
+    private async Task<Result> MoveFolderInternal(string resourcePathA, string resourcePathB)
     {
+        if (resourcePathA == resourcePathB)
+        {
+            // Moving to the same resource path is a no-op
+            return Result.Ok();
+        }
+
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
@@ -90,13 +96,13 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         // Validate the folder paths
         //
 
-        if (string.IsNullOrEmpty(folderPathA) ||
-            string.IsNullOrEmpty(folderPathB))
+        if (string.IsNullOrEmpty(resourcePathA) ||
+            string.IsNullOrEmpty(resourcePathB))
         {
-            return Result.Fail("Failed to move folder. Folder path is empty.");
+            return Result.Fail("Failed to move folder. Resource path is empty.");
         }
 
-        var isFolderAExpanded = resourceRegistry.IsFolderExpanded(folderPathA);
+        var isFolderAExpanded = resourceRegistry.IsFolderExpanded(resourcePathA);
 
         //
         // Move the folder on disk
@@ -105,22 +111,22 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var absoluteFolderPathA = Path.Combine(projectFolder, folderPathA);
-            absoluteFolderPathA = Path.GetFullPath(absoluteFolderPathA); // Make separators consistent
-            var absoluteFolderPathB = Path.Combine(projectFolder, folderPathB);
-            absoluteFolderPathB = Path.GetFullPath(absoluteFolderPathB);
+            var folderPathA = Path.Combine(projectFolder, resourcePathA);
+            folderPathA = Path.GetFullPath(folderPathA); // Make separators consistent
+            var folderPathB = Path.Combine(projectFolder, resourcePathB);
+            folderPathB = Path.GetFullPath(folderPathB);
 
-            if (!Directory.Exists(absoluteFolderPathA))
+            if (!Directory.Exists(folderPathA))
             {
-                return Result.Fail($"Failed to move folder. Folder path does not exist: {folderPathA}");
+                return Result.Fail($"Failed to move folder. Folder path does not exist: {resourcePathA}");
             }
 
-            if (Directory.Exists(absoluteFolderPathB))
+            if (Directory.Exists(folderPathB))
             {
-                return Result.Fail($"Failed to move folder. Folder path already exists: {folderPathB}");
+                return Result.Fail($"Failed to move folder. Folder path already exists: {resourcePathB}");
             }
 
-            Directory.Move(absoluteFolderPathA, absoluteFolderPathB);
+            Directory.Move(folderPathA, folderPathB);
         }
         catch (Exception ex)
         {
@@ -139,7 +145,7 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
         if (isFolderAExpanded)
         {
-            resourceRegistry.SetExpandedFolders(new List<string>() { folderPathB });
+            resourceRegistry.SetExpandedFolders(new List<string>() { resourcePathB });
         }
 
         await Task.CompletedTask;
@@ -147,13 +153,13 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         return Result.Ok();
     }
 
-    public static void MoveFolder(string fromFolderPath, string toFolderPath)
+    public static void MoveFolder(string fromResourcePath, string toResourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IMoveFolderCommand>(command =>
         {
-            command.FromFolderPath = fromFolderPath;
-            command.ToFolderPath = toFolderPath;
+            command.FromResourcePath = fromResourcePath;
+            command.ToResourcePath = toResourcePath;
         });
     }
 }

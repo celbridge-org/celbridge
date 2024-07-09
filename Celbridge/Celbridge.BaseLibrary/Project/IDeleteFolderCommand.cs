@@ -8,7 +8,7 @@ namespace Celbridge.BaseLibrary.Project;
 public interface IDeleteFolderCommand : IExecutableCommand
 {
     /// <summary>
-    /// Project-relative path to the folder to delete.
+    /// Resource path for the folder to delete.
     /// </summary>
-    string FolderPath { get; set; }
+    string ResourcePath { get; set; }
 }
