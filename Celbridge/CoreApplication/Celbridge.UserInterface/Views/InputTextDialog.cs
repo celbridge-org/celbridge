@@ -31,6 +31,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
     private LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
     private LocalizedString InvalidCharactersText => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
 
+    private TextBox _inputTextbox;
+
     public InputTextDialog()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
@@ -41,6 +43,21 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
         ViewModel = serviceProvider.GetRequiredService<InputTextDialogViewModel>();
+
+        _inputTextbox = new TextBox()
+            .Header
+            (
+                x => x.Bind(() => ViewModel.HeaderText)
+                        .Mode(BindingMode.OneWay)
+            )
+            .Text
+            (
+                x => x.Bind(() => ViewModel.InputText)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)
+            )
+            .IsSpellCheckEnabled(false)
+            .AcceptsReturn(false);
 
         this.DataContext
         (
@@ -57,20 +74,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                     .VerticalAlignment(VerticalAlignment.Center)
                     .Children
                     (
-                        new TextBox()
-                            .Header
-                            (
-                                x => x.Bind(() => ViewModel.HeaderText)
-                                      .Mode(BindingMode.OneWay)
-                            )
-                            .Text
-                            (
-                                x => x.Bind(() => ViewModel.InputText)
-                                      .Mode(BindingMode.TwoWay)
-                                      .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)
-                            )
-                            .IsSpellCheckEnabled(false)
-                            .AcceptsReturn(false),
+                        _inputTextbox,
                         new TextBlock()
                             .Text(InvalidCharactersText)
                             .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
@@ -95,6 +99,17 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         }
 
         return Result<string>.Fail("Failed to input text");
+    }
+
+    public void SetDefaultText(string defaultText, Range selectionRange)
+    {
+        ViewModel.InputText = defaultText;
+        _inputTextbox.Text = defaultText;
+
+        // Todo: This appears to have no effect on Skia.Gtk platform
+
+        var (offset, length) = selectionRange.GetOffsetAndLength(defaultText.Length);
+        _inputTextbox.Select(offset, length);
     }
 }
 

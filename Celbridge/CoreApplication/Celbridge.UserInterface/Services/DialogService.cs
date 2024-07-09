@@ -96,9 +96,9 @@ public class DialogService : IDialogService
         return showResult;
     }
 
-    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, char[] invalidCharacters)
+    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters)
     {
-        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, invalidCharacters);
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, invalidCharacters);
 
         SuppressProgressDialog(true);
 
