@@ -91,7 +91,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         {
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {
-                command.ProjectPath = previousProjectFile;
+                command.ProjectFilePath = previousProjectFile;
             });
         }
         else
@@ -155,11 +155,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var result = await _filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
         if (result.IsSuccess)
         {
-            var projectPath = result.Value;
+            var projectFilePath = result.Value;
 
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {
-                command.ProjectPath = projectPath;
+                command.ProjectFilePath = projectFilePath;
             });
         }
     }

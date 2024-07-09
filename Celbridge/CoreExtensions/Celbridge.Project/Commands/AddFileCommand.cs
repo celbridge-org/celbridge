@@ -12,7 +12,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FilePath { get; set; } = string.Empty;
+    public string ResourcePath { get; set; } = string.Empty;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -40,7 +40,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", FilePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", ResourcePath);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -63,17 +63,17 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the folder path
+        // Validate the resource path
         //
 
-        if (string.IsNullOrEmpty(FilePath))
+        if (string.IsNullOrEmpty(ResourcePath))
         {
-            return Result.Fail("Failed to create file. Path is empty");
+            return Result.Fail("Failed to create file. Resource path is empty");
         }
 
-        if (!_utilityService.IsValidResourcePath(FilePath))
+        if (!_utilityService.IsValidResourcePath(ResourcePath))
         {
-            return Result.Fail($"Failed to create file. Resource path {FilePath} is not valid.");
+            return Result.Fail($"Failed to create file. Resource path {ResourcePath} is not valid.");
         }
 
         //
@@ -83,14 +83,14 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var newFilePath = Path.Combine(projectFolder, FilePath);
+            var newFilePath = Path.Combine(projectFolder, ResourcePath);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             // It's important to fail if the file already exists, because undoing this command
             // deletes the file, which could lead to unexpected data loss.
             if (File.Exists(newFilePath))
             {
-                return Result.Fail($"Failed to create file. File already exists: {newFilePath}");
+                return Result.Fail($"Failed to create file. A file already exists at '{newFilePath}'.");
             }
 
             File.WriteAllText(newFilePath, string.Empty);
@@ -113,10 +113,10 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         //
         // Expand the folder containing the newly created file
         //
-        int lastSlashIndex = FilePath.LastIndexOf('/');
+        int lastSlashIndex = ResourcePath.LastIndexOf('/');
         if (lastSlashIndex > -1)
         {
-            var parentFolder = FilePath.Substring(0, lastSlashIndex);
+            var parentFolder = ResourcePath.Substring(0, lastSlashIndex);
             if (!string.IsNullOrEmpty(parentFolder))
             {
                 var expandedFolders = new List<string>()
@@ -136,7 +136,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to undo create folder because workspace is not loaded");
+            return Result.Fail($"Failed to undo add file. Workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
@@ -146,15 +146,15 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the file path
+        // Validate the resource path
         //
 
-        if (string.IsNullOrEmpty(FilePath))
+        if (string.IsNullOrEmpty(ResourcePath))
         {
-            return Result.Fail("Failed to undo create file. File path is empty");
+            return Result.Fail("Failed to undo add file. Resource path is empty");
         }
 
-        // We can assume the FilePath segments are valid because the command already executed successfully.
+        // We can assume the resource path is valid because the command already executed successfully.
 
         //
         // Delete the file on disk
@@ -163,19 +163,19 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var newFilePath = Path.Combine(projectFolder, FilePath);
+            var newFilePath = Path.Combine(projectFolder, ResourcePath);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             if (!File.Exists(newFilePath))
             {
-                return Result.Fail($"Failed to undo create file. File does not exist: {newFilePath}");
+                return Result.Fail($"Failed to undo add file. File does not exist: {newFilePath}");
             }
 
             File.Delete(newFilePath);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to undo create file. {ex.Message}");
+            return Result.Fail($"Failed to undo add file. {ex.Message}");
         }
 
         //
@@ -185,7 +185,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         var updateResult = resourceRegistry.UpdateRegistry();
         if (updateResult.IsFailure)
         {
-            return Result.Fail($"Failed to create file. {updateResult.Error}");
+            return Result.Fail($"Failed to undo add file. {updateResult.Error}");
         }
 
         await Task.CompletedTask;
@@ -193,9 +193,9 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         return Result.Ok();
     }
 
-    public static void AddFile(string filePath)
+    public static void AddFile(string resourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IAddFileCommand>(command => command.FilePath = filePath);
+        commandService.Execute<IAddFileCommand>(command => command.ResourcePath = resourcePath);
     }
 }

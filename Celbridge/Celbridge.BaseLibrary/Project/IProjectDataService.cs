@@ -23,7 +23,7 @@ public interface IProjectDataService
     /// <summary>
     /// Load the project file at the specified path.
     /// </summary>
-    Result LoadProjectData(string projectPath);
+    Result LoadProjectData(string projectFilePath);
 
     /// <summary>
     /// Unloads the currently loaded project.
