@@ -55,6 +55,16 @@ public class ResourceRegistry : IResourceRegistry
         return path;
     }
 
+    public string GetAbsolutePath(IResource resource)
+    {
+        var resourcePath = GetResourcePath(resource);
+
+        var path = Path.Combine(_projectFolder, resourcePath);
+        var absPath = Path.GetFullPath(path);
+
+        return absPath;
+    }
+
     public Result<IResource> GetResourceAtPath(string folderPath)
     {
         if (string.IsNullOrEmpty(folderPath))

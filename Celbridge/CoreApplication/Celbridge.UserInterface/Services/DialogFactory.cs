@@ -39,7 +39,7 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, char[] invalidCharacters)
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters)
     {
         var dialog = new InputTextDialog
         {
@@ -47,6 +47,9 @@ public class DialogFactory : IDialogFactory
             HeaderText = messageText,
             InvalidCharacters = invalidCharacters,
         };
+
+        dialog.SetDefaultText(defaultText, selectionRange);
+
         return dialog;
     }
 }
