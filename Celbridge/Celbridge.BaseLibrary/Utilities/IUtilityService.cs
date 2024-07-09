@@ -14,9 +14,9 @@ public interface IUtilityService
     bool IsValidResourcePath(string resourcePath);
 
     /// <summary>
-    /// Returns true if the string represents a valid path segment.
+    /// Returns true if the string represents a valid resource path segment.
     /// </summary>
-    bool IsValidPathSegment(string segment);
+    bool IsValidResourcePathSegment(string resourcePathSegment);
 
     /// <summary>
     /// Returns a path to a randomly named file in temporary storage.

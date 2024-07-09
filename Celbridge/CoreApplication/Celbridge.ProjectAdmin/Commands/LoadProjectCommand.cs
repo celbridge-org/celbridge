@@ -36,16 +36,16 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         _stringLocalizer = stringLocalizer;
     }
 
-    public string ProjectPath { get; set; } = string.Empty;
+    public string ProjectFilePath { get; set; } = string.Empty;
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (string.IsNullOrEmpty(ProjectPath))
+        if (string.IsNullOrEmpty(ProjectFilePath))
         {
             return Result.Fail("Failed to load project because path is empty.");
         }
 
-        if (_projectDataService.LoadedProjectData?.ProjectFilePath == ProjectPath)
+        if (_projectDataService.LoadedProjectData?.ProjectFilePath == ProjectFilePath)
         {
             // The project is already loaded.
             // We can just early out here as we're already in the expected end state.
@@ -57,31 +57,31 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
 
         // Load the project
-        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService, ProjectPath);
+        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService, ProjectFilePath);
 
         if (loadResult.IsFailure)
         {
             _editorSettings.PreviousLoadedProject = string.Empty;
 
             var titleString = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
-            var messageString = _stringLocalizer.GetString("LoadProjectFailedAlert_Message", ProjectPath);
+            var messageString = _stringLocalizer.GetString("LoadProjectFailedAlert_Message", ProjectFilePath);
 
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Return to the home page so the user can decide what to do next
             _navigationService.NavigateToPage(HomePageName);
 
-            return Result.Fail($"Failed to load project: {ProjectPath}. {loadResult.Error}.");
+            return Result.Fail($"Failed to load project file: {ProjectFilePath}. {loadResult.Error}.");
         }
 
-        _editorSettings.PreviousLoadedProject = ProjectPath;
+        _editorSettings.PreviousLoadedProject = ProjectFilePath;
 
         return Result.Ok();
     }
 
-    public static void LoadProject(string projectPath)
+    public static void LoadProject(string projectFilePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ILoadProjectCommand>(command => command.ProjectPath = projectPath);
+        commandService.Execute<ILoadProjectCommand>(command => command.ProjectFilePath = projectFilePath);
     }
 }
