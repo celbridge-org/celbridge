@@ -64,9 +64,9 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             _editorSettings.PreviousLoadedProject = string.Empty;
 
             var titleString = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
-            var bodyString = _stringLocalizer.GetString("LoadProjectFailedAlert_Body", ProjectPath);
+            var messageString = _stringLocalizer.GetString("LoadProjectFailedAlert_Message", ProjectPath);
 
-            await _dialogService.ShowAlertDialogAsync(titleString, bodyString);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Return to the home page so the user can decide what to do next
             _navigationService.NavigateToPage(HomePageName);

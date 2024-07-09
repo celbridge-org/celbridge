@@ -6,7 +6,7 @@ namespace Celbridge.Project.Views;
 public sealed partial class ProjectPanel : UserControl
 {
     private IStringLocalizer _stringLocalizer;
-    private LocalizedString RefreshProjectTooltip => _stringLocalizer.GetString("ProjectPanel_RefreshTooltip");
+    private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ProjectPanel_RefreshTooltip");
 
     public ProjectPanelViewModel ViewModel { get; }
 
@@ -24,7 +24,7 @@ public sealed partial class ProjectPanel : UserControl
             .Margin(0, 0, 8, 0)
             .VerticalAlignment(VerticalAlignment.Center);
 
-        ToolTipService.SetToolTip(refreshProjectButton, RefreshProjectTooltip);
+        ToolTipService.SetToolTip(refreshProjectButton, RefreshTooltipString);
         ToolTipService.SetPlacement(refreshProjectButton, PlacementMode.Bottom);
 
         var titleBar = new Grid()
