@@ -7,14 +7,11 @@ public class StatusPanel : UserControl
 {
     private const string SaveGlyph = "\ue74e";
 
-    private IStringLocalizer _stringLocalizer;
-
     public StatusPanelViewModel ViewModel { get; }
 
     public StatusPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<StatusPanelViewModel>();
 

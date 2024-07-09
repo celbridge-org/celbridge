@@ -10,13 +10,13 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
     public NewProjectDialogViewModel ViewModel { get; }
 
-    public LocalizedString TitleText => _stringLocalizer.GetString($"NewProjectDialog_Title");
-    public LocalizedString CreateText => _stringLocalizer.GetString($"DialogButton_Create");
-    public LocalizedString CancelText => _stringLocalizer.GetString($"DialogButton_Cancel");
-    public LocalizedString ProjectNameText => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
-    public LocalizedString ProjectNamePlaceholderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
-    public LocalizedString ProjectFolderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
-    public LocalizedString ProjectFolderPlaceholderText => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
+    public LocalizedString TitleString => _stringLocalizer.GetString($"NewProjectDialog_Title");
+    public LocalizedString CreateString => _stringLocalizer.GetString($"DialogButton_Create");
+    public LocalizedString CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
+    public LocalizedString ProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
+    public LocalizedString ProjectNamePlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
+    public LocalizedString ProjectFolderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
+    public LocalizedString ProjectFolderPlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
 
     public NewProjectDialog()
     {
@@ -31,12 +31,12 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         var newProjectName = 
             new TextBox()
-                .Header(new TextBlock().Text(ProjectNameText))
+                .Header(new TextBlock().Text(ProjectNameString))
                 .Text(x => x.Bind(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
                 .MinWidth(200)
-                .PlaceholderText(ProjectNamePlaceholderText);
+                .PlaceholderText(ProjectNamePlaceholderString);
 
 
         var selectFolder = new Grid()
@@ -44,9 +44,9 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
             .Children(
                 new TextBox()
                     .Grid(column: 0)
-                    .Header(new TextBlock().Text(ProjectFolderText))
+                    .Header(new TextBlock().Text(ProjectFolderString))
                     .MinWidth(200)
-                    .PlaceholderText(ProjectFolderPlaceholderText)
+                    .PlaceholderText(ProjectFolderPlaceholderString)
                     .Margin(4)
                     .IsSpellCheckEnabled(false)
                     .Text(x => x.Bind(() => ViewModel.ProjectFolder)
@@ -68,9 +68,9 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         this.DataContext(ViewModel, (dialog, vm) => 
             dialog
-                .Title(TitleText)
-                .PrimaryButtonText(CreateText)
-                .SecondaryButtonText(CancelText)
+                .Title(TitleString)
+                .PrimaryButtonText(CreateString)
+                .SecondaryButtonText(CancelString)
                 .IsPrimaryButtonEnabled(x => x.Bind(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))
                 .Content(stackPanel)
             );

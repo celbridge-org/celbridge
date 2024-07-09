@@ -44,11 +44,11 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         var createResult = await DeleteFile();
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", FilePath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", FilePath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;

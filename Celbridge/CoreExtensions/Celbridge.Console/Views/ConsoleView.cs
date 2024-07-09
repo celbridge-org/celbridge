@@ -14,8 +14,6 @@ public class ConsoleView : UserControl
     private ScrollViewer _scrollViewer;
     private TextBox _commandTextBox;
 
-    private IStringLocalizer _stringLocalizer;
-
     public ConsoleViewModel ViewModel { get; }
 
     public ConsoleView()
@@ -23,7 +21,6 @@ public class ConsoleView : UserControl
         var serviceProvider = ServiceLocator.ServiceProvider;
 
         ViewModel = serviceProvider.GetRequiredService<ConsoleViewModel>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         Unloaded += (sender, e) =>
         {
