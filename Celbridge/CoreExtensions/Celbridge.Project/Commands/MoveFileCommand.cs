@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -17,20 +16,17 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
-    private readonly IUtilityService _utilityService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public MoveFileCommand(
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
-        IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
-        _utilityService = utilityService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
     }
@@ -118,6 +114,15 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
                 return Result.Fail($"Failed to move file. File path already exists: {filePathB}");
             }
 
+            var parentFolderB = Path.GetDirectoryName(absoluteFilePathB);
+            if (!Directory.Exists(parentFolderB))
+            {
+                // The parent folder of the target file path must exist before moving the file.
+                // It would be easy to create the missing parent folder(s) here automatically, but it's hard to
+                // undo this operation robustly.
+                return Result.Fail($"Failed to move file. Target folder does not exist: {parentFolderB}");
+            }
+
             File.Move(absoluteFilePathA, absoluteFilePathB);
         }
         catch (Exception ex)
@@ -142,6 +147,14 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
     public static void MoveFile(string fromFilePath, string toFilePath)
     {
+        if (Path.GetExtension(fromFilePath) != Path.GetExtension(toFilePath))
+        {
+            // If the "from" and "to" extensions don't match then we assume that the user intended to move the
+            // file to a folder, rather than moving/renaming to a file with no extension.
+            // This means that this command cannot be used to remove the file extension from a file.
+            toFilePath = Path.Combine(toFilePath, Path.GetFileName(fromFilePath));
+        }
+
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IMoveFileCommand>(command =>
         {
