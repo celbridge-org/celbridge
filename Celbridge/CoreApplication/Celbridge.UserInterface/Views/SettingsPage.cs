@@ -4,7 +4,7 @@ public sealed partial class SettingsPage : Page
 {
     public SettingsPageViewModel ViewModel { get; }
 
-    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(SettingsPage)}_{nameof(Title)}");
+    public LocalizedString TitleString => _stringLocalizer.GetString($"SettingsPage_Title");
 
     private IStringLocalizer _stringLocalizer;
 
@@ -22,7 +22,7 @@ public sealed partial class SettingsPage : Page
                 .MinHeight(400)
                 .Children(
                     new TextBlock()
-                        .Text(Title)
+                        .Text(TitleString)
             )));
     }
 }
