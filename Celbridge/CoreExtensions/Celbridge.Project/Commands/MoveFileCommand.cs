@@ -41,11 +41,11 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         var createResult = await MoveFileInternal(FromFilePath, ToFilePath);
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_MoveFile");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", FromFilePath, ToFilePath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", FromFilePath, ToFilePath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;
@@ -61,11 +61,11 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         var createResult = await MoveFileInternal(ToFilePath, FromFilePath);
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_MoveFile");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", ToFilePath, FromFilePath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", ToFilePath, FromFilePath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;

@@ -21,7 +21,7 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
         set => ViewModel.MessageText = value; 
     }
 
-    public string CloseText => _stringLocalizer.GetString("DialogButton_Ok");
+    public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
 
     public AlertDialog()
     {
@@ -35,7 +35,7 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .CloseButtonText(CloseText)
+            .CloseButtonText(OkString)
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Left)
                 .VerticalAlignment(VerticalAlignment.Center)

@@ -39,11 +39,11 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         var createResult = await CreateFile();
         if (createResult.IsFailure)
         {
-            var titleText = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var bodyText = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", FilePath);
+            var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", FilePath);
 
             // Show alert
-            await _dialogService.ShowAlertDialogAsync(titleText, bodyText);
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
         return createResult;

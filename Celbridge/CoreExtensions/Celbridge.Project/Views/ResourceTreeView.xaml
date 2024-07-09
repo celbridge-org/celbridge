@@ -15,16 +15,16 @@
 
         <MenuFlyout x:Name="FolderResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="{x:Bind AddFolderText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
                             Icon="Add"
                             Click="AddFile"/>
-            <MenuFlyoutItem Text="{x:Bind RenameText}" 
+            <MenuFlyoutItem Text="{x:Bind RenameString}" 
                             Icon="Edit"
                             Click="RenameResource"/>
-            <MenuFlyoutItem Text="{x:Bind DeleteText}" 
+            <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                             Icon="Delete"
                             Click="DeleteResource"/>
         </MenuFlyout>
@@ -34,26 +34,26 @@
             <MenuFlyoutItem Text="Open" 
                             Icon="OpenFile"
                             Click="OpenResource"/>
-            <MenuFlyoutItem Text="{x:Bind AddFolderText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
                             Icon="Add"
                             Click="AddFile"/>
-            <MenuFlyoutItem Text="{x:Bind RenameText}" 
+            <MenuFlyoutItem Text="{x:Bind RenameString}" 
                             Icon="Edit"
                             Click="RenameResource"/>
-            <MenuFlyoutItem Text="{x:Bind DeleteText}" 
+            <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                             Icon="Delete"
                             Click="DeleteResource"/>
         </MenuFlyout>
 
         <MenuFlyout x:Name="EmptyAreaContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="{x:Bind AddFolderText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileText}" 
+            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
                             Icon="Add"
                             Click="AddFile"/>
         </MenuFlyout>

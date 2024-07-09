@@ -5,7 +5,7 @@ namespace Celbridge.Inspector.Views;
 
 public sealed partial class InspectorPanel : UserControl
 {
-    public LocalizedString Title => _stringLocalizer.GetString($"{nameof(InspectorPanel)}_{nameof(Title)}");
+    public LocalizedString TitleString => _stringLocalizer.GetString($"InspectorPanel_Title");
 
     private IStringLocalizer _stringLocalizer;
 
@@ -26,7 +26,7 @@ public sealed partial class InspectorPanel : UserControl
             .Children(
                 new TextBlock()
                     .Grid(column: 0)
-                    .Text(Title)
+                    .Text(TitleString)
                     .Margin(6, 0, 0, 0)
                     .VerticalAlignment(VerticalAlignment.Center)
             );

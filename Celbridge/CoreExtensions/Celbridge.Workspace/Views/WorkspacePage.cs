@@ -316,8 +316,8 @@ public sealed partial class WorkspacePage : Page
         async Task LoadWorkspaceAsync()
         {
             // Show the progress dialog
-            var loadingWorkspace = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-            _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspace);
+            var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+            _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
 
             var loadResult = await ViewModel.LoadWorkspaceAsync();
 
