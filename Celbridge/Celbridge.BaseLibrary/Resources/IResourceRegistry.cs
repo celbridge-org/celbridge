@@ -18,6 +18,11 @@ public interface IResourceRegistry
     string GetResourcePath(IResource resource);
 
     /// <summary>
+    /// Returns the absolute path for a resource.
+    /// </summary>
+    string GetAbsolutePath(IResource resource);
+
+    /// <summary>
     /// Returns the resource corresponding a project relative path.
     /// Fails if no matching resource is found.
     /// </summary>
