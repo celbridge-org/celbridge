@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
+using Windows.System;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -32,6 +33,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
     private LocalizedString InvalidCharactersString => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
 
     private TextBox _inputTextbox;
+    private bool _pressedEnter;
 
     public InputTextDialog()
     {
@@ -48,16 +50,18 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
             .Header
             (
                 x => x.Bind(() => ViewModel.HeaderText)
-                        .Mode(BindingMode.OneWay)
+                      .Mode(BindingMode.OneWay)
             )
             .Text
             (
                 x => x.Bind(() => ViewModel.InputText)
-                        .Mode(BindingMode.TwoWay)
-                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)
+                      .Mode(BindingMode.TwoWay)
+                      .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)
             )
             .IsSpellCheckEnabled(false)
             .AcceptsReturn(false);
+
+        _inputTextbox.KeyDown += _inputTextbox_KeyDown;
 
         this.DataContext
         (
@@ -90,10 +94,24 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         );
     }
 
+    private void _inputTextbox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            // Set a flag so that we can tell that the user pressed Enter
+            _pressedEnter = true;
+            Hide();
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            Hide();
+        }
+    }
+
     public async Task<Result<string>> ShowDialogAsync()
     {
         var contentDialogResult = await ShowAsync();
-        if (contentDialogResult == ContentDialogResult.Primary)
+        if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
         {
             return Result<string>.Ok(ViewModel.InputText);
         }
