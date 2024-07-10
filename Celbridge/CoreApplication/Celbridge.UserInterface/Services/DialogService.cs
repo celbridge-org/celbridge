@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.Validators;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -96,9 +97,9 @@ public class DialogService : IDialogService
         return showResult;
     }
 
-    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters)
+    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator)
     {
-        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, invalidCharacters);
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator);
 
         SuppressProgressDialog(true);
 

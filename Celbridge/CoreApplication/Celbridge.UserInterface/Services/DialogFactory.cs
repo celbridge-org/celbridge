@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Dialog;
+using Celbridge.BaseLibrary.Validators;
 using Celbridge.UserInterface.Views;
 
 namespace Celbridge.UserInterface.Services;
@@ -39,15 +40,15 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters)
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator)
     {
         var dialog = new InputTextDialog
         {
             TitleText = titleText,
             HeaderText = messageText,
-            InvalidCharacters = invalidCharacters,
         };
 
+        dialog.ViewModel.Validator = validator;
         dialog.SetDefaultText(defaultText, selectionRange);
 
         return dialog;

@@ -48,7 +48,7 @@ public sealed partial class ResourceTreeView : UserControl
         }
         else
         {
-            // Add a folder at the root of the resource tree
+            // Add a folder resource to the root folder
             ViewModel.AddFolder(null);
         }
     }
@@ -73,7 +73,7 @@ public sealed partial class ResourceTreeView : UserControl
         }
         else
         {
-            // Add a folder at the root of the resource tree
+            // Add a file resource to the root folder
             ViewModel.AddFile(null);
         }
     }

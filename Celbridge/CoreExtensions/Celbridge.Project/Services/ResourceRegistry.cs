@@ -30,7 +30,7 @@ public class ResourceRegistry : IResourceRegistry
         Guard.IsNotNull(pathResource);
 
         var sb = new StringBuilder();
-        void AddResourcePathSegment(Resource resource)
+        void AddResourcePathSegment(IResource resource)
         {
             if (resource.ParentFolder is null)
             {
@@ -69,7 +69,8 @@ public class ResourceRegistry : IResourceRegistry
     {
         if (string.IsNullOrEmpty(resourcePath))
         {
-            return Result<IResource>.Fail("Failed to get resource. Resource path is empty.");
+            // An empty resource path refers to the root folder
+            return Result<IResource>.Ok(_rootFolder);
         }
 
         var segments = resourcePath.Split('/');

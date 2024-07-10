@@ -1,8 +1,10 @@
-﻿namespace Celbridge.Project.Models;
+﻿using Celbridge.BaseLibrary.Resources;
 
-public class FileResource : Resource
+namespace Celbridge.Project.Models;
+
+public class FileResource : Resource, IFileResource
 {
-    public FileResource(string name, FolderResource parentFolder) 
+    public FileResource(string name, IFolderResource parentFolder) 
         : base(name, parentFolder)
     { }
 }

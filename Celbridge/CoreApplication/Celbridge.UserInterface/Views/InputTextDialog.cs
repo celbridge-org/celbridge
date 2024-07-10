@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
 using Windows.System;
+using Celbridge.BaseLibrary.Validators;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -22,15 +23,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         set => ViewModel.HeaderText = value;
     }
 
-    public char[] InvalidCharacters
-    {
-        get => ViewModel.InvalidCharacters;
-        set => ViewModel.InvalidCharacters = value;
-    }
-
     private LocalizedString OkString => _stringLocalizer.GetString($"DialogButton_Ok");
     private LocalizedString CancelSting => _stringLocalizer.GetString($"DialogButton_Cancel");
-    private LocalizedString InvalidCharactersString => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
 
     private TextBox _inputTextbox;
     private bool _pressedEnter;
@@ -61,7 +55,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
             .IsSpellCheckEnabled(false)
             .AcceptsReturn(false);
 
-        _inputTextbox.KeyDown += _inputTextbox_KeyDown;
+        _inputTextbox.KeyDown += InputTextbox_KeyDown;
 
         this.DataContext
         (
@@ -80,7 +74,11 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                     (
                         _inputTextbox,
                         new TextBlock()
-                            .Text(InvalidCharactersString)
+                            .Text
+                            (
+                                x => x.Bind(() => ViewModel.ErrorText)
+                                      .Mode(BindingMode.OneWay)
+                            )
                             .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
                             .Margin(6, 4, 0, 0)
                             .Opacity
@@ -94,7 +92,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         );
     }
 
-    private void _inputTextbox_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void InputTextbox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)
         {
