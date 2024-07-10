@@ -9,6 +9,7 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -292,5 +293,40 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         return defaultResourceName;
+    }
+
+    public void MoveResources(List<IResource> resources, IFolderResource? newParent)
+    {
+        if (newParent is null)
+        {
+            // Todo: Should we move this logic into the ResourceRegistry?
+            // If newParent is null, use the root folder as the parent
+            newParent = _projectService.ResourceRegistry.GetResource(string.Empty).Value as IFolderResource;
+        }
+        Guard.IsNotNull(newParent);
+
+        foreach (var resource in resources)
+        {
+            var fromResourcePath = _projectService.ResourceRegistry.GetResourcePath(resource);
+            var toResourcePath = _projectService.ResourceRegistry.GetResourcePath(newParent);
+            toResourcePath = string.IsNullOrEmpty(toResourcePath) ? resource.Name : toResourcePath + "/" + resource.Name;
+
+            if (resource is IFileResource)
+            {
+                _commandService.Execute<IMoveFileCommand>(command =>
+                {
+                    command.FromResourcePath = fromResourcePath;
+                    command.ToResourcePath = toResourcePath;
+                });
+            }
+            else if (resource is IFolderResource)
+            {
+                _commandService.Execute<IMoveFolderCommand>(command =>
+                {
+                    command.FromResourcePath = fromResourcePath;
+                    command.ToResourcePath = toResourcePath;
+                });
+            }
+        }
     }
 }
