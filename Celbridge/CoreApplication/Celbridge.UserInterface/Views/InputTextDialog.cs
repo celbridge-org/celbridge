@@ -61,7 +61,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
             .IsSpellCheckEnabled(false)
             .AcceptsReturn(false);
 
-        _inputTextbox.KeyDown += _inputTextbox_KeyDown;
+        _inputTextbox.KeyDown += InputTextbox_KeyDown;
 
         this.DataContext
         (
@@ -94,7 +94,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         );
     }
 
-    private void _inputTextbox_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void InputTextbox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)
         {
