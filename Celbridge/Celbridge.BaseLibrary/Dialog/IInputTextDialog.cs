@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.BaseLibrary.Validators;
+
+namespace Celbridge.BaseLibrary.Dialog;
 
 /// <summary>
 /// A modal dialog that allows the user to input a text string.
@@ -10,5 +12,5 @@ public interface IInputTextDialog
     /// The async call completes when the user closes the dialog.
     /// Returns the text the user entered.
     /// </summary>
-    Task<Result<string>> ShowDialogAsync();
+    Task<Result<string>> ShowDialogAsync(IValidator validator);
 }

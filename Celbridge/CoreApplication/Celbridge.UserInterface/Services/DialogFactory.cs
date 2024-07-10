@@ -39,13 +39,12 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters)
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange)
     {
         var dialog = new InputTextDialog
         {
             TitleText = titleText,
             HeaderText = messageText,
-            InvalidCharacters = invalidCharacters,
         };
 
         dialog.SetDefaultText(defaultText, selectionRange);

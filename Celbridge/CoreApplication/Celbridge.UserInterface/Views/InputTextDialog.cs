@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.UserInterface;
 using Celbridge.BaseLibrary.Dialog;
 using Windows.System;
+using Celbridge.BaseLibrary.Validators;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -20,12 +21,6 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
     {
         get => ViewModel.HeaderText;
         set => ViewModel.HeaderText = value;
-    }
-
-    public char[] InvalidCharacters
-    {
-        get => ViewModel.InvalidCharacters;
-        set => ViewModel.InvalidCharacters = value;
     }
 
     private LocalizedString OkString => _stringLocalizer.GetString($"DialogButton_Ok");
@@ -108,8 +103,10 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         }
     }
 
-    public async Task<Result<string>> ShowDialogAsync()
+    public async Task<Result<string>> ShowDialogAsync(IValidator validator)
     {
+        ViewModel.Validator = validator;
+
         var contentDialogResult = await ShowAsync();
         if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
         {
