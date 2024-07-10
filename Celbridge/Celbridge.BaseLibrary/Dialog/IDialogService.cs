@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Validators;
 
 namespace Celbridge.BaseLibrary.Dialog;
 
@@ -39,5 +40,5 @@ public interface IDialogService
     /// <summary>
     /// Display an Input Text Dialog.
     /// </summary>
-    Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, char[] invalidCharacters);
+    Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
 }
