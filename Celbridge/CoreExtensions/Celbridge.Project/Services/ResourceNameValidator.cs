@@ -10,6 +10,8 @@ public class ResourceNameValidator : IResourceNameValidator
 
     public IFolderResource? ParentFolder { get; set; }
 
+    public List<string> ValidNames { get; } = new();
+
     public ResourceNameValidator(IStringLocalizer stringLocalizer)
     {
         _stringLocalizer = stringLocalizer;
@@ -42,7 +44,9 @@ public class ResourceNameValidator : IResourceNameValidator
         }
 
         // Check for naming conflict with other resources in the parent folder
-        if (ParentFolder is not null)
+        // Any name listed in ValidNames is always accepted as valid.
+        if (!ValidNames.Contains(input) &&
+            ParentFolder is not null)
         {
             foreach (var childResource in ParentFolder.Children)
             {

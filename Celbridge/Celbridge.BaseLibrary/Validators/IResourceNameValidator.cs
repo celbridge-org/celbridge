@@ -12,4 +12,10 @@ public interface IResourceNameValidator : IValidator
     /// Used to check for conflicts with existing resource names.
     /// </summary>
     IFolderResource? ParentFolder { get; set; }
+
+    /// <summary>
+    /// Any name listed in ValidNames is always accepted as valid, even if it has the same name 
+    /// as an existing resource in the ParentFolder.
+    /// </summary>
+    List<string> ValidNames { get; }
 }
