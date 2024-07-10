@@ -25,7 +25,6 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
     private LocalizedString OkString => _stringLocalizer.GetString($"DialogButton_Ok");
     private LocalizedString CancelSting => _stringLocalizer.GetString($"DialogButton_Cancel");
-    private LocalizedString InvalidCharactersString => _stringLocalizer.GetString($"InputTextDialog_InvalidCharacters");
 
     private TextBox _inputTextbox;
     private bool _pressedEnter;
@@ -75,7 +74,11 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                     (
                         _inputTextbox,
                         new TextBlock()
-                            .Text(InvalidCharactersString)
+                            .Text
+                            (
+                                x => x.Bind(() => ViewModel.ErrorText)
+                                      .Mode(BindingMode.OneWay)
+                            )
                             .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
                             .Margin(6, 4, 0, 0)
                             .Opacity
@@ -103,10 +106,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         }
     }
 
-    public async Task<Result<string>> ShowDialogAsync(IValidator validator)
+    public async Task<Result<string>> ShowDialogAsync()
     {
-        ViewModel.Validator = validator;
-
         var contentDialogResult = await ShowAsync();
         if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
         {
