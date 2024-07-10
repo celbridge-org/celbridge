@@ -5,6 +5,7 @@ using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Validators;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Project.Models;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
@@ -49,6 +50,14 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void AddFolder(IFolderResource? parentFolder)
     {
+        if (parentFolder is null)
+        {
+            // If the parent folder is null, add the new folder to the root folder
+            var getResult = _projectService.ResourceRegistry.GetResource(string.Empty);
+            Guard.IsTrue(getResult.IsSuccess);
+            parentFolder = getResult.Value as IFolderResource;
+        }
+
         var resourceRegistry = _projectService.ResourceRegistry;
         var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
 
@@ -80,6 +89,14 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void AddFile(IFolderResource? parentFolder)
     {
+        if (parentFolder is null)
+        {
+            // If the parent folder is null, add the new file to the root folder
+            var getResult = _projectService.ResourceRegistry.GetResource(string.Empty);
+            Guard.IsTrue(getResult.IsSuccess);
+            parentFolder = getResult.Value as IFolderResource;
+        }
+
         var resourceRegistry = _projectService.ResourceRegistry;
         var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
 

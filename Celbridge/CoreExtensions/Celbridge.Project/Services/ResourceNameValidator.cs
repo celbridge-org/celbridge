@@ -27,7 +27,8 @@ public class ResourceNameValidator : IResourceNameValidator
         for (int i = 0; i < input.Length; i++)
         {
             char c = input[i];
-            if (invalidCharacters.Contains(c))
+            if (invalidCharacters.Contains(c) &&
+                !errorCharacters.Contains(c))
             {
                 errorCharacters += c;
             }
