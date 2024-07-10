@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Celbridge.BaseLibrary.Validators;
+using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -11,7 +12,7 @@ public partial class InputTextDialogViewModel : ObservableObject
     private string _headerText = string.Empty;
 
     [ObservableProperty]
-    private char[] _invalidCharacters = {};
+    private string _errorText = string.Empty;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -22,10 +23,10 @@ public partial class InputTextDialogViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSubmitEnabled = false;
 
+    public IValidator? Validator { get; set; }
+
     public InputTextDialogViewModel()
     {
-        UpdateValidationState();
-
         PropertyChanged += InputTextDialogViewModel_PropertyChanged;
     }
 
@@ -39,18 +40,20 @@ public partial class InputTextDialogViewModel : ObservableObject
 
     private void UpdateValidationState()
     {
-        bool isValid = true;
-        if (InvalidCharacters.Length > 0)
-        {
-            foreach (char c in InputText)
-            {
-                if (InvalidCharacters.Contains(c))
-                {
-                    isValid = false;
-                }
-            }
-        }
-        IsTextValid = isValid;
+        Guard.IsNotNull(Validator);
+
+        var result = Validator.Validate(InputText);
+
+        IsTextValid = result.IsValid;
         IsSubmitEnabled = IsTextValid && !string.IsNullOrEmpty(InputText);
+
+        if (result.Errors.Count == 0)
+        {
+            ErrorText = string.Empty;
+        }
+        else
+        {
+            ErrorText = result.Errors[0];
+        }
     }
 }
