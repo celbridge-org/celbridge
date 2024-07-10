@@ -6,7 +6,12 @@
 public interface IResource
 {
     /// <summary>
-    /// The name of the file or folder resource.
+    /// The name of the resource.
     /// </summary>
     string Name { get; }
+
+    /// <summary>
+    /// The folder resource that contains this resource.
+    /// </summary>
+    public IFolderResource? ParentFolder { get; }
 }

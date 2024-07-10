@@ -43,14 +43,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ISaveWorkspaceStateCommand>(250);
     }
 
-    public void AddFolder(FolderResource? folderResource)
+    public void AddFolder(IFolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var path = folderResource is null ? string.Empty : resourceRegistry.GetResourcePath(folderResource);
+        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
 
         async Task ShowDialogAsync()
         {
-            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFolderName", folderResource);
+            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFolderName", parentFolder);
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
@@ -72,14 +72,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         _ = ShowDialogAsync();
     }
 
-    public void AddFile(FolderResource? folderResource)
+    public void AddFile(IFolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var path = folderResource is null ? string.Empty : resourceRegistry.GetResourcePath(folderResource);
+        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
 
         async Task ShowDialogAsync()
         {
-            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFileName", folderResource);
+            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFileName", parentFolder);
             var invalidCharacters = Path.GetInvalidFileNameChars();
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
@@ -232,8 +232,8 @@ public partial class ResourceTreeViewModel : ObservableObject
         _ = ShowDialogAsync();
     }
 
-    // Find a localized default file/folder name that doesn't clash with an existing resource on disk.
-    private string FindDefaultResourceName(string stringKey, FolderResource? parentFolder)
+    // Find a localized default resource name that doesn't clash with an existing resource on disk.
+    private string FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 

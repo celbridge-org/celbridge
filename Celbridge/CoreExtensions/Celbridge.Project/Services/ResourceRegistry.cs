@@ -30,7 +30,7 @@ public class ResourceRegistry : IResourceRegistry
         Guard.IsNotNull(pathResource);
 
         var sb = new StringBuilder();
-        void AddResourcePathSegment(Resource resource)
+        void AddResourcePathSegment(IResource resource)
         {
             if (resource.ParentFolder is null)
             {
