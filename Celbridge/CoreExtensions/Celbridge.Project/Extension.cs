@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Validators;
 using Celbridge.Project.Commands;
 using Celbridge.Project.Services;
 using Celbridge.Project.ViewModels;
@@ -37,6 +38,11 @@ public class Extension : IExtension
         config.AddTransient<IDeleteFileCommand, DeleteFileCommand>();
         config.AddTransient<IMoveFolderCommand, MoveFolderCommand>();
         config.AddTransient<IMoveFileCommand, MoveFileCommand>();
+
+        //
+        // Register validators
+        //
+        config.AddTransient<IResourceNameValidator, ResourceNameValidator>();
     }
 
     public Result Initialize()
