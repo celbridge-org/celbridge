@@ -1,7 +1,9 @@
-﻿using Celbridge.Project.Models;
+﻿using Celbridge.BaseLibrary.Resources;
+using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Windows.ApplicationModel.Email.DataProvider;
 using Windows.System;
 
 namespace Celbridge.Project.Views;
@@ -145,5 +147,22 @@ public sealed partial class ResourceTreeView : UserControl
                 ViewModel.DeleteFolder(folderResource);
             }
         }
+    }
+
+    private void ResourcesTreeView_DragItemsCompleted(TreeView sender, TreeViewDragItemsCompletedEventArgs args)
+    {
+        var draggedItems = args.Items.ToList();
+        var newParent = args.NewParentItem as IFolderResource;
+
+        var resources = new List<IResource>();
+        foreach (var item in draggedItems)
+        {
+            if (item is IResource resource)
+            {
+                resources.Add(resource);
+            }
+        }
+
+        ViewModel.MoveResources(resources, newParent);
     }
 }
