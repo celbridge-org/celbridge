@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 
 namespace Celbridge.Project.Models;
 
-public partial class FolderResource : Resource
+public partial class FolderResource : Resource, IFolderResource
 {
     public ObservableCollection<IResource> Children { get; set; }
 
