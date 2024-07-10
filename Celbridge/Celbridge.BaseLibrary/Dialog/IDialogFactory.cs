@@ -1,4 +1,6 @@
-﻿namespace Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.BaseLibrary.Validators;
+
+namespace Celbridge.BaseLibrary.Dialog;
 
 /// <summary>
 /// Provides factory methods for creating various types of modal dialogs.
@@ -29,5 +31,5 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Input Text Dialog.
     /// </summary>
-    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange);
+    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
 }

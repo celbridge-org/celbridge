@@ -99,11 +99,11 @@ public class DialogService : IDialogService
 
     public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator)
     {
-        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange);
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator);
 
         SuppressProgressDialog(true);
 
-        var showResult = await dialog.ShowDialogAsync(validator);
+        var showResult = await dialog.ShowDialogAsync();
 
         SuppressProgressDialog(false);
 

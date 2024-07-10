@@ -12,5 +12,5 @@ public interface IInputTextDialog
     /// The async call completes when the user closes the dialog.
     /// Returns the text the user entered.
     /// </summary>
-    Task<Result<string>> ShowDialogAsync(IValidator validator);
+    Task<Result<string>> ShowDialogAsync();
 }
