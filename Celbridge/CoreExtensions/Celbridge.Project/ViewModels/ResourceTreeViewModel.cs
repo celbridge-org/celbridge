@@ -191,6 +191,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
             var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
             validator.ParentFolder = folderResource.ParentFolder;
+            validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
                 renameResourceString, 
@@ -234,6 +235,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
             var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
             validator.ParentFolder = fileResource.ParentFolder;
+            validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
 
             var showResult = await _dialogService.ShowInputTextDialogAsync(
                 renameResourceString, 
