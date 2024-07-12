@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -15,22 +16,23 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     public string FromResourcePath { get; set; } = string.Empty;
     public string ToResourcePath { get; set; } = string.Empty;
 
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
-    private readonly IUtilityService _utilityService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public MoveFolderCommand(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
-        _utilityService = utilityService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
     }
@@ -133,20 +135,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail($"Failed to move folder. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to move the folder resource
-        //
+        resourceRegistry.SetFolderIsExpanded(resourcePathB, isFolderAExpanded);
 
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to move folder. {updateResult.Error}");
-        }
-
-        if (isFolderAExpanded)
-        {
-            resourceRegistry.SetExpandedFolders(new List<string>() { resourcePathB });
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
