@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -14,6 +15,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
     public string ResourcePath { get; set; } = string.Empty;
 
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly IUtilityService _utilityService;
@@ -21,12 +23,14 @@ public class AddFileCommand : CommandBase, IAddFileCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public AddFileCommand(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _utilityService = utilityService;
@@ -101,16 +105,6 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         }
 
         //
-        // Update the resource registry to include the new file
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to create file. {updateResult.Error}");
-        }
-
-        //
         // Expand the folder containing the newly created file
         //
         int lastSlashIndex = ResourcePath.LastIndexOf('/');
@@ -119,13 +113,12 @@ public class AddFileCommand : CommandBase, IAddFileCommand
             var parentFolder = ResourcePath.Substring(0, lastSlashIndex);
             if (!string.IsNullOrEmpty(parentFolder))
             {
-                var expandedFolders = new List<string>()
-                {
-                    parentFolder
-                };
-                resourceRegistry.SetExpandedFolders(expandedFolders);
+                resourceRegistry.SetFolderIsExpanded(parentFolder, true);
             }
         }
+
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
@@ -178,15 +171,8 @@ public class AddFileCommand : CommandBase, IAddFileCommand
             return Result.Fail($"Failed to undo add file. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to remove the file
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to undo add file. {updateResult.Error}");
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 

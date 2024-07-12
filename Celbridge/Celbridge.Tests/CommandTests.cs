@@ -1,8 +1,10 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Core;
 using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Messaging;
 using Celbridge.Commands.Services;
 using Celbridge.Logging.Services;
+using Celbridge.Messaging.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -61,6 +63,7 @@ public class CommandTests
     {
         var services = new ServiceCollection();
 
+        services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ICommandService, CommandService>();
 

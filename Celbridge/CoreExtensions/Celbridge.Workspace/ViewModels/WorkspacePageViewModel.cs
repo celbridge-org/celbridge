@@ -127,23 +127,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         Guard.IsNotNull(workspaceData);
 
         //
-        // Update the resource registry.
-        //
-        try
-        {
-            var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
-            var updateResult = resourceRegistry.UpdateRegistry();
-            if (updateResult.IsFailure)
-            {
-                return Result.Fail($"Failed to load workspace. {updateResult.Error}");
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to update the resource registry. {ex.Message}");
-        }
-
-        //
         // Restore the Project Panel view state
         //
         try
@@ -154,12 +137,33 @@ public partial class WorkspacePageViewModel : ObservableObject
             {
                 var expandedFolders = getFoldersResult.Value;
                 var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
-                resourceRegistry.SetExpandedFolders(expandedFolders);
+
+                foreach (var expandedFolder in expandedFolders)
+                {
+                    resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
+                }
             }
         }
         catch (Exception ex)
         {
             return Result.Fail($"Failed to restore Project Panel view state. {ex.Message}");
+        }
+
+        //
+        // Update the resource registry.
+        //
+        try
+        {
+            var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
+            var updateResult = resourceRegistry.UpdateResourceTree();
+            if (updateResult.IsFailure)
+            {
+                return Result.Fail($"Failed to load workspace. {updateResult.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to update the resource registry. {ex.Message}");
         }
 
         // Todo: Load the workspace here
