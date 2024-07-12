@@ -3,7 +3,6 @@ using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
-using Windows.ApplicationModel.Email.DataProvider;
 using Windows.System;
 
 namespace Celbridge.Project.Views;
