@@ -30,7 +30,7 @@ public interface IResourceRegistry
     Result<IResource> GetResource(string resourcePath);
 
     /// <summary>
-    /// Updates the registry to mirror the current state of the resources in the project folder.
+    /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
     Result UpdateRegistry();
 
