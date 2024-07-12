@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -14,17 +15,20 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
     public string FromResourcePath { get; set; } = string.Empty;
     public string ToResourcePath { get; set; } = string.Empty;
 
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public MoveFileCommand(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _dialogService = dialogService;
@@ -82,8 +86,6 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             return Result.Ok();
         }
 
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
 
         Guard.IsNotNull(loadedProjectData);
@@ -136,15 +138,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             return Result.Fail($"Failed to move file. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to move the file resource
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to move file. {updateResult.Error}");
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 

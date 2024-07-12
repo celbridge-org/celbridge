@@ -4,11 +4,11 @@ using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Project.Commands;
 
-public class RefreshResourceTreeCommand : CommandBase, IRefreshResourceTreeCommand
+public class UpdateResourceTreeCommand : CommandBase, IUpdateResourceTreeCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public RefreshResourceTreeCommand(
+    public UpdateResourceTreeCommand(
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -18,16 +18,16 @@ public class RefreshResourceTreeCommand : CommandBase, IRefreshResourceTreeComma
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to execute {nameof(RefreshResourceTreeCommand)} because workspace is not loaded");
+            return Result.Fail($"Failed to execute {nameof(UpdateResourceTreeCommand)} because workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
 
-        var updateResult = resourceRegistry.UpdateRegistry();
+        var updateResult = resourceRegistry.UpdateResourceTree();
         if (updateResult.IsFailure)
         {
-            return Result.Fail($"Failed to execute {nameof(RefreshResourceTreeCommand)}. {updateResult.Error}");
+            return Result.Fail($"Failed to execute {nameof(UpdateResourceTreeCommand)}. {updateResult.Error}");
         }
 
         await Task.CompletedTask;
@@ -35,9 +35,9 @@ public class RefreshResourceTreeCommand : CommandBase, IRefreshResourceTreeComma
         return Result.Ok();
     }
 
-    public static void RefreshResourceTree()
+    public static void UpdateResourceTree()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IRefreshResourceTreeCommand>();
+        commandService.Execute<IUpdateResourceTreeCommand>();
     }
 }

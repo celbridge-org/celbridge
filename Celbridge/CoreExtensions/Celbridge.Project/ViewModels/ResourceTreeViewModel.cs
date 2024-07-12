@@ -9,7 +9,6 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -29,7 +28,10 @@ public partial class ResourceTreeViewModel : ObservableObject
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private LocalizedString EnterNewNameString => _stringLocalizer.GetString("ResourceTree_EnterNewName");
 
+    private bool _resourceTreeUpdatePending;
+
     public ResourceTreeViewModel(
+        IMessengerService messengerService,
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
@@ -41,10 +43,52 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService = commandService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
+
+        // Listen for messages to determine when to update the resource tree
+        messengerService.Register<RequestResourceTreeUpdate>(this, OnRequestResourceTreeUpdateMessage);
+        messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage); 
     }
 
-    public void OnExpandedFoldersChanged()
+    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdate message)
     {
+        // Set a flag to update the resource tree
+        _resourceTreeUpdatePending = true;
+    }
+
+    private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
+    {
+        if (_resourceTreeUpdatePending)
+        {
+            // Don't update if there are any pending resource tree commands
+            if (!_commandService.ContainsCommandsOfType<IAddFileCommand>() &&
+                !_commandService.ContainsCommandsOfType<IAddFolderCommand>() &&
+                !_commandService.ContainsCommandsOfType<IDeleteFileCommand>() &&
+                !_commandService.ContainsCommandsOfType<IDeleteFolderCommand>() &&
+                !_commandService.ContainsCommandsOfType<IMoveFileCommand>() &&
+                !_commandService.ContainsCommandsOfType<IMoveFolderCommand>() &&
+                !_commandService.ContainsCommandsOfType<IUpdateResourceTreeCommand>())
+            {
+                // Execute a command to update the resource tree
+                _commandService.Execute<IUpdateResourceTreeCommand>();
+                _resourceTreeUpdatePending = false;
+            }
+        }
+    }
+
+    public void SetFolderIsExpanded(IFolderResource folderResource, bool isExpanded)
+    {
+        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourcePath = resourceRegistry.GetResourcePath(folderResource);
+
+        bool currentState = resourceRegistry.IsFolderExpanded(resourcePath);
+        if (currentState == isExpanded)
+        {
+            return;
+        }
+
+        resourceRegistry.SetFolderIsExpanded(resourcePath, isExpanded);
+
+        // Save the workspace data (with a delay) to ensure the new expanded state is persisted
         _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
         _commandService.Execute<ISaveWorkspaceStateCommand>(250);
     }
@@ -82,6 +126,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                 // Execute a command to add the folder resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
                 _commandService.Execute<IAddFolderCommand>(command => command.ResourcePath = resourcePath);
+
+                // Execute a command to update the resource tree
+                _commandService.Execute<IUpdateResourceTreeCommand>();
             }
         }
 
@@ -121,6 +168,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                 // Execute a command to add the file resource
                 var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
                 _commandService.Execute<IAddFileCommand>(command => command.ResourcePath = resourcePath);
+
+                // Execute a command to update the resource tree
+                _commandService.Execute<IUpdateResourceTreeCommand>();
             }
         }
 
@@ -145,6 +195,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                 {
                     // Execute a command to delete the folder resource
                     _commandService.Execute<IDeleteFolderCommand>(command => command.ResourcePath = resourcePath);
+
+                    // Execute a command to update the resource tree
+                    _commandService.Execute<IUpdateResourceTreeCommand>();
                 }
             }
         }
@@ -170,6 +223,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                 {
                     // Execute a command to delete the file resource
                     _commandService.Execute<IDeleteFileCommand>(command => command.ResourcePath = resourcePath);
+
+                    // Execute a command to update the resource tree
+                    _commandService.Execute<IUpdateResourceTreeCommand>();
                 }
             }
         }
@@ -214,6 +270,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                     command.FromResourcePath = fromResourcePath;
                     command.ToResourcePath = toResourcePath;
                 });
+
+                // Execute a command to update the resource tree
+                _commandService.Execute<IUpdateResourceTreeCommand>();
             }
         }
 
@@ -258,6 +317,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                     command.FromResourcePath = fromResourcePath;
                     command.ToResourcePath = toResourcePath;
                 });
+
+                // Execute a command to update the resource tree
+                _commandService.Execute<IUpdateResourceTreeCommand>();
             }
         }
 
@@ -313,7 +375,9 @@ public partial class ResourceTreeViewModel : ObservableObject
 
             if (fromResourcePath == toResourcePath)
             {
-                // Moving a resource to the same location is a no-op
+                // Moving a resource to the same location is technically a no-op, but we still need to update
+                // the resource tree because the TreeView may now be displaying the resources in the wrong order.
+                _commandService.Execute<IUpdateResourceTreeCommand>();
                 continue;
             }
 

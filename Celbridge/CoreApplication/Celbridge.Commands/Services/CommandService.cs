@@ -1,10 +1,12 @@
 using Celbridge.BaseLibrary.Logging;
+using Celbridge.BaseLibrary.Messaging;
 using System.Diagnostics;
 
 namespace Celbridge.Commands.Services;
 
 public class CommandService : ICommandService
 {
+    private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
@@ -20,8 +22,11 @@ public class CommandService : ICommandService
 
     private CommandStack _commandStack = new ();
 
-    public CommandService(ILoggingService loggingService)
+    public CommandService(
+        IMessengerService messengerService,
+        ILoggingService loggingService)
     {
+        _messengerService = messengerService;
         _loggingService = loggingService;
     }
 
@@ -86,6 +91,14 @@ public class CommandService : ICommandService
         }
 
         return Result.Ok();
+    }
+
+    public bool ContainsCommandsOfType<T>() where T : notnull
+    {
+        lock (_lock)
+        {
+            return _commandQueue.Any(o => o is T);
+        }
     }
 
     public void RemoveCommandsOfType<T>() where T : notnull
@@ -306,6 +319,9 @@ public class CommandService : ICommandService
                             _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
                         }
                     }
+
+                    var message = new ExecutedCommandMessage(command, isUndoCommand);
+                    _messengerService.Send(message);
                 }
                 catch (Exception ex)
                 {

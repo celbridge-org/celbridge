@@ -9,6 +9,7 @@ namespace Celbridge.Project.Services;
 public class ResourceRegistry : IResourceRegistry
 {
     private readonly string _projectFolder;
+
     private FolderResource _rootFolder = new(string.Empty, null);
 
     public ObservableCollection<IResource> Resources
@@ -121,118 +122,24 @@ public class ResourceRegistry : IResourceRegistry
         return Result<IResource>.Fail($"Failed to find a resource matching the path '{resourcePath}'.");
     }
 
-    public Result UpdateRegistry()
+    public Result UpdateResourceTree()
     {
         var createResult = CreateFolderResource(_projectFolder);
         if (createResult.IsFailure)
         {
             return Result.Fail(createResult.Error);
         }
-
         var newRootFolder = createResult.Value;
 
-        UpdateFolderResource(_rootFolder, newRootFolder);
+        _rootFolder.Children.ReplaceWith(newRootFolder.Children);
+
+        // Remove any expanded folders that no longer exist
+        ExpandedFolders.Remove((expandedFolder) => 
+        {
+            return GetResource(expandedFolder).IsFailure;
+        });
 
         return Result.Ok();
-    }
-
-    /// <summary>
-    // Updates the changed parts of the resource tree, leaving unmodified parts of the tree untouched.
-    /// </summary>
-    private Result UpdateFolderResource(FolderResource oldFolderResource, FolderResource newFolderResource)
-    {
-        try
-        {
-            // Update files
-            var oldFiles = oldFolderResource.Children.OfType<FileResource>().ToList();
-            var newFiles = newFolderResource.Children.OfType<FileResource>().ToList();
-
-            // It's important to add new files before removing deleted files. 
-            // A move operation consists of deleting the old file and adding the new file.
-            // If we delete first, and this folder only contains a single item, the Tree View will observe this change
-            // and set the folder resource's Expanded property to false because the folder is (temporarily) empty.
-
-            // Add new files
-            foreach (var file in newFiles)
-            {
-                if (!oldFiles.Any(f => f.Name == file.Name))
-                {
-                    // Insert file resource in sorted order
-                    InsertResource(oldFolderResource.Children, file);
-                }
-            }
-
-            // Remove deleted files
-            foreach (var file in oldFiles)
-            {
-                if (!newFiles.Any(f => f.Name == file.Name))
-                {
-                    oldFolderResource.Children.Remove(file);
-                }
-            }
-
-            // Update folders
-            var currentFolders = oldFolderResource.Children.OfType<FolderResource>().ToList();
-            var newFolders = newFolderResource.Children.OfType<FolderResource>().ToList();
-
-            foreach (var folder in currentFolders)
-            {
-                var correspondingNewFolder = newFolders.FirstOrDefault(f => f.Name == folder.Name);
-                if (correspondingNewFolder == null)
-                {
-                    // Folder deleted
-                    oldFolderResource.Children.Remove(folder);
-                }
-                else
-                {
-                    // Folder exists, update recursively
-                    UpdateFolderResource(folder, correspondingNewFolder);
-                }
-            }
-
-            // Add new folders
-            foreach (var folder in newFolders)
-            {
-                if (!currentFolders.Any(f => f.Name == folder.Name))
-                {
-                    // Insert folder resource in sorted order
-                    InsertResource(oldFolderResource.Children, folder);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to update folder resource. {ex.Message}");
-        }
-
-        return Result.Ok();
-    }
-
-    private void InsertResource(ObservableCollection<IResource> collection, IResource resource)
-    {
-        int index = 0;
-        while (index < collection.Count)
-        {
-            IResource item = collection[index];
-
-            if (resource is FolderResource && 
-                item is not FolderResource)
-            {
-                // Folders appear before files
-                break;
-            }
-
-            if (resource.GetType() == item.GetType() && 
-                string.Compare(resource.Name, item.Name, StringComparison.InvariantCulture) < 0)
-            {
-                // Alphabetical order
-                break;
-            }
-
-            index++;
-        }
-
-        collection.Insert(index, resource);
     }
 
     private Result<FolderResource> CreateFolderResource(string path, FolderResource? parentFolder = null)
@@ -248,6 +155,10 @@ public class ResourceRegistry : IResourceRegistry
             // Create a new folder resource to represent the folder at this path
             //
             var newFolderResource = new FolderResource(Path.GetFileName(path), parentFolder);
+            var newFolderResourcePath = GetResourcePath(newFolderResource);
+
+            // Set the expanded state of the folder resource
+            newFolderResource.IsExpanded = ExpandedFolders.Contains(newFolderResourcePath);
 
             //
             // Create a new folder resource for each descendant folder and add it as a child of the new folder resource.
@@ -283,109 +194,26 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public List<string> GetExpandedFolders()
+    public List<string> ExpandedFolders { get; } = new();
+
+    public void SetFolderIsExpanded(string resourcePath, bool isExpanded)
     {
-        List<string> expandedFolders = new();
-
-        void VisitFolder(string resourcePath, FolderResource folder)
+        if (isExpanded)
         {
-            bool isRoot = folder == _rootFolder;
-
-            if (!isRoot && !folder.Expanded)
+            if (!ExpandedFolders.Contains(resourcePath))
             {
-                // Don't descend into unexpanded folders
-                return;
-            }
-
-            // Build the path to the folder (leaving out the root part).
-            string newResourcePath = string.Empty;
-            if (!isRoot)
-            {
-                if (string.IsNullOrEmpty(resourcePath))
-                {
-                    newResourcePath = folder.Name;
-                }
-                else
-                {
-                    newResourcePath = resourcePath + "/" + folder.Name;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(newResourcePath))
-            {
-                expandedFolders.Add(newResourcePath);
-            }
-            foreach (var resource in folder.Children)
-            {
-                if (resource is FolderResource childFolder)
-                {
-                    VisitFolder(newResourcePath, childFolder);
-                }
+                ExpandedFolders.Add(resourcePath);
+                ExpandedFolders.Sort();
             }
         }
-
-        VisitFolder(string.Empty, _rootFolder);
-
-        return expandedFolders;
-    }
-
-    public void SetExpandedFolders(List<string> expandedFolders)
-    {
-        // Convert the folder list to a hash set for faster lookup
-        var folderSet = new HashSet<string>(expandedFolders);
-
-        void VisitFolder(string resourcePath, FolderResource folder)
+        else
         {
-            bool isRoot = folder == _rootFolder;
-
-            // Build the path to the folder (leaving out the root part).
-            string newResourcePath = string.Empty;
-            if (!isRoot)
-            {
-                if (string.IsNullOrEmpty(resourcePath))
-                {
-                    newResourcePath = folder.Name;
-                }
-                else
-                {
-                    newResourcePath = resourcePath + "/" + folder.Name;
-                }
-            }
-
-            // Expand this folder if it's in the expanded folder set
-            if (!string.IsNullOrEmpty(newResourcePath) &&
-                folderSet.Contains(newResourcePath))
-            {
-                folder.Expanded = true;
-            }
-
-            // Recursively visit every child folder resource
-            foreach (var resource in folder.Children)
-            {
-                if (resource is FolderResource childFolder)
-                {
-                    VisitFolder(newResourcePath, childFolder);
-                }
-            }
+            ExpandedFolders.Remove(resourcePath);
         }
-
-        VisitFolder(string.Empty, _rootFolder);
     }
 
     public bool IsFolderExpanded(string resourcePath)
     {
-        var getResult = GetResource(resourcePath);
-        if (getResult.IsFailure)
-        {
-            return false;
-        }
-
-        var folderResource = getResult.Value as FolderResource;
-        if (folderResource is null)
-        {
-            return false;
-        }
-
-        return folderResource.Expanded;
+        return ExpandedFolders.Contains(resourcePath);
     }
 }

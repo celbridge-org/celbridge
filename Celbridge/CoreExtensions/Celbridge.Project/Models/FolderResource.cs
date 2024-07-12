@@ -9,7 +9,7 @@ public partial class FolderResource : Resource, IFolderResource
     public ObservableCollection<IResource> Children { get; set; }
 
     [ObservableProperty]
-    private bool _expanded = false;
+    private bool _isExpanded = false;
 
     public FolderResource(string name, FolderResource? parentFolder) 
         : base(name, parentFolder)
