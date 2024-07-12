@@ -311,6 +311,12 @@ public partial class ResourceTreeViewModel : ObservableObject
             var toResourcePath = _projectService.ResourceRegistry.GetResourcePath(newParent);
             toResourcePath = string.IsNullOrEmpty(toResourcePath) ? resource.Name : toResourcePath + "/" + resource.Name;
 
+            if (fromResourcePath == toResourcePath)
+            {
+                // Moving a resource to the same location is a no-op
+                continue;
+            }
+
             if (resource is IFileResource)
             {
                 _commandService.Execute<IMoveFileCommand>(command =>
