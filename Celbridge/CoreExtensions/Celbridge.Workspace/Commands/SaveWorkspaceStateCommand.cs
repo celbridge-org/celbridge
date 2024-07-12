@@ -29,7 +29,7 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
         // Save the current expanded folders in the Resource Tree View
         //
 
-        var expandedFolders = resourceRegistry.GetExpandedFolders();
+        var expandedFolders = resourceRegistry.ExpandedFolders;
 
         var workspaceData = workspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);

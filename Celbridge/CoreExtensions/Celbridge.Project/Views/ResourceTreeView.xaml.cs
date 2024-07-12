@@ -1,4 +1,5 @@
-﻿using Celbridge.Project.Models;
+﻿using Celbridge.BaseLibrary.Resources;
+using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -124,12 +125,20 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
-        ViewModel.OnExpandedFoldersChanged();
+        // Only folder resources can be expanded
+        if (args.Item is IFolderResource folderResource)
+        {
+            ViewModel.SetFolderIsExpanded(folderResource, true);
+        }
     }
 
     private void ResourcesTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
-        ViewModel.OnExpandedFoldersChanged();
+        // Only folder resources can be expanded
+        if (args.Item is IFolderResource folderResource)
+        {
+            ViewModel.SetFolderIsExpanded(folderResource, false);
+        }
     }
 
     private void TreeView_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -145,5 +154,32 @@ public sealed partial class ResourceTreeView : UserControl
                 ViewModel.DeleteFolder(folderResource);
             }
         }
+    }
+
+    private void ResourcesTreeView_DragItemsCompleted(TreeView sender, TreeViewDragItemsCompletedEventArgs args)
+    {
+        var draggedItems = args.Items.ToList();
+
+        // A null newParent indicates that the dragged items are being moved to the root folder
+        IFolderResource? newParent = null;
+        if (args.NewParentItem is IFileResource fileResource)
+        {
+            newParent = fileResource.ParentFolder;
+        }
+        else if (args.NewParentItem is IFolderResource folderResource)
+        {
+            newParent = folderResource;
+        }
+
+        var resources = new List<IResource>();
+        foreach (var item in draggedItems)
+        {
+            if (item is IResource resource)
+            {
+                resources.Add(resource);
+            }
+        }
+
+        ViewModel.MoveResources(resources, newParent);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -14,6 +15,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
     public string ResourcePath { get; set; } = string.Empty;
 
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly IUtilityService _utilityService;
@@ -21,12 +23,14 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public AddFolderCommand(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _utilityService = utilityService;
@@ -101,16 +105,6 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         }
 
         //
-        // Update the resource registry to include the new folder
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to add folder. {updateResult.Error}");
-        }
-
-        //
         // Expand the folder containing the newly created folder
         //
         int lastSlashIndex = ResourcePath.LastIndexOf('/');
@@ -119,13 +113,12 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             var parentFolder = ResourcePath.Substring(0, lastSlashIndex);
             if (!string.IsNullOrEmpty(parentFolder))
             {
-                var expandedFolders = new List<string>()
-                {
-                    parentFolder
-                };
-                resourceRegistry.SetExpandedFolders(expandedFolders);
+                resourceRegistry.SetFolderIsExpanded(parentFolder, true);
             }
         }
+
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
@@ -178,15 +171,8 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             return Result.Fail($"Failed to undo add folder. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to remove the folder
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to add folder. {updateResult.Error}");
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 

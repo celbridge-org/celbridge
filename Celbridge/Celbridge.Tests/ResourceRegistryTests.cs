@@ -7,6 +7,13 @@ namespace Celbridge.Tests;
 [TestFixture]
 public class ResourceRegistryTests
 {
+    private const string FolderNameA = "FolderA";
+    private const string FileNameA = "FileA.txt";
+    private const string FileNameB = "FileB.txt";
+
+    private const string FileContents = "Lorem Ipsum";
+
+
     private string? _resourceFolderPath;
 
     [SetUp]
@@ -17,27 +24,6 @@ public class ResourceRegistryTests
         {
             Directory.Delete(_resourceFolderPath, true);
         }
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        if (Directory.Exists(_resourceFolderPath))
-        {
-            Directory.Delete(_resourceFolderPath!, true);
-        }
-    }
-
-    [Test]
-    public void ICanScanFileAndFolderResources()
-    {
-        Guard.IsNotNull(_resourceFolderPath);
-
-        const string FolderNameA = "FolderA";
-        const string FileNameA = "FileA.txt";
-        const string FileNameB = "FileB.txt";
-
-        const string FileContents = "Lorem Ipsum";
 
         //
         // Create some files and folders on disk
@@ -57,17 +43,32 @@ public class ResourceRegistryTests
         var filePathB = Path.Combine(_resourceFolderPath, FolderNameA, FileNameB);
         File.WriteAllText(filePathB, FileContents);
         File.Exists(filePathB).Should().BeTrue();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_resourceFolderPath))
+        {
+            Directory.Delete(_resourceFolderPath!, true);
+        }
+    }
+
+    [Test]
+    public void ICanUpdateTheResourceTree()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
 
         //
-        // Scan the files and folders
+        // Populate the resource tree by scanning the files and folders.
         //
 
         var resourceRegistry = new ResourceRegistry(_resourceFolderPath);
-        var scanResult = resourceRegistry.UpdateRegistry();
-        scanResult.IsSuccess.Should().BeTrue();
+        var updateResult = resourceRegistry.UpdateResourceTree();
+        updateResult.IsSuccess.Should().BeTrue();
 
         //
-        // Check the scanned resources match the files we wrote earlier
+        // Check the scanned resources match the files and folders we created earlier.
         //
 
         var resources = resourceRegistry.Resources;
@@ -84,17 +85,33 @@ public class ResourceRegistryTests
 
         subFolderResource.Children.Count.Should().Be(1);
         subFolderResource.Children[0].Name.Should().Be(FileNameB);
+    }
+
+    [Test]
+    public void ICanExpandAFolderResource()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
 
         //
-        // Expand a folder and retrieve it from the registry
+        // Populate the resource tree by scanning the files and folders.
+        // Set the folder to be expanded before populating the resource tree.
         //
-        var expandedFoldersIn = new List<string>() { FolderNameA };
-        resourceRegistry.SetExpandedFolders(expandedFoldersIn);
 
-        var folderResource = (resources[0] as FolderResource)!;
-        folderResource.Expanded.Should().BeTrue();
+        var resourceRegistry = new ResourceRegistry(_resourceFolderPath);
 
-        var expandedFoldersOut = resourceRegistry.GetExpandedFolders();
+        resourceRegistry.SetFolderIsExpanded(FolderNameA, true);
+
+        var updateResult = resourceRegistry.UpdateResourceTree();
+        updateResult.IsSuccess.Should().BeTrue();
+
+        //
+        // Check that the folder resource is expanded.
+        //
+
+        var folderResource = (resourceRegistry.Resources[0] as FolderResource)!;
+        folderResource.IsExpanded.Should().BeTrue();
+
+        var expandedFoldersOut = resourceRegistry.ExpandedFolders;
         expandedFoldersOut.Count.Should().Be(1);
         expandedFoldersOut[0].Should().Be(FolderNameA);
 

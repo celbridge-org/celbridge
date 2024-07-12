@@ -1,6 +1,7 @@
 ﻿using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Utilities.Services;
@@ -19,6 +20,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
     private string _archivePath = string.Empty;
     private bool _folderWasExpanded;
 
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
     private readonly IUtilityService _utilityService;
@@ -26,12 +28,14 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public DeleteFolderCommand(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
         IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
         _utilityService = utilityService;
@@ -114,15 +118,8 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
             return Result.Fail($"Failed to delete folder. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to remove the deleted folder
-        //
-
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to delete resource. {updateResult.Error}");
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
@@ -161,21 +158,11 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
             return Result.Fail($"Failed to undo folder delete. {ex.Message}");
         }
 
-        //
-        // Update the resource registry to add the restored folder
-        //
+        // Expand the folder again if it was expanded when we deleted it
+        resourceRegistry.SetFolderIsExpanded(ResourcePath, _folderWasExpanded);
 
-        var updateResult = resourceRegistry.UpdateRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to undo folder delete. {updateResult.Error}");
-        }
-
-        if (_folderWasExpanded)
-        {
-            // Expand the folder again if it was expanded when we deleted it
-            resourceRegistry.SetExpandedFolders(new List<string>(){ ResourcePath });
-        }
+        var message = new RequestResourceTreeUpdate();
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 

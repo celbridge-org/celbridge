@@ -48,6 +48,11 @@ public interface ICommandService
     Result EnqueueCommand(IExecutableCommand command, uint Delay);
 
     /// <summary>
+    /// Returns true if a command of the given type is in the queue.
+    /// </summary>
+    bool ContainsCommandsOfType<T>() where T : notnull;
+
+    /// <summary>
     /// Removes all commands of the given type from the queue.
     /// </summary>
     void RemoveCommandsOfType<T>() where T : notnull;
