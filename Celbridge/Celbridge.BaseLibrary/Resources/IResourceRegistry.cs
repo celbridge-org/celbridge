@@ -8,7 +8,7 @@ namespace Celbridge.BaseLibrary.Resources;
 public interface IResourceRegistry
 {
     /// <summary>
-    /// An observable collection representing the resources in the project folder.
+    /// An observable collection representing the file and folder resources in the project
     /// </summary>
     ObservableCollection<IResource> Resources { get; }
 
@@ -32,18 +32,18 @@ public interface IResourceRegistry
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
-    Result UpdateRegistry();
+    Result UpdateResourceTree();
 
     /// <summary>
-    /// Returns a list of folders which the user has expanded in the resource tree view.
+    /// Returns the list of expanded folders in the resource tree.
     /// </summary>
-    List<String> GetExpandedFolders();
+    public List<string> ExpandedFolders { get; }
 
     /// <summary>
-    /// Expands the specified folders.
-    /// Any folders that are not present in the registry are ignored.
+    /// Mark a folder resource as expanded or collapsed in the resource tree.
+    /// This does not affect the IsExpanded property of the folder resource itself.
     /// </summary>
-    void SetExpandedFolders(List<string> expandedFolders);
+    void SetFolderIsExpanded(string resourcePath, bool isExpanded);
 
     /// <summary>
     /// Returns true if the folder at the specified resource path is expanded.

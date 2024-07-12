@@ -30,6 +30,6 @@ public partial class ProjectPanelViewModel : ObservableObject
     public ICommand RefreshResourceTreeCommand => new RelayCommand(RefreshResourceTreeCommand_ExecuteAsync);
     private void RefreshResourceTreeCommand_ExecuteAsync()
     {
-        _commandService.Execute<IRefreshResourceTreeCommand>();
+        _commandService.Execute<IUpdateResourceTreeCommand>();
     }
 }

@@ -62,7 +62,7 @@
 					  x:DataType="models:FolderResource">
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
 							   ItemsSource="{x:Bind Children, Mode=OneWay}"
-							   IsExpanded="{x:Bind Expanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+							   IsExpanded="{x:Bind IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                ContextFlyout="{StaticResource FolderResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
