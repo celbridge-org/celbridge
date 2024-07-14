@@ -45,13 +45,13 @@
             </MenuFlyoutSubItem>
             <MenuFlyoutSubItem Text="{x:Bind EditString}">
                 <MenuFlyoutItem Text="{x:Bind CutString}" 
-                                Icon="Delete"
+                                Icon="Cut"
                                 Click="CutResource"/>
                 <MenuFlyoutItem Text="{x:Bind CopyString}" 
-                                Icon="Delete"
+                                Icon="Copy"
                                 Click="CopyResource"/>
                 <MenuFlyoutItem Text="{x:Bind PasteString}" 
-                                Icon="Delete"
+                                Icon="Paste"
                                 Click="PasteResource"/>
                 <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                                 Icon="Delete"
