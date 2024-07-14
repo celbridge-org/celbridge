@@ -15,47 +15,63 @@
 
         <MenuFlyout x:Name="FolderResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
-                            Icon="Folder"
-                            Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
-                            Icon="Add"
-                            Click="AddFile"/>
-            <MenuFlyoutItem Text="{x:Bind RenameString}" 
-                            Icon="Edit"
-                            Click="RenameResource"/>
-            <MenuFlyoutItem Text="{x:Bind DeleteString}" 
-                            Icon="Delete"
-                            Click="DeleteResource"/>
+            <MenuFlyoutSubItem Text="{x:Bind AddString}">
+                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+                                Icon="Folder"
+                                Click="AddFolder"/>
+                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                                Icon="Add"
+                                Click="AddFile"/>
+            </MenuFlyoutSubItem>
+            <MenuFlyoutSubItem Text="{x:Bind EditString}">
+                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
+                                Icon="Delete"
+                                Click="DeleteResource"/>
+                <MenuFlyoutItem Text="{x:Bind RenameString}" 
+                                Icon="Edit"
+                                Click="RenameResource"/>
+            </MenuFlyoutSubItem>
         </MenuFlyout>
 
         <MenuFlyout x:Name="FileResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="Open" 
-                            Icon="OpenFile"
-                            Click="OpenResource"/>
-            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+            <MenuFlyoutSubItem Text="{x:Bind AddString}">
+                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
-                            Icon="Add"
-                            Click="AddFile"/>
-            <MenuFlyoutItem Text="{x:Bind RenameString}" 
-                            Icon="Edit"
-                            Click="RenameResource"/>
-            <MenuFlyoutItem Text="{x:Bind DeleteString}" 
-                            Icon="Delete"
-                            Click="DeleteResource"/>
+                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                                Icon="Add"
+                                Click="AddFile"/>
+            </MenuFlyoutSubItem>
+            <MenuFlyoutSubItem Text="{x:Bind EditString}">
+                <MenuFlyoutItem Text="{x:Bind CutString}" 
+                                Icon="Delete"
+                                Click="CutResource"/>
+                <MenuFlyoutItem Text="{x:Bind CopyString}" 
+                                Icon="Delete"
+                                Click="CopyResource"/>
+                <MenuFlyoutItem Text="{x:Bind PasteString}" 
+                                Icon="Delete"
+                                Click="PasteResource"/>
+                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
+                                Icon="Delete"
+                                Click="DeleteResource"/>
+                <MenuFlyoutItem Text="{x:Bind RenameString}" 
+                                Icon="Edit"
+                                Click="RenameResource"/>
+            </MenuFlyoutSubItem>
         </MenuFlyout>
 
         <MenuFlyout x:Name="EmptyAreaContextMenu"
                     Placement="RightEdgeAlignedTop">
-            <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
-                            Icon="Folder"
-                            Click="AddFolder"/>
-            <MenuFlyoutItem Text="{x:Bind AddFileString}" 
-                            Icon="Add"
-                            Click="AddFile"/>
+            <MenuFlyoutSubItem Text="{x:Bind AddString}">
+                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+                                Icon="Folder"
+                                Click="AddFolder"/>
+                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                                Icon="Add"
+                                Click="AddFile"/>
+            </MenuFlyoutSubItem>
         </MenuFlyout>
 
         <DataTemplate x:Key="FolderTemplate"
