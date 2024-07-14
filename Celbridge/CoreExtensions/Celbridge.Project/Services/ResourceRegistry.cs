@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Resources;
 using Celbridge.Project.Models;
 using CommunityToolkit.Diagnostics;
-using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Celbridge.Project.Services;
@@ -10,15 +9,7 @@ public class ResourceRegistry : IResourceRegistry
 {
     private readonly string _projectFolder;
 
-    private FolderResource _rootFolder = new(string.Empty, null);
-
-    public ObservableCollection<IResource> Resources
-    {
-        get
-        {
-            return _rootFolder.Children;
-        }
-    }
+    public IFolderResource RootFolder { get; } = new FolderResource(string.Empty, null);
 
     public ResourceRegistry(string projectFolder)
     {
@@ -71,11 +62,11 @@ public class ResourceRegistry : IResourceRegistry
         if (string.IsNullOrEmpty(resourcePath))
         {
             // An empty resource path refers to the root folder
-            return Result<IResource>.Ok(_rootFolder);
+            return Result<IResource>.Ok(RootFolder);
         }
 
         var segments = resourcePath.Split('/');
-        var rootFolderResource = _rootFolder;
+        var rootFolderResource = RootFolder;
 
         // Attempt to match each path segment with the corresponding resource in the tree
         var segmentIndex = 0;
@@ -131,7 +122,7 @@ public class ResourceRegistry : IResourceRegistry
         }
         var newRootFolder = createResult.Value;
 
-        _rootFolder.Children.ReplaceWith(newRootFolder.Children);
+        RootFolder.Children.ReplaceWith(newRootFolder.Children);
 
         // Remove any expanded folders that no longer exist
         ExpandedFolders.Remove((expandedFolder) => 
