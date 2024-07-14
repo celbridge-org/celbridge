@@ -9,6 +9,8 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -20,7 +22,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
-    public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.Resources;
+    public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
 
     private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
     private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
@@ -175,6 +177,86 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         _ = ShowDialogAsync();
+    }
+
+    public void CutResource(IResource resource)
+    {
+    }
+
+    public void CopyResource(IResource resource)
+    {
+        //async Task CopyFile(string filePath)
+        //{
+        //    StorageFile file = await StorageFile.GetFileFromPathAsync(filePath);
+        //    if (file != null)
+        //    {
+        //        var dataPackage = new DataPackage();
+        //        dataPackage.RequestedOperation = DataPackageOperation.Copy;
+
+        //        List<IStorageItem> items = new List<IStorageItem>();
+        //        items.Add(file);
+        //        dataPackage.SetStorageItems(items);
+
+        //        Clipboard.SetContent(dataPackage);
+        //        Clipboard.Flush();
+        //    }
+        //}
+
+        //var path = _projectService.ResourceRegistry.GetPath(resource);
+        //if (string.IsNullOrEmpty(path))
+        //{
+        //    return;
+        //}
+
+        //if (resource is IFileResource)
+        //{
+        //    _ = CopyFile(path);
+        //}
+    }
+
+    public void PasteResource(IResource resource)
+    {
+        //async Task PasteFile(string folderPath)
+        //{
+        //    DataPackageView dataPackageView = Clipboard.GetContent();
+        //    if (dataPackageView.Contains(StandardDataFormats.StorageItems))
+        //    {
+        //        IReadOnlyList<IStorageItem> storageItems = await dataPackageView.GetStorageItemsAsync();
+
+        //        if (storageItems.Count > 0)
+        //        {
+        //            var storageFile = storageItems[0] as StorageFile;
+        //            if (storageFile != null)
+        //            {
+        //                // Save the file to the parent folder
+        //                var sourcePath = storageFile.Path;
+        //                //File.Copy(sourcePath, folderPath);
+        //            }
+        //        }
+        //    }
+        //}
+
+        //IFolderResource parentFolder;
+        //if (resource is IFileResource fileResource)
+        //{
+        //    parentFolder = fileResource.ParentFolder!;
+        //}
+        //else if (resource is IFolderResource folderResource)
+        //{
+        //    parentFolder = folderResource;
+        //}
+        //else
+        //{
+        //    parentFolder = _projectService.ResourceRegistry.RootFolder;
+        //}
+
+        //var folderPath = _projectService.ResourceRegistry.GetPath(parentFolder);
+        //if (string.IsNullOrEmpty(folderPath))
+        //{
+        //    return;
+        //}
+
+        //_ = PasteFile(folderPath);
     }
 
     public void DeleteFolder(FolderResource folderResource)
