@@ -80,15 +80,15 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void SetFolderIsExpanded(IFolderResource folderResource, bool isExpanded)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourcePath = resourceRegistry.GetResourcePath(folderResource);
+        var resourceKey = resourceRegistry.GetResourceKey(folderResource);
 
-        bool currentState = resourceRegistry.IsFolderExpanded(resourcePath);
+        bool currentState = resourceRegistry.IsFolderExpanded(resourceKey);
         if (currentState == isExpanded)
         {
             return;
         }
 
-        resourceRegistry.SetFolderIsExpanded(resourcePath, isExpanded);
+        resourceRegistry.SetFolderIsExpanded(resourceKey, isExpanded);
 
         // Save the workspace data (with a delay) to ensure the new expanded state is persisted
         _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
@@ -106,7 +106,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         var resourceRegistry = _projectService.ResourceRegistry;
-        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
+        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourceKey(parentFolder);
 
         async Task ShowDialogAsync()
         {
@@ -126,8 +126,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 // Execute a command to add the folder resource
-                var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFolderCommand>(command => command.ResourcePath = resourcePath);
+                var resourceKey = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
+                _commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = resourceKey);
 
                 // Execute a command to update the resource tree
                 _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -148,7 +148,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         var resourceRegistry = _projectService.ResourceRegistry;
-        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourcePath(parentFolder);
+        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourceKey(parentFolder);
 
         async Task ShowDialogAsync()
         {
@@ -168,8 +168,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 // Execute a command to add the file resource
-                var resourcePath = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFileCommand>(command => command.ResourcePath = resourcePath);
+                var resourceKey = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
+                _commandService.Execute<IAddFileCommand>(command => command.ResourceKey = resourceKey);
 
                 // Execute a command to update the resource tree
                 _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -262,7 +262,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void DeleteFolder(FolderResource folderResource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourcePath = resourceRegistry.GetResourcePath(folderResource);
+        var resourceKey = resourceRegistry.GetResourceKey(folderResource);
 
         var resourceName = folderResource.Name;
         var confirmDeleteFolderString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFolder", resourceName);
@@ -276,7 +276,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                 if (confirmed)
                 {
                     // Execute a command to delete the folder resource
-                    _commandService.Execute<IDeleteFolderCommand>(command => command.ResourcePath = resourcePath);
+                    _commandService.Execute<IDeleteFolderCommand>(command => command.ResourceKey = resourceKey);
 
                     // Execute a command to update the resource tree
                     _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -290,7 +290,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void DeleteFile(FileResource fileResource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourcePath = resourceRegistry.GetResourcePath(fileResource);
+        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
 
         var resourceName = fileResource.Name;
         var confirmDeleteFileString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFile", resourceName);
@@ -304,7 +304,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                 if (confirmed)
                 {
                     // Execute a command to delete the file resource
-                    _commandService.Execute<IDeleteFileCommand>(command => command.ResourcePath = resourcePath);
+                    _commandService.Execute<IDeleteFileCommand>(command => command.ResourceKey = resourceKey);
 
                     // Execute a command to update the resource tree
                     _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -318,7 +318,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void RenameFolder(FolderResource folderResource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourcePath = resourceRegistry.GetResourcePath(folderResource);
+        var resourceKey = resourceRegistry.GetResourceKey(folderResource);
 
         var resourceName = folderResource.Name;
 
@@ -342,15 +342,15 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 var inputText = showResult.Value;
 
-                var fromResourcePath = resourcePath;
-                var toResourcePath = Path.GetDirectoryName(resourcePath);
-                toResourcePath = string.IsNullOrEmpty(toResourcePath) ? inputText : toResourcePath + "/" + inputText;
+                var fromResourceKey = resourceKey;
+                var toResourceKey = resourceRegistry.GetParentResourceKey(resourceKey);
+                toResourceKey = string.IsNullOrEmpty(toResourceKey) ? inputText : toResourceKey + "/" + inputText;
 
                 // Execute a command to move the folder resource to perform the rename
                 _commandService.Execute<IMoveFolderCommand>(command =>
                 {
-                    command.FromResourcePath = fromResourcePath;
-                    command.ToResourcePath = toResourcePath;
+                    command.FromResourceKey = fromResourceKey;
+                    command.ToResourceKey = toResourceKey;
                 });
 
                 // Execute a command to update the resource tree
@@ -364,7 +364,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void RenameFile(FileResource fileResource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourcePath = resourceRegistry.GetResourcePath(fileResource);
+        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
 
         var resourceName = fileResource.Name;
 
@@ -389,15 +389,15 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 var inputText = showResult.Value;
 
-                var fromResourcePath = resourcePath;
-                var toResourcePath = Path.GetDirectoryName(resourcePath);
-                toResourcePath = string.IsNullOrEmpty(toResourcePath) ? inputText : toResourcePath + "/" + inputText;
+                var fromResourceKey = resourceKey;
+                var toResourceKey = resourceRegistry.GetParentResourceKey(resourceKey);
+                toResourceKey = string.IsNullOrEmpty(toResourceKey) ? inputText : toResourceKey + "/" + inputText;
 
                 // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<IMoveFileCommand>(command =>
                 {
-                    command.FromResourcePath = fromResourcePath;
-                    command.ToResourcePath = toResourcePath;
+                    command.FromResourceKey = fromResourceKey;
+                    command.ToResourceKey = toResourceKey;
                 });
 
                 // Execute a command to update the resource tree
@@ -451,11 +451,11 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         foreach (var resource in resources)
         {
-            var fromResourcePath = _projectService.ResourceRegistry.GetResourcePath(resource);
-            var toResourcePath = _projectService.ResourceRegistry.GetResourcePath(newParent);
-            toResourcePath = string.IsNullOrEmpty(toResourcePath) ? resource.Name : toResourcePath + "/" + resource.Name;
+            var fromResourceKey = _projectService.ResourceRegistry.GetResourceKey(resource);
+            var toResourceKey = _projectService.ResourceRegistry.GetResourceKey(newParent);
+            toResourceKey = string.IsNullOrEmpty(toResourceKey) ? resource.Name : toResourceKey + "/" + resource.Name;
 
-            if (fromResourcePath == toResourcePath)
+            if (fromResourceKey == toResourceKey)
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
@@ -467,16 +467,16 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 _commandService.Execute<IMoveFileCommand>(command =>
                 {
-                    command.FromResourcePath = fromResourcePath;
-                    command.ToResourcePath = toResourcePath;
+                    command.FromResourceKey = fromResourceKey;
+                    command.ToResourceKey = toResourceKey;
                 });
             }
             else if (resource is IFolderResource)
             {
                 _commandService.Execute<IMoveFolderCommand>(command =>
                 {
-                    command.FromResourcePath = fromResourcePath;
-                    command.ToResourcePath = toResourcePath;
+                    command.FromResourceKey = fromResourceKey;
+                    command.ToResourceKey = toResourceKey;
                 });
             }
         }

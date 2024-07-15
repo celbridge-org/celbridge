@@ -8,7 +8,7 @@ namespace Celbridge.BaseLibrary.Project;
 public interface IAddFileCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource path for the new file to create.
+    /// Resource key for the new file to create.
     /// </summary>
-    string ResourcePath { get; set; }
+    string ResourceKey { get; set; }
 }

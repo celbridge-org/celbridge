@@ -8,12 +8,12 @@ namespace Celbridge.BaseLibrary.Project;
 public interface IMoveFileCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource path of the file to be moved.
+    /// Resource key of the file to be moved.
     /// </summary>
-    string FromResourcePath { get; set; }
+    string FromResourceKey { get; set; }
 
     /// <summary>
-    /// Resource path to move the file to.
+    /// Resource key to move the file to.
     /// </summary>
-    string ToResourcePath { get; set; }
+    string ToResourceKey { get; set; }
 }
