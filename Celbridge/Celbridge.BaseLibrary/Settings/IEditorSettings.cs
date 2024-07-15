@@ -21,7 +21,7 @@ public interface IEditorSettings : INotifyPropertyChanged
 
     float DetailPanelHeight { get; set; }
 
-    string PreviousNewProjectFolder { get; set; }
+    string PreviousNewProjectFolderPath { get; set; }
 
     string PreviousLoadedProject { get; set; }
 

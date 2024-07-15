@@ -49,7 +49,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .PlaceholderText(ProjectFolderPlaceholderString)
                     .Margin(4)
                     .IsSpellCheckEnabled(false)
-                    .Text(x => x.Bind(() => ViewModel.ProjectFolder)
+                    .Text(x => x.Bind(() => ViewModel.ProjectFolderPath)
                         .Mode(BindingMode.TwoWay)
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)),
                 new Button()

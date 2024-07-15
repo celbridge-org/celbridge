@@ -1,28 +1,19 @@
 ﻿using Celbridge.BaseLibrary.Resources;
 using Celbridge.Project.Models;
 using CommunityToolkit.Diagnostics;
-using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Celbridge.Project.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
-    private readonly string _projectFolder;
+    private readonly string _projectFolderPath;
 
-    private FolderResource _rootFolder = new(string.Empty, null);
+    public IFolderResource RootFolder { get; } = new FolderResource(string.Empty, null);
 
-    public ObservableCollection<IResource> Resources
+    public ResourceRegistry(string projectFolderPath)
     {
-        get
-        {
-            return _rootFolder.Children;
-        }
-    }
-
-    public ResourceRegistry(string projectFolder)
-    {
-        _projectFolder = projectFolder;
+        _projectFolderPath = projectFolderPath;
     }
 
     public string GetResourcePath(IResource resource)
@@ -60,7 +51,7 @@ public class ResourceRegistry : IResourceRegistry
     {
         var resourcePath = GetResourcePath(resource);
 
-        var path = Path.Combine(_projectFolder, resourcePath);
+        var path = Path.Combine(_projectFolderPath, resourcePath);
 
         // Unify directory separators
         return Path.GetFullPath(path);
@@ -71,11 +62,11 @@ public class ResourceRegistry : IResourceRegistry
         if (string.IsNullOrEmpty(resourcePath))
         {
             // An empty resource path refers to the root folder
-            return Result<IResource>.Ok(_rootFolder);
+            return Result<IResource>.Ok(RootFolder);
         }
 
         var segments = resourcePath.Split('/');
-        var rootFolderResource = _rootFolder;
+        var rootFolderResource = RootFolder;
 
         // Attempt to match each path segment with the corresponding resource in the tree
         var segmentIndex = 0;
@@ -122,16 +113,33 @@ public class ResourceRegistry : IResourceRegistry
         return Result<IResource>.Fail($"Failed to find a resource matching the path '{resourcePath}'.");
     }
 
+    public string GetResourcePathParent(string resourcePath)
+    {
+        if (string.IsNullOrEmpty(resourcePath))
+        {
+            return string.Empty;
+        }
+
+        int lastSlashIndex = resourcePath.LastIndexOf('/');
+
+        if (lastSlashIndex == -1)
+        {
+            return string.Empty;
+        }
+
+        return resourcePath.Substring(0, lastSlashIndex);
+    }
+
     public Result UpdateResourceTree()
     {
-        var createResult = CreateFolderResource(_projectFolder);
+        var createResult = CreateFolderResource(_projectFolderPath);
         if (createResult.IsFailure)
         {
             return Result.Fail(createResult.Error);
         }
         var newRootFolder = createResult.Value;
 
-        _rootFolder.Children.ReplaceWith(newRootFolder.Children);
+        RootFolder.Children.ReplaceWith(newRootFolder.Children);
 
         // Remove any expanded folders that no longer exist
         ExpandedFolders.Remove((expandedFolder) => 

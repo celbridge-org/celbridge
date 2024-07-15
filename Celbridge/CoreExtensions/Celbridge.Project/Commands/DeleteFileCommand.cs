@@ -83,8 +83,8 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var deleteFilePath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var deleteFilePath = Path.Combine(projectFolderPath, ResourcePath);
             deleteFilePath = Path.GetFullPath(deleteFilePath); // Make separators consistent
 
             if (!File.Exists(deleteFilePath))
@@ -138,11 +138,11 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         var loadedProjectData = _projectDataService.LoadedProjectData;
         Guard.IsNotNull(loadedProjectData);
 
-        var projectFolder = loadedProjectData.ProjectFolder;
+        var projectFolderPath = loadedProjectData.ProjectFolderPath;
 
         try
         {
-            ZipFile.ExtractToDirectory(_archivePath, projectFolder);
+            ZipFile.ExtractToDirectory(_archivePath, projectFolderPath);
             File.Delete(_archivePath);
             _archivePath = string.Empty;
         }

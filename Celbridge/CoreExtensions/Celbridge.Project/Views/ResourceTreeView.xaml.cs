@@ -12,8 +12,13 @@ public sealed partial class ResourceTreeView : UserControl
     private readonly IStringLocalizer _stringLocalizer;
 
     public ResourceTreeViewModel ViewModel { get; }
+    private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
     private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
     private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString EditString => _stringLocalizer.GetString("ResourceTree_Edit");
+    private LocalizedString CutString => _stringLocalizer.GetString("ResourceTree_Cut");
+    private LocalizedString CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
+    private LocalizedString PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private LocalizedString RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
 
@@ -34,12 +39,12 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
+        if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a folder to the selected folder
             ViewModel.AddFolder(folderResource);
         }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
             // Add a folder to the folder containing the selected file
             var parentFolder = fileResource.ParentFolder;
@@ -59,12 +64,12 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
+        if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a file to the selected folder
             ViewModel.AddFile(folderResource);
         }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
+        else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
             // Add a file to the folder containing the selected file
             var parentFolder = fileResource.ParentFolder;
@@ -77,6 +82,39 @@ public sealed partial class ResourceTreeView : UserControl
             // Add a file resource to the root folder
             ViewModel.AddFile(null);
         }
+    }
+
+    private void CutResource(object sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.CutResource(resource);
+    }
+
+    private void CopyResource(object sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.CopyResource(resource);
+    }
+
+    private void PasteResource(object sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.PasteResource(resource);
     }
 
     private void DeleteResource(object? sender, RoutedEventArgs e)

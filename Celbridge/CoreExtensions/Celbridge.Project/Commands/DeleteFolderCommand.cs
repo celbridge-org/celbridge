@@ -18,6 +18,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
     public string ResourcePath { get; set; } = string.Empty;
 
     private string _archivePath = string.Empty;
+    private bool _folderWasEmpty;
     private bool _folderWasExpanded;
 
     private readonly IMessengerService _messengerService;
@@ -86,8 +87,8 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var deleteFolderPath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var deleteFolderPath = Path.Combine(projectFolderPath, ResourcePath);
             deleteFolderPath = Path.GetFullPath(deleteFolderPath); // Make separators consistent
 
             if (!Directory.Exists(deleteFolderPath))
@@ -95,18 +96,30 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
                 return Result.Fail($"Failed to delete folder. Folder does not exist: {deleteFolderPath}");
             }
 
-            // Generate a random file name for the archive
-            _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
-            if (File.Exists(_archivePath))
+            // Get the list of files and subdirectories in the folder
+            var files = Directory.GetFiles(deleteFolderPath);
+            var directories = Directory.GetDirectories(deleteFolderPath);
+            if (files.Length == 0 && directories.Length == 0)
             {
-                File.Delete(_archivePath);
+                // There's no point archiving an empty folder, set a flag instead.
+                _folderWasEmpty = true;
             }
+            else
+            {
+                // Backup the folder to a zip archive so we can restore it if the user undoes the delete
+                // Generate a random file name for the archive
+                _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
+                if (File.Exists(_archivePath))
+                {
+                    File.Delete(_archivePath);
+                }
 
-            var archiveFolder = Path.GetDirectoryName(_archivePath)!;
-            Directory.CreateDirectory(archiveFolder);
+                var archiveFolder = Path.GetDirectoryName(_archivePath)!;
+                Directory.CreateDirectory(archiveFolder);
 
-            // Archive the folder to temporary storage so we can undo the command
-            ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
+                // Archive the folder to temporary storage so we can undo the command
+                ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
+            }
 
             // Record if the folder was expanded so we can expand it again in the undo if needed
             _folderWasExpanded = resourceRegistry.IsFolderExpanded(ResourcePath);
@@ -133,25 +146,33 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
             return Result.Fail($"Failed to undo folder delete. Workspace is not loaded");
         }
 
-        if (!File.Exists(_archivePath))
-        {
-            return Result.Fail($"Failed to undo folder delete. Archive does not exist: {_archivePath}");
-        }
-
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
         Guard.IsNotNull(loadedProjectData);
 
-        var projectFolder = loadedProjectData.ProjectFolder;
+        var projectFolderPath = loadedProjectData.ProjectFolderPath;
 
         try
         {
-            var extractDirectory = Path.GetFullPath(Path.Combine(projectFolder, ResourcePath));
+            var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, ResourcePath));
 
-            ZipFile.ExtractToDirectory(_archivePath, extractDirectory);
-            File.Delete(_archivePath);
-            _archivePath = string.Empty;
+            if (_folderWasEmpty)
+            {
+                Directory.CreateDirectory(folderPath);
+                _folderWasEmpty = false;
+            }
+            else
+            {
+                if (!File.Exists(_archivePath))
+                {
+                    return Result.Fail($"Failed to undo folder delete. Archive does not exist: {_archivePath}");
+                }
+
+                ZipFile.ExtractToDirectory(_archivePath, folderPath);
+                File.Delete(_archivePath);
+                _archivePath = string.Empty;
+            }
         }
         catch (Exception ex)
         {
