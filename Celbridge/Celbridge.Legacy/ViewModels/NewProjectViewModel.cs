@@ -47,7 +47,7 @@ public partial class NewProjectViewModel : ObservableObject
         // There's no cross-platform way to get the path to the documents folder on Uno Platform.
         // The best we can do is persist the most recent folder that the user picked.
         Guard.IsNotNull(_settingsService.EditorSettings);
-        ProjectFolder = _settingsService.EditorSettings.PreviousNewProjectFolder;
+        ProjectFolder = _settingsService.EditorSettings.PreviousNewProjectFolderPath;
     }
 
     private async Task PickFolder_Executed()
@@ -70,7 +70,7 @@ public partial class NewProjectViewModel : ObservableObject
 
         // Remember project folder for next time
         Guard.IsNotNull(_settingsService.EditorSettings);
-        _settingsService.EditorSettings.PreviousNewProjectFolder = ProjectFolder;
+        _settingsService.EditorSettings.PreviousNewProjectFolderPath = ProjectFolder;
 
         var projectPath = createResult.Data!;
 

@@ -112,10 +112,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var folderPathA = Path.Combine(projectFolder, resourcePathA);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var folderPathA = Path.Combine(projectFolderPath, resourcePathA);
             folderPathA = Path.GetFullPath(folderPathA); // Make separators consistent
-            var folderPathB = Path.Combine(projectFolder, resourcePathB);
+            var folderPathB = Path.Combine(projectFolderPath, resourcePathB);
             folderPathB = Path.GetFullPath(folderPathB);
 
             if (!Directory.Exists(folderPathA))

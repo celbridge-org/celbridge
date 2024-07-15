@@ -18,7 +18,7 @@ public interface IProjectData
     /// <summary>
     /// Returns the path to the folder containing the loaded project.
     /// </summary>
-    string ProjectFolder { get; }
+    string ProjectFolderPath { get; }
 
     /// <summary>
     /// Returns the path to the loaded project database.

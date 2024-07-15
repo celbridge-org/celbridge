@@ -10,15 +10,15 @@ public class ProjectDataTests
 {
     private IProjectDataService? _projectDataService;
 
-    private string? _projectFolder;
+    private string? _projectFolderPath;
 
     [SetUp]
     public void Setup()
     {
-        _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ProjectDataTests)}");
-        if (Directory.Exists(_projectFolder))
+        _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ProjectDataTests)}");
+        if (Directory.Exists(_projectFolderPath))
         {
-            Directory.Delete(_projectFolder, true);
+            Directory.Delete(_projectFolderPath, true);
         }
 
         var utilityService = new UtilityService();
@@ -28,9 +28,9 @@ public class ProjectDataTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_projectFolder))
+        if (Directory.Exists(_projectFolderPath))
         {
-            Directory.Delete(_projectFolder!, true);
+            Directory.Delete(_projectFolderPath!, true);
         }
     }
 
@@ -38,9 +38,9 @@ public class ProjectDataTests
     public async Task ICanCreateAndLoadProjectDataAsync()
     {
         Guard.IsNotNull(_projectDataService);
-        Guard.IsNotNullOrEmpty(_projectFolder);
+        Guard.IsNotNullOrEmpty(_projectFolderPath);
 
-        var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolder);
+        var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolderPath);
         var projectFilePath = newProjectConfig.ProjectFilePath;
 
         var createResult = await _projectDataService.CreateProjectDataAsync(newProjectConfig);
@@ -71,7 +71,7 @@ public class ProjectDataTests
         // Delete the project database files
         //
 
-        Directory.Delete(_projectFolder, true);
+        Directory.Delete(_projectFolderPath, true);
         File.Exists(projectFilePath).Should().BeFalse();
     }
 
@@ -79,16 +79,16 @@ public class ProjectDataTests
     public void ICanValidateANewProjectConfig()
     {
         Guard.IsNotNull(_projectDataService);
-        Guard.IsNotNullOrEmpty(_projectFolder);
+        Guard.IsNotNullOrEmpty(_projectFolderPath);
 
         { 
-            var config = new NewProjectConfig("TestProjectA", _projectFolder);
+            var config = new NewProjectConfig("TestProjectA", _projectFolderPath);
             var result = _projectDataService.ValidateNewProjectConfig(config);
             result.IsSuccess.Should().BeTrue();
         }
 
         {
-            var config = new NewProjectConfig("Test/ProjectA", _projectFolder);
+            var config = new NewProjectConfig("Test/ProjectA", _projectFolderPath);
             var result = _projectDataService.ValidateNewProjectConfig(config);
             result.IsSuccess.Should().BeFalse();
         }

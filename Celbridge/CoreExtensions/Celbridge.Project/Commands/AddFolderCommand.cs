@@ -86,8 +86,8 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var newFolderPath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var newFolderPath = Path.Combine(projectFolderPath, ResourcePath);
             newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
             // It's important to fail if the folder already exists, because undoing this command
@@ -155,8 +155,8 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var newFolderPath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var newFolderPath = Path.Combine(projectFolderPath, ResourcePath);
             newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
             if (!Directory.Exists(newFolderPath))

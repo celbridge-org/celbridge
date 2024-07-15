@@ -50,10 +50,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(DetailPanelHeight), value);
     }
 
-    public string PreviousNewProjectFolder
+    public string PreviousNewProjectFolderPath
     {
-        get => GetValue<string>(nameof(PreviousNewProjectFolder), string.Empty);
-        set => SetValue(nameof(PreviousNewProjectFolder), value);
+        get => GetValue<string>(nameof(PreviousNewProjectFolderPath), string.Empty);
+        set => SetValue(nameof(PreviousNewProjectFolderPath), value);
     }
 
     public string PreviousLoadedProject

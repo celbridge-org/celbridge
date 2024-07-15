@@ -12,7 +12,7 @@ public class ProjectData : IDisposable, IProjectData
 
     public string ProjectName { get; init; }
     public string ProjectFilePath { get; init; }
-    public string ProjectFolder { get; init; }
+    public string ProjectFolderPath { get; init; }
     public string DatabasePath { get; init; }
 
     private ProjectData(string projectFilePath, string databasePath)
@@ -23,8 +23,8 @@ public class ProjectData : IDisposable, IProjectData
         ProjectName = Path.GetFileNameWithoutExtension(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(ProjectName);
 
-        ProjectFolder = Path.GetDirectoryName(projectFilePath)!;
-        Guard.IsNotNullOrWhiteSpace(ProjectFolder);
+        ProjectFolderPath = Path.GetDirectoryName(projectFilePath)!;
+        Guard.IsNotNullOrWhiteSpace(ProjectFolderPath);
 
         ProjectFilePath = projectFilePath;
         DatabasePath = databasePath;
