@@ -115,7 +115,7 @@ public class ResourceRegistryTests
         expandedFoldersOut.Count.Should().Be(1);
         expandedFoldersOut[0].Should().Be(FolderNameA);
 
-        var folderPath = resourceRegistry.GetResourcePath(folderResource);
+        var folderPath = resourceRegistry.GetResourceKey(folderResource);
         resourceRegistry.IsFolderExpanded(folderPath).Should().BeTrue();
     }
 }
