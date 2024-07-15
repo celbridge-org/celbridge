@@ -26,7 +26,6 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
-        IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
@@ -52,6 +51,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;
@@ -72,6 +75,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;

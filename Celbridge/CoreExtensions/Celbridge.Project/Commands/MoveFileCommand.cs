@@ -50,6 +50,10 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;
@@ -70,6 +74,10 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;
