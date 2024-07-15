@@ -12,8 +12,8 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FromResourceKey { get; set; } = string.Empty;
-    public string ToResourceKey { get; set; } = string.Empty;
+    public ResourceKey FromResourceKey { get; set; } = new();
+    public ResourceKey ToResourceKey { get; set; } = new();
     public bool ExpandMovedFolder { get; set; } = false;
 
     private readonly IMessengerService _messengerService;
@@ -87,7 +87,7 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     /// <summary>
     /// Move the folder at resourceKeyA to resourceKeyB.
     /// </summary>
-    private async Task<Result> MoveFolderInternal(string resourceKeyA, string resourceKeyB)
+    private async Task<Result> MoveFolderInternal(ResourceKey resourceKeyA, ResourceKey resourceKeyB)
     {
         if (resourceKeyA == resourceKeyB)
         {
@@ -105,8 +105,8 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         // Validate the folder resource keys
         //
 
-        if (string.IsNullOrEmpty(resourceKeyA) ||
-            string.IsNullOrEmpty(resourceKeyB))
+        if (resourceKeyA.IsEmpty ||
+            resourceKeyB.IsEmpty)
         {
             return Result.Fail("Failed to move folder. Resource key is empty.");
         }
@@ -141,8 +141,8 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         }
 
         // Expand the parent folder of the moved folder so that the user can see it in the tree view.
-        var newParentFolder = resourceRegistry.GetParentResourceKey(resourceKeyB);
-        if (!string.IsNullOrEmpty(newParentFolder))
+        var newParentFolder = resourceKeyB.GetParent();
+        if (!newParentFolder.IsEmpty)
         {
             resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
         }

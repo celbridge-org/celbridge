@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Resources;
 
 namespace Celbridge.BaseLibrary.Project;
 
@@ -10,5 +11,5 @@ public interface IAddFileCommand : IExecutableCommand
     /// <summary>
     /// Resource key for the new file to create.
     /// </summary>
-    string ResourceKey { get; set; }
+    ResourceKey ResourceKey { get; set; }
 }
