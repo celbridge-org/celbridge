@@ -93,19 +93,6 @@ public partial class ResourceTreeViewModel
         //    }
         //}
 
-        //IFolderResource parentFolder;
-        //if (resource is IFileResource fileResource)
-        //{
-        //    parentFolder = fileResource.ParentFolder!;
-        //}
-        //else if (resource is IFolderResource folderResource)
-        //{
-        //    parentFolder = folderResource;
-        //}
-        //else
-        //{
-        //    parentFolder = _projectService.ResourceRegistry.RootFolder;
-        //}
 
         //var folderPath = _projectService.ResourceRegistry.GetPath(parentFolder);
         //if (string.IsNullOrEmpty(folderPath))
@@ -114,5 +101,41 @@ public partial class ResourceTreeViewModel
         //}
 
         //_ = PasteFile(folderPath);
+
+        async Task PasteResourceFromClipboard(IFolderResource parentFolder)
+        {
+            //    DataPackageView dataPackageView = Clipboard.GetContent();
+            //    if (dataPackageView.Contains(StandardDataFormats.StorageItems))
+            //    {
+            //        IReadOnlyList<IStorageItem> storageItems = await dataPackageView.GetStorageItemsAsync();
+
+            //        if (storageItems.Count > 0)
+            //        {
+            //            var storageFile = storageItems[0] as StorageFile;
+            //            if (storageFile != null)
+            //            {
+            //                // Save the file to the parent folder
+            //                var sourcePath = storageFile.Path;
+            //                //File.Copy(sourcePath, folderPath);
+            //            }
+            //        }
+            //    }
+        }
+
+        IFolderResource parentFolder;
+        if (resource is IFileResource fileResource)
+        {
+            parentFolder = fileResource.ParentFolder!;
+        }
+        else if (resource is IFolderResource folderResource)
+        {
+            parentFolder = folderResource;
+        }
+        else
+        {
+            parentFolder = _projectService.ResourceRegistry.RootFolder;
+        }
+
+        _ = PasteResourceFromClipboard(parentFolder);
     }
 }
