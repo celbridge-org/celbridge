@@ -16,4 +16,9 @@ public interface IMoveFolderCommand : IExecutableCommand
     /// Resource key to move the folder to.
     /// </summary>
     string ToResourceKey { get; set; }
+
+    /// <summary>
+    /// Expand the folder in the tree view after moving it.
+    /// </summary>
+    bool ExpandMovedFolder { get; set; }
 }
