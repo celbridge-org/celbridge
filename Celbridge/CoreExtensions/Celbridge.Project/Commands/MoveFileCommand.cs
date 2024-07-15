@@ -106,10 +106,10 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var filePathA = Path.Combine(projectFolder, resourcePathA);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var filePathA = Path.Combine(projectFolderPath, resourcePathA);
             filePathA = Path.GetFullPath(filePathA); // Make separators consistent
-            var filePathB = Path.Combine(projectFolder, resourcePathB);
+            var filePathB = Path.Combine(projectFolderPath, resourcePathB);
             filePathB = Path.GetFullPath(filePathB);
 
             if (!File.Exists(filePathA))

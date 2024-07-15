@@ -98,10 +98,10 @@ public class ProjectDataService : IProjectDataService
             var jsonObject = JObject.Parse(projectJsonData);
             Guard.IsNotNull(jsonObject);
 
-            var projectFolder = Path.GetDirectoryName(projectPath)!; 
+            var projectFolderPath = Path.GetDirectoryName(projectPath)!; 
 
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
-            string projectDataPath = Path.Combine(projectFolder, projectDataPathRelative);
+            string projectDataPath = Path.Combine(projectFolderPath, projectDataPathRelative);
 
             var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
             if (loadResult.IsFailure)

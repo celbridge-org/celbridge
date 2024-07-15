@@ -87,8 +87,8 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var deleteFolderPath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var deleteFolderPath = Path.Combine(projectFolderPath, ResourcePath);
             deleteFolderPath = Path.GetFullPath(deleteFolderPath); // Make separators consistent
 
             if (!Directory.Exists(deleteFolderPath))
@@ -151,11 +151,11 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         var loadedProjectData = _projectDataService.LoadedProjectData;
         Guard.IsNotNull(loadedProjectData);
 
-        var projectFolder = loadedProjectData.ProjectFolder;
+        var projectFolderPath = loadedProjectData.ProjectFolderPath;
 
         try
         {
-            var folderPath = Path.GetFullPath(Path.Combine(projectFolder, ResourcePath));
+            var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, ResourcePath));
 
             if (_folderWasEmpty)
             {
