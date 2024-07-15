@@ -13,8 +13,8 @@ public sealed partial class ResourceTreeView : UserControl
 
     public ResourceTreeViewModel ViewModel { get; }
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
-    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString FolderString => _stringLocalizer.GetString("ResourceTree_Folder");
+    private LocalizedString FileString => _stringLocalizer.GetString("ResourceTree_File");
     private LocalizedString EditString => _stringLocalizer.GetString("ResourceTree_Edit");
     private LocalizedString CutString => _stringLocalizer.GetString("ResourceTree_Cut");
     private LocalizedString CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
