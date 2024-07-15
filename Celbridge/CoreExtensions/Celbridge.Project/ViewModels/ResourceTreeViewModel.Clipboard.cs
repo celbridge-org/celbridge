@@ -1,4 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Resources;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -13,33 +15,60 @@ public partial class ResourceTreeViewModel
 
     public void CopyResource(IResource resource)
     {
-        //async Task CopyFile(string filePath)
-        //{
-        //    StorageFile file = await StorageFile.GetFileFromPathAsync(filePath);
-        //    if (file != null)
-        //    {
-        //        var dataPackage = new DataPackage();
-        //        dataPackage.RequestedOperation = DataPackageOperation.Copy;
+        async Task CopyResourceToClipboard(IResource resource)
+        {
+            try
+            {
+                var storageItems = new List<IStorageItem>();
 
-        //        List<IStorageItem> items = new List<IStorageItem>();
-        //        items.Add(file);
-        //        dataPackage.SetStorageItems(items);
+                if (resource is IFileResource fileResource)
+                {
+                    var filePath = _projectService.ResourceRegistry.GetPath(fileResource);
+                    if (string.IsNullOrEmpty(filePath))
+                    {
+                        return;
+                    }
 
-        //        Clipboard.SetContent(dataPackage);
-        //        Clipboard.Flush();
-        //    }
-        //}
+                    var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
+                    if (storageFile != null)
+                    {
+                        storageItems.Add(storageFile);
+                    }
+                }
+                else if (resource is IFolderResource folderResource)
+                {
+                    var folderPath = _projectService.ResourceRegistry.GetPath(folderResource);
+                    if (string.IsNullOrEmpty(folderPath))
+                    {
+                        return;
+                    }
 
-        //var path = _projectService.ResourceRegistry.GetPath(resource);
-        //if (string.IsNullOrEmpty(path))
-        //{
-        //    return;
-        //}
+                    var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+                    if (storageFolder != null)
+                    {
+                        storageItems.Add(storageFolder);
+                    }
+                }
 
-        //if (resource is IFileResource)
-        //{
-        //    _ = CopyFile(path);
-        //}
+                if (storageItems.Count == 0)
+                {
+                    return;
+                }
+
+                var dataPackage = new DataPackage();
+                dataPackage.RequestedOperation = DataPackageOperation.Copy;
+
+                dataPackage.SetStorageItems(storageItems);
+                Clipboard.SetContent(dataPackage);
+                Clipboard.Flush();
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Failed to copy resource '{resource}' to clipboard. {ex}");
+            }
+        }
+
+        _ = CopyResourceToClipboard(resource);
     }
 
     public void PasteResource(IResource resource)

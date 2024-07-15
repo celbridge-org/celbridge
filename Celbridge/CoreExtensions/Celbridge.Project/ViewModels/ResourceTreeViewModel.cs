@@ -12,6 +12,7 @@ namespace Celbridge.Project.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILoggingService _loggingService;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
@@ -28,14 +29,16 @@ public partial class ResourceTreeViewModel : ObservableObject
     private bool _resourceTreeUpdatePending;
 
     public ResourceTreeViewModel(
-        IMessengerService messengerService,
         IServiceProvider serviceProvider,
+        ILoggingService loggingService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
+        _loggingService = loggingService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
         _commandService = commandService;
         _dialogService = dialogService;
