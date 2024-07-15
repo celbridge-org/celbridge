@@ -15,7 +15,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourceKey { get; set; } = string.Empty;
+    public ResourceKey ResourceKey { get; set; }
 
     private string _archivePath = string.Empty;
     private bool _folderWasEmpty;

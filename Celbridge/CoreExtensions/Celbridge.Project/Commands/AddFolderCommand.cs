@@ -13,7 +13,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourceKey { get; set; } = string.Empty;
+    public ResourceKey ResourceKey { get; set; }
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -70,7 +70,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourceKey))
+        if (ResourceKey.IsEmpty)
         {
             return Result.Fail("Failed to add folder. Resource key is empty");
         }
@@ -107,14 +107,10 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         //
         // Expand the folder containing the newly created folder
         //
-        int lastSlashIndex = ResourceKey.LastIndexOf('/');
-        if (lastSlashIndex > -1)
+        var parentResourceKey = ResourceKey.GetParent();
+        if (!parentResourceKey.IsEmpty)
         {
-            var parentFolder = ResourceKey.Substring(0, lastSlashIndex);
-            if (!string.IsNullOrEmpty(parentFolder))
-            {
-                resourceRegistry.SetFolderIsExpanded(parentFolder, true);
-            }
+            resourceRegistry.SetFolderIsExpanded(parentResourceKey, true);
         }
 
         var message = new RequestResourceTreeUpdate();
@@ -142,7 +138,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourceKey))
+        if (ResourceKey.IsEmpty)
         {
             return Result.Fail("Failed to undo add folder. Resource key is empty");
         }
