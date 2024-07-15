@@ -9,8 +9,6 @@ using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -346,11 +344,15 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var toResourceKey = resourceRegistry.GetParentResourceKey(resourceKey);
                 toResourceKey = string.IsNullOrEmpty(toResourceKey) ? inputText : toResourceKey + "/" + inputText;
 
+                // Maintain the expanded state of the folder after renaming
+                bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
+
                 // Execute a command to move the folder resource to perform the rename
                 _commandService.Execute<IMoveFolderCommand>(command =>
                 {
                     command.FromResourceKey = fromResourceKey;
                     command.ToResourceKey = toResourceKey;
+                    command.ExpandMovedFolder = wasExpanded;
                 });
 
                 // Execute a command to update the resource tree

@@ -2,7 +2,6 @@
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -15,6 +14,7 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
     public string FromResourceKey { get; set; } = string.Empty;
     public string ToResourceKey { get; set; } = string.Empty;
+    public bool ExpandMovedFolder { get; set; } = false;
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -111,10 +111,6 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail("Failed to move folder. Resource key is empty.");
         }
 
-        // I attempted to preserve the expanded state of folders as they are moved, but the TreeView control
-        // forces folders to collapse as they are being reordered so it's probably best to just leave that
-        // behavior as is.
-
         //
         // Move the folder on disk
         //
@@ -151,6 +147,11 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
         }
 
+        if (ExpandMovedFolder)
+        {
+            resourceRegistry.SetFolderIsExpanded(resourceKeyB, true);
+        }
+
         var message = new RequestResourceTreeUpdate();
         _messengerService.Send(message);
 
@@ -166,6 +167,7 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         {
             command.FromResourceKey = fromResourceKey;
             command.ToResourceKey = toResourceKey;
+            command.ExpandMovedFolder = true;
         });
     }
 }
