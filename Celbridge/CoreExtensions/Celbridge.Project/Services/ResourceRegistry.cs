@@ -16,13 +16,10 @@ public class ResourceRegistry : IResourceRegistry
         _projectFolderPath = projectFolderPath;
     }
 
-    public string GetResourcePath(IResource resource)
+    public string GetResourceKey(IResource resource)
     {
-        var pathResource = resource as Resource;
-        Guard.IsNotNull(pathResource);
-
         var sb = new StringBuilder();
-        void AddResourcePathSegment(IResource resource)
+        void AddResourceKeySegment(IResource resource)
         {
             if (resource.ParentFolder is null)
             {
@@ -30,7 +27,7 @@ public class ResourceRegistry : IResourceRegistry
             }
 
             // Build path by recursively visiting each parent folders
-            AddResourcePathSegment(resource.ParentFolder);
+            AddResourceKeySegment(resource.ParentFolder);
 
             // The trick is to append the path segment after we've visited the parent.
             // This ensures the path segments are appended in the right order.
@@ -40,7 +37,7 @@ public class ResourceRegistry : IResourceRegistry
             }
             sb.Append(resource.Name);
         }
-        AddResourcePathSegment(pathResource);
+        AddResourceKeySegment(resource);
 
         var path = sb.ToString();
 
@@ -49,44 +46,44 @@ public class ResourceRegistry : IResourceRegistry
 
     public string GetPath(IResource resource)
     {
-        var resourcePath = GetResourcePath(resource);
+        var resourceKey = GetResourceKey(resource);
 
-        var path = Path.Combine(_projectFolderPath, resourcePath);
+        var path = Path.Combine(_projectFolderPath, resourceKey);
 
         // Unify directory separators
         return Path.GetFullPath(path);
     }
 
-    public Result<IResource> GetResource(string resourcePath)
+    public Result<IResource> GetResource(string resourceKey)
     {
-        if (string.IsNullOrEmpty(resourcePath))
+        if (string.IsNullOrEmpty(resourceKey))
         {
-            // An empty resource path refers to the root folder
+            // An empty resource key refers to the root folder
             return Result<IResource>.Ok(RootFolder);
         }
 
-        var segments = resourcePath.Split('/');
-        var rootFolderResource = RootFolder;
+        var segments = resourceKey.Split('/');
+        var searchFolder = RootFolder;
 
-        // Attempt to match each path segment with the corresponding resource in the tree
+        // Attempt to match each segment with the corresponding resource in the tree
         var segmentIndex = 0;
         while (segmentIndex < segments.Length)
         {
             FolderResource? matchingFolder = null;
             string segment = segments[segmentIndex];
-            foreach (var childResource in rootFolderResource.Children)
+            foreach (var childResource in searchFolder.Children)
             {
                 if (childResource is FolderResource childFolder &&
                     childFolder.Name == segment)
                 {
                     if (segmentIndex == segments.Length - 1)
                     {
-                        // The folder name matches the last segment in the path, so this is the
+                        // The folder name matches the last segment in the key, so this is the
                         // folder resource we're looking for.
                         return Result<IResource>.Ok(childFolder);
                     }
 
-                    // This folder resource matches a subfolder in the path, so we can move onto
+                    // This folder resource matches this segment in the key, so we can move onto
                     // searching for the next segment.
                     matchingFolder = childFolder;
                     break;
@@ -95,7 +92,7 @@ public class ResourceRegistry : IResourceRegistry
                          childFile.Name == segment &&
                          segmentIndex == segments.Length - 1)
                 {
-                    // The file name matches the last segment in the path, so this is the
+                    // The file name matches the last segment in the key, so this is the
                     // file resource we're looking for.
                     return Result<IResource>.Ok(childFile);
                 }
@@ -106,28 +103,28 @@ public class ResourceRegistry : IResourceRegistry
                 break;
             }
 
-            rootFolderResource = matchingFolder;
+            searchFolder = matchingFolder;
             segmentIndex++;
         }
 
-        return Result<IResource>.Fail($"Failed to find a resource matching the path '{resourcePath}'.");
+        return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resourceKey}'.");
     }
 
-    public string GetResourcePathParent(string resourcePath)
+    public string GetParentResourceKey(string resourceKey)
     {
-        if (string.IsNullOrEmpty(resourcePath))
+        if (string.IsNullOrEmpty(resourceKey))
         {
             return string.Empty;
         }
 
-        int lastSlashIndex = resourcePath.LastIndexOf('/');
+        int lastSlashIndex = resourceKey.LastIndexOf('/');
 
         if (lastSlashIndex == -1)
         {
             return string.Empty;
         }
 
-        return resourcePath.Substring(0, lastSlashIndex);
+        return resourceKey.Substring(0, lastSlashIndex);
     }
 
     public Result UpdateResourceTree()
@@ -150,47 +147,47 @@ public class ResourceRegistry : IResourceRegistry
         return Result.Ok();
     }
 
-    private Result<FolderResource> CreateFolderResource(string path, FolderResource? parentFolder = null)
+    private Result<FolderResource> CreateFolderResource(string newFolderPath, FolderResource? parentFolder = null)
     {
         try
         {
-            if (!Directory.Exists(path))
+            if (!Directory.Exists(newFolderPath))
             {
-                return Result<FolderResource>.Fail($"Failed to create folder resource. Path not found '{path}'");
+                return Result<FolderResource>.Fail($"Failed to create folder resource. Path not found '{newFolderPath}'");
             }
 
             //
-            // Create a new folder resource to represent the folder at this path
+            // Create a new resource key to represent the folder at this path
             //
-            var newFolderResource = new FolderResource(Path.GetFileName(path), parentFolder);
-            var newFolderResourcePath = GetResourcePath(newFolderResource);
+            var newFolderResource = new FolderResource(Path.GetFileName(newFolderPath), parentFolder);
+            var newFolderResourceKey = GetResourceKey(newFolderResource);
 
             // Set the expanded state of the folder resource
-            newFolderResource.IsExpanded = ExpandedFolders.Contains(newFolderResourcePath);
+            newFolderResource.IsExpanded = ExpandedFolders.Contains(newFolderResourceKey);
 
             //
             // Create a new folder resource for each descendant folder and add it as a child of the new folder resource.
             //
-            var sortedFolders = Directory.GetDirectories(path).OrderBy(d => d).ToList();
-            foreach (var folder in sortedFolders)
+            var subFolderPaths = Directory.GetDirectories(newFolderPath).OrderBy(d => d).ToList();
+            foreach (var subFolderPath in subFolderPaths)
             {
-                var scanResult = CreateFolderResource(folder, newFolderResource);
+                var scanResult = CreateFolderResource(subFolderPath, newFolderResource);
                 if (scanResult.IsFailure)
                 {
                     return scanResult;
                 }
-                var resource = scanResult.Value;
+                var subFolderResource = scanResult.Value;
 
-                newFolderResource.AddChild(resource);
+                newFolderResource.AddChild(subFolderResource);
             }
 
             //
             // Create a new file resource for each descendent file and add it as a child of the folder resource.
             //
-            var sortedFiles = Directory.GetFiles(path).OrderBy(f => f).ToList();
-            foreach (var file in sortedFiles)
+            var filePaths = Directory.GetFiles(newFolderPath).OrderBy(f => f).ToList();
+            foreach (var filePath in filePaths)
             {
-                var newFileResource = new FileResource(Path.GetFileName(file), newFolderResource);
+                var newFileResource = new FileResource(Path.GetFileName(filePath), newFolderResource);
                 newFolderResource.AddChild(newFileResource);
             }
 
@@ -198,30 +195,30 @@ public class ResourceRegistry : IResourceRegistry
         }
         catch (Exception ex)
         {
-            return Result<FolderResource>.Fail($"Failed to create folder resource '{path}'. {ex.Message}");
+            return Result<FolderResource>.Fail($"Failed to create folder resource '{newFolderPath}'. {ex.Message}");
         }
     }
 
     public List<string> ExpandedFolders { get; } = new();
 
-    public void SetFolderIsExpanded(string resourcePath, bool isExpanded)
+    public void SetFolderIsExpanded(string resourceKey, bool isExpanded)
     {
         if (isExpanded)
         {
-            if (!ExpandedFolders.Contains(resourcePath))
+            if (!ExpandedFolders.Contains(resourceKey))
             {
-                ExpandedFolders.Add(resourcePath);
+                ExpandedFolders.Add(resourceKey);
                 ExpandedFolders.Sort();
             }
         }
         else
         {
-            ExpandedFolders.Remove(resourcePath);
+            ExpandedFolders.Remove(resourceKey);
         }
     }
 
-    public bool IsFolderExpanded(string resourcePath)
+    public bool IsFolderExpanded(string resourceKey)
     {
-        return ExpandedFolders.Contains(resourcePath);
+        return ExpandedFolders.Contains(resourceKey);
     }
 }

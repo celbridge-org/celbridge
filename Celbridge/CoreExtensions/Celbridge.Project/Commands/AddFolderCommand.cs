@@ -13,7 +13,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourcePath { get; set; } = string.Empty;
+    public string ResourceKey { get; set; } = string.Empty;
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -44,7 +44,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFolder", ResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFolder", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -67,17 +67,17 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to add folder. Resource path is empty");
+            return Result.Fail("Failed to add folder. Resource key is empty");
         }
 
-        if (!_utilityService.IsValidResourcePath(ResourcePath))
+        if (!_utilityService.IsValidResourceKey(ResourceKey))
         {
-            return Result.Fail($"Failed to add folder. Resource path '{ResourcePath}' is not valid.");
+            return Result.Fail($"Failed to add folder. Resource key '{ResourceKey}' is not valid.");
         }
 
         //
@@ -87,7 +87,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var newFolderPath = Path.Combine(projectFolderPath, ResourcePath);
+            var newFolderPath = Path.Combine(projectFolderPath, ResourceKey);
             newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
             // It's important to fail if the folder already exists, because undoing this command
@@ -107,10 +107,10 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         //
         // Expand the folder containing the newly created folder
         //
-        int lastSlashIndex = ResourcePath.LastIndexOf('/');
+        int lastSlashIndex = ResourceKey.LastIndexOf('/');
         if (lastSlashIndex > -1)
         {
-            var parentFolder = ResourcePath.Substring(0, lastSlashIndex);
+            var parentFolder = ResourceKey.Substring(0, lastSlashIndex);
             if (!string.IsNullOrEmpty(parentFolder))
             {
                 resourceRegistry.SetFolderIsExpanded(parentFolder, true);
@@ -139,15 +139,15 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to undo add folder. Resource path is empty");
+            return Result.Fail("Failed to undo add folder. Resource key is empty");
         }
 
-        // We can assume the resource path is valid because the command already executed successfully.
+        // We can assume the resource key is valid because the command already executed successfully.
 
         //
         // Delete the folder on disk
@@ -156,7 +156,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var newFolderPath = Path.Combine(projectFolderPath, ResourcePath);
+            var newFolderPath = Path.Combine(projectFolderPath, ResourceKey);
             newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
             if (!Directory.Exists(newFolderPath))
@@ -179,9 +179,9 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         return Result.Ok();
     }
 
-    public static void AddFolder(string resourcePath)
+    public static void AddFolder(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IAddFolderCommand>(command => command.ResourcePath = resourcePath);
+        commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = resourceKey);
     }
 }

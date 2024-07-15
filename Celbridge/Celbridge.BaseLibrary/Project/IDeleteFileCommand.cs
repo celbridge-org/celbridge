@@ -8,7 +8,7 @@ namespace Celbridge.BaseLibrary.Project;
 public interface IDeleteFileCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource path for the file to delete.
+    /// Resource key for the file to delete.
     /// </summary>
-    string ResourcePath { get; set; }
+    string ResourceKey { get; set; }
 }
