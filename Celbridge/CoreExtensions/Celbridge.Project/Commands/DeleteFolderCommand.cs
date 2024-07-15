@@ -15,7 +15,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourcePath { get; set; } = string.Empty;
+    public string ResourceKey { get; set; } = string.Empty;
 
     private string _archivePath = string.Empty;
     private bool _folderWasEmpty;
@@ -50,7 +50,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", ResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -73,12 +73,12 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to delete folder. Resource path is empty");
+            return Result.Fail("Failed to delete folder. Resource key is empty");
         }
 
         //
@@ -88,7 +88,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var deleteFolderPath = Path.Combine(projectFolderPath, ResourcePath);
+            var deleteFolderPath = Path.Combine(projectFolderPath, ResourceKey);
             deleteFolderPath = Path.GetFullPath(deleteFolderPath); // Make separators consistent
 
             if (!Directory.Exists(deleteFolderPath))
@@ -114,15 +114,15 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
                     File.Delete(_archivePath);
                 }
 
-                var archiveFolder = Path.GetDirectoryName(_archivePath)!;
-                Directory.CreateDirectory(archiveFolder);
+                var archiveFolderPath = Path.GetDirectoryName(_archivePath)!;
+                Directory.CreateDirectory(archiveFolderPath);
 
                 // Archive the folder to temporary storage so we can undo the command
                 ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
             }
 
             // Record if the folder was expanded so we can expand it again in the undo if needed
-            _folderWasExpanded = resourceRegistry.IsFolderExpanded(ResourcePath);
+            _folderWasExpanded = resourceRegistry.IsFolderExpanded(ResourceKey);
 
             Directory.Delete(deleteFolderPath, true);
         }
@@ -155,7 +155,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 
         try
         {
-            var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, ResourcePath));
+            var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, ResourceKey));
 
             if (_folderWasEmpty)
             {
@@ -180,7 +180,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         }
 
         // Expand the folder again if it was expanded when we deleted it
-        resourceRegistry.SetFolderIsExpanded(ResourcePath, _folderWasExpanded);
+        resourceRegistry.SetFolderIsExpanded(ResourceKey, _folderWasExpanded);
 
         var message = new RequestResourceTreeUpdate();
         _messengerService.Send(message);
@@ -190,9 +190,9 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         return Result.Ok();
     }
 
-    public static void DeleteFolder(string resourcePath)
+    public static void DeleteFolder(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IDeleteFolderCommand>(command => command.ResourcePath = resourcePath);
+        commandService.Execute<IDeleteFolderCommand>(command => command.ResourceKey = resourceKey);
     }
 }

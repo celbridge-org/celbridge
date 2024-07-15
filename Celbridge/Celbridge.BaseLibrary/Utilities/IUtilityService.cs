@@ -6,17 +6,17 @@
 public interface IUtilityService
 {
     /// <summary>
-    /// Returns true if the string represents a valid resource path.
-    /// Resource paths are similar to file system paths but with additional constraints:
+    /// Returns true if the string represents a valid resource key.
+    /// Resource keys look similar to regular file paths but with additional constraints:
     /// - Specified relative to the project folder. 
-    /// - Absolute paths, parent and same directory referencs are not supported.
+    /// - Absolute paths, parent and same directory references are not supported.
     /// - '/' is used as the path separator on all platforms, backslashes are not allowed.
-    bool IsValidResourcePath(string resourcePath);
+    bool IsValidResourceKey(string resourceKey);
 
     /// <summary>
-    /// Returns true if the string represents a valid resource path segment.
+    /// Returns true if the string represents a valid resource key segment.
     /// </summary>
-    bool IsValidResourcePathSegment(string resourcePathSegment);
+    bool IsValidResourceKeySegment(string resourceKeySegment);
 
     /// <summary>
     /// Returns a path to a randomly named file in temporary storage.
