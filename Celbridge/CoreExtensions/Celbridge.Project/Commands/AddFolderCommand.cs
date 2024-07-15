@@ -6,7 +6,6 @@ using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
-using Windows.Storage;
 
 namespace Celbridge.Project.Commands;
 
@@ -87,33 +86,23 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
         try
         {
-            var newFolderPath = Path.GetFullPath(Path.Combine(loadedProjectData.ProjectFolder, ResourcePath));
-            var parentFolderPath = Path.GetDirectoryName(newFolderPath);
-            var newFolderName = Path.GetFileName(newFolderPath);
-
-            if (parentFolderPath == null || newFolderName == null)
-            {
-                return Result.Fail("Failed to add folder. Invalid parent folder path or new folder name.");
-            }
-
-            var parentFolder = await StorageFolder.GetFolderFromPathAsync(parentFolderPath);
+            var projectFolder = loadedProjectData.ProjectFolder;
+            var newFolderPath = Path.Combine(projectFolder, ResourcePath);
+            newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
             // It's important to fail if the folder already exists, because undoing this command
             // deletes the folder, which could lead to unexpected data loss.
-
-            var existingFolder = await parentFolder.TryGetItemAsync(newFolderName) as StorageFolder;
-            if (existingFolder != null)
+            if (Directory.Exists(newFolderPath))
             {
                 return Result.Fail($"Failed to add folder. A folder already exists at '{newFolderPath}'.");
             }
 
-            await parentFolder.CreateFolderAsync(newFolderName, CreationCollisionOption.FailIfExists);
+            Directory.CreateDirectory(newFolderPath);
         }
         catch (Exception ex)
         {
             return Result.Fail($"Failed to add folder. {ex.Message}");
         }
-
 
         //
         // Expand the folder containing the newly created folder
@@ -143,6 +132,8 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
             return Result.Fail($"Failed to undo create folder because workspace is not loaded");
         }
 
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
 
         Guard.IsNotNull(loadedProjectData);
@@ -164,24 +155,16 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
         try
         {
-            var newFolderPath = Path.GetFullPath(Path.Combine(loadedProjectData.ProjectFolder, ResourcePath));
-            var parentFolderPath = Path.GetDirectoryName(newFolderPath);
-            var folderName = Path.GetFileName(newFolderPath);
+            var projectFolder = loadedProjectData.ProjectFolder;
+            var newFolderPath = Path.Combine(projectFolder, ResourcePath);
+            newFolderPath = Path.GetFullPath(newFolderPath); // Make separators consistent
 
-            if (parentFolderPath == null || folderName == null)
-            {
-                return Result.Fail("Failed to undo add folder. Invalid parent folder path or folder name.");
-            }
-
-            var parentFolder = await StorageFolder.GetFolderFromPathAsync(parentFolderPath);
-
-            var folderToDelete = await parentFolder.TryGetItemAsync(folderName) as StorageFolder;
-            if (folderToDelete == null)
+            if (!Directory.Exists(newFolderPath))
             {
                 return Result.Fail($"Failed to undo add folder. Folder does not exist '{newFolderPath}'.");
             }
 
-            await folderToDelete.DeleteAsync(StorageDeleteOption.PermanentDelete);
+            Directory.Delete(newFolderPath, true);
         }
         catch (Exception ex)
         {
