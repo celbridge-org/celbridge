@@ -8,9 +8,9 @@ namespace Celbridge.BaseLibrary.Resources;
 public interface IResourceRegistry
 {
     /// <summary>
-    /// An observable collection representing the file and folder resources in the project
+    /// A folder resource containing the file and folder resources in the project.
     /// </summary>
-    ObservableCollection<IResource> Resources { get; }
+    IFolderResource RootFolder { get; }
 
     /// <summary>
     /// Returns the resource path for a resource.
@@ -28,6 +28,11 @@ public interface IResourceRegistry
     /// Fails if no matching resource is found.
     /// </summary>
     Result<IResource> GetResource(string resourcePath);
+
+    /// <summary>
+    /// Returns the parent resource path for the specified resource path.
+    /// </summary>
+    public string GetResourcePathParent(string resourcePath);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.

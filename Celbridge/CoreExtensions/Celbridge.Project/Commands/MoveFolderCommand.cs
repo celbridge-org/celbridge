@@ -26,7 +26,6 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService,
-        IUtilityService utilityService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
@@ -52,6 +51,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;
@@ -72,6 +75,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+
+            // The TreeView UI may now be out of sync with the actual project folder structure, so force a refresh.
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
         }
 
         return createResult;
@@ -104,7 +111,9 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail("Failed to move folder. Resource path is empty.");
         }
 
-        var isFolderAExpanded = resourceRegistry.IsFolderExpanded(resourcePathA);
+        // I attempted to preserve the expanded state of folders as they are moved, but the TreeView control
+        // forces folders to collapse as they are being reordered so it's probably best to just leave that
+        // behavior as is.
 
         //
         // Move the folder on disk
@@ -112,10 +121,10 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var folderPathA = Path.Combine(projectFolder, resourcePathA);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var folderPathA = Path.Combine(projectFolderPath, resourcePathA);
             folderPathA = Path.GetFullPath(folderPathA); // Make separators consistent
-            var folderPathB = Path.Combine(projectFolder, resourcePathB);
+            var folderPathB = Path.Combine(projectFolderPath, resourcePathB);
             folderPathB = Path.GetFullPath(folderPathB);
 
             if (!Directory.Exists(folderPathA))
@@ -135,7 +144,12 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail($"Failed to move folder. {ex.Message}");
         }
 
-        resourceRegistry.SetFolderIsExpanded(resourcePathB, isFolderAExpanded);
+        // Expand the parent folder of the moved folder so that the user can see it in the tree view.
+        var newParentFolder = resourceRegistry.GetResourcePathParent(resourcePathB);
+        if (!string.IsNullOrEmpty(newParentFolder))
+        {
+            resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
+        }
 
         var message = new RequestResourceTreeUpdate();
         _messengerService.Send(message);
