@@ -16,10 +16,10 @@
         <MenuFlyout x:Name="FolderResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
-                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+                <MenuFlyoutItem Text="{x:Bind FolderString}" 
                                 Icon="Folder"
                                 Click="AddFolder"/>
-                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                <MenuFlyoutItem Text="{x:Bind FileString}" 
                                 Icon="Add"
                                 Click="AddFile"/>
             </MenuFlyoutSubItem>
@@ -36,10 +36,10 @@
         <MenuFlyout x:Name="FileResourceContextMenu"
                     Placement="RightEdgeAlignedTop">
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
-                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+                <MenuFlyoutItem Text="{x:Bind FolderString}" 
                             Icon="Folder"
                             Click="AddFolder"/>
-                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                <MenuFlyoutItem Text="{x:Bind FileString}" 
                                 Icon="Add"
                                 Click="AddFile"/>
             </MenuFlyoutSubItem>
@@ -65,10 +65,10 @@
         <MenuFlyout x:Name="EmptyAreaContextMenu"
                     Placement="RightEdgeAlignedTop">
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
-                <MenuFlyoutItem Text="{x:Bind AddFolderString}" 
+                <MenuFlyoutItem Text="{x:Bind FolderString}" 
                                 Icon="Folder"
                                 Click="AddFolder"/>
-                <MenuFlyoutItem Text="{x:Bind AddFileString}" 
+                <MenuFlyoutItem Text="{x:Bind FileString}" 
                                 Icon="Add"
                                 Click="AddFile"/>
             </MenuFlyoutSubItem>
