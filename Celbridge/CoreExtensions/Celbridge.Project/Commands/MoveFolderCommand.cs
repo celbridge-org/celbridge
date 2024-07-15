@@ -111,7 +111,9 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail("Failed to move folder. Resource path is empty.");
         }
 
-        var isFolderAExpanded = resourceRegistry.IsFolderExpanded(resourcePathA);
+        // I attempted to preserve the expanded state of folders as they are moved, but the TreeView control
+        // forces folders to collapse as they are being reordered so it's probably best to just leave that
+        // behavior as is.
 
         //
         // Move the folder on disk
@@ -142,7 +144,12 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail($"Failed to move folder. {ex.Message}");
         }
 
-        resourceRegistry.SetFolderIsExpanded(resourcePathB, isFolderAExpanded);
+        // Expand the parent folder of the moved folder so that the user can see it in the tree view.
+        var newParentFolder = resourceRegistry.GetResourcePathParent(resourcePathB);
+        if (!string.IsNullOrEmpty(newParentFolder))
+        {
+            resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
+        }
 
         var message = new RequestResourceTreeUpdate();
         _messengerService.Send(message);

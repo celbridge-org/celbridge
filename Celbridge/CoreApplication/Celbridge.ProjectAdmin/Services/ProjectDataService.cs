@@ -70,10 +70,10 @@ public class ProjectDataService : IProjectDataService
             //
 
             var databasePath = Path.Combine(config.ProjectFolder, DefaultProjectDataPath);
-            string? dataFolder = Path.GetDirectoryName(databasePath);
-            if (!string.IsNullOrEmpty(dataFolder))
+            string? dataFolderPath = Path.GetDirectoryName(databasePath);
+            if (!string.IsNullOrEmpty(dataFolderPath))
             {
-                Directory.CreateDirectory(dataFolder);
+                Directory.CreateDirectory(dataFolderPath);
             }
 
             var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath);

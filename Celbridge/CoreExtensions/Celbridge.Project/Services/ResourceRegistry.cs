@@ -113,6 +113,23 @@ public class ResourceRegistry : IResourceRegistry
         return Result<IResource>.Fail($"Failed to find a resource matching the path '{resourcePath}'.");
     }
 
+    public string GetResourcePathParent(string resourcePath)
+    {
+        if (string.IsNullOrEmpty(resourcePath))
+        {
+            return string.Empty;
+        }
+
+        int lastSlashIndex = resourcePath.LastIndexOf('/');
+
+        if (lastSlashIndex == -1)
+        {
+            return string.Empty;
+        }
+
+        return resourcePath.Substring(0, lastSlashIndex);
+    }
+
     public Result UpdateResourceTree()
     {
         var createResult = CreateFolderResource(_projectFolderPath);
