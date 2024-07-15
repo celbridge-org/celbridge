@@ -30,6 +30,11 @@ public interface IResourceRegistry
     Result<IResource> GetResource(string resourcePath);
 
     /// <summary>
+    /// Returns the parent resource path for the specified resource path.
+    /// </summary>
+    public string GetResourcePathParent(string resourcePath);
+
+    /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
     Result UpdateResourceTree();
