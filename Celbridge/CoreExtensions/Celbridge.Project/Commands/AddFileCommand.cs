@@ -6,7 +6,6 @@ using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
-using Windows.Storage;
 
 namespace Celbridge.Project.Commands;
 
@@ -58,7 +57,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to add file because workspace is not loaded");
+            return Result.Fail($"Failed to create file because workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
@@ -73,12 +72,12 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
         if (string.IsNullOrEmpty(ResourcePath))
         {
-            return Result.Fail("Failed to add file. Resource path is empty");
+            return Result.Fail("Failed to create file. Resource path is empty");
         }
 
         if (!_utilityService.IsValidResourcePath(ResourcePath))
         {
-            return Result.Fail($"Failed to add file. Resource path {ResourcePath} is not valid.");
+            return Result.Fail($"Failed to create file. Resource path {ResourcePath} is not valid.");
         }
 
         //
@@ -88,36 +87,22 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         try
         {
             var projectFolder = loadedProjectData.ProjectFolder;
-            var newFilePath = Path.GetFullPath(Path.Combine(projectFolder, ResourcePath));
+            var newFilePath = Path.Combine(projectFolder, ResourcePath);
+            newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
-            var folderPath = Path.GetDirectoryName(newFilePath);
-            var fileName = Path.GetFileName(newFilePath);
-
-            if (folderPath == null || fileName == null)
+            // It's important to fail if the file already exists, because undoing this command
+            // deletes the file, which could lead to unexpected data loss.
+            if (File.Exists(newFilePath))
             {
-                return Result.Fail("Invalid folder path or file name.");
+                return Result.Fail($"Failed to create file. A file already exists at '{newFilePath}'.");
             }
 
-            var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
-
-            if (await storageFolder.TryGetItemAsync(fileName) != null)
-            {
-                // It's important to fail if the file already exists, because undoing this command
-                // deletes the file, which could lead to unexpected data loss.
-
-                return Result.Fail($"Failed to add file. A file already exists at '{newFilePath}'.");
-            }
-
-            // Create the file
-            await storageFolder.CreateFileAsync(fileName, CreationCollisionOption.FailIfExists);
-
-            // No need to write to the file as it is created empty
+            File.WriteAllText(newFilePath, string.Empty);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to add file. {ex.Message}");
+            return Result.Fail($"Failed to create file. {ex.Message}");
         }
-
 
         //
         // Expand the folder containing the newly created file
@@ -170,25 +155,16 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
         try
         {
-            var newFilePath = Path.GetFullPath(Path.Combine(loadedProjectData.ProjectFolder, ResourcePath));
+            var projectFolder = loadedProjectData.ProjectFolder;
+            var newFilePath = Path.Combine(projectFolder, ResourcePath);
+            newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
-            var folderPath = Path.GetDirectoryName(newFilePath);
-            var fileName = Path.GetFileName(newFilePath);
-
-            if (folderPath == null || fileName == null)
+            if (!File.Exists(newFilePath))
             {
-                return Result.Fail("Invalid folder path or file name.");
+                return Result.Fail($"Failed to undo add file. File does not exist: {newFilePath}");
             }
 
-            var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
-
-            var fileStorage = await storageFolder.TryGetItemAsync(fileName);
-            if (fileStorage == null)
-            {
-                return Result.Fail($"Failed to undo add file. File does not exist at '{newFilePath}'.");
-            }
-
-            await fileStorage.DeleteAsync();
+            File.Delete(newFilePath);
         }
         catch (Exception ex)
         {
