@@ -130,16 +130,25 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
                 return Result.Fail($"Failed to move file. File already exists: {resourcePathB}");
             }
 
-            var parentFolderB = Path.GetDirectoryName(filePathB);
-            if (!Directory.Exists(parentFolderB))
+            var parentFolderPathB = Path.GetDirectoryName(filePathB);
+            if (!Directory.Exists(parentFolderPathB))
             {
                 // The parent folder of the target file path must exist before moving the file.
                 // It would be easy to create the missing parent folder(s) here automatically, but it's hard to
                 // undo this operation robustly so we just don't allow it.
-                return Result.Fail($"Failed to move file. Target folder does not exist: {parentFolderB}");
+                return Result.Fail($"Failed to move file. Target folder does not exist: {parentFolderPathB}");
             }
 
             File.Move(filePathA, filePathB);
+
+            // Expand the parent folder of the moved file so that the user can see it in the tree view.
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var newParentFolder = resourceRegistry.GetResourcePathParent(resourcePathB);
+
+            if (!string.IsNullOrEmpty(newParentFolder))
+            {
+                resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
+            }
         }
         catch (Exception ex)
         {
