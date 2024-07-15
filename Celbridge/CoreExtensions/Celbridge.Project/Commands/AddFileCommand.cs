@@ -13,7 +13,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourceKey { get; set; } = string.Empty;
+    public ResourceKey ResourceKey { get; set; }
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -70,7 +70,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourceKey))
+        if (ResourceKey.IsEmpty)
         {
             return Result.Fail("Failed to create file. Resource key is empty");
         }
@@ -107,14 +107,10 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         //
         // Expand the folder containing the newly created file
         //
-        int lastSlashIndex = ResourceKey.LastIndexOf('/');
-        if (lastSlashIndex > -1)
+        var parentFolderKey = ResourceKey.GetParent();
+        if (!parentFolderKey.IsEmpty)
         {
-            var parentFolder = ResourceKey.Substring(0, lastSlashIndex);
-            if (!string.IsNullOrEmpty(parentFolder))
-            {
-                resourceRegistry.SetFolderIsExpanded(parentFolder, true);
-            }
+            resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
         }
 
         var message = new RequestResourceTreeUpdate();
@@ -132,8 +128,6 @@ public class AddFileCommand : CommandBase, IAddFileCommand
             return Result.Fail($"Failed to undo add file. Workspace is not loaded");
         }
 
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
 
         Guard.IsNotNull(loadedProjectData);
@@ -142,7 +136,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourceKey))
+        if (ResourceKey.IsEmpty)
         {
             return Result.Fail("Failed to undo add file. Resource key is empty");
         }

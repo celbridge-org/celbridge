@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Resources;
 
 namespace Celbridge.BaseLibrary.Project;
 
@@ -10,12 +11,12 @@ public interface IMoveFolderCommand : IExecutableCommand
     /// <summary>
     /// Resource key of the folder to be moved.
     /// </summary>
-    string FromResourceKey { get; set; }
+    ResourceKey FromResourceKey { get; set; }
 
     /// <summary>
     /// Resource key to move the folder to.
     /// </summary>
-    string ToResourceKey { get; set; }
+    ResourceKey ToResourceKey { get; set; }
 
     /// <summary>
     /// Expand the folder in the tree view after moving it.

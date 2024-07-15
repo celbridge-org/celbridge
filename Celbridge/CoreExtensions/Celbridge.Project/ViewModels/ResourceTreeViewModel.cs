@@ -95,16 +95,15 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void AddFolder(IFolderResource? parentFolder)
     {
+        var resourceRegistry = _projectService.ResourceRegistry;
+
         if (parentFolder is null)
         {
             // If the parent folder is null, add the new folder to the root folder
-            var getResult = _projectService.ResourceRegistry.GetResource(string.Empty);
-            Guard.IsTrue(getResult.IsSuccess);
-            parentFolder = getResult.Value as IFolderResource;
+            parentFolder = resourceRegistry.RootFolder;
         }
 
-        var resourceRegistry = _projectService.ResourceRegistry;
-        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourceKey(parentFolder);
+        var parentFolderResourceKey = resourceRegistry.GetResourceKey(parentFolder);
 
         async Task ShowDialogAsync()
         {
@@ -124,8 +123,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 // Execute a command to add the folder resource
-                var resourceKey = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = resourceKey);
+                var addResourceKey = parentFolderResourceKey.IsEmpty ? showResult.Value : $"{parentFolderResourceKey}/{showResult.Value}";
+                _commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = addResourceKey);
 
                 // Execute a command to update the resource tree
                 _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -137,16 +136,15 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void AddFile(IFolderResource? parentFolder)
     {
+        var resourceRegistry = _projectService.ResourceRegistry;
+
         if (parentFolder is null)
         {
             // If the parent folder is null, add the new file to the root folder
-            var getResult = _projectService.ResourceRegistry.GetResource(string.Empty);
-            Guard.IsTrue(getResult.IsSuccess);
-            parentFolder = getResult.Value as IFolderResource;
+            parentFolder = resourceRegistry.RootFolder;
         }
 
-        var resourceRegistry = _projectService.ResourceRegistry;
-        var path = parentFolder is null ? string.Empty : resourceRegistry.GetResourceKey(parentFolder);
+        var parentFolderResourceKey = parentFolder is null ? new ResourceKey(string.Empty) : resourceRegistry.GetResourceKey(parentFolder);
 
         async Task ShowDialogAsync()
         {
@@ -166,8 +164,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 // Execute a command to add the file resource
-                var resourceKey = string.IsNullOrEmpty(path) ? showResult.Value : $"{path}/{showResult.Value}";
-                _commandService.Execute<IAddFileCommand>(command => command.ResourceKey = resourceKey);
+                var addResourceKey = parentFolderResourceKey.IsEmpty ? showResult.Value : $"{parentFolderResourceKey}/{showResult.Value}";
+                _commandService.Execute<IAddFileCommand>(command => command.ResourceKey = addResourceKey);
 
                 // Execute a command to update the resource tree
                 _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -341,8 +339,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 var fromResourceKey = resourceKey;
-                var toResourceKey = resourceRegistry.GetParentResourceKey(resourceKey);
-                toResourceKey = string.IsNullOrEmpty(toResourceKey) ? inputText : toResourceKey + "/" + inputText;
+                var parentResourceKey = resourceKey.GetParent();
+                var toResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
 
                 // Maintain the expanded state of the folder after renaming
                 bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
@@ -392,8 +390,8 @@ public partial class ResourceTreeViewModel : ObservableObject
                 var inputText = showResult.Value;
 
                 var fromResourceKey = resourceKey;
-                var toResourceKey = resourceRegistry.GetParentResourceKey(resourceKey);
-                toResourceKey = string.IsNullOrEmpty(toResourceKey) ? inputText : toResourceKey + "/" + inputText;
+                var parentResourceKey = resourceKey.GetParent();
+                var toResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
 
                 // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<IMoveFileCommand>(command =>
@@ -445,17 +443,15 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         if (newParent is null)
         {
-            // Todo: Should we move this logic into the ResourceRegistry?
-            // If newParent is null, use the root folder as the parent
-            newParent = _projectService.ResourceRegistry.GetResource(string.Empty).Value as IFolderResource;
+            newParent = _projectService.ResourceRegistry.RootFolder;
         }
         Guard.IsNotNull(newParent);
 
         foreach (var resource in resources)
         {
             var fromResourceKey = _projectService.ResourceRegistry.GetResourceKey(resource);
-            var toResourceKey = _projectService.ResourceRegistry.GetResourceKey(newParent);
-            toResourceKey = string.IsNullOrEmpty(toResourceKey) ? resource.Name : toResourceKey + "/" + resource.Name;
+            var parentResourceKey = _projectService.ResourceRegistry.GetResourceKey(newParent);
+            var toResourceKey = parentResourceKey.IsEmpty ? resource.Name : parentResourceKey + "/" + resource.Name;
 
             if (fromResourceKey == toResourceKey)
             {

@@ -1,6 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Resources;
 using Celbridge.Project.Models;
-using CommunityToolkit.Diagnostics;
 using System.Text;
 
 namespace Celbridge.Project.Services;
@@ -16,7 +15,7 @@ public class ResourceRegistry : IResourceRegistry
         _projectFolderPath = projectFolderPath;
     }
 
-    public string GetResourceKey(IResource resource)
+    public ResourceKey GetResourceKey(IResource resource)
     {
         var sb = new StringBuilder();
         void AddResourceKeySegment(IResource resource)
@@ -39,30 +38,28 @@ public class ResourceRegistry : IResourceRegistry
         }
         AddResourceKeySegment(resource);
 
-        var path = sb.ToString();
-
-        return path;
+        return sb.ToString();
     }
 
     public string GetPath(IResource resource)
     {
         var resourceKey = GetResourceKey(resource);
 
-        var path = Path.Combine(_projectFolderPath, resourceKey);
+        var resourcePath = Path.Combine(_projectFolderPath, resourceKey);
+        var normalized = Path.GetFullPath(resourcePath);
 
-        // Unify directory separators
-        return Path.GetFullPath(path);
+        return normalized;
     }
 
-    public Result<IResource> GetResource(string resourceKey)
+    public Result<IResource> GetResource(ResourceKey resourceKey)
     {
-        if (string.IsNullOrEmpty(resourceKey))
+        if (resourceKey.IsEmpty)
         {
             // An empty resource key refers to the root folder
             return Result<IResource>.Ok(RootFolder);
         }
 
-        var segments = resourceKey.Split('/');
+        var segments = resourceKey.ToString().Split('/');
         var searchFolder = RootFolder;
 
         // Attempt to match each segment with the corresponding resource in the tree
@@ -108,23 +105,6 @@ public class ResourceRegistry : IResourceRegistry
         }
 
         return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resourceKey}'.");
-    }
-
-    public string GetParentResourceKey(string resourceKey)
-    {
-        if (string.IsNullOrEmpty(resourceKey))
-        {
-            return string.Empty;
-        }
-
-        int lastSlashIndex = resourceKey.LastIndexOf('/');
-
-        if (lastSlashIndex == -1)
-        {
-            return string.Empty;
-        }
-
-        return resourceKey.Substring(0, lastSlashIndex);
     }
 
     public Result UpdateResourceTree()
@@ -201,7 +181,7 @@ public class ResourceRegistry : IResourceRegistry
 
     public List<string> ExpandedFolders { get; } = new();
 
-    public void SetFolderIsExpanded(string resourceKey, bool isExpanded)
+    public void SetFolderIsExpanded(ResourceKey resourceKey, bool isExpanded)
     {
         if (isExpanded)
         {
@@ -217,7 +197,7 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public bool IsFolderExpanded(string resourceKey)
+    public bool IsFolderExpanded(ResourceKey resourceKey)
     {
         return ExpandedFolders.Contains(resourceKey);
     }
