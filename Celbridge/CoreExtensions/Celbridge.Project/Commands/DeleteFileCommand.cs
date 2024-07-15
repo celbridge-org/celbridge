@@ -15,7 +15,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourcePath { get; set; } = string.Empty;
+    public string ResourceKey { get; set; } = string.Empty;
 
     private string _archivePath = string.Empty;
 
@@ -48,7 +48,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", ResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -69,12 +69,12 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to delete file. Resource path is empty");
+            return Result.Fail("Failed to delete file. Resource key is empty");
         }
 
         //
@@ -84,7 +84,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var deleteFilePath = Path.Combine(projectFolderPath, ResourcePath);
+            var deleteFilePath = Path.Combine(projectFolderPath, ResourceKey);
             deleteFilePath = Path.GetFullPath(deleteFilePath); // Make separators consistent
 
             if (!File.Exists(deleteFilePath))
@@ -99,13 +99,13 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
                 File.Delete(_archivePath);
             }
 
-            var archiveFolder = Path.GetDirectoryName(_archivePath)!;
-            Directory.CreateDirectory(archiveFolder);
+            var archiveFolderPath = Path.GetDirectoryName(_archivePath)!;
+            Directory.CreateDirectory(archiveFolderPath);
 
             // Archive the file to temporary storage so we can undo the command
             using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
             {
-                archive.CreateEntryFromFile(deleteFilePath, ResourcePath);
+                archive.CreateEntryFromFile(deleteFilePath, ResourceKey);
             }
 
             File.Delete(deleteFilePath);
@@ -159,9 +159,9 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         return Result.Ok();
     }
 
-    public static void DeleteFile(string resourcePath)
+    public static void DeleteFile(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IDeleteFileCommand>(command => command.ResourcePath = resourcePath);
+        commandService.Execute<IDeleteFileCommand>(command => command.ResourceKey = resourceKey);
     }
 }

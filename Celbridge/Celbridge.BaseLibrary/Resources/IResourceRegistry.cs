@@ -13,9 +13,9 @@ public interface IResourceRegistry
     IFolderResource RootFolder { get; }
 
     /// <summary>
-    /// Returns the resource path for a resource.
+    /// Returns the resource key for a resource.
     /// </summary>
-    string GetResourcePath(IResource resource);
+    string GetResourceKey(IResource resource);
 
     /// <summary>
     /// Returns the absolute path for a resource.
@@ -24,15 +24,15 @@ public interface IResourceRegistry
     string GetPath(IResource resource);
 
     /// <summary>
-    /// Returns the resource at the specified resource path.
+    /// Returns the resource with the specified resource key.
     /// Fails if no matching resource is found.
     /// </summary>
-    Result<IResource> GetResource(string resourcePath);
+    Result<IResource> GetResource(string resourceKey);
 
     /// <summary>
-    /// Returns the parent resource path for the specified resource path.
+    /// Returns the parent resource key for the specified resource key.
     /// </summary>
-    public string GetResourcePathParent(string resourcePath);
+    public string GetParentResourceKey(string resourceKey);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
@@ -48,10 +48,10 @@ public interface IResourceRegistry
     /// Mark a folder resource as expanded or collapsed in the resource tree.
     /// This does not affect the IsExpanded property of the folder resource itself.
     /// </summary>
-    void SetFolderIsExpanded(string resourcePath, bool isExpanded);
+    void SetFolderIsExpanded(string resourceKey, bool isExpanded);
 
     /// <summary>
-    /// Returns true if the folder at the specified resource path is expanded.
+    /// Returns true if the folder with the specified resource key is expanded.
     /// </summary>
-    public bool IsFolderExpanded(string resourcePath);
+    public bool IsFolderExpanded(string resourceKey);
 }

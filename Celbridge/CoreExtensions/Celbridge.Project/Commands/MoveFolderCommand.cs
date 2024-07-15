@@ -13,8 +13,8 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FromResourcePath { get; set; } = string.Empty;
-    public string ToResourcePath { get; set; } = string.Empty;
+    public string FromResourceKey { get; set; } = string.Empty;
+    public string ToResourceKey { get; set; } = string.Empty;
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -43,11 +43,11 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail($"Failed to move folder. Workspace is not loaded");
         }
 
-        var createResult = await MoveFolderInternal(FromResourcePath, ToResourcePath);
+        var createResult = await MoveFolderInternal(FromResourceKey, ToResourceKey);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromResourcePath, ToResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", FromResourceKey, ToResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -67,11 +67,11 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
             return Result.Fail($"Failed to undo move folder. Workspace is not loaded");
         }
 
-        var createResult = await MoveFolderInternal(ToResourcePath, FromResourcePath);
+        var createResult = await MoveFolderInternal(ToResourceKey, FromResourceKey);
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToResourcePath, FromResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_MoveFolderFailed", ToResourceKey, FromResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -85,13 +85,13 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
     }
 
     /// <summary>
-    /// Move the folder at resourcePathA to resourcePathB.
+    /// Move the folder at resourceKeyA to resourceKeyB.
     /// </summary>
-    private async Task<Result> MoveFolderInternal(string resourcePathA, string resourcePathB)
+    private async Task<Result> MoveFolderInternal(string resourceKeyA, string resourceKeyB)
     {
-        if (resourcePathA == resourcePathB)
+        if (resourceKeyA == resourceKeyB)
         {
-            // Moving to the same resource path is a no-op
+            // Moving to the same resource key is a no-op
             return Result.Ok();
         }
 
@@ -102,13 +102,13 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the folder paths
+        // Validate the folder resource keys
         //
 
-        if (string.IsNullOrEmpty(resourcePathA) ||
-            string.IsNullOrEmpty(resourcePathB))
+        if (string.IsNullOrEmpty(resourceKeyA) ||
+            string.IsNullOrEmpty(resourceKeyB))
         {
-            return Result.Fail("Failed to move folder. Resource path is empty.");
+            return Result.Fail("Failed to move folder. Resource key is empty.");
         }
 
         // I attempted to preserve the expanded state of folders as they are moved, but the TreeView control
@@ -122,19 +122,19 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var folderPathA = Path.Combine(projectFolderPath, resourcePathA);
+            var folderPathA = Path.Combine(projectFolderPath, resourceKeyA);
             folderPathA = Path.GetFullPath(folderPathA); // Make separators consistent
-            var folderPathB = Path.Combine(projectFolderPath, resourcePathB);
+            var folderPathB = Path.Combine(projectFolderPath, resourceKeyB);
             folderPathB = Path.GetFullPath(folderPathB);
 
             if (!Directory.Exists(folderPathA))
             {
-                return Result.Fail($"Failed to move folder. Folder path does not exist: {resourcePathA}");
+                return Result.Fail($"Failed to move folder. Folder path does not exist: {folderPathA}");
             }
 
             if (Directory.Exists(folderPathB))
             {
-                return Result.Fail($"Failed to move folder. Folder path already exists: {resourcePathB}");
+                return Result.Fail($"Failed to move folder. Folder path already exists: {folderPathB}");
             }
 
             Directory.Move(folderPathA, folderPathB);
@@ -145,7 +145,7 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         }
 
         // Expand the parent folder of the moved folder so that the user can see it in the tree view.
-        var newParentFolder = resourceRegistry.GetResourcePathParent(resourcePathB);
+        var newParentFolder = resourceRegistry.GetParentResourceKey(resourceKeyB);
         if (!string.IsNullOrEmpty(newParentFolder))
         {
             resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
@@ -159,13 +159,13 @@ public class MoveFolderCommand : CommandBase, IMoveFolderCommand
         return Result.Ok();
     }
 
-    public static void MoveFolder(string fromResourcePath, string toResourcePath)
+    public static void MoveFolder(string fromResourceKey, string toResourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IMoveFolderCommand>(command =>
         {
-            command.FromResourcePath = fromResourcePath;
-            command.ToResourcePath = toResourcePath;
+            command.FromResourceKey = fromResourceKey;
+            command.ToResourceKey = toResourceKey;
         });
     }
 }

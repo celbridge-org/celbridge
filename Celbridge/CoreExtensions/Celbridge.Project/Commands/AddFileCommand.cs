@@ -13,7 +13,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourcePath { get; set; } = string.Empty;
+    public string ResourceKey { get; set; } = string.Empty;
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -44,7 +44,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         if (createResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", ResourcePath);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -67,17 +67,17 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to create file. Resource path is empty");
+            return Result.Fail("Failed to create file. Resource key is empty");
         }
 
-        if (!_utilityService.IsValidResourcePath(ResourcePath))
+        if (!_utilityService.IsValidResourceKey(ResourceKey))
         {
-            return Result.Fail($"Failed to create file. Resource path {ResourcePath} is not valid.");
+            return Result.Fail($"Failed to create file. Resource key '{ResourceKey}' is not valid.");
         }
 
         //
@@ -87,7 +87,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var newFilePath = Path.Combine(projectFolderPath, ResourcePath);
+            var newFilePath = Path.Combine(projectFolderPath, ResourceKey);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             // It's important to fail if the file already exists, because undoing this command
@@ -107,10 +107,10 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         //
         // Expand the folder containing the newly created file
         //
-        int lastSlashIndex = ResourcePath.LastIndexOf('/');
+        int lastSlashIndex = ResourceKey.LastIndexOf('/');
         if (lastSlashIndex > -1)
         {
-            var parentFolder = ResourcePath.Substring(0, lastSlashIndex);
+            var parentFolder = ResourceKey.Substring(0, lastSlashIndex);
             if (!string.IsNullOrEmpty(parentFolder))
             {
                 resourceRegistry.SetFolderIsExpanded(parentFolder, true);
@@ -139,15 +139,15 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         Guard.IsNotNull(loadedProjectData);
 
         //
-        // Validate the resource path
+        // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourcePath))
+        if (string.IsNullOrEmpty(ResourceKey))
         {
-            return Result.Fail("Failed to undo add file. Resource path is empty");
+            return Result.Fail("Failed to undo add file. Resource key is empty");
         }
 
-        // We can assume the resource path is valid because the command already executed successfully.
+        // We can assume the resource key is valid because the command already executed successfully.
 
         //
         // Delete the file on disk
@@ -156,7 +156,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         try
         {
             var projectFolderPath = loadedProjectData.ProjectFolderPath;
-            var newFilePath = Path.Combine(projectFolderPath, ResourcePath);
+            var newFilePath = Path.Combine(projectFolderPath, ResourceKey);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             if (!File.Exists(newFilePath))
@@ -179,9 +179,9 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         return Result.Ok();
     }
 
-    public static void AddFile(string resourcePath)
+    public static void AddFile(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IAddFileCommand>(command => command.ResourcePath = resourcePath);
+        commandService.Execute<IAddFileCommand>(command => command.ResourceKey = resourceKey);
     }
 }

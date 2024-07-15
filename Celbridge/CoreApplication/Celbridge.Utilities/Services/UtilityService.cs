@@ -5,44 +5,44 @@ namespace Celbridge.Messaging.Services;
 
 public class UtilityService : IUtilityService
 {
-    public bool IsValidResourcePath(string resourcePath)
+    public bool IsValidResourceKey(string resourceKey)
     {
-        if (string.IsNullOrWhiteSpace(resourcePath))
+        if (string.IsNullOrWhiteSpace(resourceKey))
         {
             return false;
         }
 
         // Backslashes are not permitted
-        if (resourcePath.Contains("\\"))
+        if (resourceKey.Contains("\\"))
         {
             return false;
         }
 
-        // Resource paths must be specified relative to the project folder
-        if (Path.IsPathRooted(resourcePath))
+        // Resource keys must be specified relative to the project folder
+        if (Path.IsPathRooted(resourceKey))
         {
             return false;
         }
 
-        // Resource paths may not contain parent or same directory references
-        if (resourcePath.Contains("..") || 
-            resourcePath.Contains("./") || 
-            resourcePath.Contains(".\\"))
+        // Resource keys may not contain parent or same directory references
+        if (resourceKey.Contains("..") || 
+            resourceKey.Contains("./") || 
+            resourceKey.Contains(".\\"))
         {
             return false;
         }
 
-        // Resource paths may not start with a separator character
-        if (resourcePath[0] == '/')
+        // Resource keys may not start with a separator character
+        if (resourceKey[0] == '/')
         {
             return false;
         }
 
-        // Each segment in the resource path must be a valid filename
-        var resourcePathSegments = resourcePath.Split('/');
-        foreach (var segment in resourcePathSegments)
+        // Each segment in the resource key must be a valid filename
+        var resourceKeySegments = resourceKey.Split('/');
+        foreach (var segment in resourceKeySegments)
         {
-            if (!IsValidResourcePathSegment(segment))
+            if (!IsValidResourceKeySegment(segment))
             {
                 return false;
             }
@@ -51,9 +51,9 @@ public class UtilityService : IUtilityService
         return true;
     }
 
-    public bool IsValidResourcePathSegment(string resourcePathSegment)
+    public bool IsValidResourceKeySegment(string resourceKeySegment)
     {
-        if (string.IsNullOrWhiteSpace(resourcePathSegment))
+        if (string.IsNullOrWhiteSpace(resourceKeySegment))
         {
             return false;
         }
@@ -63,7 +63,7 @@ public class UtilityService : IUtilityService
         // Note that we're using GetInvalidFileNameChars() instead of GetInvalidPathChars() here.
         var invalidChars = Path.GetInvalidFileNameChars();
 
-        foreach (var c in resourcePathSegment)
+        foreach (var c in resourceKeySegment)
         {
             if (invalidChars.Contains(c))
             {
