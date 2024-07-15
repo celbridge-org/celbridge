@@ -86,8 +86,8 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var newFilePath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var newFilePath = Path.Combine(projectFolderPath, ResourcePath);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             // It's important to fail if the file already exists, because undoing this command
@@ -155,8 +155,8 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
         try
         {
-            var projectFolder = loadedProjectData.ProjectFolder;
-            var newFilePath = Path.Combine(projectFolder, ResourcePath);
+            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var newFilePath = Path.Combine(projectFolderPath, ResourcePath);
             newFilePath = Path.GetFullPath(newFilePath); // Make separators consistent
 
             if (!File.Exists(newFilePath))

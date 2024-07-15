@@ -7,13 +7,13 @@ namespace Celbridge.Project.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
-    private readonly string _projectFolder;
+    private readonly string _projectFolderPath;
 
     public IFolderResource RootFolder { get; } = new FolderResource(string.Empty, null);
 
-    public ResourceRegistry(string projectFolder)
+    public ResourceRegistry(string projectFolderPath)
     {
-        _projectFolder = projectFolder;
+        _projectFolderPath = projectFolderPath;
     }
 
     public string GetResourcePath(IResource resource)
@@ -51,7 +51,7 @@ public class ResourceRegistry : IResourceRegistry
     {
         var resourcePath = GetResourcePath(resource);
 
-        var path = Path.Combine(_projectFolder, resourcePath);
+        var path = Path.Combine(_projectFolderPath, resourcePath);
 
         // Unify directory separators
         return Path.GetFullPath(path);
@@ -115,7 +115,7 @@ public class ResourceRegistry : IResourceRegistry
 
     public Result UpdateResourceTree()
     {
-        var createResult = CreateFolderResource(_projectFolder);
+        var createResult = CreateFolderResource(_projectFolderPath);
         if (createResult.IsFailure)
         {
             return Result.Fail(createResult.Error);
