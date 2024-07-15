@@ -12,8 +12,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string FromResourceKey { get; set; } = string.Empty;
-    public string ToResourceKey { get; set; } = string.Empty;
+    public ResourceKey FromResourceKey { get; set; }
+    public ResourceKey ToResourceKey { get; set; }
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -86,7 +86,7 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
     /// <summary>
     /// Move the file at resourceKeyA to resourceKeyB.
     /// </summary>
-    private async Task<Result> MoveFileInternal(string resourceKeyA, string resourceKeyB)
+    private async Task<Result> MoveFileInternal(ResourceKey resourceKeyA, ResourceKey resourceKeyB)
     {
         if (resourceKeyA == resourceKeyB)
         {
@@ -102,8 +102,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
         // Validate the resource keys
         //
 
-        if (string.IsNullOrEmpty(resourceKeyA) ||
-            string.IsNullOrEmpty(resourceKeyB))
+        if (resourceKeyA.IsEmpty ||
+            resourceKeyB.IsEmpty)
         {
             return Result.Fail("Failed to move file. Resource key is empty.");
         }
@@ -122,12 +122,12 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
             if (!File.Exists(filePathA))
             {
-                return Result.Fail($"Failed to move file. File does not exist: {resourceKeyA}");
+                return Result.Fail($"Failed to move file. File does not exist: {filePathA}");
             }
 
             if (File.Exists(filePathB))
             {
-                return Result.Fail($"Failed to move file. File already exists: {resourceKeyB}");
+                return Result.Fail($"Failed to move file. File already exists: {filePathB}");
             }
 
             var parentFolderPathB = Path.GetDirectoryName(filePathB);
@@ -143,9 +143,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
 
             // Expand the parent folder of the moved file so that the user can see it in the tree view.
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-            var newParentFolder = resourceRegistry.GetParentResourceKey(resourceKeyB);
-
-            if (!string.IsNullOrEmpty(newParentFolder))
+            var newParentFolder = resourceKeyB.GetParent();
+            if (!newParentFolder.IsEmpty)
             {
                 resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
             }
