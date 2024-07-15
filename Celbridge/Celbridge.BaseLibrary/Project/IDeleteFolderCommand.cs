@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Resources;
 
 namespace Celbridge.BaseLibrary.Project;
 
@@ -10,5 +11,5 @@ public interface IDeleteFolderCommand : IExecutableCommand
     /// <summary>
     /// Resource key for the folder to delete.
     /// </summary>
-    string ResourceKey { get; set; }
+    ResourceKey ResourceKey { get; set; }
 }

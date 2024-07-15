@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Commands;
+using Celbridge.BaseLibrary.Resources;
 
 namespace Celbridge.BaseLibrary.Project;
 
@@ -10,10 +11,10 @@ public interface IMoveFileCommand : IExecutableCommand
     /// <summary>
     /// Resource key of the file to be moved.
     /// </summary>
-    string FromResourceKey { get; set; }
+    ResourceKey FromResourceKey { get; set; }
 
     /// <summary>
     /// Resource key to move the file to.
     /// </summary>
-    string ToResourceKey { get; set; }
+    ResourceKey ToResourceKey { get; set; }
 }

@@ -15,7 +15,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
     public override string StackName => CommandStackNames.Project;
 
-    public string ResourceKey { get; set; } = string.Empty;
+    public ResourceKey ResourceKey { get; set; }
 
     private string _archivePath = string.Empty;
 
@@ -72,7 +72,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         // Validate the resource key
         //
 
-        if (string.IsNullOrEmpty(ResourceKey))
+        if (ResourceKey.IsEmpty)
         {
             return Result.Fail("Failed to delete file. Resource key is empty");
         }
