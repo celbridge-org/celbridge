@@ -280,9 +280,9 @@
     <value>Add folder</value>
   </data>
   <data name="ResourceTree_PasteResourceFailed" xml:space="preserve">
-    <value>Failed to paste to {0}</value>
+    <value>Failed to paste to '{0}'</value>
   </data>
   <data name="ResourceTree_UndoPasteResourceFailed" xml:space="preserve">
-    <value>Failed to undo paste to {0}</value>
+    <value>Failed to undo paste to '{0}'</value>
   </data>
 </root>

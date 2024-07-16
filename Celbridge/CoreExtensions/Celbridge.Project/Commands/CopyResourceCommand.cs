@@ -13,6 +13,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     public ResourceKey ResourceKey { get; set; }
 
+    public bool Move { get; set; }
+
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public CopyResourceCommand(IWorkspaceWrapper workspaceWrapper)
@@ -69,7 +71,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = DataPackageOperation.Copy;
+        dataPackage.RequestedOperation = Move ? DataPackageOperation.Move : DataPackageOperation.Copy;
 
         dataPackage.SetStorageItems(storageItems);
         Clipboard.SetContent(dataPackage);

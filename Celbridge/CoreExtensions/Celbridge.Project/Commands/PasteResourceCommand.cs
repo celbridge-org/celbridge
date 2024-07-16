@@ -16,11 +16,9 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
 
-    public override string StackName => CommandStackNames.Project;
+    public override string StackName => CommandStackNames.None;
 
     public ResourceKey FolderResourceKey { get; set; }
-
-    private List<string> _pastedPaths = new();
 
     public PasteResourceCommand(
         IMessengerService messengerService,
@@ -40,21 +38,7 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         if (pasteResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_Paste");
-            var messageString = _stringLocalizer.GetString("ResourceTree_PasteResourceFailed", FolderResourceKey);
-
-            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-        }
-
-        return pasteResult;
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        var pasteResult = await UndoPasteAsync();
-        if (pasteResult.IsFailure)
-        {
-            var titleString = _stringLocalizer.GetString("ResourceTree_Paste");
-            var messageString = _stringLocalizer.GetString("ResourceTree_UndoPasteResourceFailed", FolderResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_PasteResourceFailed", FolderResourceKey.ToString());
 
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
@@ -83,11 +67,14 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
             return Result.Fail($"Failed to paste resource. The '{pasteFolderPath}' path does not exist.");
         }
 
-        var pasteFolder = await StorageFolder.GetFolderFromPathAsync(pasteFolderPath);
         var dataPackageView = Clipboard.GetContent();
 
+        bool isMove = dataPackageView.RequestedOperation == DataPackageOperation.Move;
+
+        bool modified = false;
         if (dataPackageView.Contains(StandardDataFormats.StorageItems))
         {
+            var pasteFolder = await StorageFolder.GetFolderFromPathAsync(pasteFolderPath);
             var storageItems = await dataPackageView.GetStorageItemsAsync();
             try
             {
@@ -96,10 +83,30 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
                     if (storageItem is StorageFile storageFile)
                     {
                         await CopyStorageFileAsync(storageFile, pasteFolder);
+                        if (isMove)
+                        {
+                            // Using storageFile.DeleteAsync() here throws a readonly file exception.
+                            // That doesn't make any sense, unless the copy operation is locking the file somehow?
+                            File.Delete(storageFile.Path);
+                        }
+
+                        modified = true;
                     }
                     else if (storageItem is StorageFolder storageFolder)
                     {
+                        if (PathContainsSubPath(pasteFolder.Path, storageFolder.Path))
+                        {
+                            return Result.Fail($"Failed to paste resources. A folder cannot be pasted into a subfolder of itself.");
+                        }
+
                         await CopyStorageFolderAsync(storageFolder, pasteFolder);
+                        if (isMove)
+                        {
+                            // Similar to the file case above, using storageFolder.DeleteAsync() here throws a readonly file exception.
+                            Directory.Delete(storageFolder.Path, true);
+                        }
+
+                        modified = true;
                     }
                 }
             }
@@ -109,7 +116,7 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
             }
         }
 
-        if (_pastedPaths.Count == 0)
+        if (!modified)
         {
             return Result.Fail("Failed to paste resources. No resources found in clipboard.");
         }
@@ -122,40 +129,9 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         return Result.Ok();
     }
 
-    private async Task<Result> UndoPasteAsync()
-    {
-        foreach (var pastedPath in _pastedPaths)
-        {
-            try
-            {
-                if (File.Exists(pastedPath))
-                {
-                    File.Delete(pastedPath);
-                }
-                else if (Directory.Exists(pastedPath))
-                {
-                    Directory.Delete(pastedPath, true);
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to undo paste resources. {ex}");
-            }
-        }
-        _pastedPaths.Clear();
-
-        var message = new RequestResourceTreeUpdate();
-        _messengerService.Send(message);
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
-    }
-
     private async Task CopyStorageFileAsync(StorageFile sourceFile, StorageFolder destinationFolder)
     {
-        var newFile = await sourceFile.CopyAsync(destinationFolder, sourceFile.Name, NameCollisionOption.FailIfExists);
-        _pastedPaths.Add(newFile.Path);
+        await sourceFile.CopyAsync(destinationFolder, sourceFile.Name, NameCollisionOption.FailIfExists);
     }
 
     private async Task CopyStorageFolderAsync(StorageFolder sourceFolder, StorageFolder destinationFolder)
@@ -166,7 +142,6 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         }
 
         var destinationSubFolder = await destinationFolder.CreateFolderAsync(sourceFolder.Name, CreationCollisionOption.FailIfExists);
-        _pastedPaths.Add(destinationSubFolder.Path);
 
         var files = await sourceFolder.GetFilesAsync();
         foreach (var file in files)
@@ -179,6 +154,13 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         {
             await CopyStorageFolderAsync(subFolder, destinationSubFolder);
         }
+    }
+
+    private bool PathContainsSubPath(string path, string subPath)
+    {
+        string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string pathB = Path.GetFullPath(subPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
     }
 
     public static void PasteResource(ResourceKey folderResourceKey)
