@@ -11,9 +11,9 @@ public interface IExecutableCommand
     CommandId Id { get; }
 
     /// <summary>
-    /// Name of the command stack to add this command to after it executes, to support undo/redo.
+    /// Name of the undo stack to add this command to after it executes.
     /// </summary>
-    string StackName { get; }
+    string UndoStackName { get; }
 
     /// <summary>
     /// Execute the command.

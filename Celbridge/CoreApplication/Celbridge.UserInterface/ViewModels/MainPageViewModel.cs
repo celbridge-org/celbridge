@@ -100,9 +100,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             _ = NavigateToHomeAsync();
         }
 
-        // Todo: Support additional command stacks when we add functionality to other panels
-        // Hard coding it to use the Project command stack for now.
-        _commandService.ActiveCommandStack = CommandStackNames.Project;
+        // Todo: Support additional undo stacks when we add functionality to other panels
+        // Hard coding it to use the Project undo stack for now.
+        _commandService.ActiveUndoStack = UndoStackNames.Project;
     }
 
     public void OnMainPage_Unloaded()

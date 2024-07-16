@@ -9,7 +9,7 @@ namespace Celbridge.Project.Commands;
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override string StackName => CommandStackNames.None;
+    public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey ResourceKey { get; set; }
 

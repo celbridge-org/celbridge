@@ -13,7 +13,7 @@ namespace Celbridge.Project.Commands;
 
 public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 {
-    public override string StackName => CommandStackNames.Project;
+    public override string UndoStackName => UndoStackNames.Project;
 
     public ResourceKey ResourceKey { get; set; }
 
