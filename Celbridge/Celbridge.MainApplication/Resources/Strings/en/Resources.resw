@@ -210,9 +210,6 @@
   <data name="ResourceTree_FailedToDeleteFile" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToDeleteFolder" xml:space="preserve">
-    <value>Failed to delete folder '{0}'</value>
-  </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
   </data>
@@ -293,6 +290,9 @@
   </data>
   <data name="ResourceTree_FailedToUndoDeleteFile" xml:space="preserve">
     <value>Failed to undo delete file '{0}'</value>
+  </data>
+  <data name="ResourceTree_FailedToDeleteFolder" xml:space="preserve">
+    <value>Failed to delete folder '{0}'</value>
   </data>
   <data name="ResourceTree_FailedToUndoDeleteFolder" xml:space="preserve">
     <value>Failed to undo delete folder '{0}'</value>

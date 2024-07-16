@@ -59,8 +59,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             // Don't update if there are any pending resource tree commands
             if (!_commandService.ContainsCommandsOfType<IAddFileCommand>() &&
                 !_commandService.ContainsCommandsOfType<IAddFolderCommand>() &&
-                !_commandService.ContainsCommandsOfType<IDeleteFileCommand>() &&
-                !_commandService.ContainsCommandsOfType<IDeleteFolderCommand>() &&
+                !_commandService.ContainsCommandsOfType<IDeleteResourceCommand>() &&
                 !_commandService.ContainsCommandsOfType<IMoveFileCommand>() &&
                 !_commandService.ContainsCommandsOfType<IMoveFolderCommand>() &&
                 !_commandService.ContainsCommandsOfType<IUpdateResourceTreeCommand>())
