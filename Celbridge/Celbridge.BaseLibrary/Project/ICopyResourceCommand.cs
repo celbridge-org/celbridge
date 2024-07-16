@@ -9,12 +9,13 @@ namespace Celbridge.BaseLibrary.Project;
 public interface ICopyResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource key to copy to the clipboard.
+    /// Resource to copy to the clipboard.
     /// </summary>
     ResourceKey ResourceKey { get; set; }
 
     /// <summary>
-    /// If true, the original resource will be moved to the new location when the paste is performed.
+    /// If set to true, the original resource will be moved to the new location 
+    /// when the paste is performed. In the context of the clipboard, this is a "cut".
     /// </summary>
     bool Move { get; set; }
 }
