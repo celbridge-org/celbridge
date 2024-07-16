@@ -36,7 +36,7 @@ public class Extension : IExtension
         config.AddTransient<IAddFileCommand, AddFileCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         config.AddTransient<IMoveResourceCommand, MoveResourceCommand>();
-        config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
+        config.AddTransient<IClipResourceCommand, ClipResourceCommand>();
         config.AddTransient<IPasteResourceCommand, PasteResourceCommand>();
 
         //

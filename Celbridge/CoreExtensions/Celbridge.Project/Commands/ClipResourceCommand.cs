@@ -7,17 +7,17 @@ using Windows.Storage;
 
 namespace Celbridge.Project.Commands;
 
-public class CopyResourceCommand : CommandBase, ICopyResourceCommand
+public class ClipResourceCommand : CommandBase, IClipResourceCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey ResourceKey { get; set; }
 
-    public bool Move { get; set; }
+    public bool MoveResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public CopyResourceCommand(IWorkspaceWrapper workspaceWrapper)
+    public ClipResourceCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -71,7 +71,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = Move ? DataPackageOperation.Move : DataPackageOperation.Copy;
+        dataPackage.RequestedOperation = MoveResource ? DataPackageOperation.Move : DataPackageOperation.Copy;
 
         dataPackage.SetStorageItems(storageItems);
         Clipboard.SetContent(dataPackage);
@@ -80,19 +80,18 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         return Result.Ok();
     }
 
-    public static void CutResource(string resourceKey)
+    public static void ClipResource(string resourceKey, bool moveResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ICopyResourceCommand>(command =>
+        commandService.Execute<IClipResourceCommand>(command =>
         {
             command.ResourceKey = resourceKey;
-            command.Move = true;
+            command.MoveResource = moveResource;
         });
     }
 
-    public static void CopyResource(string resourceKey)
+    public static void ClipResource(string resourceKey)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ICopyResourceCommand>(command => command.ResourceKey = resourceKey);
+        ClipResource(resourceKey, false);
     }
 }
