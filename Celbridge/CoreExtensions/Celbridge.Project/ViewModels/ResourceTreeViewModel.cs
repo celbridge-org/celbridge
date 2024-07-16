@@ -60,8 +60,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             if (!_commandService.ContainsCommandsOfType<IAddFileCommand>() &&
                 !_commandService.ContainsCommandsOfType<IAddFolderCommand>() &&
                 !_commandService.ContainsCommandsOfType<IDeleteResourceCommand>() &&
-                !_commandService.ContainsCommandsOfType<IMoveFileCommand>() &&
-                !_commandService.ContainsCommandsOfType<IMoveFolderCommand>() &&
+                !_commandService.ContainsCommandsOfType<IMoveResourceCommand>() &&
                 !_commandService.ContainsCommandsOfType<IUpdateResourceTreeCommand>())
             {
                 // Execute a command to update the resource tree
