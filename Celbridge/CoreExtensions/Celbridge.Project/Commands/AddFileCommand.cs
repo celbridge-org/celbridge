@@ -44,7 +44,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         if (addResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToAddFile", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_AddFileFailed", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -59,7 +59,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         if (undoResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoAddFile", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_UndoAddFileFailed", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);

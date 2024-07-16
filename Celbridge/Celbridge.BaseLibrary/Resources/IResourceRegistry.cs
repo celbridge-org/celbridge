@@ -1,6 +1,4 @@
-﻿using System.Collections.ObjectModel;
-
-namespace Celbridge.BaseLibrary.Resources;
+﻿namespace Celbridge.BaseLibrary.Resources;
 
 /// <summary>
 /// A data structure representing the resources in the project folder.

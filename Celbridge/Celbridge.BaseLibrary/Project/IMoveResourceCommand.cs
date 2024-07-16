@@ -4,22 +4,22 @@ using Celbridge.BaseLibrary.Resources;
 namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Move a folder resource to a different path in the project.
+/// Move a resource to a different path in the project.
 /// </summary>
-public interface IMoveFolderCommand : IExecutableCommand
+public interface IMoveResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource key of the folder to be moved.
+    /// Resource to be moved.
     /// </summary>
     ResourceKey FromResourceKey { get; set; }
 
     /// <summary>
-    /// Resource key to move the folder to.
+    /// Resource key to move to.
     /// </summary>
     ResourceKey ToResourceKey { get; set; }
 
     /// <summary>
-    /// Expand the folder in the tree view after moving it.
+    /// If the resource is a folder, expand the folder after moving it.
     /// </summary>
     bool ExpandMovedFolder { get; set; }
 }
