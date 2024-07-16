@@ -40,24 +40,39 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var createResult = await CreateFolder();
-        if (createResult.IsFailure)
+        var addResult = await AddFolderAsync();
+        if (addResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFolder", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToAddFolder", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
-        return createResult;
+        return addResult;
     }
 
-    private async Task<Result> CreateFolder()
+    public override async Task<Result> UndoAsync()
+    {
+        var undoResult = await UndoAddFolderAsync();
+        if (undoResult.IsFailure)
+        {
+            var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoAddFolder", ResourceKey);
+
+            // Show alert
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+        }
+
+        return undoResult;
+    }
+
+    private async Task<Result> AddFolderAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to create folder because workspace is not loaded");
+            return Result.Fail($"Failed to add folder because workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
@@ -81,7 +96,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         }
 
         //
-        // Create the folder on disk
+        // Add the folder on disk
         //
 
         try
@@ -105,7 +120,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         }
 
         //
-        // Expand the folder containing the newly created folder
+        // Expand the folder containing the newly added folder
         //
         var parentResourceKey = ResourceKey.GetParent();
         if (!parentResourceKey.IsEmpty)
@@ -121,11 +136,11 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    private async Task<Result> UndoAddFolderAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to undo create folder because workspace is not loaded");
+            return Result.Fail($"Failed to undo add folder because workspace is not loaded");
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
