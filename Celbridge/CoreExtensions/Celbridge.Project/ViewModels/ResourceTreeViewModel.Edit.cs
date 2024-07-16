@@ -109,7 +109,7 @@ public partial class ResourceTreeViewModel
                 if (confirmed)
                 {
                     // Execute a command to delete the folder resource
-                    _commandService.Execute<IDeleteFolderCommand>(command => command.ResourceKey = resourceKey);
+                    _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
 
                     // Execute a command to update the resource tree
                     _commandService.Execute<IUpdateResourceTreeCommand>();
@@ -137,7 +137,7 @@ public partial class ResourceTreeViewModel
                 if (confirmed)
                 {
                     // Execute a command to delete the file resource
-                    _commandService.Execute<IDeleteFileCommand>(command => command.ResourceKey = resourceKey);
+                    _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
 
                     // Execute a command to update the resource tree
                     _commandService.Execute<IUpdateResourceTreeCommand>();
