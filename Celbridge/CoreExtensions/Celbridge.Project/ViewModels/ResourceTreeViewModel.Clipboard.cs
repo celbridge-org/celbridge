@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -9,81 +10,49 @@ public partial class ResourceTreeViewModel
 {
     public void CutResource(IResource resource)
     {
+        var resourceRegistry = _projectService.ResourceRegistry;
+
+        var resourceKey = resourceRegistry.GetResourceKey(resource);
+
+        // Execute a command to cut the resource to the clipboard
+        _commandService.Execute<ICopyResourceCommand>(command =>
+        {
+            command.ResourceKey = resourceKey;
+            command.Move = true;
+        });
     }
 
     public void CopyResource(IResource resource)
     {
-        //async Task CopyFile(string filePath)
-        //{
-        //    StorageFile file = await StorageFile.GetFileFromPathAsync(filePath);
-        //    if (file != null)
-        //    {
-        //        var dataPackage = new DataPackage();
-        //        dataPackage.RequestedOperation = DataPackageOperation.Copy;
+        var resourceRegistry = _projectService.ResourceRegistry;
 
-        //        List<IStorageItem> items = new List<IStorageItem>();
-        //        items.Add(file);
-        //        dataPackage.SetStorageItems(items);
+        var resourceKey = resourceRegistry.GetResourceKey(resource);
 
-        //        Clipboard.SetContent(dataPackage);
-        //        Clipboard.Flush();
-        //    }
-        //}
-
-        //var path = _projectService.ResourceRegistry.GetPath(resource);
-        //if (string.IsNullOrEmpty(path))
-        //{
-        //    return;
-        //}
-
-        //if (resource is IFileResource)
-        //{
-        //    _ = CopyFile(path);
-        //}
+        // Execute a command to copy the resource to the clipboard
+        _commandService.Execute<ICopyResourceCommand>(command => command.ResourceKey = resourceKey);
     }
 
-    public void PasteResource(IResource resource)
+    public void PasteResource(IResource? resource)
     {
-        //async Task PasteFile(string folderPath)
-        //{
-        //    DataPackageView dataPackageView = Clipboard.GetContent();
-        //    if (dataPackageView.Contains(StandardDataFormats.StorageItems))
-        //    {
-        //        IReadOnlyList<IStorageItem> storageItems = await dataPackageView.GetStorageItemsAsync();
+        var rootFolder = _projectService.ResourceRegistry.RootFolder;
 
-        //        if (storageItems.Count > 0)
-        //        {
-        //            var storageFile = storageItems[0] as StorageFile;
-        //            if (storageFile != null)
-        //            {
-        //                // Save the file to the parent folder
-        //                var sourcePath = storageFile.Path;
-        //                //File.Copy(sourcePath, folderPath);
-        //            }
-        //        }
-        //    }
-        //}
+        IFolderResource pasteFolder;
+        if (resource is IFileResource fileResource)
+        {
+            pasteFolder = fileResource.ParentFolder ?? rootFolder;
+        }
+        else if (resource is IFolderResource folderResource)
+        {
+            pasteFolder = folderResource ?? rootFolder;
+        }
+        else
+        {
+            pasteFolder = rootFolder;
+        }
 
-        //IFolderResource parentFolder;
-        //if (resource is IFileResource fileResource)
-        //{
-        //    parentFolder = fileResource.ParentFolder!;
-        //}
-        //else if (resource is IFolderResource folderResource)
-        //{
-        //    parentFolder = folderResource;
-        //}
-        //else
-        //{
-        //    parentFolder = _projectService.ResourceRegistry.RootFolder;
-        //}
+        var folderResourceKey = _projectService.ResourceRegistry.GetResourceKey(pasteFolder);
 
-        //var folderPath = _projectService.ResourceRegistry.GetPath(parentFolder);
-        //if (string.IsNullOrEmpty(folderPath))
-        //{
-        //    return;
-        //}
-
-        //_ = PasteFile(folderPath);
+        // Execute a command to paste the clipboard content to the folder resource
+        _commandService.Execute<IPasteResourceCommand>(command => command.FolderResourceKey = folderResourceKey);
     }
 }

@@ -38,6 +38,8 @@ public class Extension : IExtension
         config.AddTransient<IDeleteFileCommand, DeleteFileCommand>();
         config.AddTransient<IMoveFolderCommand, MoveFolderCommand>();
         config.AddTransient<IMoveFileCommand, MoveFileCommand>();
+        config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
+        config.AddTransient<IPasteResourceCommand, PasteResourceCommand>();
 
         //
         // Register validators

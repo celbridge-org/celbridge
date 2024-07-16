@@ -28,8 +28,9 @@ public partial class ResourceTreeViewModel : ObservableObject
     private bool _resourceTreeUpdatePending;
 
     public ResourceTreeViewModel(
-        IMessengerService messengerService,
         IServiceProvider serviceProvider,
+        ILoggingService loggingService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
         IDialogService dialogService,
