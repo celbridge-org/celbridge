@@ -40,20 +40,36 @@ public class AddFileCommand : CommandBase, IAddFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var createResult = await CreateFile();
-        if (createResult.IsFailure)
+        var addResult = await AddFileAsync();
+        if (addResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToCreateFile", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToAddFile", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
-        return createResult;
+        return addResult;
     }
 
-    private async Task<Result> CreateFile()
+    public override async Task<Result> UndoAsync()
+    {
+        var undoResult = await UndoAddFileAsync();
+        if (undoResult.IsFailure)
+        {
+            var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoAddFile", ResourceKey);
+
+            // Show alert
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+        }
+
+        return undoResult;
+
+    }
+
+    private async Task<Result> AddFileAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
@@ -121,7 +137,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    private async Task<Result> UndoAddFileAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {

@@ -44,8 +44,8 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var createResult = await DeleteFile();
-        if (createResult.IsFailure)
+        var deleteResult = await DeleteFileAsync();
+        if (deleteResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
             var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", ResourceKey);
@@ -54,10 +54,25 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
-        return createResult;
+        return deleteResult;
     }
 
-    private async Task<Result> DeleteFile()
+    public override async Task<Result> UndoAsync()
+    {
+        var deleteResult = await UndoDeleteFileAsync();
+        if (deleteResult.IsFailure)
+        {
+            var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoDeleteFile", ResourceKey);
+
+            // Show alert
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+        }
+
+        return deleteResult;
+    }
+
+    private async Task<Result> DeleteFileAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
@@ -123,7 +138,7 @@ public class DeleteFileCommand : CommandBase, IDeleteFileCommand
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    private async Task<Result> UndoDeleteFileAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
