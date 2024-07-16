@@ -48,6 +48,7 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         var pasteFolder = await StorageFolder.GetFolderFromPathAsync(pasteFolderPath);
         var dataPackageView = Clipboard.GetContent();
 
+        bool modified = false;
         if (dataPackageView.Contains(StandardDataFormats.StorageItems))
         {
             var storageItems = await dataPackageView.GetStorageItemsAsync();
@@ -58,10 +59,12 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
                     if (storageItem is StorageFile storageFile)
                     {
                         await storageFile.CopyAsync(pasteFolder);
+                        modified = true;
                     }
                     else if (storageItem is StorageFolder storageFolder)
                     {
                         await CopyStorageFolderAsync(storageFolder, pasteFolder);
+                        modified = true;
                     }
                 }
             }
@@ -71,8 +74,13 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
             }
         }
 
-        var message = new RequestResourceTreeUpdate();
-        _messengerService.Send(message);
+        if (modified)
+        {
+            resourceRegistry.SetFolderIsExpanded(FolderResourceKey, true);
+
+            var message = new RequestResourceTreeUpdate();
+            _messengerService.Send(message);
+        }
 
         return Result.Ok();
     }
