@@ -10,7 +10,7 @@ namespace Celbridge.Project.Commands;
 
 public class MoveFileCommand : CommandBase, IMoveFileCommand
 {
-    public override string StackName => CommandStackNames.Project;
+    public override string UndoStackName => UndoStackNames.Project;
 
     public ResourceKey FromResourceKey { get; set; }
     public ResourceKey ToResourceKey { get; set; }

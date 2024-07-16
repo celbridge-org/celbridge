@@ -12,9 +12,9 @@ namespace Celbridge.Tests;
 
 public class TestCommand : CommandBase
 {
-    private string _commandStackName = CommandStackNames.None;
+    private string _undoStackName = UndoStackNames.None;
 
-    public override string StackName => _commandStackName;
+    public override string UndoStackName => _undoStackName;
 
     public bool ExecuteComplete { get; private set; }
     public bool UndoComplete { get; private set; }
@@ -22,7 +22,7 @@ public class TestCommand : CommandBase
 
     public TestCommand(string undoStackName)
     {
-        _commandStackName = undoStackName;
+        _undoStackName = undoStackName;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -53,7 +53,7 @@ public class TestCommand : CommandBase
 [TestFixture]
 public class CommandTests
 {
-    public const string CommandStackName = "TestCommandStack";
+    public const string UndoStackName = "TestUndoStack";
 
     private ServiceProvider? _serviceProvider;
     private ICommandService? _commandService;
@@ -70,7 +70,7 @@ public class CommandTests
         _serviceProvider = services.BuildServiceProvider();
         _commandService = _serviceProvider.GetRequiredService<ICommandService>();
 
-        _commandService.ActiveCommandStack = CommandStackName;
+        _commandService.ActiveUndoStack = UndoStackName;
 
         var commandService = _commandService as CommandService;
         Guard.IsNotNull(commandService);
@@ -95,7 +95,7 @@ public class CommandTests
     {
         Guard.IsNotNull(_commandService);
 
-        var testCommand = new TestCommand(CommandStackNames.None);
+        var testCommand = new TestCommand(UndoStackNames.None);
         _commandService.EnqueueCommand(testCommand);
 
         // Wait for command to execute
@@ -121,9 +121,9 @@ public class CommandTests
         //
 
         // The undo stack is currently empty
-        _commandService.IsUndoStackEmpty(CommandStackName).Should().BeTrue();
+        _commandService.IsUndoStackEmpty(UndoStackName).Should().BeTrue();
 
-        var testCommand = new TestCommand(CommandStackName);
+        var testCommand = new TestCommand(UndoStackName);
         _commandService.EnqueueCommand(testCommand);
 
         // Wait for command to execute
@@ -139,7 +139,7 @@ public class CommandTests
         testCommand.ExecuteComplete.Should().BeTrue();
 
         // Undo stack should contain one item
-        _commandService.IsUndoStackEmpty(CommandStackName).Should().BeFalse();
+        _commandService.IsUndoStackEmpty(UndoStackName).Should().BeFalse();
 
         //
         // Undo the command
@@ -151,7 +151,7 @@ public class CommandTests
         undoResult.IsSuccess.Should().BeTrue();
         undoResult.Value.Should().BeTrue();
 
-        _commandService.IsUndoStackEmpty(CommandStackName).Should().BeTrue();
+        _commandService.IsUndoStackEmpty(UndoStackName).Should().BeTrue();
 
         // Wait for undo to complete
         for (int i = 0; i < 10; i++)
@@ -169,7 +169,7 @@ public class CommandTests
         // Redo the command
         //
 
-        _commandService.IsRedoStackEmpty(CommandStackName).Should().BeFalse();
+        _commandService.IsRedoStackEmpty(UndoStackName).Should().BeFalse();
 
         var redoResult = _commandService.TryRedo();
         redoResult.IsSuccess.Should().BeTrue();
@@ -185,7 +185,7 @@ public class CommandTests
             await Task.Delay(50);
         }
 
-        _commandService.IsUndoStackEmpty(CommandStackName).Should().BeFalse();
-        _commandService.IsRedoStackEmpty(CommandStackName).Should().BeTrue();
+        _commandService.IsUndoStackEmpty(UndoStackName).Should().BeFalse();
+        _commandService.IsRedoStackEmpty(UndoStackName).Should().BeTrue();
     }
 }
