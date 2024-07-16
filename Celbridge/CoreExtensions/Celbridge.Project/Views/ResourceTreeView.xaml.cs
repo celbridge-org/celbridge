@@ -3,7 +3,9 @@ using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Input;
 using Windows.System;
+using Windows.UI.Core;
 
 namespace Celbridge.Project.Views;
 
@@ -181,6 +183,9 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void TreeView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(CoreVirtualKeyStates.Down);
+
         if (e.Key == VirtualKey.Delete)
         {
             if (ResourcesTreeView.SelectedItem is FileResource fileResource)
@@ -190,6 +195,27 @@ public sealed partial class ResourceTreeView : UserControl
             else if (ResourcesTreeView.SelectedItem is FolderResource folderResource)
             {
                 ViewModel.DeleteFolder(folderResource);
+            }
+        }
+        else if (control)
+        {
+            var selectedResource = ResourcesTreeView.SelectedItem as IResource;
+            if (selectedResource is not null)
+            {
+                if (e.Key == VirtualKey.C)
+                {
+                    ViewModel.CopyResource(selectedResource);
+                }
+                else if (e.Key == VirtualKey.X)
+                {
+                    ViewModel.CutResource(selectedResource);
+                }
+            }
+            
+            if (e.Key == VirtualKey.V)
+            {
+                // Resource is permitted to be null here (indicates the root folder)
+                ViewModel.PasteResource(selectedResource);
             }
         }
     }
