@@ -11,7 +11,7 @@ namespace Celbridge.Project.Commands;
 
 public class AddFolderCommand : CommandBase, IAddFolderCommand
 {
-    public override string StackName => CommandStackNames.Project;
+    public override string UndoStackName => UndoStackNames.Project;
 
     public ResourceKey ResourceKey { get; set; }
 
