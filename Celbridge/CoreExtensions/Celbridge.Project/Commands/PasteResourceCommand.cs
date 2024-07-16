@@ -85,8 +85,8 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
                         await CopyStorageFileAsync(storageFile, pasteFolder);
                         if (isMove)
                         {
-                            // Using storageFile.DeleteAsync() here throws a readonly file exception.
-                            // That doesn't make any sense, unless the copy operation is locking the file somehow?
+                            // For some unknown reason, using storageFile.DeleteAsync() here throws a readonly
+                            // file exception so we use File.Delete() instead.
                             File.Delete(storageFile.Path);
                         }
 
@@ -102,7 +102,8 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
                         await CopyStorageFolderAsync(storageFolder, pasteFolder);
                         if (isMove)
                         {
-                            // Similar to the file case above, using storageFolder.DeleteAsync() here throws a readonly file exception.
+                            // For some unknown reason, using storageFolder.DeleteAsync() here throws a readonly
+                            // exception so we use Directory.Delete() instead.
                             Directory.Delete(storageFolder.Path, true);
                         }
 

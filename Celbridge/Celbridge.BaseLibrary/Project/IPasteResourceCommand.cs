@@ -4,12 +4,12 @@ using Celbridge.BaseLibrary.Resources;
 namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Pastes resource from the clipboard.
+/// Pastes resources from the clipboard.
 /// </summary>
 public interface IPasteResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource key to paste the clipboard contents into.
+    /// Folder resource to paste the clipboard contents into.
     /// </summary>
     ResourceKey FolderResourceKey { get; set; }
 }
