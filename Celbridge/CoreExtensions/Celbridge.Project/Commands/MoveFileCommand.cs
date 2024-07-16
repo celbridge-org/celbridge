@@ -42,8 +42,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             return Result.Fail($"Failed to move file. Workspace is not loaded");
         }
 
-        var createResult = await MoveFileInternal(FromResourceKey, ToResourceKey);
-        if (createResult.IsFailure)
+        var moveResult = await MoveFileInternal(FromResourceKey, ToResourceKey);
+        if (moveResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
             var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", FromResourceKey, ToResourceKey);
@@ -56,7 +56,7 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             _messengerService.Send(message);
         }
 
-        return createResult;
+        return moveResult;
     }
 
     public override async Task<Result> UndoAsync()
@@ -66,8 +66,8 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             return Result.Fail($"Failed to undo file move. Workspace is not loaded");
         }
 
-        var createResult = await MoveFileInternal(ToResourceKey, FromResourceKey);
-        if (createResult.IsFailure)
+        var moveResult = await MoveFileInternal(ToResourceKey, FromResourceKey);
+        if (moveResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_MoveFile");
             var messageString = _stringLocalizer.GetString("ResourceTree_MoveFileFailed", ToResourceKey, FromResourceKey);
@@ -80,7 +80,7 @@ public class MoveFileCommand : CommandBase, IMoveFileCommand
             _messengerService.Send(message);
         }
 
-        return createResult;
+        return moveResult;
     }
 
     /// <summary>

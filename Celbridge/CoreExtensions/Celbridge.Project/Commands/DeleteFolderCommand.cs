@@ -46,8 +46,8 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var createResult = await DeleteFolder();
-        if (createResult.IsFailure)
+        var deleteResult = await DeleteFolderAsync();
+        if (deleteResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
             var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", ResourceKey);
@@ -56,10 +56,25 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
-        return createResult;
+        return deleteResult;
     }
 
-    private async Task<Result> DeleteFolder()
+    public override async Task<Result> UndoAsync()
+    {
+        var undoResult = await UndoDeleteFolderAsync();
+        if (undoResult.IsFailure)
+        {
+            var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
+            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoDeleteFolder", ResourceKey);
+
+            // Show alert
+            await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+        }
+
+        return undoResult;
+    }
+
+    private async Task<Result> DeleteFolderAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
@@ -139,7 +154,7 @@ public class DeleteFolderCommand : CommandBase, IDeleteFolderCommand
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    private async Task<Result> UndoDeleteFolderAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
