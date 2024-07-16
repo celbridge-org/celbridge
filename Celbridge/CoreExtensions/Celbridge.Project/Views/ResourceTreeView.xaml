@@ -24,6 +24,15 @@
                                 Click="AddFile"/>
             </MenuFlyoutSubItem>
             <MenuFlyoutSubItem Text="{x:Bind EditString}">
+                <MenuFlyoutItem Text="{x:Bind CutString}" 
+                                Icon="Cut"
+                                Click="CutResource"/>
+                <MenuFlyoutItem Text="{x:Bind CopyString}" 
+                                Icon="Copy"
+                                Click="CopyResource"/>
+                <MenuFlyoutItem Text="{x:Bind PasteString}" 
+                                Icon="Paste"
+                                Click="PasteResource"/>
                 <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                                 Icon="Delete"
                                 Click="DeleteResource"/>
@@ -71,6 +80,27 @@
                 <MenuFlyoutItem Text="{x:Bind FileString}" 
                                 Icon="Add"
                                 Click="AddFile"/>
+            </MenuFlyoutSubItem>
+            <MenuFlyoutSubItem Text="{x:Bind EditString}">
+                <MenuFlyoutItem Text="{x:Bind CutString}" 
+                                Icon="Cut"
+                                Click="CutResource"
+                                IsEnabled="False"/>
+                <MenuFlyoutItem Text="{x:Bind CopyString}" 
+                                Icon="Copy"
+                                Click="CopyResource"
+                                IsEnabled="False"/>
+                <MenuFlyoutItem Text="{x:Bind PasteString}" 
+                                Icon="Paste"
+                                Click="PasteResource"/>
+                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
+                                Icon="Delete"
+                                Click="DeleteResource"
+                                IsEnabled="False"/>
+                <MenuFlyoutItem Text="{x:Bind RenameString}" 
+                                Icon="Edit"
+                                Click="RenameResource"
+                                IsEnabled="False"/>
             </MenuFlyoutSubItem>
         </MenuFlyout>
 
