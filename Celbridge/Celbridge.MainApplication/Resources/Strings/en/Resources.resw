@@ -201,13 +201,13 @@
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
-  <data name="ResourceTree_FailedToAddFile" xml:space="preserve">
+  <data name="ResourceTree_AddFileFailed" xml:space="preserve">
     <value>Failed to add file '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToAddFolder" xml:space="preserve">
+  <data name="ResourceTree_AddFolderFailed" xml:space="preserve">
     <value>Failed to add folder '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToDeleteFile" xml:space="preserve">
+  <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
@@ -282,19 +282,19 @@
   <data name="ResourceTree_UndoPasteResourceFailed" xml:space="preserve">
     <value>Failed to undo paste to '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToUndoAddFile" xml:space="preserve">
+  <data name="ResourceTree_UndoAddFileFailed" xml:space="preserve">
     <value>Failed to undo add file '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToUndoAddFolder" xml:space="preserve">
+  <data name="ResourceTree_UndoAddFolderFailed" xml:space="preserve">
     <value>Failed to undo add folder '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToUndoDeleteFile" xml:space="preserve">
+  <data name="ResourceTree_UndoDeleteFileFailed" xml:space="preserve">
     <value>Failed to undo delete file '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToDeleteFolder" xml:space="preserve">
+  <data name="ResourceTree_DeleteFolderFailed" xml:space="preserve">
     <value>Failed to delete folder '{0}'</value>
   </data>
-  <data name="ResourceTree_FailedToUndoDeleteFolder" xml:space="preserve">
+  <data name="ResourceTree_UndoDeleteFolderFailed" xml:space="preserve">
     <value>Failed to undo delete folder '{0}'</value>
   </data>
 </root>
