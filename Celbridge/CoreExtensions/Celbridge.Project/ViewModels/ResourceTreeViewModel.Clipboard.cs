@@ -10,6 +10,16 @@ public partial class ResourceTreeViewModel
 {
     public void CutResource(IResource resource)
     {
+        var resourceRegistry = _projectService.ResourceRegistry;
+
+        var resourceKey = resourceRegistry.GetResourceKey(resource);
+
+        // Execute a command to cut the resource to the clipboard
+        _commandService.Execute<ICopyResourceCommand>(command =>
+        {
+            command.ResourceKey = resourceKey;
+            command.Move = true;
+        });
     }
 
     public void CopyResource(IResource resource)
