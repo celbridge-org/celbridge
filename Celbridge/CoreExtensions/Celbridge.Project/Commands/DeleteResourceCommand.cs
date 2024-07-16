@@ -63,7 +63,7 @@ namespace Celbridge.Project.Commands
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFile", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", ResourceKey);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return deleteResult;
@@ -75,7 +75,7 @@ namespace Celbridge.Project.Commands
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_FailedToDeleteFolder", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", ResourceKey);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return deleteResult;
@@ -100,7 +100,7 @@ namespace Celbridge.Project.Commands
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoDeleteFile", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFileFailed", ResourceKey);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return undoResult;
@@ -113,7 +113,7 @@ namespace Celbridge.Project.Commands
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoDeleteFolder", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFolderFailed", ResourceKey);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return undoResult;
