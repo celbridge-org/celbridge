@@ -80,6 +80,16 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         return Result.Ok();
     }
 
+    public static void CutResource(string resourceKey)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ICopyResourceCommand>(command =>
+        {
+            command.ResourceKey = resourceKey;
+            command.Move = true;
+        });
+    }
+
     public static void CopyResource(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
