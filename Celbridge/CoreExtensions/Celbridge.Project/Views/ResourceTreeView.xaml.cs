@@ -112,8 +112,8 @@ public sealed partial class ResourceTreeView : UserControl
         Guard.IsNotNull(menuFlyoutItem);
 
         var resource = menuFlyoutItem.DataContext as IResource;
-        Guard.IsNotNull(resource);
 
+        // Resource is permitted to be null here (indicates the root folder)
         ViewModel.PasteResource(resource);
     }
 
