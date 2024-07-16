@@ -44,7 +44,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         if (addResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToAddFolder", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_AddFolderFailed", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -59,7 +59,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         if (undoResult.IsFailure)
         {
             var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
-            var messageString = _stringLocalizer.GetString("ResourceTree_FailedToUndoAddFolder", ResourceKey);
+            var messageString = _stringLocalizer.GetString("ResourceTree_UndoAddFolderFailed", ResourceKey);
 
             // Show alert
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);

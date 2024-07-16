@@ -55,22 +55,11 @@ public partial class ResourceTreeViewModel
                 continue;
             }
 
-            if (resource is IFileResource)
+            _commandService.Execute<IMoveResourceCommand>(command =>
             {
-                _commandService.Execute<IMoveFileCommand>(command =>
-                {
-                    command.FromResourceKey = fromResourceKey;
-                    command.ToResourceKey = toResourceKey;
-                });
-            }
-            else if (resource is IFolderResource)
-            {
-                _commandService.Execute<IMoveFolderCommand>(command =>
-                {
-                    command.FromResourceKey = fromResourceKey;
-                    command.ToResourceKey = toResourceKey;
-                });
-            }
+                command.FromResourceKey = fromResourceKey;
+                command.ToResourceKey = toResourceKey;
+            });
         }
     }
 
