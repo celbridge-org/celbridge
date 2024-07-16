@@ -11,9 +11,9 @@ public abstract class CommandBase : IExecutableCommand
     public CommandId Id { get; } = CommandId.Create();
 
     /// <summary>
-    /// Name of the command stack to add this command to after it executes.
+    /// Name of the undo stack to add this command to after it executes.
     /// </summary>
-    public virtual string StackName => CommandStackNames.None;
+    public virtual string UndoStackName => UndoStackNames.None;
 
     /// <summary>
     /// Execute the command.

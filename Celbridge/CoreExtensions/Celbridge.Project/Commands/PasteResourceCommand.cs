@@ -16,7 +16,7 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
 
-    public override string StackName => CommandStackNames.None;
+    public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey FolderResourceKey { get; set; }
 
