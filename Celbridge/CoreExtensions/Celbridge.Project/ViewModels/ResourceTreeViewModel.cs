@@ -29,7 +29,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public ResourceTreeViewModel(
         IServiceProvider serviceProvider,
-        ILoggingService loggingService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
