@@ -39,12 +39,17 @@ public partial class ResourceTreeViewModel
             {
                 var inputText = showResult.Value;
 
-                // Execute a command to add the folder resource
-                var addResourceKey = parentFolderResourceKey.IsEmpty ? showResult.Value : $"{parentFolderResourceKey}/{showResult.Value}";
-                _commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = addResourceKey);
+                var newResourceKey = parentFolderResourceKey.Combine(inputText);
 
-                // Execute a command to update the resource tree
-                _commandService.Execute<IUpdateResourceTreeCommand>();
+                // Execute a command to add the folder resource
+                _commandService.Execute<IAddResourceCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.Folder;
+                    command.ResourceKey = newResourceKey;
+                });
+
+                var message = new RequestResourceTreeUpdateMessage();
+                _messengerService.Send(message);
             }
         }
 
@@ -81,11 +86,15 @@ public partial class ResourceTreeViewModel
                 var inputText = showResult.Value;
 
                 // Execute a command to add the file resource
-                var addResourceKey = parentFolderResourceKey.IsEmpty ? showResult.Value : $"{parentFolderResourceKey}/{showResult.Value}";
-                _commandService.Execute<IAddFileCommand>(command => command.ResourceKey = addResourceKey);
+                var addResourceKey = parentFolderResourceKey.Combine(inputText);
+                _commandService.Execute<IAddResourceCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.File;
+                    command.ResourceKey = addResourceKey;
+                });
 
-                // Execute a command to update the resource tree
-                _commandService.Execute<IUpdateResourceTreeCommand>();
+                var message = new RequestResourceTreeUpdateMessage();
+                _messengerService.Send(message);
             }
         }
 
@@ -111,8 +120,8 @@ public partial class ResourceTreeViewModel
                     // Execute a command to delete the folder resource
                     _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
 
-                    // Execute a command to update the resource tree
-                    _commandService.Execute<IUpdateResourceTreeCommand>();
+                    var message = new RequestResourceTreeUpdateMessage();
+                    _messengerService.Send(message);
                 }
             }
         }
@@ -139,8 +148,8 @@ public partial class ResourceTreeViewModel
                     // Execute a command to delete the file resource
                     _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
 
-                    // Execute a command to update the resource tree
-                    _commandService.Execute<IUpdateResourceTreeCommand>();
+                    var message = new RequestResourceTreeUpdateMessage();
+                    _messengerService.Send(message);
                 }
             }
         }
@@ -177,7 +186,7 @@ public partial class ResourceTreeViewModel
 
                 var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
 
                 // Maintain the expanded state of the folder after rename
                 bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
@@ -191,8 +200,8 @@ public partial class ResourceTreeViewModel
                     command.ExpandCopiedFolder = wasExpanded;
                 });
 
-                // Execute a command to update the resource tree
-                _commandService.Execute<IUpdateResourceTreeCommand>();
+                var message = new RequestResourceTreeUpdateMessage();
+                _messengerService.Send(message);
             }
         }
 
@@ -229,7 +238,7 @@ public partial class ResourceTreeViewModel
 
                 var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
 
                 // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<ICopyResourceCommand>(command =>
@@ -239,8 +248,8 @@ public partial class ResourceTreeViewModel
                     command.Operation = CopyResourceOperation.Move;
                 });
 
-                // Execute a command to update the resource tree
-                _commandService.Execute<IUpdateResourceTreeCommand>();
+                var message = new RequestResourceTreeUpdateMessage();
+                _messengerService.Send(message);
             }
         }
 

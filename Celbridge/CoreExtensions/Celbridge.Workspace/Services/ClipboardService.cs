@@ -89,21 +89,46 @@ public class ClipboardService : IClipboardService
                     }
 
                     var getKeyResult = resourceRegistry.GetResourceKey(storageItemPath);
-                    if (getKeyResult.IsFailure)
+                    if (getKeyResult.IsSuccess)
                     {
-                        // Ignore non-project items for now
-                        continue;
+                        // This is a resource in the project folder, so we can copy/move it using the
+                        // CopyResource command.
+                        var resourceKey = getKeyResult.Value;
+                        _commandService.Execute<ICopyResourceCommand>(command =>
+                        {
+                            command.SourceResourceKey = resourceKey;
+                            command.DestResourceKey = FolderResourceKey;
+                            command.Operation = operation;
+                        });
+
+                        modified = true;
                     }
-                    var resourceKey = getKeyResult.Value;
-
-                    _commandService.Execute<ICopyResourceCommand>(command =>
+                    else
                     {
-                        command.SourceResourceKey = resourceKey;
-                        command.DestResourceKey = FolderResourceKey;
-                        command.Operation = operation;
-                    });
+                        // This is a resource from outside the project folder, so we need to add it via the AddResource command
+                        if (storageItem is StorageFile file)
+                        {
+                            _commandService.Execute<IAddResourceCommand>(command =>
+                            {
+                                command.ResourceType = ResourceType.File;
+                                command.ResourceKey = FolderResourceKey.Combine(file.Name);
+                                command.SourcePath = file.Path;
+                            });
 
-                    modified = true;
+                            modified = true;
+                        }
+                        else if (storageItem is StorageFolder folder)
+                        {
+                            _commandService.Execute<IAddResourceCommand>(command =>
+                            {
+                                command.ResourceType = ResourceType.Folder;
+                                command.ResourceKey = FolderResourceKey.Combine(folder.Name);
+                                command.SourcePath = folder.Path;
+                            });
+
+                            modified = true;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -119,7 +144,7 @@ public class ClipboardService : IClipboardService
 
         resourceRegistry.SetFolderIsExpanded(FolderResourceKey, true);
 
-        var message = new RequestResourceTreeUpdate();
+        var message = new RequestResourceTreeUpdateMessage();
         _messengerService.Send(message);
 
         return Result.Ok();
