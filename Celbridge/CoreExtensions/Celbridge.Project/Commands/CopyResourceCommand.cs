@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Project.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
@@ -181,7 +182,7 @@ namespace Celbridge.Project.Commands
                     }
                     else
                     {
-                        output = destResourceKey + "/" + sourceResourceKey.ResourceName;
+                        output = destResourceKey.Combine(sourceResourceKey.ResourceName);
                     }
                 }
             }
@@ -332,7 +333,7 @@ namespace Celbridge.Project.Commands
 
                 if (Operation == CopyResourceOperation.Copy)
                 {
-                    CopyFolder(folderPathA, folderPathB);
+                    ResourceUtils.CopyFolder(folderPathA, folderPathB);
 
                     // Keep a note of the copied folder so we can delete it in the undo
                     _copiedFolderPaths.Add(folderPathB);
@@ -365,35 +366,6 @@ namespace Celbridge.Project.Commands
             await Task.CompletedTask;
 
             return Result.Ok();
-        }
-
-        private void CopyFolder(string sourceFolder, string destFolder)
-        {
-            DirectoryInfo dir = new DirectoryInfo(sourceFolder);
-
-            if (!dir.Exists)
-            {
-                throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceFolder}");
-            }
-
-            DirectoryInfo[] dirs = dir.GetDirectories();
-            if (!Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-
-            FileInfo[] files = dir.GetFiles();
-            foreach (FileInfo file in files)
-            {
-                string tempPath = Path.Combine(destFolder, file.Name);
-                file.CopyTo(tempPath);
-            }
-
-            foreach (DirectoryInfo subdir in dirs)
-            {
-                string tempPath = Path.Combine(destFolder, subdir.Name);
-                CopyFolder(subdir.FullName, tempPath);
-            }
         }
 
         private async Task OnOperationFailed()
