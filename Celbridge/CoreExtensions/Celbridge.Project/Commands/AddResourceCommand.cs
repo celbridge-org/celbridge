@@ -199,15 +199,19 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         try
         {
+            // Clear the cached resource path to clean up
+            var addedResourcePath = _addedResourcePath;
+            _addedResourcePath = string.Empty;
+
             if (ResourceType == ResourceType.File &&
-                File.Exists(_addedResourcePath))
+                File.Exists(addedResourcePath))
             {
-                File.Delete(_addedResourcePath);
+                File.Delete(addedResourcePath);
             }
             else if (ResourceType == ResourceType.Folder &&
-                Directory.Exists(_addedResourcePath))
+                Directory.Exists(addedResourcePath))
             {
-                Directory.Delete(_addedResourcePath, true);
+                Directory.Delete(addedResourcePath, true);
             }
 
         }

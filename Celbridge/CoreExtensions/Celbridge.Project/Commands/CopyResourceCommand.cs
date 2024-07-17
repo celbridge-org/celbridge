@@ -111,7 +111,7 @@ namespace Celbridge.Project.Commands
                 return Result.Fail($"Failed to undo copy resource. Workspace is not loaded");
             }
 
-            // Reset the cached destination to clean up
+            // Clear the cached destination to clean up
             var resolvedDestination = _resolvedDestination;
             _resolvedDestination = new();
 
