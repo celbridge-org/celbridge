@@ -222,11 +222,8 @@
   <data name="ResourceTree_EnterNewName" xml:space="preserve">
     <value>Enter a new name:</value>
   </data>
-  <data name="ResourceTree_MoveFile" xml:space="preserve">
-    <value>Move file</value>
-  </data>
-  <data name="ResourceTree_MoveFolder" xml:space="preserve">
-    <value>Move folder</value>
+  <data name="ResourceTree_CopyResource" xml:space="preserve">
+    <value>Copy resource</value>
   </data>
   <data name="ResourceTree_RenameFolder" xml:space="preserve">
     <value>Rename</value>
@@ -240,11 +237,8 @@
   <data name="ResourceTree_DefaultFolderName" xml:space="preserve">
     <value>NewFolder{0}</value>
   </data>
-  <data name="ResourceTree_MoveFileFailed" xml:space="preserve">
-    <value>Failed to move file '{0}' to '{1}'</value>
-  </data>
-  <data name="ResourceTree_MoveFolderFailed" xml:space="preserve">
-    <value>Failed to move folder '{0}' to '{1}'</value>
+  <data name="ResourceTree_CopyResourceFailed" xml:space="preserve">
+    <value>Failed to copy resource '{0}' to '{1}'</value>
   </data>
   <data name="Validation_FileNameAlreadyExists" xml:space="preserve">
     <value>A file with the name '{0}' already exists</value>
@@ -296,5 +290,11 @@
   </data>
   <data name="ResourceTree_UndoDeleteFolderFailed" xml:space="preserve">
     <value>Failed to undo delete folder '{0}'</value>
+  </data>
+  <data name="ResourceTree_MoveResource" xml:space="preserve">
+    <value>Move resource</value>
+  </data>
+  <data name="ResourceTree_MoveResourceFailed" xml:space="preserve">
+    <value>Failed to move resource '{0}' to '{1}'</value>
   </data>
 </root>
