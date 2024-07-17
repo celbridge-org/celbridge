@@ -90,6 +90,10 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
         });
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void ClipResource(string resourceKey)
     {
         ClipResource(resourceKey, false);

@@ -164,6 +164,10 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
         return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void PasteResource(ResourceKey folderResourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
