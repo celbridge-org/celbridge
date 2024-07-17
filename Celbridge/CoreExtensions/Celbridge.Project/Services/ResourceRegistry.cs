@@ -68,7 +68,11 @@ public class ResourceRegistry : IResourceRegistry
     public string GetResourcePath(IResource resource)
     {
         var resourceKey = GetResourceKey(resource);
+        return GetResourcePath(resourceKey);
+    }
 
+    public string GetResourcePath(ResourceKey resourceKey)
+    {
         var resourcePath = Path.Combine(_projectFolderPath, resourceKey);
         var normalized = Path.GetFullPath(resourcePath);
 

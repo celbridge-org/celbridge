@@ -112,4 +112,23 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
         var parentKey = _key.Substring(0, lastSlashIndex);
         return new ResourceKey(parentKey);
     }
+
+    /// <summary>
+    /// Returns a new ResourceKey that is the combination of the current key and the specified segment.
+    /// </summary>
+    public ResourceKey Combine(string segment)
+    {
+        // Todo: Validate segment properly
+        if (string.IsNullOrEmpty(segment))
+        {
+            throw new InvalidOperationException();
+        }
+
+        if (string.IsNullOrEmpty(_key))
+        {
+            return new ResourceKey(segment);
+        }
+
+        return new ResourceKey(_key + "/" + segment);
+    }
 }
