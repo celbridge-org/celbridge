@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.BaseLibrary.Clipboard;
+using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
@@ -13,6 +14,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IProjectService _projectService;
+    private readonly IClipboardService _clipboardService;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -37,6 +39,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _serviceProvider = serviceProvider;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
+        _clipboardService = workspaceWrapper.WorkspaceService.ClipboardService;
         _commandService = commandService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;

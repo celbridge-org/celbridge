@@ -175,18 +175,18 @@ public partial class ResourceTreeViewModel
             {
                 var inputText = showResult.Value;
 
-                var fromResourceKey = resourceKey;
+                var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var toResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
 
-                // Maintain the expanded state of the folder after renaming
+                // Maintain the expanded state of the folder after rename
                 bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
 
                 // Execute a command to move the folder resource to perform the rename
                 _commandService.Execute<ICopyResourceCommand>(command =>
                 {
-                    command.FromResourceKey = fromResourceKey;
-                    command.ToResourceKey = toResourceKey;
+                    command.SourceResourceKey = sourceResourceKey;
+                    command.DestResourceKey = destResourceKey;
                     command.Operation = CopyResourceOperation.Move;
                     command.ExpandCopiedFolder = wasExpanded;
                 });
@@ -227,15 +227,15 @@ public partial class ResourceTreeViewModel
             {
                 var inputText = showResult.Value;
 
-                var fromResourceKey = resourceKey;
+                var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var toResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
 
                 // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<ICopyResourceCommand>(command =>
                 {
-                    command.FromResourceKey = fromResourceKey;
-                    command.ToResourceKey = toResourceKey;
+                    command.SourceResourceKey = sourceResourceKey;
+                    command.DestResourceKey = destResourceKey;
                     command.Operation = CopyResourceOperation.Move;
                 });
 

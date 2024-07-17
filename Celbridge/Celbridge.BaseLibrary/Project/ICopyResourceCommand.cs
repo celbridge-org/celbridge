@@ -11,12 +11,12 @@ public interface ICopyResourceCommand : IExecutableCommand
     /// <summary>
     /// Resource to be copied.
     /// </summary>
-    ResourceKey FromResourceKey { get; set; }
+    ResourceKey SourceResourceKey { get; set; }
 
     /// <summary>
     /// Location to move the resource to.
     /// </summary>
-    ResourceKey ToResourceKey { get; set; }
+    ResourceKey DestResourceKey { get; set; }
 
     /// <summary>
     /// Controls whether the resource is copied or moved to the new location.
