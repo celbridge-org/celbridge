@@ -32,22 +32,22 @@ public partial class ResourceTreeViewModel
     }
 
     /// <summary>
-    /// Moves a list of resources to the specified folder. 
+    /// Moves a list of resources to the specified parent folder. 
     /// </summary>
-    public void MoveResources(List<IResource> resources, IFolderResource? newParent)
+    public void MoveResources(List<IResource> resources, IFolderResource? parentFolder)
     {
-        if (newParent is null)
+        if (parentFolder is null)
         {
-            newParent = _projectService.ResourceRegistry.RootFolder;
+            // A null folder reference indicates the root folder
+            parentFolder = _projectService.ResourceRegistry.RootFolder;
         }
 
         foreach (var resource in resources)
         {
-            var fromResourceKey = _projectService.ResourceRegistry.GetResourceKey(resource);
-            var parentResourceKey = _projectService.ResourceRegistry.GetResourceKey(newParent);
-            var toResourceKey = parentResourceKey.IsEmpty ? resource.Name : parentResourceKey + "/" + resource.Name;
+            var sourceResourceKey = _projectService.ResourceRegistry.GetResourceKey(resource);
+            var destResourceKey = _projectService.ResourceRegistry.GetResourceKey(parentFolder);
 
-            if (fromResourceKey == toResourceKey)
+            if (sourceResourceKey == destResourceKey)
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
@@ -57,8 +57,9 @@ public partial class ResourceTreeViewModel
 
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.FromResourceKey = fromResourceKey;
-                command.ToResourceKey = toResourceKey;
+                command.SourceResourceKey = sourceResourceKey;
+                command.DestResourceKey = destResourceKey;
+                command.Operation = CopyResourceOperation.Move;
             });
         }
     }
@@ -80,7 +81,7 @@ public partial class ResourceTreeViewModel
             int resourceNumber = 1;
             while (true)
             {
-                var parentFolderPath = resourceRegistry.GetPath(parentFolder);
+                var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
                 var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
                 var candidatePath = Path.Combine(parentFolderPath, candidateName);
                 if (!Directory.Exists(candidatePath) &&
