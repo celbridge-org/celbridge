@@ -41,7 +41,31 @@ public class ResourceRegistry : IResourceRegistry
         return sb.ToString();
     }
 
-    public string GetPath(IResource resource)
+    public Result<ResourceKey> GetResourceKey(string resourcePath)
+    {
+        try
+        {
+            var normalizedPath = Path.GetFullPath(resourcePath);
+            var normalizedProjectPath = Path.GetFullPath(_projectFolderPath);
+
+            if (!normalizedPath.StartsWith(normalizedProjectPath))
+            {
+                return Result<ResourceKey>.Fail($"The path '{resourcePath}' is not in the project folder '{_projectFolderPath}'.");
+            }
+
+            var resourceKey = normalizedPath.Substring(_projectFolderPath.Length)
+                .Replace('\\', '/')
+                .Trim('/');
+
+            return Result<ResourceKey>.Ok(resourceKey);
+        }
+        catch (Exception ex)
+        {
+            return Result<ResourceKey>.Fail($"Failed to get resource key for '{resourcePath}'. {ex.Message}");
+        }
+    }
+
+    public string GetResourcePath(IResource resource)
     {
         var resourceKey = GetResourceKey(resource);
 

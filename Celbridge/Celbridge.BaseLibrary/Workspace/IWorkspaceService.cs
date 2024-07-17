@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Console;
+﻿using Celbridge.BaseLibrary.Clipboard;
+using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Status;
@@ -34,4 +35,9 @@ public interface IWorkspaceService
     /// Returns the Status Service associated with the workspace.
     /// </summary>
     IStatusService StatusService { get; }
+
+    /// <summary>
+    /// Returns the Clipboard Service associated with the workspace.
+    /// </summary>
+    IClipboardService ClipboardService { get; }
 }

@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.BaseLibrary.Clipboard;
+using Celbridge.BaseLibrary.Extensions;
 using Celbridge.BaseLibrary.Navigation;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Workspace.Commands;
@@ -19,6 +20,7 @@ public class Extension : IExtension
         config.AddTransient<WorkspacePageViewModel>();
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
+        config.AddTransient<IClipboardService, ClipboardService>();
 
         //
         // Register commands
