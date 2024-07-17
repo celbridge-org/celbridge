@@ -79,6 +79,10 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void LoadProject(string projectFilePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
