@@ -327,6 +327,10 @@ namespace Celbridge.Project.Commands
             return Result.Ok();
         }
 
+        //
+        // Static methods for scripting support.
+        //
+
         public static void DeleteResource(string resourceKey)
         {
             var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();

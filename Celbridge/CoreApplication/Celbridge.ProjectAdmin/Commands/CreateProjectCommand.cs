@@ -58,6 +58,10 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void CreateProject(string projectName, string folder)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();

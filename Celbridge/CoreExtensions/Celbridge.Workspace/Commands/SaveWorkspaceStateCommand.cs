@@ -43,6 +43,10 @@ public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void SaveWorkspaceState()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();

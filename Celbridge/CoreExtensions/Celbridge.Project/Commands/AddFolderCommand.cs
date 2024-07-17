@@ -190,6 +190,10 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void AddFolder(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
