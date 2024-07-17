@@ -13,6 +13,7 @@ namespace Celbridge.Project.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IClipboardService _clipboardService;
     private readonly ICommandService _commandService;
@@ -38,6 +39,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
         _clipboardService = workspaceWrapper.WorkspaceService.ClipboardService;
         _commandService = commandService;
@@ -45,11 +47,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         _stringLocalizer = stringLocalizer;
 
         // Listen for messages to determine when to update the resource tree
-        messengerService.Register<RequestResourceTreeUpdate>(this, OnRequestResourceTreeUpdateMessage);
+        messengerService.Register<RequestResourceTreeUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
         messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage); 
     }
 
-    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdate message)
+    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdateMessage message)
     {
         // Set a flag to update the resource tree
         _resourceTreeUpdatePending = true;
@@ -60,8 +62,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         if (_resourceTreeUpdatePending)
         {
             // Don't update if there are any pending resource tree commands
-            if (!_commandService.ContainsCommandsOfType<IAddFileCommand>() &&
-                !_commandService.ContainsCommandsOfType<IAddFolderCommand>() &&
+            if (!_commandService.ContainsCommandsOfType<IAddResourceCommand>() &&
                 !_commandService.ContainsCommandsOfType<IDeleteResourceCommand>() &&
                 !_commandService.ContainsCommandsOfType<ICopyResourceCommand>() &&
                 !_commandService.ContainsCommandsOfType<IUpdateResourceTreeCommand>())

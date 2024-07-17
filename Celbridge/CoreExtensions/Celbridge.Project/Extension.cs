@@ -32,8 +32,6 @@ public class Extension : IExtension
         // Register commands
         //
         config.AddTransient<IUpdateResourceTreeCommand, UpdateResourceTreeCommand>();
-        config.AddTransient<IAddFolderCommand, AddFolderCommand>();
-        config.AddTransient<IAddFileCommand, AddFileCommand>();
         config.AddTransient<IAddResourceCommand, AddResourceCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
