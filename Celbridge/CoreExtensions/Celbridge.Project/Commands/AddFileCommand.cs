@@ -193,7 +193,7 @@ public class AddFileCommand : CommandBase, IAddFileCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFile(string resourceKey)
+    public static void AddFile(ResourceKey resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddFileCommand>(command => command.ResourceKey = resourceKey);

@@ -17,7 +17,7 @@ public interface IResourceRegistry
 
     /// <summary>
     /// Returns the resource key for a resource at the specified path in the project.
-    /// A resource key will be generated even if the resource does not exist in the project.
+    /// The resource key will be generated even if the resource does not exist in the project.
     /// Fails if the path is not in the project folder.
     /// </summary>
     Result<ResourceKey> GetResourceKey(string resourcePath);
@@ -27,6 +27,13 @@ public interface IResourceRegistry
     /// The path uses the directory separator character of the current platform.
     /// </summary>
     string GetResourcePath(IResource resource);
+
+    /// <summary>
+    /// Returns the absolute path for a specified resource key.
+    /// The path will be generated even if the resource does not exist in the project.
+    /// The path uses the directory separator character of the current platform.
+    /// </summary>
+    string GetResourcePath(ResourceKey resourceKey);
 
     /// <summary>
     /// Returns the resource with the specified resource key.

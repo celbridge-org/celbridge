@@ -177,7 +177,7 @@ public partial class ResourceTreeViewModel
 
                 var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
 
                 // Maintain the expanded state of the folder after rename
                 bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
@@ -229,7 +229,7 @@ public partial class ResourceTreeViewModel
 
                 var sourceResourceKey = resourceKey;
                 var parentResourceKey = resourceKey.GetParent();
-                var destResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
+                var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
 
                 // Execute a command to move the file resource to perform the rename
                 _commandService.Execute<ICopyResourceCommand>(command =>

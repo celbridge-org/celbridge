@@ -80,7 +80,7 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
         return Result.Ok();
     }
 
-    public static void ClipResource(string resourceKey, bool moveResource)
+    private static void ClipResource(ResourceKey resourceKey, bool moveResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IClipResourceCommand>(command =>
@@ -94,8 +94,13 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void ClipResource(string resourceKey)
+    public static void ClipResource(ResourceKey resourceKey)
     {
         ClipResource(resourceKey, false);
+    }
+
+    public static void CutResource(ResourceKey resourceKey)
+    {
+        ClipResource(resourceKey, true);
     }
 }

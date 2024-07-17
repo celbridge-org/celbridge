@@ -194,7 +194,7 @@ public class AddFolderCommand : CommandBase, IAddFolderCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFolder(string resourceKey)
+    public static void AddFolder(ResourceKey resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddFolderCommand>(command => command.ResourceKey = resourceKey);
