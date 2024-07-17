@@ -413,7 +413,7 @@ namespace Celbridge.Project.Commands
         }
 
         //
-        // Scripting methods
+        // Static methods for scripting support.
         //
 
         public static void CopyResource(ResourceKey fromResourceKey, ResourceKey toResourceKey)
