@@ -12,8 +12,8 @@ namespace Celbridge.Project.Commands
     {
         public override string UndoStackName => UndoStackNames.Project;
 
-        public ResourceKey FromResourceKey { get; set; }
-        public ResourceKey ToResourceKey { get; set; }
+        public ResourceKey SourceResourceKey { get; set; }
+        public ResourceKey DestResourceKey { get; set; }
         public CopyResourceOperation Operation { get; set; }
         public bool ExpandCopiedFolder { get; set; }
 
@@ -24,6 +24,7 @@ namespace Celbridge.Project.Commands
         private readonly IStringLocalizer _stringLocalizer;
 
         private Type? _resourceType;
+        private ResourceKey _resolvedDestination;
         private List<string> _copiedFilePaths = new();
         private List<string> _copiedFolderPaths = new();
 
@@ -58,7 +59,7 @@ namespace Celbridge.Project.Commands
                 return Result.Fail("Project folder path is empty.");
             }
 
-            var resourcePath = Path.GetFullPath(Path.Combine(projectFolderPath, FromResourceKey));
+            var resourcePath = Path.GetFullPath(Path.Combine(projectFolderPath, SourceResourceKey));
             if (File.Exists(resourcePath))
             {
                 _resourceType = typeof(IFileResource);
@@ -72,9 +73,12 @@ namespace Celbridge.Project.Commands
             // Copy the resource
             //
 
+            // Resolve references to destination resource
+            _resolvedDestination = ResolveDestinationResourceKey(SourceResourceKey, DestResourceKey);
+
             if (_resourceType == typeof(IFileResource))
             {
-                var copyResult = await CopyFileInternal(FromResourceKey, ToResourceKey);
+                var copyResult = await CopyFileInternal(SourceResourceKey, _resolvedDestination);
                 if (copyResult.IsFailure)
                 {
                     await OnOperationFailed();
@@ -83,7 +87,7 @@ namespace Celbridge.Project.Commands
             }
             else if (_resourceType == typeof(IFolderResource))
             {
-                var copyResult = await CopyFolderInternal(FromResourceKey, ToResourceKey);
+                var copyResult = await CopyFolderInternal(SourceResourceKey, _resolvedDestination);
                 if (copyResult.IsFailure)
                 {
                     await OnOperationFailed();
@@ -93,7 +97,7 @@ namespace Celbridge.Project.Commands
             else
             {
                 await OnOperationFailed();
-                return Result.Fail($"Unknown resource type for key: {FromResourceKey}");
+                return Result.Fail($"Unknown resource type for key: {SourceResourceKey}");
             }
 
             return Result.Ok();
@@ -106,13 +110,17 @@ namespace Celbridge.Project.Commands
                 return Result.Fail($"Failed to undo copy resource. Workspace is not loaded");
             }
 
+            // Reset the cached destination to clean up
+            var resolvedDestination = _resolvedDestination;
+            _resolvedDestination = new();
+
             if (Operation == CopyResourceOperation.Move)
             {
                 // Preform undo by moving the resource back to its original location
                 if (_resourceType == typeof(IFileResource))
                 {
                     _resourceType = null;
-                    var copyResult = await CopyFileInternal(ToResourceKey, FromResourceKey);
+                    var copyResult = await CopyFileInternal(resolvedDestination, SourceResourceKey);
                     if (copyResult.IsFailure)
                     {
                         await OnOperationFailed();
@@ -122,7 +130,7 @@ namespace Celbridge.Project.Commands
                 else if (_resourceType == typeof(IFolderResource))
                 {
                     _resourceType = null;
-                    var copyResult = await CopyFolderInternal(ToResourceKey, FromResourceKey);
+                    var copyResult = await CopyFolderInternal(resolvedDestination, SourceResourceKey);
                     if (copyResult.IsFailure)
                     {
                         await OnOperationFailed();
@@ -131,7 +139,7 @@ namespace Celbridge.Project.Commands
                 }
                 else
                 {
-                    return Result.Fail($"Unknown resource type for key: {FromResourceKey}");
+                    return Result.Fail($"Unknown resource type for key: {SourceResourceKey}");
                 }
             }
             else if (Operation == CopyResourceOperation.Copy)
@@ -149,6 +157,36 @@ namespace Celbridge.Project.Commands
             _messengerService.Send(message);
 
             return Result.Ok();
+        }
+
+        /// <summary>
+        /// Resolves the destination resource key.
+        /// If destResourceKey specifies an existing folder, then we append the name of the source resource 
+        /// to the destination folder resource key. In all other situations we return the destResourceKey unchanged.
+        /// </summary>
+        private ResourceKey ResolveDestinationResourceKey(ResourceKey sourceResourceKey, ResourceKey destResourceKey)
+        {
+            string output = destResourceKey;
+
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var getResult = resourceRegistry.GetResource(destResourceKey);
+            if (getResult.IsSuccess)
+            {
+                var resource = getResult.Value;
+                if (resource is IFolderResource)
+                {
+                    if (destResourceKey.IsEmpty)
+                    {
+                        output = sourceResourceKey.ResourceName;
+                    }
+                    else
+                    {
+                        output = destResourceKey + "/" + sourceResourceKey.ResourceName;
+                    }
+                }
+            }
+
+            return output;
         }
 
         private async Task<Result> DeleteCopiedResource()
@@ -364,7 +402,7 @@ namespace Celbridge.Project.Commands
             var messageKey = Operation == CopyResourceOperation.Copy ? "ResourceTree_CopyResourceFailed" : "ResourceTree_MoveResourceFailed";
 
             var titleString = _stringLocalizer.GetString(titleKey);
-            var messageString = _stringLocalizer.GetString(messageKey, FromResourceKey, ToResourceKey);
+            var messageString = _stringLocalizer.GetString(messageKey, SourceResourceKey, DestResourceKey);
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Ensure the Tree View is synced with the files and folders on disk
@@ -372,42 +410,14 @@ namespace Celbridge.Project.Commands
             _messengerService.Send(message);
         }
 
-        private static void CopyResourceInternal(ResourceKey fromResourceKey, ResourceKey toResourceKey, CopyResourceOperation operation)
+        private static void CopyResourceInternal(ResourceKey sourceResourceKey, ResourceKey destResourceKey, CopyResourceOperation operation)
         {
-            var workspaceWrapper = ServiceLocator.ServiceProvider.GetRequiredService<IWorkspaceWrapper>();
-            if (!workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                return;
-            }
-
-            // If toResourceKey specifies an existing folder, then we assume that the user intended to copy
-            // the resource to that folder.
-
-            var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-            var getResult = resourceRegistry.GetResource(toResourceKey);
-            if (getResult.IsSuccess)
-            {
-                var resource = getResult.Value;
-                if (resource is IFolderResource)
-                {
-                    if (toResourceKey.IsEmpty)
-                    {
-                        toResourceKey = Path.GetFileName(fromResourceKey);
-                    }
-                    else
-                    {
-                        toResourceKey = toResourceKey + "/" + Path.GetFileName(fromResourceKey);
-                    }
-                }
-            }
-
             // Execute the copy resource command
-
             var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
             commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.FromResourceKey = fromResourceKey;
-                command.ToResourceKey = toResourceKey;
+                command.SourceResourceKey = sourceResourceKey;
+                command.DestResourceKey = destResourceKey;
                 command.Operation = operation;
             });
         }
@@ -416,14 +426,14 @@ namespace Celbridge.Project.Commands
         // Static methods for scripting support.
         //
 
-        public static void CopyResource(ResourceKey fromResourceKey, ResourceKey toResourceKey)
+        public static void CopyResource(ResourceKey sourceResourceKey, ResourceKey destResourceKey)
         {
-            CopyResourceInternal(fromResourceKey, toResourceKey, CopyResourceOperation.Copy);
+            CopyResourceInternal(sourceResourceKey, destResourceKey, CopyResourceOperation.Copy);
         }
 
-        public static void MoveResource(ResourceKey fromResourceKey, ResourceKey toResourceKey)
+        public static void MoveResource(ResourceKey sourceResourceKey, ResourceKey destResourceKey)
         {
-            CopyResourceInternal(fromResourceKey, toResourceKey, CopyResourceOperation.Move);
+            CopyResourceInternal(sourceResourceKey, destResourceKey, CopyResourceOperation.Move);
         }
     }
 }
