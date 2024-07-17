@@ -55,7 +55,7 @@ public partial class ResourceTreeViewModel
                 continue;
             }
 
-            _commandService.Execute<IMoveResourceCommand>(command =>
+            _commandService.Execute<ICopyResourceCommand>(command =>
             {
                 command.FromResourceKey = fromResourceKey;
                 command.ToResourceKey = toResourceKey;
