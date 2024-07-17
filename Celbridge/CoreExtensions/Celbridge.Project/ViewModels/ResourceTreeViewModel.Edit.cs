@@ -183,11 +183,12 @@ public partial class ResourceTreeViewModel
                 bool wasExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
 
                 // Execute a command to move the folder resource to perform the rename
-                _commandService.Execute<IMoveResourceCommand>(command =>
+                _commandService.Execute<ICopyResourceCommand>(command =>
                 {
                     command.FromResourceKey = fromResourceKey;
                     command.ToResourceKey = toResourceKey;
-                    command.ExpandMovedFolder = wasExpanded;
+                    command.Operation = CopyResourceOperation.Move;
+                    command.ExpandCopiedFolder = wasExpanded;
                 });
 
                 // Execute a command to update the resource tree
@@ -231,10 +232,11 @@ public partial class ResourceTreeViewModel
                 var toResourceKey = parentResourceKey.IsEmpty ? inputText : parentResourceKey + "/" + inputText;
 
                 // Execute a command to move the file resource to perform the rename
-                _commandService.Execute<IMoveResourceCommand>(command =>
+                _commandService.Execute<ICopyResourceCommand>(command =>
                 {
                     command.FromResourceKey = fromResourceKey;
                     command.ToResourceKey = toResourceKey;
+                    command.Operation = CopyResourceOperation.Move;
                 });
 
                 // Execute a command to update the resource tree
