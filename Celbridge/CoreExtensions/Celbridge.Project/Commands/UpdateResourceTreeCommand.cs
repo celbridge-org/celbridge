@@ -35,6 +35,10 @@ public class UpdateResourceTreeCommand : CommandBase, IUpdateResourceTreeCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void UpdateResourceTree()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
