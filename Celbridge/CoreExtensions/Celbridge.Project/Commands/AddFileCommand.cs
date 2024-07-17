@@ -189,6 +189,10 @@ public class AddFileCommand : CommandBase, IAddFileCommand
         return Result.Ok();
     }
 
+    //
+    // Static methods for scripting support.
+    //
+
     public static void AddFile(string resourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
