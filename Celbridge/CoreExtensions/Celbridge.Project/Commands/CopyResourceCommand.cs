@@ -3,6 +3,7 @@ using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Project.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
@@ -110,7 +111,7 @@ namespace Celbridge.Project.Commands
                 return Result.Fail($"Failed to undo copy resource. Workspace is not loaded");
             }
 
-            // Reset the cached destination to clean up
+            // Clear the cached destination to clean up
             var resolvedDestination = _resolvedDestination;
             _resolvedDestination = new();
 
@@ -153,7 +154,7 @@ namespace Celbridge.Project.Commands
             }
 
             // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceTreeUpdate();
+            var message = new RequestResourceTreeUpdateMessage();
             _messengerService.Send(message);
 
             return Result.Ok();
@@ -181,7 +182,7 @@ namespace Celbridge.Project.Commands
                     }
                     else
                     {
-                        output = destResourceKey + "/" + sourceResourceKey.ResourceName;
+                        output = destResourceKey.Combine(sourceResourceKey.ResourceName);
                     }
                 }
             }
@@ -286,7 +287,7 @@ namespace Celbridge.Project.Commands
                 return Result.Fail($"Failed to copy file. {ex.Message}");
             }
 
-            var message = new RequestResourceTreeUpdate();
+            var message = new RequestResourceTreeUpdateMessage();
             _messengerService.Send(message);
 
             await Task.CompletedTask;
@@ -332,7 +333,7 @@ namespace Celbridge.Project.Commands
 
                 if (Operation == CopyResourceOperation.Copy)
                 {
-                    CopyFolder(folderPathA, folderPathB);
+                    ResourceUtils.CopyFolder(folderPathA, folderPathB);
 
                     // Keep a note of the copied folder so we can delete it in the undo
                     _copiedFolderPaths.Add(folderPathB);
@@ -359,41 +360,12 @@ namespace Celbridge.Project.Commands
                 resourceRegistry.SetFolderIsExpanded(resourceKeyB, true);
             }
 
-            var message = new RequestResourceTreeUpdate();
+            var message = new RequestResourceTreeUpdateMessage();
             _messengerService.Send(message);
 
             await Task.CompletedTask;
 
             return Result.Ok();
-        }
-
-        private void CopyFolder(string sourceFolder, string destFolder)
-        {
-            DirectoryInfo dir = new DirectoryInfo(sourceFolder);
-
-            if (!dir.Exists)
-            {
-                throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceFolder}");
-            }
-
-            DirectoryInfo[] dirs = dir.GetDirectories();
-            if (!Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-
-            FileInfo[] files = dir.GetFiles();
-            foreach (FileInfo file in files)
-            {
-                string tempPath = Path.Combine(destFolder, file.Name);
-                file.CopyTo(tempPath);
-            }
-
-            foreach (DirectoryInfo subdir in dirs)
-            {
-                string tempPath = Path.Combine(destFolder, subdir.Name);
-                CopyFolder(subdir.FullName, tempPath);
-            }
         }
 
         private async Task OnOperationFailed()
@@ -406,7 +378,7 @@ namespace Celbridge.Project.Commands
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceTreeUpdate();
+            var message = new RequestResourceTreeUpdateMessage();
             _messengerService.Send(message);
         }
 
