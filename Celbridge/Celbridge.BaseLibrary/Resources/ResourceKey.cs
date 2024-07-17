@@ -72,6 +72,28 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
+    /// Returns the resource name. This is the last segment of the resource key.
+    /// </summary>
+    public string ResourceName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_key))
+            {
+                return string.Empty;
+            }
+
+            int lastIndex = _key.LastIndexOf('/');
+            if (lastIndex == -1)
+            {
+                return _key;
+            }
+
+            return _key.Substring(lastIndex + 1);
+        }
+    }
+
+    /// <summary>
     /// Returns the parent resource key for the specified resource key.
     /// </summary>
     public ResourceKey GetParent()

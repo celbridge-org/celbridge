@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Console;
+﻿using Celbridge.BaseLibrary.Clipboard;
+using Celbridge.BaseLibrary.Console;
 using Celbridge.BaseLibrary.Documents;
 using Celbridge.BaseLibrary.Inspector;
 using Celbridge.BaseLibrary.Project;
@@ -21,6 +22,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IInspectorService InspectorService { get; }
     public IProjectService ProjectService { get; }
     public IStatusService StatusService { get; }
+    public IClipboardService ClipboardService { get; }
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
@@ -33,6 +35,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ProjectService = serviceProvider.GetRequiredService<IProjectService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
+        ClipboardService = serviceProvider.GetRequiredService<IClipboardService>();
 
         //
         // Let the workspace data service know where to find the workspace database

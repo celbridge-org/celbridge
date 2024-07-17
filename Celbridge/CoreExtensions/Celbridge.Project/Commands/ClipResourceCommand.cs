@@ -37,7 +37,7 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
 
         if (resource is IFileResource fileResource)
         {
-            var filePath = resourceRegistry.GetPath(fileResource);
+            var filePath = resourceRegistry.GetResourcePath(fileResource);
             if (string.IsNullOrEmpty(filePath))
             {
                 return Result.Fail($"Failed to get path for file resource '{fileResource}'");
@@ -51,7 +51,7 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
         }
         else if (resource is IFolderResource folderResource)
         {
-            var folderPath = resourceRegistry.GetPath(folderResource);
+            var folderPath = resourceRegistry.GetResourcePath(folderResource);
             if (string.IsNullOrEmpty(folderPath))
             {
                 return Result.Fail($"Failed to get path for folder resource '{folderResource}'");
