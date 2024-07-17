@@ -144,7 +144,7 @@ public class ClipboardService : IClipboardService
 
         resourceRegistry.SetFolderIsExpanded(FolderResourceKey, true);
 
-        var message = new RequestResourceTreeUpdate();
+        var message = new RequestResourceTreeUpdateMessage();
         _messengerService.Send(message);
 
         return Result.Ok();
