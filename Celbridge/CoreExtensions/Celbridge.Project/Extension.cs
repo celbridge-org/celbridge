@@ -38,6 +38,8 @@ public class Extension : IExtension
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         config.AddTransient<IShowAddResourceDialogCommand, ShowAddResourceDialogCommand>();
+        config.AddTransient<IShowDeleteResourceDialogCommand, ShowDeleteResourceDialogCommand>();
+        config.AddTransient<IShowRenameResourceDialogCommand, ShowRenameResourceDialogCommand>();
 
         //
         // Register validators

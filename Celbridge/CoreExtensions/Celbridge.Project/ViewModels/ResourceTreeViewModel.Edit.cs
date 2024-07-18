@@ -1,7 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Validators;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.ViewModels;
 
@@ -22,7 +20,7 @@ public partial class ResourceTreeViewModel
 
         var parentFolderResourceKey = resourceRegistry.GetResourceKey(parentFolder);
 
-        // Execute a command to add the folder resource
+        // Execute a command to show the add resource dialog
         _commandService.Execute<IShowAddResourceDialogCommand>(command =>
         {
             command.ResourceType = resourceType;
@@ -34,113 +32,23 @@ public partial class ResourceTreeViewModel
     {
         var resourceRegistry = _projectService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
-        var resourceName = resource.Name;
 
-        string confirmDeleteStringKey;
-        switch (resource)
+        // Execute a command to show the delete resource dialog
+        _commandService.Execute<IShowDeleteResourceDialogCommand>(command =>
         {
-            case IFileResource:
-                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFile";
-                break;
-            case IFolderResource:
-                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFolder";
-                break;
-            default:
-                throw new ArgumentException();
-        }
-
-        var confirmDeleteString = _stringLocalizer.GetString(confirmDeleteStringKey, resourceName);
-
-        async Task ShowDialogAsync()
-        {
-            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteString);
-            if (showResult.IsSuccess)
-            {
-                var confirmed = showResult.Value;
-                if (confirmed)
-                {
-                    // Execute a command to delete the folder resource
-                    _commandService.Execute<IDeleteResourceCommand>(command =>
-                    {
-                        command.ResourceKey = resourceKey;
-                    });
-
-                    var message = new RequestResourceTreeUpdateMessage();
-                    _messengerService.Send(message);
-                }
-            }
-        }
-
-        _ = ShowDialogAsync();
+            command.ResourceKey = resourceKey;
+        });
     }
 
     public void ShowRenameResourceDialog(IResource resource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
-        var resourceName = resource.Name;
 
-        Range selectedRange;
-        switch (resource)
+        // Execute a command to show the rename resource dialog
+        _commandService.Execute<IShowRenameResourceDialogCommand>(command =>
         {
-            case IFileResource:
-                selectedRange = new Range(0, Path.GetFileNameWithoutExtension(resourceName).Length); // Don't select extension
-                break;
-            case IFolderResource:
-                selectedRange = new Range(0, resourceName.Length);
-                break;
-            default:
-                throw new ArgumentException();
-        }
-
-        async Task ShowDialogAsync()
-        {
-            var renameResourceString = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
-
-            var defaultText = resourceName;
-
-            var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-            validator.ParentFolder = resource.ParentFolder;
-            validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
-
-            var showResult = await _dialogService.ShowInputTextDialogAsync(
-                renameResourceString,
-                EnterNewNameString,
-                defaultText,
-                selectedRange,
-                validator);
-            if (showResult.IsSuccess)
-            {
-                var inputText = showResult.Value;
-
-                var sourceResourceKey = resourceKey;
-                var parentResourceKey = resourceKey.GetParent();
-                var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
-
-                bool isFolderResource = resource is IFolderResource;
-
-                // Maintain the expanded state of folders after rename
-                bool isExpandedFolder = isFolderResource && 
-                    resourceRegistry.IsFolderExpanded(resourceKey);
-
-                // Execute a command to move the folder resource to perform the rename
-                _commandService.Execute<ICopyResourceCommand>(command =>
-                {
-                    command.SourceResourceKey = sourceResourceKey;
-                    command.DestResourceKey = destResourceKey;
-                    command.Operation = CopyResourceOperation.Move;
-
-                    if (isExpandedFolder)
-                    {
-                        command.ExpandCopiedFolder = true;
-                    }
-                });
-
-                var message = new RequestResourceTreeUpdateMessage();
-                _messengerService.Send(message);
-            }
-        }
-
-        _ = ShowDialogAsync();
+            command.ResourceKey = resourceKey;
+        });
     }
 }
