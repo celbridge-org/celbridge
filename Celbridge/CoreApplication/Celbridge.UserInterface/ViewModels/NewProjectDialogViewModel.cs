@@ -12,7 +12,6 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectDataService _projectDataService;
     private readonly IFilePickerService _filePickerService;
-    private readonly IUtilityService _utilityService;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -28,13 +27,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
         IProjectDataService projectDataService,
-        IFilePickerService filePickerService,
-        IUtilityService utilityService)
+        IFilePickerService filePickerService)
     {
         _editorSettings = editorSettings;
         _projectDataService = projectDataService;
         _filePickerService = filePickerService;
-        _utilityService = utilityService;
 
         _projectFolderPath = _editorSettings.PreviousNewProjectFolderPath;
 
