@@ -71,23 +71,23 @@ public class ResourceRegistry : IResourceRegistry
         return GetResourcePath(resourceKey);
     }
 
-    public string GetResourcePath(ResourceKey resourceKey)
+    public string GetResourcePath(ResourceKey resource)
     {
-        var resourcePath = Path.Combine(_projectFolderPath, resourceKey);
+        var resourcePath = Path.Combine(_projectFolderPath, resource);
         var normalized = Path.GetFullPath(resourcePath);
 
         return normalized;
     }
 
-    public Result<IResource> GetResource(ResourceKey resourceKey)
+    public Result<IResource> GetResource(ResourceKey resource)
     {
-        if (resourceKey.IsEmpty)
+        if (resource.IsEmpty)
         {
             // An empty resource key refers to the root folder
             return Result<IResource>.Ok(RootFolder);
         }
 
-        var segments = resourceKey.ToString().Split('/');
+        var segments = resource.ToString().Split('/');
         var searchFolder = RootFolder;
 
         // Attempt to match each segment with the corresponding resource in the tree
@@ -132,7 +132,7 @@ public class ResourceRegistry : IResourceRegistry
             segmentIndex++;
         }
 
-        return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resourceKey}'.");
+        return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resource}'.");
     }
 
     public Result UpdateResourceTree()
@@ -209,24 +209,24 @@ public class ResourceRegistry : IResourceRegistry
 
     public List<string> ExpandedFolders { get; } = new();
 
-    public void SetFolderIsExpanded(ResourceKey resourceKey, bool isExpanded)
+    public void SetFolderIsExpanded(ResourceKey folderResource, bool isExpanded)
     {
         if (isExpanded)
         {
-            if (!ExpandedFolders.Contains(resourceKey))
+            if (!ExpandedFolders.Contains(folderResource))
             {
-                ExpandedFolders.Add(resourceKey);
+                ExpandedFolders.Add(folderResource);
                 ExpandedFolders.Sort();
             }
         }
         else
         {
-            ExpandedFolders.Remove(resourceKey);
+            ExpandedFolders.Remove(folderResource);
         }
     }
 
-    public bool IsFolderExpanded(ResourceKey resourceKey)
+    public bool IsFolderExpanded(ResourceKey folderResource)
     {
-        return ExpandedFolders.Contains(resourceKey);
+        return ExpandedFolders.Contains(folderResource);
     }
 }

@@ -11,7 +11,7 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
 {
     public override string UndoStackName => UndoStackNames.None;
 
-    public ResourceKey ResourceKey { get; set; }
+    public ResourceKey Resource { get; set; }
 
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -47,7 +47,7 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(ResourceKey);
+        var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);
@@ -81,7 +81,7 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
                 // Execute a command to delete the resource
                 _commandService.Execute<IDeleteResourceCommand>(command =>
                 {
-                    command.ResourceKey = ResourceKey;
+                    command.Resource = Resource;
                 });
 
                 var message = new RequestResourceTreeUpdateMessage();
@@ -96,12 +96,12 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
     // Static methods for scripting support.
     //
 
-    public static void ShowDeleteResourceDialog(ResourceKey resourceKey)
+    public static void ShowDeleteResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IShowDeleteResourceDialogCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resource;
         });
     }
 }

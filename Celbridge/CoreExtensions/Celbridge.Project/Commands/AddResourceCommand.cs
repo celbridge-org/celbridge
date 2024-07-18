@@ -12,7 +12,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public override string UndoStackName => UndoStackNames.Project;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceKey ResourceKey { get; set; }
+    public ResourceKey Resource { get; set; }
     public string SourcePath { get; set; } = string.Empty;
 
     private readonly IMessengerService _messengerService;
@@ -37,7 +37,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         //if (addResult.IsFailure)
         //{
         //    var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-        //    var messageString = _stringLocalizer.GetString("ResourceTree_AddFileFailed", ResourceKey);
+        //    var messageString = _stringLocalizer.GetString("ResourceTree_AddFileFailed", Resource);
 
         //    // Show alert
         //    await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -52,7 +52,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         //if (undoResult.IsFailure)
         //{
         //    var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-        //    var messageString = _stringLocalizer.GetString("ResourceTree_UndoAddFileFailed", ResourceKey);
+        //    var messageString = _stringLocalizer.GetString("ResourceTree_UndoAddFileFailed", Resource);
 
         //    // Show alert
         //    await _dialogService.ShowAlertDialogAsync(titleString, messageString);
@@ -79,14 +79,14 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         // Validate the resource key
         //
 
-        if (ResourceKey.IsEmpty)
+        if (Resource.IsEmpty)
         {
             return Result.Fail("Failed to create resource. Resource key is empty");
         }
 
-        if (!ResourceKey.IsValidKey(ResourceKey))
+        if (!ResourceKey.IsValidKey(Resource))
         {
-            return Result.Fail($"Failed to create resource. Resource key '{ResourceKey}' is not valid.");
+            return Result.Fail($"Failed to create resource. Resource key '{Resource}' is not valid.");
         }
 
         //
@@ -95,7 +95,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         try
         {
-            var addedResourcePath = resourceRegistry.GetResourcePath(ResourceKey);
+            var addedResourcePath = resourceRegistry.GetResourcePath(Resource);
 
             // Fail if the parent folder for the new resource does not exist.
             // We could attempt to create any missing parent folders, but it would make the undo logic trickier.
@@ -165,7 +165,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         //
         // Expand the folder containing the newly created resource
         //
-        var parentFolderKey = ResourceKey.GetParent();
+        var parentFolderKey = Resource.GetParent();
         if (!parentFolderKey.IsEmpty)
         {
             resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
@@ -220,35 +220,35 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFile(ResourceKey resourceKey, string sourcePath)
+    public static void AddFile(ResourceKey resource, string sourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.ResourceKey = resourceKey;
+            command.Resource = resource;
             command.SourcePath = sourcePath;
         });
     }
 
-    public static void AddFile(ResourceKey resourceKey)
+    public static void AddFile(ResourceKey resource)
     {
-        AddFile(resourceKey, string.Empty);
+        AddFile(resource, string.Empty);
     }
 
-    public static void AddFolder(ResourceKey resourceKey, string sourcePath)
+    public static void AddFolder(ResourceKey resource, string sourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.ResourceKey = resourceKey;
+            command.Resource = resource;
             command.SourcePath = sourcePath;
         });
     }
 
-    public static void AddFolder(ResourceKey resourceKey)
+    public static void AddFolder(ResourceKey resource)
     {
-        AddFolder(resourceKey, string.Empty);
+        AddFolder(resource, string.Empty);
     }
 }

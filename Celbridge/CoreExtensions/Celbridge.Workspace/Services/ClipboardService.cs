@@ -40,7 +40,7 @@ public class ClipboardService : IClipboardService
         return ClipboardContentType.None;
     }
 
-    public async Task<Result> PasteResources(ResourceKey FolderResourceKey)
+    public async Task<Result> PasteResources(ResourceKey folderResource)
     {
         if (GetClipboardContentType() != ClipboardContentType.Resource)
         {
@@ -49,19 +49,19 @@ public class ClipboardService : IClipboardService
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(FolderResourceKey);
+        var getResult = resourceRegistry.GetResource(folderResource);
         if (getResult.IsFailure)
         {
             return getResult;
         }
 
-        var folderResource = getResult.Value as IFolderResource;
-        if (folderResource is null)
+        var resource = getResult.Value;
+        if (resource is not IFolderResource)
         {
-            return Result.Fail($"'{FolderResourceKey}' is not a folder resource.");
+            return Result.Fail($"'{folderResource}' is not a folder resource.");
         }
 
-        var pasteFolderPath = resourceRegistry.GetResourcePath(folderResource);
+        var pasteFolderPath = resourceRegistry.GetResourcePath(resource);
         if (!Directory.Exists(pasteFolderPath))
         {
             return Result.Fail($"The path '{pasteFolderPath}' does not exist.");
@@ -91,13 +91,12 @@ public class ClipboardService : IClipboardService
                     var getKeyResult = resourceRegistry.GetResourceKey(storageItemPath);
                     if (getKeyResult.IsSuccess)
                     {
-                        // This is a resource in the project folder, so we can copy/move it using the
-                        // CopyResource command.
-                        var resourceKey = getKeyResult.Value;
+                        // This is a resource in the project folder, so we can copy/move it using the CopyResource command.
+                        var sourceResource = getKeyResult.Value;
                         _commandService.Execute<ICopyResourceCommand>(command =>
                         {
-                            command.SourceResourceKey = resourceKey;
-                            command.DestResourceKey = FolderResourceKey;
+                            command.SourceResource = sourceResource;
+                            command.DestResource = folderResource;
                             command.Operation = operation;
                         });
 
@@ -111,7 +110,7 @@ public class ClipboardService : IClipboardService
                             _commandService.Execute<IAddResourceCommand>(command =>
                             {
                                 command.ResourceType = ResourceType.File;
-                                command.ResourceKey = FolderResourceKey.Combine(file.Name);
+                                command.Resource = folderResource.Combine(file.Name);
                                 command.SourcePath = file.Path;
                             });
 
@@ -122,7 +121,7 @@ public class ClipboardService : IClipboardService
                             _commandService.Execute<IAddResourceCommand>(command =>
                             {
                                 command.ResourceType = ResourceType.Folder;
-                                command.ResourceKey = FolderResourceKey.Combine(folder.Name);
+                                command.Resource = folderResource.Combine(folder.Name);
                                 command.SourcePath = folder.Path;
                             });
 
@@ -142,7 +141,7 @@ public class ClipboardService : IClipboardService
             return Result.Fail("Failed to paste resources. No resources found in clipboard.");
         }
 
-        resourceRegistry.SetFolderIsExpanded(FolderResourceKey, true);
+        resourceRegistry.SetFolderIsExpanded(folderResource, true);
 
         var message = new RequestResourceTreeUpdateMessage();
         _messengerService.Send(message);

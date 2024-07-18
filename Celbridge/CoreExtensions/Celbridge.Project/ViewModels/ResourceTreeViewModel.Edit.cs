@@ -18,13 +18,13 @@ public partial class ResourceTreeViewModel
             parentFolder = resourceRegistry.RootFolder;
         }
 
-        var parentFolderResourceKey = resourceRegistry.GetResourceKey(parentFolder);
+        var parentFolderResource = resourceRegistry.GetResourceKey(parentFolder);
 
         // Execute a command to show the add resource dialog
         _commandService.Execute<IShowAddResourceDialogCommand>(command =>
         {
             command.ResourceType = resourceType;
-            command.ParentFolderResourceKey = parentFolderResourceKey;
+            command.ParentFolderResource = parentFolderResource;
         });
     }
 
@@ -36,7 +36,7 @@ public partial class ResourceTreeViewModel
         // Execute a command to show the delete resource dialog
         _commandService.Execute<IShowDeleteResourceDialogCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resourceKey;
         });
     }
 
@@ -48,7 +48,7 @@ public partial class ResourceTreeViewModel
         // Execute a command to show the rename resource dialog
         _commandService.Execute<IShowRenameResourceDialogCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resourceKey;
         });
     }
 }
