@@ -16,8 +16,8 @@ public interface ICopyResourceToClipboardCommand : IExecutableCommand
     ResourceKey Resource { get; set; }
 
     /// <summary>
-    /// If set to true, the original resource will be moved to the new location 
-    /// when a paste is performed. This corresponds to a "cut" clipboard operation.
+    /// If set to Move, the original resource will be moved to the new location 
+    /// when the paste is performed. This corresponds to a "cut" clipboard operation.
     /// </summary>
-    bool MoveResource { get; set; }
+    CopyResourceOperation Operation { get; set; }
 }
