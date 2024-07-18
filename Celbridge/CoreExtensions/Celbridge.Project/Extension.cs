@@ -35,8 +35,8 @@ public class Extension : IExtension
         config.AddTransient<IAddResourceCommand, AddResourceCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
-        config.AddTransient<IClipResourceCommand, ClipResourceCommand>();
-        config.AddTransient<IPasteResourceCommand, PasteResourceCommand>();
+        config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
+        config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
 
         //
         // Register validators
