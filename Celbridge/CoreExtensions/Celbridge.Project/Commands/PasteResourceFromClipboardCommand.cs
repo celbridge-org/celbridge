@@ -6,7 +6,7 @@ using Celbridge.BaseLibrary.Workspace;
 
 namespace Celbridge.Project.Commands;
 
-public class PasteResourceCommand : CommandBase, IPasteResourceCommand
+public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFromClipboardCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -14,7 +14,7 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
 
     public ResourceKey FolderResourceKey { get; set; }
 
-    public PasteResourceCommand(IWorkspaceWrapper workspaceWrapper)
+    public PasteResourceFromClipboardCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -34,10 +34,10 @@ public class PasteResourceCommand : CommandBase, IPasteResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void PasteResource(ResourceKey folderResourceKey)
+    public static void PasteResourceFromClipboard(ResourceKey folderResourceKey)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IPasteResourceCommand>(command =>
+        commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
             command.FolderResourceKey = folderResourceKey;
         });
