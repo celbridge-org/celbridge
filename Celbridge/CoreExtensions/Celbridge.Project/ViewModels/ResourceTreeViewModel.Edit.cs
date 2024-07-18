@@ -10,7 +10,7 @@ namespace Celbridge.Project.ViewModels;
 /// </summary>
 public partial class ResourceTreeViewModel
 {
-    public void AddResource(ResourceType resourceType, IFolderResource? parentFolder)
+    public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 
@@ -59,7 +59,7 @@ public partial class ResourceTreeViewModel
         _ = ShowDialogAsync();
     }
 
-    public void DeleteResource(IResource resource)
+    public void ShowDeleteResourceDialog(IResource resource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
