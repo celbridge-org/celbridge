@@ -11,5 +11,5 @@ public interface IDeleteResourceCommand : IExecutableCommand
     /// <summary>
     /// Resource to delete.
     /// </summary>
-    ResourceKey ResourceKey { get; set; }
+    ResourceKey Resource { get; set; }
 }

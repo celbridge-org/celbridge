@@ -16,7 +16,7 @@ public interface IAddResourceCommand : IExecutableCommand
     /// <summary>
     /// Resource key for the new resource
     /// </summary>
-    ResourceKey ResourceKey { get; set; }
+    ResourceKey Resource { get; set; }
 
     /// <summary>
     /// Path to copy the resource from.

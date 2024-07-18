@@ -16,15 +16,15 @@ public partial class ResourceTreeViewModel
     public void SetFolderIsExpanded(IFolderResource folderResource, bool isExpanded)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(folderResource);
+        var resource = resourceRegistry.GetResourceKey(folderResource);
 
-        bool currentState = resourceRegistry.IsFolderExpanded(resourceKey);
+        bool currentState = resourceRegistry.IsFolderExpanded(resource);
         if (currentState == isExpanded)
         {
             return;
         }
 
-        resourceRegistry.SetFolderIsExpanded(resourceKey, isExpanded);
+        resourceRegistry.SetFolderIsExpanded(resource, isExpanded);
 
         // Save the workspace data (with a delay) to ensure the new expanded state is persisted
         _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
@@ -44,10 +44,10 @@ public partial class ResourceTreeViewModel
 
         foreach (var resource in resources)
         {
-            var sourceResourceKey = _projectService.ResourceRegistry.GetResourceKey(resource);
-            var destResourceKey = _projectService.ResourceRegistry.GetResourceKey(parentFolder);
+            var sourceResource = _projectService.ResourceRegistry.GetResourceKey(resource);
+            var destResource = _projectService.ResourceRegistry.GetResourceKey(parentFolder);
 
-            if (sourceResourceKey == destResourceKey)
+            if (sourceResource == destResource)
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
@@ -57,8 +57,8 @@ public partial class ResourceTreeViewModel
 
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResourceKey = sourceResourceKey;
-                command.DestResourceKey = destResourceKey;
+                command.SourceResource = sourceResource;
+                command.DestResource = destResource;
                 command.Operation = CopyResourceOperation.Move;
             });
         }
