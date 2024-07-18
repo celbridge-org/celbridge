@@ -37,7 +37,7 @@ public interface IResourceRegistry
 
     /// <summary>
     /// Returns the resource with the specified resource key.
-    /// Fails if no matching resource is found.
+    /// Fails if no resource matching the resource key is found in the project.
     /// </summary>
     Result<IResource> GetResource(ResourceKey resource);
 
