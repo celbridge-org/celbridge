@@ -6,7 +6,7 @@ namespace Celbridge.BaseLibrary.Project;
 /// <summary>
 /// Pastes resources from the clipboard.
 /// </summary>
-public interface IPasteResourceCommand : IExecutableCommand
+public interface IPasteResourceFromClipboardCommand : IExecutableCommand
 {
     /// <summary>
     /// Folder resource to paste the clipboard contents into.

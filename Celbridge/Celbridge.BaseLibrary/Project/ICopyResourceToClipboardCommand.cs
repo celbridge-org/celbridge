@@ -8,7 +8,7 @@ namespace Celbridge.BaseLibrary.Project;
 /// The term "Clip" is used instead of "Copy" to distinguish this operation from 
 /// copying a resource from one location to another.
 /// </summary>
-public interface IClipResourceCommand : IExecutableCommand
+public interface ICopyResourceToClipboardCommand : IExecutableCommand
 {
     /// <summary>
     /// Resource to copy to the clipboard.
