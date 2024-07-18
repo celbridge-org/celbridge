@@ -15,7 +15,7 @@ public partial class ResourceTreeViewModel
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to cut the resource to the clipboard
-        _commandService.Execute<IClipResourceCommand>(command =>
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.ResourceKey = resourceKey;
             command.MoveResource = true;
@@ -29,7 +29,7 @@ public partial class ResourceTreeViewModel
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to copy the resource to the clipboard
-        _commandService.Execute<IClipResourceCommand>(command =>
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.ResourceKey = resourceKey;
         });
@@ -56,7 +56,7 @@ public partial class ResourceTreeViewModel
         var folderResourceKey = _projectService.ResourceRegistry.GetResourceKey(pasteFolder);
 
         // Execute a command to paste the clipboard content to the folder resource
-        _commandService.Execute<IPasteResourceCommand>(command =>
+        _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
             command.FolderResourceKey = folderResourceKey;
         });

@@ -7,17 +7,16 @@ using Windows.Storage;
 
 namespace Celbridge.Project.Commands;
 
-public class ClipResourceCommand : CommandBase, IClipResourceCommand
+public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipboardCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey ResourceKey { get; set; }
-
     public bool MoveResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ClipResourceCommand(IWorkspaceWrapper workspaceWrapper)
+    public CopyResourceToClipboardCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -80,10 +79,10 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
         return Result.Ok();
     }
 
-    private static void ClipResource(ResourceKey resourceKey, bool moveResource)
+    private static void CopyResourceToClipboard(ResourceKey resourceKey, bool moveResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IClipResourceCommand>(command =>
+        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.ResourceKey = resourceKey;
             command.MoveResource = moveResource;
@@ -94,13 +93,13 @@ public class ClipResourceCommand : CommandBase, IClipResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void ClipResource(ResourceKey resourceKey)
+    public static void CopyResourceToClipboard(ResourceKey resourceKey)
     {
-        ClipResource(resourceKey, false);
+        CopyResourceToClipboard(resourceKey, false);
     }
 
-    public static void CutResource(ResourceKey resourceKey)
+    public static void CutResourceToClipboard(ResourceKey resourceKey)
     {
-        ClipResource(resourceKey, true);
+        CopyResourceToClipboard(resourceKey, true);
     }
 }
