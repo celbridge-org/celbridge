@@ -12,7 +12,7 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
 {
     public override string UndoStackName => UndoStackNames.None;
 
-    public ResourceKey ResourceKey { get; set; }
+    public ResourceKey Resource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
@@ -51,7 +51,7 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(ResourceKey);
+        var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);
@@ -95,21 +95,20 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
         {
             var inputText = showResult.Value;
 
-            var sourceResourceKey = ResourceKey;
-            var parentResourceKey = ResourceKey.GetParent();
-            var destResourceKey = parentResourceKey.IsEmpty ? (ResourceKey)inputText : parentResourceKey.Combine(inputText);
+            var sourceParentResource = Resource.GetParent();
+            var destResource = sourceParentResource.Combine(inputText);
 
             bool isFolderResource = resource is IFolderResource;
 
             // Maintain the expanded state of folders after rename
             bool isExpandedFolder = isFolderResource &&
-                resourceRegistry.IsFolderExpanded(ResourceKey);
+                resourceRegistry.IsFolderExpanded(Resource);
 
             // Execute a command to move the folder resource to perform the rename
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResourceKey = sourceResourceKey;
-                command.DestResourceKey = destResourceKey;
+                command.SourceResource = Resource;
+                command.DestResource = destResource;
                 command.Operation = CopyResourceOperation.Move;
 
                 if (isExpandedFolder)
@@ -129,12 +128,12 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
     // Static methods for scripting support.
     //
 
-    public static void ShowRenameResourceDialog(ResourceKey resourceKey)
+    public static void ShowRenameResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IShowRenameResourceDialogCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resource;
         });
     }
 }

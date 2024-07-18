@@ -17,7 +17,7 @@ public partial class ResourceTreeViewModel
         // Execute a command to cut the resource to the clipboard
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resourceKey;
             command.MoveResource = true;
         });
     }
@@ -31,7 +31,7 @@ public partial class ResourceTreeViewModel
         // Execute a command to copy the resource to the clipboard
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resourceKey;
         });
     }
 
@@ -40,25 +40,28 @@ public partial class ResourceTreeViewModel
         var rootFolder = _projectService.ResourceRegistry.RootFolder;
 
         IFolderResource pasteFolder;
-        if (resource is IFileResource fileResource)
+        if (resource is IFileResource file)
         {
-            pasteFolder = fileResource.ParentFolder ?? rootFolder;
+            // Paste to the parent folder of the file resource
+            pasteFolder = file.ParentFolder ?? rootFolder;
         }
-        else if (resource is IFolderResource folderResource)
+        else if (resource is IFolderResource folder)
         {
-            pasteFolder = folderResource ?? rootFolder;
+            // Paste to the folder resource
+            pasteFolder = folder ?? rootFolder;
         }
         else
         {
+            // Paste to the root folder
             pasteFolder = rootFolder;
         }
 
-        var folderResourceKey = _projectService.ResourceRegistry.GetResourceKey(pasteFolder);
+        var folderResource = _projectService.ResourceRegistry.GetResourceKey(pasteFolder);
 
         // Execute a command to paste the clipboard content to the folder resource
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
-            command.FolderResourceKey = folderResourceKey;
+            command.FolderResource = folderResource;
         });
     }
 }
