@@ -63,37 +63,4 @@ public partial class ResourceTreeViewModel
             });
         }
     }
-
-    /// <summary>
-    /// Find a localized default resource name that doesn't clash with an existing resource on disk. 
-    /// </summary>
-    private string FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
-    {
-        var resourceRegistry = _projectService.ResourceRegistry;
-
-        string defaultResourceName;
-        if (parentFolder is null)
-        {
-            defaultResourceName = _stringLocalizer.GetString(stringKey, 1).ToString();
-        }
-        else
-        {
-            int resourceNumber = 1;
-            while (true)
-            {
-                var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
-                var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
-                var candidatePath = Path.Combine(parentFolderPath, candidateName);
-                if (!Directory.Exists(candidatePath) &&
-                    !File.Exists(candidatePath))
-                {
-                    defaultResourceName = candidateName;
-                    break;
-                }
-                resourceNumber++;
-            }
-        }
-
-        return defaultResourceName;
-    }
 }
