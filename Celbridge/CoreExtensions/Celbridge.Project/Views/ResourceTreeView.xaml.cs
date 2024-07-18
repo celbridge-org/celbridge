@@ -135,14 +135,10 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
-        {
-            ViewModel.RenameFolder(folderResource);
-        }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
-        {
-            ViewModel.RenameFile(fileResource);
-        }
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.ShowRenameResourceDialog(resource);
     }
 
     private void OpenResource(object? sender, RoutedEventArgs e)
