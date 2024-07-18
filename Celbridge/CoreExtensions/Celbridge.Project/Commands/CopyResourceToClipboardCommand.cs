@@ -11,7 +11,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 {
     public override string UndoStackName => UndoStackNames.None;
 
-    public ResourceKey ResourceKey { get; set; }
+    public ResourceKey Resource { get; set; }
     public bool MoveResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -25,7 +25,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(ResourceKey);
+        var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
             return getResult;
@@ -79,12 +79,12 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         return Result.Ok();
     }
 
-    private static void CopyResourceToClipboard(ResourceKey resourceKey, bool moveResource)
+    private static void CopyResourceToClipboard(ResourceKey resource, bool moveResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Resource = resource;
             command.MoveResource = moveResource;
         });
     }
@@ -93,13 +93,13 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
     // Static methods for scripting support.
     //
 
-    public static void CopyResourceToClipboard(ResourceKey resourceKey)
+    public static void CopyResourceToClipboard(ResourceKey resource)
     {
-        CopyResourceToClipboard(resourceKey, false);
+        CopyResourceToClipboard(resource, false);
     }
 
-    public static void CutResourceToClipboard(ResourceKey resourceKey)
+    public static void CutResourceToClipboard(ResourceKey resource)
     {
-        CopyResourceToClipboard(resourceKey, true);
+        CopyResourceToClipboard(resource, true);
     }
 }
