@@ -11,5 +11,5 @@ public interface IShowRenameResourceDialogCommand : IExecutableCommand
     /// <summary>
     /// Resource to rename.
     /// </summary>
-    ResourceKey ResourceKey { get; set; }
+    ResourceKey Resource { get; set; }
 }

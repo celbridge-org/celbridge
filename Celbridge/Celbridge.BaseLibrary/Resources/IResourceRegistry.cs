@@ -33,13 +33,13 @@ public interface IResourceRegistry
     /// The path will be generated even if the resource does not exist in the project.
     /// The path uses the directory separator character of the current platform.
     /// </summary>
-    string GetResourcePath(ResourceKey resourceKey);
+    string GetResourcePath(ResourceKey resource);
 
     /// <summary>
     /// Returns the resource with the specified resource key.
     /// Fails if no matching resource is found.
     /// </summary>
-    Result<IResource> GetResource(ResourceKey resourceKey);
+    Result<IResource> GetResource(ResourceKey resource);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
@@ -55,10 +55,10 @@ public interface IResourceRegistry
     /// Mark a folder resource as expanded or collapsed in the resource tree.
     /// This does not affect the IsExpanded property of the folder resource itself.
     /// </summary>
-    void SetFolderIsExpanded(ResourceKey resourceKey, bool isExpanded);
+    void SetFolderIsExpanded(ResourceKey folderResource, bool isExpanded);
 
     /// <summary>
     /// Returns true if the folder with the specified resource key is expanded.
     /// </summary>
-    public bool IsFolderExpanded(ResourceKey resourceKey);
+    public bool IsFolderExpanded(ResourceKey folderResource);
 }
