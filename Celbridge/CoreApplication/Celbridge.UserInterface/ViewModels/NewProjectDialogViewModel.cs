@@ -1,5 +1,6 @@
 ﻿using Celbridge.BaseLibrary.FilePicker;
 using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Settings;
 using Celbridge.BaseLibrary.Utilities;
 using System.ComponentModel;
@@ -48,7 +49,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (e.PropertyName == nameof(ProjectFolderPath) ||
             e.PropertyName == nameof(ProjectName))
         {
-            var isValid = _utilityService.IsValidResourceKeySegment(ProjectName);
+            var isValid = ResourceKey.IsValidKey(ProjectName);
 
             // Todo: Show a message explaining why the create button is disabled
             IsCreateButtonEnabled = isValid && parentFolderExists && !projectFolderExists;

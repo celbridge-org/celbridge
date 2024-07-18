@@ -96,7 +96,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             return Result.Fail("Failed to create resource. Resource key is empty");
         }
 
-        if (!_utilityService.IsValidResourceKey(ResourceKey))
+        if (!ResourceKey.IsValidKey(ResourceKey))
         {
             return Result.Fail($"Failed to create resource. Resource key '{ResourceKey}' is not valid.");
         }
