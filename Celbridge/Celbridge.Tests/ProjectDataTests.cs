@@ -1,5 +1,4 @@
 ﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.Messaging.Services;
 using Celbridge.ProjectAdmin.Services;
 using CommunityToolkit.Diagnostics;
 
@@ -21,8 +20,7 @@ public class ProjectDataTests
             Directory.Delete(_projectFolderPath, true);
         }
 
-        var utilityService = new UtilityService();
-        _projectDataService = new ProjectDataService(utilityService);
+        _projectDataService = new ProjectDataService();
     }
 
     [TearDown]
