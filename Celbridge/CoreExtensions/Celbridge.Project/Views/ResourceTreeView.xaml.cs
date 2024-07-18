@@ -124,16 +124,10 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
-        {
-            // Delete the selected folder
-            ViewModel.DeleteFolder(folderResource);
-        }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
-        {
-            // Delete the selected file
-            ViewModel.DeleteFile(fileResource);
-        }
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.DeleteResource(resource);
     }
 
     private void RenameResource(object? sender, RoutedEventArgs e)
@@ -188,13 +182,9 @@ public sealed partial class ResourceTreeView : UserControl
 
         if (e.Key == VirtualKey.Delete)
         {
-            if (ResourcesTreeView.SelectedItem is FileResource fileResource)
+            if (ResourcesTreeView.SelectedItem is IResource resource)
             {
-                ViewModel.DeleteFile(fileResource);
-            }
-            else if (ResourcesTreeView.SelectedItem is FolderResource folderResource)
-            {
-                ViewModel.DeleteFolder(folderResource);
+                ViewModel.DeleteResource(resource);
             }
         }
         else if (control)

@@ -59,52 +59,41 @@ public partial class ResourceTreeViewModel
         _ = ShowDialogAsync();
     }
 
-    public void DeleteFolder(IFolderResource folderResource)
+    public void DeleteResource(IResource resource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(folderResource);
+        var resourceKey = resourceRegistry.GetResourceKey(resource);
 
-        var resourceName = folderResource.Name;
-        var confirmDeleteFolderString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFolder", resourceName);
+        string confirmDeleteStringKey;
+        switch (resource)
+        {
+            case IFileResource:
+                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFile";
+                break;
+            case IFolderResource:
+                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFolder";
+                break;
+            default:
+                throw new ArgumentException();
+        }
+
+        var resourceName = resource.Name;
+
+        var confirmDeleteString = _stringLocalizer.GetString(confirmDeleteStringKey, resourceName);
 
         async Task ShowDialogAsync()
         {
-            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteFolderString);
+            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteString);
             if (showResult.IsSuccess)
             {
                 var confirmed = showResult.Value;
                 if (confirmed)
                 {
                     // Execute a command to delete the folder resource
-                    _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
-
-                    var message = new RequestResourceTreeUpdateMessage();
-                    _messengerService.Send(message);
-                }
-            }
-        }
-
-        _ = ShowDialogAsync();
-    }
-
-    public void DeleteFile(IFileResource fileResource)
-    {
-        var resourceRegistry = _projectService.ResourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
-
-        var resourceName = fileResource.Name;
-        var confirmDeleteFileString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteFile", resourceName);
-
-        async Task ShowDialogAsync()
-        {
-            var showResult = await _dialogService.ShowConfirmationDialogAsync(DeleteString, confirmDeleteFileString);
-            if (showResult.IsSuccess)
-            {
-                var confirmed = showResult.Value;
-                if (confirmed)
-                {
-                    // Execute a command to delete the file resource
-                    _commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
+                    _commandService.Execute<IDeleteResourceCommand>(command =>
+                    {
+                        command.ResourceKey = resourceKey;
+                    });
 
                     var message = new RequestResourceTreeUpdateMessage();
                     _messengerService.Send(message);
