@@ -44,7 +44,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a folder to the selected folder
-            ViewModel.AddFolder(folderResource);
+            ViewModel.AddResource(ResourceType.Folder, folderResource);
         }
         else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
@@ -52,12 +52,12 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.AddFolder(parentFolder);
+            ViewModel.AddResource(ResourceType.Folder, parentFolder);
         }
         else
         {
             // Add a folder resource to the root folder
-            ViewModel.AddFolder(null);
+            ViewModel.AddResource(ResourceType.Folder, null);
         }
     }
 
@@ -69,7 +69,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a file to the selected folder
-            ViewModel.AddFile(folderResource);
+            ViewModel.AddResource(ResourceType.File, folderResource);
         }
         else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
@@ -77,12 +77,12 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.AddFile(parentFolder);
+            ViewModel.AddResource(ResourceType.File, parentFolder);
         }
         else
         {
             // Add a file resource to the root folder
-            ViewModel.AddFile(null);
+            ViewModel.AddResource(ResourceType.File, null);
         }
     }
 

@@ -10,7 +10,7 @@ namespace Celbridge.Project.ViewModels;
 /// </summary>
 public partial class ResourceTreeViewModel
 {
-    public void AddFolder(IFolderResource? parentFolder)
+    public void AddResource(ResourceType resourceType, IFolderResource? parentFolder)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 
@@ -24,13 +24,16 @@ public partial class ResourceTreeViewModel
 
         async Task ShowDialogAsync()
         {
-            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFolderName", parentFolder);
+            var defaultStringKey = resourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
+            var defaultText = FindDefaultResourceName(defaultStringKey, parentFolder);
 
             var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
             validator.ParentFolder = parentFolder;
 
+            var titleString = resourceType == ResourceType.File ? AddFileString : AddFolderString;
+
             var showResult = await _dialogService.ShowInputTextDialogAsync(
-                AddFolderString,
+                titleString,
                 EnterNameString,
                 defaultText,
                 ..,
@@ -44,53 +47,8 @@ public partial class ResourceTreeViewModel
                 // Execute a command to add the folder resource
                 _commandService.Execute<IAddResourceCommand>(command =>
                 {
-                    command.ResourceType = ResourceType.Folder;
+                    command.ResourceType = resourceType;
                     command.ResourceKey = newResourceKey;
-                });
-
-                var message = new RequestResourceTreeUpdateMessage();
-                _messengerService.Send(message);
-            }
-        }
-
-        _ = ShowDialogAsync();
-    }
-
-    public void AddFile(IFolderResource? parentFolder)
-    {
-        var resourceRegistry = _projectService.ResourceRegistry;
-
-        if (parentFolder is null)
-        {
-            // If the parent folder is null, add the new file to the root folder
-            parentFolder = resourceRegistry.RootFolder;
-        }
-
-        var parentFolderResourceKey = parentFolder is null ? new ResourceKey(string.Empty) : resourceRegistry.GetResourceKey(parentFolder);
-
-        async Task ShowDialogAsync()
-        {
-            var defaultText = FindDefaultResourceName("ResourceTree_DefaultFileName", parentFolder);
-
-            var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-            validator.ParentFolder = parentFolder;
-
-            var showResult = await _dialogService.ShowInputTextDialogAsync(
-                AddFileString,
-                EnterNameString,
-                defaultText,
-                .., // Select the entire range
-                validator);
-            if (showResult.IsSuccess)
-            {
-                var inputText = showResult.Value;
-
-                // Execute a command to add the file resource
-                var addResourceKey = parentFolderResourceKey.Combine(inputText);
-                _commandService.Execute<IAddResourceCommand>(command =>
-                {
-                    command.ResourceType = ResourceType.File;
-                    command.ResourceKey = addResourceKey;
                 });
 
                 var message = new RequestResourceTreeUpdateMessage();
