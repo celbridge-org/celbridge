@@ -44,7 +44,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a folder to the selected folder
-            ViewModel.AddFolder(folderResource);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, folderResource);
         }
         else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
@@ -52,12 +52,12 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.AddFolder(parentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, parentFolder);
         }
         else
         {
             // Add a folder resource to the root folder
-            ViewModel.AddFolder(null);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, null);
         }
     }
 
@@ -69,7 +69,7 @@ public sealed partial class ResourceTreeView : UserControl
         if (menuFlyoutItem.DataContext is IFolderResource folderResource)
         {
             // Add a file to the selected folder
-            ViewModel.AddFile(folderResource);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, folderResource);
         }
         else if (menuFlyoutItem.DataContext is IFileResource fileResource)
         {
@@ -77,12 +77,12 @@ public sealed partial class ResourceTreeView : UserControl
             var parentFolder = fileResource.ParentFolder;
             Guard.IsNotNull(parentFolder);
 
-            ViewModel.AddFile(parentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, parentFolder);
         }
         else
         {
             // Add a file resource to the root folder
-            ViewModel.AddFile(null);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, null);
         }
     }
 
@@ -94,7 +94,7 @@ public sealed partial class ResourceTreeView : UserControl
         var resource = menuFlyoutItem.DataContext as IResource;
         Guard.IsNotNull(resource);
 
-        ViewModel.CutResource(resource);
+        ViewModel.CutResourceToClipboard(resource);
     }
 
     private void CopyResource(object sender, RoutedEventArgs e)
@@ -105,7 +105,7 @@ public sealed partial class ResourceTreeView : UserControl
         var resource = menuFlyoutItem.DataContext as IResource;
         Guard.IsNotNull(resource);
 
-        ViewModel.CopyResource(resource);
+        ViewModel.CopyResourceToClipboard(resource);
     }
 
     private void PasteResource(object sender, RoutedEventArgs e)
@@ -116,7 +116,7 @@ public sealed partial class ResourceTreeView : UserControl
         var resource = menuFlyoutItem.DataContext as IResource;
 
         // Resource is permitted to be null here (indicates the root folder)
-        ViewModel.PasteResource(resource);
+        ViewModel.PasteResourceFromClipboard(resource);
     }
 
     private void DeleteResource(object? sender, RoutedEventArgs e)
@@ -124,16 +124,10 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
-        {
-            // Delete the selected folder
-            ViewModel.DeleteFolder(folderResource);
-        }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
-        {
-            // Delete the selected file
-            ViewModel.DeleteFile(fileResource);
-        }
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.ShowDeleteResourceDialog(resource);
     }
 
     private void RenameResource(object? sender, RoutedEventArgs e)
@@ -141,14 +135,10 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is FolderResource folderResource)
-        {
-            ViewModel.RenameFolder(folderResource);
-        }
-        else if (menuFlyoutItem.DataContext is FileResource fileResource)
-        {
-            ViewModel.RenameFile(fileResource);
-        }
+        var resource = menuFlyoutItem.DataContext as IResource;
+        Guard.IsNotNull(resource);
+
+        ViewModel.ShowRenameResourceDialog(resource);
     }
 
     private void OpenResource(object? sender, RoutedEventArgs e)
@@ -188,13 +178,9 @@ public sealed partial class ResourceTreeView : UserControl
 
         if (e.Key == VirtualKey.Delete)
         {
-            if (ResourcesTreeView.SelectedItem is FileResource fileResource)
+            if (ResourcesTreeView.SelectedItem is IResource resource)
             {
-                ViewModel.DeleteFile(fileResource);
-            }
-            else if (ResourcesTreeView.SelectedItem is FolderResource folderResource)
-            {
-                ViewModel.DeleteFolder(folderResource);
+                ViewModel.ShowDeleteResourceDialog(resource);
             }
         }
         else if (control)
@@ -204,18 +190,18 @@ public sealed partial class ResourceTreeView : UserControl
             {
                 if (e.Key == VirtualKey.C)
                 {
-                    ViewModel.CopyResource(selectedResource);
+                    ViewModel.CopyResourceToClipboard(selectedResource);
                 }
                 else if (e.Key == VirtualKey.X)
                 {
-                    ViewModel.CutResource(selectedResource);
+                    ViewModel.CutResourceToClipboard(selectedResource);
                 }
             }
             
             if (e.Key == VirtualKey.V)
             {
                 // Resource is permitted to be null here (indicates the root folder)
-                ViewModel.PasteResource(selectedResource);
+                ViewModel.PasteResourceFromClipboard(selectedResource);
             }
         }
     }

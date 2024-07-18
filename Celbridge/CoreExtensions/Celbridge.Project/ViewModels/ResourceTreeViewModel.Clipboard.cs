@@ -8,7 +8,7 @@ namespace Celbridge.Project.ViewModels;
 /// </summary>
 public partial class ResourceTreeViewModel
 {
-    public void CutResource(IResource resource)
+    public void CutResourceToClipboard(IResource resource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 
@@ -22,7 +22,7 @@ public partial class ResourceTreeViewModel
         });
     }
 
-    public void CopyResource(IResource resource)
+    public void CopyResourceToClipboard(IResource resource)
     {
         var resourceRegistry = _projectService.ResourceRegistry;
 
@@ -35,7 +35,7 @@ public partial class ResourceTreeViewModel
         });
     }
 
-    public void PasteResource(IResource? resource)
+    public void PasteResourceFromClipboard(IResource? resource)
     {
         var rootFolder = _projectService.ResourceRegistry.RootFolder;
 
