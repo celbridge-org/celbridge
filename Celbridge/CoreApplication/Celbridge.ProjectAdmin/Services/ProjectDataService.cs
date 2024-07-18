@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Newtonsoft.Json.Linq;
 
@@ -30,7 +31,7 @@ public class ProjectDataService : IProjectDataService
             return Result.Fail("Project folder is empty.");
         }
 
-        if (!_utilityService.IsValidResourceKeySegment(config.ProjectName))
+        if (!ResourceKey.IsValidSegment(config.ProjectName))
         {
             return Result.Fail($"Project name is not valid: {config.ProjectName}");
         }
