@@ -7,15 +7,8 @@ namespace Celbridge.ProjectAdmin.Services;
 
 public class ProjectDataService : IProjectDataService
 {
-    private readonly IUtilityService _utilityService;
-
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
-
-    public ProjectDataService(IUtilityService utilityService)
-    {
-        _utilityService = utilityService;
-    }
 
     public IProjectData? LoadedProjectData { get; private set; }
 
