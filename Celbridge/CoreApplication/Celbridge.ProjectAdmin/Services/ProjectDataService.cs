@@ -1,4 +1,5 @@
 ﻿using Celbridge.BaseLibrary.Project;
+using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Utilities;
 using Newtonsoft.Json.Linq;
 
@@ -6,15 +7,8 @@ namespace Celbridge.ProjectAdmin.Services;
 
 public class ProjectDataService : IProjectDataService
 {
-    private readonly IUtilityService _utilityService;
-
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
-
-    public ProjectDataService(IUtilityService utilityService)
-    {
-        _utilityService = utilityService;
-    }
 
     public IProjectData? LoadedProjectData { get; private set; }
 
@@ -30,7 +24,7 @@ public class ProjectDataService : IProjectDataService
             return Result.Fail("Project folder is empty.");
         }
 
-        if (!_utilityService.IsValidResourceKeySegment(config.ProjectName))
+        if (!ResourceKey.IsValidSegment(config.ProjectName))
         {
             return Result.Fail($"Project name is not valid: {config.ProjectName}");
         }
