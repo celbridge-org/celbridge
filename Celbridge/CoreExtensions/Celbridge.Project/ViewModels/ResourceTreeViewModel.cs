@@ -22,8 +22,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
 
-    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
     private LocalizedString EnterNameString => _stringLocalizer.GetString("ResourceTree_EnterName");
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private LocalizedString EnterNewNameString => _stringLocalizer.GetString("ResourceTree_EnterNewName");

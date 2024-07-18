@@ -22,41 +22,12 @@ public partial class ResourceTreeViewModel
 
         var parentFolderResourceKey = resourceRegistry.GetResourceKey(parentFolder);
 
-        async Task ShowDialogAsync()
+        // Execute a command to add the folder resource
+        _commandService.Execute<IShowAddResourceDialogCommand>(command =>
         {
-            var defaultStringKey = resourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
-            var defaultText = FindDefaultResourceName(defaultStringKey, parentFolder);
-
-            var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-            validator.ParentFolder = parentFolder;
-
-            var titleString = resourceType == ResourceType.File ? AddFileString : AddFolderString;
-
-            var showResult = await _dialogService.ShowInputTextDialogAsync(
-                titleString,
-                EnterNameString,
-                defaultText,
-                ..,
-                validator);
-            if (showResult.IsSuccess)
-            {
-                var inputText = showResult.Value;
-
-                var newResourceKey = parentFolderResourceKey.Combine(inputText);
-
-                // Execute a command to add the folder resource
-                _commandService.Execute<IAddResourceCommand>(command =>
-                {
-                    command.ResourceType = resourceType;
-                    command.ResourceKey = newResourceKey;
-                });
-
-                var message = new RequestResourceTreeUpdateMessage();
-                _messengerService.Send(message);
-            }
-        }
-
-        _ = ShowDialogAsync();
+            command.ResourceType = resourceType;
+            command.ParentFolderResourceKey = parentFolderResourceKey;
+        });
     }
 
     public void ShowDeleteResourceDialog(IResource resource)
