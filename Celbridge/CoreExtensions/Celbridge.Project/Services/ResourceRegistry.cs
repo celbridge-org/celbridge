@@ -17,28 +17,37 @@ public class ResourceRegistry : IResourceRegistry
 
     public ResourceKey GetResourceKey(IResource resource)
     {
-        var sb = new StringBuilder();
-        void AddResourceKeySegment(IResource resource)
+        try
         {
-            if (resource.ParentFolder is null)
+            var sb = new StringBuilder();
+            void AddResourceKeySegment(IResource resource)
             {
-                return;
-            }
+                if (resource.ParentFolder is null)
+                {
+                    return;
+                }
 
-            // Build path by recursively visiting each parent folders
-            AddResourceKeySegment(resource.ParentFolder);
+                // Build path by recursively visiting each parent folders
+                AddResourceKeySegment(resource.ParentFolder);
 
-            // The trick is to append the path segment after we've visited the parent.
-            // This ensures the path segments are appended in the right order.
-            if (sb.Length > 0)
-            {
-                sb.Append("/");
+                // The trick is to append the path segment after we've visited the parent.
+                // This ensures the path segments are appended in the right order.
+                if (sb.Length > 0)
+                {
+                    sb.Append("/");
+                }
+                sb.Append(resource.Name);
             }
-            sb.Append(resource.Name);
+            AddResourceKeySegment(resource);
+
+            var resourceKey = new ResourceKey(sb.ToString());
+
+            return resourceKey;
         }
-        AddResourceKeySegment(resource);
-
-        return sb.ToString();
+        catch (Exception ex)
+        {
+            throw new ArgumentException($"Failed to get resource key for '{resource}'", ex);
+        }
     }
 
     public Result<ResourceKey> GetResourceKey(string resourcePath)
@@ -67,16 +76,31 @@ public class ResourceRegistry : IResourceRegistry
 
     public string GetResourcePath(IResource resource)
     {
-        var resourceKey = GetResourceKey(resource);
-        return GetResourcePath(resourceKey);
+        try
+        {
+            var resourceKey = GetResourceKey(resource);
+            var path = GetResourcePath(resourceKey);
+            return path;
+        }
+        catch (Exception ex)
+        {
+            throw new ArgumentException($"Failed to get path for resource '{resource}'", ex);
+        }
     }
 
     public string GetResourcePath(ResourceKey resource)
     {
-        var resourcePath = Path.Combine(_projectFolderPath, resource);
-        var normalized = Path.GetFullPath(resourcePath);
+        try
+        {
+            var resourcePath = Path.Combine(_projectFolderPath, resource);
+            var normalized = Path.GetFullPath(resourcePath);
 
-        return normalized;
+            return normalized;
+        }
+        catch (Exception ex)
+        {
+            throw new ArgumentException($"Failed to get path for resource '{resource}'.", ex);
+        }
     }
 
     public Result<IResource> GetResource(ResourceKey resource)
