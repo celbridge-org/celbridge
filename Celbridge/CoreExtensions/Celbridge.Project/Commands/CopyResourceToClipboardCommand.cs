@@ -12,8 +12,8 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey Resource { get; set; }
-    public bool MoveResource { get; set; }
-
+    public CopyResourceOperation Operation { get; set; }
+  
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public CopyResourceToClipboardCommand(IWorkspaceWrapper workspaceWrapper)
@@ -70,7 +70,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         }
 
         var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = MoveResource ? DataPackageOperation.Move : DataPackageOperation.Copy;
+        dataPackage.RequestedOperation = Operation == CopyResourceOperation.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
 
         dataPackage.SetStorageItems(storageItems);
         Clipboard.SetContent(dataPackage);
@@ -79,14 +79,8 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         return Result.Ok();
     }
 
-    private static void CopyResourceToClipboard(ResourceKey resource, bool moveResource)
+    private static void CopyResourceToClipboard(ResourceKey resource, CopyResourceOperation operation)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.Resource = resource;
-            command.MoveResource = moveResource;
-        });
     }
 
     //
@@ -95,11 +89,21 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     public static void CopyResourceToClipboard(ResourceKey resource)
     {
-        CopyResourceToClipboard(resource, false);
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.Resource = resource;
+            command.Operation = CopyResourceOperation.Copy;
+        });
     }
 
     public static void CutResourceToClipboard(ResourceKey resource)
     {
-        CopyResourceToClipboard(resource, true);
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.Resource = resource;
+            command.Operation = CopyResourceOperation.Move;
+        });
     }
 }
