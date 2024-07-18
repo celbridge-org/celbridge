@@ -1,12 +1,9 @@
 ﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Utilities;
 using Celbridge.BaseLibrary.Workspace;
 using Celbridge.Project.Services;
 using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
@@ -21,26 +18,17 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
-    private readonly IUtilityService _utilityService;
-    private readonly IDialogService _dialogService;
-    private readonly IStringLocalizer _stringLocalizer;
 
     private string _addedResourcePath = string.Empty;
 
     public AddResourceCommand(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService,
-        IUtilityService utilityService,
-        IDialogService dialogService,
-        IStringLocalizer stringLocalizer)
+        IProjectDataService projectDataService)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
-        _utilityService = utilityService;
-        _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
     }
 
     public override async Task<Result> ExecuteAsync()
