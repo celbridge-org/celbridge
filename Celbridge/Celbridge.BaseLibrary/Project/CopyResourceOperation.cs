@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Specifies the behaviour of the CopyResourceCommand.
+/// Specifies whether a copy operation should copy or move the resource.
 /// </summary>
 public enum CopyResourceOperation
 {
@@ -10,7 +10,7 @@ public enum CopyResourceOperation
     /// </summary>
     Copy,
     /// <summary>
-    /// Move the resource to the destination.
+    /// Move the resource to the destination, deleting the original.
     /// </summary>
     Move
 }
