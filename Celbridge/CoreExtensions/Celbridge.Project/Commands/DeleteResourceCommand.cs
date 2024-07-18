@@ -15,7 +15,7 @@ namespace Celbridge.Project.Commands
     {
         public override string UndoStackName => UndoStackNames.Project;
 
-        public ResourceKey ResourceKey { get; set; }
+        public ResourceKey Resource { get; set; }
 
         private Type? _deletedResourceType;
         private string _archivePath = string.Empty;
@@ -49,10 +49,10 @@ namespace Celbridge.Project.Commands
         {
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-            var getResourceResult = resourceRegistry.GetResource(ResourceKey);
+            var getResourceResult = resourceRegistry.GetResource(Resource);
             if (getResourceResult.IsFailure)
             {
-                return Result.Fail($"Failed to get resource: {ResourceKey}");
+                return Result.Fail($"Failed to get resource: {Resource}");
             }
 
             var resource = getResourceResult.Value;
@@ -63,7 +63,7 @@ namespace Celbridge.Project.Commands
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", Resource);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return deleteResult;
@@ -75,7 +75,7 @@ namespace Celbridge.Project.Commands
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", Resource);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return deleteResult;
@@ -83,7 +83,7 @@ namespace Celbridge.Project.Commands
             }
             else
             {
-                return Result.Fail($"Unknown resource type for key: {ResourceKey}");
+                return Result.Fail($"Unknown resource type for key: {Resource}");
             }
 
             return Result.Ok();
@@ -100,7 +100,7 @@ namespace Celbridge.Project.Commands
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFileFailed", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFileFailed", Resource);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return undoResult;
@@ -113,7 +113,7 @@ namespace Celbridge.Project.Commands
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFolderFailed", ResourceKey);
+                    var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFolderFailed", Resource);
                     await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
                     return undoResult;
@@ -121,7 +121,7 @@ namespace Celbridge.Project.Commands
             }
             else
             {
-                return Result.Fail($"Unknown resource type for key: {ResourceKey}");
+                return Result.Fail($"Unknown resource type for key: {Resource}");
             }
 
             return Result.Ok();
@@ -137,7 +137,7 @@ namespace Celbridge.Project.Commands
             var loadedProjectData = _projectDataService.LoadedProjectData;
             Guard.IsNotNull(loadedProjectData);
 
-            if (ResourceKey.IsEmpty)
+            if (Resource.IsEmpty)
             {
                 return Result.Fail("Failed to delete file. Resource key is empty");
             }
@@ -145,7 +145,7 @@ namespace Celbridge.Project.Commands
             try
             {
                 var projectFolderPath = loadedProjectData.ProjectFolderPath;
-                var deleteFilePath = Path.Combine(projectFolderPath, ResourceKey);
+                var deleteFilePath = Path.Combine(projectFolderPath, Resource);
                 deleteFilePath = Path.GetFullPath(deleteFilePath);
 
                 if (!File.Exists(deleteFilePath))
@@ -164,7 +164,7 @@ namespace Celbridge.Project.Commands
 
                 using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
                 {
-                    archive.CreateEntryFromFile(deleteFilePath, ResourceKey);
+                    archive.CreateEntryFromFile(deleteFilePath, Resource);
                 }
 
                 File.Delete(deleteFilePath);
@@ -227,7 +227,7 @@ namespace Celbridge.Project.Commands
             var loadedProjectData = _projectDataService.LoadedProjectData;
             Guard.IsNotNull(loadedProjectData);
 
-            if (ResourceKey.IsEmpty)
+            if (Resource.IsEmpty)
             {
                 return Result.Fail("Failed to delete folder. Resource key is empty");
             }
@@ -235,7 +235,7 @@ namespace Celbridge.Project.Commands
             try
             {
                 var projectFolderPath = loadedProjectData.ProjectFolderPath;
-                var deleteFolderPath = Path.Combine(projectFolderPath, ResourceKey);
+                var deleteFolderPath = Path.Combine(projectFolderPath, Resource);
                 deleteFolderPath = Path.GetFullPath(deleteFolderPath);
 
                 if (!Directory.Exists(deleteFolderPath))
@@ -264,7 +264,7 @@ namespace Celbridge.Project.Commands
                     ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
                 }
 
-                _folderWasExpanded = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.IsFolderExpanded(ResourceKey);
+                _folderWasExpanded = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.IsFolderExpanded(Resource);
 
                 Directory.Delete(deleteFolderPath, true);
             }
@@ -298,7 +298,7 @@ namespace Celbridge.Project.Commands
 
             try
             {
-                var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, ResourceKey));
+                var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, Resource));
 
                 if (_folderWasEmpty)
                 {
@@ -322,7 +322,7 @@ namespace Celbridge.Project.Commands
                 return Result.Fail($"Failed to undo folder delete. {ex.Message}");
             }
 
-            _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.SetFolderIsExpanded(ResourceKey, _folderWasExpanded);
+            _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
             _messengerService.Send(new RequestResourceTreeUpdateMessage());
             await Task.CompletedTask;
 
@@ -333,10 +333,10 @@ namespace Celbridge.Project.Commands
         // Static methods for scripting support.
         //
 
-        public static void DeleteResource(ResourceKey resourceKey)
+        public static void DeleteResource(ResourceKey resource)
         {
             var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-            commandService.Execute<IDeleteResourceCommand>(command => command.ResourceKey = resourceKey);
+            commandService.Execute<IDeleteResourceCommand>(command => command.Resource = resource);
         }
     }
 }

@@ -14,5 +14,5 @@ public interface IClipboardService
     /// If the target resource is a file, the resources are pasted into the parent folder of the file.
     /// Fails if the current clipboard content is not a resource.
     /// </summary>
-    Task<Result> PasteResources(ResourceKey FolderResourceKey);
+    Task<Result> PasteResources(ResourceKey FolderResource);
 }

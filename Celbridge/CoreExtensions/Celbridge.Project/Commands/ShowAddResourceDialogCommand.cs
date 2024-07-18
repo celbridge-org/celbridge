@@ -13,7 +13,7 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceKey ParentFolderResourceKey { get; set; }
+    public ResourceKey ParentFolderResource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
@@ -52,7 +52,7 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(ParentFolderResourceKey);
+        var getResult = resourceRegistry.GetResource(ParentFolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);
@@ -61,7 +61,7 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
         var parentFolder = getResult.Value as IFolderResource;
         if (parentFolder is null)
         {
-            return Result.Fail($"Parent folder resource key '{ParentFolderResourceKey}' does not reference a folder resource.");
+            return Result.Fail($"Parent folder resource key '{ParentFolderResource}' does not reference a folder resource.");
         }
 
         var defaultStringKey = ResourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
@@ -86,13 +86,13 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
         {
             var inputText = showResult.Value;
 
-            var newResourceKey = ParentFolderResourceKey.Combine(inputText);
+            var newResource = ParentFolderResource.Combine(inputText);
 
             // Execute a command to add the resource
             _commandService.Execute<IAddResourceCommand>(command =>
             {
                 command.ResourceType = ResourceType;
-                command.ResourceKey = newResourceKey;
+                command.Resource = newResource;
             });
 
             var message = new RequestResourceTreeUpdateMessage();
@@ -139,23 +139,23 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
     // Static methods for scripting support.
     //
 
-    public static void ShowAddFileDialog(ResourceKey parentFolderResourceKey)
+    public static void ShowAddFileDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IShowAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.ParentFolderResourceKey = parentFolderResourceKey;
+            command.ParentFolderResource = parentFolderResource;
         });
     }
 
-    public static void ShowAddFolderDialog(ResourceKey parentFolderResourceKey)
+    public static void ShowAddFolderDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IShowAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.ParentFolderResourceKey = parentFolderResourceKey;
+            command.ParentFolderResource = parentFolderResource;
         });
     }
 }

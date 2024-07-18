@@ -63,7 +63,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// <summary>
     /// Implicit conversion from ResourceKey to string
     /// </summary>
-    public static implicit operator string(ResourceKey resourceKey) => resourceKey._key;
+    public static implicit operator string(ResourceKey resource) => resource._key;
 
     /// <summary>
     /// Returns the resource name. This is the last segment of the resource key.
@@ -158,42 +158,42 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// - Specified relative to the project folder. 
     /// - Absolute paths, parent and same directory references are not supported.
     /// - '/' is used as the path separator on all platforms, backslashes are not allowed.
-    public static bool IsValidKey(string resourceKey)
+    public static bool IsValidKey(string key)
     {
-        if (string.IsNullOrWhiteSpace(resourceKey))
+        if (string.IsNullOrWhiteSpace(key))
         {
             // An empty resource key is valid, and refers to the project folder.
             return true;
         }
 
         // Backslashes are not permitted
-        if (resourceKey.Contains("\\"))
+        if (key.Contains("\\"))
         {
             return false;
         }
 
         // Empty segments are not permitted
-        if (resourceKey.Contains("//"))
+        if (key.Contains("//"))
         {
             return false;
         }
 
         // Resource keys must represent a relative path
-        if (Path.IsPathRooted(resourceKey))
+        if (Path.IsPathRooted(key))
         {
             return false;
         }
 
         // Resource keys may not contain parent or same directory references
-        if (resourceKey.Contains("..") ||
-            resourceKey.Contains("./") ||
-            resourceKey.Contains(".\\"))
+        if (key.Contains("..") ||
+            key.Contains("./") ||
+            key.Contains(".\\"))
         {
             return false;
         }
 
         // Resource keys may not start with a separator character
-        if (resourceKey[0] == '/')
+        if (key[0] == '/')
         {
             return false;
         }
@@ -201,7 +201,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
         // Each segment in the resource key must be a valid filename
         // Note: This constraint may prove to be too restrictive for cross-platform projects which
         // work with exotic file names. If this proves to be a problem we could relax this constraint in the future.
-        var resourceKeySegments = resourceKey.Split('/');
+        var resourceKeySegments = key.Split('/');
         foreach (var segment in resourceKeySegments)
         {
             if (!IsValidSegment(segment))

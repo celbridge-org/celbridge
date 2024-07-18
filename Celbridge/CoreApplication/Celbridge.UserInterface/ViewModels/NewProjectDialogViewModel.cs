@@ -46,7 +46,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (e.PropertyName == nameof(ProjectFolderPath) ||
             e.PropertyName == nameof(ProjectName))
         {
-            var isValid = ResourceKey.IsValidKey(ProjectName);
+            var isValid = ResourceKey.IsValidSegment(ProjectName);
 
             // Todo: Show a message explaining why the create button is disabled
             IsCreateButtonEnabled = isValid && parentFolderExists && !projectFolderExists;
