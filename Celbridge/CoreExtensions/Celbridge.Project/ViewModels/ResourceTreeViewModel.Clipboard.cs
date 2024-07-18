@@ -18,7 +18,7 @@ public partial class ResourceTreeViewModel
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.Resource = resourceKey;
-            command.MoveResource = true;
+            command.Operation = CopyResourceOperation.Move;
         });
     }
 
@@ -32,6 +32,7 @@ public partial class ResourceTreeViewModel
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.Resource = resourceKey;
+            command.Operation = CopyResourceOperation.Copy;
         });
     }
 
