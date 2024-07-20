@@ -159,6 +159,30 @@ public class ResourceRegistry : IResourceRegistry
         return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resource}'.");
     }
 
+    public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
+    {
+        string output = destResource;
+
+        var getResult = GetResource(destResource);
+        if (getResult.IsSuccess)
+        {
+            var resource = getResult.Value;
+            if (resource is IFolderResource)
+            {
+                if (destResource.IsEmpty)
+                {
+                    output = sourceResource.ResourceName;
+                }
+                else
+                {
+                    output = destResource.Combine(sourceResource.ResourceName);
+                }
+            }
+        }
+
+        return output;
+    }
+
     public Result UpdateResourceTree()
     {
         var createResult = CreateFolderResource(_projectFolderPath);
