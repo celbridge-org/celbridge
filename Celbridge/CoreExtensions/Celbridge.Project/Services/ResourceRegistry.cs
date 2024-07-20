@@ -178,8 +178,8 @@ public class ResourceRegistry : IResourceRegistry
                 {
                     if (sourceResource == destResource)
                     {
-                        // Source and destination are the same folder.
-                        // The user may copy and paste a folder to the same location to duplicate it.
+                        // Source and destination are the same folder.This case is allowed, because
+                        // the user may duplicate a folder by copying and pasting it to the same destination.
                         output = destResource;
                     }
                     else

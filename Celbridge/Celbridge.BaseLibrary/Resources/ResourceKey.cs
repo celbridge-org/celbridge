@@ -6,6 +6,9 @@
 /// </summary>
 public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<ResourceKey>
 {
+    // As this is a struct, if a ResourceKey member variable is not explicitly initialized,
+    // the key here will be null regardless of any value we assign to it here or in the constructor.
+    // The safest approach is to make this member variable nullable.
     private readonly string? _key;
 
     public ResourceKey(string key)
