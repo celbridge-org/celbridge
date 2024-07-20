@@ -6,7 +6,7 @@ namespace Celbridge.BaseLibrary.Project;
 /// <summary>
 /// Display the Add Resource dialog to allow the user to add a new resource to the project.
 /// </summary>
-public interface IShowAddResourceDialogCommand : IExecutableCommand
+public interface IAddResourceDialogCommand : IExecutableCommand
 {
     /// <summary>
     /// The type of resource to add.
