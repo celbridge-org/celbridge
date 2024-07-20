@@ -7,7 +7,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
-public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceDialogCommand
+public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
@@ -19,7 +19,7 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    public ShowDeleteResourceDialogCommand(
+    public DeleteResourceDialogCommand(
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
@@ -96,10 +96,10 @@ public class ShowDeleteResourceDialogCommand : CommandBase, IShowDeleteResourceD
     // Static methods for scripting support.
     //
 
-    public static void ShowDeleteResourceDialog(ResourceKey resource)
+    public static void DeleteResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowDeleteResourceDialogCommand>(command =>
+        commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
             command.Resource = resource;
         });

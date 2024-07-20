@@ -4,12 +4,12 @@ using Celbridge.BaseLibrary.Resources;
 namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Display the Duplicate Resource dialog to allow the user to enter a name for the duplicated resource.
+/// Display the Delete Resource dialog to allow the user to confirm deleting a resource.
 /// </summary>
-public interface IShowDuplicateResourceDialogCommand : IExecutableCommand
+public interface IDeleteResourceDialogCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to duplicate.
+    /// Resource to delete.
     /// </summary>
     ResourceKey Resource { get; set; }
 }

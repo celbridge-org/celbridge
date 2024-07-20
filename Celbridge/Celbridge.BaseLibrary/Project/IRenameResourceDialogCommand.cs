@@ -4,12 +4,12 @@ using Celbridge.BaseLibrary.Resources;
 namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Display the Delete Resource dialog to allow the user to confirm deleting a resource.
+/// Display the Rename Resource dialog to allow the user to rename a resource.
 /// </summary>
-public interface IShowDeleteResourceDialogCommand : IExecutableCommand
+public interface IRenameResourceDialogCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to delete.
+    /// Resource to rename.
     /// </summary>
     ResourceKey Resource { get; set; }
 }

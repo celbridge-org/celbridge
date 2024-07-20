@@ -37,10 +37,10 @@ public class Extension : IExtension
         config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        config.AddTransient<IShowAddResourceDialogCommand, ShowAddResourceDialogCommand>();
-        config.AddTransient<IShowDeleteResourceDialogCommand, ShowDeleteResourceDialogCommand>();
-        config.AddTransient<IShowRenameResourceDialogCommand, ShowRenameResourceDialogCommand>();
-        config.AddTransient<IShowDuplicateResourceDialogCommand, ShowDuplicateResourceDialogCommand>();
+        config.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
+        config.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
+        config.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();
+        config.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
 
         //
         // Register validators

@@ -152,7 +152,7 @@ public class ClipboardService : IClipboardService
             var clipboardResource = description.ResourceItems[0]!;
             if (clipboardResource.SourceResource == clipboardResource.DestResource)
             {
-                _commandService.Execute<IShowDuplicateResourceDialogCommand>(command =>
+                _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
                 {
                     command.Resource = clipboardResource.SourceResource;
                 });
