@@ -103,7 +103,7 @@ public class ClipboardService : IClipboardService
                     var sourcePath = resourceRegistry.GetResourcePath(sourceResource);
                     var destResource = resourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
 
-                    // This resource is inside the project folder so we can use the CopyResource command
+                    // This resource is inside the project folder so we should use the CopyResource command
                     // to copy/move it so that the resource meta data is preserved.
                     // This is indicated by having a non-empty source resource property.
                     var item = new ClipboardResourceItem(resourceType, sourcePath, sourceResource, destResource);
@@ -118,8 +118,8 @@ public class ClipboardService : IClipboardService
                         var sourceResource = new ResourceKey();
                         var destResource = destFolderResource.Combine(file.Name);
 
-                        // This resource is outside the project folder, so it should be added to the project via the
-                        // AddResource command, which will create new metadata for the resource.
+                        // This resource is outside the project folder, so we should add it to the project
+                        // via the AddResource command, which will create new metadata for the resource.
                         // This is indicated by having an empty source resource property.
                         var item = new ClipboardResourceItem(resourceType, sourcePath, sourceResource, destResource);
                         description.ResourceItems.Add(item);
@@ -179,7 +179,7 @@ public class ClipboardService : IClipboardService
         {
             if (resourceItem.SourceResource.IsEmpty)
             {
-                // This is a resource outside the project folder, add it using the AddResource command.
+                // This resource is outside the project folder, add it using the AddResource command.
                 _commandService.Execute<IAddResourceCommand>(command =>
                 {
                     command.ResourceType = resourceItem.ResourceType;
@@ -189,7 +189,7 @@ public class ClipboardService : IClipboardService
             }
             else
             { 
-                // This is a resource inside the project folder, copy/move it using the CopyResource command.
+                // This resource is inside the project folder, copy/move it using the CopyResource command.
                 _commandService.Execute<ICopyResourceCommand>(command =>
                 {
                     command.SourceResource = resourceItem.SourceResource;
