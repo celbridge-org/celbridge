@@ -85,9 +85,12 @@ public class ClipboardService : IClipboardService
             {
                 var storageItemPath = storageItem.Path;
 
-                if (PathContainsSubPath(destFolderPath, storageItemPath))
+                if (PathContainsSubPath(destFolderPath, storageItemPath) &&
+                    string.Compare(destFolderPath, storageItemPath, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // Ignore attempts to paste a resource into a subfolder of itself.
+                    // This check is case insensitive to err on the safe side for Windows file systems.
+                    // Without this check, a paste operation can generate thousands of nested folders!
                     continue;
                 }
 
