@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
-public class ShowDuplicateResourceDialogCommand : CommandBase, IShowDuplicateResourceDialogCommand
+public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
@@ -21,7 +21,7 @@ public class ShowDuplicateResourceDialogCommand : CommandBase, IShowDuplicateRes
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    public ShowDuplicateResourceDialogCommand(
+    public DuplicateResourceDialogCommand(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
@@ -132,10 +132,10 @@ public class ShowDuplicateResourceDialogCommand : CommandBase, IShowDuplicateRes
     // Static methods for scripting support.
     //
 
-    public static void ShowDuplicateResourceDialog(ResourceKey resource)
+    public static void DuplicateResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowDuplicateResourceDialogCommand>(command =>
+        commandService.Execute<IDuplicateResourceDialogCommand>(command =>
         {
             command.Resource = resource;
         });

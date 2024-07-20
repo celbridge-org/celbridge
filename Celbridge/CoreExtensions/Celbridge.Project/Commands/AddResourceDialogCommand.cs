@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
-public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogCommand
+public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
@@ -22,7 +22,7 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    public ShowAddResourceDialogCommand(
+    public AddResourceDialogCommand(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
@@ -139,20 +139,20 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
     // Static methods for scripting support.
     //
 
-    public static void ShowAddFileDialog(ResourceKey parentFolderResource)
+    public static void AddFileDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowAddResourceDialogCommand>(command =>
+        commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.ParentFolderResource = parentFolderResource;
         });
     }
 
-    public static void ShowAddFolderDialog(ResourceKey parentFolderResource)
+    public static void AddFolderDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowAddResourceDialogCommand>(command =>
+        commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.ParentFolderResource = parentFolderResource;
