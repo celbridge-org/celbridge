@@ -40,6 +40,7 @@ public class Extension : IExtension
         config.AddTransient<IShowAddResourceDialogCommand, ShowAddResourceDialogCommand>();
         config.AddTransient<IShowDeleteResourceDialogCommand, ShowDeleteResourceDialogCommand>();
         config.AddTransient<IShowRenameResourceDialogCommand, ShowRenameResourceDialogCommand>();
+        config.AddTransient<IShowDuplicateResourceDialogCommand, ShowDuplicateResourceDialogCommand>();
 
         //
         // Register validators

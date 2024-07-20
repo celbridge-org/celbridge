@@ -27,7 +27,7 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
             return Result.Fail("Clipboard does not contain a resource to paste");
         }
 
-        return await clipboardService.PasteResources(FolderResource);
+        return await clipboardService.PasteResourceItems(FolderResource);
     }
 
     //
