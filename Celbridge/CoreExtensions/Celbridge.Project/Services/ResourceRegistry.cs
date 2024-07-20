@@ -171,11 +171,22 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (destResource.IsEmpty)
                 {
+                    // Destination is the root folder
                     output = sourceResource.ResourceName;
                 }
                 else
                 {
-                    output = destResource.Combine(sourceResource.ResourceName);
+                    if (sourceResource == destResource)
+                    {
+                        // Source and destination are the same folder.
+                        // The user may copy and paste a folder to the same location to duplicate it.
+                        output = destResource;
+                    }
+                    else
+                    { 
+                        // Destination is a folder, so append the source resource name to this folder.
+                        output = destResource.Combine(sourceResource.ResourceName);
+                    }
                 }
             }
         }
