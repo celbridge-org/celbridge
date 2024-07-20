@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
-public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceDialogCommand
+public class ShowDuplicateResourceDialogCommand : CommandBase, IShowDuplicateResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
@@ -21,7 +21,7 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    public ShowRenameResourceDialogCommand(
+    public ShowDuplicateResourceDialogCommand(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
@@ -39,14 +39,14 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
 
     public override async Task<Result> ExecuteAsync()
     {
-        return await ShowRenameResourceDialogAsync();
+        return await ShowDuplicateResourceDialogAsync();
     }
 
-    private async Task<Result> ShowRenameResourceDialogAsync()
+    private async Task<Result> ShowDuplicateResourceDialogAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
+            return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
@@ -73,7 +73,7 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
                 throw new ArgumentException();
         }
 
-        var renameResourceString = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
+        var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resourceName);
 
         var defaultText = resourceName;
 
@@ -81,11 +81,11 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
         validator.ParentFolder = resource.ParentFolder;
         validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
 
-        var enterNewNameString = _stringLocalizer.GetString("ResourceTree_EnterNewName");
+        var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
-            renameResourceString,
-            enterNewNameString,
+            duplicateResourceString,
+            enterNameString,
             defaultText,
             selectedRange,
             validator);
@@ -96,6 +96,12 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
 
             var sourceParentResource = Resource.GetParent();
             var destResource = sourceParentResource.Combine(inputText);
+
+            if (Resource == destResource)
+            {
+                // Choosing the original name is treated as a cancel.
+                return Result.Ok();
+            }
 
             bool isFolderResource = resource is IFolderResource;
 
@@ -108,7 +114,6 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
             {
                 command.SourceResource = Resource;
                 command.DestResource = destResource;
-                command.Operation = CopyResourceOperation.Move;
 
                 if (isExpandedFolder)
                 {
@@ -127,10 +132,10 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
     // Static methods for scripting support.
     //
 
-    public static void ShowRenameResourceDialog(ResourceKey resource)
+    public static void ShowDuplicateResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowRenameResourceDialogCommand>(command =>
+        commandService.Execute<IShowDuplicateResourceDialogCommand>(command =>
         {
             command.Resource = resource;
         });
