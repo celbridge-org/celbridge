@@ -74,8 +74,10 @@ namespace Celbridge.Project.Commands
             // Copy the resource
             //
 
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+
             // Resolve references to folder resource
-            _resolvedDestResource = ResolveDestinationResource(SourceResource, DestResource);
+            _resolvedDestResource = resourceRegistry.ResolveDestinationResource(SourceResource, DestResource);
 
             if (_resourceType == typeof(IFileResource))
             {
@@ -158,36 +160,6 @@ namespace Celbridge.Project.Commands
             _messengerService.Send(message);
 
             return Result.Ok();
-        }
-
-        /// <summary>
-        /// Resolves the destination resource key.
-        /// If destResourceKey specifies an existing folder, then we append the name of the source resource 
-        /// to the destination folder resource key. In all other situations we return the destResourceKey unchanged.
-        /// </summary>
-        private ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
-        {
-            string output = destResource;
-
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-            var getResult = resourceRegistry.GetResource(destResource);
-            if (getResult.IsSuccess)
-            {
-                var resource = getResult.Value;
-                if (resource is IFolderResource)
-                {
-                    if (destResource.IsEmpty)
-                    {
-                        output = sourceResource.ResourceName;
-                    }
-                    else
-                    {
-                        output = destResource.Combine(sourceResource.ResourceName);
-                    }
-                }
-            }
-
-            return output;
         }
 
         private async Task<Result> DeleteCopiedResource()
