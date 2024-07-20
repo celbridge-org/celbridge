@@ -4,12 +4,12 @@ using Celbridge.BaseLibrary.Resources;
 namespace Celbridge.BaseLibrary.Project;
 
 /// <summary>
-/// Display the Rename Resource dialog to allow the user to rename a resource.
+/// Display the Duplicate Resource dialog to allow the user to enter a name for the duplicated resource.
 /// </summary>
-public interface IShowRenameResourceDialogCommand : IExecutableCommand
+public interface IDuplicateResourceDialogCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to rename.
+    /// Resource to duplicate.
     /// </summary>
     ResourceKey Resource { get; set; }
 }
