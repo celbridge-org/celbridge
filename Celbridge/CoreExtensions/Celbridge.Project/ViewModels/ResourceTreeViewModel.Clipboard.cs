@@ -36,33 +36,35 @@ public partial class ResourceTreeViewModel
         });
     }
 
-    public void PasteResourceFromClipboard(IResource? resource)
+    public async Task PasteResourceFromClipboard(IResource? resource)
     {
         var rootFolder = _projectService.ResourceRegistry.RootFolder;
 
-        IFolderResource pasteFolder;
+        IFolderResource destFolder;
         if (resource is IFileResource file)
         {
             // Paste to the parent folder of the file resource
-            pasteFolder = file.ParentFolder ?? rootFolder;
+            destFolder = file.ParentFolder ?? rootFolder;
         }
         else if (resource is IFolderResource folder)
         {
             // Paste to the folder resource
-            pasteFolder = folder ?? rootFolder;
+            destFolder = folder ?? rootFolder;
         }
         else
         {
             // Paste to the root folder
-            pasteFolder = rootFolder;
+            destFolder = rootFolder;
         }
 
-        var folderResource = _projectService.ResourceRegistry.GetResourceKey(pasteFolder);
+        var resourceRegistry = _projectService.ResourceRegistry;
+
+        var destFolderResource = resourceRegistry.GetResourceKey(destFolder);
 
         // Execute a command to paste the clipboard content to the folder resource
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
-            command.FolderResource = folderResource;
+            command.FolderResource = destFolderResource;
         });
     }
 }

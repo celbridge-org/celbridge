@@ -297,4 +297,10 @@
   <data name="ResourceTree_MoveResourceFailed" xml:space="preserve">
     <value>Failed to move resource '{0}' to '{1}'</value>
   </data>
+  <data name="ResourceTree_DuplicateResource" xml:space="preserve">
+    <value>Duplicate {0}</value>
+  </data>
+  <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
+    <value>Enter a name for the new copy:</value>
+  </data>
 </root>
