@@ -6,7 +6,7 @@
 /// </summary>
 public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<ResourceKey>
 {
-    private readonly string _key = string.Empty;
+    private readonly string? _key;
 
     public ResourceKey(string key)
     {
@@ -15,13 +15,13 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     public override string ToString()
     {
-        return _key;
+        return _key ?? string.Empty;
     }
 
     /// <summary>
     /// Returns true if the resource key is empty.
     /// </summary>
-    public bool IsEmpty => _key.Length == 0;
+    public bool IsEmpty => string.IsNullOrEmpty(_key);
 
     public override bool Equals(object? obj)
     {
@@ -37,7 +37,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     public override int GetHashCode()
     {
-        return _key.GetHashCode();
+        return ToString().GetHashCode();
     }
 
     public int CompareTo(ResourceKey other)
@@ -63,7 +63,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// <summary>
     /// Implicit conversion from ResourceKey to string
     /// </summary>
-    public static implicit operator string(ResourceKey resource) => resource._key;
+    public static implicit operator string(ResourceKey resource) => resource.ToString();
 
     /// <summary>
     /// Returns the resource name. This is the last segment of the resource key.
@@ -113,10 +113,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     public ResourceKey Combine(string segment)
     {
         // Todo: Validate segment properly
-        if (string.IsNullOrEmpty(segment))
-        {
-            throw new ArgumentException();
-        }
+        ArgumentException.ThrowIfNullOrEmpty(segment);
 
         if (string.IsNullOrEmpty(_key))
         {
