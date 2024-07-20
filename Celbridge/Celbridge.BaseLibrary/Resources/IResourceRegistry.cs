@@ -42,6 +42,13 @@ public interface IResourceRegistry
     Result<IResource> GetResource(ResourceKey resource);
 
     /// <summary>
+    /// Resolves a destination resource key.
+    /// If destResource specifies an existing folder, then we append the name of the source resource
+    /// to the destination folder resource. In all other situations destResource is returned unchanged.
+    /// </summary>
+    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
+
+    /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
     Result UpdateResourceTree();

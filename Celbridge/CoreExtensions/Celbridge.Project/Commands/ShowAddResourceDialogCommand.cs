@@ -92,7 +92,7 @@ public class ShowAddResourceDialogCommand : CommandBase, IShowAddResourceDialogC
             _commandService.Execute<IAddResourceCommand>(command =>
             {
                 command.ResourceType = ResourceType;
-                command.Resource = newResource;
+                command.DestResource = newResource;
             });
 
             var message = new RequestResourceTreeUpdateMessage();

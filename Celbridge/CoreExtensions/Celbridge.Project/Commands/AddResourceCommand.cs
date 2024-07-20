@@ -12,7 +12,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public override string UndoStackName => UndoStackNames.Project;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceKey Resource { get; set; }
+    public ResourceKey DestResource { get; set; }
     public string SourcePath { get; set; } = string.Empty;
 
     private readonly IMessengerService _messengerService;
@@ -79,14 +79,14 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         // Validate the resource key
         //
 
-        if (Resource.IsEmpty)
+        if (DestResource.IsEmpty)
         {
             return Result.Fail("Failed to create resource. Resource key is empty");
         }
 
-        if (!ResourceKey.IsValidKey(Resource))
+        if (!ResourceKey.IsValidKey(DestResource))
         {
-            return Result.Fail($"Failed to create resource. Resource key '{Resource}' is not valid.");
+            return Result.Fail($"Failed to create resource. Resource key '{DestResource}' is not valid.");
         }
 
         //
@@ -95,7 +95,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         try
         {
-            var addedResourcePath = resourceRegistry.GetResourcePath(Resource);
+            var addedResourcePath = resourceRegistry.GetResourcePath(DestResource);
 
             // Fail if the parent folder for the new resource does not exist.
             // We could attempt to create any missing parent folders, but it would make the undo logic trickier.
@@ -165,7 +165,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         //
         // Expand the folder containing the newly created resource
         //
-        var parentFolderKey = Resource.GetParent();
+        var parentFolderKey = DestResource.GetParent();
         if (!parentFolderKey.IsEmpty)
         {
             resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
@@ -226,7 +226,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.Resource = resource;
+            command.DestResource = resource;
             command.SourcePath = sourcePath;
         });
     }
@@ -242,7 +242,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.Resource = resource;
+            command.DestResource = resource;
             command.SourcePath = sourcePath;
         });
     }
