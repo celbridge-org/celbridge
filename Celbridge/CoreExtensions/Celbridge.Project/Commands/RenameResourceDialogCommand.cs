@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.Commands;
 
-public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceDialogCommand
+public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
@@ -21,7 +21,7 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    public ShowRenameResourceDialogCommand(
+    public RenameResourceDialogCommand(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
@@ -127,10 +127,10 @@ public class ShowRenameResourceDialogCommand : CommandBase, IShowRenameResourceD
     // Static methods for scripting support.
     //
 
-    public static void ShowRenameResourceDialog(ResourceKey resource)
+    public static void RenameResourceDialog(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IShowRenameResourceDialogCommand>(command =>
+        commandService.Execute<IRenameResourceDialogCommand>(command =>
         {
             command.Resource = resource;
         });
