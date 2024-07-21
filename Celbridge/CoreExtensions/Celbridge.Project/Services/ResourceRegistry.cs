@@ -159,7 +159,7 @@ public class ResourceRegistry : IResourceRegistry
         return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resource}'.");
     }
 
-    public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
+    public ResourceKey GetCopyDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
     {
         string output = destResource;
 
@@ -192,6 +192,26 @@ public class ResourceRegistry : IResourceRegistry
         }
 
         return output;
+    }
+
+    public ResourceKey GetContextMenuItemFolder(IResource? resource)
+    {
+        IFolderResource? destFolder = null;
+        switch (resource)
+        {
+            case IFolderResource folder:
+                destFolder = folder;
+                break;
+            case IFileResource file:
+                destFolder = file.ParentFolder;
+                break;
+        }
+        if (destFolder is null)
+        {
+            destFolder = RootFolder;
+        }
+
+        return GetResourceKey(destFolder);
     }
 
     public Result UpdateResourceTree()

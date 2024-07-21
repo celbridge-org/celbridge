@@ -5,16 +5,15 @@ namespace Celbridge.BaseLibrary.Clipboard;
 /// <summary>
 /// Describes the resource items that are available for pasting from the clipboard.
 /// </summary>
-public interface IClipboardResourcesDescription
+public interface IClipboardResourceContent
 {
     /// <summary>
-    /// Specifies whether the resource items should be copied or moved when pasting.
+    /// Specifies whether the resource items should be copied or moved when pasted.
     /// </summary>
     CopyResourceOperation Operation { get; }
 
     /// <summary>
-    /// Resource items that may be pasted from the clipboard.
-    /// Resources that are outside the project folder have an empty SourceResource field.
+    /// Resource items available to be pasted from the clipboard.
     /// </summary>
     List<ClipboardResourceItem> ResourceItems { get; }
 }

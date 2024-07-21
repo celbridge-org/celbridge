@@ -8,22 +8,25 @@ namespace Celbridge.BaseLibrary.Clipboard;
 public record ClipboardResourceItem
 (
     /// <summary>
-    /// The type of the resource (file, folder).
+    /// The type of the resource.
     /// </summary>
     ResourceType ResourceType,
 
     /// <summary>
-    /// The source path of the resource being copied or moved.
+    /// The absolute path of the resource being copied or moved.
     /// </summary>
     string SourcePath,
 
     /// <summary>
-    /// The key representing the resource at the source location.
+    /// The resource at the source location.
+    /// This property is only populated for resources that are inside the project folder.
+    /// Resources that are outside the project folder are assigned an empty SourceResource field.
     /// </summary>
     ResourceKey SourceResource,
 
     /// <summary>
     /// The key representing the resource at the destination location.
+    /// It is valid for the source and dest resource to be the same, indicating a duplicate resource operation.
     /// </summary>
     ResourceKey DestResource
 );
