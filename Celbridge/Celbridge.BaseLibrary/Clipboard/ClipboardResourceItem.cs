@@ -13,20 +13,20 @@ public record ClipboardResourceItem
     ResourceType ResourceType,
 
     /// <summary>
-    /// The absolute path of the resource being copied or moved.
+    /// The absolute path of the resource at the source location.
     /// </summary>
     string SourcePath,
 
     /// <summary>
-    /// The resource at the source location.
-    /// This property is only populated for resources that are inside the project folder.
-    /// Resources that are outside the project folder are assigned an empty SourceResource field.
+    /// The key representing the resource at the source location.
+    /// This property is only populated for resources that are within the project folder.
+    /// Resources that are outside the project folder are assigned an empty resource key.
     /// </summary>
     ResourceKey SourceResource,
 
     /// <summary>
     /// The key representing the resource at the destination location.
-    /// It is valid for the source and dest resource to be the same, indicating a duplicate resource operation.
+    /// The SourceResource and DestResource may have the same value, indicating a duplicate resource operation.
     /// </summary>
     ResourceKey DestResource
 );
