@@ -1,5 +1,4 @@
 ﻿using Celbridge.BaseLibrary.Resources;
-using Celbridge.Project.Models;
 using Celbridge.Project.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -32,8 +31,20 @@ public sealed partial class ResourceTreeView : UserControl
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
+        Loaded += ResourceTreeView_Loaded;
+        Unloaded += ResourceTreeView_Unloaded;
+    }
+
+    private void ResourceTreeView_Loaded(object sender, RoutedEventArgs e)
+    {
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
+        ViewModel.OnLoaded();
+    }
+
+    private void ResourceTreeView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OnUnloaded();
     }
 
     private void AddFolder(object? sender, RoutedEventArgs e)
@@ -41,18 +52,17 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is IFolderResource folderResource)
+        if (menuFlyoutItem.DataContext is IFolderResource destFolder)
         {
             // Add a folder to the selected folder
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, folderResource);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
         }
-        else if (menuFlyoutItem.DataContext is IFileResource fileResource)
+        else if (menuFlyoutItem.DataContext is IFileResource destFile)
         {
             // Add a folder to the folder containing the selected file
-            var parentFolder = fileResource.ParentFolder;
-            Guard.IsNotNull(parentFolder);
+            Guard.IsNotNull(destFile.ParentFolder);
 
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, parentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFile.ParentFolder);
         }
         else
         {
@@ -66,18 +76,17 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        if (menuFlyoutItem.DataContext is IFolderResource folderResource)
+        if (menuFlyoutItem.DataContext is IFolderResource destFolder)
         {
             // Add a file to the selected folder
-            ViewModel.ShowAddResourceDialog(ResourceType.File, folderResource);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
         }
-        else if (menuFlyoutItem.DataContext is IFileResource fileResource)
+        else if (menuFlyoutItem.DataContext is IFileResource destFile)
         {
             // Add a file to the folder containing the selected file
-            var parentFolder = fileResource.ParentFolder;
-            Guard.IsNotNull(parentFolder);
+            Guard.IsNotNull(destFile.ParentFolder);
 
-            ViewModel.ShowAddResourceDialog(ResourceType.File, parentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, destFile.ParentFolder);
         }
         else
         {
@@ -113,10 +122,10 @@ public sealed partial class ResourceTreeView : UserControl
         var menuFlyoutItem = sender as MenuFlyoutItem;
         Guard.IsNotNull(menuFlyoutItem);
 
-        var resource = menuFlyoutItem.DataContext as IResource;
+        var destResource = menuFlyoutItem.DataContext as IResource;
 
         // Resource is permitted to be null here (indicates the root folder)
-        ViewModel.PasteResourceFromClipboard(resource);
+        ViewModel.PasteResourceFromClipboard(destResource);
     }
 
     private void DeleteResource(object? sender, RoutedEventArgs e)
@@ -230,6 +239,20 @@ public sealed partial class ResourceTreeView : UserControl
             }
         }
 
-        ViewModel.MoveResources(resources, newParent);
+        ViewModel.MoveResourcesToFolder(resources, newParent);
+    }
+
+    private void ResourceContextMenu_Opening(object sender, object e)
+    {
+        var menuFlyout = sender as MenuFlyout;
+        Guard.IsNotNull(menuFlyout);
+
+        var target = menuFlyout.Target;
+        Guard.IsNotNull(target);
+
+        // Resource is permitted to be null here (indicates the root folder)
+        var resource = target.DataContext as IResource;
+
+        ViewModel.OnContextMenuOpening(resource);
     }
 }

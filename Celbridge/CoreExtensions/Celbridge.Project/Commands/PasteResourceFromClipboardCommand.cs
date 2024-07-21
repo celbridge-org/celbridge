@@ -12,7 +12,7 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
 
     public override string UndoStackName => UndoStackNames.None;
 
-    public ResourceKey FolderResource { get; set; }
+    public ResourceKey DestFolderResource { get; set; }
 
     public PasteResourceFromClipboardCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -27,7 +27,7 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
             return Result.Fail("Clipboard does not contain a resource to paste");
         }
 
-        return await clipboardService.PasteResourceItems(FolderResource);
+        return await clipboardService.PasteResourceItems(DestFolderResource);
     }
 
     //
@@ -39,7 +39,7 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
-            command.FolderResource = folderResource;
+            command.DestFolderResource = folderResource;
         });
     }
 }

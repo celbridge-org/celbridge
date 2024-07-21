@@ -13,37 +13,9 @@
 
     <UserControl.Resources>
 
-        <MenuFlyout x:Name="FolderResourceContextMenu"
-                    Placement="RightEdgeAlignedTop">
-            <MenuFlyoutSubItem Text="{x:Bind AddString}">
-                <MenuFlyoutItem Text="{x:Bind FolderString}" 
-                                Icon="Folder"
-                                Click="AddFolder"/>
-                <MenuFlyoutItem Text="{x:Bind FileString}" 
-                                Icon="Add"
-                                Click="AddFile"/>
-            </MenuFlyoutSubItem>
-            <MenuFlyoutSubItem Text="{x:Bind EditString}">
-                <MenuFlyoutItem Text="{x:Bind CutString}" 
-                                Icon="Cut"
-                                Click="CutResource"/>
-                <MenuFlyoutItem Text="{x:Bind CopyString}" 
-                                Icon="Copy"
-                                Click="CopyResource"/>
-                <MenuFlyoutItem Text="{x:Bind PasteString}" 
-                                Icon="Paste"
-                                Click="PasteResource"/>
-                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
-                                Icon="Delete"
-                                Click="DeleteResource"/>
-                <MenuFlyoutItem Text="{x:Bind RenameString}" 
-                                Icon="Edit"
-                                Click="RenameResource"/>
-            </MenuFlyoutSubItem>
-        </MenuFlyout>
-
-        <MenuFlyout x:Name="FileResourceContextMenu"
-                    Placement="RightEdgeAlignedTop">
+        <MenuFlyout x:Name="ResourceContextMenu"
+                    Placement="RightEdgeAlignedTop"
+                    Opening="ResourceContextMenu_Opening">
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
                 <MenuFlyoutItem Text="{x:Bind FolderString}" 
                             Icon="Folder"
@@ -55,52 +27,24 @@
             <MenuFlyoutSubItem Text="{x:Bind EditString}">
                 <MenuFlyoutItem Text="{x:Bind CutString}" 
                                 Icon="Cut"
-                                Click="CutResource"/>
-                <MenuFlyoutItem Text="{x:Bind CopyString}" 
-                                Icon="Copy"
-                                Click="CopyResource"/>
-                <MenuFlyoutItem Text="{x:Bind PasteString}" 
-                                Icon="Paste"
-                                Click="PasteResource"/>
-                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
-                                Icon="Delete"
-                                Click="DeleteResource"/>
-                <MenuFlyoutItem Text="{x:Bind RenameString}" 
-                                Icon="Edit"
-                                Click="RenameResource"/>
-            </MenuFlyoutSubItem>
-        </MenuFlyout>
-
-        <MenuFlyout x:Name="EmptyAreaContextMenu"
-                    Placement="RightEdgeAlignedTop">
-            <MenuFlyoutSubItem Text="{x:Bind AddString}">
-                <MenuFlyoutItem Text="{x:Bind FolderString}" 
-                                Icon="Folder"
-                                Click="AddFolder"/>
-                <MenuFlyoutItem Text="{x:Bind FileString}" 
-                                Icon="Add"
-                                Click="AddFile"/>
-            </MenuFlyoutSubItem>
-            <MenuFlyoutSubItem Text="{x:Bind EditString}">
-                <MenuFlyoutItem Text="{x:Bind CutString}" 
-                                Icon="Cut"
                                 Click="CutResource"
-                                IsEnabled="False"/>
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind CopyString}" 
                                 Icon="Copy"
                                 Click="CopyResource"
-                                IsEnabled="False"/>
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind PasteString}" 
                                 Icon="Paste"
-                                Click="PasteResource"/>
+                                Click="PasteResource"
+                                IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                                 Icon="Delete"
                                 Click="DeleteResource"
-                                IsEnabled="False"/>
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind RenameString}" 
                                 Icon="Edit"
                                 Click="RenameResource"
-                                IsEnabled="False"/>
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
             </MenuFlyoutSubItem>
         </MenuFlyout>
 
@@ -109,7 +53,7 @@
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
 							   ItemsSource="{x:Bind Children, Mode=OneWay}"
 							   IsExpanded="{x:Bind IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                               ContextFlyout="{StaticResource FolderResourceContextMenu}">
+                               ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                               Glyph="&#xE8B7;" 
@@ -124,7 +68,7 @@
         <DataTemplate x:Key="FileTemplate"
 					  x:DataType="models:FileResource">
             <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name,Mode=OneWay}"
-                               ContextFlyout="{StaticResource FileResourceContextMenu}"
+                               ContextFlyout="{StaticResource ResourceContextMenu}"
                                DoubleTapped="DoubleTappedResource">
                 <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
             </muxc:TreeViewItem>
@@ -139,7 +83,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   Grid.Row="3"
                   VerticalAlignment="Stretch"
-                  ContextFlyout="{StaticResource EmptyAreaContextMenu}">
+                  ContextFlyout="{StaticResource ResourceContextMenu}">
         <muxc:TreeView x:Name="ResourcesTreeView"
                     ItemsSource="{x:Bind ViewModel.Resources, Mode=OneWay}"
                     ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"

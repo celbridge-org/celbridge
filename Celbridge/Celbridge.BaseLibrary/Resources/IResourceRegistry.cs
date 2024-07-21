@@ -6,7 +6,7 @@
 public interface IResourceRegistry
 {
     /// <summary>
-    /// A folder resource containing the file and folder resources in the project.
+    /// The root folder resource that contains all the resources in the project.
     /// </summary>
     IFolderResource RootFolder { get; }
 
@@ -17,21 +17,19 @@ public interface IResourceRegistry
 
     /// <summary>
     /// Returns the resource key for a resource at the specified path in the project.
-    /// The resource key will be generated even if the resource does not exist in the project.
-    /// Fails if the path is not in the project folder.
+    /// The resource key will be generated even if the resource does not exist yet in the project.
+    /// Fails if the path is not within the project folder.
     /// </summary>
     Result<ResourceKey> GetResourceKey(string resourcePath);
 
     /// <summary>
     /// Returns the absolute path for a resource.
-    /// The path uses the directory separator character of the current platform.
     /// </summary>
     string GetResourcePath(IResource resource);
 
     /// <summary>
-    /// Returns the absolute path for a specified resource key.
-    /// The path will be generated even if the resource does not exist in the project.
-    /// The path uses the directory separator character of the current platform.
+    /// Returns the absolute path for a resource key.
+    /// The path will be generated even if the resource does not exist yet in the project.
     /// </summary>
     string GetResourcePath(ResourceKey resource);
 
@@ -42,11 +40,19 @@ public interface IResourceRegistry
     Result<IResource> GetResource(ResourceKey resource);
 
     /// <summary>
-    /// Resolves a destination resource key.
-    /// If destResource specifies an existing folder, then we append the name of the source resource
-    /// to the destination folder resource. In all other situations destResource is returned unchanged.
+    /// Returns a resolved destination resource key for a copy operation.
+    /// If destResource specifies an existing folder in the project, then the name of the source resource is
+    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
     /// </summary>
-    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
+    ResourceKey GetCopyDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
+
+    /// <summary>
+    /// Returns the folder resource associated with the context menu item for a resource.
+    /// If the resource is a folder, then the folder is returned.
+    /// If the resource is a file, then the file's parent folder is returned.
+    /// If the resource is null, then the root folder is returned.
+    /// </summary>
+    ResourceKey GetContextMenuItemFolder(IResource? resource);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
@@ -56,7 +62,7 @@ public interface IResourceRegistry
     /// <summary>
     /// Returns the list of expanded folders in the resource tree.
     /// </summary>
-    public List<string> ExpandedFolders { get; }
+    List<string> ExpandedFolders { get; }
 
     /// <summary>
     /// Mark a folder resource as expanded or collapsed in the resource tree.
@@ -67,5 +73,5 @@ public interface IResourceRegistry
     /// <summary>
     /// Returns true if the folder with the specified resource key is expanded.
     /// </summary>
-    public bool IsFolderExpanded(ResourceKey folderResource);
+    bool IsFolderExpanded(ResourceKey folderResource);
 }

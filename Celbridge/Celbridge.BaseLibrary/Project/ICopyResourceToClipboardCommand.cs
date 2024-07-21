@@ -13,7 +13,7 @@ public interface ICopyResourceToClipboardCommand : IExecutableCommand
     /// <summary>
     /// Resource to copy to the clipboard.
     /// </summary>
-    ResourceKey Resource { get; set; }
+    ResourceKey SourceResource { get; set; }
 
     /// <summary>
     /// If set to Move, the original resource will be moved to the new location 
