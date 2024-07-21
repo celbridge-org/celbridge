@@ -11,5 +11,5 @@ public interface IPasteResourceFromClipboardCommand : IExecutableCommand
     /// <summary>
     /// Folder resource to paste the clipboard contents into.
     /// </summary>
-    ResourceKey FolderResource { get; set; }
+    ResourceKey DestFolderResource { get; set; }
 }
