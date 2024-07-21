@@ -48,11 +48,11 @@ public class ClipboardService : IClipboardService, IDisposable
         return ClipboardContentType.None;
     }
 
-    public async Task<Result<IClipboardResourcesDescription>> GetClipboardResourceDescription(ResourceKey destFolderResource)
+    public async Task<Result<IClipboardResourceContent>> GetClipboardResourceContent(ResourceKey destFolderResource)
     {
         if (GetClipboardContentType() != ClipboardContentType.Resource)
         {
-            return Result<IClipboardResourcesDescription>.Fail("Clipboard content does not contain a resource");
+            return Result<IClipboardResourceContent>.Fail("Clipboard content does not contain a resource");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
@@ -60,19 +60,19 @@ public class ClipboardService : IClipboardService, IDisposable
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
         {
-            return Result<IClipboardResourcesDescription>.Fail($"Destination folder resource '{destFolderResource}' does not exist");
+            return Result<IClipboardResourceContent>.Fail($"Destination folder resource '{destFolderResource}' does not exist");
         }
 
         var resource = getResult.Value;
         if (resource is not IFolderResource)
         {
-            return Result<IClipboardResourcesDescription>.Fail($"Resource '{destFolderResource}' is not a folder resource");
+            return Result<IClipboardResourceContent>.Fail($"Resource '{destFolderResource}' is not a folder resource");
         }
 
         var destFolderPath = resourceRegistry.GetResourcePath(resource);
         if (!Directory.Exists(destFolderPath))
         {
-            return Result<IClipboardResourcesDescription>.Fail($"The path '{destFolderPath}' does not exist.");
+            return Result<IClipboardResourceContent>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
         var description = new ClipboardResourceDescription();
@@ -109,7 +109,7 @@ public class ClipboardService : IClipboardService, IDisposable
                 {
                     var sourceResource = getKeyResult.Value;
                     var sourcePath = resourceRegistry.GetResourcePath(sourceResource);
-                    var destResource = resourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
+                    var destResource = resourceRegistry.GetCopyDestinationResource(sourceResource, destFolderResource);
 
                     // This resource is inside the project folder so we should use the CopyResource command
                     // to copy/move it so that the resource meta data is preserved.
@@ -137,15 +137,15 @@ public class ClipboardService : IClipboardService, IDisposable
         }
         catch (Exception ex)
         {
-            return Result<IClipboardResourcesDescription>.Fail($"Failed to generate clipboard resource description. {ex}");
+            return Result<IClipboardResourceContent>.Fail($"Failed to generate clipboard resource description. {ex}");
         }
 
-        return Result<IClipboardResourcesDescription>.Ok(description);
+        return Result<IClipboardResourceContent>.Ok(description);
     }
 
     public async Task<Result> PasteResourceItems(ResourceKey destFolderResource)
     {
-        var getResult = await GetClipboardResourceDescription(destFolderResource);
+        var getResult = await GetClipboardResourceContent(destFolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);

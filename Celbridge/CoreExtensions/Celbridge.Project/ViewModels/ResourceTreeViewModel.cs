@@ -12,6 +12,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
+    private readonly IClipboardService _clipboardService;
     private readonly ICommandService _commandService;
 
     public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
@@ -25,6 +26,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
+        _clipboardService = workspaceWrapper.WorkspaceService.ClipboardService;
         _commandService = commandService;
     }
 
@@ -37,7 +39,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Listen for messages to determine when to update the resource tree
         _messengerService.Register<RequestResourceTreeUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
-        _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
     }
 
     public void OnUnloaded()
@@ -45,7 +46,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Listen for messages to determine when to update the resource tree
         _messengerService.Unregister<RequestResourceTreeUpdateMessage>(this);
         _messengerService.Unregister<ExecutedCommandMessage>(this);
-        _messengerService.Unregister<ClipboardContentChangedMessage>(this);
     }
 
     private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdateMessage message)
@@ -71,8 +71,41 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
     }
 
-    private void OnClipboardContentChangedMessage(object recipient, ClipboardContentChangedMessage message)
+    public void OnContextMenuOpening(IResource? resource)
     {
+        _ = UpdateContextMenuOptions(resource);
+    }
+
+    /// <summary>
+    /// Set to true if the current context menu item is a valid resource.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isResourceSelected;
+
+    /// <summary>
+    /// Set to true if the clipboard content contains a resource.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isResourceOnClipboard;
+
+    private async Task UpdateContextMenuOptions(IResource? resource)
+    {
+        IsResourceSelected = resource is not null;
+
+        bool isResourceOnClipbaord = false;
+        if (_clipboardService.GetClipboardContentType() == ClipboardContentType.Resource)
+        {
+            var resourceRegistry = _projectService.ResourceRegistry;
+            var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
+
+            var getResult = await _clipboardService.GetClipboardResourceContent(destFolderResource);
+            if (getResult.IsSuccess)
+            {
+                var content = getResult.Value;
+                isResourceOnClipbaord = content.ResourceItems.Count > 0;
+            }
+        }
+        IsResourceOnClipboard = isResourceOnClipbaord;
     }
 
     //

@@ -10,14 +10,15 @@ public interface IClipboardService
     ClipboardContentType GetClipboardContentType();
 
     /// <summary>
-    /// Returns a description of the resource items to be pasted for the current clipboard content.
+    /// Returns a description of any resource clipboard content available to paste.
     /// The destination resource keys are resolved relative to the specified destination folder.
+    /// Fails if the current clipboard content type is not ClipboardContentType.Resource
     /// </summary>
-    Task<Result<IClipboardResourcesDescription>> GetClipboardResourceDescription(ResourceKey destFolderResource);
+    Task<Result<IClipboardResourceContent>> GetClipboardResourceContent(ResourceKey destFolderResource);
 
     /// <summary>
     /// Paste resources from the clipboard into the specified destination folder resource.
-    /// The call will fail if the current clipboard content is not a resource.
+    /// Fails if the current clipboard content type is not ClipboardContentType.Resource
     /// </summary>
     Task<Result> PasteResourceItems(ResourceKey destFolderResource);
 }
