@@ -13,7 +13,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceKey ParentFolderResource { get; set; }
+    public ResourceKey DestFolderResource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
@@ -52,7 +52,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(ParentFolderResource);
+        var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);
@@ -61,7 +61,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var parentFolder = getResult.Value as IFolderResource;
         if (parentFolder is null)
         {
-            return Result.Fail($"Parent folder resource key '{ParentFolderResource}' does not reference a folder resource.");
+            return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
         }
 
         var defaultStringKey = ResourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
@@ -86,7 +86,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         {
             var inputText = showResult.Value;
 
-            var newResource = ParentFolderResource.Combine(inputText);
+            var newResource = DestFolderResource.Combine(inputText);
 
             // Execute a command to add the resource
             _commandService.Execute<IAddResourceCommand>(command =>
@@ -145,7 +145,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.ParentFolderResource = parentFolderResource;
+            command.DestFolderResource = parentFolderResource;
         });
     }
 
@@ -155,7 +155,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.ParentFolderResource = parentFolderResource;
+            command.DestFolderResource = parentFolderResource;
         });
     }
 }

@@ -11,7 +11,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 {
     public override string UndoStackName => UndoStackNames.None;
 
-    public ResourceKey Resource { get; set; }
+    public ResourceKey SourceResource { get; set; }
     public CopyResourceOperation Operation { get; set; }
   
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -25,7 +25,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
-        var getResult = resourceRegistry.GetResource(Resource);
+        var getResult = resourceRegistry.GetResource(SourceResource);
         if (getResult.IsFailure)
         {
             return getResult;
@@ -92,7 +92,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.Resource = resource;
+            command.SourceResource = resource;
             command.Operation = CopyResourceOperation.Copy;
         });
     }
@@ -102,7 +102,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.Resource = resource;
+            command.SourceResource = resource;
             command.Operation = CopyResourceOperation.Move;
         });
     }
