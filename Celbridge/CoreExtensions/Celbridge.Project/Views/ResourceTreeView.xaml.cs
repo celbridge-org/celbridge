@@ -241,4 +241,18 @@ public sealed partial class ResourceTreeView : UserControl
 
         ViewModel.MoveResourcesToFolder(resources, newParent);
     }
+
+    private void ResourceContextMenu_Opening(object sender, object e)
+    {
+        var menuFlyout = sender as MenuFlyout;
+        Guard.IsNotNull(menuFlyout);
+
+        var target = menuFlyout.Target;
+        Guard.IsNotNull(target);
+
+        // Resource is permitted to be null here (indicates the root folder)
+        var resource = target.DataContext as IResource;
+
+        ViewModel.OnContextMenuOpening(resource);
+    }
 }
