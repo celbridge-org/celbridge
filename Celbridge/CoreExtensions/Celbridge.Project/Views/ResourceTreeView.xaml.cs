@@ -32,8 +32,20 @@ public sealed partial class ResourceTreeView : UserControl
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
+        Loaded += ResourceTreeView_Loaded;
+        Unloaded += ResourceTreeView_Unloaded;
+    }
+
+    private void ResourceTreeView_Loaded(object sender, RoutedEventArgs e)
+    {
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
+        ViewModel.OnLoaded();
+    }
+
+    private void ResourceTreeView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OnUnloaded();
     }
 
     private void AddFolder(object? sender, RoutedEventArgs e)

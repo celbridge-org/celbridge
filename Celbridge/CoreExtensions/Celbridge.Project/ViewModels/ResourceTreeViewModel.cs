@@ -1,4 +1,5 @@
-﻿using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.BaseLibrary.Clipboard;
+using Celbridge.BaseLibrary.Commands;
 using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
@@ -9,6 +10,7 @@ namespace Celbridge.Project.ViewModels;
 
 public partial class ResourceTreeViewModel : ObservableObject
 {
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
 
@@ -21,12 +23,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
+        _messengerService = messengerService;
         _projectService = workspaceWrapper.WorkspaceService.ProjectService;
         _commandService = commandService;
-
-        // Listen for messages to determine when to update the resource tree
-        messengerService.Register<RequestResourceTreeUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
-        messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage); 
     }
 
     private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdateMessage message)
@@ -50,5 +49,25 @@ public partial class ResourceTreeViewModel : ObservableObject
                 _resourceTreeUpdatePending = false;
             }
         }
+    }
+
+    private void OnClipboardContentChangedMessage(object recipient, ClipboardContentChangedMessage message)
+    {
+    }
+
+    public void OnLoaded()
+    {
+        // Listen for messages to determine when to update the resource tree
+        _messengerService.Register<RequestResourceTreeUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
+        _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
+        _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
+    }
+
+    public void OnUnloaded()
+    {
+        // Listen for messages to determine when to update the resource tree
+        _messengerService.Unregister<RequestResourceTreeUpdateMessage>(this);
+        _messengerService.Unregister<ExecutedCommandMessage>(this);
+        _messengerService.Unregister<ClipboardContentChangedMessage>(this);
     }
 }

@@ -71,6 +71,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (InspectorService as IDisposable)!.Dispose();
                 (ProjectService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
+                (ClipboardService as IDisposable)!.Dispose();
             }
 
             _disposed = true;

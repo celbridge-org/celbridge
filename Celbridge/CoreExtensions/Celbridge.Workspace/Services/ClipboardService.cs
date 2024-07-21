@@ -9,7 +9,7 @@ using Windows.Storage;
 
 namespace Celbridge.Workspace.Services;
 
-public class ClipboardService : IClipboardService
+public class ClipboardService : IClipboardService, IDisposable
 {
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -23,6 +23,14 @@ public class ClipboardService : IClipboardService
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+
+        Clipboard.ContentChanged += Clipboard_ContentChanged;
+    }
+
+    private void Clipboard_ContentChanged(object? sender, object e)
+    {
+        var message = new ClipboardContentChangedMessage();
+        _messengerService.Send(message);
     }
 
     public ClipboardContentType GetClipboardContentType()
@@ -212,5 +220,32 @@ public class ClipboardService : IClipboardService
         string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         string pathB = Path.GetFullPath(subPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+                Clipboard.ContentChanged -= Clipboard_ContentChanged;
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~ClipboardService()
+    {
+        Dispose(false);
     }
 }

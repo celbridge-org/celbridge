@@ -1,7 +1,6 @@
 ﻿using Celbridge.BaseLibrary.Project;
 using Celbridge.BaseLibrary.Resources;
 using Celbridge.BaseLibrary.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Project.ViewModels;
 
