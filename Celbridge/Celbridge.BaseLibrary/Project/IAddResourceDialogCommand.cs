@@ -16,5 +16,5 @@ public interface IAddResourceDialogCommand : IExecutableCommand
     /// <summary>
     /// Resource key for the folder which will contain the new resource.
     /// </summary>
-    ResourceKey ParentFolderResource { get; set; }
+    ResourceKey DestFolderResource { get; set; }
 }

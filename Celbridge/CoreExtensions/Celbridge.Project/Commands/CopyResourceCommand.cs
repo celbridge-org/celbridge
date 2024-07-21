@@ -77,7 +77,7 @@ namespace Celbridge.Project.Commands
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
 
             // Resolve references to folder resource
-            _resolvedDestResource = resourceRegistry.ResolveDestinationResource(SourceResource, DestResource);
+            _resolvedDestResource = resourceRegistry.GetCopyDestinationResource(SourceResource, DestResource);
 
             if (_resourceType == typeof(IFileResource))
             {
