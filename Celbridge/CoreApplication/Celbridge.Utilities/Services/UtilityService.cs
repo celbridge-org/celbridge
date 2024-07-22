@@ -24,27 +24,34 @@ public class UtilityService : IUtilityService
         return archivePath;
     }
 
-    public string GenerateLogName(string logType)
-    {
-        // Get the current date and time in the desired format
-        string currentDate = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-
-        // Get the application version
-        string version = GetAppVersion();
-
-        // Todo: Select debug or release from the build configuration
-        string environment = "Debug";
-
-        // Construct the log file name
-        string logName = $"{logType}_{environment}_v{version}_{currentDate}";
-
-        return logName;
-    }
-
-    public string GetAppVersion()
+    public EnvironmentInfo GetEnvironmentInfo()
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version;
-        return version != null ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}" : "unknown";
+        var appVersion = version != null 
+            ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}" 
+            : "unknown";
+
+#if WINDOWS
+        var platform = "Windows";
+#else
+        var platform = "SkiaGtk";
+#endif
+
+#if DEBUG
+        var configuration = "Debug";
+#else
+        var configuration = "Release";
+#endif
+
+        var environmentInfo = new EnvironmentInfo(appVersion, platform, configuration);
+
+        return environmentInfo;
+    }
+
+    public string GetTimestamp()
+    {
+        // Get the current date and time in the desired format
+        return DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
     }
 
     public Result DeleteOldFiles(string folderPath, string filePrefix, int maxFilesToKeep)

@@ -12,18 +12,17 @@ public interface IUtilityService
     string GetTemporaryFilePath(string folderName, string extension);
 
     /// <summary>
-    /// Generate a log file name that starts with the specified prefix.
-    /// The name includes timestamp, version and environment.
+    /// Returns environment information the runtime application.
     /// </summary>
-    public string GenerateLogName(string logFilePrefix);
+    EnvironmentInfo GetEnvironmentInfo();
 
     /// <summary>
-    /// Returns the application version.
+    /// Returns the current UTC time in "yyyyMMdd_HHmmss" format.
     /// </summary>
-    public string GetAppVersion();
+    public string GetTimestamp();
 
     /// <summary>
     /// Deletes old files in the specified folder that start with the specified prefix.
     /// </summary>
-    public Result DeleteOldFiles(string folderPath, string filePrefix, int maxFilesToKeep);
+    Result DeleteOldFiles(string folderPath, string filePrefix, int maxFilesToKeep);
 }
