@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.Projects;
 
-namespace Celbridge.BaseLibrary.Dialog;
+namespace Celbridge.Dialog;
 
 /// <summary>
 /// A modal dialog that allows the user to specify the configuration for a new project.

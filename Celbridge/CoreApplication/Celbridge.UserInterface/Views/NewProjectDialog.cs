@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.Projects;
+using Celbridge.UserInterface;
+using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Views;
 

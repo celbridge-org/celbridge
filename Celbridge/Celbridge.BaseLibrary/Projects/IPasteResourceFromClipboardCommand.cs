@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Pastes resources from the clipboard.

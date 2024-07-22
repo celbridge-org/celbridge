@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.Status;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Extensions;
+using Celbridge.Status;
+using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.Status.Services;
 using Celbridge.StatusBar.ViewModels;
 using Celbridge.StatusBar.Views;

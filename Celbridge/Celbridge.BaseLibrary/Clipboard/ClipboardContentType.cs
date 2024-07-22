@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Clipboard;
+﻿namespace Celbridge.Clipboard;
 
 /// <summary>
 /// The types of content that can be on the clipboard.

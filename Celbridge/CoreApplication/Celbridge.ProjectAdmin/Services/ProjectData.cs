@@ -1,5 +1,5 @@
 ﻿using SQLite;
-using Celbridge.BaseLibrary.Project;
+using Celbridge.Projects;
 using Celbridge.ProjectAdmin.Models;
 
 namespace Celbridge.ProjectAdmin.Services;

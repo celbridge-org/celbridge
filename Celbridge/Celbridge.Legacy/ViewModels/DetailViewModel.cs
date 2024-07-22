@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.ComponentModel;
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;

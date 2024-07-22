@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.Settings;
 using Microsoft.Web.WebView2.Core;
 using Path = System.IO.Path;
 

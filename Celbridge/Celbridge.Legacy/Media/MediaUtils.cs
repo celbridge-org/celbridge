@@ -61,7 +61,7 @@ public static class MediaUtils
         catch (Exception ex)
         {
             // Handle exceptions (e.g., no application associated with MP3 files)
-            Console.WriteLine($"Error opening media file: {ex.Message}");
+            System.Console.WriteLine($"Error opening media file: {ex.Message}");
         }
     }
 }

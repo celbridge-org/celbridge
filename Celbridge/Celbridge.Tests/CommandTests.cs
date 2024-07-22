@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Core;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
+﻿using Celbridge.Commands;
+using Celbridge.Core;
+using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Commands.Services;
 using Celbridge.Logging.Services;
 using Celbridge.Messaging.Services;

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Utilities;
+﻿namespace Celbridge.Utilities;
 
 /// <summary>
 /// Provides access to common low-level utility methods.

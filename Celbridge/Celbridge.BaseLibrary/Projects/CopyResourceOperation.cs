@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Project;
+﻿namespace Celbridge.Projects;
 
 /// <summary>
 /// Specifies whether a copy operation should copy or move the resource.

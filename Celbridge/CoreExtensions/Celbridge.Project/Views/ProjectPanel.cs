@@ -1,7 +1,7 @@
-﻿using Celbridge.Project.ViewModels;
+﻿using Celbridge.Projects.ViewModels;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Project.Views;
+namespace Celbridge.Projects.Views;
 
 public sealed partial class ProjectPanel : UserControl
 {

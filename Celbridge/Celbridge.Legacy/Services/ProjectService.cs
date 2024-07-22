@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using Celbridge.Legacy.Tasks;
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using Path = System.IO.Path;
 
 namespace Celbridge.Legacy.Services;

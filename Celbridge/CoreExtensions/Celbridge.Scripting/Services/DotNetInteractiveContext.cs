@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Scripting;
+﻿using Celbridge.Scripting;
 using Microsoft.DotNet.Interactive;
 
 namespace Celbridge.Scripting.Services;

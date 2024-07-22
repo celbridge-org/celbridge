@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.Scripting;
+﻿using Celbridge.Extensions;
+using Celbridge.Scripting;
 using Celbridge.Scripting.Services;
 
 namespace Celbridge.Scripting;

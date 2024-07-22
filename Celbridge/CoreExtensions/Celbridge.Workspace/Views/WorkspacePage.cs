@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.UserInterface;
+using Celbridge.Dialog;
+using Celbridge.Workspace;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;

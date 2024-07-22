@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Add a file or folder resource to the project.

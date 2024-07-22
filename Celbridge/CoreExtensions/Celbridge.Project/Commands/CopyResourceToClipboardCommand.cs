@@ -1,11 +1,10 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
-namespace Celbridge.Project.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipboardCommand
 {
@@ -73,8 +72,8 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         dataPackage.RequestedOperation = Operation == CopyResourceOperation.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
 
         dataPackage.SetStorageItems(storageItems);
-        Clipboard.SetContent(dataPackage);
-        Clipboard.Flush();
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        Windows.ApplicationModel.DataTransfer.Clipboard.Flush();
 
         return Result.Ok();
     }

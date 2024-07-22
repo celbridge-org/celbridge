@@ -1,3 +1,3 @@
-﻿global using Celbridge.BaseLibrary.Commands;
-global using Celbridge.BaseLibrary.Core;
+﻿global using Celbridge.Commands;
+global using Celbridge.Core;
 global using Microsoft.Extensions.DependencyInjection;

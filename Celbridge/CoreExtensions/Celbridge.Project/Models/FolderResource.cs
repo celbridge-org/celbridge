@@ -1,8 +1,8 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
-namespace Celbridge.Project.Models;
+namespace Celbridge.Projects.Models;
 
 public partial class FolderResource : Resource, IFolderResource
 {

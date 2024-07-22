@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Console;
+﻿namespace Celbridge.Console;
 
 public interface ICommandHistory
 {

@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.Clipboard;
+using Celbridge.Projects;
 
 namespace Celbridge.Workspace.Services;
 

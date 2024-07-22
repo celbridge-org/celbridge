@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Scripting;
+﻿using Celbridge.Scripting;
 using CommunityToolkit.Diagnostics;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.Events;

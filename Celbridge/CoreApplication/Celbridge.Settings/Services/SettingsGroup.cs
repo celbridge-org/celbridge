@@ -1,6 +1,6 @@
-using Celbridge.BaseLibrary.Core;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Settings;
+using Celbridge.Core;
+using Celbridge.Logging;
+using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Windows.Foundation.Collections;

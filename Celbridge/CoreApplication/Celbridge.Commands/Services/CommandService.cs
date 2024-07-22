@@ -1,5 +1,5 @@
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Logging;
+using Celbridge.Messaging;
 using System.Diagnostics;
 
 namespace Celbridge.Commands.Services;

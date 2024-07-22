@@ -1,8 +1,8 @@
-﻿using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.FilePicker;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Dialog;
+using Celbridge.FilePicker;
+using Celbridge.Navigation;
+using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 

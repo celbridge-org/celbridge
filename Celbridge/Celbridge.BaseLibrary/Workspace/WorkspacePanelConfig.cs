@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.Workspace;
 
 /// <summary>
 /// The types of panel that can be displayed in the workspace.

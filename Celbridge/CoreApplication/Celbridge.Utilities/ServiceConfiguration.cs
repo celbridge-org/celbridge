@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Utilities;
+﻿using Celbridge.Utilities;
 using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 

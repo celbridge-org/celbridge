@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.FilePicker;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Navigation;
+﻿using Celbridge.Dialog;
+using Celbridge.FilePicker;
+using Celbridge.Logging;
+using Celbridge.Navigation;
 
 namespace Celbridge.UserInterface.ViewModels;
 

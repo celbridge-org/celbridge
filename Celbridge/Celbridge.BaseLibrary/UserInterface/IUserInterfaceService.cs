@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Provides access to core application UI elements.

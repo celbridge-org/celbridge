@@ -1,8 +1,8 @@
-﻿using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Validators;
+﻿using Celbridge.Resources;
+using Celbridge.Validators;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Project.Services;
+namespace Celbridge.Projects.Services;
 
 public class ResourceNameValidator : IResourceNameValidator
 {

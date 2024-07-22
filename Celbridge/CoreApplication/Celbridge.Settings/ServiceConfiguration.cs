@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.Settings;
 using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 

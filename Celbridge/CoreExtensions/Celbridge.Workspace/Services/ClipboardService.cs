@@ -1,11 +1,12 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
-using Windows.ApplicationModel.DataTransfer;
+﻿using Celbridge.Clipboard;
+using Celbridge.Commands;
+using Celbridge.Messaging;
+using Celbridge.Projects;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using Windows.Storage;
+
+using DataTransfer = Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Services;
 
@@ -24,7 +25,7 @@ public class ClipboardService : IClipboardService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
 
-        Clipboard.ContentChanged += Clipboard_ContentChanged;
+        DataTransfer.Clipboard.ContentChanged += Clipboard_ContentChanged;
     }
 
     private void Clipboard_ContentChanged(object? sender, object e)
@@ -35,12 +36,12 @@ public class ClipboardService : IClipboardService, IDisposable
 
     public ClipboardContentType GetClipboardContentType()
     {
-        var dataPackageView = Clipboard.GetContent();
-        if (dataPackageView.Contains(StandardDataFormats.StorageItems))
+        var dataPackageView = DataTransfer.Clipboard.GetContent();
+        if (dataPackageView.Contains(DataTransfer.StandardDataFormats.StorageItems))
         {
             return ClipboardContentType.Resource;
         }
-        else if (dataPackageView.Contains(StandardDataFormats.Text))
+        else if (dataPackageView.Contains(DataTransfer.StandardDataFormats.Text))
         {
             return ClipboardContentType.Text;
         }
@@ -77,11 +78,11 @@ public class ClipboardService : IClipboardService, IDisposable
 
         var description = new ClipboardResourceDescription();
 
-        var dataPackageView = Clipboard.GetContent();
+        var dataPackageView = DataTransfer.Clipboard.GetContent();
 
         // Note whether the operation is a move or a copy
         description.Operation = 
-            dataPackageView.RequestedOperation == DataPackageOperation.Move 
+            dataPackageView.RequestedOperation == DataTransfer.DataPackageOperation.Move 
             ? CopyResourceOperation.Move 
             : CopyResourceOperation.Copy;
 
@@ -237,7 +238,7 @@ public class ClipboardService : IClipboardService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                Clipboard.ContentChanged -= Clipboard_ContentChanged;
+                DataTransfer.Clipboard.ContentChanged -= Clipboard_ContentChanged;
             }
 
             _disposed = true;
