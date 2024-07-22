@@ -136,20 +136,23 @@ public class CommandService : ICommandService
                 return Result.Fail($"Failed to undo command. Undo stack '{undoStackName}' is empty");
             }
 
-            // Pop command from the undo queue
-            var popResult = _undoStack.PopUndoCommand(undoStackName);
+            // Pop next command(s) from the undo queue
+            var popResult = _undoStack.PopCommands(undoStackName, UndoStackOperation.Undo);
             if (popResult.IsFailure)
             {
                 return popResult;
             }
-            var command = popResult.Value;
+            var commandList = popResult.Value;
 
-            // Enqueue this command as an undo. 
-            // I'm assuming here that undos should always execute without delay, may not be correct.
-            var enqueueResult = EnqueueCommandInternal(command, 0, true);
-            if (enqueueResult.IsFailure)
+            foreach (var command in commandList)
             {
-                return enqueueResult;
+                // Enqueue this command as an undo. 
+                // I'm assuming here that undos should always execute without delay, which may not be correct.
+                var enqueueResult = EnqueueCommandInternal(command, 0, true);
+                if (enqueueResult.IsFailure)
+                {
+                    return enqueueResult;
+                }
             }
         }
 
@@ -165,20 +168,23 @@ public class CommandService : ICommandService
                 return Result.Fail($"Failed to redo command. Redo stack '{undoStackName}' is empty");
             }
 
-            // Pop command from the redo queue
-            var popResult = _undoStack.PopRedoCommand(undoStackName);
+            // Pop next command(s) from the redo queue
+            var popResult = _undoStack.PopCommands(undoStackName, UndoStackOperation.Redo);
             if (popResult.IsFailure)
             {
                 return popResult;
             }
-            var command = popResult.Value;
+            var commandList = popResult.Value;
 
-            // Enqueue this command as a redo (same as a normal execution).
-            // I'm assuming here that redos should always execute without delay, may not be correct.
-            var enqueueResult = EnqueueCommandInternal(command, 0, false);
-            if (enqueueResult.IsFailure)
+            foreach (var command in commandList)
             {
-                return enqueueResult;
+                // Enqueue this command as a redo (same as a normal execution).
+                // I'm assuming here that redos should always execute without delay, which may not be correct.
+                var enqueueResult = EnqueueCommandInternal(command, 0, false);
+                if (enqueueResult.IsFailure)
+                {
+                    return enqueueResult;
+                }
             }
         }
 
