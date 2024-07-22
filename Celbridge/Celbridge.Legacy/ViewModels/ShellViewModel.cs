@@ -1,5 +1,4 @@
 ﻿using Celbridge.Messaging;
-using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Legacy.ViewModels;
 

@@ -2,7 +2,6 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Settings;
-using Celbridge.Utilities;
 using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;

@@ -1,5 +1,4 @@
 ﻿using Celbridge.Messaging;
-using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Celbridge.Legacy.Services;

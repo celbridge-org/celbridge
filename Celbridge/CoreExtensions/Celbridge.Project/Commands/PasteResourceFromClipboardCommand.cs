@@ -1,6 +1,5 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Commands;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Workspace;
 
