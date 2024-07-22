@@ -8,7 +8,7 @@ public interface IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    CommandId Id { get; }
+    CommandId CommandId { get; }
 
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.

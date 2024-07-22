@@ -8,7 +8,7 @@ public abstract class CommandBase : IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    public CommandId Id { get; } = CommandId.Create();
+    public CommandId CommandId { get; } = CommandId.Create();
 
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.
