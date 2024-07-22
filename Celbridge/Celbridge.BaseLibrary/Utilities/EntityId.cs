@@ -1,56 +1,56 @@
-﻿namespace Celbridge.Commands;
+﻿namespace Celbridge.Utilities;
 
 /// <summary>
-/// A unique identifier for commands.
+/// A unique numeric identifier for any type of entity.
 /// </summary>
-public readonly struct CommandId : IComparable<CommandId>
+public readonly struct EntityId : IComparable<EntityId>
 {
     /// Monoticially increasing integer.
     private static ulong _nextId = 0;
 
     public ulong Id { get; }
 
-    private CommandId(ulong id)
+    private EntityId(ulong id)
     {
         Id = id;
     }
 
     /// <summary>
-    /// Factory method to create a new command id.
+    /// Factory method to create a new entity id.
     /// Each call to Create will return a new unique id.
     /// </summary>
-    public static CommandId Create()
+    public static EntityId Create()
     {
         // Thread safe increment
         ulong newId = Interlocked.Increment(ref _nextId);
-        return new CommandId(newId);
+        return new EntityId(newId);
     }
 
-    public int CompareTo(CommandId other)
+    public int CompareTo(EntityId other)
     {
         return Id.CompareTo(other.Id);
     }
 
-    public static bool operator ==(CommandId lhs, CommandId rhs)
+    public static bool operator ==(EntityId lhs, EntityId rhs)
     {
         return lhs.Equals(rhs);
     }
 
-    public static bool operator !=(CommandId lhs, CommandId rhs)
+    public static bool operator !=(EntityId lhs, EntityId rhs)
     {
         return !lhs.Equals(rhs);
     }
 
     public override bool Equals(object? obj)
     {
-        if (obj is CommandId other)
+        if (obj is EntityId other)
         {
             return Equals(other);
         }
         return false;
     }
 
-    public bool Equals(CommandId other)
+    public bool Equals(EntityId other)
     {
         return Id == other.Id;
     }
