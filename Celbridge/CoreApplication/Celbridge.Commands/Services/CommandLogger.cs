@@ -9,9 +9,6 @@ namespace Celbridge.Commands.Services;
 
 public class CommandLogger : ICommandLogger, IDisposable
 {
-    private const string LogFilePrefix = "CommandLog";
-    private const int MaxFilesToKeep = 0;
-
     private record CommandLogItem(string CommandName, float ElapsedTime, CommandExecutionMode ExecutionMode, IExecutableCommand Command);
 
     private readonly IMessengerService _messengerService;
@@ -45,7 +42,7 @@ public class CommandLogger : ICommandLogger, IDisposable
         _jsonSerializerSettings.Converters.Add(new ResourceKeyConverter());
     }
 
-    public Result StartLogging()
+    public Result StartLogging(string logFilePath, string logFilePrefix, int maxFilesToKeep)
     {
         var loadedProjectData = _projectDataService.LoadedProjectData;
         if (loadedProjectData is null)
@@ -53,22 +50,15 @@ public class CommandLogger : ICommandLogger, IDisposable
             return Result.Fail("No project data loaded.");
         }
 
-        // Acquire the log file path
-
-        var timestamp = _utilityService.GetTimestamp();
-        string logFolderPath = loadedProjectData.LogFolderPath;
-        string logFilename = $"{LogFilePrefix}_{timestamp}.jsonl";
-        string logFilePath = Path.Combine(logFolderPath, logFilename);
-
-        var logFolder = Path.GetDirectoryName(logFilePath)!;
-        if (!Directory.Exists(logFolder))
+        var logFolderPath = Path.GetDirectoryName(logFilePath)!;
+        if (!Directory.Exists(logFolderPath))
         {
-            Directory.CreateDirectory(logFolder);
+            Directory.CreateDirectory(logFolderPath);
         }
 
         // Delete old log files
 
-        var deleteResult = _utilityService.DeleteOldFiles(logFolderPath, LogFilePrefix, MaxFilesToKeep);
+        var deleteResult = _utilityService.DeleteOldFiles(logFolderPath, logFilePrefix, maxFilesToKeep);
         if (deleteResult.IsFailure)
         {
             return deleteResult;
