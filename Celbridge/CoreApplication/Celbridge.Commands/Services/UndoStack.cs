@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Commands.Services;
+﻿using CommunityToolkit.Diagnostics;
+
+namespace Celbridge.Commands.Services;
 
 public enum UndoStackOperation
 {
@@ -67,64 +69,61 @@ public class UndoStack
         return Result.Ok();
     }
 
-    public Result<IExecutableCommand> PopUndoCommand(string undoStackName)
+    public Result<IEnumerable<IExecutableCommand>> PopCommands(string undoStackName, UndoStackOperation operation)
     {
         if (undoStackName == UndoStackNames.None)
         {
-            return Result<IExecutableCommand>.Fail($"Failed to pop undo command. The 'None' undo stack may not contain commands.");
+            return Result<IEnumerable<IExecutableCommand>>.Fail($"Failed to pop commands for '{operation}'. The 'None' undo stack may not contain commands.");
         }
 
-        //
-        // Find the most recently added undo item in the specified undo stack
-        //
+        var commands = new List<IExecutableCommand>();
 
-        var index = _operations.FindLastIndex(item =>
-            item.Operation == UndoStackOperation.Undo &&
-            item.Command.UndoStackName == undoStackName);
-
-        if (index == -1)
+        // Iterate in reverse to find and collect all commands with the same undo group id
+        for (int i = _operations.Count - 1; i >= 0; i--)
         {
-            return Result<IExecutableCommand>.Fail($"Failed to pop undo command from stack '{undoStackName}'. No commands found.");
+            var item = _operations[i];
+
+            if (item.Command.UndoStackName == undoStackName &&
+                item.Operation == operation)
+            {
+                var undoGroupId = item.Command.UndoGroupId;
+
+                if (!undoGroupId.IsValid)
+                {
+                    // An invalid undoGroupId indicates that the command is not part of a group.
+                    // Pop this command on its own and return it.
+                    commands.Add(item.Command);
+                    _operations.RemoveAt(i);
+                    return Result<IEnumerable<IExecutableCommand>>.Ok(commands);
+                }
+
+                // Collect all commands with the same undo group id (including the one we found above)
+                for (int j = _operations.Count - 1; j >= 0; j--)
+                {
+                    var groupItem = _operations[j];
+
+                    if (groupItem.Command.UndoGroupId == undoGroupId)
+                    {
+                        // Something has gone badly wrong if commands with the same undo group id have ended up
+                        // in different undo stacks.
+                        Guard.IsTrue(groupItem.Command.UndoStackName == undoStackName);
+                        Guard.IsTrue(groupItem.Operation == operation);
+
+                        commands.Add(_operations[j].Command);
+                        _operations.RemoveAt(j);
+                    }
+                }
+
+                break;
+            }
         }
 
-        //
-        // Remove the undo item from the list
-        //
-
-        var item = _operations[index];
-        _operations.RemoveAt(index);
-
-        return Result<IExecutableCommand>.Ok(item.Command);
-    }
-
-    public Result<IExecutableCommand> PopRedoCommand(string undoStackName)
-    {
-        if (undoStackName == UndoStackNames.None)
+        if (commands.Count == 0)
         {
-            return Result<IExecutableCommand>.Fail($"Failed to pop redo command. The 'None' undo stack may not contain commands.");
+            return Result<IEnumerable<IExecutableCommand>>.Fail($"No commands found in '{undoStackName}' undo stack.");
         }
 
-        //
-        // Find the most recently added redo item in the specified undo stack
-        //
-
-        var index = _operations.FindLastIndex(item =>
-            item.Operation == UndoStackOperation.Redo &&
-            item.Command.UndoStackName == undoStackName);
-
-        if (index == -1)
-        {
-            return Result<IExecutableCommand>.Fail($"Failed to pop redo command from undo stack '{undoStackName}'. No commands found.");
-        }
-
-        //
-        // Remove the redo item from the list
-        //
-
-        var item = _operations[index];
-        _operations.RemoveAt(index);
-
-        return Result<IExecutableCommand>.Ok(item.Command);
+        return Result<IEnumerable<IExecutableCommand>>.Ok(commands);
     }
 
     public Result ClearRedoCommands(string undoStackName)
