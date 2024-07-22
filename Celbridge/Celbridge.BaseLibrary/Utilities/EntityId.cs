@@ -12,7 +12,7 @@ public readonly struct EntityId : IComparable<EntityId>
 
     public ulong Id => _id;
 
-    private EntityId(ulong id)
+    public EntityId(ulong id)
     {
         _id = id;
     }

@@ -7,7 +7,8 @@ namespace Celbridge.ProjectAdmin.Services;
 public class ProjectDataService : IProjectDataService
 {
     private const string ProjectDataFileKey = "projectDataFile";
-    private const string DefaultProjectDataPath = "Library/ProjectData/ProjectData.db";
+    private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
+    private const string DefaultLogFolder = "Library/Logs";
 
     public IProjectData? LoadedProjectData { get; private set; }
 
@@ -52,7 +53,7 @@ public class ProjectDataService : IProjectDataService
 
             var projectJson = $$"""
                 {
-                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataPath}}",
+                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataFile}}",
                 }
                 """;
 
@@ -62,14 +63,14 @@ public class ProjectDataService : IProjectDataService
             // Create a database file inside a folder named after the project
             //
 
-            var databasePath = Path.Combine(config.ProjectFolder, DefaultProjectDataPath);
-            string? dataFolderPath = Path.GetDirectoryName(databasePath);
-            if (!string.IsNullOrEmpty(dataFolderPath))
-            {
-                Directory.CreateDirectory(dataFolderPath);
-            }
+            var databasePath = Path.Combine(config.ProjectFolder, DefaultProjectDataFile);
+            string dataFolderPath = Path.GetDirectoryName(databasePath)!;
+            Directory.CreateDirectory(dataFolderPath);
 
-            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath);
+            var logFolderPath = Path.Combine(config.ProjectFolder, DefaultLogFolder);
+            Directory.CreateDirectory(logFolderPath);
+
+            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, logFolderPath);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project database: {config.ProjectName}");
@@ -95,8 +96,9 @@ public class ProjectDataService : IProjectDataService
 
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
             string projectDataPath = Path.Combine(projectFolderPath, projectDataPathRelative);
+            string logFolderPath = Path.Combine(projectFolderPath, DefaultLogFolder);
 
-            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath);
+            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath, logFolderPath);
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load project database: {projectDataPath}");
