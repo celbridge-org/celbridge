@@ -55,9 +55,10 @@ public class CommandLogger : ICommandLogger, IDisposable
 
         // Acquire the log file path
 
+        var timestamp = _utilityService.GetTimestamp();
         string logFolderPath = loadedProjectData.LogFolderPath;
-        string logName = _utilityService.GenerateLogName(LogFilePrefix);
-        string logFilePath = Path.Combine(logFolderPath, logName + ".jsonl");
+        string logFilename = $"{LogFilePrefix}_{timestamp}.jsonl";
+        string logFilePath = Path.Combine(logFolderPath, logFilename);
 
         var logFolder = Path.GetDirectoryName(logFilePath)!;
         if (!Directory.Exists(logFolder))
@@ -67,7 +68,7 @@ public class CommandLogger : ICommandLogger, IDisposable
 
         // Delete old log files
 
-        var deleteResult = _utilityService.DeleteOldFiles(logFolderPath, "CommandLog", MaxFilesToKeep);
+        var deleteResult = _utilityService.DeleteOldFiles(logFolderPath, LogFilePrefix, MaxFilesToKeep);
         if (deleteResult.IsFailure)
         {
             return deleteResult;
@@ -77,6 +78,12 @@ public class CommandLogger : ICommandLogger, IDisposable
         { 
             AutoFlush = true 
         };
+
+        // Write environment info as the first record in the log
+
+        var environmentInfo = _utilityService.GetEnvironmentInfo();
+        string logEntry = JsonConvert.SerializeObject(environmentInfo, _jsonSerializerSettings);
+        _writer.WriteLine(logEntry);
 
         // Start listening for executing commands
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
