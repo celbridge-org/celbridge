@@ -1,9 +1,11 @@
 ﻿using Celbridge.Clipboard;
+using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
 using Celbridge.Status;
+using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,11 +25,15 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IStatusService StatusService { get; }
     public IClipboardService ClipboardService { get; }
 
+    private ICommandLogger _commandLogger;
+
     public WorkspaceService(
         IServiceProvider serviceProvider, 
-        IProjectDataService projectDataService)
+        IProjectDataService projectDataService,
+        IUtilityService utilityService)
     {
         // Create instances of the required sub-services
+
         WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -45,6 +51,16 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var databaseFolder = Path.GetDirectoryName(projectData.DatabasePath);
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
+
+        // Log executing commands
+        _commandLogger = serviceProvider.GetRequiredService<ICommandLogger>();
+        var timestamp = utilityService.GetTimestamp();
+        string logFolderPath = projectData.LogFolderPath;
+        string logFilePrefix = "CommandLog";
+        string logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
+        string logFilePath = Path.Combine(logFolderPath, logFilename);
+
+        _commandLogger.StartLogging(logFilePath, logFilePrefix, 0);
     }
 
     private bool _disposed;
@@ -71,6 +87,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ProjectService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (ClipboardService as IDisposable)!.Dispose();
+
+                // Stop logging commands
+                (_commandLogger as IDisposable)!.Dispose();
             }
 
             _disposed = true;
