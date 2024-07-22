@@ -8,11 +8,13 @@ public readonly struct EntityId : IComparable<EntityId>
     /// Monoticially increasing integer.
     private static ulong _nextId = 0;
 
-    public ulong Id { get; }
+    private readonly ulong _id = 0; // Default to invalid id of 0
+
+    public ulong Id => _id;
 
     private EntityId(ulong id)
     {
-        Id = id;
+        _id = id;
     }
 
     /// <summary>
@@ -25,6 +27,16 @@ public readonly struct EntityId : IComparable<EntityId>
         ulong newId = Interlocked.Increment(ref _nextId);
         return new EntityId(newId);
     }
+
+    /// <summary>
+    /// An invalid entity id has a value of 0.
+    /// </summary>
+    public static EntityId InvalidId { get; } = new EntityId(0);
+
+    /// <summary>
+    /// Returns true if the entity id is valid.
+    /// </summary>
+    public bool IsValid => Id != InvalidId.Id;
 
     public int CompareTo(EntityId other)
     {

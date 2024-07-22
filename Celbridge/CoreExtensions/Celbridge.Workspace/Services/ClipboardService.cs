@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 using Windows.Storage;
 
 using DataTransfer = Windows.ApplicationModel.DataTransfer;
@@ -183,6 +184,10 @@ public class ClipboardService : IClipboardService, IDisposable
             return Result.Ok();
         }
 
+        // If there are multiple items, assign the same undo group id to all commands.
+        // This ensures that all commands are undone together in a single operation.
+        var undoGroupId = description.ResourceItems.Count > 1 ? EntityId.Create() : EntityId.InvalidId;
+
         foreach (var resourceItem in description.ResourceItems)
         {
             if (resourceItem.SourceResource.IsEmpty)
@@ -193,6 +198,7 @@ public class ClipboardService : IClipboardService, IDisposable
                     command.ResourceType = resourceItem.ResourceType;
                     command.DestResource = resourceItem.DestResource;
                     command.SourcePath = resourceItem.SourcePath;
+                    command.UndoGroupId = undoGroupId;
                 });
             }
             else
@@ -203,6 +209,7 @@ public class ClipboardService : IClipboardService, IDisposable
                     command.SourceResource = resourceItem.SourceResource;
                     command.DestResource = resourceItem.DestResource;
                     command.Operation = description.Operation;
+                    command.UndoGroupId = undoGroupId;
                 });
             }
         }
