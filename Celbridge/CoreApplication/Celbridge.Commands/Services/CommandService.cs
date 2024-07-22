@@ -10,7 +10,7 @@ public class CommandService : ICommandService
     private readonly ILoggingService _loggingService;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
-    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime, bool IsUndoCommand);
+    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime, CommandExecutionMode ExecutionMode);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
@@ -74,10 +74,10 @@ public class CommandService : ICommandService
             _undoStack.ClearRedoCommands(command.UndoStackName);
         }
 
-        return EnqueueCommandInternal(command, delay, false);
+        return EnqueueCommandInternal(command, delay, CommandExecutionMode.Execute);
     }
 
-    private Result EnqueueCommandInternal(IExecutableCommand command, uint delay, bool IsUndoCommand)
+    private Result EnqueueCommandInternal(IExecutableCommand command, uint delay, CommandExecutionMode ExecutionMode)
     {
         lock (_lock)
         {
@@ -87,7 +87,7 @@ public class CommandService : ICommandService
             }
 
             long executionTime = _stopwatch.ElapsedMilliseconds + delay;
-            _commandQueue.Add(new QueuedCommand(command, executionTime, IsUndoCommand));
+            _commandQueue.Add(new QueuedCommand(command, executionTime, ExecutionMode));
         }
 
         return Result.Ok();
@@ -148,7 +148,7 @@ public class CommandService : ICommandService
             {
                 // Enqueue this command as an undo. 
                 // I'm assuming here that undos should always execute without delay, which may not be correct.
-                var enqueueResult = EnqueueCommandInternal(command, 0, true);
+                var enqueueResult = EnqueueCommandInternal(command, 0, CommandExecutionMode.Undo);
                 if (enqueueResult.IsFailure)
                 {
                     return enqueueResult;
@@ -180,7 +180,7 @@ public class CommandService : ICommandService
             {
                 // Enqueue this command as a redo (same as a normal execution).
                 // I'm assuming here that redos should always execute without delay, which may not be correct.
-                var enqueueResult = EnqueueCommandInternal(command, 0, false);
+                var enqueueResult = EnqueueCommandInternal(command, 0, CommandExecutionMode.Redo);
                 if (enqueueResult.IsFailure)
                 {
                     return enqueueResult;
@@ -260,7 +260,7 @@ public class CommandService : ICommandService
 
             // Find the first command that is ready to execute
             IExecutableCommand? command = null;
-            bool isUndoCommand = false;
+            var executionMode = CommandExecutionMode.Execute;
 
             lock (_lock)
             {
@@ -280,7 +280,7 @@ public class CommandService : ICommandService
                 {
                     var item = _commandQueue[commandIndex];
                     command = item.Command;
-                    isUndoCommand = item.IsUndoCommand;
+                    executionMode = item.ExecutionMode;
                     _commandQueue.RemoveAt(commandIndex);
                 }
             }
@@ -289,7 +289,7 @@ public class CommandService : ICommandService
             {
                 try
                 {
-                    if (isUndoCommand)
+                    if (executionMode == CommandExecutionMode.Undo)
                     {
                         //
                         // Execute command as an undo
@@ -309,7 +309,7 @@ public class CommandService : ICommandService
                     else
                     {
                         //
-                        // Execute the command
+                        // Execute the command as a regular execution or redo
                         //
 
                         var executeResult = await command.ExecuteAsync();
@@ -326,7 +326,7 @@ public class CommandService : ICommandService
                         }
                     }
 
-                    var message = new ExecutedCommandMessage(command, isUndoCommand);
+                    var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
                     _messengerService.Send(message);
                 }
                 catch (Exception ex)
