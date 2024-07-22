@@ -1,5 +1,4 @@
 ﻿using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
@@ -13,7 +12,6 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utilityService;
-    private readonly IProjectDataService _projectDataService;
 
     private readonly JsonSerializerSettings _jsonSerializerSettings;
 
@@ -21,14 +19,11 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     public CommandLogger(
         IMessengerService messengerService,
-        IUtilityService utilityService,
-        IProjectDataService projectDataService)
+        IUtilityService utilityService)
     {
         _messengerService = messengerService;
         _utilityService = utilityService;
-        _projectDataService = projectDataService;
 
-        // var ignoreProperties = new[] { "CommandId", "UndoGroupId", "UndoStackName" };
         var ignoreProperties = new string[] { };
         var resolver = new CommandSerializerContractResolver(ignoreProperties);
         _jsonSerializerSettings = new JsonSerializerSettings
@@ -44,12 +39,6 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     public Result StartLogging(string logFilePath, string logFilePrefix, int maxFilesToKeep)
     {
-        var loadedProjectData = _projectDataService.LoadedProjectData;
-        if (loadedProjectData is null)
-        {
-            return Result.Fail("No project data loaded.");
-        }
-
         var logFolderPath = Path.GetDirectoryName(logFilePath)!;
         if (!Directory.Exists(logFolderPath))
         {
