@@ -81,9 +81,9 @@ public class CommandService : ICommandService
     {
         lock (_lock)
         {
-            if (_commandQueue.Any((item) => item.Command.Id == command.Id))
+            if (_commandQueue.Any((item) => item.Command.CommandId == command.CommandId))
             {
-                return Result.Fail($"Command '{command.Id}' is already in the execution queue");
+                return Result.Fail($"Command '{command.CommandId}' is already in the execution queue");
             }
 
             long executionTime = _stopwatch.ElapsedMilliseconds + delay;

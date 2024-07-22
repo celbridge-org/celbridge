@@ -36,9 +36,9 @@ public class UndoStack
             return Result.Fail($"Failed to push undo command. The 'None' undo stack may not contain commands.");
         }
 
-        if (_operations.Any(item => item.Command.Id == command.Id))
+        if (_operations.Any(item => item.Command.CommandId == command.CommandId))
         {
-            return Result.Fail($"Failed to push undo command because a command with id '{command.Id}' already exists.");
+            return Result.Fail($"Failed to push undo command because a command with id '{command.CommandId}' already exists.");
         }
 
         // Add the item to the undo stack
@@ -55,9 +55,9 @@ public class UndoStack
             return Result.Fail($"Failed to push redo command. The 'None' undo stack may not contain commands.");
         }
 
-        if (_operations.Any(item => item.Command.Id == command.Id))
+        if (_operations.Any(item => item.Command.CommandId == command.CommandId))
         {
-            return Result.Fail($"Failed to push undo command because a command with id '{command.Id}' already exists.");
+            return Result.Fail($"Failed to push undo command because a command with id '{command.CommandId}' already exists.");
         }
 
         var item = new UndoStackItem(command, UndoStackOperation.Redo);
