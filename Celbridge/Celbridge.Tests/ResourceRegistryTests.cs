@@ -1,5 +1,5 @@
-﻿using Celbridge.Project.Models;
-using Celbridge.Project.Services;
+﻿using Celbridge.Projects.Models;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tests;

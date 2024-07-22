@@ -1,4 +1,4 @@
-using Celbridge.BaseLibrary.Extensions;
+using Celbridge.Extensions;
 using Celbridge.MainApplication.Services;
 
 namespace Celbridge.MainApplication;

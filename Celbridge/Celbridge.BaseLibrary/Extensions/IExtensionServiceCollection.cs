@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Extensions;
+﻿namespace Celbridge.Extensions;
 
 /// <summary>
 /// Extensions use this interface to configure the dependency injection framework without using the 

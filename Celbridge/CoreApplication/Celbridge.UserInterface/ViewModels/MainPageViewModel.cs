@@ -1,13 +1,12 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.FilePicker;
-using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Commands;
+using Celbridge.Dialog;
+using Celbridge.FilePicker;
+using Celbridge.Logging;
+using Celbridge.Navigation;
+using Celbridge.Settings;
+using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Projects;
 
 namespace Celbridge.UserInterface.ViewModels;
 

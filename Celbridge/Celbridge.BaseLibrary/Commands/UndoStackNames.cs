@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// Names of undo stacks used to support undo/redo in the application.

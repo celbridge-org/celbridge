@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Documents;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// An asynchronous command queue service with undo/redo support.

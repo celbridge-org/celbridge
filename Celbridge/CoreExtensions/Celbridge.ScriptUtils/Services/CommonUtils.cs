@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.Commands;
+using Celbridge.Dialog;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.ScriptUtils.Services;

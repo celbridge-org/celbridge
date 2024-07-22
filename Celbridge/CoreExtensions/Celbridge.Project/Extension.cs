@@ -1,12 +1,12 @@
-﻿using Celbridge.BaseLibrary.Extensions;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Validators;
-using Celbridge.Project.Commands;
-using Celbridge.Project.Services;
-using Celbridge.Project.ViewModels;
-using Celbridge.Project.Views;
+﻿using Celbridge.Extensions;
+using Celbridge.Projects;
+using Celbridge.Validators;
+using Celbridge.Projects.Commands;
+using Celbridge.Projects.Services;
+using Celbridge.Projects.ViewModels;
+using Celbridge.Projects.Views;
 
-namespace Celbridge.Project;
+namespace Celbridge.Projects;
 
 public class Extension : IExtension
 {

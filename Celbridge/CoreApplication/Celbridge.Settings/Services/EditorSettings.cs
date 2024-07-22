@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.Settings;
 
 namespace Celbridge.Settings.Services;
 

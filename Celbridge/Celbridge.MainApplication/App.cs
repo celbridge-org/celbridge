@@ -1,5 +1,5 @@
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.UserInterface;
+using Celbridge.Commands;
+using Celbridge.UserInterface;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
 using Celbridge.UserInterface.Services;
@@ -63,7 +63,7 @@ public class App : Application
         Host = builder.Build();
 
         // Setup the globally available helper for using the dependency injection framework.
-        BaseLibrary.Core.ServiceLocator.Initialize(Host.Services);
+        Core.ServiceLocator.Initialize(Host.Services);
 
         // Initialize the UI system
         UserInterface.ServiceConfiguration.Initialize();

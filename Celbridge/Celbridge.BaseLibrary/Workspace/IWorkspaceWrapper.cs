@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.Workspace;
 
 /// <summary>
 /// Wrapper for the workspace service.

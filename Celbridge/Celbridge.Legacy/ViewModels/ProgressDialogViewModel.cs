@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
+﻿using Celbridge.Messaging;
 using Windows.Foundation;
 
 namespace Celbridge.Legacy.ViewModels;

@@ -1,5 +1,5 @@
-﻿global using Celbridge.BaseLibrary.Core;
-global using Celbridge.BaseLibrary.Messaging;
+﻿global using Celbridge.Core;
+global using Celbridge.Messaging;
 global using Celbridge.UserInterface.ViewModels;
 global using CommunityToolkit.Diagnostics;
 global using CommunityToolkit.Mvvm.ComponentModel;

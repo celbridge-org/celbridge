@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.Commands;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Creates a new project using the specified config information.

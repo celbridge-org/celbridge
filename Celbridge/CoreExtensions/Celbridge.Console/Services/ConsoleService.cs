@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Console;
+﻿using Celbridge.Console;
 using Celbridge.Console.Views;
 
 namespace Celbridge.Console.Services;

@@ -1,4 +1,4 @@
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;

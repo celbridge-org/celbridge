@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Resources;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// A file or folder resource in the project folder.

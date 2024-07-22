@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Documents;
+﻿using Celbridge.Documents;
 using Celbridge.Documents.Views;
 
 namespace Celbridge.Documents.Services;

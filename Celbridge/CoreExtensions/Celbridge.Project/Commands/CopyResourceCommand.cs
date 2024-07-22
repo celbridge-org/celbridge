@@ -1,13 +1,13 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Project.Services;
+﻿using Celbridge.Commands;
+using Celbridge.Dialog;
+using Celbridge.Projects;
+using Celbridge.Resources;
+using Celbridge.Workspace;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Project.Commands
+namespace Celbridge.Projects.Commands
 {
     public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     {

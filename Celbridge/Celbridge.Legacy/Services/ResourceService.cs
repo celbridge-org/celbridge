@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
+﻿using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 using System.Security.Cryptography;
 using Path = System.IO.Path;

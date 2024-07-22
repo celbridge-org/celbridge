@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
+﻿using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Celbridge.Messaging.Services;
@@ -10,7 +10,7 @@ public class MessengerService : IMessengerService
 {
     private IMessenger _messenger = WeakReferenceMessenger.Default;
 
-    public void Register<TMessage>(object recipient, BaseLibrary.Messaging.MessageHandler<object, TMessage> handler) 
+    public void Register<TMessage>(object recipient, MessageHandler<object, TMessage> handler) 
         where TMessage : class
     {
         _messenger.Register<TMessage>(recipient, handler.Invoke);
