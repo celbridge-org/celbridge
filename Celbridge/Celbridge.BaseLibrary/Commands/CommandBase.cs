@@ -13,6 +13,12 @@ public abstract class CommandBase : IExecutableCommand
     public EntityId CommandId { get; } = EntityId.Create();
 
     /// <summary>
+    /// Optional group identifier for undo/redo.
+    /// Commands with the same valid group id will be undone/redone together.
+    /// </summary>
+    public EntityId UndoGroupId { get; set; }
+
+    /// <summary>
     /// Name of the undo stack to add this command to after it executes.
     /// </summary>
     public virtual string UndoStackName => UndoStackNames.None;
