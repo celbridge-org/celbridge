@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Core;
-using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.Core;
+using Celbridge.Extensions;
 using System.Reflection;
 using System.Runtime.Loader;
 

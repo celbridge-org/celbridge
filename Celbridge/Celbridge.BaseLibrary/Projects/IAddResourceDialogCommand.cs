@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Display the Add Resource dialog to allow the user to add a new resource to the project.

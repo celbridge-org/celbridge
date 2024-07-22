@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Project.Services;
+﻿namespace Celbridge.Projects.Services;
 
 public class ResourceUtils
 {

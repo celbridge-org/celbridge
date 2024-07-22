@@ -1,10 +1,10 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Documents;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Status;
+﻿using Celbridge.Clipboard;
+using Celbridge.Console;
+using Celbridge.Documents;
+using Celbridge.Projects;
+using Celbridge.Status;
 
-namespace Celbridge.BaseLibrary.Workspace;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Service for interacting with the sub-services of a loaded workspace.

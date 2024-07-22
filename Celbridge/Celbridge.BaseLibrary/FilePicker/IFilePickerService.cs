@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.FilePicker;
+﻿namespace Celbridge.FilePicker;
 
 /// <summary>
 /// Manages the display of file and folder pickers.

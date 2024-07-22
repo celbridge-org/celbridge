@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.Workspace;
-using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.Projects;
+using Celbridge.Navigation;
+using Celbridge.Workspace;
+using Celbridge.Commands;
 using Celbridge.ProjectAdmin.Services;
 
 namespace Celbridge.ProjectAdmin.Commands;

@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Core;
-using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.Core;
+using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 

@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.UserInterface;
+using Celbridge.Dialog;
 using Windows.System;
-using Celbridge.BaseLibrary.Validators;
+using Celbridge.Validators;
 
 namespace Celbridge.UserInterface.ViewModels;
 

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Resources;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// A unique identifier for project resources.

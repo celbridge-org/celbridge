@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Extensions;
+﻿namespace Celbridge.Extensions;
 
 /// <summary>
 /// The extension system discovers classes that implement this interface at startup.

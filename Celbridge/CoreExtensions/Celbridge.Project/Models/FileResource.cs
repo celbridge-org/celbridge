@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 
-namespace Celbridge.Project.Models;
+namespace Celbridge.Projects.Models;
 
 public class FileResource : Resource, IFileResource
 {

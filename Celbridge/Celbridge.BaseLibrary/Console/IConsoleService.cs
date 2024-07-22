@@ -1,5 +1,5 @@
 ﻿
-namespace Celbridge.BaseLibrary.Console;
+namespace Celbridge.Console;
 
 /// <summary>
 /// The type of message to print to the console.

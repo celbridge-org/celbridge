@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Validators;
+﻿using Celbridge.Projects;
+using Celbridge.Validators;
 
-namespace Celbridge.BaseLibrary.Dialog;
+namespace Celbridge.Dialog;
 
 /// <summary>
 /// Manages the display of modal dialogs to the user.

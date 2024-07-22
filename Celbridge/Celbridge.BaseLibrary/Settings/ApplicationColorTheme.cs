@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Settings;
+﻿namespace Celbridge.Settings;
 
 /// <summary>
 /// Supported application color themes.

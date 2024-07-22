@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.Commands;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Update the resource tree to reflect the state of the files and folders on disk.

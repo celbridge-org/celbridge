@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel;
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.Messaging;
 using Path = System.IO.Path;
 
