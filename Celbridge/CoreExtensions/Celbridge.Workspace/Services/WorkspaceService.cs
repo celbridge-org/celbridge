@@ -5,6 +5,7 @@ using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
 using Celbridge.Status;
+using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,7 +29,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
-        IProjectDataService projectDataService)
+        IProjectDataService projectDataService,
+        IUtilityService utilityService)
     {
         // Create instances of the required sub-services
 
@@ -50,9 +52,15 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
 
-        // Start logging commands
+        // Log executing commands
         _commandLogger = serviceProvider.GetRequiredService<ICommandLogger>();
-        _commandLogger.StartLogging();
+        var timestamp = utilityService.GetTimestamp();
+        string logFolderPath = projectData.LogFolderPath;
+        string logFilePrefix = "CommandLog";
+        string logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
+        string logFilePath = Path.Combine(logFolderPath, logFilename);
+
+        _commandLogger.StartLogging(logFilePath, logFilePrefix, 0);
     }
 
     private bool _disposed;
