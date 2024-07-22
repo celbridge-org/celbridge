@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Commands;
+﻿using Celbridge.Utilities;
+
+namespace Celbridge.Commands;
 
 /// <summary>
 /// A command that can be executed via the command service.
@@ -8,7 +10,7 @@ public interface IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    CommandId CommandId { get; }
+    EntityId CommandId { get; }
 
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.
