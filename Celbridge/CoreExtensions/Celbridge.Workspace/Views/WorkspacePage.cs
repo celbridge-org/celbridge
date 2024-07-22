@@ -1,13 +1,10 @@
-﻿using Celbridge.UserInterface;
-using Celbridge.Dialog;
-using Celbridge.Workspace;
+﻿using Celbridge.Dialog;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Celbridge.Workspace.Services;
-using System.Threading;
 
 namespace Celbridge.Workspace.Views;
 

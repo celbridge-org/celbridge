@@ -1,5 +1,4 @@
-﻿using Celbridge.Inspector;
-using Celbridge.Inspector.Views;
+﻿using Celbridge.Inspector.Views;
 
 namespace Celbridge.Inspector.Services;
 

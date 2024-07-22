@@ -4,7 +4,6 @@ using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
 using Celbridge.Status;
-using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 

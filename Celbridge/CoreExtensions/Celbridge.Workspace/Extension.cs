@@ -1,7 +1,6 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Extensions;
 using Celbridge.Navigation;
-using Celbridge.Workspace;
 using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;

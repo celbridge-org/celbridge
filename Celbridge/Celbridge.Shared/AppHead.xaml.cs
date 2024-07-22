@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml;
 using Uno.Resizetizer;
 
 namespace Celbridge;

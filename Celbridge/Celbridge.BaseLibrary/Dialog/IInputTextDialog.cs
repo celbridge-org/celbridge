@@ -1,6 +1,4 @@
-﻿using Celbridge.Validators;
-
-namespace Celbridge.Dialog;
+﻿namespace Celbridge.Dialog;
 
 /// <summary>
 /// A modal dialog that allows the user to input a text string.
