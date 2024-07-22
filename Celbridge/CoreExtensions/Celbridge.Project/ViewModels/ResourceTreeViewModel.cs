@@ -242,28 +242,9 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void PasteResourceFromClipboard(IResource? destResource)
     {
-        var rootFolder = _projectService.ResourceRegistry.RootFolder;
-
-        IFolderResource destFolder;
-        if (destResource is IFileResource file)
-        {
-            // Paste to the parent folder of the file resource
-            destFolder = file.ParentFolder ?? rootFolder;
-        }
-        else if (destResource is IFolderResource folder)
-        {
-            // Paste to the folder resource
-            destFolder = folder ?? rootFolder;
-        }
-        else
-        {
-            // Paste to the root folder
-            destFolder = rootFolder;
-        }
-
         var resourceRegistry = _projectService.ResourceRegistry;
 
-        var destFolderResource = resourceRegistry.GetResourceKey(destFolder);
+        var destFolderResource = resourceRegistry.GetContextMenuItemFolder(destResource);
 
         // Execute a command to paste the clipboard content to the folder resource
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
