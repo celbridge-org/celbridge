@@ -3,7 +3,6 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
-using Celbridge.Workspace;
 using Windows.Storage;
 
 using DataTransfer = Windows.ApplicationModel.DataTransfer;

@@ -1,6 +1,5 @@
 ﻿using Celbridge.Scripting;
 using Celbridge.Scripting.Services;
-using Celbridge.Scripting;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,5 +1,4 @@
-﻿using Celbridge.Settings;
-using Celbridge.Settings.Services;
+﻿using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Settings;

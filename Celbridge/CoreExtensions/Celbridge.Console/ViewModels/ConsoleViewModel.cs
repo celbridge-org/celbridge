@@ -1,5 +1,4 @@
-﻿using Celbridge.Console;
-using Celbridge.Scripting;
+﻿using Celbridge.Scripting;
 using Celbridge.Console.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;

@@ -1,6 +1,5 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;

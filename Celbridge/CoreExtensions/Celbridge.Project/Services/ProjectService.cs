@@ -1,5 +1,4 @@
-﻿using Celbridge.Projects;
-using Celbridge.Resources;
+﻿using Celbridge.Resources;
 using Celbridge.Utilities;
 using Celbridge.Projects.Views;
 using Celbridge.Utilities.Services;

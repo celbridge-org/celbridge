@@ -1,7 +1,6 @@
 ﻿using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;

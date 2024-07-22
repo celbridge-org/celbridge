@@ -1,5 +1,4 @@
 ﻿using Celbridge.Extensions;
-using Celbridge.Projects;
 using Celbridge.Validators;
 using Celbridge.Projects.Commands;
 using Celbridge.Projects.Services;

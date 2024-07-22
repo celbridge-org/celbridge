@@ -1,6 +1,4 @@
-﻿using Celbridge.Console;
-
-namespace Celbridge.Console.Services;
+﻿namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {

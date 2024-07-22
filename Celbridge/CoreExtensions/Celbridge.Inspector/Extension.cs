@@ -1,7 +1,4 @@
 ﻿using Celbridge.Extensions;
-using Celbridge.Inspector;
-using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Celbridge.Inspector.Services;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
