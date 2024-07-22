@@ -1,4 +1,5 @@
 ﻿using Celbridge.Clipboard;
+using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
@@ -23,11 +24,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IStatusService StatusService { get; }
     public IClipboardService ClipboardService { get; }
 
+    private ICommandLogger _commandLogger;
+
     public WorkspaceService(
         IServiceProvider serviceProvider, 
         IProjectDataService projectDataService)
     {
         // Create instances of the required sub-services
+
         WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -45,6 +49,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var databaseFolder = Path.GetDirectoryName(projectData.DatabasePath);
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
+
+        // Start logging commands
+        _commandLogger = serviceProvider.GetRequiredService<ICommandLogger>();
+        _commandLogger.StartLogging();
     }
 
     private bool _disposed;
@@ -71,6 +79,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ProjectService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (ClipboardService as IDisposable)!.Dispose();
+
+                // Stop logging commands
+                (_commandLogger as IDisposable)!.Dispose();
             }
 
             _disposed = true;

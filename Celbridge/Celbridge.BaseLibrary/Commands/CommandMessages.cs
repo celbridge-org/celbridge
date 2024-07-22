@@ -3,4 +3,4 @@
 /// <summary>
 /// Sent when a command has been executed or undone.
 /// </summary>
-public record ExecutedCommandMessage(IExecutableCommand Command, bool IsUndo);
+public record ExecutedCommandMessage(IExecutableCommand Command, CommandExecutionMode ExecutionMode, float ElapsedTime);

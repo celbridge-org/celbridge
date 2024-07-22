@@ -26,6 +26,11 @@ public interface IProjectData
     string DatabasePath { get; }
 
     /// <summary>
+    /// Returns the path to the loaded project's log folder.
+    /// </summary>
+    string LogFolderPath { get; }
+
+    /// <summary>
     /// Gets the data version for the project data.
     /// </summary>
     Task<Result<int>> GetDataVersionAsync();
