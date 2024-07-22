@@ -13,6 +13,12 @@ public interface IExecutableCommand
     EntityId CommandId { get; }
 
     /// <summary>
+    /// Optional group identifier for undo/redo.
+    /// Commands with the same valid group id will be undone/redone together.
+    /// </summary>
+    EntityId UndoGroupId { get; set; }
+
+    /// <summary>
     /// Name of the undo stack to add this command to after it executes.
     /// </summary>
     string UndoStackName { get; }
