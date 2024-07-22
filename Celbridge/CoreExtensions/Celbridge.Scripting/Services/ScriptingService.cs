@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Scripting;
+﻿using Celbridge.Commands;
 using System.Reflection;
 
 namespace Celbridge.Scripting.Services;

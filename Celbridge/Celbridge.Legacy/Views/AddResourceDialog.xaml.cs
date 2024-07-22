@@ -1,6 +1,4 @@
-﻿using Celbridge.Legacy.ViewModels;
-
-namespace Celbridge.Legacy.Views;
+﻿namespace Celbridge.Legacy.Views;
 
 public sealed partial class AddResourceDialog : ContentDialog
 {

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// A unique identifier for commands.

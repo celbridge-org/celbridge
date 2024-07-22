@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Celbridge.BaseLibrary.Settings;
+namespace Celbridge.Settings;
 
 /// <summary>
 /// Manage persitent user settings via named setting containers.

@@ -2,8 +2,8 @@
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Configuration;
-using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Console;
+using Celbridge.Workspace;
 
 namespace Celbridge.Logging.Services;
 

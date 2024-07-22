@@ -1,5 +1,5 @@
-﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Navigation;
+﻿using Celbridge.Logging;
+using Celbridge.Navigation;
 
 namespace Celbridge.UserInterface.Services;
 

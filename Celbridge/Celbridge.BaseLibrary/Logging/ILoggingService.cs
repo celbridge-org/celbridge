@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Logging;
+﻿namespace Celbridge.Logging;
 
 public enum LogMessageType
 {

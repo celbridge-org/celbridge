@@ -1,11 +1,10 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
-using Celbridge.Project.Services;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
+using Celbridge.Workspace;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Diagnostics;
 
-namespace Celbridge.Project.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {

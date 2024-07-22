@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Dialog;
+﻿namespace Celbridge.Dialog;
 
 /// <summary>
 /// A modal dialog that displays an alert to the user.

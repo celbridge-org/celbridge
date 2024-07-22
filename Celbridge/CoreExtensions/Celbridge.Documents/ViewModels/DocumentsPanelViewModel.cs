@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Settings;
+﻿using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;

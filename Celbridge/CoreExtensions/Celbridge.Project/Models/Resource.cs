@@ -1,7 +1,7 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Celbridge.Project.Models;
+namespace Celbridge.Projects.Models;
 
 public abstract partial class Resource : ObservableObject, IResource
 {

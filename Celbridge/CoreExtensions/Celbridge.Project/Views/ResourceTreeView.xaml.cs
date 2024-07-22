@@ -1,12 +1,12 @@
-﻿using Celbridge.BaseLibrary.Resources;
-using Celbridge.Project.ViewModels;
+﻿using Celbridge.Resources;
+using Celbridge.Projects.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
 
-namespace Celbridge.Project.Views;
+namespace Celbridge.Projects.Views;
 
 public sealed partial class ResourceTreeView : UserControl
 {

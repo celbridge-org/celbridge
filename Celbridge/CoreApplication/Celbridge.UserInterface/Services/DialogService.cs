@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Validators;
+﻿using Celbridge.Projects;
+using Celbridge.Dialog;
+using Celbridge.Validators;
 
 namespace Celbridge.UserInterface.Services;
 

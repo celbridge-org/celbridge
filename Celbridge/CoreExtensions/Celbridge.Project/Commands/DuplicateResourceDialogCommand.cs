@@ -1,12 +1,11 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Validators;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Commands;
+using Celbridge.Dialog;
+using Celbridge.Resources;
+using Celbridge.Validators;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Project.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDialogCommand
 {

@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Projects;
+using Celbridge.Navigation;
+using Celbridge.Workspace;
 
 namespace Celbridge.ProjectAdmin.Services;
 

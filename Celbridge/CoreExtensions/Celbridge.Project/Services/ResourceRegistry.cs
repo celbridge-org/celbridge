@@ -1,8 +1,8 @@
-﻿using Celbridge.BaseLibrary.Resources;
-using Celbridge.Project.Models;
+﻿using Celbridge.Resources;
+using Celbridge.Projects.Models;
 using System.Text;
 
-namespace Celbridge.Project.Services;
+namespace Celbridge.Projects.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {

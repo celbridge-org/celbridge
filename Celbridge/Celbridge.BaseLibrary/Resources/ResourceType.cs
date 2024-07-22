@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Resources;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// Types of resource that can be added to a project.

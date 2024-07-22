@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Utilities;
+﻿using Celbridge.Utilities;
 using Windows.Storage;
 
 namespace Celbridge.Messaging.Services;

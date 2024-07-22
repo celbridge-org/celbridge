@@ -1,1 +1,1 @@
-﻿global using Celbridge.BaseLibrary.Core;
+﻿global using Celbridge.Core;

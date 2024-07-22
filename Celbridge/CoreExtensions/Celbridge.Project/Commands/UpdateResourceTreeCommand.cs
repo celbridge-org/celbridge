@@ -1,8 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Commands;
+using Celbridge.Workspace;
 
-namespace Celbridge.Project.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class UpdateResourceTreeCommand : CommandBase, IUpdateResourceTreeCommand
 {

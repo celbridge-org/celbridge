@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
-using Celbridge.BaseLibrary.Dialog;
+﻿using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Views;
 

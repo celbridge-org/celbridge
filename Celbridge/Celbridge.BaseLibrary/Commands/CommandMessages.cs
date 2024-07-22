@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// Sent when a command has been executed or undone.

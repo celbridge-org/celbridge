@@ -1,10 +1,9 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Clipboard;
+using Celbridge.Commands;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 
-namespace Celbridge.Project.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFromClipboardCommand
 {

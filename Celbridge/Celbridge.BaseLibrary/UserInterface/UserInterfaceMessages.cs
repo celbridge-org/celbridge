@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Sent when the main window has been activated (i.e. received focus).

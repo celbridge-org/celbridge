@@ -1,7 +1,7 @@
 using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using System.Reflection;
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using Path = System.IO.Path;
 
 namespace Celbridge.Legacy.Services;

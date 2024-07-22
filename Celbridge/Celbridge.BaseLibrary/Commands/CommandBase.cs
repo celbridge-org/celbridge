@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// Base class for commands that can be executed via the command service.

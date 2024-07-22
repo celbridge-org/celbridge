@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Settings;
+﻿namespace Celbridge.Settings;
 
 /// <summary>
 /// A named group of peristent user settings stored as key value pairs.
