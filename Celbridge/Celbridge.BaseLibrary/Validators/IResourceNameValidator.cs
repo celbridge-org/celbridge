@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Validators;
+namespace Celbridge.Validators;
 
 /// <summary>
 /// Applies a set of validation rules to an input string.

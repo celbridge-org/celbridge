@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Scripting;
+﻿namespace Celbridge.Scripting;
 
 /// <summary>
 /// The scripting service supports the execution of C#, F#, Python, etc. scripts.

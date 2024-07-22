@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.Workspace;
 
 /// <summary>
 /// Provides services for managing workspace databases.

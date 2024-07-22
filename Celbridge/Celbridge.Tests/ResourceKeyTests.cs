@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 
 namespace Celbridge.Tests;
 

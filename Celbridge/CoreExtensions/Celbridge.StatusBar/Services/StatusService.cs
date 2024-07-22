@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Status;
-using Celbridge.StatusBar.Views;
+﻿using Celbridge.StatusBar.Views;
 
 namespace Celbridge.Status.Services;
 

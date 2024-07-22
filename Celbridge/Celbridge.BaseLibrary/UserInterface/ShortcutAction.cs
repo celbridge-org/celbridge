@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.UserInterface;
+﻿namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Keyboard shortcut events.

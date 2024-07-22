@@ -1,5 +1,4 @@
 ﻿using Celbridge.StatusBar.ViewModels;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.StatusBar.Views;
 

@@ -1,6 +1,4 @@
-﻿using Celbridge.BaseLibrary.UserInterface;
-
-namespace Celbridge.UserInterface.Views;
+﻿namespace Celbridge.UserInterface.Views;
 
 public sealed partial class TitleBar : UserControl
 {

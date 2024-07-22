@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.Projects;
 
-namespace Celbridge.BaseLibrary.Clipboard;
+namespace Celbridge.Clipboard;
 
 /// <summary>
 /// Describes resource content on the clipboard.

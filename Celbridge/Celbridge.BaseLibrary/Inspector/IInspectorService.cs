@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Inspector;
+﻿namespace Celbridge.Inspector;
 
 /// <summary>
 /// The inspector service provides functionality to support the inspector panel in the workspace UI.

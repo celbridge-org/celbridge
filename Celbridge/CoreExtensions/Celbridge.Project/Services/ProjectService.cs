@@ -1,10 +1,9 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Utilities;
-using Celbridge.Project.Views;
+﻿using Celbridge.Resources;
+using Celbridge.Utilities;
+using Celbridge.Projects.Views;
 using Celbridge.Utilities.Services;
 
-namespace Celbridge.Project.Services;
+namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService, IDisposable
 {

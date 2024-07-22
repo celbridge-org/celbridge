@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.Commands;
 
-namespace Celbridge.BaseLibrary.Workspace;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Saves the state to the current workspace to persistant storage.

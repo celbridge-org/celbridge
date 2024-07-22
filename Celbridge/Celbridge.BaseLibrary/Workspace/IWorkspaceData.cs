@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.Workspace;
 
 /// <summary>
 /// Manages the workspace data associated with a loaded project.

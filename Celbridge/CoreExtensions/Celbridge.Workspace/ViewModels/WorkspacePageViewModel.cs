@@ -1,7 +1,6 @@
-using Celbridge.BaseLibrary.Messaging;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.Workspace;
+using Celbridge.Messaging;
+using Celbridge.Projects;
+using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

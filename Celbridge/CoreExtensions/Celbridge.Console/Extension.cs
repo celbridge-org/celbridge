@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Extensions;
+﻿using Celbridge.Extensions;
 using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;

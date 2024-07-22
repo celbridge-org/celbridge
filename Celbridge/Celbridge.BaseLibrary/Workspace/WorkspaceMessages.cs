@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Workspace;
+﻿namespace Celbridge.Workspace;
 
 /// <summary>
 /// Sent when the workspace service has been created.

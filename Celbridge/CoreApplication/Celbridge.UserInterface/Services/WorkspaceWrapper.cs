@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 

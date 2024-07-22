@@ -1,9 +1,9 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Navigation;
-using Celbridge.BaseLibrary.Workspace;
-using Celbridge.BaseLibrary.Settings;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Commands;
+﻿using Celbridge.Projects;
+using Celbridge.Navigation;
+using Celbridge.Workspace;
+using Celbridge.Settings;
+using Celbridge.Dialog;
+using Celbridge.Commands;
 using Celbridge.ProjectAdmin.Services;
 using Microsoft.Extensions.Localization;
 

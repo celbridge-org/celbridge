@@ -1,6 +1,5 @@
-﻿using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Utilities;
+﻿using Celbridge.Projects;
+using Celbridge.Resources;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.ProjectAdmin.Services;

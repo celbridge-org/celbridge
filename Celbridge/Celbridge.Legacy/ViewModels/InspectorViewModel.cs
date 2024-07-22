@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using Celbridge.Messaging;
 using Microsoft.Scripting.Utils;
 using System.ComponentModel;
 using Path = System.IO.Path;
@@ -103,7 +102,7 @@ public partial class InspectorViewModel : ObservableObject
         {
             if (SelectedEntity is Project)
             {
-                TypeName = nameof(Project);
+                TypeName = nameof(Projects);
                 TypeIcon = "PreviewLink";
             }
             else if (SelectedEntity is Resource)
