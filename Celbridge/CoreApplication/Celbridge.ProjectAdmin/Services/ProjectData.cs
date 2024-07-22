@@ -14,8 +14,9 @@ public class ProjectData : IDisposable, IProjectData
     public string ProjectFilePath { get; init; }
     public string ProjectFolderPath { get; init; }
     public string DatabasePath { get; init; }
+    public string LogFolderPath { get; init; }
 
-    private ProjectData(string projectFilePath, string databasePath)
+    private ProjectData(string projectFilePath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
@@ -28,6 +29,7 @@ public class ProjectData : IDisposable, IProjectData
 
         ProjectFilePath = projectFilePath;
         DatabasePath = databasePath;
+        LogFolderPath = logFolderPath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
     }
@@ -58,22 +60,23 @@ public class ProjectData : IDisposable, IProjectData
         return Result.Ok();
     }
 
-    public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath)
+    public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
+        Guard.IsNotNullOrWhiteSpace(logFolderPath);
 
-        var project = new ProjectData(projectPath, databasePath);
+        var project = new ProjectData(projectPath, databasePath, logFolderPath);
         Guard.IsNotNull(project);
 
         return Result<IProjectData>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath)
+    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectData = new ProjectData(projectFilePath, databasePath);
+        var projectData = new ProjectData(projectFilePath, databasePath, logFolderPath);
         Guard.IsNotNull(projectData);
 
         var dataVersion = new ProjectDataVersion 
