@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Project;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// The project service provides functionality to support the project panel in the workspace UI.

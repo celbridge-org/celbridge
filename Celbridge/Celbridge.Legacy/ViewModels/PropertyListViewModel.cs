@@ -1,8 +1,7 @@
-using Celbridge.BaseLibrary.Messaging;
+using Celbridge.Messaging;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
-using System.Runtime.Serialization;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Legacy.ViewModels;

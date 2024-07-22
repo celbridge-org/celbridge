@@ -1,12 +1,11 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Clipboard;
+using Celbridge.Commands;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
-namespace Celbridge.Project.ViewModels;
+namespace Celbridge.Projects.ViewModels;
 
 public partial class ResourceTreeViewModel : ObservableObject
 {

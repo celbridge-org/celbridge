@@ -1,4 +1,4 @@
-﻿using Celbridge.BaseLibrary.Validators;
+﻿using Celbridge.Validators;
 using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;

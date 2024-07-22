@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Resources;
+﻿using Celbridge.Resources;
 
-namespace Celbridge.BaseLibrary.Clipboard;
+namespace Celbridge.Clipboard;
 
 public interface IClipboardService
 {

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Project;
+﻿namespace Celbridge.Projects;
 
 /// <summary>
 /// Manages all project data for a Celbridge project.

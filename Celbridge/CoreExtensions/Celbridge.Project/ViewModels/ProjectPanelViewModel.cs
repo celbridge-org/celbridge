@@ -1,8 +1,7 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Project;
+﻿using Celbridge.Commands;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Celbridge.Project.ViewModels;
+namespace Celbridge.Projects.ViewModels;
 
 public partial class ProjectPanelViewModel : ObservableObject
 {

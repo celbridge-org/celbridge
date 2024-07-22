@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Messaging;
-using Celbridge.Messaging.Services;
+﻿using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Messaging;

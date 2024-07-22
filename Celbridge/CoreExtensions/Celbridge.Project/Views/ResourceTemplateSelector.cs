@@ -1,6 +1,6 @@
-﻿using Celbridge.Project.Models;
+﻿using Celbridge.Projects.Models;
 
-namespace Celbridge.Project.Views;
+namespace Celbridge.Projects.Views;
 
 public class ResourceTemplateSelector : DataTemplateSelector
 {

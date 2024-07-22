@@ -1,4 +1,4 @@
-﻿namespace Celbridge.BaseLibrary.Messaging;
+﻿namespace Celbridge.Messaging;
 
 /// <summary>
 /// Delegate signature for a message handler.

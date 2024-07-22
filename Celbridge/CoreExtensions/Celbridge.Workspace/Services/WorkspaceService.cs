@@ -1,10 +1,9 @@
-﻿using Celbridge.BaseLibrary.Clipboard;
-using Celbridge.BaseLibrary.Console;
-using Celbridge.BaseLibrary.Documents;
-using Celbridge.BaseLibrary.Inspector;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Status;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Clipboard;
+using Celbridge.Console;
+using Celbridge.Documents;
+using Celbridge.Inspector;
+using Celbridge.Projects;
+using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 

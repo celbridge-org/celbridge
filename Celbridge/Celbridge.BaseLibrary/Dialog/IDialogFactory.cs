@@ -1,6 +1,6 @@
-﻿using Celbridge.BaseLibrary.Validators;
+﻿using Celbridge.Validators;
 
-namespace Celbridge.BaseLibrary.Dialog;
+namespace Celbridge.Dialog;
 
 /// <summary>
 /// Provides factory methods for creating various types of modal dialogs.

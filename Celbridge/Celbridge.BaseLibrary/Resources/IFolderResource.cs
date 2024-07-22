@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace Celbridge.BaseLibrary.Resources;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// A folder resource in the project folder.

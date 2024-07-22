@@ -1,15 +1,14 @@
-﻿using Celbridge.BaseLibrary.Commands;
-using Celbridge.BaseLibrary.Dialog;
-using Celbridge.BaseLibrary.Project;
-using Celbridge.BaseLibrary.Resources;
-using Celbridge.BaseLibrary.Utilities;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Commands;
+using Celbridge.Dialog;
+using Celbridge.Resources;
+using Celbridge.Utilities;
+using Celbridge.Workspace;
 using Celbridge.Utilities.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using System.IO.Compression;
 
-namespace Celbridge.Project.Commands
+namespace Celbridge.Projects.Commands
 {
     public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     {

@@ -1,5 +1,4 @@
-﻿using Celbridge.BaseLibrary.Logging;
-using Celbridge.BaseLibrary.Workspace;
+﻿using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 

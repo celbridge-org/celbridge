@@ -1,5 +1,4 @@
 ﻿using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Input;
 
 namespace Celbridge.Legacy.Views;
 
