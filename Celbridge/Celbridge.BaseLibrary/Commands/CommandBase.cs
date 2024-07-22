@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Commands;
+﻿using Celbridge.Utilities;
+
+namespace Celbridge.Commands;
 
 /// <summary>
 /// Base class for commands that can be executed via the command service.
@@ -8,7 +10,7 @@ public abstract class CommandBase : IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    public CommandId CommandId { get; } = CommandId.Create();
+    public EntityId CommandId { get; } = EntityId.Create();
 
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.
