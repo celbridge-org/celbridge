@@ -8,12 +8,15 @@ namespace Celbridge.Commands.Services;
 
 public class CommandLogger : ICommandLogger, IDisposable
 {
-    private record CommandLogItem(string CommandName, float ElapsedTime, CommandExecutionMode ExecutionMode, IExecutableCommand Command);
+    private const string LogFilePrefix = "CommandLog";
+
+    private record CommandItem(string CommandName, float ElapsedTime, CommandExecutionMode ExecutionMode, IExecutableCommand Command);
 
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utilityService;
 
-    private readonly JsonSerializerSettings _jsonSerializerSettings;
+    private readonly JsonSerializerSettings _unfilteredSettings;
+    private readonly JsonSerializerSettings _filteredSettings;
 
     private StreamWriter? _writer;
 
@@ -24,22 +27,32 @@ public class CommandLogger : ICommandLogger, IDisposable
         _messengerService = messengerService;
         _utilityService = utilityService;
 
-        var ignoreProperties = new string[] { };
-        var resolver = new CommandSerializerContractResolver(ignoreProperties);
-        _jsonSerializerSettings = new JsonSerializerSettings
+        _unfilteredSettings = CreateJsonSettings(false);
+        _filteredSettings = CreateJsonSettings(true);
+    }
+
+    private JsonSerializerSettings CreateJsonSettings(bool filterCommandProperties)
+    {
+        var settings = new JsonSerializerSettings
         {
-            ContractResolver = resolver,
+            ContractResolver = new CommandSerializerContractResolver(filterCommandProperties),
             Formatting = Formatting.None
         };
 
-        _jsonSerializerSettings.Converters.Add(new StringEnumConverter());
-        _jsonSerializerSettings.Converters.Add(new EntityIdConverter());
-        _jsonSerializerSettings.Converters.Add(new ResourceKeyConverter());
+        settings.Converters.Add(new StringEnumConverter());
+        settings.Converters.Add(new EntityIdConverter());
+        settings.Converters.Add(new ResourceKeyConverter());
+
+        return settings;
     }
 
-    public Result StartLogging(string logFilePath, string logFilePrefix, int maxFilesToKeep)
+    public Result Start(string logFolderPath, int maxFilesToKeep)
     {
-        var logFolderPath = Path.GetDirectoryName(logFilePath)!;
+        var timestamp = _utilityService.GetTimestamp();
+        string logFilePrefix = LogFilePrefix;
+        string logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
+        string logFilePath = Path.Combine(logFolderPath, logFilename);
+
         if (!Directory.Exists(logFolderPath))
         {
             Directory.CreateDirectory(logFolderPath);
@@ -61,7 +74,7 @@ public class CommandLogger : ICommandLogger, IDisposable
         // Write environment info as the first record in the log
 
         var environmentInfo = _utilityService.GetEnvironmentInfo();
-        string logEntry = JsonConvert.SerializeObject(environmentInfo, _jsonSerializerSettings);
+        string logEntry = JsonConvert.SerializeObject(environmentInfo, _unfilteredSettings);
         _writer.WriteLine(logEntry);
 
         // Start listening for executing commands
@@ -74,11 +87,13 @@ public class CommandLogger : ICommandLogger, IDisposable
     {
         var command = message.Command;
 
-        var commandLogItem = new CommandLogItem(command.GetType().Name, message.ElapsedTime, message.ExecutionMode, command);
-        string logEntry = JsonConvert.SerializeObject(commandLogItem, _jsonSerializerSettings);
+        var commandLogItem = new CommandItem(command.GetType().Name, message.ElapsedTime, message.ExecutionMode, command);
+
+        string unfiltered = JsonConvert.SerializeObject(commandLogItem, _unfilteredSettings);
+        string filtered = JsonConvert.SerializeObject(commandLogItem, _filteredSettings);
 
         Guard.IsNotNull(_writer);
-        _writer.WriteLineAsync(logEntry);
+        _writer.WriteLineAsync(unfiltered);
     }
 
     private bool _disposed;
