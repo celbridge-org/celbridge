@@ -24,6 +24,11 @@ public interface IExecutableCommand
     string UndoStackName { get; }
 
     /// <summary>
+    /// Describes where in the source code the command was first executed.
+    /// </summary>
+    string ExecutionSource { get; set; }
+
+    /// <summary>
     /// Execute the command.
     /// </summary>
     Task<Result> ExecuteAsync();
