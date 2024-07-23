@@ -24,6 +24,11 @@ public abstract class CommandBase : IExecutableCommand
     public virtual string UndoStackName => UndoStackNames.None;
 
     /// <summary>
+    /// Describes where in the source code the command was first executed.
+    /// </summary>
+    public string ExecutionSource { get; set; } = string.Empty;
+
+    /// <summary>
     /// Execute the command.
     /// </summary>
     public abstract Task<Result> ExecuteAsync();

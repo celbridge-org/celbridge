@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Commands;
+﻿using System.Runtime.CompilerServices;
+
+namespace Celbridge.Commands;
 
 /// <summary>
 /// An asynchronous command queue service with undo/redo support.
@@ -8,26 +10,46 @@ public interface ICommandService
     /// <summary>
     /// Create, configure and enqueue a command in one step.
     /// </summary>
-    Result Execute<T>(Action<T> configure) where T : IExecutableCommand;
+    Result Execute<T>
+    (
+        Action<T> configure, 
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
 
     /// <summary>
     /// Create, configure and enqueue a command in one step, with a delay.
     /// The delay is the minimum time (in milliseconds) before the command will execute. 
     /// </summary>
-    Result Execute<T>(Action<T> configure, uint delay) where T : IExecutableCommand;
+    Result Execute<T>
+    (
+        Action<T> configure, 
+        uint delay,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
 
     /// <summary>
     /// Create and enqueue a command in one step.
     /// Use this for commands that don't need to be configured.
     /// </summary>
-    Result Execute<T>() where T : IExecutableCommand;
+    Result Execute<T>
+    (
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
 
     /// <summary>
     /// Create and enqueue a command in one step, with a delay.
     /// Use this for commands that don't need to be configured.
     /// The delay is the minimum time (in milliseconds) before the command will execute. 
     /// </summary>
-    Result Execute<T>(uint delay) where T : IExecutableCommand;
+    Result Execute<T>
+    (
+        uint delay,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
 
     /// <summary>
     /// Create a new command via the dependency injection system.

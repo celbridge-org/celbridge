@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Celbridge.Commands.Services;
 
@@ -30,26 +31,53 @@ public class CommandService : ICommandService
         _loggingService = loggingService;
     }
 
-    public Result Execute<T>(Action<T> configure) where T : IExecutableCommand
-    {
-        return Execute(configure, 0);
-    }
-
-    public Result Execute<T>(Action<T> configure, uint delay) where T : IExecutableCommand
+    public Result Execute<T>
+    (
+        Action<T> configure,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
+        configure.Invoke(command);
+        return EnqueueCommand(command, 0);
+    }
+
+    public Result Execute<T>
+    (
+        Action<T> configure,
+        uint delay,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand
+    {
+        var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
         configure.Invoke(command);
         return EnqueueCommand(command, delay);
     }
 
-    public Result Execute<T>() where T : IExecutableCommand
-    {
-        return Execute<T>(0);
-    }
-
-    public Result Execute<T>(uint delay) where T : IExecutableCommand
+    public Result Execute<T>
+    (
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
+        return EnqueueCommand(command, 0);
+    }
+
+    public Result Execute<T>
+    (
+        uint delay,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand
+    {
+        var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
         return EnqueueCommand(command, delay);
     }
 
