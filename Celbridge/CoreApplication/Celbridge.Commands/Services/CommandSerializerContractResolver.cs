@@ -6,11 +6,11 @@ namespace Celbridge.Commands.Services;
 
 public class CommandSerializerContractResolver : DefaultContractResolver
 {
-    private readonly HashSet<string> _propertiesToIgnore;
+    private bool _filterCommandProperties;
 
-    public CommandSerializerContractResolver(IEnumerable<string> propertiesToIgnore)
+    public CommandSerializerContractResolver(bool filterCommandProperties)
     {
-        _propertiesToIgnore = new HashSet<string>(propertiesToIgnore);
+        _filterCommandProperties = filterCommandProperties;
     }
 
     protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
@@ -26,9 +26,31 @@ public class CommandSerializerContractResolver : DefaultContractResolver
     {
         var property = base.CreateProperty(member, memberSerialization);
 
-        if (_propertiesToIgnore.Contains(property.PropertyName!))
+        if (_filterCommandProperties)
         {
-            property.ShouldSerialize = instance => false;
+            // Filter command properties to avoid serializing sensitive information
+            bool shouldSerialize = true;
+            var declaringType = member.DeclaringType;
+            if (declaringType is not null &&
+                declaringType.IsAssignableTo(typeof(IExecutableCommand)))
+            {
+                switch (property.PropertyName)
+                {
+                    case nameof(IExecutableCommand.CommandId):
+                    case nameof(IExecutableCommand.UndoGroupId):
+                    case nameof(IExecutableCommand.UndoStackName):
+                    case nameof(IExecutableCommand.ExecutionSource):
+                        shouldSerialize = true;
+                        break;
+                    default:
+                        shouldSerialize = false;
+                        break;
+                }
+            }
+            if (!shouldSerialize)
+            {
+                property.ShouldSerialize = instance => false;
+            }
         }
 
         return property;
