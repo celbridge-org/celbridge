@@ -102,7 +102,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             bool isExpandedFolder = isFolderResource &&
                 resourceRegistry.IsFolderExpanded(Resource);
 
-            // Execute a command to move the folder resource to perform the rename
+            // Execute a command to move the resource to perform the rename
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
                 command.SourceResource = Resource;
