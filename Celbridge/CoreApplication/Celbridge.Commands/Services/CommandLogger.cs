@@ -1,45 +1,36 @@
 ﻿using Celbridge.Messaging;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Celbridge.Commands.Services;
 
 public class CommandLogger : ICommandLogger, IDisposable
 {
-    private record CommandLogItem(string CommandName, float ElapsedTime, CommandExecutionMode ExecutionMode, IExecutableCommand Command);
+    private const string LogFilePrefix = "CommandLog";
 
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utilityService;
-
-    private readonly JsonSerializerSettings _jsonSerializerSettings;
+    private readonly ICommandLogSerializer _commandLogSerializer;
 
     private StreamWriter? _writer;
 
     public CommandLogger(
         IMessengerService messengerService,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        ICommandLogSerializer commandLogSerializer)
     {
         _messengerService = messengerService;
         _utilityService = utilityService;
-
-        var ignoreProperties = new string[] { };
-        var resolver = new CommandSerializerContractResolver(ignoreProperties);
-        _jsonSerializerSettings = new JsonSerializerSettings
-        {
-            ContractResolver = resolver,
-            Formatting = Formatting.None
-        };
-
-        _jsonSerializerSettings.Converters.Add(new StringEnumConverter());
-        _jsonSerializerSettings.Converters.Add(new EntityIdConverter());
-        _jsonSerializerSettings.Converters.Add(new ResourceKeyConverter());
+        _commandLogSerializer = commandLogSerializer;
     }
 
-    public Result StartLogging(string logFilePath, string logFilePrefix, int maxFilesToKeep)
+    public Result Start(string logFolderPath, int maxFilesToKeep)
     {
-        var logFolderPath = Path.GetDirectoryName(logFilePath)!;
+        var timestamp = _utilityService.GetTimestamp();
+        string logFilePrefix = LogFilePrefix;
+        string logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
+        string logFilePath = Path.Combine(logFolderPath, logFilename);
+
         if (!Directory.Exists(logFolderPath))
         {
             Directory.CreateDirectory(logFolderPath);
@@ -61,10 +52,10 @@ public class CommandLogger : ICommandLogger, IDisposable
         // Write environment info as the first record in the log
 
         var environmentInfo = _utilityService.GetEnvironmentInfo();
-        string logEntry = JsonConvert.SerializeObject(environmentInfo, _jsonSerializerSettings);
+        string logEntry = _commandLogSerializer.SerializeObject(environmentInfo, false);
         _writer.WriteLine(logEntry);
 
-        // Start listening for executing commands
+        // Start listening for executed commands
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
 
         return Result.Ok();
@@ -72,13 +63,10 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
     {
-        var command = message.Command;
-
-        var commandLogItem = new CommandLogItem(command.GetType().Name, message.ElapsedTime, message.ExecutionMode, command);
-        string logEntry = JsonConvert.SerializeObject(commandLogItem, _jsonSerializerSettings);
+        string serialized = _commandLogSerializer.SerializeObject(message, false);
 
         Guard.IsNotNull(_writer);
-        _writer.WriteLineAsync(logEntry);
+        _writer.WriteLineAsync(serialized);
     }
 
     private bool _disposed;
