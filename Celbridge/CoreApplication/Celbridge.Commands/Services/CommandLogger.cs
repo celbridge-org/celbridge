@@ -52,7 +52,7 @@ public class CommandLogger : ICommandLogger, IDisposable
         // Write environment info as the first record in the log
 
         var environmentInfo = _utilityService.GetEnvironmentInfo();
-        string logEntry = _commandLogSerializer.SerializeObject(environmentInfo);
+        string logEntry = _commandLogSerializer.SerializeObject(environmentInfo, false);
         _writer.WriteLine(logEntry);
 
         // Start listening for executed commands
@@ -63,7 +63,7 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
     {
-        string serialized = _commandLogSerializer.SerializeExecutedCommand(message);
+        string serialized = _commandLogSerializer.SerializeObject(message, false);
 
         Guard.IsNotNull(_writer);
         _writer.WriteLineAsync(serialized);
