@@ -16,8 +16,9 @@ public class CommandSerializerContractResolver : DefaultContractResolver
     {
         var property = base.CreateProperty(member, memberSerialization);
 
-        // Filter command properties to remove CommandBase properties.
-        // This reduces clutter when inspecting the log.
+        // Do not serialize the CommandBase properties for IExecutableCommand.
+        // The ExecutedCommandJsonConverter appends these properties so that they appear after the main command
+        // properties in the serialized string.
         bool shouldSerialize = true;
         var declaringType = member.DeclaringType;
         if (declaringType is not null &&
