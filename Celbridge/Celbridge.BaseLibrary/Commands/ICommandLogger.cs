@@ -8,5 +8,5 @@ public interface ICommandLogger
     /// <summary>
     /// Starts logging command executions to a log file.
     /// </summary>
-    Result Start(string logFolderPath, int maxFilesToKeep);
+    Result Initialize(string logFolderPath, int maxFilesToKeep);
 }

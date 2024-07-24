@@ -23,7 +23,7 @@ public class CommandLogger : ICommandLogger, IDisposable
         _serializer = commandLogSerializer;
     }
 
-    public Result Start(string logFolderPath, int maxFilesToKeep)
+    public Result Initialize(string logFolderPath, int maxFilesToKeep)
     {
         // Aqcuire the log folder
         if (Directory.Exists(logFolderPath))
