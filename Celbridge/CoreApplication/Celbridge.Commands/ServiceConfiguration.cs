@@ -7,6 +7,8 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ICommandService, CommandService>();
+
         services.AddTransient<ICommandLogger, CommandLogger>();
+        services.AddTransient<ICommandLogSerializer, CommandLogSerializer>();
     }
 }
