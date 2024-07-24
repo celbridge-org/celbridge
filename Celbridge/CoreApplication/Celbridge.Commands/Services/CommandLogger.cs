@@ -1,8 +1,6 @@
 ﻿using Celbridge.Messaging;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Celbridge.Commands.Services;
 
@@ -10,40 +8,20 @@ public class CommandLogger : ICommandLogger, IDisposable
 {
     private const string LogFilePrefix = "CommandLog";
 
-    private record CommandItem(string CommandName, float ElapsedTime, CommandExecutionMode ExecutionMode, IExecutableCommand Command);
-
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utilityService;
-
-    private readonly JsonSerializerSettings _unfilteredSettings;
-    private readonly JsonSerializerSettings _filteredSettings;
+    private readonly ICommandLogSerializer _commandLogSerializer;
 
     private StreamWriter? _writer;
 
     public CommandLogger(
         IMessengerService messengerService,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        ICommandLogSerializer commandLogSerializer)
     {
         _messengerService = messengerService;
         _utilityService = utilityService;
-
-        _unfilteredSettings = CreateJsonSettings(false);
-        _filteredSettings = CreateJsonSettings(true);
-    }
-
-    private JsonSerializerSettings CreateJsonSettings(bool filterCommandProperties)
-    {
-        var settings = new JsonSerializerSettings
-        {
-            ContractResolver = new CommandSerializerContractResolver(filterCommandProperties),
-            Formatting = Formatting.None
-        };
-
-        settings.Converters.Add(new StringEnumConverter());
-        settings.Converters.Add(new EntityIdConverter());
-        settings.Converters.Add(new ResourceKeyConverter());
-
-        return settings;
+        _commandLogSerializer = commandLogSerializer;
     }
 
     public Result Start(string logFolderPath, int maxFilesToKeep)
@@ -74,10 +52,10 @@ public class CommandLogger : ICommandLogger, IDisposable
         // Write environment info as the first record in the log
 
         var environmentInfo = _utilityService.GetEnvironmentInfo();
-        string logEntry = JsonConvert.SerializeObject(environmentInfo, _unfilteredSettings);
+        string logEntry = _commandLogSerializer.SerializeObject(environmentInfo);
         _writer.WriteLine(logEntry);
 
-        // Start listening for executing commands
+        // Start listening for executed commands
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
 
         return Result.Ok();
@@ -85,15 +63,10 @@ public class CommandLogger : ICommandLogger, IDisposable
 
     private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
     {
-        var command = message.Command;
-
-        var commandLogItem = new CommandItem(command.GetType().Name, message.ElapsedTime, message.ExecutionMode, command);
-
-        string unfiltered = JsonConvert.SerializeObject(commandLogItem, _unfilteredSettings);
-        string filtered = JsonConvert.SerializeObject(commandLogItem, _filteredSettings);
+        string serialized = _commandLogSerializer.SerializeExecutedCommand(message);
 
         Guard.IsNotNull(_writer);
-        _writer.WriteLineAsync(unfiltered);
+        _writer.WriteLineAsync(serialized);
     }
 
     private bool _disposed;
