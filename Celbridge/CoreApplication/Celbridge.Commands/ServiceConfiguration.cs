@@ -1,4 +1,5 @@
-﻿using Celbridge.Commands.Services;
+﻿using Celbridge.Utilities;
+using Celbridge.Commands.Services;
 
 namespace Celbridge.Commands;
 
@@ -8,7 +9,6 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<ICommandService, CommandService>();
 
-        services.AddTransient<ICommandLogger, CommandLogger>();
-        services.AddTransient<ICommandLogSerializer, CommandLogSerializer>();
+        services.AddTransient<IExecutedCommandLogger, ExecutedCommandLogger>();
     }
 }

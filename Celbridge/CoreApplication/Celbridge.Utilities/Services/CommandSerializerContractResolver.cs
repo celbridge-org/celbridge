@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
 using System.Reflection;
+using Celbridge.Commands;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Utilities.Services;
 
 public class CommandSerializerContractResolver : DefaultContractResolver
 {

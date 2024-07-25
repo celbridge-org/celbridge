@@ -1,7 +1,7 @@
 ﻿using Celbridge.Resources;
 using Newtonsoft.Json;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Utilities.Services;
 
 public class ResourceKeyConverter : JsonConverter<ResourceKey>
 {
