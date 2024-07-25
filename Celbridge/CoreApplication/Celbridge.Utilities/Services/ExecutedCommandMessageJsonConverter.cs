@@ -36,12 +36,12 @@ public class ExecutedCommandMessageJsonConverter : JsonConverter<ExecutedCommand
         // Format the elapsed time to 2 decimal places
         var elapsedTime = value.ElapsedTime.ToString("F2");
 
-        outputJO.Add("ExecutionMode", JToken.FromObject(value.ExecutionMode, serializer));
-        outputJO.Add("ElapsedTime", JToken.FromObject(elapsedTime, serializer));
-        outputJO.Add("CommandId", JToken.FromObject(command.CommandId, serializer));
-        outputJO.Add("Source", JToken.FromObject(command.ExecutionSource, serializer));
-        outputJO.Add("UndoStack", JToken.FromObject(command.UndoStackName, serializer));
-        outputJO.Add("UndoGroupId", JToken.FromObject(command.UndoGroupId, serializer));
+        outputJO.Add("_ExecutionMode", JToken.FromObject(value.ExecutionMode, serializer));
+        outputJO.Add("_ElapsedTime", JToken.FromObject(elapsedTime, serializer));
+        outputJO.Add("_Source", JToken.FromObject(command.ExecutionSource, serializer));
+        outputJO.Add("_UndoStack", JToken.FromObject(command.UndoStackName, serializer));
+        outputJO.Add("_CommandId", JToken.FromObject(command.CommandId, serializer));
+        outputJO.Add("_UndoGroupId", JToken.FromObject(command.UndoGroupId, serializer));
 
         outputJO.WriteTo(writer);
     }
