@@ -8,14 +8,20 @@ public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
     private const string LogFilePrefix = "CommandLog";
 
     private readonly IMessengerService _messengerService;
+    private readonly ILogSerializer _serializer;
     private readonly ILogger _logger;
+    private readonly IUtilityService _utilityService;
 
     public ExecutedCommandLogger(
         IMessengerService messengerService,
-        ILogger logger)
+        ILogSerializer logSerializer,
+        ILogger logger,
+        IUtilityService utilityService)
     {
         _messengerService = messengerService;
+        _serializer = logSerializer;
         _logger = logger;
+        _utilityService = utilityService;
     }
 
     public Result Initialize(string logFolderPath, int maxFilesToKeep)
@@ -26,6 +32,14 @@ public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
             return initResult;
         }
 
+        // Write environment info as the first record in the log
+        var environmentInfo = _utilityService.GetEnvironmentInfo();
+        var writeResult = WriteObject(environmentInfo);
+        if (writeResult.IsFailure)
+        {
+            return writeResult;
+        }
+
         // Start listening for executed commands
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
 
@@ -33,7 +47,31 @@ public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
     }
     private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
     {
-        _logger.WriteObject(message);
+        WriteObject(message);
+    }
+
+    public Result WriteObject(object? obj)
+    {
+        if (obj is null)
+        {
+            return Result.Fail($"Object is null");
+        }
+
+        try
+        {
+            string logEntry = _serializer.SerializeObject(obj, false);
+            var writeResult = _logger.WriteLine(logEntry);
+            if (writeResult.IsFailure)
+            {
+                return writeResult;
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to write object to log. {ex}");
+        }
+
+        return Result.Ok();
     }
 
     private bool _disposed;
