@@ -3,10 +3,10 @@
 /// <summary>
 /// Records command executions in a log file.
 /// </summary>
-public interface ICommandLogger
+public interface IExecutedCommandLogger
 {
     /// <summary>
-    /// Starts logging command executions to a log file.
+    /// Create the log file in the specified folder.
     /// </summary>
     Result Initialize(string logFolderPath, int maxFilesToKeep);
 }
