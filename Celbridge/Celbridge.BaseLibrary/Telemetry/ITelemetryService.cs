@@ -7,9 +7,8 @@ public interface ITelemetryService
 {
     /// <summary>
     /// Initializes the telemetry service.
-    /// A log file of all recorded telemetry events is stored in the specified folder.
     /// </summary>
-    Result Initialize(string logFolderPath, int maxFilesToKeep);
+    Result Initialize();
 
     /// <summary>
     /// Records a telemetry event.
