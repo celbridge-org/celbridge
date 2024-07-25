@@ -2,6 +2,7 @@ using Celbridge.Commands.Services;
 using Celbridge.Commands;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
+using Celbridge.Telemetry;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
@@ -63,6 +64,11 @@ public class App : Application
 
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
+
+        // Start the telemetry service
+        // Todo: Don't start this service unless the user has opted-in to telemetry.
+        var telemetryService = Host.Services.GetRequiredService<ITelemetryService>();
+        telemetryService.Initialize();
 
         // Initialize the UI system
         UserInterface.ServiceConfiguration.Initialize();
