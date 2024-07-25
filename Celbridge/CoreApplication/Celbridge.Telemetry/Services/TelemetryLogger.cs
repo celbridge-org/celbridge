@@ -40,28 +40,28 @@ public class TelemetryLogger
         return Result.Ok();
     }
 
-    public Result WriteObject(object? obj)
+    public Result<string> WriteObject(object? obj)
     {
         if (obj is null)
         {
-            return Result.Fail($"Object is null");
+            return Result<string>.Fail($"Object is null");
         }
 
         try
         {
             // Strip out command properties for telemetry
-            string logEntry = _serializer.SerializeObject(obj, true);
-            var writeResult = _logger.WriteLine(logEntry);
+            string json = _serializer.SerializeObject(obj, true);
+            var writeResult = _logger.WriteLine(json);
             if (writeResult.IsFailure)
             {
-                return writeResult;
+                return Result<string>.Fail(writeResult.Error);
             }
+
+            return Result<string>.Ok(json);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to write object to log. {ex}");
+            return Result<string>.Fail($"Failed to write object to log. {ex}");
         }
-
-        return Result.Ok();
     }
 }
