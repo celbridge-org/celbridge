@@ -1,14 +1,15 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using Celbridge.Commands;
+using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Utilities.Services;
 
-public class ExecutedCommandJsonConverter : JsonConverter<ExecutedCommandMessage>
+public class ExecutedCommandMessageJsonConverter : JsonConverter<ExecutedCommandMessage>
 {
     public bool _ignoreCommandProperties { get; set; } = false;
 
-    public ExecutedCommandJsonConverter(bool ignoreCommandProperties)
+    public ExecutedCommandMessageJsonConverter(bool ignoreCommandProperties)
     {
         _ignoreCommandProperties = ignoreCommandProperties;
     }
