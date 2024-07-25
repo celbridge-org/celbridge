@@ -1,59 +1,46 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Core;
 using Celbridge.Messaging;
+using Celbridge.Utilities;
+using CommunityToolkit.Diagnostics;
 using CountlySDK.Entities;
 using CountlySDK;
-using Windows.Storage;
-using Celbridge.Utilities;
+using Newtonsoft.Json;
+using System.Text.Json.Nodes;
 
 namespace Celbridge.Telemetry.Services;
 
 public class TelemetryService : ITelemetryService
 {
-    private const string LogFolderName = "Logs";
-    private const int MaxFilesToKeep = 0; // Todo: Make this configurable via settings
-
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utiltyService;
-    private readonly TelemetryLogger _telemetryLogger;
 
     public TelemetryService(
         IMessengerService messengerService,
-        IUtilityService utilityService,
-        TelemetryLogger telemetryLogger)
+        IUtilityService utilityService)
     {
         _messengerService = messengerService;
         _utiltyService = utilityService;
-        _telemetryLogger = telemetryLogger;
     }
 
     public Result Initialize()
     {
         try
         {
-            string logFolderPath;
-            StorageFolder folder = ApplicationData.Current.LocalFolder;
-            logFolderPath = Path.Combine(folder.Path, LogFolderName);
-            Directory.CreateDirectory(logFolderPath);
-
-            var initResult = _telemetryLogger.Initialize(logFolderPath, MaxFilesToKeep);
-            if (initResult.IsFailure)
-            {
-                return initResult;
-            }
-
             _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
 
             //create the Countly init object
             CountlyConfig cc = new CountlyConfig();
             cc.serverUrl = "https://celbridge-9d9f1a60360c3.flex.countly.com";
+
+            // Todo: Inject this key as part of build process instead of hard coding it
             cc.appKey = "8b89bef9c197b87ad2b130f6bcee3512910a987e";
             cc.appVersion = _utiltyService.GetEnvironmentInfo().AppVersion;
 
             Countly.IsLoggingEnabled = true;
             Countly.Instance.Init(cc);
 
-            Countly.Instance.SessionBegin();
+
         }
         catch (Exception ex )
         {
@@ -63,22 +50,42 @@ public class TelemetryService : ITelemetryService
         return Result.Ok();
     }
 
-
     public Result RecordEvent(object? eventObject)
     {
-        async Task RecordEventAsync()
+        if (eventObject is null)
         {
-            var eventName = eventObject!.GetType().Name;
-            var result = await Countly.RecordEvent(eventName, 3);
+            return Result.Ok();
         }
 
-        _ = RecordEventAsync();
+        var eventName = eventObject.GetType().Name;
+        var eventJson = JsonConvert.SerializeObject(eventObject);
 
-        return _telemetryLogger.WriteObject(eventObject);
+        _ = SendTelemetryEventAsync(eventName, eventJson);
+
+        return Result.Ok();
+    }
+
+    private async Task SendTelemetryEventAsync(string eventName, string eventJson)
+    {
+        var jo = JsonObject.Parse(eventJson) as JsonObject;
+        Guard.IsNotNull(jo);
+
+        var segmentation = new Segmentation();
+        foreach (var kv in jo)
+        {
+            var value = kv.Value is null ? string.Empty : kv.Value.ToString();
+            segmentation.Add(kv.Key, value);
+        }
+
+        await Countly.RecordEvent(eventName, 1, segmentation);
     }
 
     private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
     {
-        RecordEvent(message);
+        var segmentation = new Segmentation();
+        segmentation.Add("CommandName", message.Command.GetType().Name);
+        segmentation.Add("ExecutionMode", message.ExecutionMode.ToString());
+
+        Countly.RecordEvent("ExecutedCommand", 1, segmentation);
     }
 }
