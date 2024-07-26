@@ -95,8 +95,8 @@ public class ProjectDataService : IProjectDataService
             var projectFolderPath = Path.GetDirectoryName(projectPath)!; 
 
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
-            string projectDataPath = Path.Combine(projectFolderPath, projectDataPathRelative);
-            string logFolderPath = Path.Combine(projectFolderPath, DefaultLogFolder);
+            string projectDataPath = Path.GetFullPath(Path.Combine(projectFolderPath, projectDataPathRelative));
+            string logFolderPath = Path.GetFullPath(Path.Combine(projectFolderPath, DefaultLogFolder));
 
             var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath, logFolderPath);
             if (loadResult.IsFailure)

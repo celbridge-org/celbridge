@@ -1,4 +1,5 @@
 ﻿using Celbridge.Messaging.Services;
+using Celbridge.Utilities.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Utilities;
@@ -11,5 +12,8 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddSingleton<IUtilityService, UtilityService>();
+
+        services.AddTransient<ILogSerializer, LogSerializer>();
+        services.AddTransient<ILogger, Logger>();
     }
 }

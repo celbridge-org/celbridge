@@ -24,7 +24,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IStatusService StatusService { get; }
     public IClipboardService ClipboardService { get; }
 
-    private ICommandLogger _commandLogger;
+    private IExecutedCommandLogger _commandLogger;
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
@@ -50,10 +50,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
 
-        // Log executing commands
+        // Log executed commands
         string logFolderPath = projectData.LogFolderPath;
-        _commandLogger = serviceProvider.GetRequiredService<ICommandLogger>();
-        _commandLogger.Start(logFolderPath, 0);
+        _commandLogger = serviceProvider.GetRequiredService<IExecutedCommandLogger>();
+        _commandLogger.Initialize(logFolderPath, 0);
     }
 
     private bool _disposed;

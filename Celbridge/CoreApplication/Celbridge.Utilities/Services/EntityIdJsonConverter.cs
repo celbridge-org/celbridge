@@ -1,7 +1,7 @@
 ﻿using Celbridge.Utilities;
 using Newtonsoft.Json;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Utilities.Services;
 
 public class EntityIdConverter : JsonConverter<EntityId>
 {

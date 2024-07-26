@@ -14,5 +14,6 @@ public static class ServiceConfiguration
         Settings.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
+        Telemetry.ServiceConfiguration.ConfigureServices(services);
     }
 }

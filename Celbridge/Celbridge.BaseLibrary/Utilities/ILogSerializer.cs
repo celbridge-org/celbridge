@@ -1,9 +1,9 @@
-﻿namespace Celbridge.Commands;
+﻿namespace Celbridge.Utilities;
 
 /// <summary>
-/// Provides serialization support for the command log.
+/// Provides serialization support for logging.
 /// </summary>
-public interface ICommandLogSerializer
+public interface ILogSerializer
 {
     /// <summary>
     /// Serializes an object to a json string.
