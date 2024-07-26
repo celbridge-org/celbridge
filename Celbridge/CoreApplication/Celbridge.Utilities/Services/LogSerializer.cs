@@ -1,14 +1,14 @@
 ﻿using Newtonsoft.Json.Converters;
 using Newtonsoft.Json;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Utilities.Services;
 
-public class CommandLogSerializer : ICommandLogSerializer
+public class LogSerializer : ILogSerializer
 {
     private readonly JsonSerializerSettings _jsonSettingsWithProperties;
     private readonly JsonSerializerSettings _jsonSettingsNoProperties;
 
-    public CommandLogSerializer()
+    public LogSerializer()
     {
         _jsonSettingsWithProperties = CreateJsonSettings(false);
         _jsonSettingsNoProperties = CreateJsonSettings(true);
@@ -30,7 +30,7 @@ public class CommandLogSerializer : ICommandLogSerializer
             Formatting = Formatting.None
         };
 
-        settings.Converters.Add(new ExecutedCommandJsonConverter(ignoreCommandProperties));
+        settings.Converters.Add(new ExecutedCommandMessageJsonConverter(ignoreCommandProperties));
         settings.Converters.Add(new StringEnumConverter());
         settings.Converters.Add(new EntityIdConverter());
         settings.Converters.Add(new ResourceKeyConverter());
