@@ -52,7 +52,7 @@ public class Logger : ILogger
             using (var fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write))
             using (var writer = new StreamWriter(fileStream))
             {
-                // Write the log message with a newline character
+                // Write the log message with a newline
                 writer.WriteLine(line);
             }
 
