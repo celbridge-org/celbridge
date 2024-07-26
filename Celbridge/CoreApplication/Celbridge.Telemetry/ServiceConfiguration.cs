@@ -12,8 +12,5 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ITelemetryService, TelemetryService>();
-
-        // TelemetryLogger uses DI to acquire dependencies, but it's not exposed publicly so doesn't require an interface
-        services.AddTransient<TelemetryLogger>();
     }
 }
