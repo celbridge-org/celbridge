@@ -65,7 +65,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Messaging", "Core
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.CoreServices", "CoreApplication\Celbridge.CoreServices\Celbridge.CoreServices.csproj", "{AE1F5537-7197-427E-A1B5-D4118AF405E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Utilities", "CoreApplication\Celbridge.Utilities\Celbridge.Utilities.csproj", "{CE2B98F9-297A-47BC-92F0-C79C0B8988D3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Utilities", "CoreApplication\Celbridge.Utilities\Celbridge.Utilities.csproj", "{CE2B98F9-297A-47BC-92F0-C79C0B8988D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Telemetry", "CoreApplication\Celbridge.Telemetry\Celbridge.Telemetry.csproj", "{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -471,6 +473,22 @@ Global
 		{CE2B98F9-297A-47BC-92F0-C79C0B8988D3}.Release|x64.Build.0 = Release|Any CPU
 		{CE2B98F9-297A-47BC-92F0-C79C0B8988D3}.Release|x86.ActiveCfg = Release|Any CPU
 		{CE2B98F9-297A-47BC-92F0-C79C0B8988D3}.Release|x86.Build.0 = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|arm64.Build.0 = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|x64.Build.0 = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Debug|x86.Build.0 = Debug|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|arm64.ActiveCfg = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|arm64.Build.0 = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|x64.ActiveCfg = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|x64.Build.0 = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|x86.ActiveCfg = Release|Any CPU
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -496,6 +514,7 @@ Global
 		{A4E31848-397A-4FCA-926B-E3B6351A3172} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 		{AE1F5537-7197-427E-A1B5-D4118AF405E3} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 		{CE2B98F9-297A-47BC-92F0-C79C0B8988D3} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
+		{A2274A1A-DEDB-4206-8A9D-B17F0B011FF8} = {6BAC4D60-183D-4001-899E-E49BFC9C19DC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BC2D9CCD-052A-4E02-847C-B67BCD8A4F62}
