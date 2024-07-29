@@ -4,6 +4,7 @@ using Celbridge.Projects.Commands;
 using Celbridge.Projects.Services;
 using Celbridge.Projects.ViewModels;
 using Celbridge.Projects.Views;
+using Celbridge.Resources;
 
 namespace Celbridge.Projects;
 
@@ -26,6 +27,7 @@ public class Extension : IExtension
         // Register services
         //
         config.AddTransient<IProjectService, ProjectService>();
+        config.AddTransient<IResourceRegistry, ResourceRegistry>();
 
         //
         // Register commands

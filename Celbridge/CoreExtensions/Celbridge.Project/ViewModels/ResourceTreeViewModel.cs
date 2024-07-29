@@ -3,7 +3,6 @@ using Celbridge.Commands;
 using Celbridge.Resources;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
 
 namespace Celbridge.Projects.ViewModels;
 
@@ -14,7 +13,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IClipboardService _clipboardService;
     private readonly ICommandService _commandService;
 
-    public ObservableCollection<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
+    public IList<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
 
     private bool _resourceTreeUpdatePending;
 
@@ -36,18 +35,18 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void OnLoaded()
     {
         // Listen for messages to determine when to update the resource tree
-        _messengerService.Register<RequestResourceTreeUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
+        _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
         _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
     }
 
     public void OnUnloaded()
     {
         // Listen for messages to determine when to update the resource tree
-        _messengerService.Unregister<RequestResourceTreeUpdateMessage>(this);
+        _messengerService.Unregister<RequestResourceRegistryUpdateMessage>(this);
         _messengerService.Unregister<ExecutedCommandMessage>(this);
     }
 
-    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceTreeUpdateMessage message)
+    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
         // Set a flag to update the resource tree
         _resourceTreeUpdatePending = true;
@@ -116,13 +115,17 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _projectService.ResourceRegistry;
         var folderResource = resourceRegistry.GetResourceKey(folder);
 
-        bool currentState = resourceRegistry.IsFolderExpanded(folderResource);
-        if (currentState == isExpanded)
+        bool currentRegistryState = resourceRegistry.IsFolderExpanded(folderResource);
+        bool curentFolderState = folder.IsExpanded;
+
+        if (currentRegistryState == isExpanded &&
+            curentFolderState == isExpanded)
         {
             return;
         }
 
         resourceRegistry.SetFolderIsExpanded(folderResource, isExpanded);
+        folder.IsExpanded = isExpanded;
 
         // Save the workspace data (with a delay) to ensure the new expanded state is persisted
         _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
