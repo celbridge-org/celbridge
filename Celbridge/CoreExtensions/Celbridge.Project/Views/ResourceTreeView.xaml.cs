@@ -1,5 +1,6 @@
-﻿using Celbridge.Resources;
-using Celbridge.Projects.ViewModels;
+﻿using Celbridge.Projects.ViewModels;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
@@ -11,6 +12,7 @@ namespace Celbridge.Projects.Views;
 public sealed partial class ResourceTreeView : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMessengerService _messengerService;
 
     public ResourceTreeViewModel ViewModel { get; }
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
@@ -30,6 +32,7 @@ public sealed partial class ResourceTreeView : UserControl
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
 
         Loaded += ResourceTreeView_Loaded;
         Unloaded += ResourceTreeView_Unloaded;
@@ -37,6 +40,8 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void ResourceTreeView_Loaded(object sender, RoutedEventArgs e)
     {
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
+
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
         ViewModel.OnLoaded();
@@ -44,20 +49,90 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void ResourceTreeView_Unloaded(object sender, RoutedEventArgs e)
     {
+        _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
+
         ViewModel.OnUnloaded();
+    }
+
+    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    {
+        UpdateTreeViewNodes();
+    }
+
+    private void UpdateTreeViewNodes()
+    {
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        // workspaceWrapper.IsWorkspacePageLoaded may still be null here when called during project load
+
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var rootFolder = resourceRegistry.RootFolder;
+        var rootNodes = ResourcesTreeView.RootNodes;
+
+        // Clear existing nodes
+        rootNodes.Clear();
+
+        // Generate the root nodes for the root resources
+        foreach (var resource in rootFolder.Children)
+        {
+            if (resource is IFileResource fileResource)
+            {
+                var fileNode = new TreeViewNode
+                {
+                    Content = fileResource
+                };
+                rootNodes.Add(fileNode);
+            }
+            else if (resource is IFolderResource folderResource)
+            {
+                AddNodes(rootNodes, folderResource);
+            }
+        }
+
+        void AddNodes(IList<TreeViewNode> parentNodes, IFolderResource folder)
+        {
+            var resourceKey = resourceRegistry.GetResourceKey(folder);
+            var isExpanded = folder.IsExpanded;
+
+            var folderNode = new TreeViewNode
+            {
+                Content = folder,
+                IsExpanded = isExpanded
+            };
+
+            // Add the folder node
+            parentNodes.Add(folderNode);
+
+            // Recursively add children
+            var children = folder.Children.OrderBy(c => c is IFolderResource ? 0 : 1).ThenBy(c => c.Name);
+            foreach (var child in children)
+            {
+                if (child is IFolderResource childFolder)
+                {
+                    AddNodes(folderNode.Children, childFolder);
+                }
+                else if (child is IFileResource childFile)
+                {
+                    var fileNode = new TreeViewNode
+                    {
+                        Content = childFile
+                    };
+                    folderNode.Children.Add(fileNode);
+                }
+            }
+        }
     }
 
     private void AddFolder(object? sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
+        var resource = AcquireResource(sender);
 
-        if (menuFlyoutItem.DataContext is IFolderResource destFolder)
+        if (resource is IFolderResource destFolder)
         {
             // Add a folder to the selected folder
             ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
         }
-        else if (menuFlyoutItem.DataContext is IFileResource destFile)
+        else if (resource is IFileResource destFile)
         {
             // Add a folder to the folder containing the selected file
             Guard.IsNotNull(destFile.ParentFolder);
@@ -73,15 +148,15 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void AddFile(object? sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
+        var resource = AcquireResource(sender);
+        Guard.IsNotNull(resource);
 
-        if (menuFlyoutItem.DataContext is IFolderResource destFolder)
+        if (resource is IFolderResource destFolder)
         {
             // Add a file to the selected folder
             ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
         }
-        else if (menuFlyoutItem.DataContext is IFileResource destFile)
+        else if (resource is IFileResource destFile)
         {
             // Add a file to the folder containing the selected file
             Guard.IsNotNull(destFile.ParentFolder);
@@ -97,10 +172,7 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void CutResource(object sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
-
-        var resource = menuFlyoutItem.DataContext as IResource;
+        var resource = AcquireResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.CutResourceToClipboard(resource);
@@ -108,10 +180,7 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void CopyResource(object sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
-
-        var resource = menuFlyoutItem.DataContext as IResource;
+        var resource = AcquireResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.CopyResourceToClipboard(resource);
@@ -119,10 +188,7 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void PasteResource(object sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
-
-        var destResource = menuFlyoutItem.DataContext as IResource;
+        var destResource = AcquireResource(sender);
 
         // Resource is permitted to be null here (indicates the root folder)
         ViewModel.PasteResourceFromClipboard(destResource);
@@ -130,10 +196,7 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void DeleteResource(object? sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
-
-        var resource = menuFlyoutItem.DataContext as IResource;
+        var resource = AcquireResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.ShowDeleteResourceDialog(resource);
@@ -141,22 +204,13 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void RenameResource(object? sender, RoutedEventArgs e)
     {
-        var menuFlyoutItem = sender as MenuFlyoutItem;
-        Guard.IsNotNull(menuFlyoutItem);
-
-        var resource = menuFlyoutItem.DataContext as IResource;
+        var resource = AcquireResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.ShowRenameResourceDialog(resource);
     }
 
     private void OpenResource(object? sender, RoutedEventArgs e)
-    {
-        var element = sender as FrameworkElement;
-        Guard.IsNotNull(element);
-    }
-
-    private void DoubleTappedResource(object? sender, DoubleTappedRoutedEventArgs e)
     {
         var element = sender as FrameworkElement;
         Guard.IsNotNull(element);
@@ -187,30 +241,35 @@ public sealed partial class ResourceTreeView : UserControl
 
         if (e.Key == VirtualKey.Delete)
         {
-            if (ResourcesTreeView.SelectedItem is IResource resource)
+            if (ResourcesTreeView.SelectedItem is TreeViewNode treeViewNode &&
+                treeViewNode.Content is IResource resource)
             {
                 ViewModel.ShowDeleteResourceDialog(resource);
             }
         }
         else if (control)
         {
-            var selectedResource = ResourcesTreeView.SelectedItem as IResource;
-            if (selectedResource is not null)
+            var treeViewNode = ResourcesTreeView.SelectedItem as TreeViewNode;
+            if (treeViewNode is not null)
             {
-                if (e.Key == VirtualKey.C)
+                var selectedResource = treeViewNode.Content as IResource;
+                if (selectedResource is not null)
                 {
-                    ViewModel.CopyResourceToClipboard(selectedResource);
+                    if (e.Key == VirtualKey.C)
+                    {
+                        ViewModel.CopyResourceToClipboard(selectedResource);
+                    }
+                    else if (e.Key == VirtualKey.X)
+                    {
+                        ViewModel.CutResourceToClipboard(selectedResource);
+                    }
                 }
-                else if (e.Key == VirtualKey.X)
+
+                // selectedResource is permitted to be null here (indicates the root folder)
+                if (e.Key == VirtualKey.V)
                 {
-                    ViewModel.CutResourceToClipboard(selectedResource);
+                    ViewModel.PasteResourceFromClipboard(selectedResource);
                 }
-            }
-            
-            if (e.Key == VirtualKey.V)
-            {
-                // Resource is permitted to be null here (indicates the root folder)
-                ViewModel.PasteResourceFromClipboard(selectedResource);
             }
         }
     }
@@ -219,13 +278,18 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var draggedItems = args.Items.ToList();
 
+        if (args.NewParentItem is not TreeViewNode newParentNode)
+        {
+            return;
+        }
+
         // A null newParent indicates that the dragged items are being moved to the root folder
         IFolderResource? newParent = null;
-        if (args.NewParentItem is IFileResource fileResource)
+        if (newParentNode.Content is IFileResource fileResource)
         {
             newParent = fileResource.ParentFolder;
         }
-        else if (args.NewParentItem is IFolderResource folderResource)
+        else if (newParentNode.Content is IFolderResource folderResource)
         {
             newParent = folderResource;
         }
@@ -233,7 +297,12 @@ public sealed partial class ResourceTreeView : UserControl
         var resources = new List<IResource>();
         foreach (var item in draggedItems)
         {
-            if (item is IResource resource)
+            if (item is not TreeViewNode itemNode)
+            {
+                continue;
+            }
+
+            if (itemNode.Content is IResource resource)
             {
                 resources.Add(resource);
             }
@@ -244,15 +313,42 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void ResourceContextMenu_Opening(object sender, object e)
     {
-        var menuFlyout = sender as MenuFlyout;
-        Guard.IsNotNull(menuFlyout);
-
-        var target = menuFlyout.Target;
-        Guard.IsNotNull(target);
-
-        // Resource is permitted to be null here (indicates the root folder)
-        var resource = target.DataContext as IResource;
-
+        var resource = AcquireResource(sender);
         ViewModel.OnContextMenuOpening(resource);
+    }
+
+    private IResource? AcquireResource(object? obj)
+    {
+        IResource? resource = null;
+        if (obj is null)
+        {
+            return null;
+        }
+        else if (obj is MenuFlyoutItem menuFlyoutItem)
+        {
+            var treeViewNode = menuFlyoutItem.DataContext as TreeViewNode;
+            if (treeViewNode == null)
+            {
+                // Resource is permitted to be null here (indicates the root folder)
+                return null;
+            }
+
+            resource = treeViewNode.Content as IResource;
+        }
+        else if (obj is MenuFlyout menuFlyout)
+        {
+            var target = menuFlyout.Target;
+            Guard.IsNotNull(target);
+
+            var treeViewNode = target.DataContext as TreeViewNode;
+
+            // Resource is permitted to be null here (indicates the root folder)
+            if (treeViewNode != null)
+            {
+                resource = treeViewNode.Content as IResource;
+            }
+        }
+
+        return resource;
     }
 }

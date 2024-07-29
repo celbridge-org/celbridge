@@ -173,7 +173,7 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to delete file. {ex.Message}");
             }
 
-            _messengerService.Send(new RequestResourceTreeUpdateMessage());
+            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
             await Task.CompletedTask;
 
             // Record that a file was deleted
@@ -210,7 +210,7 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to undo file delete. {ex.Message}");
             }
 
-            _messengerService.Send(new RequestResourceTreeUpdateMessage());
+            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
             await Task.CompletedTask;
 
             return Result.Ok();
@@ -272,7 +272,7 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to delete folder. {ex.Message}");
             }
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
 
             await Task.CompletedTask;
@@ -322,7 +322,7 @@ namespace Celbridge.Projects.Commands
             }
 
             _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
-            _messengerService.Send(new RequestResourceTreeUpdateMessage());
+            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
             await Task.CompletedTask;
 
             return Result.Ok();

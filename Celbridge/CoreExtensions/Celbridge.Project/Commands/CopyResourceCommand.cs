@@ -155,7 +155,7 @@ namespace Celbridge.Projects.Commands
             }
 
             // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
 
             return Result.Ok();
@@ -258,7 +258,7 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to copy file. {ex.Message}");
             }
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
 
             await Task.CompletedTask;
@@ -331,7 +331,7 @@ namespace Celbridge.Projects.Commands
                 resourceRegistry.SetFolderIsExpanded(resourceB, true);
             }
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
 
             await Task.CompletedTask;
@@ -349,7 +349,7 @@ namespace Celbridge.Projects.Commands
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
         }
 

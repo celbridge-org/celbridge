@@ -94,7 +94,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                 command.DestResource = newResource;
             });
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
         }
 

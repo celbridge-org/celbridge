@@ -154,7 +154,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         try
         {
             var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
-            var updateResult = resourceRegistry.UpdateResourceTree();
+            var updateResult = resourceRegistry.UpdateResourceRegistry();
             if (updateResult.IsFailure)
             {
                 return Result.Fail($"Failed to load workspace. {updateResult.Error}");
