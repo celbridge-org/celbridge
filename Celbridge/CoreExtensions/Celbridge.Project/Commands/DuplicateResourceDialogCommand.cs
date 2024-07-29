@@ -120,7 +120,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
                 }
             });
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
         }
 

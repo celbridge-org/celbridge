@@ -1,4 +1,5 @@
-﻿using Celbridge.Projects.Models;
+﻿using Celbridge.Messaging.Services;
+using Celbridge.Projects.Models;
 using Celbridge.Projects.Services;
 using CommunityToolkit.Diagnostics;
 
@@ -63,8 +64,12 @@ public class ResourceRegistryTests
         // Populate the resource tree by scanning the files and folders.
         //
 
-        var resourceRegistry = new ResourceRegistry(_resourceFolderPath);
-        var updateResult = resourceRegistry.UpdateResourceTree();
+        var messengerService = new MessengerService();
+
+        var resourceRegistry = new ResourceRegistry(messengerService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        var updateResult = resourceRegistry.UpdateResourceRegistry();
         updateResult.IsSuccess.Should().BeTrue();
 
         //
@@ -97,11 +102,14 @@ public class ResourceRegistryTests
         // Set the folder to be expanded before populating the resource tree.
         //
 
-        var resourceRegistry = new ResourceRegistry(_resourceFolderPath);
+        var messengerService = new MessengerService();
+        
+        var resourceRegistry = new ResourceRegistry(messengerService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         resourceRegistry.SetFolderIsExpanded(FolderNameA, true);
 
-        var updateResult = resourceRegistry.UpdateResourceTree();
+        var updateResult = resourceRegistry.UpdateResourceRegistry();
         updateResult.IsSuccess.Should().BeTrue();
 
         //
