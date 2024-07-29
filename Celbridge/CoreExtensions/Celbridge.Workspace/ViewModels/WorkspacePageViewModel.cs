@@ -15,16 +15,13 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
-    private readonly IProjectDataService _projectDataService;
 
     public WorkspacePageViewModel(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
-        IProjectDataService projectDataService)
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
-        _projectDataService = projectDataService;
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;

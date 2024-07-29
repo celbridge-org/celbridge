@@ -21,5 +21,8 @@ public abstract partial class Resource : ObservableObject, IResource
     [ObservableProperty]
     private string _name = string.Empty;
 
+    public Guid ResourceId { get; } = Guid.NewGuid();
+
     public IFolderResource? ParentFolder { get; init; }
+
 }

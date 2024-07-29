@@ -19,4 +19,9 @@ public interface ILogger
     /// This should be a single line of valid Json text.
     /// </summary>
     Result WriteLine(string line);
+
+    /// <summary>
+    /// Clear the contents of the log file.
+    /// </summary>
+    Result ClearLogFile();
 }

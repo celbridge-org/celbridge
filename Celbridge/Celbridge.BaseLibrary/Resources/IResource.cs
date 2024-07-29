@@ -11,6 +11,11 @@ public interface IResource
     string Name { get; }
 
     /// <summary>
+    /// The unique identifier of the resource.
+    /// </summary>
+    Guid ResourceId { get; }
+
+    /// <summary>
     /// The folder resource that contains this resource.
     /// </summary>
     public IFolderResource? ParentFolder { get; }
