@@ -50,21 +50,37 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         _logger.ClearLogFile();
 
         // Write all resources to the dump file
+        WriteFolder(resourceRegistry.RootFolder);
 
-        // Todo: Recurse into each folder
         // Todo: Write list of expanded folders in the dump file.
-        foreach (var resource in resourceRegistry.RootFolder.Children)
+        void WriteFolder(IFolderResource folder)
         {
-            if (resource is IFileResource fileResource)
+            foreach (var childResource in folder.Children)
             {
-                // Todo: Make a dictionary instead of a tuple for serialization
-                var item = ("File", fileResource.Name, fileResource.ResourceId);
-                WriteObject(item);
-            }
-            else if (resource is IFolderResource folderResource)
-            {
-                var item = ("Folder", folderResource.Name, folderResource.ResourceId, folderResource.IsExpanded);
-                WriteObject(item);
+                var item = new Dictionary<string, object>();
+
+                var key = resourceRegistry.GetResourceKey(childResource);
+
+                if (childResource is IFileResource childFileResource)
+                {
+                    item.Add("Type", "File");
+                    item.Add("Key", key);
+                    item.Add("ResourceId", childFileResource.ResourceId);
+                }
+                else if (childResource is IFolderResource childFolderResource)
+                {
+                    item.Add("Type", "Folder");
+                    item.Add("Key", key);
+                    item.Add("IsExpanded", childFolderResource.IsExpanded);
+                    item.Add("ResourceId", childFolderResource.ResourceId);
+
+                    WriteFolder(childFolderResource);
+                }
+
+                if (item.Count > 0)
+                {
+                    WriteObject(item);
+                }
             }
         }
 
