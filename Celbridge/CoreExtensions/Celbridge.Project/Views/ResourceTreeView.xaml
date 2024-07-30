@@ -52,7 +52,7 @@
                       x:DataType="muxc:TreeViewNode">
             <muxc:TreeViewItem AutomationProperties.Name="{Binding Path=Content.Name, Mode=OneWay}"
 							   ItemsSource="{Binding Path=Content.Children, Mode=OneWay}"
-							   IsExpanded="{Binding Path=Content.IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+							   IsExpanded="{Binding Path=Content.IsExpanded, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                                ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"

@@ -92,7 +92,7 @@ public sealed partial class ResourceTreeView : UserControl
         void AddNodes(IList<TreeViewNode> parentNodes, IFolderResource folder)
         {
             var resourceKey = resourceRegistry.GetResourceKey(folder);
-            var isExpanded = folder.IsExpanded;
+            var isExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
 
             var folderNode = new TreeViewNode
             {
@@ -104,8 +104,8 @@ public sealed partial class ResourceTreeView : UserControl
             parentNodes.Add(folderNode);
 
             // Recursively add children
-            var children = folder.Children.OrderBy(c => c is IFolderResource ? 0 : 1).ThenBy(c => c.Name);
-            foreach (var child in children)
+            //var children = folder.Children.OrderBy(c => c is IFolderResource ? 0 : 1).ThenBy(c => c.Name);
+            foreach (var child in folder.Children)
             {
                 if (child is IFolderResource childFolder)
                 {
@@ -221,6 +221,7 @@ public sealed partial class ResourceTreeView : UserControl
         // Only folder resources can be expanded
         if (args.Item is IFolderResource folderResource)
         {
+            folderResource.IsExpanded = true;
             ViewModel.SetFolderIsExpanded(folderResource, true);
         }
     }
@@ -230,6 +231,7 @@ public sealed partial class ResourceTreeView : UserControl
         // Only folder resources can be expanded
         if (args.Item is IFolderResource folderResource)
         {
+            folderResource.IsExpanded = false;
             ViewModel.SetFolderIsExpanded(folderResource, false);
         }
     }
