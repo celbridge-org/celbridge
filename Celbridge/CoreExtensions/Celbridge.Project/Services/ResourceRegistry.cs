@@ -26,8 +26,7 @@ namespace Celbridge.Projects.Services
                 var sb = new StringBuilder();
                 void AddResourceKeySegment(IResource resource)
                 {
-                    if (resource.ParentFolder is null ||
-                        resource.ParentFolder.ParentFolder is null)
+                    if (resource.ParentFolder is null)
                     {
                         return;
                     }
@@ -221,111 +220,62 @@ namespace Celbridge.Projects.Services
 
         public Result UpdateResourceRegistry()
         {
-            var createResult = CreateFolderResource(ProjectFolderPath, _rootFolder);
-            if (createResult.IsFailure)
-            {
-                return Result.Fail(createResult.Error);
-            }
-
-            var newRootFolder = createResult.Value;
-            newRootFolder.Name = string.Empty;
-
-            MergeChildren(_rootFolder, newRootFolder);
-
-            // Remove any expanded folders that no longer exist
-            ExpandedFolders.Remove(string.Empty);
-            ExpandedFolders.Remove((expandedFolder) =>
-            {
-                return GetResource(expandedFolder).IsFailure;
-            });
-
-            var message = new ResourceRegistryUpdatedMessage();
-            _messengerService.Send(message);
-
-            return Result.Ok();
-        }
-
-        private Result<FolderResource> CreateFolderResource(string newFolderPath, FolderResource? parentFolder = null)
-        {
             try
             {
-                if (!Directory.Exists(newFolderPath))
-                {
-                    return Result<FolderResource>.Fail($"Failed to create folder resource. Path not found '{newFolderPath}'");
-                }
+                SynchronizeFolder(_rootFolder, ProjectFolderPath);
 
-                //
-                // Create a new resource key to represent the folder at this path
-                //
-                var newFolderResource = new FolderResource(Path.GetFileName(newFolderPath), parentFolder);
-                var newFolderResourceKey = GetResourceKey(newFolderResource);
+                ExpandedFolders.Remove(string.Empty);
+                ExpandedFolders.Remove((expandedFolder) => GetResource(expandedFolder).IsFailure);
 
-                // Set the expanded state of the folder resource
-                newFolderResource.IsExpanded = ExpandedFolders.Contains(newFolderResourceKey);
+                _messengerService.Send(new ResourceRegistryUpdatedMessage());
 
-                //
-                // Create a new folder resource for each descendant folder and add it as a child of the new folder resource.
-                //
-                var subFolderPaths = Directory.GetDirectories(newFolderPath).OrderBy(d => d).ToList();
-                foreach (var subFolderPath in subFolderPaths)
-                {
-                    var scanResult = CreateFolderResource(subFolderPath, newFolderResource);
-                    if (scanResult.IsFailure)
-                    {
-                        return scanResult;
-                    }
-                    var subFolderResource = scanResult.Value;
-
-                    newFolderResource.AddChild(subFolderResource);
-                }
-
-                //
-                // Create a new file resource for each descendent file and add it as a child of the folder resource.
-                //
-                var filePaths = Directory.GetFiles(newFolderPath).OrderBy(f => f).ToList();
-                foreach (var filePath in filePaths)
-                {
-                    var newFileResource = new FileResource(Path.GetFileName(filePath), newFolderResource);
-                    newFolderResource.AddChild(newFileResource);
-                }
-
-                return Result<FolderResource>.Ok(newFolderResource);
+                return Result.Ok();
             }
             catch (Exception ex)
             {
-                return Result<FolderResource>.Fail($"Failed to create folder resource '{newFolderPath}'. {ex.Message}");
+                return Result.Fail($"Failed to update resource registry. {ex.Message}");
             }
         }
 
-        private void MergeChildren(FolderResource existingFolder, FolderResource newFolder)
+        private void SynchronizeFolder(FolderResource folderResource, string folderPath)
         {
-            var existingChildren = existingFolder.Children.ToDictionary(child => child.Name);
-            existingFolder.Children.Clear();
+            var existingChildren = folderResource.Children.ToDictionary(child => child.Name);
 
-            // Todo: Check if this handles case where a folder is deleted and a
-            // file with the same name is added at the same time.
+            var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
+            var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
 
-            foreach (var newChild in newFolder.Children)
+            folderResource.Children.Clear();
+
+            foreach (var subFolderPath in subFolderPaths)
             {
-                if (existingChildren.TryGetValue(newChild.Name, out var existingChild))
+                var folderName = Path.GetFileName(subFolderPath);
+                if (existingChildren.TryGetValue(folderName, out var existingChild) && existingChild is FolderResource existingFolder)
                 {
-                    if (existingChild is FolderResource existingChildFolder && newChild is FolderResource newChildFolder)
-                    {
-                        MergeChildren(existingChildFolder, newChildFolder);
-                        existingFolder.AddChild(existingChildFolder);
-                    }
-                    else
-                    {
-                        existingFolder.AddChild(newChild);
-                    }
+                    SynchronizeFolder(existingFolder, subFolderPath);
+                    folderResource.AddChild(existingFolder);
                 }
                 else
                 {
-                    existingFolder.AddChild(newChild);
+                    var newFolder = new FolderResource(folderName, folderResource);
+                    SynchronizeFolder(newFolder, subFolderPath);
+                    folderResource.AddChild(newFolder);
                 }
             }
 
-            existingFolder.Children = existingFolder.Children
+            foreach (var filePath in filePaths)
+            {
+                var fileName = Path.GetFileName(filePath);
+                if (existingChildren.TryGetValue(fileName, out var existingChild) && existingChild is FileResource)
+                {
+                    folderResource.AddChild(existingChild);
+                }
+                else
+                {
+                    folderResource.AddChild(new FileResource(fileName, folderResource));
+                }
+            }
+
+            folderResource.Children = folderResource.Children
                 .OrderBy(child => child is IFolderResource ? 0 : 1)
                 .ThenBy(child => child.Name)
                 .ToList();
