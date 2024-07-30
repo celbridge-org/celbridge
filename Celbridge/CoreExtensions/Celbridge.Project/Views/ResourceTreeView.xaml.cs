@@ -4,7 +4,6 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -14,6 +13,7 @@ public sealed partial class ResourceTreeView : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
+    private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
@@ -57,19 +57,21 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+
+        _resourceRegistry = resourceRegistry;
+
         UpdateTreeViewNodes();
     }
 
     private void UpdateTreeViewNodes()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        
         // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
         // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
 
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-        var rootFolder = resourceRegistry.RootFolder;
+        var rootFolder = _resourceRegistry.RootFolder;
         var rootNodes = ResourcesTreeView.RootNodes;
 
         // Clear existing nodes
@@ -77,40 +79,51 @@ public sealed partial class ResourceTreeView : UserControl
 
         // Recursively populate the Tree View
         PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+    }
 
-        void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> childResources)
+    private void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> childResources)
+    {
+        Guard.IsNotNull(_resourceRegistry);
+
+        foreach (var child in childResources)
         {
-            foreach (var child in childResources)
+            if (child is IFolderResource childFolder)
             {
-                if (child is IFolderResource childFolder)
+                var resourceKey = _resourceRegistry.GetResourceKey(childFolder);
+                var isExpanded = _resourceRegistry.IsFolderExpanded(resourceKey);
+
+                var folderNode = new TreeViewNode
                 {
-                    var resourceKey = resourceRegistry.GetResourceKey(childFolder);
-                    var isExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
+                    Content = childFolder,
+                    IsExpanded = isExpanded,
+                };
+                AutomationProperties.SetName(folderNode, childFolder.Name);
 
-                    var folderNode = new TreeViewNode
-                    {
-                        Content = childFolder,
-                        IsExpanded = isExpanded,
-                    };
-                    AutomationProperties.SetName(folderNode, childFolder.Name);
 
-                    nodes.Add(folderNode);
-
-                    if (childFolder.Children.Count > 0)
+                if (childFolder.Children.Count > 0)
+                {
+                    if (childFolder.IsExpanded)
                     {
                         PopulateTreeViewNodes(folderNode.Children, childFolder.Children);
                     }
-                }
-                else if (child is IFileResource childFile)
-                {
-                    var fileNode = new TreeViewNode
+                    else
                     {
-                        Content = childFile
-                    };
-                    AutomationProperties.SetName(fileNode, childFile.Name);
-
-                    nodes.Add(fileNode);
+                        // The child nodes will only be populated if the user expands the folder
+                        folderNode.HasUnrealizedChildren = true;
+                    }
                 }
+
+                nodes.Add(folderNode);
+            }
+            else if (child is IFileResource childFile)
+            {
+                var fileNode = new TreeViewNode
+                {
+                    Content = childFile
+                };
+                AutomationProperties.SetName(fileNode, childFile.Name);
+
+                nodes.Add(fileNode);
             }
         }
     }
@@ -214,16 +227,29 @@ public sealed partial class ResourceTreeView : UserControl
         {
             folderResource.IsExpanded = true;
             ViewModel.SetFolderIsExpanded(folderResource, true);
+
+            if (args.Node is TreeViewNode folderNode &&
+                folderNode.HasUnrealizedChildren)
+            {
+                // Lazy populate the child nodes
+                folderNode.HasUnrealizedChildren = false;
+                PopulateTreeViewNodes(folderNode.Children, folderResource.Children);
+            }
         }
     }
 
     private void ResourcesTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
-        // Only folder resources can be expanded
+        // Only folder resources can be collapsed
         if (args.Item is IFolderResource folderResource)
         {
             folderResource.IsExpanded = false;
             ViewModel.SetFolderIsExpanded(folderResource, false);
+
+            // Deleting the child nodes here and setting the folder to HasUnrealizedChildren = true would
+            // seem like a good idea, but in practice this causes the TreeView to go haywire and resource icons start
+            // disappearing. It's not really necessary to delete the child nodes here anyway, because all collapsed folders
+            // will be set to HasUnrealizedChildren = true with 0 children the next time the registry updates.
         }
     }
 
