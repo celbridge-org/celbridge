@@ -81,30 +81,30 @@ public sealed partial class ResourceTreeView : UserControl
         PopulateTreeViewNodes(rootNodes, rootFolder.Children);
     }
 
-    private void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> childResources)
+    private void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> resources)
     {
         Guard.IsNotNull(_resourceRegistry);
 
-        foreach (var child in childResources)
+        foreach (var resource in resources)
         {
-            if (child is IFolderResource childFolder)
+            if (resource is IFolderResource folderResource)
             {
-                var resourceKey = _resourceRegistry.GetResourceKey(childFolder);
+                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
                 var isExpanded = _resourceRegistry.IsFolderExpanded(resourceKey);
 
                 var folderNode = new TreeViewNode
                 {
-                    Content = childFolder,
+                    Content = folderResource,
                     IsExpanded = isExpanded,
                 };
-                AutomationProperties.SetName(folderNode, childFolder.Name);
+                AutomationProperties.SetName(folderNode, folderResource.Name);
 
 
-                if (childFolder.Children.Count > 0)
+                if (folderResource.Children.Count > 0)
                 {
-                    if (childFolder.IsExpanded)
+                    if (folderResource.IsExpanded)
                     {
-                        PopulateTreeViewNodes(folderNode.Children, childFolder.Children);
+                        PopulateTreeViewNodes(folderNode.Children, folderResource.Children);
                     }
                     else
                     {
@@ -115,13 +115,13 @@ public sealed partial class ResourceTreeView : UserControl
 
                 nodes.Add(folderNode);
             }
-            else if (child is IFileResource childFile)
+            else if (resource is IFileResource fileResource)
             {
                 var fileNode = new TreeViewNode
                 {
-                    Content = childFile
+                    Content = fileResource
                 };
-                AutomationProperties.SetName(fileNode, childFile.Name);
+                AutomationProperties.SetName(fileNode, fileResource.Name);
 
                 nodes.Add(fileNode);
             }
