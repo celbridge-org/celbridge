@@ -141,7 +141,6 @@ public sealed partial class ResourceTreeView : UserControl
     private void AddFile(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireResource(sender);
-        Guard.IsNotNull(resource);
 
         if (resource is IFolderResource destFolder)
         {
