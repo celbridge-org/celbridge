@@ -271,20 +271,20 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var draggedItems = args.Items.ToList();
 
-        if (args.NewParentItem is not TreeViewNode newParentNode)
-        {
-            return;
-        }
+        var newParentNode = args.NewParentItem as TreeViewNode;
 
         // A null newParent indicates that the dragged items are being moved to the root folder
         IFolderResource? newParent = null;
-        if (newParentNode.Content is IFileResource fileResource)
+        if (newParentNode is not null)
         {
-            newParent = fileResource.ParentFolder;
-        }
-        else if (newParentNode.Content is IFolderResource folderResource)
-        {
-            newParent = folderResource;
+            if (newParentNode.Content is IFileResource fileResource)
+            {
+                newParent = fileResource.ParentFolder;
+            }
+            else if (newParentNode.Content is IFolderResource folderResource)
+            {
+                newParent = folderResource;
+            }
         }
 
         var resources = new List<IResource>();
