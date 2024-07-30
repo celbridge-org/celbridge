@@ -50,8 +50,7 @@
 
         <DataTemplate x:Key="FolderTemplate"
                       x:DataType="muxc:TreeViewNode">
-            <muxc:TreeViewItem ItemsSource="{Binding Path=Content.Children, Mode=OneWay}"
-							   IsExpanded="{Binding Path=Content.IsExpanded, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+            <muxc:TreeViewItem IsExpanded="{Binding Path=Content.IsExpanded, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                                ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
