@@ -15,7 +15,8 @@ public class ProjectService : IProjectService, IDisposable
     public ProjectService(
         IServiceProvider serviceProvider,
         IProjectDataService projectDataService,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        IResourceRegistry resourceRegistry)
     {
         _serviceProvider = serviceProvider;
         _projectDataService = projectDataService;
@@ -31,8 +32,9 @@ public class ProjectService : IProjectService, IDisposable
 
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
-        var projectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
-        ResourceRegistry = new ResourceRegistry(projectFolderPath);
+        ResourceRegistry = resourceRegistry;
+        ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
+        
     }
 
     public object CreateProjectPanel()

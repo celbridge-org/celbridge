@@ -83,7 +83,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
                     command.Resource = Resource;
                 });
 
-                var message = new RequestResourceTreeUpdateMessage();
+                var message = new RequestResourceRegistryUpdateMessage();
                 _messengerService.Send(message);
             }
         }

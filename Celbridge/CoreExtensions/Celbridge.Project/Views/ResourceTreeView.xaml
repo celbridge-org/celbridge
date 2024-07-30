@@ -49,10 +49,9 @@
         </MenuFlyout>
 
         <DataTemplate x:Key="FolderTemplate"
-					  x:DataType="models:FolderResource">
-            <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name, Mode=OneWay}"
-							   ItemsSource="{x:Bind Children, Mode=OneWay}"
-							   IsExpanded="{x:Bind IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      x:DataType="muxc:TreeViewNode">
+            <muxc:TreeViewItem ItemsSource="{Binding Path=Content.Children, Mode=OneWay}"
+							   IsExpanded="{Binding Path=Content.IsExpanded, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                                ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
@@ -60,17 +59,15 @@
                               FontSize="14" 
                               Foreground="#FFCC40"/>
                     <TextBlock Margin="8 0 0 0" 
-                               Text="{x:Bind Name, Mode=OneWay}" />
+                               Text="{Binding Path=Content.Name, Mode=OneWay}" />
                 </StackPanel>
             </muxc:TreeViewItem>
         </DataTemplate>
 
         <DataTemplate x:Key="FileTemplate"
-					  x:DataType="models:FileResource">
-            <muxc:TreeViewItem AutomationProperties.Name="{x:Bind Name,Mode=OneWay}"
-                               ContextFlyout="{StaticResource ResourceContextMenu}"
-                               DoubleTapped="DoubleTappedResource">
-                <TextBlock Margin="0" Text="{x:Bind Name, Mode=OneWay}" />
+                      x:DataType="muxc:TreeViewNode">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
+                <TextBlock Margin="0" Text="{Binding Path=Content.Name, Mode=OneWay}" />
             </muxc:TreeViewItem>
         </DataTemplate>
 
@@ -85,7 +82,6 @@
                   VerticalAlignment="Stretch"
                   ContextFlyout="{StaticResource ResourceContextMenu}">
         <muxc:TreeView x:Name="ResourcesTreeView"
-                    ItemsSource="{x:Bind ViewModel.Resources, Mode=OneWay}"
                     ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
                     CanReorderItems="True"
                     CanDrag="False"

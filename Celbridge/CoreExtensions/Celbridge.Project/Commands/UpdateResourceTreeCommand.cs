@@ -23,7 +23,7 @@ public class UpdateResourceTreeCommand : CommandBase, IUpdateResourceTreeCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
 
-        var updateResult = resourceRegistry.UpdateResourceTree();
+        var updateResult = resourceRegistry.UpdateResourceRegistry();
         if (updateResult.IsFailure)
         {
             return Result.Fail($"Failed to execute {nameof(UpdateResourceTreeCommand)}. {updateResult.Error}");

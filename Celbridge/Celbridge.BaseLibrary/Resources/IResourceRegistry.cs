@@ -6,6 +6,11 @@
 public interface IResourceRegistry
 {
     /// <summary>
+    /// The path of the project folder.
+    /// </summary>
+    string ProjectFolderPath { get; set; }
+
+    /// <summary>
     /// The root folder resource that contains all the resources in the project.
     /// </summary>
     IFolderResource RootFolder { get; }
@@ -57,7 +62,7 @@ public interface IResourceRegistry
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
-    Result UpdateResourceTree();
+    Result UpdateResourceRegistry();
 
     /// <summary>
     /// Returns the list of expanded folders in the resource tree.

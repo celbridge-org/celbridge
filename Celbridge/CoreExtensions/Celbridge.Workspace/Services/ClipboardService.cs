@@ -216,7 +216,7 @@ public class ClipboardService : IClipboardService, IDisposable
 
         resourceRegistry.SetFolderIsExpanded(destFolderResource, true);
 
-        var message = new RequestResourceTreeUpdateMessage();
+        var message = new RequestResourceRegistryUpdateMessage();
         _messengerService.Send(message);
 
         return Result.Ok();

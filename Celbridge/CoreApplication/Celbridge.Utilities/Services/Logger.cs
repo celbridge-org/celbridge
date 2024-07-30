@@ -64,4 +64,18 @@ public class Logger : ILogger
 
         return Result.Ok();
     }
+
+    public Result ClearLogFile()
+    {
+        try
+        {
+            File.WriteAllText(_logFilePath, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to clear log file. {ex}");
+        }
+
+        return Result.Ok();
+    }
 }
