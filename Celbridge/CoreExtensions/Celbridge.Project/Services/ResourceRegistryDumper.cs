@@ -52,38 +52,42 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         // Write all resources to the dump file
         WriteFolder(resourceRegistry.RootFolder);
 
-        // Todo: Write list of expanded folders in the dump file.
+        // Write expanded folders to the dump file
+        foreach (var expandedFolder in resourceRegistry.ExpandedFolders)
+        {
+            WriteObject(expandedFolder);
+        }
+
         void WriteFolder(IFolderResource folder)
         {
             foreach (var childResource in folder.Children)
             {
-                var item = new Dictionary<string, object>();
 
                 var key = resourceRegistry.GetResourceKey(childResource);
-
                 if (childResource is IFileResource childFileResource)
                 {
-                    item.Add("Type", "File");
-                    item.Add("Key", key);
-                    item.Add("ResourceId", childFileResource.ResourceId);
+                    var item = new Dictionary<string, object>
+                    {
+                        { "Key", key },
+                        { "ResourceId", childFileResource.ResourceId }
+                    };
+
+                    WriteObject(item);
                 }
                 else if (childResource is IFolderResource childFolderResource)
                 {
-                    item.Add("Type", "Folder");
-                    item.Add("Key", key);
-                    item.Add("IsExpanded", childFolderResource.IsExpanded);
-                    item.Add("ResourceId", childFolderResource.ResourceId);
+                    var item = new Dictionary<string, object>
+                    {
+                        { "Key", key },
+                        { "IsExpanded", childFolderResource.IsExpanded },
+                        { "ResourceId", childFolderResource.ResourceId }
+                    };
 
-                    WriteFolder(childFolderResource);
-                }
-
-                if (item.Count > 0)
-                {
                     WriteObject(item);
+                    WriteFolder(childFolderResource);
                 }
             }
         }
-
     }
 
     public Result WriteObject(object? obj)
