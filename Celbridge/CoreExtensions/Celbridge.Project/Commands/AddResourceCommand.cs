@@ -170,7 +170,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
         }
 
-        var message = new RequestResourceTreeUpdateMessage();
+        var message = new RequestResourceRegistryUpdateMessage();
         _messengerService.Send(message);
 
         await Task.CompletedTask;
@@ -207,7 +207,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             return Result.Fail($"Failed to undo add resource. {ex.Message}");
         }
 
-        var message = new RequestResourceTreeUpdateMessage();
+        var message = new RequestResourceRegistryUpdateMessage();
         _messengerService.Send(message);
 
         await Task.CompletedTask;

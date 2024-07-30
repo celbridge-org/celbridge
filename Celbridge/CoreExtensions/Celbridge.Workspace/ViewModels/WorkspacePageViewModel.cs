@@ -15,16 +15,13 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
-    private readonly IProjectDataService _projectDataService;
 
     public WorkspacePageViewModel(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
-        IProjectDataService projectDataService)
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
-        _projectDataService = projectDataService;
 
         _editorSettings = editorSettings;
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
@@ -154,7 +151,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         try
         {
             var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
-            var updateResult = resourceRegistry.UpdateResourceTree();
+            var updateResult = resourceRegistry.UpdateResourceRegistry();
             if (updateResult.IsFailure)
             {
                 return Result.Fail($"Failed to load workspace. {updateResult.Error}");
