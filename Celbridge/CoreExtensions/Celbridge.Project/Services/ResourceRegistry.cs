@@ -239,6 +239,13 @@ namespace Celbridge.Projects.Services
 
         private void SynchronizeFolder(FolderResource folderResource, string folderPath)
         {
+            // Apply expanded folder state
+
+            var folderResourceKey = GetResourceKey(folderResource);
+            folderResource.IsExpanded = IsFolderExpanded(folderResourceKey);
+
+            // Update child resources
+
             var existingChildren = folderResource.Children.ToDictionary(child => child.Name);
 
             var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
