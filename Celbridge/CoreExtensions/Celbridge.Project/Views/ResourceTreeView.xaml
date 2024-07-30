@@ -50,8 +50,7 @@
 
         <DataTemplate x:Key="FolderTemplate"
                       x:DataType="muxc:TreeViewNode">
-            <muxc:TreeViewItem AutomationProperties.Name="{Binding Path=Content.Name, Mode=OneWay}"
-							   ItemsSource="{Binding Path=Content.Children, Mode=OneWay}"
+            <muxc:TreeViewItem ItemsSource="{Binding Path=Content.Children, Mode=OneWay}"
 							   IsExpanded="{Binding Path=Content.IsExpanded, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                                ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
@@ -67,8 +66,7 @@
 
         <DataTemplate x:Key="FileTemplate"
                       x:DataType="muxc:TreeViewNode">
-            <muxc:TreeViewItem AutomationProperties.Name="{Binding Path=Content.Name, Mode=OneWay}"
-                               ContextFlyout="{StaticResource ResourceContextMenu}">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
                 <TextBlock Margin="0" Text="{Binding Path=Content.Name, Mode=OneWay}" />
             </muxc:TreeViewItem>
         </DataTemplate>

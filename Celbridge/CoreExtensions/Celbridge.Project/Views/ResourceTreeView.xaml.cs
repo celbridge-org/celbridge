@@ -4,6 +4,7 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -63,7 +64,9 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
         var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        // workspaceWrapper.IsWorkspacePageLoaded may still be null here when called during project load
+        
+        // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
+        // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
 
         var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
         var rootFolder = resourceRegistry.RootFolder;
@@ -72,44 +75,31 @@ public sealed partial class ResourceTreeView : UserControl
         // Clear existing nodes
         rootNodes.Clear();
 
-        // Generate the root nodes for the root resources
-        foreach (var resource in rootFolder.Children)
+        // Recursively populate the Tree View
+        PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+
+        void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> childResources)
         {
-            if (resource is IFileResource fileResource)
-            {
-                var fileNode = new TreeViewNode
-                {
-                    Content = fileResource
-                };
-                rootNodes.Add(fileNode);
-            }
-            else if (resource is IFolderResource folderResource)
-            {
-                AddNodes(rootNodes, folderResource);
-            }
-        }
-
-        void AddNodes(IList<TreeViewNode> parentNodes, IFolderResource folder)
-        {
-            var resourceKey = resourceRegistry.GetResourceKey(folder);
-            var isExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
-
-            var folderNode = new TreeViewNode
-            {
-                Content = folder,
-                IsExpanded = isExpanded
-            };
-
-            // Add the folder node
-            parentNodes.Add(folderNode);
-
-            // Recursively add children
-            //var children = folder.Children.OrderBy(c => c is IFolderResource ? 0 : 1).ThenBy(c => c.Name);
-            foreach (var child in folder.Children)
+            foreach (var child in childResources)
             {
                 if (child is IFolderResource childFolder)
                 {
-                    AddNodes(folderNode.Children, childFolder);
+                    var resourceKey = resourceRegistry.GetResourceKey(childFolder);
+                    var isExpanded = resourceRegistry.IsFolderExpanded(resourceKey);
+
+                    var folderNode = new TreeViewNode
+                    {
+                        Content = childFolder,
+                        IsExpanded = isExpanded,
+                    };
+                    AutomationProperties.SetName(folderNode, childFolder.Name);
+
+                    nodes.Add(folderNode);
+
+                    if (childFolder.Children.Count > 0)
+                    {
+                        PopulateTreeViewNodes(folderNode.Children, childFolder.Children);
+                    }
                 }
                 else if (child is IFileResource childFile)
                 {
@@ -117,7 +107,9 @@ public sealed partial class ResourceTreeView : UserControl
                     {
                         Content = childFile
                     };
-                    folderNode.Children.Add(fileNode);
+                    AutomationProperties.SetName(fileNode, childFile.Name);
+
+                    nodes.Add(fileNode);
                 }
             }
         }
