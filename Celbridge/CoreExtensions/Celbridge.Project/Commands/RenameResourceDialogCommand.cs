@@ -115,7 +115,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
                 }
             });
 
-            var message = new RequestResourceTreeUpdateMessage();
+            var message = new RequestResourceRegistryUpdateMessage();
             _messengerService.Send(message);
         }
 

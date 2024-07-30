@@ -1,4 +1,5 @@
 ﻿using Celbridge.Projects.Models;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Projects.Views;
 
@@ -9,11 +10,14 @@ public class ResourceTemplateSelector : DataTemplateSelector
 
     protected override DataTemplate? SelectTemplateCore(object item)
     {
-        if (item is FileResource)
+        var treeViewNode = item as TreeViewNode;
+        Guard.IsNotNull(treeViewNode);
+
+        if (treeViewNode.Content is FileResource)
         {
             return FileTemplate;
         }
-        if (item is FolderResource)
+        if (treeViewNode.Content is FolderResource)
         {
             return FolderTemplate;
         }

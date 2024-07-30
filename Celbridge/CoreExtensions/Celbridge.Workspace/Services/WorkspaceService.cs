@@ -4,6 +4,7 @@ using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IClipboardService ClipboardService { get; }
 
     private IExecutedCommandLogger _commandLogger;
+    private IResourceRegistryDumper _resourceRegistryDumper;
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
@@ -54,6 +56,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         string logFolderPath = projectData.LogFolderPath;
         _commandLogger = serviceProvider.GetRequiredService<IExecutedCommandLogger>();
         _commandLogger.Initialize(logFolderPath, 0);
+
+        // Dump the resource registry to a file
+        _resourceRegistryDumper = serviceProvider.GetRequiredService<IResourceRegistryDumper>();
+        _resourceRegistryDumper.Initialize(logFolderPath);
     }
 
     private bool _disposed;
