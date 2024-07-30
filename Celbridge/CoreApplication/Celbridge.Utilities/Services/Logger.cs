@@ -33,9 +33,18 @@ public class Logger : ILogger
             }
 
             // Generate the log file path
-            var timestamp = _utilityService.GetTimestamp();
-            var logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
-            _logFilePath = Path.Combine(logFolderPath, logFilename);
+            if (maxFilesToKeep <= 0)
+            {
+                var logFilename = $"{logFilePrefix}.jsonl";
+                _logFilePath = Path.Combine(logFolderPath, logFilename);
+            }
+            else
+            {
+                // If we have multiple log files in rotation, append a timestamp to the filename to differentiate them.
+                var timestamp = _utilityService.GetTimestamp();
+                var logFilename = $"{logFilePrefix}_{timestamp}.jsonl";
+                _logFilePath = Path.Combine(logFolderPath, logFilename);
+            }
         }
         catch (Exception ex)
         {
