@@ -192,8 +192,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         {
             var sourceResource = _projectService.ResourceRegistry.GetResourceKey(resource);
             var destResource = _projectService.ResourceRegistry.GetResourceKey(destFolder);
+            var resolvedDestResource = _projectService.ResourceRegistry.GetCopyDestinationResource(sourceResource, destResource);
 
-            if (sourceResource == destResource)
+            if (sourceResource == resolvedDestResource)
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
