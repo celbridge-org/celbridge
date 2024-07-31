@@ -24,6 +24,11 @@ public abstract class CommandBase : IExecutableCommand
     public virtual string UndoStackName => UndoStackNames.None;
 
     /// <summary>
+    /// Flags to configure behaviour when executing the command.
+    /// </summary>
+    public virtual CommandFlags CommandFlags => CommandFlags.None;
+
+    /// <summary>
     /// Describes where in the source code the command was first executed.
     /// </summary>
     public string ExecutionSource { get; set; } = string.Empty;
