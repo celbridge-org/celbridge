@@ -1,6 +1,4 @@
-﻿using Celbridge.Utilities;
-
-namespace Celbridge.Commands;
+﻿namespace Celbridge.Commands;
 
 /// <summary>
 /// A command that can be executed via the command service.
