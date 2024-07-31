@@ -11,13 +11,13 @@ namespace Celbridge.Projects.Commands
     public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     {
         public override string UndoStackName => UndoStackNames.Project;
+        public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
 
         public ResourceKey SourceResource { get; set; }
         public ResourceKey DestResource { get; set; }
         public CopyResourceOperation Operation { get; set; }
         public bool ExpandCopiedFolder { get; set; }
 
-        private readonly IMessengerService _messengerService;
         private readonly IWorkspaceWrapper _workspaceWrapper;
         private readonly IProjectDataService _projectDataService;
         private readonly IDialogService _dialogService;
@@ -29,13 +29,11 @@ namespace Celbridge.Projects.Commands
         private List<string> _copiedFolderPaths = new();
 
         public CopyResourceCommand(
-            IMessengerService messengerService,
             IWorkspaceWrapper workspaceWrapper,
             IProjectDataService projectDataService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
-            _messengerService = messengerService;
             _workspaceWrapper = workspaceWrapper;
             _projectDataService = projectDataService;
             _dialogService = dialogService;
@@ -154,10 +152,6 @@ namespace Celbridge.Projects.Commands
                 }
             }
 
-            // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
-
             return Result.Ok();
         }
 
@@ -258,9 +252,6 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to copy file. {ex.Message}");
             }
 
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
-
             await Task.CompletedTask;
 
             return Result.Ok();
@@ -331,9 +322,6 @@ namespace Celbridge.Projects.Commands
                 resourceRegistry.SetFolderIsExpanded(resourceB, true);
             }
 
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
-
             await Task.CompletedTask;
 
             return Result.Ok();
@@ -347,10 +335,6 @@ namespace Celbridge.Projects.Commands
             var titleString = _stringLocalizer.GetString(titleKey);
             var messageString = _stringLocalizer.GetString(messageKey, SourceResource, DestResource);
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-
-            // Ensure the Tree View is synced with the files and folders on disk
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
         }
 
         private static void CopyResourceInternal(ResourceKey sourceResource, ResourceKey destResource, CopyResourceOperation operation)

@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Resources;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -356,6 +357,9 @@ public class CommandService : ICommandService
 
                     var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
                     _messengerService.Send(message);
+
+                    // Trigger a resource registry update if needed.
+                    CheckUpdateResourceRegistry(command);
                 }
                 catch (Exception ex)
                 {
@@ -370,5 +374,31 @@ public class CommandService : ICommandService
     public void StopExecution()
     {
         _stopped = true;
+    }
+
+    private void CheckUpdateResourceRegistry(IExecutableCommand command)
+    {
+        // Update the resource registry if this command requires it.
+        if (!command.CommandFlags.HasFlag(CommandFlags.UpdateResourceRegistry))
+        {
+            return;
+        }
+
+        // For grouped commands, only the last command to execute should request the
+        // resource update. Updating resources for the previous commands is redundant.
+        // Every non-grouped command should update the resource registry however. This ensures
+        // that the registry is up to date when the next command in the queue executes.
+
+        foreach (var item in _commandQueue)
+        {
+            if (item.Command.CommandFlags.HasFlag(CommandFlags.UpdateResourceRegistry) &&
+                item.Command.UndoGroupId == command.UndoGroupId)
+            {
+                return;
+            }
+        }
+
+        var requestMessage = new RequestResourceRegistryUpdateMessage();
+        _messengerService.Send(requestMessage);
     }
 }

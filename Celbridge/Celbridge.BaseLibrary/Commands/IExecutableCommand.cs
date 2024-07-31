@@ -24,6 +24,11 @@ public interface IExecutableCommand
     string UndoStackName { get; }
 
     /// <summary>
+    /// Flags to configure behaviour when executing the command.
+    /// </summary>
+    CommandFlags CommandFlags { get; }
+
+    /// <summary>
     /// Describes where in the source code the command was first executed.
     /// </summary>
     string ExecutionSource { get; set; }
