@@ -10,12 +10,12 @@ namespace Celbridge.Projects.Commands;
 public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestFolderResource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -23,14 +23,12 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
     public AddResourceDialogCommand(
         IServiceProvider serviceProvider,
-        IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IDialogService dialogService)
     {
         _serviceProvider = serviceProvider;
-        _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
@@ -93,9 +91,6 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                 command.ResourceType = ResourceType;
                 command.DestResource = newResource;
             });
-
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
         }
 
         return Result.Ok();
