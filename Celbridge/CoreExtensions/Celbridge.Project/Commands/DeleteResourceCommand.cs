@@ -13,6 +13,7 @@ namespace Celbridge.Projects.Commands
     public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     {
         public override string UndoStackName => UndoStackNames.Project;
+        public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
 
         public ResourceKey Resource { get; set; }
 
@@ -21,7 +22,6 @@ namespace Celbridge.Projects.Commands
         private bool _folderWasEmpty;
         private bool _folderWasExpanded;
 
-        private readonly IMessengerService _messengerService;
         private readonly IWorkspaceWrapper _workspaceWrapper;
         private readonly IProjectDataService _projectDataService;
         private readonly IUtilityService _utilityService;
@@ -29,14 +29,12 @@ namespace Celbridge.Projects.Commands
         private readonly IStringLocalizer _stringLocalizer;
 
         public DeleteResourceCommand(
-            IMessengerService messengerService,
             IWorkspaceWrapper workspaceWrapper,
             IProjectDataService projectDataService,
             IUtilityService utilityService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
-            _messengerService = messengerService;
             _workspaceWrapper = workspaceWrapper;
             _projectDataService = projectDataService;
             _utilityService = utilityService;
@@ -173,9 +171,6 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to delete file. {ex.Message}");
             }
 
-            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
-            await Task.CompletedTask;
-
             // Record that a file was deleted
             _deletedResourceType = typeof(IFileResource);
 
@@ -209,9 +204,6 @@ namespace Celbridge.Projects.Commands
             {
                 return Result.Fail($"Failed to undo file delete. {ex.Message}");
             }
-
-            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
-            await Task.CompletedTask;
 
             return Result.Ok();
         }
@@ -272,9 +264,6 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to delete folder. {ex.Message}");
             }
 
-            var message = new RequestResourceRegistryUpdateMessage();
-            _messengerService.Send(message);
-
             await Task.CompletedTask;
 
             // Record that a file was deleted
@@ -322,7 +311,7 @@ namespace Celbridge.Projects.Commands
             }
 
             _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
-            _messengerService.Send(new RequestResourceRegistryUpdateMessage());
+
             await Task.CompletedTask;
 
             return Result.Ok();
