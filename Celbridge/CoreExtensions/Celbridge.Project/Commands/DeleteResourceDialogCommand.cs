@@ -9,10 +9,10 @@ namespace Celbridge.Projects.Commands;
 public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
 
     public ResourceKey Resource { get; set; }
 
-    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -25,7 +25,6 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         IWorkspaceWrapper workspaceWrapper,
         IDialogService dialogService)
     {
-        _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
@@ -82,9 +81,6 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
                 {
                     command.Resource = Resource;
                 });
-
-                var message = new RequestResourceRegistryUpdateMessage();
-                _messengerService.Send(message);
             }
         }
 

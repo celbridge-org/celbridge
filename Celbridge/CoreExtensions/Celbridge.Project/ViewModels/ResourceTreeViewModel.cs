@@ -15,8 +15,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public IList<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
 
-    private bool _resourceTreeUpdatePending;
-
     public ResourceTreeViewModel(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
@@ -36,37 +34,18 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         // Listen for messages to determine when to update the resource tree
         _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
-        _messengerService.Register<ExecutedCommandMessage>(this, OnExecutedCommandMessage);
     }
 
     public void OnUnloaded()
     {
         // Listen for messages to determine when to update the resource tree
         _messengerService.Unregister<RequestResourceRegistryUpdateMessage>(this);
-        _messengerService.Unregister<ExecutedCommandMessage>(this);
     }
 
     private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
-        // Set a flag to update the resource tree
-        _resourceTreeUpdatePending = true;
-    }
-
-    private void OnExecutedCommandMessage(object recipient, ExecutedCommandMessage message)
-    {
-        if (_resourceTreeUpdatePending)
-        {
-            // Don't update if there are any pending resource tree commands
-            if (!_commandService.ContainsCommandsOfType<IAddResourceCommand>() &&
-                !_commandService.ContainsCommandsOfType<IDeleteResourceCommand>() &&
-                !_commandService.ContainsCommandsOfType<ICopyResourceCommand>() &&
-                !_commandService.ContainsCommandsOfType<IUpdateResourceTreeCommand>())
-            {
-                // Execute a command to update the resource tree
-                _commandService.Execute<IUpdateResourceTreeCommand>();
-                _resourceTreeUpdatePending = false;
-            }
-        }
+        var resourceRegistry = _projectService.ResourceRegistry;
+        resourceRegistry.UpdateResourceRegistry();
     }
 
     public void OnContextMenuOpening(IResource? resource)
@@ -198,7 +177,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
-                _commandService.Execute<IUpdateResourceTreeCommand>();
+                _commandService.Execute<IUpdateResourceRegistryCommand>();
                 continue;
             }
 

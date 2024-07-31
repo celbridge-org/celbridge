@@ -9,23 +9,21 @@ namespace Celbridge.Projects.Commands;
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
     public override string UndoStackName => UndoStackNames.Project;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestResource { get; set; }
     public string SourcePath { get; set; } = string.Empty;
 
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
 
     private string _addedResourcePath = string.Empty;
 
     public AddResourceCommand(
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectDataService projectDataService)
     {
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectDataService = projectDataService;
     }
@@ -170,9 +168,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
         }
 
-        var message = new RequestResourceRegistryUpdateMessage();
-        _messengerService.Send(message);
-
         await Task.CompletedTask;
 
         return Result.Ok();
@@ -206,9 +201,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         {
             return Result.Fail($"Failed to undo add resource. {ex.Message}");
         }
-
-        var message = new RequestResourceRegistryUpdateMessage();
-        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
