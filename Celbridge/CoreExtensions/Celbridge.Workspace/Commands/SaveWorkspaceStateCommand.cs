@@ -1,43 +1,25 @@
 ﻿using Celbridge.Commands;
-using CommunityToolkit.Diagnostics;
+using Celbridge.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Commands;
 
 public class SaveWorkspaceStateCommand : CommandBase, ISaveWorkspaceStateCommand
 {
-    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IMessengerService _messengerService;
 
     public SaveWorkspaceStateCommand(
-        IWorkspaceWrapper workspaceWrapper)
+        IMessengerService messengerService)
     {
-        _workspaceWrapper = workspaceWrapper;
+        _messengerService = messengerService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            return Result.Fail("Failed to Save Workspace State because workspace is not loaded");
-        }
+        var message = new RequestSaveWorkspaceStateMessage();
+        _messengerService.Send(message);
 
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
-
-        //
-        // Save the current expanded folders in the Resource Tree View
-        //
-
-        var expandedFolders = resourceRegistry.ExpandedFolders;
-
-        var workspaceData = workspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
-
-        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
-        if (setFoldersResult.IsFailure)
-        {
-            return Result.Fail($"Failed to Save Workspace State. {setFoldersResult.Error}");
-        }
+        await Task.CompletedTask;
 
         return Result.Ok();
     }
