@@ -4,6 +4,10 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls;
+using System.Xml.Linq;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -68,6 +72,8 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void UpdateTreeViewNodes()
     {
+        Guard.IsNotNull(_resourceRegistry);
+
         // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
         // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
 
@@ -367,7 +373,61 @@ public sealed partial class ResourceTreeView : UserControl
                 resource = treeViewNode.Content as IResource;
             }
         }
-
         return resource;
+    }
+
+    private void ResourceTreeView_DragOver(object sender, DragEventArgs e)
+    {
+        var position = e.GetPosition(ResourcesTreeView);
+        TreeViewNode? draggedToNode = FindNodeAtPosition(ResourcesTreeView, position);
+        if (draggedToNode is not null)
+        {
+            e.AcceptedOperation = DataPackageOperation.Move; // This is the key to enabling drag and drop
+            e.DragUIOverride.Caption = "Move resource"; // Todo: Localize this
+            e.DragUIOverride.IsContentVisible = true;
+            e.DragUIOverride.IsGlyphVisible = true;
+        }
+
+    }
+
+    private TreeViewNode? FindNodeAtPosition(TreeView treeView, Point position)
+    {
+        TreeViewNode? CheckNode(TreeViewNode checkNode)
+        {
+            var container = treeView.ContainerFromNode(checkNode) as TreeViewItem;
+            if (container != null)
+            {
+                var bounds = container.TransformToVisual(treeView).TransformBounds(new Rect(0, 0, container.ActualWidth, container.ActualHeight));
+                if (bounds.Contains(position))
+                {
+                    return checkNode;
+                }
+
+                if (checkNode.HasChildren && checkNode.IsExpanded)
+                {
+                    foreach (var childNode in checkNode.Children)
+                    {
+                        var foundNode = CheckNode(childNode);
+                        if (foundNode is not null)
+                        {
+                            return foundNode;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        foreach (var node in treeView.RootNodes)
+        {
+            var foundNode = CheckNode(node);
+            if (foundNode is not null)
+            {
+                return foundNode;
+            }
+        }
+
+        return null;
     }
 }
