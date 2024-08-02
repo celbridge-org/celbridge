@@ -74,7 +74,6 @@
             FileTemplate="{StaticResource FileTemplate}" />
     </UserControl.Resources>
 
-
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   Grid.Row="3"
                   VerticalAlignment="Stretch"
