@@ -303,7 +303,16 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var draggedItems = args.Items.ToList();
 
-        var newParentNode = args.NewParentItem as TreeViewNode;
+        TreeViewNode? newParentNode;
+        if (_draggedToRootFolder)
+        {
+            newParentNode = null;
+            _draggedToRootFolder = false;
+        }
+        else
+        {
+            newParentNode = args.NewParentItem as TreeViewNode;
+        }
 
         // A null newParent indicates that the dragged items are being moved to the root folder
         IFolderResource? newParent = null;
@@ -376,11 +385,24 @@ public sealed partial class ResourceTreeView : UserControl
         return resource;
     }
 
+    private bool _draggedToRootFolder = false;
+
     private void ResourceTreeView_DragOver(object sender, DragEventArgs e)
     {
         var position = e.GetPosition(ResourcesTreeView);
         TreeViewNode? draggedToNode = FindNodeAtPosition(ResourcesTreeView, position);
-        if (draggedToNode is not null)
+
+        _draggedToRootFolder = false;
+        if (draggedToNode is null)
+        {
+            var treeViewBounds = new Rect(0, 0, ResourcesTreeView.ActualWidth, ResourcesTreeView.ActualHeight);
+            if (treeViewBounds.Contains(position))
+            {
+                _draggedToRootFolder = true;
+            }
+        }
+
+        if (draggedToNode is not null || _draggedToRootFolder)
         {
             e.AcceptedOperation = DataPackageOperation.Move; // This is the key to enabling drag and drop
             e.DragUIOverride.Caption = "Move resource"; // Todo: Localize this
