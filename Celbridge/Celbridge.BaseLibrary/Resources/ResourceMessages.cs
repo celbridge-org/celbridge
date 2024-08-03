@@ -1,7 +1,7 @@
 ﻿namespace Celbridge.Resources;
 
 /// <summary>
-/// A message to request an update of the resource tree.
+/// A message to request an update of the resource registry.
 /// </summary>
 public record RequestResourceRegistryUpdateMessage;
 
