@@ -13,7 +13,17 @@ public interface IProjectService
     IResourceRegistry ResourceRegistry { get; }
 
     /// <summary>
+    /// Returns the Resource Tree View associated with the loaded project.
+    /// </summary>
+    IResourceTreeView ResourceTreeView { get; }
+
+    /// <summary>
     /// Factory method to create the project panel for the workspace UI.
     /// </summary>
     object CreateProjectPanel();
+
+    /// <summary>
+    /// Update the resource registry and populate the resource tree view.
+    /// </summary>
+    Task<Result> UpdateResourcesAsync();
 }
