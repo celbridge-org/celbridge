@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Workspace;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -8,6 +9,8 @@ namespace Celbridge.Commands.Services;
 
 public class CommandService : ICommandService
 {
+    private const long SaveWorkspaceDelay = 250; // ms
+
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
 
@@ -23,6 +26,8 @@ public class CommandService : ICommandService
     private bool _stopped = false;
 
     private UndoStack _undoStack = new ();
+
+    private long _saveWorkspaceTime;
 
     public CommandService(
         IMessengerService messengerService,
@@ -287,6 +292,17 @@ public class CommandService : ICommandService
 
             var currentTime = _stopwatch.ElapsedMilliseconds;
 
+            // Save the workspace state if a command has requested it
+            // Handling it here ensures the save is performed while no command is executing.
+            if (_saveWorkspaceTime > 0 &&
+                currentTime > _saveWorkspaceTime)
+            {
+                // Todo: Call Save direclty on the Workspace service instead of sending message
+                var message = new RequestSaveWorkspaceStateMessage();
+                _messengerService.Send(message);
+                _saveWorkspaceTime = 0; // Reset the timer
+            }
+
             // Find the first command that is ready to execute
             IExecutableCommand? command = null;
             var executionMode = CommandExecutionMode.Execute;
@@ -360,6 +376,7 @@ public class CommandService : ICommandService
 
                     // Trigger a resource registry update if needed.
                     CheckUpdateResourceRegistry(command);
+                    CheckSaveWorkspaceState(command);
                 }
                 catch (Exception ex)
                 {
@@ -400,5 +417,20 @@ public class CommandService : ICommandService
 
         var requestMessage = new RequestResourceRegistryUpdateMessage();
         _messengerService.Send(requestMessage);
+    }
+
+    private void CheckSaveWorkspaceState(IExecutableCommand command)
+    {
+        // Save the workspace state if this command requires it.
+        if (!command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+        {
+            return;
+        }
+
+        // Set a timer to save the workspace state after a short delay.
+        // If any commands with the SaveWorkspaceState flag are executed before the timer expires,
+        // the timer will be extended again. This avoids saving the workspace state too frequently.
+
+        _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
     }
 }
