@@ -40,4 +40,9 @@ public interface IWorkspaceService
     /// Returns the Clipboard Service associated with the workspace.
     /// </summary>
     IClipboardService ClipboardService { get; }
+
+    /// <summary>
+    /// Save the workspace state to the database.
+    /// </summary>
+    Task<Result> SaveWorkspaceStateAsync();
 }

@@ -103,10 +103,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         resourceRegistry.SetFolderIsExpanded(folderResource, isExpanded);
         folder.IsExpanded = isExpanded;
-
-        // Save the workspace data (with a delay) to ensure the new expanded state is persisted
-        _commandService.RemoveCommandsOfType<ISaveWorkspaceStateCommand>();
-        _commandService.Execute<ISaveWorkspaceStateCommand>(250);
     }
 
     //

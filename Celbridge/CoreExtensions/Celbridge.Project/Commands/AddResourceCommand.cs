@@ -56,7 +56,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         //}
 
         return undoResult;
-
     }
 
     private async Task<Result> AddResourceAsync()
