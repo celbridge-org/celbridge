@@ -384,13 +384,11 @@ public class CommandService : ICommandService
                         }
                     }
 
+                    CheckSaveWorkspaceState(command);
+
                     // Todo: Indicate whether the command succeeded or failed in the message
                     var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
                     _messengerService.Send(message);
-
-                    // Trigger a resource registry update if needed.
-                    CheckUpdateResourceRegistry(command);
-                    CheckSaveWorkspaceState(command);
                 }
                 catch (Exception ex)
                 {
