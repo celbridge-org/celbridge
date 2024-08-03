@@ -12,6 +12,19 @@ public class ProjectService : IProjectService, IDisposable
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
+    private IResourceTreeView? _resourceTreeView;
+    public IResourceTreeView ResourceTreeView 
+    {
+        get
+        {
+            return _resourceTreeView ?? throw new NullReferenceException("ResourceTreeView is null.");
+        }
+        set 
+        { 
+            _resourceTreeView = value; 
+        }
+    }
+
     public ProjectService(
         IServiceProvider serviceProvider,
         IProjectDataService projectDataService,
@@ -40,6 +53,23 @@ public class ProjectService : IProjectService, IDisposable
     public object CreateProjectPanel()
     {
         return _serviceProvider.GetRequiredService<ProjectPanel>();
+    }
+
+    public async Task<Result> UpdateResourcesAsync()
+    {
+        var updateResult = ResourceRegistry.UpdateResourceRegistry();
+        if (updateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to update resources. {updateResult.Error}");
+        }
+
+        var populateResult = await ResourceTreeView.PopulateTreeView(ResourceRegistry);
+        if (populateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to update resources. {populateResult.Error}");
+        }
+
+        return Result.Ok();
     }
 
     private bool _disposed;

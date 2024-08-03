@@ -13,7 +13,7 @@ namespace Celbridge.Projects.Commands
     public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     {
         public override string UndoStackName => UndoStackNames.Project;
-        public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+        public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
         public ResourceKey Resource { get; set; }
 

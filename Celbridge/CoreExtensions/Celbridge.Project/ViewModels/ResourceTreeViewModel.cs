@@ -1,7 +1,9 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Commands;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Projects.ViewModels;
@@ -30,23 +32,19 @@ public partial class ResourceTreeViewModel : ObservableObject
     // Event handlers
     //
 
-    public void OnLoaded()
+    public void OnLoaded(IResourceTreeView resourceTreeView)
     {
-        // Listen for messages to determine when to update the resource tree
-        _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnRequestResourceTreeUpdateMessage);
+        // Use the concrete type to set the resource tree view because the
+        // interface does not expose the setter.
+
+        var projectService = _projectService as ProjectService;
+        Guard.IsNotNull(projectService);
+
+        projectService.ResourceTreeView = resourceTreeView;
     }
 
     public void OnUnloaded()
-    {
-        // Listen for messages to determine when to update the resource tree
-        _messengerService.Unregister<RequestResourceRegistryUpdateMessage>(this);
-    }
-
-    private void OnRequestResourceTreeUpdateMessage(object recipient, RequestResourceRegistryUpdateMessage message)
-    {
-        var resourceRegistry = _projectService.ResourceRegistry;
-        resourceRegistry.UpdateResourceRegistry();
-    }
+    {}
 
     public void OnContextMenuOpening(IResource? resource)
     {
