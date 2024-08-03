@@ -1,18 +1,18 @@
 ﻿using Celbridge.Projects.ViewModels;
 using Celbridge.Resources;
-using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Core;
 
 namespace Celbridge.Projects.Views;
 
-public sealed partial class ResourceTreeView : UserControl
+public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 {
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IMessengerService _messengerService;
     private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
@@ -33,7 +33,6 @@ public sealed partial class ResourceTreeView : UserControl
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
 
         Loaded += ResourceTreeView_Loaded;
         Unloaded += ResourceTreeView_Unloaded;
@@ -41,44 +40,47 @@ public sealed partial class ResourceTreeView : UserControl
 
     private void ResourceTreeView_Loaded(object sender, RoutedEventArgs e)
     {
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
-
         ResourcesTreeView.Collapsed += ResourcesTreeView_Collapsed;
         ResourcesTreeView.Expanding += ResourcesTreeView_Expanding;
-        ViewModel.OnLoaded();
+
+        ViewModel.OnLoaded(this);
     }
 
     private void ResourceTreeView_Unloaded(object sender, RoutedEventArgs e)
     {
-        _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
-
         ViewModel.OnUnloaded();
     }
 
-    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    public async Task<Result> PopulateTreeView(IResourceRegistry resourceRegistry)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-
         _resourceRegistry = resourceRegistry;
 
-        UpdateTreeViewNodes();
-    }
-
-    private void UpdateTreeViewNodes()
-    {
         // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
         // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
 
         var rootFolder = _resourceRegistry.RootFolder;
         var rootNodes = ResourcesTreeView.RootNodes;
 
-        // Clear existing nodes
-        rootNodes.Clear();
+        try
+        {
+            // Clear existing nodes
+            rootNodes.Clear();
 
-        // Recursively populate the Tree View
-        PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+            // I don't know why, but if this delay is not here, the TreeView can get into a corrupted state with
+            // resources missing their icons. This happens in particular when undo/redoing resource operations quickly.
+            // I tried reducing the delay down to 1ms, but that still caused the issue.
+            // Unfortunately this causes a visible flicker when updating the TreeView, but it's more important that it works robustly.
+            await Task.Delay(10);
+
+            // Recursively populate the Tree View
+            PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to populate tree view. {ex.Message}");
+        }
+
+        return Result.Ok();
     }
 
     private void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> resources)
@@ -297,7 +299,16 @@ public sealed partial class ResourceTreeView : UserControl
     {
         var draggedItems = args.Items.ToList();
 
-        var newParentNode = args.NewParentItem as TreeViewNode;
+        TreeViewNode? newParentNode;
+        if (_draggedToRootFolder)
+        {
+            newParentNode = null;
+            _draggedToRootFolder = false;
+        }
+        else
+        {
+            newParentNode = args.NewParentItem as TreeViewNode;
+        }
 
         // A null newParent indicates that the dragged items are being moved to the root folder
         IFolderResource? newParent = null;
@@ -367,7 +378,74 @@ public sealed partial class ResourceTreeView : UserControl
                 resource = treeViewNode.Content as IResource;
             }
         }
-
         return resource;
+    }
+
+    private bool _draggedToRootFolder = false;
+
+    private void ResourceTreeView_DragOver(object sender, DragEventArgs e)
+    {
+        var position = e.GetPosition(ResourcesTreeView);
+        TreeViewNode? draggedToNode = FindNodeAtPosition(ResourcesTreeView, position);
+
+        _draggedToRootFolder = false;
+        if (draggedToNode is null)
+        {
+            var treeViewBounds = new Rect(0, 0, ResourcesTreeView.ActualWidth, ResourcesTreeView.ActualHeight);
+            if (treeViewBounds.Contains(position))
+            {
+                _draggedToRootFolder = true;
+            }
+        }
+
+        if (draggedToNode is not null || _draggedToRootFolder)
+        {
+            e.AcceptedOperation = DataPackageOperation.Move; // This is the key to enabling drag and drop
+            e.DragUIOverride.Caption = "Move resource"; // Todo: Localize this
+            e.DragUIOverride.IsContentVisible = true;
+            e.DragUIOverride.IsGlyphVisible = true;
+        }
+
+    }
+
+    private TreeViewNode? FindNodeAtPosition(TreeView treeView, Point position)
+    {
+        TreeViewNode? CheckNode(TreeViewNode checkNode)
+        {
+            var container = treeView.ContainerFromNode(checkNode) as TreeViewItem;
+            if (container != null)
+            {
+                var bounds = container.TransformToVisual(treeView).TransformBounds(new Rect(0, 0, container.ActualWidth, container.ActualHeight));
+                if (bounds.Contains(position))
+                {
+                    return checkNode;
+                }
+
+                if (checkNode.HasChildren && checkNode.IsExpanded)
+                {
+                    foreach (var childNode in checkNode.Children)
+                    {
+                        var foundNode = CheckNode(childNode);
+                        if (foundNode is not null)
+                        {
+                            return foundNode;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        foreach (var node in treeView.RootNodes)
+        {
+            var foundNode = CheckNode(node);
+            if (foundNode is not null)
+            {
+                return foundNode;
+            }
+        }
+
+        return null;
     }
 }

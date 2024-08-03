@@ -11,7 +11,7 @@ public enum CommandFlags
     /// <summary>
     /// Update the resource registry after execution.
     /// </summary>
-    UpdateResourceRegistry = 1 << 0,
+    UpdateResources = 1 << 0,
 
     /// <summary>
     /// Save the workspace state after execution.

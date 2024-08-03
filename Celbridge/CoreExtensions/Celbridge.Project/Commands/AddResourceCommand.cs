@@ -9,7 +9,7 @@ namespace Celbridge.Projects.Commands;
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
     public override string UndoStackName => UndoStackNames.Project;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestResource { get; set; }

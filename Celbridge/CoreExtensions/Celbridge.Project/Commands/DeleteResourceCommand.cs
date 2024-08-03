@@ -13,7 +13,7 @@ namespace Celbridge.Projects.Commands
     public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     {
         public override string UndoStackName => UndoStackNames.Project;
-        public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+        public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
         public ResourceKey Resource { get; set; }
 
@@ -174,6 +174,8 @@ namespace Celbridge.Projects.Commands
             // Record that a file was deleted
             _deletedResourceType = typeof(IFileResource);
 
+            await Task.CompletedTask;
+
             return Result.Ok();
         }
 
@@ -204,6 +206,8 @@ namespace Celbridge.Projects.Commands
             {
                 return Result.Fail($"Failed to undo file delete. {ex.Message}");
             }
+
+            await Task.CompletedTask;
 
             return Result.Ok();
         }
