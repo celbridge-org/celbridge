@@ -15,3 +15,8 @@ public record WorkspaceLoadedMessage();
 /// Sent when the loaded workspace has finished unloading.
 /// </summary>
 public record WorkspaceUnloadedMessage();
+
+/// <summary>
+/// A message to request an update of the resource registry.
+/// </summary>
+public record RequestSaveWorkspaceStateMessage;
