@@ -1,7 +1,6 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Extensions;
 using Celbridge.Navigation;
-using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;
@@ -20,11 +19,6 @@ public class Extension : IExtension
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
         config.AddTransient<IClipboardService, ClipboardService>();
-
-        //
-        // Register commands
-        //
-        config.AddTransient<ISaveWorkspaceStateCommand, SaveWorkspaceStateCommand>();
     }
 
     public Result Initialize()
