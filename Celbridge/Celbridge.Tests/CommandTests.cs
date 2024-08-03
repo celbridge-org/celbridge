@@ -7,6 +7,8 @@ using Celbridge.Logging.Services;
 using Celbridge.Messaging.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Celbridge.Workspace;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge.Tests;
 
@@ -66,6 +68,7 @@ public class CommandTests
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ICommandService, CommandService>();
+        services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
 
         _serviceProvider = services.BuildServiceProvider();
         _commandService = _serviceProvider.GetRequiredService<ICommandService>();
