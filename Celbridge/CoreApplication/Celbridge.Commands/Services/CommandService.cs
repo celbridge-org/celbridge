@@ -297,7 +297,7 @@ public class CommandService : ICommandService
             if (_saveWorkspaceTime > 0 &&
                 currentTime > _saveWorkspaceTime)
             {
-                // Todo: Call Save direclty on the Workspace service instead of sending message
+                // Todo: Call Save directly on the Workspace service instead of sending message
                 var message = new RequestSaveWorkspaceStateMessage();
                 _messengerService.Send(message);
                 _saveWorkspaceTime = 0; // Reset the timer
