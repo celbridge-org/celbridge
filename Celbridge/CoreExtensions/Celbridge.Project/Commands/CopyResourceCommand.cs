@@ -11,7 +11,7 @@ namespace Celbridge.Projects.Commands
     public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     {
         public override string UndoStackName => UndoStackNames.Project;
-        public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+        public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
         public ResourceKey SourceResource { get; set; }
         public ResourceKey DestResource { get; set; }

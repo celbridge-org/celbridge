@@ -215,9 +215,12 @@ public class ClipboardService : IClipboardService, IDisposable
 
         resourceRegistry.SetFolderIsExpanded(destFolderResource, true);
 
-        // Request a resource registry update
-        var message = new RequestResourceRegistryUpdateMessage();
-        _messengerService.Send(message);
+        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
+        var updateResult = await projectService.UpdateResourcesAsync();
+        if (updateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to update resources. {updateResult.Error}");
+        }
 
         return Result.Ok();
     }

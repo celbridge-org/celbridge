@@ -9,7 +9,7 @@ namespace Celbridge.Projects.Commands;
 public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }
 

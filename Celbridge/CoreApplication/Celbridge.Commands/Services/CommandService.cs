@@ -1,6 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
+using Celbridge.Workspace;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -10,6 +10,7 @@ public class CommandService : ICommandService
 {
     private readonly IMessengerService _messengerService;
     private readonly ILoggingService _loggingService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
     private record QueuedCommand(IExecutableCommand Command, long ExecutionTime, CommandExecutionMode ExecutionMode);
@@ -26,10 +27,12 @@ public class CommandService : ICommandService
 
     public CommandService(
         IMessengerService messengerService,
-        ILoggingService loggingService)
+        ILoggingService loggingService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _loggingService = loggingService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public Result Execute<T>
@@ -355,11 +358,20 @@ public class CommandService : ICommandService
                         }
                     }
 
+                    // Update the resource registry if the command requires it.
+                    if (_workspaceWrapper.IsWorkspacePageLoaded &&
+                        command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                    {
+                        var updateResult = await UpdateResourcesAsync(command);
+                        if (updateResult.IsFailure)
+                        {
+                            _loggingService.Error($"Command '{command}' failed. {updateResult.Error}");
+                        }
+                    }
+
+                    // Todo: Indicate whether the command succeeded or failed in the message
                     var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
                     _messengerService.Send(message);
-
-                    // Trigger a resource registry update if needed.
-                    CheckUpdateResourceRegistry(command);
                 }
                 catch (Exception ex)
                 {
@@ -376,29 +388,29 @@ public class CommandService : ICommandService
         _stopped = true;
     }
 
-    private void CheckUpdateResourceRegistry(IExecutableCommand command)
+    private async Task<Result> UpdateResourcesAsync(IExecutableCommand command)
     {
-        // Update the resource registry if this command requires it.
-        if (!command.CommandFlags.HasFlag(CommandFlags.UpdateResourceRegistry))
-        {
-            return;
-        }
-
-        // For grouped commands, only the last command to execute should request the
-        // resource update. Updating resources for the previous commands is redundant.
-        // Every non-grouped command should update the resource registry however. This ensures
-        // that the registry is up to date when the next command in the queue executes.
+        // For grouped commands, only the last command to execute should perform the
+        // resource update to avoid unnecessary updates.
+        // Every non-grouped command does update the resource registry. This ensures
+        // that the registry & view are up to date before the next command in the queue executes.
 
         foreach (var item in _commandQueue)
         {
-            if (item.Command.CommandFlags.HasFlag(CommandFlags.UpdateResourceRegistry) &&
+            if (item.Command.CommandFlags.HasFlag(CommandFlags.UpdateResources) &&
                 item.Command.UndoGroupId == command.UndoGroupId)
             {
-                return;
+                return Result.Ok();
             }
         }
 
-        var requestMessage = new RequestResourceRegistryUpdateMessage();
-        _messengerService.Send(requestMessage);
+        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
+        var updateResult = await projectService.UpdateResourcesAsync();
+        if (updateResult.IsFailure)
+        {
+            return updateResult;
+        }
+
+        return Result.Ok();
     }
 }

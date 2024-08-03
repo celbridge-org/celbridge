@@ -37,7 +37,7 @@ public class TelemetryService : ITelemetryService
             cc.appKey = "8b89bef9c197b87ad2b130f6bcee3512910a987e";
             cc.appVersion = _utiltyService.GetEnvironmentInfo().AppVersion;
 
-            Countly.IsLoggingEnabled = true;
+            //Countly.IsLoggingEnabled = true;
             Countly.Instance.Init(cc);
 
 
