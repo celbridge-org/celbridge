@@ -1,24 +1,27 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Resources;
+using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
 
 public class UpdateResourceRegistryCommand : CommandBase, IUpdateResourceRegistryCommand
 {
-    private readonly IMessengerService _messengerService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public UpdateResourceRegistryCommand(
-        IMessengerService messengerService)
+        IWorkspaceWrapper workspaceWrapper)
     {
-        _messengerService = messengerService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var message = new RequestResourceRegistryUpdateMessage();
-        _messengerService.Send(message);
+        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
 
-        await Task.CompletedTask;
+        var updateResult = await projectService.UpdateResourcesAsync();
+        if (updateResult.IsFailure)
+        {
+            return updateResult;
+        }
 
         return Result.Ok();
     }
