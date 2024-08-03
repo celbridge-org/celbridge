@@ -10,7 +10,7 @@ namespace Celbridge.Projects.Commands;
 public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 {
     public override string UndoStackName => UndoStackNames.None;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResourceRegistry;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestFolderResource { get; set; }
