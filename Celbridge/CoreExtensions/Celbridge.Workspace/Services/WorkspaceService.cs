@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Status;
@@ -25,11 +26,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IStatusService StatusService { get; }
     public IClipboardService ClipboardService { get; }
 
+    private IMessengerService _messengerService;
     private IExecutedCommandLogger _commandLogger;
     private IResourceRegistryDumper _resourceRegistryDumper;
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
+        IMessengerService messengerService,
         IProjectDataService projectDataService)
     {
         // Create instances of the required sub-services
@@ -60,6 +63,33 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Dump the resource registry to a file
         _resourceRegistryDumper = serviceProvider.GetRequiredService<IResourceRegistryDumper>();
         _resourceRegistryDumper.Initialize(logFolderPath);
+
+        _messengerService = messengerService;
+        _messengerService.Register<RequestSaveWorkspaceStateMessage>(this, OnRequestSaveWorkspaceStateMessage);
+    }
+
+    private void OnRequestSaveWorkspaceStateMessage(object recipient, RequestSaveWorkspaceStateMessage message)
+    {
+        _ = SaveWorkspaceStateAsync();
+    }
+
+    public async Task<Result> SaveWorkspaceStateAsync()
+    {
+        // Save the expanded folders in the Resource Registry
+
+        var resourceRegistry = ProjectService.ResourceRegistry;
+        var expandedFolders = resourceRegistry.ExpandedFolders;
+
+        var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
+        if (setFoldersResult.IsFailure)
+        {
+            return Result.Fail($"Failed to Save Workspace State. {setFoldersResult.Error}");
+        }
+
+        return Result.Ok();
     }
 
     private bool _disposed;
@@ -76,6 +106,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         {
             if (disposing)
             {
+                _messengerService.Unregister<RequestSaveWorkspaceStateMessage>(this);
+
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
