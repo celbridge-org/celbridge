@@ -101,8 +101,12 @@ public partial class ResourceTreeViewModel : ObservableObject
             return;
         }
 
-        resourceRegistry.SetFolderIsExpanded(folderResource, isExpanded);
-        folder.IsExpanded = isExpanded;
+        _commandService.Execute<IExpandFolderCommand>(command =>
+        {
+            command.FolderResource = folderResource;
+            command.Expanded = isExpanded;
+            command.UpdateResources = false; // TreeView has already expanded the folder node, no need to update it again.
+        });
     }
 
     //
