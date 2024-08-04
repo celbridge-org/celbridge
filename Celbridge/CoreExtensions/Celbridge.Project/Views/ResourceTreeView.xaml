@@ -80,12 +80,10 @@
                   ContextFlyout="{StaticResource ResourceContextMenu}">
         <muxc:TreeView x:Name="ResourcesTreeView"
                        ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
-                       CanReorderItems="False"
-                       CanDragItems="True"
+                       CanReorderItems="True"
                        SelectionMode="Single"
                        KeyDown="TreeView_KeyDown"
-                       DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
-                       DragOver="ResourceTreeView_DragOver">
+                       DragItemsCompleted="ResourcesTreeView_DragItemsCompleted">
         </muxc:TreeView>
     </ScrollViewer>
 </UserControl>
