@@ -101,8 +101,11 @@ public partial class ResourceTreeViewModel : ObservableObject
             return;
         }
 
-        resourceRegistry.SetFolderIsExpanded(folderResource, isExpanded);
-        folder.IsExpanded = isExpanded;
+        _commandService.Execute<IExpandFolderCommand>(command =>
+        {
+            command.FolderResource = folderResource;
+            command.Expanded = isExpanded;
+        });
     }
 
     //
