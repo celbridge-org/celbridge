@@ -3,11 +3,11 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
 
-public class UpdateResourceRegistryCommand : CommandBase, IUpdateResourceRegistryCommand
+public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public UpdateResourceRegistryCommand(
+    public UpdateResourcesCommand(
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -32,6 +32,6 @@ public class UpdateResourceRegistryCommand : CommandBase, IUpdateResourceRegistr
     public static void UpdateResourceRegistry()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IUpdateResourceRegistryCommand>();
+        commandService.Execute<IUpdateResourcesCommand>();
     }
 }
