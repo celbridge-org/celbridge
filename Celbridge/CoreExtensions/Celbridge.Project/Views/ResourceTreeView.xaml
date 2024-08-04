@@ -83,7 +83,12 @@
                        CanReorderItems="True"
                        SelectionMode="Single"
                        KeyDown="TreeView_KeyDown"
-                       DragItemsCompleted="ResourcesTreeView_DragItemsCompleted">
+                       DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
+                       AllowDrop="True" 
+                       DragOver="ResourcesTreeView_DragOver" 
+                       Drop="ResourcesTreeView_Drop"
+                       
+                       >
         </muxc:TreeView>
     </ScrollViewer>
 </UserControl>
