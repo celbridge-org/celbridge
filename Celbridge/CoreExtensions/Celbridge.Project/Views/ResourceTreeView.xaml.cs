@@ -441,4 +441,49 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         return null;
     }
+
+    private void ResourcesTreeView_DragOver(object sender, DragEventArgs e)
+    {
+        e.AcceptedOperation = DataPackageOperation.Copy;
+        e.Handled = true;
+    }
+
+    private void ResourcesTreeView_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        IResource? destResource = null;
+        var position = e.GetPosition(ResourcesTreeView);
+        TreeViewNode? dropTargetNode = FindNodeAtPosition(ResourcesTreeView, position);
+        if (dropTargetNode is not null)
+        {
+            destResource = dropTargetNode.Content as IResource;
+        }
+
+        async Task ProcessDroppedItems()
+        {
+            List<string> droppedItemPaths = new();
+
+            var items = await e.DataView.GetStorageItemsAsync();
+            foreach (var item in items)
+            {
+                if (item is Windows.Storage.StorageFile storageFile)
+                {
+                    droppedItemPaths.Add(storageFile.Path);
+                }
+                else if (item is Windows.Storage.StorageFolder storageFolder)
+                {
+                    droppedItemPaths.Add(storageFolder.Path);
+                }
+            }
+
+            ViewModel.DragAndDropResources(destResource, droppedItemPaths);
+        }
+
+        _ = ProcessDroppedItems();
+    }
 }
