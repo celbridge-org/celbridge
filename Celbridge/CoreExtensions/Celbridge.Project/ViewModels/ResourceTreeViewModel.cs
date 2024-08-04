@@ -175,7 +175,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 // Moving a resource to the same location is technically a no-op, but we still need to update
                 // the resource tree because the TreeView may now be displaying the resources in the wrong order.
-                _commandService.Execute<IUpdateResourceRegistryCommand>();
+                _commandService.Execute<IUpdateResourcesCommand>();
                 continue;
             }
 
