@@ -68,6 +68,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
             // I don't know why, but if this delay is not here, the TreeView can get into a corrupted state with
             // resources missing their icons. This happens in particular when undo/redoing resource operations quickly.
+            // I tried many combinations of clearing the nodes, calling UpdateLayout() and using rootNodes.ReplaceWith().
+            // This is the only solution that has worked consistently.
             // I tried reducing the delay down to 1ms, but that still caused the issue.
             // Unfortunately this causes a visible flicker when updating the TreeView, but it's more important that it works robustly.
             await Task.Delay(10);
