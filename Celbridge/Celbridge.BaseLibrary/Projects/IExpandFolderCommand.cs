@@ -16,5 +16,10 @@ public interface IExpandFolderCommand : IExecutableCommand
     /// <summary>
     /// If true, the folder will be expanded, if false the folder will be collapsed.
     /// </summary>
-    bool IsExpanded { get; set; }
+    bool Expanded { get; set; }
+
+    /// <summary>
+    /// If true, the tree view will be updated to reflect the new state of the folder.
+    /// </summary>
+    bool UpdateResources { get; set; }
 }
