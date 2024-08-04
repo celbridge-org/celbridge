@@ -105,6 +105,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         {
             command.FolderResource = folderResource;
             command.Expanded = isExpanded;
+            command.UpdateResources = false; // TreeView has already expanded the folder node, no need to update it again.
         });
     }
 
