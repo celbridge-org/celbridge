@@ -134,7 +134,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void AddFolder(object? sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
 
         if (resource is IFolderResource destFolder)
         {
@@ -157,7 +157,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void AddFile(object? sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
 
         if (resource is IFolderResource destFolder)
         {
@@ -180,7 +180,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void CutResource(object sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.CutResourceToClipboard(resource);
@@ -188,7 +188,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void CopyResource(object sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.CopyResourceToClipboard(resource);
@@ -196,7 +196,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void PasteResource(object sender, RoutedEventArgs e)
     {
-        var destResource = AcquireResource(sender);
+        var destResource = AcquireContextMenuResource(sender);
 
         // Resource is permitted to be null here (indicates the root folder)
         ViewModel.PasteResourceFromClipboard(destResource);
@@ -204,7 +204,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void DeleteResource(object? sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.ShowDeleteResourceDialog(resource);
@@ -212,7 +212,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void RenameResource(object? sender, RoutedEventArgs e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.ShowRenameResourceDialog(resource);
@@ -336,11 +336,11 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void ResourceContextMenu_Opening(object sender, object e)
     {
-        var resource = AcquireResource(sender);
+        var resource = AcquireContextMenuResource(sender);
         ViewModel.OnContextMenuOpening(resource);
     }
 
-    private IResource? AcquireResource(object? obj)
+    private IResource? AcquireContextMenuResource(object? obj)
     {
         IResource? resource = null;
         if (obj is null)
@@ -374,31 +374,50 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return resource;
     }
 
-    private bool _draggedToRootFolder = false;
-
-    private void ResourceTreeView_DragOver(object sender, DragEventArgs e)
+    private void ResourcesTreeView_DragOver(object sender, DragEventArgs e)
     {
+        // Accept the drag and drop content
+        e.AcceptedOperation = DataPackageOperation.Copy;
+        e.Handled = true;
+    }
+
+    private void ResourcesTreeView_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        // Find the destination resource that the item was dropped over
+        IResource? destResource = null;
         var position = e.GetPosition(ResourcesTreeView);
-        TreeViewNode? draggedToNode = FindNodeAtPosition(ResourcesTreeView, position);
-
-        _draggedToRootFolder = false;
-        if (draggedToNode is null)
+        TreeViewNode? dropTargetNode = FindNodeAtPosition(ResourcesTreeView, position);
+        if (dropTargetNode is not null)
         {
-            var treeViewBounds = new Rect(0, 0, ResourcesTreeView.ActualWidth, ResourcesTreeView.ActualHeight);
-            if (treeViewBounds.Contains(position))
+            destResource = dropTargetNode.Content as IResource;
+        }
+
+        _ = ProcessDroppedItems();
+
+        async Task ProcessDroppedItems()
+        {
+            List<string> droppedItemPaths = new();
+            var items = await e.DataView.GetStorageItemsAsync();
+            foreach (var item in items)
             {
-                _draggedToRootFolder = true;
+                if (item is Windows.Storage.StorageFile storageFile)
+                {
+                    droppedItemPaths.Add(storageFile.Path);
+                }
+                else if (item is Windows.Storage.StorageFolder storageFolder)
+                {
+                    droppedItemPaths.Add(storageFolder.Path);
+                }
             }
-        }
 
-        if (draggedToNode is not null || _draggedToRootFolder)
-        {
-            e.AcceptedOperation = DataPackageOperation.Move; // This is the key to enabling drag and drop
-            e.DragUIOverride.Caption = "Move resource"; // Todo: Localize this
-            e.DragUIOverride.IsContentVisible = true;
-            e.DragUIOverride.IsGlyphVisible = true;
+            ViewModel.DragAndDropResources(destResource, droppedItemPaths);
         }
-
     }
 
     private TreeViewNode? FindNodeAtPosition(TreeView treeView, Point position)
@@ -440,50 +459,5 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
 
         return null;
-    }
-
-    private void ResourcesTreeView_DragOver(object sender, DragEventArgs e)
-    {
-        e.AcceptedOperation = DataPackageOperation.Copy;
-        e.Handled = true;
-    }
-
-    private void ResourcesTreeView_Drop(object sender, DragEventArgs e)
-    {
-        e.Handled = true;
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
-        {
-            return;
-        }
-
-        IResource? destResource = null;
-        var position = e.GetPosition(ResourcesTreeView);
-        TreeViewNode? dropTargetNode = FindNodeAtPosition(ResourcesTreeView, position);
-        if (dropTargetNode is not null)
-        {
-            destResource = dropTargetNode.Content as IResource;
-        }
-
-        async Task ProcessDroppedItems()
-        {
-            List<string> droppedItemPaths = new();
-
-            var items = await e.DataView.GetStorageItemsAsync();
-            foreach (var item in items)
-            {
-                if (item is Windows.Storage.StorageFile storageFile)
-                {
-                    droppedItemPaths.Add(storageFile.Path);
-                }
-                else if (item is Windows.Storage.StorageFolder storageFolder)
-                {
-                    droppedItemPaths.Add(storageFolder.Path);
-                }
-            }
-
-            ViewModel.DragAndDropResources(destResource, droppedItemPaths);
-        }
-
-        _ = ProcessDroppedItems();
     }
 }
