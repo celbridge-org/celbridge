@@ -232,4 +232,9 @@ public partial class ResourceTreeViewModel : ObservableObject
             command.DestFolderResource = destFolderResource;
         });
     }
+
+    public void DragAndDropResources(IResource? destResource, List<string> droppedItemPaths)
+    {
+        // Todo: Execute a command to copy the resources with undo/redo
+    }
 }
