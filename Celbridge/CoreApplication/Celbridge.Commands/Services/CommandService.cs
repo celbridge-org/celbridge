@@ -294,15 +294,11 @@ public class CommandService : ICommandService
 
             var currentTime = _stopwatch.ElapsedMilliseconds;
 
-            // Save the workspace state if a command has requested it
-            // Handling it here ensures the save is performed while no command is executing.
-            if (_saveWorkspaceTime > 0 &&
-                currentTime > _saveWorkspaceTime)
+            // Saving the workspace should be performed while no command is executing.
+            var updateWorkspaceResult = await UpdateWorkspaceAsync(currentTime);
+            if (updateWorkspaceResult.IsFailure)
             {
-                // Todo: Call Save directly on the Workspace service instead of sending message
-                var message = new RequestSaveWorkspaceStateMessage();
-                _messengerService.Send(message);
-                _saveWorkspaceTime = 0; // Reset the timer
+                _loggingService.Error($"Failed to update workspace. {updateWorkspaceResult.Error}");
             }
 
             // Find the first command that is ready to execute
@@ -341,7 +337,7 @@ public class CommandService : ICommandService
                         //
                         // Execute command as an undo
                         //
-   
+
                         var undoResult = await command.UndoAsync();
                         if (undoResult.IsSuccess)
                         {
@@ -384,7 +380,14 @@ public class CommandService : ICommandService
                         }
                     }
 
-                    CheckSaveWorkspaceState(command);
+                    // Save the workspace state if the command requires it.
+                    if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+                    {
+                        // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
+                        // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
+                        // the timer will be extended again. 
+                        _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
+                    }
 
                     // Todo: Indicate whether the command succeeded or failed in the message
                     var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
@@ -400,9 +403,30 @@ public class CommandService : ICommandService
         }
     }
 
+
     public void StopExecution()
     {
         _stopped = true;
+    }
+
+    /// <summary>
+    /// Save the workspace state if a recently executed command has requested it
+    /// </summary>
+    private async Task<Result> UpdateWorkspaceAsync(long currentTime)
+    {
+        if (_saveWorkspaceTime > 0 &&
+            currentTime > _saveWorkspaceTime)
+        {
+            var saveResult = await _workspaceWrapper.WorkspaceService.SaveWorkspaceStateAsync();
+            _saveWorkspaceTime = 0; // Reset the timer
+
+            if (saveResult.IsFailure)
+            {
+                return saveResult;
+            }
+        }
+
+        return Result.Ok();
     }
 
     private async Task<Result> UpdateResourcesAsync(IExecutableCommand command)
@@ -429,20 +453,5 @@ public class CommandService : ICommandService
         }
 
         return Result.Ok();
-    }
-
-    private void CheckSaveWorkspaceState(IExecutableCommand command)
-    {
-        // Save the workspace state if this command requires it.
-        if (!command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
-        {
-            return;
-        }
-
-        // Set a timer to save the workspace state after a short delay.
-        // If any commands with the SaveWorkspaceState flag are executed before the timer expires,
-        // the timer will be extended again. This avoids saving the workspace state too frequently.
-
-        _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
     }
 }
