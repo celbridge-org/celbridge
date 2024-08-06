@@ -3,14 +3,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Resources.ViewModels;
 
-public partial class ProjectPanelViewModel : ObservableObject
+public partial class ResourcesPanelViewModel : ObservableObject
 {
     private readonly ICommandService _commandService;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
 
-    public ProjectPanelViewModel(
+    public ResourcesPanelViewModel(
         IProjectDataService projectDataService,
         ICommandService commandService)
     {
