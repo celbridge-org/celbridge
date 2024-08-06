@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Projects;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// Specifies whether transfered resources should be copied or moved.
