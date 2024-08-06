@@ -1,5 +1,4 @@
-﻿using Celbridge.Core;
-using Celbridge.Utilities;
+﻿using Celbridge.Utilities;
 using System.Reflection;
 using Windows.Storage;
 

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Projects;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// Provides services for managing project databases.
