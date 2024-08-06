@@ -1,4 +1,4 @@
-﻿using Celbridge.Clipboard;
+﻿using Celbridge.DataTransfer;
 using Celbridge.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
@@ -10,7 +10,7 @@ namespace Celbridge.Resources.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IResourceService _resourceService;
-    private readonly IClipboardService _clipboardService;
+    private readonly IDataTransferService _dataTransferService;
     private readonly ICommandService _commandService;
 
     public IList<IResource> Resources => _resourceService.ResourceRegistry.RootFolder.Children;
@@ -20,7 +20,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         ICommandService commandService)
     {
         _resourceService = workspaceWrapper.WorkspaceService.ResourceService;
-        _clipboardService = workspaceWrapper.WorkspaceService.ClipboardService;
+        _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _commandService = commandService;
     }
 
@@ -64,12 +64,12 @@ public partial class ResourceTreeViewModel : ObservableObject
         IsResourceSelected = resource is not null;
 
         bool isResourceOnClipboard = false;
-        if (_clipboardService.GetClipboardContentType() == ClipboardContentType.Resource)
+        if (_dataTransferService.GetClipboardContentType() == ClipboardContentType.Resource)
         {
             var resourceRegistry = _resourceService.ResourceRegistry;
             var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
 
-            var getResult = await _clipboardService.GetClipboardResourceTransfer(destFolderResource);
+            var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderResource);
             if (getResult.IsSuccess)
             {
                 var content = getResult.Value;
