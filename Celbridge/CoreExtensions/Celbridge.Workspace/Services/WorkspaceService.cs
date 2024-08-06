@@ -3,7 +3,6 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;

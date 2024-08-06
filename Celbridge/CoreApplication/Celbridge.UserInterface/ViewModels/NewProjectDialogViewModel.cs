@@ -1,5 +1,4 @@
 ﻿using Celbridge.FilePicker;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Settings;
 using System.ComponentModel;

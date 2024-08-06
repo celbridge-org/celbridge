@@ -1,7 +1,6 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Commands;
 using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
