@@ -53,9 +53,9 @@ public class ResourceService : IResourceService, IDisposable
         
     }
 
-    public object CreateProjectPanel()
+    public object CreateResourcesPanel()
     {
-        return _serviceProvider.GetRequiredService<ProjectPanel>();
+        return _serviceProvider.GetRequiredService<ResourcesPanel>();
     }
 
     public async Task<Result> UpdateResourcesAsync()
