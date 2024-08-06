@@ -2,6 +2,7 @@
 using Celbridge.Resources.Views;
 using Celbridge.Utilities.Services;
 using Celbridge.Commands;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Resources.Services;
 
@@ -75,6 +76,93 @@ public class ResourceService : IResourceService, IDisposable
         return Result.Ok();
     }
 
+    public Result<List<ResourceTransferItem>> CreateResourceTransferItems(ResourceKey destFolderResource, List<string> resourcePaths)
+    {
+        try
+        {
+            List<ResourceTransferItem> transferItems = new();
+
+            var destFolderPath = ResourceRegistry.GetResourcePath(destFolderResource);
+            if (!Directory.Exists(destFolderPath))
+            {
+                return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
+            }
+
+            foreach (var resourcePath in resourcePaths)
+            {
+                if (PathContainsSubPath(destFolderPath, resourcePath) &&
+                    string.Compare(destFolderPath, resourcePath, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    // Ignore attempts to transfer a resource into a subfolder of itself.
+                    // This check is case insensitive to err on the safe side for Windows file systems.
+                    // Without this check, a tranfer operation could generate thousands of nested folders!
+                    // It is ok to "transfer" a resource to the same path however as this indicates a duplicate operation.
+                    continue;
+                }
+
+                ResourceType resourceType = ResourceType.Invalid;
+                if (File.Exists(resourcePath))
+                {
+                    resourceType = ResourceType.File;
+                }
+                else if (Directory.Exists(resourcePath))
+                {
+                    resourceType = ResourceType.Folder;
+                }
+                else
+                {
+                    // Resource does not exist in the file system, ignore it.
+                    continue;
+                }
+
+                var getKeyResult = ResourceRegistry.GetResourceKey(resourcePath);
+                if (getKeyResult.IsSuccess)
+                {
+                    // This resource is inside the project folder so we should use the CopyResource command
+                    // to copy/move it so that the resource meta data is preserved.
+                    // This is indicated by having a non-empty source resource property.
+
+                    var sourceResource = getKeyResult.Value;
+                    var sourcePath = ResourceRegistry.GetResourcePath(sourceResource);
+                    var destResource = ResourceRegistry.GetCopyDestinationResource(sourceResource, destFolderResource);
+
+                    // Sanity check that the input and acquired paths match
+                    Guard.IsEqualTo(resourcePath, sourcePath);
+
+                    var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
+                    transferItems.Add(item);
+                }
+                else
+                {
+                    if (resourceType == ResourceType.File)
+                    {
+                        // This resource is outside the project folder, so we should add it to the project
+                        // via the AddResource command, which will create new metadata for the resource.
+                        // This is indicated by having an empty source resource property.
+                        var sourcePath = resourcePath;
+                        var sourceResource = new ResourceKey();
+                        var filename = Path.GetFileName(sourcePath);
+                        var destResource = destFolderResource.Combine(filename);
+
+                        var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
+                        transferItems.Add(item);
+                    }
+                }
+            }
+
+            if (transferItems.Count == 0)
+            {
+                return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items. Item list is empty.");
+            }
+
+            return Result<List<ResourceTransferItem>>.Ok(transferItems);
+        }
+        catch (Exception ex)
+        {
+            return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items. {ex}");
+        }
+    }
+
     public async Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer)
     {
         // Filter out any items where the destination resource already exists
@@ -131,6 +219,13 @@ public class ResourceService : IResourceService, IDisposable
         }
 
         return Result.Ok();
+    }
+
+    private bool PathContainsSubPath(string path, string subPath)
+    {
+        string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string pathB = Path.GetFullPath(subPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool _disposed;
