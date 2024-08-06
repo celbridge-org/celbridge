@@ -48,11 +48,11 @@ public class ClipboardService : IClipboardService, IDisposable
         return ClipboardContentType.None;
     }
 
-    public async Task<Result<IClipboardResourceContent>> GetClipboardResourceContent(ResourceKey destFolderResource)
+    public async Task<Result<IResourceTransfer>> GetClipboardResourceTransfer(ResourceKey destFolderResource)
     {
         if (GetClipboardContentType() != ClipboardContentType.Resource)
         {
-            return Result<IClipboardResourceContent>.Fail("Clipboard content does not contain a resource");
+            return Result<IResourceTransfer>.Fail("Clipboard content does not contain a resource");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
@@ -60,34 +60,37 @@ public class ClipboardService : IClipboardService, IDisposable
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
         {
-            return Result<IClipboardResourceContent>.Fail($"Destination folder resource '{destFolderResource}' does not exist");
+            return Result<IResourceTransfer>.Fail($"Destination folder resource '{destFolderResource}' does not exist");
         }
 
         var resource = getResult.Value;
         if (resource is not IFolderResource)
         {
-            return Result<IClipboardResourceContent>.Fail($"Resource '{destFolderResource}' is not a folder resource");
+            return Result<IResourceTransfer>.Fail($"Resource '{destFolderResource}' is not a folder resource");
         }
 
         var destFolderPath = resourceRegistry.GetResourcePath(resource);
         if (!Directory.Exists(destFolderPath))
         {
-            return Result<IClipboardResourceContent>.Fail($"The path '{destFolderPath}' does not exist.");
+            return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
-        var description = new ClipboardResourceDescription();
+        var transfer = new ResourceTransfer();
 
         var dataPackageView = DataTransfer.Clipboard.GetContent();
 
         // Note whether the operation is a move or a copy
-        description.Operation = 
+        transfer.TransferMode = 
             dataPackageView.RequestedOperation == DataTransfer.DataPackageOperation.Move 
-            ? CopyResourceOperation.Move 
-            : CopyResourceOperation.Copy;
+            ? ResourceTransferMode.Move 
+            : ResourceTransferMode.Copy;
 
         try
         {
             var storageItems = await dataPackageView.GetStorageItemsAsync();
+
+            // Todo: Make a utility for converting a set of StorageItems into a ResourceTransfer object
+            // Convert to a list of paths first
 
             foreach (var storageItem in storageItems)
             {
@@ -114,9 +117,9 @@ public class ClipboardService : IClipboardService, IDisposable
                     // This resource is inside the project folder so we should use the CopyResource command
                     // to copy/move it so that the resource meta data is preserved.
                     // This is indicated by having a non-empty source resource property.
-                    var item = new ClipboardResourceItem(resourceType, sourcePath, sourceResource, destResource);
+                    var transferItem = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
 
-                    description.ResourceItems.Add(item);
+                    transfer.TransferItems.Add(transferItem);
                 }
                 else
                 {
@@ -129,35 +132,40 @@ public class ClipboardService : IClipboardService, IDisposable
                         // This resource is outside the project folder, so we should add it to the project
                         // via the AddResource command, which will create new metadata for the resource.
                         // This is indicated by having an empty source resource property.
-                        var item = new ClipboardResourceItem(resourceType, sourcePath, sourceResource, destResource);
-                        description.ResourceItems.Add(item);
+                        var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
+                        transfer.TransferItems.Add(item);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            return Result<IClipboardResourceContent>.Fail($"Failed to generate clipboard resource description. {ex}");
+            return Result<IResourceTransfer>.Fail($"Failed to generate clipboard resource description. {ex}");
         }
 
-        return Result<IClipboardResourceContent>.Ok(description);
+        return Result<IResourceTransfer>.Ok(transfer);
     }
 
-    public async Task<Result> PasteResourceItems(ResourceKey destFolderResource)
+    public async Task<Result> PasteClipboardResources(ResourceKey destFolderResource)
     {
-        var getResult = await GetClipboardResourceContent(destFolderResource);
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail("Failed to paste resource items because no workspace is loaded");
+        }
+
+        var getResult = await GetClipboardResourceTransfer(destFolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail(getResult.Error);
         }
         var description = getResult.Value;
 
-        if (description.ResourceItems.Count == 1 &&
-            description.Operation == CopyResourceOperation.Copy)
+        if (description.TransferItems.Count == 1 &&
+            description.TransferMode == ResourceTransferMode.Copy)
         {
             // If the source and destination resource are the same, display the duplicate
             // resource dialog instead of pasting the item.
-            var clipboardResource = description.ResourceItems[0]!;
+            var clipboardResource = description.TransferItems[0]!;
             if (clipboardResource.SourceResource == clipboardResource.DestResource)
             {
                 _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
@@ -168,61 +176,8 @@ public class ClipboardService : IClipboardService, IDisposable
             }
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
-
-        // Filter out any items where the destination resource already exists
-        // Todo: If it's a single item, ask the user if they want to replace the existing resource
-        description.ResourceItems.RemoveAll(item =>
-        {
-            return resourceRegistry.GetResource(item.DestResource).IsSuccess;
-        });
-
-        if (description.ResourceItems.Count == 0)
-        {
-            // All resource items have been filtered out so nothing left to paste
-            return Result.Ok();
-        }
-
-        // If there are multiple items, assign the same undo group id to all commands.
-        // This ensures that all commands are undone together in a single operation.
-        var undoGroupId = description.ResourceItems.Count > 1 ? EntityId.Create() : EntityId.InvalidId;
-
-        foreach (var resourceItem in description.ResourceItems)
-        {
-            if (resourceItem.SourceResource.IsEmpty)
-            {
-                // This resource is outside the project folder, add it using the AddResource command.
-                _commandService.Execute<IAddResourceCommand>(command =>
-                {
-                    command.ResourceType = resourceItem.ResourceType;
-                    command.DestResource = resourceItem.DestResource;
-                    command.SourcePath = resourceItem.SourcePath;
-                    command.UndoGroupId = undoGroupId;
-                });
-            }
-            else
-            { 
-                // This resource is inside the project folder, copy/move it using the CopyResource command.
-                _commandService.Execute<ICopyResourceCommand>(command =>
-                {
-                    command.SourceResource = resourceItem.SourceResource;
-                    command.DestResource = resourceItem.DestResource;
-                    command.Operation = description.Operation;
-                    command.UndoGroupId = undoGroupId;
-                });
-            }
-        }
-
-        resourceRegistry.SetFolderIsExpanded(destFolderResource, true);
-
         var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
-        var updateResult = await projectService.UpdateResourcesAsync();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to update resources. {updateResult.Error}");
-        }
-
-        return Result.Ok();
+        return await projectService.TransferResources(destFolderResource, description);
     }
 
     private bool PathContainsSubPath(string path, string subPath)

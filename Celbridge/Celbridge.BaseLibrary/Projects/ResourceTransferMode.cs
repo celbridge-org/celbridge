@@ -1,9 +1,9 @@
 ﻿namespace Celbridge.Projects;
 
 /// <summary>
-/// Specifies whether a copy operation should copy or move the resource.
+/// Specifies whether transfered resources should be copied or moved.
 /// </summary>
-public enum CopyResourceOperation
+public enum ResourceTransferMode
 {
     /// <summary>
     /// Copy the resource to the destination.
