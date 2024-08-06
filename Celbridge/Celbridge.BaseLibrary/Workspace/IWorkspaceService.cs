@@ -1,5 +1,5 @@
-﻿using Celbridge.Clipboard;
-using Celbridge.Console;
+﻿using Celbridge.Console;
+using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Resources;
 using Celbridge.Status;
@@ -37,9 +37,9 @@ public interface IWorkspaceService
     IStatusService StatusService { get; }
 
     /// <summary>
-    /// Returns the Clipboard Service associated with the workspace.
+    /// Returns the Data Transfer Service associated with the workspace.
     /// </summary>
-    IClipboardService ClipboardService { get; }
+    IDataTransferService DataTransferService { get; }
 
     /// <summary>
     /// Save the workspace state to the database.

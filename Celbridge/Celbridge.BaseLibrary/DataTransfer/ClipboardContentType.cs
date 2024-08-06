@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Clipboard;
+﻿namespace Celbridge.DataTransfer;
 
 /// <summary>
 /// The types of content that can be on the clipboard.

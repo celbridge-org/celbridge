@@ -1,4 +1,4 @@
-﻿using Celbridge.Clipboard;
+﻿using Celbridge.DataTransfer;
 using Celbridge.Commands;
 using Celbridge.Workspace;
 
@@ -19,13 +19,13 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
 
     public override async Task<Result> ExecuteAsync()
     {
-        var clipboardService = _workspaceWrapper.WorkspaceService.ClipboardService;
-        if (clipboardService.GetClipboardContentType() != ClipboardContentType.Resource)
+        var dataTransferService = _workspaceWrapper.WorkspaceService.DataTransferService;
+        if (dataTransferService.GetClipboardContentType() != ClipboardContentType.Resource)
         {
             return Result.Fail("Clipboard does not contain a resource to paste");
         }
 
-        return await clipboardService.PasteClipboardResources(DestFolderResource);
+        return await dataTransferService.PasteClipboardResources(DestFolderResource);
     }
 
     //
