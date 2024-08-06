@@ -1,7 +1,6 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Resources;
 
-namespace Celbridge.Projects;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Sets the expanded/collapsed state of a folder in the resource tree view.

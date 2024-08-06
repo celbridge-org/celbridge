@@ -1,7 +1,6 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Resources;
 
-namespace Celbridge.Projects;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Display the Duplicate Resource dialog to allow the user to enter a name for the duplicated resource.

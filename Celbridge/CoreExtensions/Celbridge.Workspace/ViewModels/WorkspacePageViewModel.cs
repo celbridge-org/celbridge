@@ -1,5 +1,4 @@
 using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -132,7 +131,7 @@ public partial class WorkspacePageViewModel : ObservableObject
             if (getFoldersResult.IsSuccess)
             {
                 var expandedFolders = getFoldersResult.Value;
-                var resourceRegistry = _workspaceService.ProjectService.ResourceRegistry;
+                var resourceRegistry = _workspaceService.ResourceService.ResourceRegistry;
 
                 foreach (var expandedFolder in expandedFolders)
                 {
@@ -150,8 +149,8 @@ public partial class WorkspacePageViewModel : ObservableObject
         //
         try
         {
-            var projectService = _workspaceService.ProjectService;
-            var updateResult = await projectService.UpdateResourcesAsync();
+            var resourceService = _workspaceService.ResourceService;
+            var updateResult = await resourceService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
                 return Result.Fail($"Failed to load workspace. {updateResult.Error}");

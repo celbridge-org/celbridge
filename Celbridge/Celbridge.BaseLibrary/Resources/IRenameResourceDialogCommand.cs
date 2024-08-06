@@ -1,7 +1,6 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Resources;
 
-namespace Celbridge.Projects;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Display the Rename Resource dialog to allow the user to rename a resource.
