@@ -45,7 +45,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         // Clear the dump file
         // Append the new contents of the resource registry
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         _logger.ClearLogFile();
 

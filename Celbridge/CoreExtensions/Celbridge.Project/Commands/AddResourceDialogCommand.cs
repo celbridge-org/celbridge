@@ -47,7 +47,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
@@ -101,7 +101,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     /// </summary>
     private string FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         string defaultResourceName;
         if (parentFolder is null)

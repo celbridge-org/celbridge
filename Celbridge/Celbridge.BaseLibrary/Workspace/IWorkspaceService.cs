@@ -1,7 +1,7 @@
 ﻿using Celbridge.Clipboard;
 using Celbridge.Console;
 using Celbridge.Documents;
-using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Status;
 
 namespace Celbridge.Workspace;
@@ -27,9 +27,9 @@ public interface IWorkspaceService
     IDocumentsService DocumentsService { get; }
 
     /// <summary>
-    /// Returns the Project Service associated with the workspace.
+    /// Returns the Resource Service associated with the workspace.
     /// </summary>
-    IProjectService ProjectService { get; }
+    IResourceService ResourceService { get; }
 
     /// <summary>
     /// Returns the Status Service associated with the workspace.

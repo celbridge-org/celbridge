@@ -59,7 +59,7 @@ public class ClipboardService : IClipboardService, IDisposable
             return Result<IResourceTransfer>.Fail("Clipboard content does not contain a resource");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
@@ -121,7 +121,7 @@ public class ClipboardService : IClipboardService, IDisposable
         {
             List<ResourceTransferItem> transferItems = new();
 
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
             var destFolderPath = resourceRegistry.GetResourcePath(destFolderResource);
             if (!Directory.Exists(destFolderPath))
@@ -234,8 +234,8 @@ public class ClipboardService : IClipboardService, IDisposable
             }
         }
 
-        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
-        return await projectService.TransferResources(destFolderResource, description);
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        return await resourceService.TransferResources(destFolderResource, description);
     }
 
     private bool PathContainsSubPath(string path, string subPath)

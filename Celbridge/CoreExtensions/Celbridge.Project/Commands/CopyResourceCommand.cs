@@ -71,7 +71,7 @@ namespace Celbridge.Projects.Commands
             // Copy the resource
             //
 
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
             // Resolve references to folder resource
             _resolvedDestResource = resourceRegistry.GetCopyDestinationResource(SourceResource, DestResource);
@@ -240,7 +240,7 @@ namespace Celbridge.Projects.Commands
                     File.Move(filePathA, filePathB);                
                 }
 
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+                var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
                 var newParentFolder = resourceB.GetParent();
                 if (!newParentFolder.IsEmpty)
                 {
@@ -265,7 +265,7 @@ namespace Celbridge.Projects.Commands
             }
 
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
+            var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
             var loadedProjectData = _projectDataService.LoadedProjectData;
 
             Guard.IsNotNull(loadedProjectData);

@@ -10,20 +10,17 @@ namespace Celbridge.Projects.ViewModels;
 
 public partial class ResourceTreeViewModel : ObservableObject
 {
-    private readonly IMessengerService _messengerService;
-    private readonly IProjectService _projectService;
+    private readonly IResourceService _resourceService;
     private readonly IClipboardService _clipboardService;
     private readonly ICommandService _commandService;
 
-    public IList<IResource> Resources => _projectService.ResourceRegistry.RootFolder.Children;
+    public IList<IResource> Resources => _resourceService.ResourceRegistry.RootFolder.Children;
 
     public ResourceTreeViewModel(
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
-        _messengerService = messengerService;
-        _projectService = workspaceWrapper.WorkspaceService.ProjectService;
+        _resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         _clipboardService = workspaceWrapper.WorkspaceService.ClipboardService;
         _commandService = commandService;
     }
@@ -37,10 +34,10 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Use the concrete type to set the resource tree view because the
         // interface does not expose the setter.
 
-        var projectService = _projectService as ProjectService;
-        Guard.IsNotNull(projectService);
+        var resourceService = _resourceService as ResourceService;
+        Guard.IsNotNull(resourceService);
 
-        projectService.ResourceTreeView = resourceTreeView;
+        resourceService.ResourceTreeView = resourceTreeView;
     }
 
     public void OnUnloaded()
@@ -70,7 +67,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         bool isResourceOnClipboard = false;
         if (_clipboardService.GetClipboardContentType() == ClipboardContentType.Resource)
         {
-            var resourceRegistry = _projectService.ResourceRegistry;
+            var resourceRegistry = _resourceService.ResourceRegistry;
             var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
 
             var getResult = await _clipboardService.GetClipboardResourceTransfer(destFolderResource);
@@ -89,7 +86,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void SetFolderIsExpanded(IFolderResource folder, bool isExpanded)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
         var folderResource = resourceRegistry.GetResourceKey(folder);
 
         bool currentRegistryState = resourceRegistry.IsFolderExpanded(folderResource);
@@ -115,7 +112,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
 
         if (destFolder is null)
         {
@@ -135,7 +132,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowDeleteResourceDialog(IResource resource)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to show the delete resource dialog
@@ -147,7 +144,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowRenameResourceDialog(IResource resource)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to show the rename resource dialog
@@ -162,14 +159,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         if (destFolder is null)
         {
             // A null folder reference indicates the root folder
-            destFolder = _projectService.ResourceRegistry.RootFolder;
+            destFolder = _resourceService.ResourceRegistry.RootFolder;
         }
 
         foreach (var resource in resources)
         {
-            var sourceResource = _projectService.ResourceRegistry.GetResourceKey(resource);
-            var destResource = _projectService.ResourceRegistry.GetResourceKey(destFolder);
-            var resolvedDestResource = _projectService.ResourceRegistry.GetCopyDestinationResource(sourceResource, destResource);
+            var sourceResource = _resourceService.ResourceRegistry.GetResourceKey(resource);
+            var destResource = _resourceService.ResourceRegistry.GetResourceKey(destFolder);
+            var resolvedDestResource = _resourceService.ResourceRegistry.GetCopyDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
             {
@@ -194,7 +191,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void CutResourceToClipboard(IResource sourceResource)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
 
         var sourceResourceKey = resourceRegistry.GetResourceKey(sourceResource);
 
@@ -208,7 +205,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void CopyResourceToClipboard(IResource sourceResource)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
 
         var resourceKey = resourceRegistry.GetResourceKey(sourceResource);
 
@@ -222,7 +219,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void PasteResourceFromClipboard(IResource? destResource)
     {
-        var resourceRegistry = _projectService.ResourceRegistry;
+        var resourceRegistry = _resourceService.ResourceRegistry;
 
         var destFolderResource = resourceRegistry.GetContextMenuItemFolder(destResource);
 
