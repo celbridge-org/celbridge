@@ -1,11 +1,12 @@
-﻿using Celbridge.Extensions;
-using Celbridge.Validators;
+﻿using Celbridge.Commands.Services;
+using Celbridge.Extensions;
+using Celbridge.Project.Services;
 using Celbridge.Projects.Commands;
 using Celbridge.Projects.Services;
 using Celbridge.Projects.ViewModels;
 using Celbridge.Projects.Views;
 using Celbridge.Resources;
-using Celbridge.Commands.Services;
+using Celbridge.Validators;
 
 namespace Celbridge.Projects;
 
@@ -30,6 +31,7 @@ public class Extension : IExtension
         config.AddTransient<IProjectService, ProjectService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
+        config.AddTransient<IResourceTransfer, ResourceTransfer>();
 
         //
         // Register commands

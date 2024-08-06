@@ -1,7 +1,6 @@
-﻿using Celbridge.Clipboard;
-using Celbridge.Projects;
+﻿using Celbridge.Resources;
 
-namespace Celbridge.Workspace.Services;
+namespace Celbridge.Project.Services;
 
 public class ResourceTransfer : IResourceTransfer
 {

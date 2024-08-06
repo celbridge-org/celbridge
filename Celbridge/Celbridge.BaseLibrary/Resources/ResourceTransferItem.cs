@@ -1,6 +1,4 @@
-﻿using Celbridge.Resources;
-
-namespace Celbridge.Clipboard;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// Describes the transfer of resource from one location to another.

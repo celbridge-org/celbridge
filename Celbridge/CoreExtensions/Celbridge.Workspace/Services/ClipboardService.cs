@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 using DataTransfer = Windows.ApplicationModel.DataTransfer;
 
@@ -11,15 +12,18 @@ namespace Celbridge.Workspace.Services;
 
 public class ClipboardService : IClipboardService, IDisposable
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public ClipboardService(
+        IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
+        _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
@@ -75,7 +79,7 @@ public class ClipboardService : IClipboardService, IDisposable
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
-        var resourceTransfer = new ResourceTransfer();
+        var resourceTransfer = _serviceProvider.GetRequiredService<IResourceTransfer>();
 
         var dataPackageView = DataTransfer.Clipboard.GetContent();
 
@@ -101,7 +105,7 @@ public class ClipboardService : IClipboardService, IDisposable
                 return Result<IResourceTransfer>.Fail($"Failed to create resource transform items. {createResult.Error}");
             }
 
-            resourceTransfer.TransferItems = createResult.Value;
+            resourceTransfer.TransferItems.AddRange(createResult.Value);
         }
         catch (Exception ex)
         {
