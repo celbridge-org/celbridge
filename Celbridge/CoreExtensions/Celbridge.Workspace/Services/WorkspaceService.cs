@@ -21,7 +21,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
-    public IProjectService ProjectService { get; }
+    public IResourceService ResourceService { get; }
     public IStatusService StatusService { get; }
     public IClipboardService ClipboardService { get; }
 
@@ -38,7 +38,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
-        ProjectService = serviceProvider.GetRequiredService<IProjectService>();
+        ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
         ClipboardService = serviceProvider.GetRequiredService<IClipboardService>();
 
@@ -66,7 +66,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         // Save the expanded folders in the Resource Registry
 
-        var resourceRegistry = ProjectService.ResourceRegistry;
+        var resourceRegistry = ResourceService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
 
         var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
@@ -102,7 +102,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
-                (ProjectService as IDisposable)!.Dispose();
+                (ResourceService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (ClipboardService as IDisposable)!.Dispose();
 

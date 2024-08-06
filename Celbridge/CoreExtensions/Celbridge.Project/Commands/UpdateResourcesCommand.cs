@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
@@ -15,9 +16,9 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-        var updateResult = await projectService.UpdateResourcesAsync();
+        var updateResult = await resourceService.UpdateResourcesAsync();
         if (updateResult.IsFailure)
         {
             return updateResult;

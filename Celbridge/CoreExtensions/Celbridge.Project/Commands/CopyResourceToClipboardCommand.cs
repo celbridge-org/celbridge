@@ -22,7 +22,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(SourceResource);
         if (getResult.IsFailure)

@@ -44,7 +44,7 @@ namespace Celbridge.Projects.Commands
 
         public override async Task<Result> ExecuteAsync()
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
             var getResourceResult = resourceRegistry.GetResource(Resource);
             if (getResourceResult.IsFailure)
@@ -88,7 +88,7 @@ namespace Celbridge.Projects.Commands
 
         public override async Task<Result> UndoAsync()
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
             if (_deletedResourceType == typeof(IFileResource))
             {
@@ -259,7 +259,7 @@ namespace Celbridge.Projects.Commands
                     ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
                 }
 
-                _folderWasExpanded = _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.IsFolderExpanded(Resource);
+                _folderWasExpanded = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry.IsFolderExpanded(Resource);
 
                 Directory.Delete(deleteFolderPath, true);
             }
@@ -314,7 +314,7 @@ namespace Celbridge.Projects.Commands
                 return Result.Fail($"Failed to undo folder delete. {ex.Message}");
             }
 
-            _workspaceWrapper.WorkspaceService.ProjectService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
+            _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
 
             await Task.CompletedTask;
 

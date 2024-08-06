@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Projects.ViewModels;

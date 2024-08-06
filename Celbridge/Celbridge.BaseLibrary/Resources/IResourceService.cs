@@ -1,12 +1,9 @@
-﻿using Celbridge.Clipboard;
-using Celbridge.Resources;
-
-namespace Celbridge.Projects;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// The project service provides functionality to support the project panel in the workspace UI.
 /// </summary>
-public interface IProjectService
+public interface IResourceService
 {
     /// <summary>
     /// Returns the Resource Registry associated with the loaded project.

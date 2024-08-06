@@ -28,7 +28,7 @@ public class Extension : IExtension
         //
         // Register services
         //
-        config.AddTransient<IProjectService, ProjectService>();
+        config.AddTransient<IResourceService, ResourceService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         config.AddTransient<IResourceTransfer, ResourceTransfer>();

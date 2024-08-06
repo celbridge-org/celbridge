@@ -2,12 +2,11 @@
 using Celbridge.Utilities;
 using Celbridge.Projects.Views;
 using Celbridge.Utilities.Services;
-using Celbridge.Clipboard;
 using Celbridge.Commands;
 
 namespace Celbridge.Projects.Services;
 
-public class ProjectService : IProjectService, IDisposable
+public class ResourceService : IResourceService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ICommandService _commandService;
@@ -28,7 +27,7 @@ public class ProjectService : IProjectService, IDisposable
         }
     }
 
-    public ProjectService(
+    public ResourceService(
         IServiceProvider serviceProvider,
         ICommandService commandService,
         IProjectDataService projectDataService,
@@ -156,7 +155,7 @@ public class ProjectService : IProjectService, IDisposable
         }
     }
 
-    ~ProjectService()
+    ~ResourceService()
     {
         Dispose(false);
     }

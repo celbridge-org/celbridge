@@ -66,7 +66,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ProjectService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
         var loadedProjectData = _projectDataService.LoadedProjectData;
 
         Guard.IsNotNull(loadedProjectData);
