@@ -302,8 +302,8 @@ public sealed partial class WorkspacePage : Page
         var inspectorPanel = workspaceService.InspectorService.CreateInspectorPanel() as UIElement;
         _rightPanel.Children.Add(inspectorPanel);
 
-        var projectPanel = workspaceService.ResourceService.CreateProjectPanel() as UIElement;
-        _leftPanel.Children.Insert(0, projectPanel);
+        var resourcesPanel = workspaceService.ResourceService.CreateResourcesPanel() as UIElement;
+        _leftPanel.Children.Insert(0, resourcesPanel);
 
         var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
         _statusPanel.Children.Add(statusPanel);

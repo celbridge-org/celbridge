@@ -16,9 +16,9 @@ public interface IResourceService
     IResourceTreeView ResourceTreeView { get; }
 
     /// <summary>
-    /// Factory method to create the project panel for the workspace UI.
+    /// Factory method to create the resources panel for the workspace UI.
     /// </summary>
-    object CreateProjectPanel();
+    object CreateResourcesPanel();
 
     /// <summary>
     /// Update the resource registry and populate the resource tree view.

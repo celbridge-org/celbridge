@@ -16,12 +16,12 @@ public class Extension : IExtension
         //
         // Register UI elements
         //
-        config.AddTransient<ProjectPanel>();
+        config.AddTransient<ResourcesPanel>();
 
         //
         // Register View Models
         //
-        config.AddTransient<ProjectPanelViewModel>();
+        config.AddTransient<ResourcesPanelViewModel>();
         config.AddTransient<ResourceTreeViewModel>();
 
         //

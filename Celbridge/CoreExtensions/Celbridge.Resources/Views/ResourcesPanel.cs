@@ -3,19 +3,19 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Views;
 
-public sealed partial class ProjectPanel : UserControl
+public sealed partial class ResourcesPanel : UserControl
 {
     private IStringLocalizer _stringLocalizer;
-    private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ProjectPanel_RefreshTooltip");
+    private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ResourcesPanel_RefreshTooltip");
 
-    public ProjectPanelViewModel ViewModel { get; }
+    public ResourcesPanelViewModel ViewModel { get; }
 
-    public ProjectPanel()
+    public ResourcesPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        ViewModel = serviceProvider.GetRequiredService<ProjectPanelViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<ResourcesPanelViewModel>();
 
         var refreshProjectButton = new Button()
             .Grid(column: 2)
