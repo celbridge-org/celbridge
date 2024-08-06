@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Projects;
+﻿namespace Celbridge.Resources;
 
 /// <summary>
 /// Configuration for a new project.
