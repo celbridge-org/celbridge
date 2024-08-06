@@ -105,7 +105,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             {
                 command.SourceResource = Resource;
                 command.DestResource = destResource;
-                command.Operation = CopyResourceOperation.Move;
+                command.TransferMode = ResourceTransferMode.Move;
 
                 if (isExpandedFolder)
                 {

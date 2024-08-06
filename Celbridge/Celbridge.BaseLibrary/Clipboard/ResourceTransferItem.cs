@@ -3,9 +3,9 @@
 namespace Celbridge.Clipboard;
 
 /// <summary>
-/// A clipboard resource item.
+/// Describes the transfer of resource from one location to another.
 /// </summary>
-public record ClipboardResourceItem
+public record ResourceTransferItem
 (
     /// <summary>
     /// The type of the resource.
