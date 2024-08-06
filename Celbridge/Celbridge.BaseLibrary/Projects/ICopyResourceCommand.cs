@@ -22,7 +22,7 @@ public interface ICopyResourceCommand : IExecutableCommand
     /// Controls whether the resource is copied or moved to the new location.
     /// If the resource is moved, the resource in the original location is deleted.
     /// </summary>
-    CopyResourceOperation Operation { get; set; }
+    ResourceTransferMode TransferMode { get; set; }
 
     /// <summary>
     /// If the copied resource is a folder, expand the folder after moving it.

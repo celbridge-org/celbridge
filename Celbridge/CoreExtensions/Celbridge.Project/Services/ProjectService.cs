@@ -2,12 +2,15 @@
 using Celbridge.Utilities;
 using Celbridge.Projects.Views;
 using Celbridge.Utilities.Services;
+using Celbridge.Clipboard;
+using Celbridge.Commands;
 
 namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ICommandService _commandService;
     private readonly IProjectDataService _projectDataService;
 
     public IResourceRegistry ResourceRegistry { get; init; }
@@ -27,11 +30,13 @@ public class ProjectService : IProjectService, IDisposable
 
     public ProjectService(
         IServiceProvider serviceProvider,
+        ICommandService commandService,
         IProjectDataService projectDataService,
         IUtilityService utilityService,
         IResourceRegistry resourceRegistry)
     {
         _serviceProvider = serviceProvider;
+        _commandService = commandService;
         _projectDataService = projectDataService;
 
         // Delete the DeletedFiles folder to clean these archives up.
@@ -67,6 +72,64 @@ public class ProjectService : IProjectService, IDisposable
         if (populateResult.IsFailure)
         {
             return Result.Fail($"Failed to update resources. {populateResult.Error}");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer)
+    {
+        // Filter out any items where the destination resource already exists
+        // Todo: If it's a single item, ask the user if they want to replace the existing resource
+        transfer.TransferItems.RemoveAll(item =>
+        {
+            return ResourceRegistry.GetResource(item.DestResource).IsSuccess;
+        });
+
+        if (transfer.TransferItems.Count == 0)
+        {
+            // All resource items have been filtered out so nothing left to transfer
+            return Result.Ok();
+        }
+
+        // If there are multiple items, assign the same undo group id to all commands.
+        // This ensures that all commands are undone together in a single operation.
+        var undoGroupId = transfer.TransferItems.Count > 1 ? EntityId.Create() : EntityId.InvalidId;
+
+        foreach (var transferItem in transfer.TransferItems)
+        {
+            if (transferItem.SourceResource.IsEmpty)
+            {
+                // This resource is outside the project folder, add it using the AddResource command.
+                _commandService.Execute<IAddResourceCommand>(command =>
+                {
+                    command.ResourceType = transferItem.ResourceType;
+                    command.DestResource = transferItem.DestResource;
+                    command.SourcePath = transferItem.SourcePath;
+                    command.UndoGroupId = undoGroupId;
+                });
+            }
+            else
+            {
+                // This resource is inside the project folder, copy/move it using the CopyResource command.
+                _commandService.Execute<ICopyResourceCommand>(command =>
+                {
+                    command.SourceResource = transferItem.SourceResource;
+                    command.DestResource = transferItem.DestResource;
+                    command.TransferMode = transfer.TransferMode;
+                    command.UndoGroupId = undoGroupId;
+                });
+            }
+        }
+
+        // Expand the destination folder so the user can see the newly transfered resources immediately.
+        ResourceRegistry.SetFolderIsExpanded(destFolderResource, true);
+
+        // Refresh the resource registry and tree view
+        var updateResult = await UpdateResourcesAsync();
+        if (updateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to update resources. {updateResult.Error}");
         }
 
         return Result.Ok();

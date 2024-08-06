@@ -11,7 +11,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey SourceResource { get; set; }
-    public CopyResourceOperation Operation { get; set; }
+    public ResourceTransferMode TransferMode { get; set; }
   
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -69,17 +69,13 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         }
 
         var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = Operation == CopyResourceOperation.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
+        dataPackage.RequestedOperation = TransferMode == ResourceTransferMode.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
 
         dataPackage.SetStorageItems(storageItems);
         Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
         Windows.ApplicationModel.DataTransfer.Clipboard.Flush();
 
         return Result.Ok();
-    }
-
-    private static void CopyResourceToClipboard(ResourceKey resource, CopyResourceOperation operation)
-    {
     }
 
     //
@@ -92,7 +88,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;
-            command.Operation = CopyResourceOperation.Copy;
+            command.TransferMode = ResourceTransferMode.Copy;
         });
     }
 
@@ -102,7 +98,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;
-            command.Operation = CopyResourceOperation.Move;
+            command.TransferMode = ResourceTransferMode.Move;
         });
     }
 }

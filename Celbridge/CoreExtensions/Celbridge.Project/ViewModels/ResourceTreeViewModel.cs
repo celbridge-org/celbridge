@@ -67,20 +67,20 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         IsResourceSelected = resource is not null;
 
-        bool isResourceOnClipbaord = false;
+        bool isResourceOnClipboard = false;
         if (_clipboardService.GetClipboardContentType() == ClipboardContentType.Resource)
         {
             var resourceRegistry = _projectService.ResourceRegistry;
             var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
 
-            var getResult = await _clipboardService.GetClipboardResourceContent(destFolderResource);
+            var getResult = await _clipboardService.GetClipboardResourceTransfer(destFolderResource);
             if (getResult.IsSuccess)
             {
                 var content = getResult.Value;
-                isResourceOnClipbaord = content.ResourceItems.Count > 0;
+                isResourceOnClipboard = content.TransferItems.Count > 0;
             }
         }
-        IsResourceOnClipboard = isResourceOnClipbaord;
+        IsResourceOnClipboard = isResourceOnClipboard;
     }
 
     //
@@ -183,7 +183,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 command.SourceResource = sourceResource;
                 command.DestResource = destResource;
-                command.Operation = CopyResourceOperation.Move;
+                command.TransferMode = ResourceTransferMode.Move;
             });
         }
     }
@@ -202,7 +202,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = sourceResourceKey;
-            command.Operation = CopyResourceOperation.Move;
+            command.TransferMode = ResourceTransferMode.Move;
         });
     }
 
@@ -216,7 +216,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resourceKey;
-            command.Operation = CopyResourceOperation.Copy;
+            command.TransferMode = ResourceTransferMode.Copy;
         });
     }
 
@@ -235,6 +235,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void DragAndDropResources(IResource? destResource, List<string> droppedItemPaths)
     {
-        // Todo: Execute a command to copy the resources with undo/redo
+        // Todo: Execute a command to transfer the resources with undo/redo
     }
 }

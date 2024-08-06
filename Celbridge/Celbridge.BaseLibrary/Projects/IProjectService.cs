@@ -1,4 +1,5 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Clipboard;
+using Celbridge.Resources;
 
 namespace Celbridge.Projects;
 
@@ -26,4 +27,9 @@ public interface IProjectService
     /// Update the resource registry and populate the resource tree view.
     /// </summary>
     Task<Result> UpdateResourcesAsync();
+
+    /// <summary>
+    /// Transfer resources to a destination folder resource.
+    /// </summary>
+    Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer);
 }
