@@ -1,4 +1,4 @@
-﻿using Celbridge.Clipboard;
+﻿using Celbridge.DataTransfer;
 using Celbridge.Extensions;
 using Celbridge.Navigation;
 using Celbridge.Workspace.Services;
@@ -18,7 +18,7 @@ public class Extension : IExtension
         config.AddTransient<WorkspacePageViewModel>();
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
-        config.AddTransient<IClipboardService, ClipboardService>();
+        config.AddTransient<IDataTransferService, DataTransferService>();
     }
 
     public Result Initialize()

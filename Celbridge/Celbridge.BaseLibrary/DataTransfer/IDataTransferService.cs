@@ -1,8 +1,11 @@
 ﻿using Celbridge.Resources;
 
-namespace Celbridge.Clipboard;
+namespace Celbridge.DataTransfer;
 
-public interface IClipboardService
+/// <summary>
+/// Services to support data transfer operations, such as cut, copy & paste and drag & drop.
+/// </summary>
+public interface IDataTransferService
 {
     /// <summary>
     /// Returns the current clipboard item's content type.

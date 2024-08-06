@@ -1,22 +1,21 @@
-﻿using Celbridge.Clipboard;
+﻿using Celbridge.DataTransfer;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
-using DataTransfer = Windows.ApplicationModel.DataTransfer;
+using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Services;
 
-public class ClipboardService : IClipboardService, IDisposable
+public class DataTransferService : IDataTransferService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
-    public ClipboardService(
+    public DataTransferService(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
@@ -27,7 +26,7 @@ public class ClipboardService : IClipboardService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
 
-        DataTransfer.Clipboard.ContentChanged += Clipboard_ContentChanged;
+        ApplicationDataTransfer.Clipboard.ContentChanged += Clipboard_ContentChanged;
     }
 
     private void Clipboard_ContentChanged(object? sender, object e)
@@ -38,12 +37,12 @@ public class ClipboardService : IClipboardService, IDisposable
 
     public ClipboardContentType GetClipboardContentType()
     {
-        var dataPackageView = DataTransfer.Clipboard.GetContent();
-        if (dataPackageView.Contains(DataTransfer.StandardDataFormats.StorageItems))
+        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+        if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
         {
             return ClipboardContentType.Resource;
         }
-        else if (dataPackageView.Contains(DataTransfer.StandardDataFormats.Text))
+        else if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
         {
             return ClipboardContentType.Text;
         }
@@ -86,11 +85,11 @@ public class ClipboardService : IClipboardService, IDisposable
 
         var resourceTransfer = _serviceProvider.GetRequiredService<IResourceTransfer>();
 
-        var dataPackageView = DataTransfer.Clipboard.GetContent();
+        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
 
         // Note whether the operation is a move or a copy
         resourceTransfer.TransferMode =
-            dataPackageView.RequestedOperation == DataTransfer.DataPackageOperation.Move
+            dataPackageView.RequestedOperation == ApplicationDataTransfer.DataPackageOperation.Move
             ? ResourceTransferMode.Move
             : ResourceTransferMode.Copy;
 
@@ -169,14 +168,14 @@ public class ClipboardService : IClipboardService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                DataTransfer.Clipboard.ContentChanged -= Clipboard_ContentChanged;
+                ApplicationDataTransfer.Clipboard.ContentChanged -= Clipboard_ContentChanged;
             }
 
             _disposed = true;
         }
     }
 
-    ~ClipboardService()
+    ~DataTransferService()
     {
         Dispose(false);
     }
