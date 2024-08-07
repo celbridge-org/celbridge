@@ -401,21 +401,26 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         async Task ProcessDroppedItems()
         {
-            List<string> droppedItemPaths = new();
+            List<string> sourcePaths = new();
             var items = await e.DataView.GetStorageItemsAsync();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
             foreach (var item in items)
             {
                 if (item is Windows.Storage.StorageFile storageFile)
                 {
-                    droppedItemPaths.Add(storageFile.Path);
+                    sourcePaths.Add(storageFile.Path);
                 }
                 else if (item is Windows.Storage.StorageFolder storageFolder)
                 {
-                    droppedItemPaths.Add(storageFolder.Path);
+                    sourcePaths.Add(storageFolder.Path);
                 }
             }
 
-            ViewModel.DragAndDropResources(destResource, droppedItemPaths);
+            _ = ViewModel.ImportResources(sourcePaths, destResource);
         }
     }
 

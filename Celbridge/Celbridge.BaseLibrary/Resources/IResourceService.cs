@@ -26,9 +26,9 @@ public interface IResourceService
     Task<Result> UpdateResourcesAsync();
 
     /// <summary>
-    /// Create a list of ResourceTransferItems from a list of resource paths to be transfered and a destination folder resource.
+    /// Create a Resource Transfer object describing the transfer of resources from a list of source paths to a destination folder.
     /// </summary>
-    Result<List<ResourceTransferItem>> CreateResourceTransferItems(ResourceKey destFolderResource, List<string> resourcePaths);
+    Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, ResourceTransferMode transferMode);
 
     /// <summary>
     /// Transfer resources to a destination folder resource.

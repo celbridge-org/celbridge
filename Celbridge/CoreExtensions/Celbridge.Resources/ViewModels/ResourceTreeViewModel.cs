@@ -229,8 +229,27 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
-    public void DragAndDropResources(IResource? destResource, List<string> droppedItemPaths)
+    public async Task<Result> ImportResources(List<string> sourcePaths, IResource? destResource)
     {
-        // Todo: Execute a command to transfer the resources with undo/redo
+        if (destResource is null)
+        {
+            return Result.Fail("Destination resource is null");
+        }
+
+        var destFolderResource = _resourceService.ResourceRegistry.GetContextMenuItemFolder(destResource);
+        var createResult = _resourceService.CreateResourceTransfer(sourcePaths, destFolderResource, ResourceTransferMode.Copy);
+        if (createResult.IsFailure)
+        {
+            return Result.Fail($"Failed to create resource transfer. {createResult.Error}");
+        }
+        var resourceTransfer = createResult.Value;
+
+        var transferResult = await _resourceService.TransferResources(destFolderResource, resourceTransfer);
+        if (transferResult.IsFailure)
+        {
+            return Result.Fail($"Failed to transfer resources. {transferResult.Error}");
+        }
+
+        return Result.Ok();
     }
 }

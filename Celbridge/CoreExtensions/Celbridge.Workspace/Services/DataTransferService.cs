@@ -83,15 +83,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
-        var resourceTransfer = _serviceProvider.GetRequiredService<IResourceTransfer>();
-
         var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
-
-        // Note whether the operation is a move or a copy
-        resourceTransfer.TransferMode =
-            dataPackageView.RequestedOperation == ApplicationDataTransfer.DataPackageOperation.Move
-            ? ResourceTransferMode.Move
-            : ResourceTransferMode.Copy;
 
         try
         {
@@ -103,20 +95,25 @@ public class DataTransferService : IDataTransferService, IDisposable
                 paths.Add(path);
             }
 
-            var createResult = resourceService.CreateResourceTransferItems(destFolderResource, paths);
-            if (createResult.IsFailure)
-            {
-                return Result<IResourceTransfer>.Fail($"Failed to create resource transform items. {createResult.Error}");
-            }
+            // Note whether the operation is a move or a copy
+            var transferMode =
+                dataPackageView.RequestedOperation == ApplicationDataTransfer.DataPackageOperation.Move
+                ? ResourceTransferMode.Move
+                : ResourceTransferMode.Copy;
 
-            resourceTransfer.TransferItems.AddRange(createResult.Value);
+            var createTransferResult = resourceService.CreateResourceTransfer(paths, destFolderResource, transferMode);
+            if (createTransferResult.IsFailure)
+            {
+                return Result<IResourceTransfer>.Fail($"Failed to create resource transfer. {createTransferResult.Error}");
+            }
+            var resourceTransfer = createTransferResult.Value;
+
+            return Result<IResourceTransfer>.Ok(resourceTransfer);
         }
         catch (Exception ex)
         {
             return Result<IResourceTransfer>.Fail($"Failed to generate clipboard resource description. {ex}");
         }
-
-        return Result<IResourceTransfer>.Ok(resourceTransfer);
     }
 
     public async Task<Result> PasteClipboardResources(ResourceKey destFolderResource)
