@@ -165,7 +165,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         {
             var sourceResource = _resourceService.ResourceRegistry.GetResourceKey(resource);
             var destResource = _resourceService.ResourceRegistry.GetResourceKey(destFolder);
-            var resolvedDestResource = _resourceService.ResourceRegistry.GetCopyDestinationResource(sourceResource, destResource);
+            var resolvedDestResource = _resourceService.ResourceRegistry.ResolveDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
             {

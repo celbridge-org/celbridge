@@ -45,11 +45,18 @@ public interface IResourceRegistry
     Result<IResource> GetResource(ResourceKey resource);
 
     /// <summary>
-    /// Returns a resolved destination resource key for a copy operation.
+    /// Returns a resolved destination resource key for a resource transfer.
     /// If destResource specifies an existing folder in the project, then the name of the source resource is
     /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
     /// </summary>
-    ResourceKey GetCopyDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
+    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
+
+    /// <summary>
+    /// Returns a resolved destination resource key for a resource transfer from a source path to a destination resource.
+    /// If destResource specifies an existing folder in the project, then the name of the source resource is
+    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
+    /// </summary>
+    ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource);
 
     /// <summary>
     /// Returns the folder resource associated with the context menu item for a resource.
