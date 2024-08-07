@@ -1,6 +1,6 @@
 ﻿using Celbridge.Resources;
 
-namespace Celbridge.Project.Services;
+namespace Celbridge.Resources.Services;
 
 public class ResourceTransfer : IResourceTransfer
 {

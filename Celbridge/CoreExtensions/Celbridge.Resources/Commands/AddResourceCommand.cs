@@ -209,35 +209,48 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFile(ResourceKey resource, string sourcePath)
+    public static void AddFile(ResourceKey destResource, string sourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.DestResource = resource;
+            command.DestResource = destResource;
             command.SourcePath = sourcePath;
         });
     }
 
-    public static void AddFile(ResourceKey resource)
+    public static void AddFile(ResourceKey destResource)
     {
-        AddFile(resource, string.Empty);
+        AddFile(destResource, new ResourceKey());
     }
 
-    public static void AddFolder(ResourceKey resource, string sourcePath)
+    public static void AddFolder(ResourceKey destResource, string sourcePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.DestResource = resource;
+            command.DestResource = destResource;
             command.SourcePath = sourcePath;
         });
     }
 
-    public static void AddFolder(ResourceKey resource)
+    public static void AddFolder(ResourceKey destResource)
     {
-        AddFolder(resource, string.Empty);
+        AddFolder(destResource, new ResourceKey());
+    }
+
+    public static void AddResource(ResourceKey destResource, string sourcePath)
+    {
+        if (File.Exists(sourcePath))
+        {
+            AddFile(destResource, sourcePath);
+        }
+        else if (Directory.Exists(sourcePath))
+        {
+            AddFolder(destResource, sourcePath);
+        }
+        // Ignore source paths that don't exist
     }
 }
