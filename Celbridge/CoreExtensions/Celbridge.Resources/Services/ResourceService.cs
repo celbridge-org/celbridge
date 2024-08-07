@@ -146,7 +146,7 @@ public class ResourceService : IResourceService, IDisposable
                     var checkSourcePath = ResourceRegistry.GetResourcePath(sourceResource);
                     Guard.IsEqualTo(sourcePath, checkSourcePath);
 
-                    var destResource = ResourceRegistry.GetCopyDestinationResource(sourceResource, destFolderResource);
+                    var destResource = ResourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
 
                     var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
                     transferItems.Add(item);

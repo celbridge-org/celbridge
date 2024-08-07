@@ -11,8 +11,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceKey DestResource { get; set; }
     public string SourcePath { get; set; } = string.Empty;
+    public ResourceKey DestResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectDataService _projectDataService;
@@ -209,48 +209,57 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFile(ResourceKey destResource, string sourcePath)
+    public static void AddFile(string sourcePath, ResourceKey destResource)
     {
+        var workspaceWrapper = ServiceLocator.ServiceProvider.GetRequiredService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
+        }
+
+        // If the destination resource is a existing folder, resolve the destination resource to a file in
+        // that folder with the same name as the source file.
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
+
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.DestResource = destResource;
             command.SourcePath = sourcePath;
+            command.DestResource = resolvedDestResource;
         });
     }
 
     public static void AddFile(ResourceKey destResource)
     {
-        AddFile(destResource, new ResourceKey());
+        AddFile(new ResourceKey(), destResource);
     }
 
-    public static void AddFolder(ResourceKey destResource, string sourcePath)
+    public static void AddFolder(string sourcePath, ResourceKey destResource)
     {
+        var workspaceWrapper = ServiceLocator.ServiceProvider.GetRequiredService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
+        }
+
+        // If the destination resource is a existing folder, resolve the destination resource to a folder in
+        // that folder with the same name as the source folder.
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
+
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.DestResource = destResource;
             command.SourcePath = sourcePath;
+            command.DestResource = resolvedDestResource;
         });
     }
 
     public static void AddFolder(ResourceKey destResource)
     {
-        AddFolder(destResource, new ResourceKey());
-    }
-
-    public static void AddResource(ResourceKey destResource, string sourcePath)
-    {
-        if (File.Exists(sourcePath))
-        {
-            AddFile(destResource, sourcePath);
-        }
-        else if (Directory.Exists(sourcePath))
-        {
-            AddFolder(destResource, sourcePath);
-        }
-        // Ignore source paths that don't exist
+        AddFolder(new ResourceKey(), destResource);
     }
 }
