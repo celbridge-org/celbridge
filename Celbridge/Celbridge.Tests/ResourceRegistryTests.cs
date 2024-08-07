@@ -1,6 +1,6 @@
 ﻿using Celbridge.Messaging.Services;
-using Celbridge.Projects.Models;
-using Celbridge.Projects.Services;
+using Celbridge.Resources.Models;
+using Celbridge.Resources.Services;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tests;
