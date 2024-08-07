@@ -1,6 +1,5 @@
 ﻿using Celbridge.Commands.Services;
 using Celbridge.Extensions;
-using Celbridge.Project.Services;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.ViewModels;
@@ -30,7 +29,6 @@ public class Extension : IExtension
         config.AddTransient<IResourceService, ResourceService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
-        config.AddTransient<IResourceTransfer, ResourceTransfer>();
 
         //
         // Register commands

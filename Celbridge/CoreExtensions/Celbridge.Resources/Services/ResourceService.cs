@@ -76,7 +76,25 @@ public class ResourceService : IResourceService, IDisposable
         return Result.Ok();
     }
 
-    public Result<List<ResourceTransferItem>> CreateResourceTransferItems(ResourceKey destFolderResource, List<string> resourcePaths)
+    public Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, ResourceTransferMode transferMode)
+    {
+        var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
+        if (createItemsResult.IsFailure)
+        {
+            return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items. {createItemsResult.Error}");
+        }
+        var transferItems = createItemsResult.Value;
+
+        var resourceTransfer = new ResourceTransfer()
+        {
+            TransferMode = transferMode,
+            TransferItems = transferItems
+        };
+
+        return Result<IResourceTransfer>.Ok(resourceTransfer);
+    }
+
+    private Result<List<ResourceTransferItem>> CreateResourceTransferItems(List<string> sourcePaths, ResourceKey destFolderResource)
     {
         try
         {
@@ -88,10 +106,10 @@ public class ResourceService : IResourceService, IDisposable
                 return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
             }
 
-            foreach (var resourcePath in resourcePaths)
+            foreach (var sourcePath in sourcePaths)
             {
-                if (PathContainsSubPath(destFolderPath, resourcePath) &&
-                    string.Compare(destFolderPath, resourcePath, StringComparison.OrdinalIgnoreCase) != 0)
+                if (PathContainsSubPath(destFolderPath, sourcePath) &&
+                    string.Compare(destFolderPath, sourcePath, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // Ignore attempts to transfer a resource into a subfolder of itself.
                     // This check is case insensitive to err on the safe side for Windows file systems.
@@ -101,11 +119,11 @@ public class ResourceService : IResourceService, IDisposable
                 }
 
                 ResourceType resourceType = ResourceType.Invalid;
-                if (File.Exists(resourcePath))
+                if (File.Exists(sourcePath))
                 {
                     resourceType = ResourceType.File;
                 }
-                else if (Directory.Exists(resourcePath))
+                else if (Directory.Exists(sourcePath))
                 {
                     resourceType = ResourceType.Folder;
                 }
@@ -115,7 +133,7 @@ public class ResourceService : IResourceService, IDisposable
                     continue;
                 }
 
-                var getKeyResult = ResourceRegistry.GetResourceKey(resourcePath);
+                var getKeyResult = ResourceRegistry.GetResourceKey(sourcePath);
                 if (getKeyResult.IsSuccess)
                 {
                     // This resource is inside the project folder so we should use the CopyResource command
@@ -123,11 +141,12 @@ public class ResourceService : IResourceService, IDisposable
                     // This is indicated by having a non-empty source resource property.
 
                     var sourceResource = getKeyResult.Value;
-                    var sourcePath = ResourceRegistry.GetResourcePath(sourceResource);
-                    var destResource = ResourceRegistry.GetCopyDestinationResource(sourceResource, destFolderResource);
 
-                    // Sanity check that the input and acquired paths match
-                    Guard.IsEqualTo(resourcePath, sourcePath);
+                    // Sanity check that the generated sourceResource matches the original source path
+                    var checkSourcePath = ResourceRegistry.GetResourcePath(sourceResource);
+                    Guard.IsEqualTo(sourcePath, checkSourcePath);
+
+                    var destResource = ResourceRegistry.GetCopyDestinationResource(sourceResource, destFolderResource);
 
                     var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
                     transferItems.Add(item);
@@ -139,7 +158,6 @@ public class ResourceService : IResourceService, IDisposable
                         // This resource is outside the project folder, so we should add it to the project
                         // via the AddResource command, which will create new metadata for the resource.
                         // This is indicated by having an empty source resource property.
-                        var sourcePath = resourcePath;
                         var sourceResource = new ResourceKey();
                         var filename = Path.GetFileName(sourcePath);
                         var destResource = destFolderResource.Combine(filename);
