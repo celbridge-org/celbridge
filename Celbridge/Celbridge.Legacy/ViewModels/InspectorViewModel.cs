@@ -102,7 +102,7 @@ public partial class InspectorViewModel : ObservableObject
         {
             if (SelectedEntity is Project)
             {
-                TypeName = nameof(Projects);
+                TypeName = nameof(Project);
                 TypeIcon = "PreviewLink";
             }
             else if (SelectedEntity is Resource)

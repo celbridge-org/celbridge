@@ -6,7 +6,7 @@ using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
-using Celbridge.Projects;
+using Celbridge.Resources;
 
 namespace Celbridge.UserInterface.ViewModels;
 
