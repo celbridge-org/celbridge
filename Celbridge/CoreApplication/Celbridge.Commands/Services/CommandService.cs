@@ -445,8 +445,8 @@ public class CommandService : ICommandService
             }
         }
 
-        var projectService = _workspaceWrapper.WorkspaceService.ProjectService;
-        var updateResult = await projectService.UpdateResourcesAsync();
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var updateResult = await resourceService.UpdateResourcesAsync();
         if (updateResult.IsFailure)
         {
             return updateResult;

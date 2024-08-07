@@ -26,7 +26,7 @@ public class App : Application
         _extensionLoader.LoadExtension("Celbridge.Workspace");
         _extensionLoader.LoadExtension("Celbridge.Console");
         _extensionLoader.LoadExtension("Celbridge.Status");
-        _extensionLoader.LoadExtension("Celbridge.Project");
+        _extensionLoader.LoadExtension("Celbridge.Resources");
         _extensionLoader.LoadExtension("Celbridge.Inspector");
         _extensionLoader.LoadExtension("Celbridge.Documents");
 

@@ -1,9 +1,8 @@
-﻿using Celbridge.Clipboard;
+﻿using Celbridge.DataTransfer;
 using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
@@ -21,9 +20,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
-    public IProjectService ProjectService { get; }
+    public IResourceService ResourceService { get; }
     public IStatusService StatusService { get; }
-    public IClipboardService ClipboardService { get; }
+    public IDataTransferService DataTransferService { get; }
 
     private IExecutedCommandLogger _commandLogger;
     private IResourceRegistryDumper _resourceRegistryDumper;
@@ -38,9 +37,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
-        ProjectService = serviceProvider.GetRequiredService<IProjectService>();
+        ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
-        ClipboardService = serviceProvider.GetRequiredService<IClipboardService>();
+        DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
         // Let the workspace data service know where to find the workspace database
@@ -66,7 +65,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         // Save the expanded folders in the Resource Registry
 
-        var resourceRegistry = ProjectService.ResourceRegistry;
+        var resourceRegistry = ResourceService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
 
         var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
@@ -102,9 +101,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
-                (ProjectService as IDisposable)!.Dispose();
+                (ResourceService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
-                (ClipboardService as IDisposable)!.Dispose();
+                (DataTransferService as IDisposable)!.Dispose();
 
                 // Stop logging commands
                 (_commandLogger as IDisposable)!.Dispose();

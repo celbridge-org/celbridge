@@ -1,6 +1,4 @@
-﻿using Celbridge.Core;
-
-namespace Celbridge.Utilities.Services;
+﻿namespace Celbridge.Utilities.Services;
 
 public class Logger : ILogger
 {
