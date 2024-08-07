@@ -162,7 +162,7 @@ namespace Celbridge.Resources.Services
             return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resource}'.");
         }
 
-        public ResourceKey GetCopyDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
+        public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
         {
             string output = destResource;
 
@@ -196,6 +196,34 @@ namespace Celbridge.Resources.Services
 
             return output;
         }
+
+        public ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource)
+        {
+            string output = destResource;
+
+            var getResult = GetResource(destResource);
+            if (getResult.IsSuccess)
+            {
+                var resource = getResult.Value;
+                if (resource is IFolderResource)
+                {
+                    var filename = Path.GetFileName(sourcePath);
+                    if (destResource.IsEmpty)
+                    {
+                        // Destination is the root folder
+                        output = filename;
+                    }
+                    else
+                    {
+                        // Destination is a folder, so append the source filename to this folder.
+                        output = destResource.Combine(filename);
+                    }
+                }
+            }
+
+            return output;
+        }
+
 
         public ResourceKey GetContextMenuItemFolder(IResource? resource)
         {
