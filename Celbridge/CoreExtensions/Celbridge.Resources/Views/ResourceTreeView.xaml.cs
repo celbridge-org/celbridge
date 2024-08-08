@@ -102,7 +102,6 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
                 };
                 AutomationProperties.SetName(folderNode, folderResource.Name);
 
-
                 if (folderResource.Children.Count > 0)
                 {
                     if (folderResource.IsExpanded)
