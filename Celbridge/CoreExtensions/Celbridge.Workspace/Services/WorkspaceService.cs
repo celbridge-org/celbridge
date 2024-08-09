@@ -25,6 +25,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDataTransferService DataTransferService { get; }
 
     private IExecutedCommandLogger _commandLogger;
+
     private IResourceRegistryDumper _resourceRegistryDumper;
 
     public WorkspaceService(

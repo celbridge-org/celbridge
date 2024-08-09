@@ -2,11 +2,11 @@
 
 public class FileResource : Resource, IFileResource
 {
-    public string IconGlyph { get; set; } = "u";
+    public string IconGlyph { get; } = "u";
 
-    public string IconColor { get; set; } = "LightBlue";
+    public string IconColor { get; } = "LightBlue";
 
     public FileResource(string name, IFolderResource parentFolder) 
         : base(name, parentFolder)
-    { }
+    {}
 }

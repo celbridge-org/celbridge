@@ -22,6 +22,10 @@
     <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
     <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\file-icons-icon-theme.json" />
+  </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="Uno.WinUI" />
