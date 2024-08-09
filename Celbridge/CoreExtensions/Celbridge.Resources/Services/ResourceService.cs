@@ -54,7 +54,7 @@ public class ResourceService : IResourceService, IDisposable
         ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
 
         ResourceIconService = _serviceProvider.GetRequiredService<IResourceIconService>();
-        ResourceIconService.LoadIconDefinitions();
+        ResourceIconService.LoadResourceIcons();
     }
 
     public object CreateResourcesPanel()

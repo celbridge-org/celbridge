@@ -9,10 +9,13 @@ public record IconDefinition(string Character, string Color, string FontSize);
 
 public class ResourceIconService : IResourceIconService
 {
+    private Dictionary<string, string> _fileExtensionDefinitions = new();
+    private Dictionary<string, IconDefinition> _iconDefinitions = new();
+
     public ResourceIconService()
     {}
 
-    public Result LoadIconDefinitions()
+    public Result LoadResourceIcons()
     {
         var loadResult = LoadIconData();
         if (loadResult.IsFailure)
@@ -21,12 +24,74 @@ public class ResourceIconService : IResourceIconService
         }
         var iconData = loadResult.Value;
 
-        var iconDefinitions = iconData["iconDefinitions"];
-        var fileExtensions = iconData["fileExtensions"];
-
-        // Todo: populate dictionaries
+        try
+        {
+            PopulateIconDefinitions(iconData);
+            PopulateFileExtensionDefinitions(iconData);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to load icon definitions. {ex.Message}");
+        }
 
         return Result.Ok();
+    }
+
+    private void PopulateIconDefinitions(JObject iconData)
+    {
+        var iconDefinitions = iconData["iconDefinitions"] as JObject;
+        Guard.IsNotNull(iconDefinitions);
+
+        foreach (var kv in iconDefinitions)
+        {
+            Guard.IsNotNull(kv.Value);
+
+            string iconName = kv.Key;
+            var iconProperties = kv.Value as JObject;
+            Guard.IsNotNull(iconProperties);
+
+            string character = iconProperties["fontCharacter"]!.ToString();
+            string color;
+            if (iconProperties.ContainsKey("fontColor"))
+            {
+                color = iconProperties["fontColor"]!.ToString();
+            }
+            else
+            {
+                // Todo: Support light/dark themes
+                color = "white";
+            }
+
+            string fontSize;
+            if (iconProperties.ContainsKey("fontSize"))
+            {
+                fontSize = iconProperties["fontSize"]!.ToString();
+            }
+            else
+            {
+                fontSize = "100%";
+            }
+
+            var iconDefinition = new IconDefinition(character, color, fontSize);
+
+            _iconDefinitions.Add(iconName, iconDefinition);
+        }
+    }
+
+    private void PopulateFileExtensionDefinitions(JObject iconData)
+    {
+        var fileExtensions = iconData["fileExtensions"] as JObject;
+        Guard.IsNotNull(fileExtensions);
+
+        foreach (var kv in fileExtensions)
+        {
+            Guard.IsNotNull(kv.Value);
+
+            string extension = kv.Key;
+            string iconName = kv.Value.ToString();
+
+            _fileExtensionDefinitions.Add(extension, iconName);
+        }
     }
 
     private Result<JObject> LoadIconData()

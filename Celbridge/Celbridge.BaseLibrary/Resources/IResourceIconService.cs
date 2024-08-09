@@ -2,5 +2,5 @@
 
 public interface IResourceIconService
 {
-    Result LoadIconDefinitions();
+    Result LoadResourceIcons();
 }
