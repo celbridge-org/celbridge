@@ -1,21 +1,26 @@
-﻿using CommunityToolkit.Diagnostics;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.UserInterface.Services;
 
-public record IconDefinition(string Character, string Color, string FontSize);
-
-public class ResourceIconService : IResourceIconService
+public class IconService : IIconService
 {
+    private const string DefaultIconName = "_file";
+
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, IconDefinition> _iconDefinitions = new();
 
-    public ResourceIconService()
-    {}
+    public IconService()
+    {
+        var loadResult = LoadIconDefinitions();
+        if (loadResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to load icon definitions. {loadResult.Error}");
+        }
+    }
 
-    public Result LoadResourceIcons()
+    public Result LoadIconDefinitions()
     {
         var loadResult = LoadIconData();
         if (loadResult.IsFailure)
@@ -37,6 +42,38 @@ public class ResourceIconService : IResourceIconService
         return Result.Ok();
     }
 
+    public Result<IconDefinition> GetIcon(string iconName)
+    {
+        if (!_iconDefinitions.TryGetValue(iconName, out IconDefinition? iconDefinition))
+        {
+            if (_iconDefinitions.TryGetValue(DefaultIconName, out IconDefinition? defaultIcon))
+            {
+                // Icon definition not found, return default icon
+                return Result<IconDefinition>.Ok(defaultIcon);
+            }
+
+            return Result<IconDefinition>.Fail($"No default icon found.");
+        }
+
+        return Result<IconDefinition>.Ok(iconDefinition);
+    }
+
+    public Result<IconDefinition> GetIconForFileExtension(string fileExtension)
+    {
+        if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
+        {
+            if (_iconDefinitions.TryGetValue(DefaultIconName, out IconDefinition? defaultIcon))
+            {
+                // File extension not recognized, return default icon
+                return Result<IconDefinition>.Ok(defaultIcon);
+            }
+
+            return Result<IconDefinition>.Fail($"No default icon found.");
+        }
+
+        return GetIcon(iconName);
+    }
+
     private void PopulateIconDefinitions(JObject iconData)
     {
         var iconDefinitions = iconData["iconDefinitions"] as JObject;
@@ -49,6 +86,17 @@ public class ResourceIconService : IResourceIconService
             string iconName = kv.Key;
             var iconProperties = kv.Value as JObject;
             Guard.IsNotNull(iconProperties);
+
+            string fontId;
+            if (iconProperties.ContainsKey("fontId"))
+            {
+                fontId = iconProperties["fontId"]!.ToString();
+            }
+            else
+            {
+                // Not a valid icon definition
+                continue;
+            }
 
             string character = iconProperties["fontCharacter"]!.ToString();
             string color;
@@ -72,7 +120,7 @@ public class ResourceIconService : IResourceIconService
                 fontSize = "100%";
             }
 
-            var iconDefinition = new IconDefinition(character, color, fontSize);
+            var iconDefinition = new IconDefinition(character, color, fontId, fontSize);
 
             _iconDefinitions.Add(iconName, iconDefinition);
         }
