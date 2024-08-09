@@ -14,6 +14,8 @@ public class ResourceService : IResourceService, IDisposable
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
+    public IResourceIconService ResourceIconService { get; init; }
+
     private IResourceTreeView? _resourceTreeView;
     public IResourceTreeView ResourceTreeView 
     {
@@ -31,8 +33,7 @@ public class ResourceService : IResourceService, IDisposable
         IServiceProvider serviceProvider,
         ICommandService commandService,
         IProjectDataService projectDataService,
-        IUtilityService utilityService,
-        IResourceRegistry resourceRegistry)
+        IUtilityService utilityService)
     {
         _serviceProvider = serviceProvider;
         _commandService = commandService;
@@ -49,9 +50,11 @@ public class ResourceService : IResourceService, IDisposable
 
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
-        ResourceRegistry = resourceRegistry;
+        ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
         ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
-        
+
+        ResourceIconService = _serviceProvider.GetRequiredService<IResourceIconService>();
+        ResourceIconService.LoadIconDefinitions();
     }
 
     public object CreateResourcesPanel()
