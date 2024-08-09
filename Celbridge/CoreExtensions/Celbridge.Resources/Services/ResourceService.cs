@@ -3,6 +3,7 @@ using Celbridge.Resources.Views;
 using Celbridge.Utilities.Services;
 using Celbridge.Commands;
 using CommunityToolkit.Diagnostics;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Resources.Services;
 
@@ -13,8 +14,6 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectDataService _projectDataService;
 
     public IResourceRegistry ResourceRegistry { get; init; }
-
-    public IResourceIconService ResourceIconService { get; init; }
 
     private IResourceTreeView? _resourceTreeView;
     public IResourceTreeView ResourceTreeView 
@@ -52,9 +51,6 @@ public class ResourceService : IResourceService, IDisposable
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
         ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
-
-        ResourceIconService = _serviceProvider.GetRequiredService<IResourceIconService>();
-        ResourceIconService.LoadResourceIcons();
     }
 
     public object CreateResourcesPanel()

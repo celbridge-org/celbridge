@@ -11,6 +11,7 @@
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="CommunityToolkit.MVVM" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Uno.Extensions.Configuration" />
     <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
@@ -22,7 +23,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Uno.Themes.WinUI.Markup" />
-
   </ItemGroup>
 
   <ItemGroup>
