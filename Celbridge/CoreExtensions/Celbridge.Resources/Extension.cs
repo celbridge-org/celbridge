@@ -29,7 +29,6 @@ public class Extension : IExtension
         config.AddTransient<IResourceService, ResourceService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
-        config.AddTransient<IResourceIconService, ResourceIconService>();
 
         //
         // Register commands

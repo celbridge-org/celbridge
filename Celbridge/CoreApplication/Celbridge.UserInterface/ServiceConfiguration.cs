@@ -16,6 +16,8 @@ public static class ServiceConfiguration
         //
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IIconService, IconService>();
+
 
         //
         // Register user interface services
