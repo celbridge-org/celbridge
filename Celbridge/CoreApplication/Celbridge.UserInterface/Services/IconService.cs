@@ -126,6 +126,9 @@ public class IconService : IIconService
                 continue;
             }
 
+            // Todo: Map fontId to fontFamily
+            string fontFamily = "FileIconsFontFamily";
+
             string codePointString = iconProperties["fontCharacter"]!.ToString();
 
             if (string.IsNullOrEmpty(codePointString))
@@ -167,7 +170,8 @@ public class IconService : IIconService
                 fontSize = "100%";
             }
 
-            var iconDefinition = new IconDefinition(character, color, fontId, fontSize);
+            character = "b";
+            var iconDefinition = new IconDefinition(character, color, fontFamily, fontSize);
 
             _iconDefinitions.Add(iconName, iconDefinition);
         }
