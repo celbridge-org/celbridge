@@ -11,11 +11,7 @@
     DataContext="{x:Bind ViewModel}"
     Background="{ThemeResource ApplicationBackgroundBrush}">
 
-    
     <UserControl.Resources>
-
-        <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
-
         <MenuFlyout x:Name="ResourceContextMenu"
                     Placement="RightEdgeAlignedTop"
                     Opening="ResourceContextMenu_Opening">
@@ -70,9 +66,9 @@
             <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
 
                 <StackPanel Orientation="Horizontal">
-                    <FontIcon FontFamily="{StaticResource FileIconsFontFamily}"
-                              Glyph="{Binding Path=Content.Icon.FontCharacter, Mode=OneWay}" 
-                              Foreground="{Binding Path=Content.Icon.FontColor, Mode=OneWay}"
+                    <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+                              Glyph="{Binding Path=Content.Icon.FontCharacter}" 
+                              Foreground="{Binding Path=Content.Icon.FontColor}"
                               Margin="0 0 6 0"/>
                     <TextBlock Margin="0" 
                                Text="{Binding Path=Content.Name, Mode=OneWay}" />
@@ -80,6 +76,8 @@
 
             </muxc:TreeViewItem>
         </DataTemplate>
+
+        <local:FontFamilyConverter x:Key="FontFamilyConverter"/>
 
         <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
             FolderTemplate="{StaticResource FolderTemplate}"
