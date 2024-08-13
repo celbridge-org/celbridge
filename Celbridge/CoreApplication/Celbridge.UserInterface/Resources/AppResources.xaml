@@ -12,4 +12,6 @@
         <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
+    <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
+
 </ResourceDictionary>
