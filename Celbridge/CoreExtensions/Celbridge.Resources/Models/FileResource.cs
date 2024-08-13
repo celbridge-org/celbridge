@@ -1,12 +1,14 @@
-﻿namespace Celbridge.Resources.Models;
+﻿using Celbridge.UserInterface;
+
+namespace Celbridge.Resources.Models;
 
 public class FileResource : Resource, IFileResource
 {
-    public string IconGlyph { get; set; } = "u";
+    public IconDefinition Icon { get; }
 
-    public string IconColor { get; set; } = "LightBlue";
-
-    public FileResource(string name, IFolderResource parentFolder) 
+    public FileResource(string name, IFolderResource parentFolder, IconDefinition icon) 
         : base(name, parentFolder)
-    {}
+    {
+        Icon = icon;
+    }
 }

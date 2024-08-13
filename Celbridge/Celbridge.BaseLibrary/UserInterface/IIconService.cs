@@ -19,4 +19,14 @@ public interface IIconService
     /// Returns the icon definition for the specified file extension.
     /// </summary>
     Result<IconDefinition> GetIconForFileExtension(string fileExtension);
+
+    /// <summary>
+    /// Returns the default icon definition for file resources.
+    /// </summary>
+    IconDefinition DefaultFileIcon { get; }
+
+    /// <summary>
+    /// Returns the default icon definition for folder resources.
+    /// </summary>
+    IconDefinition DefaultFolderIcon { get; }
 }

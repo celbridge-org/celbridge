@@ -71,8 +71,8 @@
 
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{StaticResource FileIconsFontFamily}"
-                              Glyph="{Binding Path=Content.IconGlyph, Mode=OneWay}" 
-                              Foreground="{Binding Path=Content.IconColor, Mode=OneWay}"
+                              Glyph="{Binding Path=Content.Icon.FontCharacter, Mode=OneWay}" 
+                              Foreground="{Binding Path=Content.Icon.FontColor, Mode=OneWay}"
                               Margin="0 0 6 0"/>
                     <TextBlock Margin="0" 
                                Text="{Binding Path=Content.Name, Mode=OneWay}" />
