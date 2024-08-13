@@ -6,10 +6,14 @@ namespace Celbridge.UserInterface.Services;
 
 public class IconService : IIconService
 {
-    private const string DefaultIconName = "_file";
+    private const string DefaultFileIconName = "_file";
+    private const string DefaultFolderIconName = "_folder";
 
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, IconDefinition> _iconDefinitions = new();
+
+    public IconDefinition DefaultFileIcon { get; private set; }
+    public IconDefinition DefaultFolderIcon { get; private set; }
 
     public IconService()
     {
@@ -18,6 +22,20 @@ public class IconService : IIconService
         {
             throw new InvalidOperationException($"Failed to load icon definitions. {loadResult.Error}");
         }
+
+        var getFileResult = GetIcon(DefaultFileIconName);
+        if (getFileResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to get default file icon definitions. {getFileResult.Error}");
+        }
+        DefaultFileIcon = getFileResult.Value;
+
+        var getFolderResult = GetIcon(DefaultFolderIconName);
+        if (getFolderResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.Error}");
+        }
+        DefaultFolderIcon = getFolderResult.Value;
     }
 
     public Result LoadIconDefinitions()
@@ -46,7 +64,7 @@ public class IconService : IIconService
     {
         if (!_iconDefinitions.TryGetValue(iconName, out IconDefinition? iconDefinition))
         {
-            if (_iconDefinitions.TryGetValue(DefaultIconName, out IconDefinition? defaultIcon))
+            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
             {
                 // Icon definition not found, return default icon
                 return Result<IconDefinition>.Ok(defaultIcon);
@@ -62,7 +80,7 @@ public class IconService : IIconService
     {
         if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
         {
-            if (_iconDefinitions.TryGetValue(DefaultIconName, out IconDefinition? defaultIcon))
+            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
             {
                 // File extension not recognized, return default icon
                 return Result<IconDefinition>.Ok(defaultIcon);
@@ -72,6 +90,16 @@ public class IconService : IIconService
         }
 
         return GetIcon(iconName);
+    }
+
+    public IconDefinition GetDefaultFileIcon()
+    {
+        if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
+        {
+            return defaultIcon;
+        }
+
+        throw new InvalidOperationException();
     }
 
     private void PopulateIconDefinitions(JObject iconData)
@@ -98,7 +126,26 @@ public class IconService : IIconService
                 continue;
             }
 
-            string character = iconProperties["fontCharacter"]!.ToString();
+            string codePointString = iconProperties["fontCharacter"]!.ToString();
+
+            if (string.IsNullOrEmpty(codePointString))
+            {
+                continue;
+            }
+
+            string character;
+            if (codePointString.Length <= 2)
+            {
+                character = codePointString;
+            }
+            else
+            {
+                codePointString = codePointString.Substring(2); // strip leading slash
+                codePointString = $"0x{codePointString}";
+
+                character = char.ConvertFromUtf32(Convert.ToInt32(codePointString, 16));
+            }
+
             string color;
             if (iconProperties.ContainsKey("fontColor"))
             {
