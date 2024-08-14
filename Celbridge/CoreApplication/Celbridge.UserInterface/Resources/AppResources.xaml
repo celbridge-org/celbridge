@@ -12,6 +12,10 @@
         <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
+    <FontFamily x:Key="DevOpIcons">ms-appx:///Assets/Fonts/devopicons.ttf#devopicons</FontFamily>
+    <FontFamily x:Key="FileIcons">ms-appx:///Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
+    <FontFamily x:Key="FontAwesome">ms-appx:///Assets/Fonts/fontawesome.ttf#fontawesome</FontFamily>
+    <FontFamily x:Key="MFixx">ms-appx:///Assets/Fonts/mfixx.ttf#mfixx</FontFamily>
+    <FontFamily x:Key="OctIcons">ms-appx:///Assets/Fonts/octicons.ttf#octicons</FontFamily>
 
 </ResourceDictionary>
