@@ -8,7 +8,7 @@ public class FontFamilyConverter : IValueConverter
         {
             var fontFamily = Application.Current.Resources[fontFamilyKey] as FontFamily;
 
-            return Application.Current.Resources[fontFamilyKey] as FontFamily;
+            return fontFamily;
         }
         return null;
     }
