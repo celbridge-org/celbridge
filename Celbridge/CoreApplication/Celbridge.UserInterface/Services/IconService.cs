@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
+using Uno;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -126,27 +127,44 @@ public class IconService : IIconService
                 continue;
             }
 
-            // Todo: Map fontId to fontFamily
-            string fontFamily = "FileIconsFontFamily";
+            // Map fontId to a FontFamily key
+            string fontFamily;
+            switch (fontId)
+            {
+                case "fi":
+                    fontFamily = "FileIcons";
+                    break;
+                case "fa":
+                    fontFamily = "FontAwesome";
+                    break;
+                case "mf":
+                    fontFamily = "MFixx";
+                    break;
+                case "devicons":
+                    fontFamily = "DevOpIcons";
+                    break;
+                case "octicons":
+                    fontFamily = "OctIcons";
+                    break;
+                default:
+                    // Not a valid icon definition
+                    continue;
+            }
 
-            string codePointString = iconProperties["fontCharacter"]!.ToString();
-
-            if (string.IsNullOrEmpty(codePointString))
+            string character = iconProperties["fontCharacter"]!.ToString();
+            if (string.IsNullOrEmpty(character))
             {
                 continue;
             }
 
-            string character;
-            if (codePointString.Length <= 2)
+            string fontCharacter;
+            if (character.Length == 1)
             {
-                character = codePointString;
+                fontCharacter = character;
             }
             else
             {
-                codePointString = codePointString.Substring(2); // strip leading slash
-                codePointString = $"0x{codePointString}";
-
-                character = char.ConvertFromUtf32(Convert.ToInt32(codePointString, 16));
+                fontCharacter = ConvertUnicodeString(character);
             }
 
             string color;
@@ -170,11 +188,23 @@ public class IconService : IIconService
                 fontSize = "100%";
             }
 
-            character = "b";
-            var iconDefinition = new IconDefinition(character, color, fontFamily, fontSize);
+            var iconDefinition = new IconDefinition(fontCharacter, color, fontFamily, fontSize);
 
             _iconDefinitions.Add(iconName, iconDefinition);
         }
+    }
+
+    private static string ConvertUnicodeString(string unicodeInput)
+    {
+        if (unicodeInput.StartsWith("\\"))
+        {
+            unicodeInput = unicodeInput.Substring(1);
+        }
+
+        int codePoint = int.Parse(unicodeInput, System.Globalization.NumberStyles.HexNumber);
+        char character = (char)codePoint;
+
+        return character.ToString();
     }
 
     private void PopulateFileExtensionDefinitions(JObject iconData)
