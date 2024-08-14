@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
-using Uno;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -9,6 +8,7 @@ public class IconService : IIconService
 {
     private const string DefaultFileIconName = "_file";
     private const string DefaultFolderIconName = "_folder";
+    private const string DefaultColor = "#9dc0ce";
 
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, IconDefinition> _iconDefinitions = new();
@@ -132,19 +132,19 @@ public class IconService : IIconService
             switch (fontId)
             {
                 case "fi":
-                    fontFamily = "FileIcons";
+                    fontFamily = "FileIconsFontFamily";
                     break;
                 case "fa":
-                    fontFamily = "FontAwesome";
+                    fontFamily = "FontAwesomeFontFamily";
                     break;
                 case "mf":
-                    fontFamily = "MFixx";
+                    fontFamily = "MFixxFontFamily";
                     break;
                 case "devicons":
-                    fontFamily = "DevOpIcons";
+                    fontFamily = "DevOpIconsFontFamily";
                     break;
                 case "octicons":
-                    fontFamily = "OctIcons";
+                    fontFamily = "OctIconsFontFamily";
                     break;
                 default:
                     // Not a valid icon definition
@@ -174,8 +174,7 @@ public class IconService : IIconService
             }
             else
             {
-                // Todo: Support light/dark themes
-                color = "white";
+                color = DefaultColor;
             }
 
             string fontSize;
