@@ -258,12 +258,11 @@ public class IconService : IIconService
 
     private Result<Stream> LoadIconDataResource(string searchResourceName)
     {
-        var entryAssembly = Assembly.GetEntryAssembly();
+        var entryAssembly = Assembly.GetAssembly(this.GetType());
         Guard.IsNotNull(entryAssembly);
 
-        // The name is prepended with the namespace which includes the platform.
-        // e.g. On Windows the name starts with "Celbridge.Windows." on Windows.
-        // To work around this we look for a resource that ends with the requested resource name.
+        // The name is prepended with the assembly name so look for a resource that
+        // ends with the requested resource name.
 
         string resourceName = string.Empty;
         string[] names = entryAssembly.GetManifestResourceNames();

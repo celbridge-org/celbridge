@@ -6,7 +6,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Assets\file-icons-icon-theme.json" />
     <EmbeddedResource Include="Package.appxmanifest" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
@@ -28,19 +27,13 @@
 
   <ItemGroup>
     <Content Include="Images\**" />
-    <Content Include="Assets\**" />
     <Content Include="monaco\**" />
-    <Content Remove="Assets\file-icons-icon-theme.json" />
     <!-- Excluding these files as they trigger localization warnings during the build process -->
     <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
     <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
     <Content Remove="monaco\min\vs\basic-languages\st\st.js" />
     <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
     <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Assets\Fonts\file-icons.ttf" />
   </ItemGroup>
 
   <ItemGroup>
