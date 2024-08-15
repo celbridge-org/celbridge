@@ -12,7 +12,6 @@
     Background="{ThemeResource ApplicationBackgroundBrush}">
 
     <UserControl.Resources>
-
         <MenuFlyout x:Name="ResourceContextMenu"
                     Placement="RightEdgeAlignedTop"
                     Opening="ResourceContextMenu_Opening">
@@ -52,9 +51,9 @@
                       x:DataType="muxc:TreeViewNode">
             <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
                 <StackPanel Orientation="Horizontal">
-                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                              Glyph="&#xE8B7;" 
-                              FontSize="14" 
+                    <FontIcon FontFamily="{StaticResource OctIconsFontFamily}"
+                              Glyph="&#xF016;" 
+                              FontSize="16" 
                               Foreground="#FFCC40"/>
                     <TextBlock Margin="8 0 0 0" 
                                Text="{Binding Path=Content.Name, Mode=OneWay}" />
@@ -65,9 +64,21 @@
         <DataTemplate x:Key="FileTemplate"
                       x:DataType="muxc:TreeViewNode">
             <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
-                <TextBlock Margin="0" Text="{Binding Path=Content.Name, Mode=OneWay}" />
+
+                <StackPanel Orientation="Horizontal">
+                    <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+                              Glyph="{Binding Path=Content.Icon.FontCharacter}" 
+                              Foreground="{Binding Path=Content.Icon.FontColor}"
+                              FontSize="16" 
+                              Margin="0 0 6 0"/>
+                    <TextBlock Margin="0" 
+                               Text="{Binding Path=Content.Name, Mode=OneWay}" />
+                </StackPanel>
+
             </muxc:TreeViewItem>
         </DataTemplate>
+
+        <local:FontFamilyConverter x:Key="FontFamilyConverter"/>
 
         <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
             FolderTemplate="{StaticResource FolderTemplate}"

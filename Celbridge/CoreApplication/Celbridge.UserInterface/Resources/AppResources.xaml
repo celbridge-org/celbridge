@@ -10,6 +10,7 @@
 
         <!-- Add resource dictionaries here -->
         <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml" />
+        <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/FileIcons.xaml" />
+        
     </ResourceDictionary.MergedDictionaries>
-
 </ResourceDictionary>
