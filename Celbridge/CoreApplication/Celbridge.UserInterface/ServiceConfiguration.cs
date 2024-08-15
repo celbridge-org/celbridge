@@ -18,7 +18,6 @@ public static class ServiceConfiguration
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IIconService, IconService>();
 
-
         //
         // Register user interface services
         // These services can be acquired via the getters on IUserInterfaceService for convenient access.

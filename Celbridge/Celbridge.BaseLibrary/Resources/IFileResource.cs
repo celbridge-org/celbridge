@@ -7,5 +7,8 @@ namespace Celbridge.Resources;
 /// </summary>
 public interface IFileResource : IResource
 {
+    /// <summary>
+    /// The icon to display for the file resource.
+    /// </summary>
     public IconDefinition Icon { get; }
 }
