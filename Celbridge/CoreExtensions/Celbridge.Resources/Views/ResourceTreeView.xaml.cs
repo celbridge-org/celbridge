@@ -411,11 +411,13 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             {
                 if (item is Windows.Storage.StorageFile storageFile)
                 {
-                    sourcePaths.Add(storageFile.Path);
+                    var filePath = Path.GetFullPath(storageFile.Path);
+                    sourcePaths.Add(filePath);
                 }
                 else if (item is Windows.Storage.StorageFolder storageFolder)
                 {
-                    sourcePaths.Add(storageFolder.Path);
+                    var folderPath = Path.GetFullPath(storageFolder.Path);
+                    sourcePaths.Add(folderPath);
                 }
             }
 
