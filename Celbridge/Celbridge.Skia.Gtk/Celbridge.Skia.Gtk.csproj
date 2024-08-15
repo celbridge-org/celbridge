@@ -24,6 +24,18 @@
     <PackageReference Include="Uno.WinUI.DevServer" Condition="'$(Configuration)'=='Debug'" />
     <PackageReference Include="Uno.UI.Adapter.Microsoft.Extensions.Logging" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\**" />
+    <Content Include="monaco\**" />
+    <!-- Excluding these files as they trigger localization warnings during the build process -->
+    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.MainApplication\Celbridge.MainApplication.csproj" />
   </ItemGroup>
