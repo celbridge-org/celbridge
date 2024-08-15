@@ -10,6 +10,8 @@ public class IconService : IIconService
     private const string DefaultFolderIconName = "_folder";
     private const string DefaultColor = "#9dc0ce";
 
+    private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
+
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, IconDefinition> _iconDefinitions = new();
 
@@ -224,11 +226,10 @@ public class IconService : IIconService
 
     private Result<JObject> LoadIconData()
     {
-        var resourceName = "Assets.file-icons-icon-theme.json";
-        var loadResult = LoadIconDataResource(resourceName);
+        var loadResult = LoadIconDataResource(FileIconsThemeResource);
         if (loadResult.IsFailure)
         {
-            return Result<JObject>.Fail($"Failed to load icon data from resource '{resourceName}'. Error: {loadResult.Error}");
+            return Result<JObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.Error}");
         }
         var stream = loadResult.Value;
 
