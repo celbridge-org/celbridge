@@ -1,5 +1,8 @@
 ﻿namespace Celbridge.Resources.Views;
 
+/// <summary>
+/// Converts a FontFamily key to a FontFamily object
+/// </summary>
 public class FontFamilyConverter : IValueConverter
 {
     public object? Convert(object value, Type targetType, object parameter, string language)
