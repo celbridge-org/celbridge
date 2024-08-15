@@ -6,6 +6,22 @@
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Remove="Assets\file-icons-icon-theme.json" />
+    <Content Remove="Assets\Fonts\devopicons.ttf" />
+    <Content Remove="Assets\Fonts\file-icons.ttf" />
+    <Content Remove="Assets\Fonts\fontawesome.ttf" />
+    <Content Remove="Assets\Fonts\mfixx.ttf" />
+    <Content Remove="Assets\Fonts\octicons.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\file-icons-icon-theme.json" />
+    <EmbeddedResource Include="Assets\Fonts\devopicons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\file-icons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\fontawesome.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\mfixx.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\octicons.ttf" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />

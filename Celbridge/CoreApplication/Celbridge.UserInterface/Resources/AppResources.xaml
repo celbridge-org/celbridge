@@ -12,10 +12,10 @@
         <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <FontFamily x:Key="DevOpIconsFontFamily">ms-appx:///Assets/Fonts/devopicons.ttf#devopicons</FontFamily>
-    <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
-    <FontFamily x:Key="FontAwesomeFontFamily">ms-appx:///Assets/Fonts/fontawesome.ttf#fontawesome</FontFamily>
-    <FontFamily x:Key="MFixxFontFamily">ms-appx:///Assets/Fonts/mfixx.ttf#mfixx</FontFamily>
-    <FontFamily x:Key="OctIconsFontFamily">ms-appx:///Assets/Fonts/octicons.ttf#octicons</FontFamily>
+    <FontFamily x:Key="DevOpIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/devopicons.ttf#devopicons</FontFamily>
+    <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/file-icons.ttf#file-icons</FontFamily>
+    <FontFamily x:Key="FontAwesomeFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/fontawesome.ttf#fontawesome</FontFamily>
+    <FontFamily x:Key="MFixxFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/mfixx.ttf#mfixx</FontFamily>
+    <FontFamily x:Key="OctIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/octicons.ttf#octicons</FontFamily>
 
 </ResourceDictionary>
