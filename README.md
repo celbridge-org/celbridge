@@ -61,5 +61,11 @@ This video covers the main features of the prototype. This is a good way to lear
 
 You can try this prototype by checking out the `demo-dec-23` tag of this project on Github. Warning: It's quite unstable and undocumented!
 
+## Credits
+
+This project uses [file-icons](https://github.com/file-icons/vscode), which is licensed under the MIT License. 
+A copy of the license can be found at Celbridge.UserInterface/Assets/Fonts/FileIcons/LICENSE.md.
+
+
 
 
