@@ -60,7 +60,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         var rootFolder = _resourceRegistry.RootFolder;
         var rootNodes = ResourcesTreeView.RootNodes;
 
-        // Make a note of the currenlty selected resource
+        // Make a note of the currently selected resource
         var selectedResourceKey = GetSelectedResource();
 
         try
