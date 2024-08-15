@@ -10,12 +10,7 @@
 
         <!-- Add resource dictionaries here -->
         <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml" />
+        <ResourceDictionary Source="ms-appx:///Celbridge.UserInterface/Resources/FileIcons.xaml" />
+        
     </ResourceDictionary.MergedDictionaries>
-
-    <FontFamily x:Key="DevOpIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/devopicons.ttf#devopicons</FontFamily>
-    <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/file-icons.ttf#file-icons</FontFamily>
-    <FontFamily x:Key="FontAwesomeFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/fontawesome.ttf#fontawesome</FontFamily>
-    <FontFamily x:Key="MFixxFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/mfixx.ttf#mfixx</FontFamily>
-    <FontFamily x:Key="OctIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/octicons.ttf#octicons</FontFamily>
-
 </ResourceDictionary>
