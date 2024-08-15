@@ -6,11 +6,12 @@
     <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="CommunityToolkit.MVVM" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Uno.Extensions.Configuration" />
     <PackageReference Include="Uno.Extensions.Hosting.WinUI" />
     <PackageReference Include="Uno.Extensions.Localization.WinUI" />
@@ -22,11 +23,23 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Uno.Themes.WinUI.Markup" />
-
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Fonts\FileIcons\LICENSE.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons-icon-theme.json" />
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\devopicons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
   </ItemGroup>
 
   <Choose>

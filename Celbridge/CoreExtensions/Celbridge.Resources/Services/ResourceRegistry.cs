@@ -1,4 +1,5 @@
 ﻿using Celbridge.Resources.Models;
+using Celbridge.UserInterface;
 using System.Text;
 
 namespace Celbridge.Resources.Services
@@ -6,6 +7,7 @@ namespace Celbridge.Resources.Services
     public class ResourceRegistry : IResourceRegistry
     {
         private readonly IMessengerService _messengerService;
+        private readonly IIconService _iconService;
 
         public string ProjectFolderPath { get; set; } = string.Empty;
 
@@ -13,9 +15,12 @@ namespace Celbridge.Resources.Services
 
         public IFolderResource RootFolder => _rootFolder;
 
-        public ResourceRegistry(IMessengerService messengerService)
+        public ResourceRegistry(
+            IMessengerService messengerService,
+            IIconService iconService)
         {
             _messengerService = messengerService;
+            _iconService = iconService;
         }
 
         public ResourceKey GetResourceKey(IResource resource)
@@ -305,7 +310,23 @@ namespace Celbridge.Resources.Services
                 }
                 else
                 {
-                    folderResource.AddChild(new FileResource(fileName, folderResource));
+                    // Lookup the icon for this type of file 
+                    IconDefinition iconDefinition;
+                    var fileExtension = Path.GetExtension(filePath).TrimStart('.');
+
+                    var getIconResult = _iconService.GetIconForFileExtension(fileExtension);
+                    if (getIconResult.IsSuccess)
+                    {
+                        iconDefinition = getIconResult.Value;
+                    }
+                    else
+                    {
+                        iconDefinition = _iconService.DefaultFileIcon;
+                    }
+
+                    var fileResource = new FileResource(fileName, folderResource, iconDefinition);
+
+                    folderResource.AddChild(fileResource);
                 }
             }
 
