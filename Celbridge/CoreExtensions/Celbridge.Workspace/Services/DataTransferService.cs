@@ -91,7 +91,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             var paths = new List<string>();
             foreach (var storageItem in storageItems)
             {
-                var path = storageItem.Path;
+                var path = Path.GetFullPath(storageItem.Path);
                 paths.Add(path);
             }
 
