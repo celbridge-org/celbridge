@@ -60,6 +60,9 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         var rootFolder = _resourceRegistry.RootFolder;
         var rootNodes = ResourcesTreeView.RootNodes;
 
+        // Make a note of the currently selected resource
+        var selectedResourceKey = GetSelectedResource();
+
         try
         {
             // Clear existing nodes
@@ -81,7 +84,77 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             return Result.Fail($"Failed to populate tree view. {ex.Message}");
         }
 
+        // Attempt to re-select the previously selected resource
+        if (_resourceRegistry.GetResource(selectedResourceKey) != null)
+        {
+            SetSelectedResource(selectedResourceKey);
+        }
+
         return Result.Ok();
+    }
+
+    private ResourceKey GetSelectedResource()
+    {
+        ResourceKey selectedResourceKey = new();
+        var selectedItem = ResourcesTreeView.SelectedItem as TreeViewNode;
+        if (selectedItem != null)
+        {
+            var selectedResource = selectedItem.Content as IResource;
+            if (selectedResource != null)
+            {
+                selectedResourceKey = _resourceRegistry.GetResourceKey(selectedResource);
+            }
+        }
+
+        return selectedResourceKey;
+    }
+
+    private Result SetSelectedResource(ResourceKey selectedResourceKey)
+    {
+        if (selectedResourceKey.IsEmpty)
+        {
+            return Result.Fail("Selected resource key is empty");
+        }
+
+        var segments = selectedResourceKey.ToString().Split('/');
+        Guard.IsTrue(segments.Length >= 1);
+
+        var node = FindNode(0, ResourcesTreeView.RootNodes);
+        if (node != null)
+        {
+            ResourcesTreeView.SelectedItem = node;
+        }
+
+        return Result.Ok();
+
+        TreeViewNode? FindNode(int segmentIndex, IList<TreeViewNode> nodes)
+        {
+            string segment = segments[segmentIndex];
+            foreach (var node in nodes)
+            {
+                var resource = node.Content as IResource;
+                Guard.IsNotNull(resource);
+
+                if (resource.Name == segment)
+                {
+                    if (segmentIndex == segments.Length - 1)
+                    {
+                        // Found the required node
+                        return node;
+                    }
+
+                    if (resource is IFolderResource &&
+                        node.HasChildren &&
+                        !node.HasUnrealizedChildren)
+                    {
+                        // Matched part of the part, now check the next segment
+                        return FindNode(segmentIndex + 1, node.Children);
+                    }
+                }
+            }
+
+            return null;
+        }
     }
 
     private void PopulateTreeViewNodes(IList<TreeViewNode> nodes, IList<IResource> resources)
