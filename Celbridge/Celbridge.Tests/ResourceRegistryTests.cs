@@ -1,6 +1,7 @@
 ﻿using Celbridge.Messaging.Services;
 using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
+using Celbridge.UserInterface.Services;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tests;
@@ -65,8 +66,9 @@ public class ResourceRegistryTests
         //
 
         var messengerService = new MessengerService();
+        var iconService = new IconService();
 
-        var resourceRegistry = new ResourceRegistry(messengerService);
+        var resourceRegistry = new ResourceRegistry(messengerService, iconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
@@ -103,8 +105,9 @@ public class ResourceRegistryTests
         //
 
         var messengerService = new MessengerService();
-        
-        var resourceRegistry = new ResourceRegistry(messengerService);
+        var iconService = new IconService();
+
+        var resourceRegistry = new ResourceRegistry(messengerService, iconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         resourceRegistry.SetFolderIsExpanded(FolderNameA, true);
