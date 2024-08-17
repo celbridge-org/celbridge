@@ -31,7 +31,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
-        IProjectDataService projectDataService)
+        IProjectService projectService)
     {
         // Create instances of the required sub-services
 
@@ -47,7 +47,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Let the workspace data service know where to find the workspace database
         //
 
-        var project = projectDataService.LoadedProject;
+        var project = projectService.LoadedProject;
         Guard.IsNotNull(project);
         var databaseFolder = Path.GetDirectoryName(project.DatabasePath);
         Guard.IsNotNullOrEmpty(databaseFolder);

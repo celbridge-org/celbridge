@@ -9,18 +9,18 @@ namespace Celbridge.ProjectAdmin.Commands;
 public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
     private readonly ICommandService _commandService;
 
     public CreateProjectCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         INavigationService navigationService,
         ICommandService commandService)
     {
         _workspaceWrapper = workspaceWrapper;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
         _navigationService = navigationService;
         _commandService = commandService;
     }
@@ -43,10 +43,10 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
         // Close any open project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
+        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
 
         // Create the new project
-        var createResult = await ProjectUtils.CreateProjectAsync(_projectDataService, Config);
+        var createResult = await ProjectUtils.CreateProjectAsync(_projectService, Config);
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create new project. {createResult.Error}");

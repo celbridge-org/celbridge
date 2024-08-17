@@ -19,7 +19,7 @@ namespace Celbridge.Resources.Commands
         public bool ExpandCopiedFolder { get; set; }
 
         private readonly IWorkspaceWrapper _workspaceWrapper;
-        private readonly IProjectDataService _projectDataService;
+        private readonly IProjectService _projectService;
         private readonly IDialogService _dialogService;
         private readonly IStringLocalizer _stringLocalizer;
 
@@ -30,12 +30,12 @@ namespace Celbridge.Resources.Commands
 
         public CopyResourceCommand(
             IWorkspaceWrapper workspaceWrapper,
-            IProjectDataService projectDataService,
+            IProjectService projectService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
             _workspaceWrapper = workspaceWrapper;
-            _projectDataService = projectDataService;
+            _projectService = projectService;
             _dialogService = dialogService;
             _stringLocalizer = stringLocalizer;
         }
@@ -51,7 +51,7 @@ namespace Celbridge.Resources.Commands
             // Note: We can't use the resource registry to check this because if the user moved the file
             // in the Tree View then the resource may have already been moved in the resource registry.
 
-            var projectFolderPath = _projectDataService.LoadedProject!.ProjectFolderPath;
+            var projectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
             if (string.IsNullOrEmpty(projectFolderPath))
             {
                 return Result.Fail("Project folder path is empty.");
@@ -196,7 +196,7 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Source and destination are the same: '{resourceA}'");
             }
 
-            var loadedProject = _projectDataService.LoadedProject;
+            var loadedProject = _projectService.LoadedProject;
             Guard.IsNotNull(loadedProject);
 
             if (resourceA.IsEmpty || resourceB.IsEmpty)
@@ -266,7 +266,7 @@ namespace Celbridge.Resources.Commands
 
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
-            var loadedProject = _projectDataService.LoadedProject;
+            var loadedProject = _projectService.LoadedProject;
 
             Guard.IsNotNull(loadedProject);
 

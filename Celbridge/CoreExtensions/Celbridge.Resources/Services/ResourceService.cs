@@ -11,7 +11,7 @@ public class ResourceService : IResourceService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ICommandService _commandService;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
@@ -31,12 +31,12 @@ public class ResourceService : IResourceService, IDisposable
     public ResourceService(
         IServiceProvider serviceProvider,
         ICommandService commandService,
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         IUtilityService utilityService)
     {
         _serviceProvider = serviceProvider;
         _commandService = commandService;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.
@@ -50,7 +50,7 @@ public class ResourceService : IResourceService, IDisposable
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
-        ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProject!.ProjectFolderPath;
+        ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
     }
 
     public object CreateResourcesPanel()

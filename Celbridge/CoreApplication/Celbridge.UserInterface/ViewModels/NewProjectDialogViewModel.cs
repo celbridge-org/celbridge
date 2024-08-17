@@ -9,7 +9,7 @@ namespace Celbridge.UserInterface.ViewModels;
 public partial class NewProjectDialogViewModel : ObservableObject
 {
     private readonly IEditorSettings _editorSettings;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
 
     [ObservableProperty]
@@ -25,11 +25,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         IFilePickerService filePickerService)
     {
         _editorSettings = editorSettings;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
         _filePickerService = filePickerService;
 
         _projectFolderPath = _editorSettings.PreviousNewProjectFolderPath;
@@ -76,7 +76,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private void CreateCommand_Execute()
     {
         var config = new NewProjectConfig(ProjectName, ProjectFolderPath);
-        if (_projectDataService.ValidateNewProjectConfig(config).IsSuccess)
+        if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
             NewProjectConfig = config;

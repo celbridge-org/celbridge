@@ -14,7 +14,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private const string HomePageName = "HomePage";
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
     private readonly IEditorSettings _editorSettings;
     private readonly IDialogService _dialogService;
@@ -22,14 +22,14 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
     public LoadProjectCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         INavigationService navigationService,
         IEditorSettings editorSettings,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _workspaceWrapper = workspaceWrapper;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
         _navigationService = navigationService;
         _editorSettings = editorSettings;
         _dialogService = dialogService;
@@ -45,7 +45,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Fail("Failed to load project because path is empty.");
         }
 
-        if (_projectDataService.LoadedProject?.ProjectFilePath == ProjectFilePath)
+        if (_projectService.LoadedProject?.ProjectFilePath == ProjectFilePath)
         {
             // The project is already loaded.
             // We can just early out here as we're already in the expected end state.
@@ -54,10 +54,10 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService);
+        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
 
         // Load the project
-        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectDataService, ProjectFilePath);
+        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectService, ProjectFilePath);
 
         if (loadResult.IsFailure)
         {
