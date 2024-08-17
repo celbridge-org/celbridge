@@ -1,8 +1,9 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Projects;
+using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using Celbridge.Utilities.Services;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using System.IO.Compression;
@@ -130,8 +131,8 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Failed to delete file. Workspace is not loaded");
             }
 
-            var loadedProjectData = _projectDataService.LoadedProjectData;
-            Guard.IsNotNull(loadedProjectData);
+            var loadedProject = _projectDataService.LoadedProject;
+            Guard.IsNotNull(loadedProject);
 
             if (Resource.IsEmpty)
             {
@@ -140,7 +141,7 @@ namespace Celbridge.Resources.Commands
 
             try
             {
-                var projectFolderPath = loadedProjectData.ProjectFolderPath;
+                var projectFolderPath = loadedProject.ProjectFolderPath;
                 var deleteFilePath = Path.Combine(projectFolderPath, Resource);
                 deleteFilePath = Path.GetFullPath(deleteFilePath);
 
@@ -190,10 +191,10 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Failed to undo file delete. Archive does not exist: {_archivePath}");
             }
 
-            var loadedProjectData = _projectDataService.LoadedProjectData;
-            Guard.IsNotNull(loadedProjectData);
+            var loadedProject = _projectDataService.LoadedProject;
+            Guard.IsNotNull(loadedProject);
 
-            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var projectFolderPath = loadedProject.ProjectFolderPath;
 
             try
             {
@@ -218,8 +219,8 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Failed to delete folder. Workspace is not loaded");
             }
 
-            var loadedProjectData = _projectDataService.LoadedProjectData;
-            Guard.IsNotNull(loadedProjectData);
+            var loadedProject = _projectDataService.LoadedProject;
+            Guard.IsNotNull(loadedProject);
 
             if (Resource.IsEmpty)
             {
@@ -228,7 +229,7 @@ namespace Celbridge.Resources.Commands
 
             try
             {
-                var projectFolderPath = loadedProjectData.ProjectFolderPath;
+                var projectFolderPath = loadedProject.ProjectFolderPath;
                 var deleteFolderPath = Path.Combine(projectFolderPath, Resource);
                 deleteFolderPath = Path.GetFullPath(deleteFolderPath);
 
@@ -282,10 +283,10 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Failed to undo folder delete. Workspace is not loaded");
             }
 
-            var loadedProjectData = _projectDataService.LoadedProjectData;
-            Guard.IsNotNull(loadedProjectData);
+            var loadedProject = _projectDataService.LoadedProject;
+            Guard.IsNotNull(loadedProject);
 
-            var projectFolderPath = loadedProjectData.ProjectFolderPath;
+            var projectFolderPath = loadedProject.ProjectFolderPath;
 
             try
             {

@@ -3,10 +3,10 @@ using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.Projects;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
-using Celbridge.Resources;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels;
 

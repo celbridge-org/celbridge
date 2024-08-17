@@ -1,8 +1,8 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.Workspace;
-using Celbridge.Commands;
 using Celbridge.ProjectAdmin.Services;
+using Celbridge.Projects;
+using Celbridge.Workspace;
 
 namespace Celbridge.ProjectAdmin.Commands;
 

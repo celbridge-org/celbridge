@@ -1,9 +1,9 @@
-﻿namespace Celbridge.Resources;
+﻿namespace Celbridge.Projects;
 
 /// <summary>
 /// Manages all project data for a Celbridge project.
 /// </summary>
-public interface IProjectData
+public interface IProject
 {
     /// <summary>
     /// Returns the name of the project.
