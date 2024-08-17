@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.Projects;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Resources.ViewModels;
@@ -18,9 +19,9 @@ public partial class ResourcesPanelViewModel : ObservableObject
 
         // The project data is guaranteed to have been loaded at this point, so it's safe to just
         // acquire a reference via the ProjectDataService.
-        var projectData = projectDataService.LoadedProjectData!;
+        var project = projectDataService.LoadedProject!;
 
-        TitleText = projectData.ProjectName;
+        TitleText = project.ProjectName;
     }
 
     public ICommand RefreshResourceTreeCommand => new RelayCommand(RefreshResourceTreeCommand_ExecuteAsync);

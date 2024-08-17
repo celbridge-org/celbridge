@@ -1,10 +1,10 @@
-﻿using Celbridge.Resources;
-using Celbridge.Navigation;
-using Celbridge.Workspace;
-using Celbridge.Settings;
+﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Commands;
+using Celbridge.Navigation;
 using Celbridge.ProjectAdmin.Services;
+using Celbridge.Projects;
+using Celbridge.Settings;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.ProjectAdmin.Commands;
@@ -45,7 +45,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Fail("Failed to load project because path is empty.");
         }
 
-        if (_projectDataService.LoadedProjectData?.ProjectFilePath == ProjectFilePath)
+        if (_projectDataService.LoadedProject?.ProjectFilePath == ProjectFilePath)
         {
             // The project is already loaded.
             // We can just early out here as we're already in the expected end state.

@@ -1,9 +1,9 @@
-﻿using Celbridge.Utilities;
+﻿using Celbridge.Commands;
+using Celbridge.Projects;
 using Celbridge.Resources.Views;
 using Celbridge.Utilities.Services;
-using Celbridge.Commands;
+using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Resources.Services;
 
@@ -50,7 +50,7 @@ public class ResourceService : IResourceService, IDisposable
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
-        ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
+        ResourceRegistry.ProjectFolderPath = _projectDataService.LoadedProject!.ProjectFolderPath;
     }
 
     public object CreateResourcesPanel()

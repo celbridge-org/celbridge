@@ -1,6 +1,6 @@
-﻿using Celbridge.Resources;
-using Celbridge.ProjectAdmin.Services;
+﻿using Celbridge.ProjectAdmin.Services;
 using CommunityToolkit.Diagnostics;
+using Celbridge.Projects;
 
 namespace Celbridge.Tests;
 
@@ -41,29 +41,29 @@ public class ProjectDataTests
         var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolderPath);
         var projectFilePath = newProjectConfig.ProjectFilePath;
 
-        var createResult = await _projectDataService.CreateProjectDataAsync(newProjectConfig);
+        var createResult = await _projectDataService.CreateProjectAsync(newProjectConfig);
         createResult.IsSuccess.Should().BeTrue();
 
-        var loadResult = _projectDataService.LoadProjectData(projectFilePath);
+        var loadResult = _projectDataService.LoadProject(projectFilePath);
         loadResult.IsSuccess.Should().BeTrue();
 
         //
         // ProjectData tests
         //
 
-        var projectData = _projectDataService.LoadedProjectData!;
-        projectData.Should().NotBeNull();
-        projectData.ProjectName.Should().Be("TestProjectA");
+        var project = _projectDataService.LoadedProject!;
+        project.Should().NotBeNull();
+        project.ProjectName.Should().Be("TestProjectA");
 
-        var versionResultA = await projectData.GetDataVersionAsync();
+        var versionResultA = await project.GetDataVersionAsync();
         versionResultA.IsSuccess.Should().BeTrue();
 
         //
         // Unload the project database
         //
 
-        _projectDataService.UnloadProjectData();
-        _projectDataService.LoadedProjectData.Should().BeNull();
+        _projectDataService.UnloadProject();
+        _projectDataService.LoadedProject.Should().BeNull();
 
         //
         // Delete the project database files
