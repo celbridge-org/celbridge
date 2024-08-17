@@ -11,7 +11,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        services.AddSingleton<IProjectDataService, ProjectDataService>();
+        services.AddSingleton<IProjectService, ProjectService>();
 
         //
         // Register commands

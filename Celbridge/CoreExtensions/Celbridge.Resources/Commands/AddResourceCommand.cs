@@ -16,16 +16,16 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public ResourceKey DestResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
 
     private string _addedResourcePath = string.Empty;
 
     public AddResourceCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService)
+        IProjectService projectService)
     {
         _workspaceWrapper = workspaceWrapper;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -67,7 +67,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
-        var loadedProject = _projectDataService.LoadedProject;
+        var loadedProject = _projectService.LoadedProject;
 
         Guard.IsNotNull(loadedProject);
 

@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.ProjectAdmin.Services;
 
-public class ProjectDataService : IProjectDataService
+public class ProjectService : IProjectService
 {
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
