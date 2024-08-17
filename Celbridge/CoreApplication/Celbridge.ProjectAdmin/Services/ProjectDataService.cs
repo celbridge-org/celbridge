@@ -1,4 +1,5 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Projects;
+using Celbridge.Resources;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.ProjectAdmin.Services;
@@ -9,7 +10,7 @@ public class ProjectDataService : IProjectDataService
     private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
     private const string DefaultLogFolder = "Library/Logs";
 
-    public IProjectData? LoadedProjectData { get; private set; }
+    public IProject? LoadedProject { get; private set; }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -31,7 +32,7 @@ public class ProjectDataService : IProjectDataService
         return Result.Ok();
     }
 
-    public async Task<Result> CreateProjectDataAsync(NewProjectConfig config)
+    public async Task<Result> CreateProjectAsync(NewProjectConfig config)
     {
         // Todo: Check that the config is valid
 
@@ -69,7 +70,7 @@ public class ProjectDataService : IProjectDataService
             var logFolderPath = Path.Combine(config.ProjectFolder, DefaultLogFolder);
             Directory.CreateDirectory(logFolderPath);
 
-            var createResult = await ProjectData.CreateProjectDataAsync(config.ProjectFilePath, databasePath, logFolderPath);
+            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, databasePath, logFolderPath);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project database: {config.ProjectName}");
@@ -83,7 +84,7 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result LoadProjectData(string projectPath)
+    public Result LoadProject(string projectPath)
     {
         try
         {
@@ -97,14 +98,14 @@ public class ProjectDataService : IProjectDataService
             string projectDataPath = Path.GetFullPath(Path.Combine(projectFolderPath, projectDataPathRelative));
             string logFolderPath = Path.GetFullPath(Path.Combine(projectFolderPath, DefaultLogFolder));
 
-            var loadResult = ProjectData.LoadProjectData(projectPath, projectDataPath, logFolderPath);
+            var loadResult = Project.LoadProject(projectPath, projectDataPath, logFolderPath);
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load project database: {projectDataPath}");
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
-            LoadedProjectData = loadResult.Value;
+            LoadedProject = loadResult.Value;
 
             return Result.Ok();
         }
@@ -114,18 +115,18 @@ public class ProjectDataService : IProjectDataService
         }
     }
 
-    public Result UnloadProjectData()
+    public Result UnloadProject()
     {
-        if (LoadedProjectData is null)
+        if (LoadedProject is null)
         {
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
         }
 
-        var disposableProjectData = LoadedProjectData as IDisposable;
-        Guard.IsNotNull(disposableProjectData);
-        disposableProjectData.Dispose();
-        LoadedProjectData = null;
+        var disposableProject = LoadedProject as IDisposable;
+        Guard.IsNotNull(disposableProject);
+        disposableProject.Dispose();
+        LoadedProject = null;
 
         return Result.Ok();
     }

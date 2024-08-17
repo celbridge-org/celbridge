@@ -1,10 +1,10 @@
-﻿using SQLite;
-using Celbridge.Resources;
-using Celbridge.ProjectAdmin.Models;
+﻿using Celbridge.ProjectAdmin.Models;
+using Celbridge.Projects;
+using SQLite;
 
 namespace Celbridge.ProjectAdmin.Services;
 
-public class ProjectData : IDisposable, IProjectData
+public class Project : IDisposable, IProject
 {
     private const int DataVersion = 1;
 
@@ -16,7 +16,7 @@ public class ProjectData : IDisposable, IProjectData
     public string DatabasePath { get; init; }
     public string LogFolderPath { get; init; }
 
-    private ProjectData(string projectFilePath, string databasePath, string logFolderPath)
+    private Project(string projectFilePath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
@@ -60,35 +60,35 @@ public class ProjectData : IDisposable, IProjectData
         return Result.Ok();
     }
 
-    public static Result<IProjectData> LoadProjectData(string projectPath, string databasePath, string logFolderPath)
+    public static Result<IProject> LoadProject(string projectPath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
         Guard.IsNotNullOrWhiteSpace(logFolderPath);
 
-        var project = new ProjectData(projectPath, databasePath, logFolderPath);
+        var project = new Project(projectPath, databasePath, logFolderPath);
         Guard.IsNotNull(project);
 
-        return Result<IProjectData>.Ok(project);
+        return Result<IProject>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectDataAsync(string projectFilePath, string databasePath, string logFolderPath)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, string databasePath, string logFolderPath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var projectData = new ProjectData(projectFilePath, databasePath, logFolderPath);
-        Guard.IsNotNull(projectData);
+        var project = new Project(projectFilePath, databasePath, logFolderPath);
+        Guard.IsNotNull(project);
 
         var dataVersion = new ProjectDataVersion 
         { 
             Version = DataVersion 
         };
 
-        await projectData._connection.CreateTableAsync<ProjectDataVersion>();
-        await projectData._connection.InsertAsync(dataVersion);
+        await project._connection.CreateTableAsync<ProjectDataVersion>();
+        await project._connection.InsertAsync(dataVersion);
 
         // Close the database
-        projectData.Dispose();
+        project.Dispose();
 
         return Result.Ok();
     }
@@ -114,7 +114,7 @@ public class ProjectData : IDisposable, IProjectData
         }
     }
 
-    ~ProjectData()
+    ~Project()
     {
         Dispose(false);
     }

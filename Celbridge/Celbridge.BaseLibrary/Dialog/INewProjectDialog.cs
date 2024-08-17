@@ -1,4 +1,4 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Projects;
 
 namespace Celbridge.Dialog;
 

@@ -1,5 +1,5 @@
-﻿using Celbridge.Resources;
-using Celbridge.Navigation;
+﻿using Celbridge.Navigation;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.ProjectAdmin.Services;
@@ -13,7 +13,7 @@ public static class ProjectUtils
         IProjectDataService projectDataService,
         NewProjectConfig newProjectConfig)
     {
-        var createResult = await projectDataService.CreateProjectDataAsync(newProjectConfig);
+        var createResult = await projectDataService.CreateProjectAsync(newProjectConfig);
         if (createResult.IsSuccess)
         {
             return Result.Ok();
@@ -28,7 +28,7 @@ public static class ProjectUtils
         IProjectDataService projectDataService, 
         string projectFilePath)
     {
-        var loadResult = projectDataService.LoadProjectData(projectFilePath);
+        var loadResult = projectDataService.LoadProject(projectFilePath);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to open project file '{projectFilePath}'. {loadResult.Error}");
@@ -74,11 +74,11 @@ public static class ProjectUtils
             await Task.Delay(50);
         }
 
-        if (projectDataService.LoadedProjectData is null)
+        if (projectDataService.LoadedProject is null)
         {
             return Result.Fail("Failed to unload project data because no project is loaded");
         }
 
-        return projectDataService.UnloadProjectData();
+        return projectDataService.UnloadProject();
     }
 }

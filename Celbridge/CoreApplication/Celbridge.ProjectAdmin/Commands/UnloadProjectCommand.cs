@@ -1,8 +1,8 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.Workspace;
-using Celbridge.Commands;
 using Celbridge.ProjectAdmin.Services;
+using Celbridge.Projects;
+using Celbridge.Workspace;
 
 namespace Celbridge.ProjectAdmin.Commands;
 
@@ -24,7 +24,7 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded && _projectDataService.LoadedProjectData is null)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded && _projectDataService.LoadedProject is null)
         {
             // We're already in the desired state so we can early out.
             return Result.Ok();
