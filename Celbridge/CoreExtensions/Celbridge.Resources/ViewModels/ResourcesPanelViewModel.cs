@@ -12,14 +12,14 @@ public partial class ResourcesPanelViewModel : ObservableObject
     private string _titleText = string.Empty;
 
     public ResourcesPanelViewModel(
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         ICommandService commandService)
     {
         _commandService = commandService;
 
         // The project data is guaranteed to have been loaded at this point, so it's safe to just
-        // acquire a reference via the ProjectDataService.
-        var project = projectDataService.LoadedProject!;
+        // acquire a reference via the ProjectService.
+        var project = projectService.LoadedProject!;
 
         TitleText = project.ProjectName;
     }

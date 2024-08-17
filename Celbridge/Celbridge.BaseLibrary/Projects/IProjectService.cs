@@ -1,9 +1,9 @@
 ﻿namespace Celbridge.Projects;
 
 /// <summary>
-/// Provides services for managing project databases.
+/// Provides services for managing projects.
 /// </summary>
-public interface IProjectDataService
+public interface IProjectService
 {
     /// <summary>
     /// Returns the currently loaded project.

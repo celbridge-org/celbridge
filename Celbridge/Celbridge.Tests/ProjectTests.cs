@@ -5,22 +5,22 @@ using Celbridge.Projects;
 namespace Celbridge.Tests;
 
 [TestFixture]
-public class ProjectDataTests
+public class ProjectTests
 {
-    private IProjectDataService? _projectDataService;
+    private IProjectService? _projectService;
 
     private string? _projectFolderPath;
 
     [SetUp]
     public void Setup()
     {
-        _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ProjectDataTests)}");
+        _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ProjectTests)}");
         if (Directory.Exists(_projectFolderPath))
         {
             Directory.Delete(_projectFolderPath, true);
         }
 
-        _projectDataService = new ProjectDataService();
+        _projectService = new ProjectService();
     }
 
     [TearDown]
@@ -33,25 +33,25 @@ public class ProjectDataTests
     }
 
     [Test]
-    public async Task ICanCreateAndLoadProjectDataAsync()
+    public async Task ICanCreateAndLoadProjectAsync()
     {
-        Guard.IsNotNull(_projectDataService);
+        Guard.IsNotNull(_projectService);
         Guard.IsNotNullOrEmpty(_projectFolderPath);
 
         var newProjectConfig = new NewProjectConfig("TestProjectA", _projectFolderPath);
         var projectFilePath = newProjectConfig.ProjectFilePath;
 
-        var createResult = await _projectDataService.CreateProjectAsync(newProjectConfig);
+        var createResult = await _projectService.CreateProjectAsync(newProjectConfig);
         createResult.IsSuccess.Should().BeTrue();
 
-        var loadResult = _projectDataService.LoadProject(projectFilePath);
+        var loadResult = _projectService.LoadProject(projectFilePath);
         loadResult.IsSuccess.Should().BeTrue();
 
         //
         // ProjectData tests
         //
 
-        var project = _projectDataService.LoadedProject!;
+        var project = _projectService.LoadedProject!;
         project.Should().NotBeNull();
         project.ProjectName.Should().Be("TestProjectA");
 
@@ -62,8 +62,8 @@ public class ProjectDataTests
         // Unload the project database
         //
 
-        _projectDataService.UnloadProject();
-        _projectDataService.LoadedProject.Should().BeNull();
+        _projectService.UnloadProject();
+        _projectService.LoadedProject.Should().BeNull();
 
         //
         // Delete the project database files
@@ -76,24 +76,24 @@ public class ProjectDataTests
     [Test]
     public void ICanValidateANewProjectConfig()
     {
-        Guard.IsNotNull(_projectDataService);
+        Guard.IsNotNull(_projectService);
         Guard.IsNotNullOrEmpty(_projectFolderPath);
 
         { 
             var config = new NewProjectConfig("TestProjectA", _projectFolderPath);
-            var result = _projectDataService.ValidateNewProjectConfig(config);
+            var result = _projectService.ValidateNewProjectConfig(config);
             result.IsSuccess.Should().BeTrue();
         }
 
         {
             var config = new NewProjectConfig("Test/ProjectA", _projectFolderPath);
-            var result = _projectDataService.ValidateNewProjectConfig(config);
+            var result = _projectService.ValidateNewProjectConfig(config);
             result.IsSuccess.Should().BeFalse();
         }
 
         {
             var config = new NewProjectConfig("TestProjectA", string.Empty);
-            var result = _projectDataService.ValidateNewProjectConfig(config);
+            var result = _projectService.ValidateNewProjectConfig(config);
             result.IsSuccess.Should().BeFalse();
         }
     }
