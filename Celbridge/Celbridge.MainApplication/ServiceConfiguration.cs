@@ -12,7 +12,7 @@ public class ServiceConfiguration
     {
         CoreServices.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
-        ProjectAdmin.ServiceConfiguration.ConfigureServices(services);
+        Projects.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
 
         // Register the services provided by each extension with the dependency injection framework.

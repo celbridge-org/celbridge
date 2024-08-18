@@ -1,6 +1,7 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Workspace;
+using Celbridge.Projects;
 using Celbridge.Resources.Services;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Resources.Commands;
@@ -15,16 +16,16 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public ResourceKey DestResource { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectDataService _projectDataService;
+    private readonly IProjectService _projectService;
 
     private string _addedResourcePath = string.Empty;
 
     public AddResourceCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IProjectDataService projectDataService)
+        IProjectService projectService)
     {
         _workspaceWrapper = workspaceWrapper;
-        _projectDataService = projectDataService;
+        _projectService = projectService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -66,9 +67,9 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
-        var loadedProjectData = _projectDataService.LoadedProjectData;
+        var loadedProject = _projectService.LoadedProject;
 
-        Guard.IsNotNull(loadedProjectData);
+        Guard.IsNotNull(loadedProject);
 
         //
         // Validate the resource key

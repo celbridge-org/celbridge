@@ -1,7 +1,8 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Workspace;
+using Celbridge.Projects;
 using Celbridge.Resources.Services;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
@@ -18,7 +19,7 @@ namespace Celbridge.Resources.Commands
         public bool ExpandCopiedFolder { get; set; }
 
         private readonly IWorkspaceWrapper _workspaceWrapper;
-        private readonly IProjectDataService _projectDataService;
+        private readonly IProjectService _projectService;
         private readonly IDialogService _dialogService;
         private readonly IStringLocalizer _stringLocalizer;
 
@@ -29,12 +30,12 @@ namespace Celbridge.Resources.Commands
 
         public CopyResourceCommand(
             IWorkspaceWrapper workspaceWrapper,
-            IProjectDataService projectDataService,
+            IProjectService projectService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
             _workspaceWrapper = workspaceWrapper;
-            _projectDataService = projectDataService;
+            _projectService = projectService;
             _dialogService = dialogService;
             _stringLocalizer = stringLocalizer;
         }
@@ -50,7 +51,7 @@ namespace Celbridge.Resources.Commands
             // Note: We can't use the resource registry to check this because if the user moved the file
             // in the Tree View then the resource may have already been moved in the resource registry.
 
-            var projectFolderPath = _projectDataService.LoadedProjectData!.ProjectFolderPath;
+            var projectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
             if (string.IsNullOrEmpty(projectFolderPath))
             {
                 return Result.Fail("Project folder path is empty.");
@@ -195,8 +196,8 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Source and destination are the same: '{resourceA}'");
             }
 
-            var loadedProjectData = _projectDataService.LoadedProjectData;
-            Guard.IsNotNull(loadedProjectData);
+            var loadedProject = _projectService.LoadedProject;
+            Guard.IsNotNull(loadedProject);
 
             if (resourceA.IsEmpty || resourceB.IsEmpty)
             {
@@ -205,7 +206,7 @@ namespace Celbridge.Resources.Commands
 
             try
             {
-                var projectFolderPath = loadedProjectData.ProjectFolderPath;
+                var projectFolderPath = loadedProject.ProjectFolderPath;
                 var filePathA = Path.Combine(projectFolderPath, resourceA);
                 filePathA = Path.GetFullPath(filePathA);
                 var filePathB = Path.Combine(projectFolderPath, resourceB);
@@ -265,9 +266,9 @@ namespace Celbridge.Resources.Commands
 
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
-            var loadedProjectData = _projectDataService.LoadedProjectData;
+            var loadedProject = _projectService.LoadedProject;
 
-            Guard.IsNotNull(loadedProjectData);
+            Guard.IsNotNull(loadedProject);
 
             if (resourceA.IsEmpty || resourceB.IsEmpty)
             {
@@ -276,7 +277,7 @@ namespace Celbridge.Resources.Commands
 
             try
             {
-                var projectFolderPath = loadedProjectData.ProjectFolderPath;
+                var projectFolderPath = loadedProject.ProjectFolderPath;
                 var folderPathA = Path.Combine(projectFolderPath, resourceA);
                 folderPathA = Path.GetFullPath(folderPathA);
                 var folderPathB = Path.Combine(projectFolderPath, resourceB);

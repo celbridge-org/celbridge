@@ -1,8 +1,7 @@
-﻿using Celbridge.Resources;
-using Celbridge.ProjectAdmin.Commands;
-using Celbridge.ProjectAdmin.Services;
+﻿using Celbridge.Projects.Commands;
+using Celbridge.Projects.Services;
 
-namespace Celbridge.ProjectAdmin;
+namespace Celbridge.Projects;
 
 public static class ServiceConfiguration
 {
@@ -11,7 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        services.AddSingleton<IProjectDataService, ProjectDataService>();
+        services.AddSingleton<IProjectService, ProjectService>();
 
         //
         // Register commands

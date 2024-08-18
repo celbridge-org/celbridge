@@ -102,6 +102,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             var selectedResource = selectedItem.Content as IResource;
             if (selectedResource != null)
             {
+                Guard.IsNotNull(_resourceRegistry);
                 selectedResourceKey = _resourceRegistry.GetResourceKey(selectedResource);
             }
         }
