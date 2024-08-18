@@ -1,10 +1,9 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.ProjectAdmin.Services;
-using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.ProjectAdmin.Commands;
+namespace Celbridge.Projects.Commands;
 
 public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 {

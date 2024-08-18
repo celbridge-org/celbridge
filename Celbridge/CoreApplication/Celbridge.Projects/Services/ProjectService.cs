@@ -1,8 +1,7 @@
-﻿using Celbridge.Projects;
-using Celbridge.Resources;
+﻿using Celbridge.Resources;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.ProjectAdmin.Services;
+namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService
 {
