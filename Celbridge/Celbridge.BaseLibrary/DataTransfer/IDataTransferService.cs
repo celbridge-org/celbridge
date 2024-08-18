@@ -8,9 +8,9 @@ namespace Celbridge.DataTransfer;
 public interface IDataTransferService
 {
     /// <summary>
-    /// Returns the current clipboard item's content type.
+    /// Returns a description of the current content on the clipboard.
     /// </summary>
-    ClipboardContentType GetClipboardContentType();
+    ClipboardContentDescription GetClipboardContentDescription();
 
     /// <summary>
     /// Returns a resource transfer data structure describing the resource content on the clipboard.
