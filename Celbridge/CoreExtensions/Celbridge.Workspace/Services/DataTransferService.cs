@@ -9,18 +9,15 @@ namespace Celbridge.Workspace.Services;
 
 public class DataTransferService : IDataTransferService, IDisposable
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public DataTransferService(
-        IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
-        _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
@@ -34,24 +31,52 @@ public class DataTransferService : IDataTransferService, IDisposable
         _messengerService.Send(message);
     }
 
-    public ClipboardContentType GetClipboardContentType()
+    public ClipboardContentDescription GetClipboardContentDescription()
     {
         var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+
+        ClipboardContentType contentType;
         if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
         {
-            return ClipboardContentType.Resource;
+            contentType =  ClipboardContentType.Resource;
         }
         else if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
         {
-            return ClipboardContentType.Text;
+            contentType =  ClipboardContentType.Text;
+        }
+        else
+        {
+            contentType = ClipboardContentType.None;
         }
 
-        return ClipboardContentType.None;
+        ClipboardContentOperation contentOperation;
+        if (contentType != ClipboardContentType.None)
+        {
+            switch (dataPackageView.RequestedOperation)
+            {
+                case ApplicationDataTransfer.DataPackageOperation.None:
+                default:
+                    contentOperation = ClipboardContentOperation.None;
+                    break;
+                case ApplicationDataTransfer.DataPackageOperation.Copy:
+                    contentOperation = ClipboardContentOperation.Copy;
+                    break;
+                case ApplicationDataTransfer.DataPackageOperation.Move:
+                    contentOperation = ClipboardContentOperation.Move;
+                    break;
+            }
+
+            return new ClipboardContentDescription(contentType, contentOperation);
+        }
+
+        return new ClipboardContentDescription(ClipboardContentType.None, ClipboardContentOperation.None);
     }
 
     public async Task<Result<IResourceTransfer>> GetClipboardResourceTransfer(ResourceKey destFolderResource)
     {
-        if (GetClipboardContentType() != ClipboardContentType.Resource)
+        var contentDescription = GetClipboardContentDescription();
+
+        if (contentDescription.ContentType != ClipboardContentType.Resource)
         {
             return Result<IResourceTransfer>.Fail("Clipboard content does not contain a resource");
         }
@@ -96,7 +121,7 @@ public class DataTransferService : IDataTransferService, IDisposable
 
             // Note whether the operation is a move or a copy
             var transferMode =
-                dataPackageView.RequestedOperation == ApplicationDataTransfer.DataPackageOperation.Move
+                contentDescription.ContentOperation == ClipboardContentOperation.Move
                 ? ResourceTransferMode.Move
                 : ResourceTransferMode.Copy;
 

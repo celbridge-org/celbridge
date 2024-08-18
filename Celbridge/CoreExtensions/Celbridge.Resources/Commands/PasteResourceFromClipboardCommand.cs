@@ -20,7 +20,10 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
     public override async Task<Result> ExecuteAsync()
     {
         var dataTransferService = _workspaceWrapper.WorkspaceService.DataTransferService;
-        if (dataTransferService.GetClipboardContentType() != ClipboardContentType.Resource)
+
+        var contentDescription = dataTransferService.GetClipboardContentDescription();
+
+        if (contentDescription.ContentType != ClipboardContentType.Resource)
         {
             return Result.Fail("Clipboard does not contain a resource to paste");
         }

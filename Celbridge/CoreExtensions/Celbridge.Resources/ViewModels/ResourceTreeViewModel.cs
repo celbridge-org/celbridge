@@ -4,11 +4,13 @@ using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Celbridge.Messaging;
 
 namespace Celbridge.Resources.ViewModels;
 
 public partial class ResourceTreeViewModel : ObservableObject
 {
+    private readonly IMessengerService _messengerService;
     private readonly IResourceService _resourceService;
     private readonly IDataTransferService _dataTransferService;
     private readonly ICommandService _commandService;
@@ -16,9 +18,11 @@ public partial class ResourceTreeViewModel : ObservableObject
     public IList<IResource> Resources => _resourceService.ResourceRegistry.RootFolder.Children;
 
     public ResourceTreeViewModel(
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
+        _messengerService = messengerService;
         _resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _commandService = commandService;
@@ -37,10 +41,29 @@ public partial class ResourceTreeViewModel : ObservableObject
         Guard.IsNotNull(resourceService);
 
         resourceService.ResourceTreeView = resourceTreeView;
+
+        _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);        
     }
 
     public void OnUnloaded()
-    {}
+    {
+        _messengerService.Unregister<ClipboardContentChangedMessage>(this);
+    }
+
+    private void OnClipboardContentChangedMessage(object recipient, ClipboardContentChangedMessage message)
+    {
+        var contentDescription = _dataTransferService.GetClipboardContentDescription();
+
+        if (contentDescription.ContentType == ClipboardContentType.Resource)
+        {
+            // Todo: Clear previously faded resources
+        }
+
+        if (contentDescription.ContentOperation == ClipboardContentOperation.Move)
+        {
+            // Todo: Fade cut resources in the tree view
+        }
+    }
 
     public void OnContextMenuOpening(IResource? resource)
     {
@@ -64,7 +87,10 @@ public partial class ResourceTreeViewModel : ObservableObject
         IsResourceSelected = resource is not null;
 
         bool isResourceOnClipboard = false;
-        if (_dataTransferService.GetClipboardContentType() == ClipboardContentType.Resource)
+
+        var contentDescription = _dataTransferService.GetClipboardContentDescription();
+
+        if (contentDescription.ContentType == ClipboardContentType.Resource)
         {
             var resourceRegistry = _resourceService.ResourceRegistry;
             var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
