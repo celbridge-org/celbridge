@@ -33,7 +33,7 @@
     <ProjectReference Include="..\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\Celbridge.Messaging\Celbridge.Messaging.csproj" />
-    <ProjectReference Include="..\Celbridge.ProjectAdmin\Celbridge.ProjectAdmin.csproj" />
+    <ProjectReference Include="..\Celbridge.Projects\Celbridge.Projects.csproj" />
     <ProjectReference Include="..\Celbridge.Settings\Celbridge.Settings.csproj" />
     <ProjectReference Include="..\Celbridge.Telemetry\Celbridge.Telemetry.csproj" />
     <ProjectReference Include="..\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />

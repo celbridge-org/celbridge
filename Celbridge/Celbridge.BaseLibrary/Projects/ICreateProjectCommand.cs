@@ -1,6 +1,6 @@
 ﻿using Celbridge.Commands;
 
-namespace Celbridge.Resources;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Creates a new project using the specified config information.

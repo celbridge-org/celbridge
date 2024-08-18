@@ -1,14 +1,14 @@
-﻿namespace Celbridge.Resources;
+﻿namespace Celbridge.Projects;
 
 /// <summary>
-/// Provides services for managing project databases.
+/// Provides services for managing projects.
 /// </summary>
-public interface IProjectDataService
+public interface IProjectService
 {
     /// <summary>
-    /// Returns the currently loaded project database.
+    /// Returns the currently loaded project.
     /// </summary>
-    IProjectData? LoadedProjectData { get; }
+    IProject? LoadedProject { get; }
 
     /// <summary>
     /// Checks if a new project config is valid.
@@ -18,15 +18,15 @@ public interface IProjectDataService
     /// <summary>
     /// Create a new project file and database using the specified config information.
     /// </summary>
-    Task<Result> CreateProjectDataAsync(NewProjectConfig config);
+    Task<Result> CreateProjectAsync(NewProjectConfig config);
 
     /// <summary>
     /// Load the project file at the specified path.
     /// </summary>
-    Result LoadProjectData(string projectFilePath);
+    Result LoadProject(string projectFilePath);
 
     /// <summary>
     /// Unloads the currently loaded project.
     /// </summary>
-    Result UnloadProjectData();
+    Result UnloadProject();
 }
