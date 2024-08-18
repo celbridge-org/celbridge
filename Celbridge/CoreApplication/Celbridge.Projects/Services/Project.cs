@@ -1,8 +1,7 @@
-﻿using Celbridge.ProjectAdmin.Models;
-using Celbridge.Projects;
+﻿using Celbridge.Projects.Models;
 using SQLite;
 
-namespace Celbridge.ProjectAdmin.Services;
+namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
