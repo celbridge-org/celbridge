@@ -1,6 +1,6 @@
 ﻿using Celbridge.Commands;
 
-namespace Celbridge.Resources;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Unload the loaded project.

@@ -1,8 +1,9 @@
-﻿using Celbridge.DataTransfer;
-using Celbridge.Commands;
+﻿using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Inspector;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
@@ -30,7 +31,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspaceService(
         IServiceProvider serviceProvider, 
-        IProjectDataService projectDataService)
+        IProjectService projectService)
     {
         // Create instances of the required sub-services
 
@@ -46,14 +47,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Let the workspace data service know where to find the workspace database
         //
 
-        var projectData = projectDataService.LoadedProjectData;
-        Guard.IsNotNull(projectData);
-        var databaseFolder = Path.GetDirectoryName(projectData.DatabasePath);
+        var project = projectService.LoadedProject;
+        Guard.IsNotNull(project);
+        var databaseFolder = Path.GetDirectoryName(project.DatabasePath);
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
 
         // Log executed commands
-        string logFolderPath = projectData.LogFolderPath;
+        string logFolderPath = project.LogFolderPath;
         _commandLogger = serviceProvider.GetRequiredService<IExecutedCommandLogger>();
         _commandLogger.Initialize(logFolderPath, 0);
 

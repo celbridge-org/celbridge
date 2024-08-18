@@ -2,7 +2,6 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using Microsoft.Extensions.DependencyInjection;
 
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
 

@@ -1,8 +1,7 @@
-﻿using Celbridge.Resources;
-using Celbridge.Navigation;
+﻿using Celbridge.Navigation;
 using Celbridge.Workspace;
 
-namespace Celbridge.ProjectAdmin.Services;
+namespace Celbridge.Projects.Services;
 
 public static class ProjectUtils
 {
@@ -10,10 +9,10 @@ public static class ProjectUtils
     private const string WorkspacePageName = "WorkspacePage";
 
     public static async Task<Result> CreateProjectAsync(
-        IProjectDataService projectDataService,
+        IProjectService projectService,
         NewProjectConfig newProjectConfig)
     {
-        var createResult = await projectDataService.CreateProjectDataAsync(newProjectConfig);
+        var createResult = await projectService.CreateProjectAsync(newProjectConfig);
         if (createResult.IsSuccess)
         {
             return Result.Ok();
@@ -25,10 +24,10 @@ public static class ProjectUtils
     public static async Task<Result> LoadProjectAsync(
         IWorkspaceWrapper workspaceWrapper,
         INavigationService navigationService, 
-        IProjectDataService projectDataService, 
+        IProjectService projectService, 
         string projectFilePath)
     {
-        var loadResult = projectDataService.LoadProjectData(projectFilePath);
+        var loadResult = projectService.LoadProject(projectFilePath);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to open project file '{projectFilePath}'. {loadResult.Error}");
@@ -55,7 +54,7 @@ public static class ProjectUtils
     public static async Task<Result> UnloadProjectAsync(
         IWorkspaceWrapper workspaceWrapper,
         INavigationService navigationService,
-        IProjectDataService projectDataService)
+        IProjectService projectService)
     {
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
@@ -74,11 +73,11 @@ public static class ProjectUtils
             await Task.Delay(50);
         }
 
-        if (projectDataService.LoadedProjectData is null)
+        if (projectService.LoadedProject is null)
         {
             return Result.Fail("Failed to unload project data because no project is loaded");
         }
 
-        return projectDataService.UnloadProjectData();
+        return projectService.UnloadProject();
     }
 }
