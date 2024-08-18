@@ -1,8 +1,7 @@
 ﻿using Celbridge.Navigation;
-using Celbridge.Projects;
 using Celbridge.Workspace;
 
-namespace Celbridge.ProjectAdmin.Services;
+namespace Celbridge.Projects.Services;
 
 public static class ProjectUtils
 {

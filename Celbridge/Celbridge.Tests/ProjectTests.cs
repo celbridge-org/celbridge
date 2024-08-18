@@ -1,4 +1,4 @@
-﻿using Celbridge.ProjectAdmin.Services;
+﻿using Celbridge.Projects.Services;
 using CommunityToolkit.Diagnostics;
 using Celbridge.Projects;
 
