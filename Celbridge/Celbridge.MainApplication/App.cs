@@ -7,11 +7,19 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Uno.UI;
+using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
+
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
+using Path = System.IO.Path;
 
 namespace Celbridge;
 
 public class App : Application
 {
+    private ILogger? _logger;
+
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
@@ -20,6 +28,11 @@ public class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+#if DEBUG && WINDOWS
+        // Open a console window for logging output
+        ConsoleHelper.AllocConsole();
+#endif
+
         // Load Extensions
         _extensionLoader.LoadExtension("Celbridge.Scripting");
         _extensionLoader.LoadExtension("Celbridge.ScriptUtils");
@@ -47,6 +60,13 @@ public class App : Application
                 {
                     _legacyApp?.RegisterServices(services);
 
+                    services.AddLogging(builder =>
+                    {
+                        builder.ClearProviders();
+                        builder.SetMinimumLevel(LogLevel.Trace);
+                        builder.AddNLog("NLog.config"); // Configure NLog as needed
+                    });
+
                     // Register the IDispatcher service to support running code on the UI thread.
                     // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
@@ -56,7 +76,7 @@ public class App : Application
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
                     MainApplication.ServiceConfiguration.ConfigureServices(services, extensions);
                 })
-            );
+            ); ;
 
         MainWindow = builder.Window;
 
@@ -64,6 +84,21 @@ public class App : Application
 
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
+
+        //string logDirectory = Path.Combine(
+        //    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        //    "Celbridge",
+        //    "Logs");
+
+        //// Create the directory structure if it doesn't exist
+        //if (!Directory.Exists(logDirectory))
+        //{
+        //    Directory.CreateDirectory(logDirectory);
+        //}
+
+        _logger = Host.Services.GetRequiredService<ILogger<App>>();
+        _logger.LogInformation("Application started");
+
 
         // Start the telemetry service
         // Todo: Don't start this service unless the user has opted-in to telemetry.
@@ -94,6 +129,10 @@ public class App : Application
 
         MainWindow.Closed += (s, e) =>
         {
+#if DEBUG
+            ConsoleHelper.FreeConsole();
+#endif
+
             _legacyApp?.OnMainWindowClosed();
 
             // Todo: This doesn't get called on Skia+Gtk at all on exit.
