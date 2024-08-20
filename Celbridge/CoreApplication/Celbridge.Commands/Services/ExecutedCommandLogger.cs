@@ -1,21 +1,20 @@
 ﻿using Celbridge.Utilities;
 using Celbridge.Messaging;
+using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Commands.Services;
 
 public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
 {
-    private const string LogFilePrefix = "CommandLog";
-
     private readonly IMessengerService _messengerService;
     private readonly ILogSerializer _serializer;
-    private readonly ILogger _logger;
+    private readonly ILogger<ExecutedCommandLogger> _logger;
     private readonly IUtilityService _utilityService;
 
     public ExecutedCommandLogger(
         IMessengerService messengerService,
         ILogSerializer logSerializer,
-        ILogger logger,
+        ILogger<ExecutedCommandLogger> logger,
         IUtilityService utilityService)
     {
         _messengerService = messengerService;
@@ -26,12 +25,6 @@ public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
 
     public Result Initialize(string logFolderPath, int maxFilesToKeep)
     {
-        var initResult = _logger.Initialize(logFolderPath, LogFilePrefix, maxFilesToKeep);
-        if (initResult.IsFailure)
-        {
-            return initResult;
-        }
-
         // Write environment info as the first record in the log
         var environmentInfo = _utilityService.GetEnvironmentInfo();
         var writeResult = WriteObject(environmentInfo);
@@ -60,11 +53,7 @@ public class ExecutedCommandLogger : IExecutedCommandLogger, IDisposable
         try
         {
             string logEntry = _serializer.SerializeObject(obj, false);
-            var writeResult = _logger.WriteLine(logEntry);
-            if (writeResult.IsFailure)
-            {
-                return writeResult;
-            }
+            _logger.LogInformation(logEntry);
         }
         catch (Exception ex)
         {

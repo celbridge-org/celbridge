@@ -12,7 +12,6 @@ using NLog.Extensions.Logging;
 
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-using Path = System.IO.Path;
 
 namespace Celbridge;
 
@@ -85,19 +84,8 @@ public class App : Application
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
 
-        //string logDirectory = Path.Combine(
-        //    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        //    "Celbridge",
-        //    "Logs");
-
-        //// Create the directory structure if it doesn't exist
-        //if (!Directory.Exists(logDirectory))
-        //{
-        //    Directory.CreateDirectory(logDirectory);
-        //}
-
         _logger = Host.Services.GetRequiredService<ILogger<App>>();
-        _logger.LogInformation("Application started");
+        _logger.LogTrace("Application started");
 
 
         // Start the telemetry service
