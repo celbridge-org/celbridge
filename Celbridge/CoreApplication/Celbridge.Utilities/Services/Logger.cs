@@ -1,6 +1,6 @@
 ﻿namespace Celbridge.Utilities.Services;
 
-public class Logger : ILogger
+public class Logger : ILogFile
 {
     private readonly IUtilityService _utilityService;
 

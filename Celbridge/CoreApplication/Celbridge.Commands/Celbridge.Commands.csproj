@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Uno.Extensions.Logging.WinUI" />
     <PackageReference Include="Uno.WinUI" />
   </ItemGroup>
 

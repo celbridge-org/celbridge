@@ -11,13 +11,13 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogSerializer _serializer;
-    private readonly ILogger _logger;
+    private readonly ILogFile _logger;
 
     public ResourceRegistryDumper(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ILogSerializer logSerializer,
-        ILogger logger)
+        ILogFile logger)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;

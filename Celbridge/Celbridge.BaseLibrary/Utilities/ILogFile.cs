@@ -3,7 +3,7 @@
 /// <summary>
 /// A log file utility, with automatic log file naming and rotation
 /// </summary>
-public interface ILogger
+public interface ILogFile
 {
     /// <summary>
     /// Initialize the logger utility.
