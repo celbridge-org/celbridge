@@ -1,6 +1,4 @@
-﻿using Celbridge.Logging;
-using Celbridge.Messaging;
-using Celbridge.Logging.Services;
+﻿using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,8 +14,8 @@ public class MessagingTests
     {
         var services = new ServiceCollection();
 
+        Logging.ServiceConfiguration.ConfigureServices(services);
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<ILoggingService<MessagingTests>, LoggingService<MessagingTests>>();
 
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -37,7 +35,6 @@ public class MessagingTests
     public void ICanSendAndReceiveAMessage()
     {
         var messengerService = _serviceProvider!.GetRequiredService<IMessengerService>();
-        var loggingService = _serviceProvider!.GetRequiredService<ILoggingService>();
 
         bool received = false;
         messengerService.Register<TestMessage>(this, (r, m) =>
