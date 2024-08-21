@@ -17,6 +17,12 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="NLog.config">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 	<Choose>
 		<When Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 			<ItemGroup>

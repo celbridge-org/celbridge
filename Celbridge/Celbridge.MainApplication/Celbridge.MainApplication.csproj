@@ -54,10 +54,4 @@
     <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.ScriptUtils\Celbridge.ScriptUtils.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Update="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 </Project>
