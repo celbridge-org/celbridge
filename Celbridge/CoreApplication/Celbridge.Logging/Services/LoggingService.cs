@@ -1,38 +1,78 @@
-﻿using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Logging.Services;
 
-public class LoggingService : ILoggingService
+public class LoggingService<T> : ILoggingService<T>
 {
-    public LoggingService(IServiceProvider serviceProvider)
+    private ILogger<T> _logger;
+
+    public LoggingService(ILogger<T> logger)
     {
-        var config = new LoggerConfiguration()
-            .WriteTo.Debug(); // Writes to the Visual Studio debug Output window (uses a Nuget package)
-
-        // If a WorkspaceService is laoded, output log messages to the console panel
-        var workspaceWrapper = serviceProvider.GetService<IWorkspaceWrapper>();
-        if (workspaceWrapper is not null)
-        {
-            config.WriteTo.ConsoleService(workspaceWrapper); // A custom log event sink that writes to the console panel
-        }
-
-        Log.Logger = config.CreateLogger();
+        _logger = logger;
     }
 
-    public void Info(string logMessage)
+    public void LogDebug(Exception? exception, string? message, params object?[] args)
     {
-        Log.Information(logMessage);
+        _logger.LogDebug(exception, message, args);
     }
 
-    public void Warn(string logMessage)
+    public void LogDebug(string? message, params object?[] args)
     {
-        Log.Warning(logMessage);
+        _logger.LogDebug(message, args);
     }
 
-    public void Error(string logMessage)
+    public void LogTrace(Exception? exception, string? message, params object?[] args)
     {
-        Log.Error(logMessage);
+        _logger.LogTrace(exception, message, args);
+    }
+
+    public void LogTrace(string? message, params object?[] args)
+    {
+        _logger.LogTrace(message, args);
+    }
+
+    public void LogInformation(Exception? exception, string? message, params object?[] args)
+    {
+        _logger.LogInformation(exception, message, args);
+    }
+
+    public void LogInformation(string? message, params object?[] args)
+    {
+        _logger.LogInformation(message, args);
+    }
+
+    public void LogWarning(Exception? exception, string? message, params object?[] args)
+    {
+        _logger.LogWarning(exception, message, args);
+    }
+
+    public void LogWarning(string? message, params object?[] args)
+    {
+        _logger.LogWarning(message, args);
+    }
+
+    public void LogError(Exception? exception, string? message, params object?[] args)
+    {
+        _logger.LogError(exception, message, args);
+    }
+
+    public void LogError(string? message, params object?[] args)
+    {
+        _logger.LogError(message, args);
+    }
+
+    public void LogCritical(Exception? exception, string? message, params object?[] args)
+    {
+        _logger.LogCritical(exception, message, args);
+    }
+
+    public void LogCritical(string? message, params object?[] args)
+    {
+        _logger.LogCritical(message, args);
+    }
+
+    public IDisposable? BeginScope(string messageFormat, params object?[] args)
+    {
+        return _logger.BeginScope(messageFormat, args);
     }
 }

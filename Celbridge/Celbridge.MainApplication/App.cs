@@ -7,18 +7,12 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Uno.UI;
-using Microsoft.Extensions.Logging;
-using NLog.Extensions.Logging;
-
-using ILogger = Microsoft.Extensions.Logging.ILogger;
-using LogLevel = Microsoft.Extensions.Logging.LogLevel;
+using Celbridge.Logging;
 
 namespace Celbridge;
 
 public class App : Application
 {
-    private ILogger? _logger;
-
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
@@ -59,13 +53,6 @@ public class App : Application
                 {
                     _legacyApp?.RegisterServices(services);
 
-                    services.AddLogging(builder =>
-                    {
-                        builder.ClearProviders();
-                        builder.SetMinimumLevel(LogLevel.Trace);
-                        builder.AddNLog("NLog.config"); // Configure NLog as needed
-                    });
-
                     // Register the IDispatcher service to support running code on the UI thread.
                     // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
@@ -81,12 +68,11 @@ public class App : Application
 
         Host = builder.Build();
 
+        var loggingService = Host.Services.GetRequiredService<ILoggingService<App>>();
+        loggingService.LogTrace("Application started");
+
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
-
-        _logger = Host.Services.GetRequiredService<ILogger<App>>();
-        _logger.LogTrace("Application started");
-
 
         // Start the telemetry service
         // Todo: Don't start this service unless the user has opted-in to telemetry.
