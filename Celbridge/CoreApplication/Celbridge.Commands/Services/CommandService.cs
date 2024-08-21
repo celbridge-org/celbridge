@@ -11,7 +11,7 @@ public class CommandService : ICommandService
     private const long SaveWorkspaceDelay = 250; // ms
 
     private readonly IMessengerService _messengerService;
-    private readonly ILoggingService _loggingService;
+    private readonly ILoggingService<CommandService> _loggingService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
@@ -31,7 +31,7 @@ public class CommandService : ICommandService
 
     public CommandService(
         IMessengerService messengerService,
-        ILoggingService loggingService,
+        ILoggingService<CommandService> loggingService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
@@ -298,7 +298,7 @@ public class CommandService : ICommandService
             var updateWorkspaceResult = await UpdateWorkspaceAsync(currentTime);
             if (updateWorkspaceResult.IsFailure)
             {
-                _loggingService.Error($"Failed to update workspace. {updateWorkspaceResult.Error}");
+                _loggingService.LogError($"Failed to update workspace. {updateWorkspaceResult.Error}");
             }
 
             // Find the first command that is ready to execute
@@ -346,7 +346,7 @@ public class CommandService : ICommandService
                         }
                         else
                         {
-                            _loggingService.Error($"Failed to undo command '{command}': {undoResult.Error}");
+                            _loggingService.LogError($"Failed to undo command '{command}': {undoResult.Error}");
                         }
                     }
                     else
@@ -365,7 +365,7 @@ public class CommandService : ICommandService
                         }
                         else
                         {
-                            _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
+                            _loggingService.LogError($"Command '{command}' failed: {executeResult.Error}");
                         }
                     }
 
@@ -376,7 +376,7 @@ public class CommandService : ICommandService
                         var updateResult = await UpdateResourcesAsync(command);
                         if (updateResult.IsFailure)
                         {
-                            _loggingService.Error($"Command '{command}' failed. {updateResult.Error}");
+                            _loggingService.LogError($"Command '{command}' failed. {updateResult.Error}");
                         }
                     }
 
@@ -395,7 +395,7 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
-                    _loggingService.Error($"Command '{command}' failed. {ex.Message}");
+                    _loggingService.LogError($"Command '{command}' failed. {ex.Message}");
                 }
             }
 

@@ -7,13 +7,13 @@ namespace Celbridge.UserInterface.ViewModels;
 
 public partial class HomePageViewModel : ObservableObject
 {
-    private readonly ILoggingService _loggingService;
+    private readonly ILoggingService<HomePageViewModel> _loggingService;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
 
     public HomePageViewModel(
         INavigationService navigationService,
-        ILoggingService loggingService,
+        ILoggingService<HomePageViewModel> loggingService,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {
@@ -33,12 +33,12 @@ public partial class HomePageViewModel : ObservableObject
         var result = await _filePickerService.PickSingleFileAsync(extensions);
         if (result.IsFailure)
         {
-            _loggingService.Error(result.Error);
+            _loggingService.LogError(result.Error);
             return;
         }
 
         var path = result.Value;
-        _loggingService.Info($"Path is : {path}");
+        _loggingService.LogInformation($"Selected path is : {path}");
     }
 
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
@@ -47,12 +47,12 @@ public partial class HomePageViewModel : ObservableObject
         var result = await _filePickerService.PickSingleFolderAsync();
         if (result.IsFailure)
         {
-            _loggingService.Error(result.Error);
+            _loggingService.LogError(result.Error);
             return;
         }
 
         var path = result.Value;
-        _loggingService.Info($"Path is : {path}");
+        _loggingService.LogInformation($"Selected path is : {path}");
     }
 
     public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);

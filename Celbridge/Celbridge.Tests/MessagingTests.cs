@@ -17,7 +17,7 @@ public class MessagingTests
         var services = new ServiceCollection();
 
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<ILoggingService<MessagingTests>, LoggingService<MessagingTests>>();
 
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -42,7 +42,6 @@ public class MessagingTests
         bool received = false;
         messengerService.Register<TestMessage>(this, (r, m) =>
         {
-            loggingService.Info($"Got the message: {m}");
             received = true;
         });
 

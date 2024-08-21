@@ -66,7 +66,7 @@ public class CommandTests
         var services = new ServiceCollection();
 
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<ILoggingService<CommandTests>, LoggingService<CommandTests>>();
         services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
 
