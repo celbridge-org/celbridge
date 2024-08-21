@@ -10,8 +10,8 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Diagnostics" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-		<PackageReference Include="Serilog" />
-		<PackageReference Include="Serilog.Sinks.Debug" />
+		<PackageReference Include="NLog" />
+		<PackageReference Include="NLog.Extensions.Logging" />
 	</ItemGroup>
 
 	<ItemGroup>
