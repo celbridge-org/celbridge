@@ -1,5 +1,6 @@
-﻿using Celbridge.Utilities;
+﻿using Celbridge.Logging;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Commands.Services;

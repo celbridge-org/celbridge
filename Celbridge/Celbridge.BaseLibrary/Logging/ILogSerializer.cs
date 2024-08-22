@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Utilities;
+﻿namespace Celbridge.Logging;
 
 /// <summary>
 /// Provides serialization support for logging.
