@@ -13,6 +13,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IUtilityService, UtilityService>();
 
         services.AddTransient<ILogSerializer, LogSerializer>();
-        services.AddTransient<ILogFile, Logger>();
+        services.AddTransient<IDumpFile, DumpFile>();
     }
 }

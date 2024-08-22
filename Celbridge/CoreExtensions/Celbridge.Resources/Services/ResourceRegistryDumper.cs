@@ -6,28 +6,32 @@ namespace Celbridge.Commands.Services;
 
 public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
 {
-    private const string LogFilePrefix = "ResourceRegistry";
+    private const string DumpFileName = "ResourceRegistry.jsonl";
 
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogSerializer _serializer;
-    private readonly ILogFile _logger;
+    private readonly IDumpFile _dumpFile;
 
     public ResourceRegistryDumper(
+        IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        ILogSerializer logSerializer,
-        ILogFile logger)
+        ILogSerializer logSerializer)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _serializer = logSerializer;
-        _logger = logger;
+
+        // Create the dump file
+        _dumpFile = serviceProvider.GetRequiredService<IDumpFile>();
     }
 
     public Result Initialize(string logFolderPath)
     {
-        var initResult = _logger.Initialize(logFolderPath, LogFilePrefix, 0);
+        var dumpFilePath = Path.Combine(logFolderPath, DumpFileName);
+
+        var initResult = _dumpFile.Initialize(dumpFilePath);
         if (initResult.IsFailure)
         {
             return initResult;
@@ -46,7 +50,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
-        _logger.ClearLogFile();
+        _dumpFile.ClearFile();
 
         // Write all resources to the dump file
         WriteFolder(resourceRegistry.RootFolder);
@@ -99,7 +103,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         try
         {
             string logEntry = _serializer.SerializeObject(obj, false);
-            var writeResult = _logger.WriteLine(logEntry);
+            var writeResult = _dumpFile.WriteLine(logEntry);
             if (writeResult.IsFailure)
             {
                 return writeResult;
@@ -107,7 +111,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to write object to log. {ex}");
+            return Result.Fail($"Failed to write object to dump file. {ex}");
         }
 
         return Result.Ok();
