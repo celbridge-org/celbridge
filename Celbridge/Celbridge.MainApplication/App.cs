@@ -117,6 +117,10 @@ public class App : Application
             var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
             Guard.IsNotNull(commandService);
             commandService.StopExecution();
+
+            // Flush any events that are still pending in the logger
+            var logger = Host.Services.GetRequiredService<ILogger<App>>();
+            logger.Shutdown();
         };
 
         rootFrame.Loaded += (s, e) =>

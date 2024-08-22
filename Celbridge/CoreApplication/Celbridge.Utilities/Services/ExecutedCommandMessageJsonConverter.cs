@@ -21,7 +21,7 @@ public class ExecutedCommandMessageJsonConverter : JsonConverter<ExecutedCommand
         var commandName = value.Command.GetType().Name;
 
         var outputJO = new JObject();
-        outputJO.Add("CommandName", JToken.FromObject(commandName, serializer));
+        // outputJO.Add("CommandName", JToken.FromObject(commandName, serializer));
 
         if (!_ignoreCommandProperties)
         {

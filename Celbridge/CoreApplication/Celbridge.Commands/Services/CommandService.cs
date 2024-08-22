@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -10,8 +11,9 @@ public class CommandService : ICommandService
 {
     private const long SaveWorkspaceDelay = 250; // ms
 
-    private readonly IMessengerService _messengerService;
     private readonly ILogger<CommandService> _logger;
+    private readonly ILogSerializer _logSerializer;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
@@ -30,12 +32,14 @@ public class CommandService : ICommandService
     private long _saveWorkspaceTime;
 
     public CommandService(
-        IMessengerService messengerService,
         ILogger<CommandService> logger,
+        ILogSerializer logSerializer,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _messengerService = messengerService;
         _logger = logger;
+        _logSerializer = logSerializer;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -276,6 +280,8 @@ public class CommandService : ICommandService
         _ = StartExecutionAsync();
     }
 
+    private string _logMessage = string.Empty;
+
     private async Task StartExecutionAsync()
     {
         _stopwatch.Start();
@@ -332,66 +338,73 @@ public class CommandService : ICommandService
             {
                 try
                 {
-                    if (executionMode == CommandExecutionMode.Undo)
+                    var scopeName = $"{executionMode} {command.GetType().Name}";
+                    using (_logger.BeginScope(scopeName))
                     {
-                        //
-                        // Execute command as an undo
-                        //
+                        if (executionMode == CommandExecutionMode.Undo)
+                        {
+                            //
+                            // Execute command as an undo
+                            //
 
-                        var undoResult = await command.UndoAsync();
-                        if (undoResult.IsSuccess)
-                        {
-                            // Push the undone command onto the redo stack
-                            _undoStack.PushRedoCommand(command);
-                        }
-                        else
-                        {
-                            _logger.LogError($"Failed to undo command '{command}': {undoResult.Error}");
-                        }
-                    }
-                    else
-                    {
-                        //
-                        // Execute the command as a regular execution or redo
-                        //
-
-                        var executeResult = await command.ExecuteAsync();
-                        if (executeResult.IsSuccess)
-                        {
-                            if (command.UndoStackName != UndoStackNames.None)
+                            var undoResult = await command.UndoAsync();
+                            if (undoResult.IsSuccess)
                             {
-                                _undoStack.PushUndoCommand(command);
+                                // Push the undone command onto the redo stack
+                                _undoStack.PushRedoCommand(command);
+                            }
+                            else
+                            {
+                                _logger.LogError($"Failed to undo command '{command}': {undoResult.Error}");
                             }
                         }
                         else
                         {
-                            _logger.LogError($"Command '{command}' failed: {executeResult.Error}");
-                        }
-                    }
+                            //
+                            // Execute the command as a regular execution or redo
+                            //
 
-                    // Update the resource registry if the command requires it.
-                    if (_workspaceWrapper.IsWorkspacePageLoaded &&
-                        command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
-                    {
-                        var updateResult = await UpdateResourcesAsync(command);
-                        if (updateResult.IsFailure)
+                            var executeResult = await command.ExecuteAsync();
+                            if (executeResult.IsSuccess)
+                            {
+                                if (command.UndoStackName != UndoStackNames.None)
+                                {
+                                    _undoStack.PushUndoCommand(command);
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogError($"Command '{command}' failed: {executeResult.Error}");
+                            }
+                        }
+
+                        // Update the resource registry if the command requires it.
+                        if (_workspaceWrapper.IsWorkspacePageLoaded &&
+                            command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
                         {
-                            _logger.LogError($"Command '{command}' failed. {updateResult.Error}");
+                            var updateResult = await UpdateResourcesAsync(command);
+                            if (updateResult.IsFailure)
+                            {
+                                _logger.LogError($"Command '{command}' failed. {updateResult.Error}");
+                            }
                         }
-                    }
 
-                    // Save the workspace state if the command requires it.
-                    if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
-                    {
-                        // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
-                        // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
-                        // the timer will be extended again. 
-                        _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
-                    }
+                        // Save the workspace state if the command requires it.
+                        if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+                        {
+                            // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
+                            // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
+                            // the timer will be extended again. 
+                            _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
+                        }
 
-                    // Todo: Indicate whether the command succeeded or failed in the message
-                    var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
-                    _messengerService.Send(message);
+                        // Todo: Indicate whether the command succeeded or failed in the message
+                        var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                        _messengerService.Send(message);
+
+                        string logEntry = _logSerializer.SerializeObject(message, false);
+                        _logger.LogInformation(logEntry);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -402,7 +415,6 @@ public class CommandService : ICommandService
             await Task.Delay(1);
         }
     }
-
 
     public void StopExecution()
     {
