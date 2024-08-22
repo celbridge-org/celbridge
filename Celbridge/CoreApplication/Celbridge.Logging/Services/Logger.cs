@@ -73,6 +73,12 @@ public class Logger<T> : ILogger<T>
 
     public IDisposable? BeginScope(string messageFormat, params object?[] args)
     {
-        return _logger.BeginScope(messageFormat, args);
+        string message = string.Format(messageFormat, args);
+        return NLog.ScopeContext.PushProperty("Scope", message);
+    }
+
+    public void Shutdown()
+    {
+        NLog.LogManager.Shutdown();
     }
 }
