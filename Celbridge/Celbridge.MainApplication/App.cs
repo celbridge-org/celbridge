@@ -68,8 +68,8 @@ public class App : Application
 
         Host = builder.Build();
 
-        var loggingService = Host.Services.GetRequiredService<ILoggingService<App>>();
-        loggingService.LogTrace("Application started");
+        var logger = Host.Services.GetRequiredService<ILogger<App>>();
+        logger.LogTrace("Application started");
 
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);

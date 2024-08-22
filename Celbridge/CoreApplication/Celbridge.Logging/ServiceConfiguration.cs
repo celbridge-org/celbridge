@@ -1,5 +1,4 @@
-﻿using Celbridge.Logging.Services;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
@@ -22,6 +21,6 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILoggingService<>), typeof(LoggingService<>)));
+        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Services.Logger<>)));
     }
 }

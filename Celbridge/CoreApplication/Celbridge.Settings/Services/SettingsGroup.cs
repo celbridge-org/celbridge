@@ -14,13 +14,13 @@ namespace Celbridge.Settings.Services;
 /// </summary>
 public class SettingsGroup : ISettingsGroup
 {
-    private ILoggingService<SettingsGroup> _loggingService;
+    private ILogger<SettingsGroup> _logger;
     private string? _groupName;
     private IPropertySet _propertySet;
 
-    public SettingsGroup(ILoggingService<SettingsGroup> loggingService)
+    public SettingsGroup(ILogger<SettingsGroup> logger)
     {
-        _loggingService = loggingService;
+        _logger = logger;
 
         // Ideally we would use the Containers system provided by ApplicationDataContainer, but this is only
         // available on Windows. Instead, we use the root LocalSettings.Value property set, with a prepended group name.
@@ -60,7 +60,7 @@ public class SettingsGroup : ISettingsGroup
         }
         catch (JsonException ex)
         {
-            _loggingService.LogError(ex, $"Failed to set setting '{settingKey}'.");
+            _logger.LogError(ex, $"Failed to set setting '{settingKey}'.");
         }
     }
 
@@ -82,7 +82,7 @@ public class SettingsGroup : ISettingsGroup
             var value = JsonConvert.DeserializeObject<T>((string)json);
             if (value is null)
             {
-                _loggingService.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");
+                _logger.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");
                 return defaultValue;
             }
 
@@ -90,7 +90,7 @@ public class SettingsGroup : ISettingsGroup
         }
         catch (JsonException ex)
         {
-            _loggingService.LogError(ex, $"Failed to get setting '{settingKey}'.");
+            _logger.LogError(ex, $"Failed to get setting '{settingKey}'.");
             return defaultValue;
         }
     }
@@ -117,7 +117,7 @@ public class SettingsGroup : ISettingsGroup
             var v = JsonConvert.DeserializeObject<T>((string)json);
             if (v is null)
             {
-                _loggingService.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");
+                _logger.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");
                 return false;
             }
 
@@ -125,7 +125,7 @@ public class SettingsGroup : ISettingsGroup
         }
         catch (JsonException ex)
         {
-            _loggingService.LogError(ex, $"Failed to get setting '{settingKey}'.");
+            _logger.LogError(ex, $"Failed to get setting '{settingKey}'.");
             return false;
         }
     }
