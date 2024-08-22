@@ -2,11 +2,11 @@
 
 namespace Celbridge.Logging.Services;
 
-public class LoggingService<T> : ILoggingService<T>
+public class Logger<T> : ILogger<T>
 {
-    private ILogger<T> _logger;
+    private Microsoft.Extensions.Logging.ILogger<T> _logger;
 
-    public LoggingService(ILogger<T> logger)
+    public Logger(Microsoft.Extensions.Logging.ILogger<T> logger)
     {
         _logger = logger;
     }
