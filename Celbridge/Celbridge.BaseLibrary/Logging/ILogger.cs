@@ -76,4 +76,9 @@ public interface ILogger
     /// Formats the message and creates a logging scope.
     /// </summary>
     IDisposable? BeginScope(string messageFormat, params object?[] args);
+
+    /// <summary>
+    /// Shuts down the logger.
+    /// </summary>
+    void Shutdown();
 }

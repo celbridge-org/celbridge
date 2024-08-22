@@ -1,5 +1,4 @@
-﻿using Celbridge.Commands;
-using Celbridge.Console;
+﻿using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Inspector;
@@ -24,8 +23,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IResourceService ResourceService { get; }
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
-
-    private IExecutedCommandLogger _commandLogger;
 
     private IResourceRegistryDumper _resourceRegistryDumper;
 
@@ -53,12 +50,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
 
-        // Log executed commands
+        // Dump the resource registry to a file in the logs folder
         string logFolderPath = project.LogFolderPath;
-        _commandLogger = serviceProvider.GetRequiredService<IExecutedCommandLogger>();
-        _commandLogger.Initialize(logFolderPath, 0);
-
-        // Dump the resource registry to a file
         _resourceRegistryDumper = serviceProvider.GetRequiredService<IResourceRegistryDumper>();
         _resourceRegistryDumper.Initialize(logFolderPath);
     }
@@ -106,9 +99,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ResourceService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
-
-                // Stop logging commands
-                (_commandLogger as IDisposable)!.Dispose();
             }
 
             _disposed = true;
