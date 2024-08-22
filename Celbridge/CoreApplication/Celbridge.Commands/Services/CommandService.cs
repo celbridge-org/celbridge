@@ -1,6 +1,5 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;

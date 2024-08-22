@@ -1,14 +1,14 @@
-﻿using Celbridge.Commands;
+﻿using Celbridge.Commands.Services;
+using Celbridge.Commands;
 using Celbridge.Core;
-using Celbridge.Messaging;
-using Celbridge.Commands.Services;
+using Celbridge.Logging;
 using Celbridge.Messaging.Services;
+using Celbridge.Messaging;
+using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Celbridge.Workspace;
-using Celbridge.UserInterface.Services;
-using Celbridge.Utilities;
-using Celbridge.Utilities.Services;
+using Celbridge.Logging.Services;
 
 namespace Celbridge.Tests;
 
