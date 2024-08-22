@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Converters;
 using Newtonsoft.Json;
 
-namespace Celbridge.Utilities.Services;
+namespace Celbridge.Logging.Services;
 
 public class LogSerializer : ILogSerializer
 {

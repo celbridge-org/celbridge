@@ -1,8 +1,9 @@
 ﻿using Celbridge.Commands;
+using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Celbridge.Utilities.Services;
+namespace Celbridge.Logging.Services;
 
 public class ExecutedCommandMessageJsonConverter : JsonConverter<ExecutedCommandMessage>
 {

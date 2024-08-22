@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System.Reflection;
 using Celbridge.Commands;
 
-namespace Celbridge.Utilities.Services;
+namespace Celbridge.Logging.Services;
 
 public class CommandSerializerContractResolver : DefaultContractResolver
 {
