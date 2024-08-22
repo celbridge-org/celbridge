@@ -5,16 +5,16 @@ namespace Celbridge.UserInterface.Services;
 
 public class NavigationService : INavigationService
 {
-    private ILoggingService<NavigationService> _loggingService;
+    private ILogger<NavigationService> _logger;
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
 
     private Dictionary<string, Type> _pageTypes = new();
 
-    public NavigationService(ILoggingService<NavigationService> loggingService)
+    public NavigationService(ILogger<NavigationService> logger)
     {
-        _loggingService = loggingService;
+        _logger = logger;
     }
 
     // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
@@ -68,7 +68,7 @@ public class NavigationService : INavigationService
         if (!_pageTypes.TryGetValue(pageName, out var pageType))
         {
             var errorMessage = $"Failed to navigage to content page '{pageName}' because it is not registered.";
-            _loggingService.LogError(errorMessage);
+            _logger.LogError(errorMessage);
 
             return Result.Fail(errorMessage);
         }
@@ -77,7 +77,7 @@ public class NavigationService : INavigationService
         var navigateResult = _navigationProvider.NavigateToPage(pageType, parameter);
         if (navigateResult.IsFailure)
         {
-            _loggingService.LogError(navigateResult.Error);
+            _logger.LogError(navigateResult.Error);
         }
 
         return navigateResult;

@@ -7,17 +7,17 @@ namespace Celbridge.UserInterface.ViewModels;
 
 public partial class HomePageViewModel : ObservableObject
 {
-    private readonly ILoggingService<HomePageViewModel> _loggingService;
+    private readonly ILogger<HomePageViewModel> _logger;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
 
     public HomePageViewModel(
         INavigationService navigationService,
-        ILoggingService<HomePageViewModel> loggingService,
+        ILogger<HomePageViewModel> logger,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {
-        _loggingService = loggingService;
+        _logger = logger;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
     }
@@ -33,12 +33,12 @@ public partial class HomePageViewModel : ObservableObject
         var result = await _filePickerService.PickSingleFileAsync(extensions);
         if (result.IsFailure)
         {
-            _loggingService.LogError(result.Error);
+            _logger.LogError(result.Error);
             return;
         }
 
         var path = result.Value;
-        _loggingService.LogInformation($"Selected path is : {path}");
+        _logger.LogInformation($"Selected path is : {path}");
     }
 
     public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
@@ -47,12 +47,12 @@ public partial class HomePageViewModel : ObservableObject
         var result = await _filePickerService.PickSingleFolderAsync();
         if (result.IsFailure)
         {
-            _loggingService.LogError(result.Error);
+            _logger.LogError(result.Error);
             return;
         }
 
         var path = result.Value;
-        _loggingService.LogInformation($"Selected path is : {path}");
+        _logger.LogInformation($"Selected path is : {path}");
     }
 
     public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);

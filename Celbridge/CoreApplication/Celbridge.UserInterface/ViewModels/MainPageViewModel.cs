@@ -23,7 +23,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private const string LegacyPageName = "Shell";
 
     private readonly IMessengerService _messengerService;
-    private readonly ILoggingService<MainPageViewModel> _loggingService;
+    private readonly ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
     private readonly IFilePickerService _filePickerService;
@@ -33,7 +33,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public MainPageViewModel(
         IMessengerService messengerService,
-        ILoggingService<MainPageViewModel> loggingService, 
+        ILogger<MainPageViewModel> logger, 
         INavigationService navigationService,
         IDialogService dialogService,
         IFilePickerService filePickerService,
@@ -42,7 +42,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
-        _loggingService = loggingService;
+        _logger = logger;
         _navigationService = navigationService;
         _dialogService = dialogService;
         _filePickerService = filePickerService;
@@ -132,7 +132,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 break;
         }
 
-        _loggingService.LogError($"Failed to navigate to item {tag}.");
+        _logger.LogError($"Failed to navigate to item {tag}.");
     }
 
     private async Task CreateProjectAsync()

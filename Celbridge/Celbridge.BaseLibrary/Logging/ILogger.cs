@@ -4,13 +4,13 @@
 /// Generic wrapper for the Microsoft.Extensions.Logging extension methods.
 /// The out keyword specifies that the T parameter is covariant.
 /// </summary>
-public interface ILoggingService<out T> : ILoggingService
+public interface ILogger<out T> : ILogger
 {}
 
 /// <summary>
 /// Wrapper for the Microsoft.Extensions.Logging extension methods.
 /// </summary>
-public interface ILoggingService
+public interface ILogger
 {
     /// <summary>
     /// Formats and writes a debug log message, including an exception.
