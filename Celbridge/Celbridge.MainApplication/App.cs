@@ -1,5 +1,6 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
+using Celbridge.Logging;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
 using Celbridge.Telemetry;
@@ -7,7 +8,6 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Uno.UI;
-using Celbridge.Logging;
 
 namespace Celbridge;
 
@@ -103,7 +103,7 @@ public class App : Application
 
         MainWindow.Closed += (s, e) =>
         {
-#if DEBUG
+#if DEBUG && WINDOWS
             ConsoleHelper.FreeConsole();
 #endif
 
