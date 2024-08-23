@@ -1,14 +1,14 @@
-﻿using Celbridge.Commands;
+﻿using Celbridge.Commands.Services;
+using Celbridge.Commands;
 using Celbridge.Core;
 using Celbridge.Logging;
-using Celbridge.Messaging;
-using Celbridge.Commands.Services;
-using Celbridge.Logging.Services;
 using Celbridge.Messaging.Services;
+using Celbridge.Messaging;
+using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Celbridge.Workspace;
-using Celbridge.UserInterface.Services;
+using Celbridge.Logging.Services;
 
 namespace Celbridge.Tests;
 
@@ -65,8 +65,9 @@ public class CommandTests
     {
         var services = new ServiceCollection();
 
+        Logging.ServiceConfiguration.ConfigureServices(services);
+        services.AddSingleton<ILogSerializer, LogSerializer>();
         services.AddSingleton<IMessengerService, MessengerService>();
-        services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
 

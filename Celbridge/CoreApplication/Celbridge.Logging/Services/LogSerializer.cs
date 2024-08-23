@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Converters;
 using Newtonsoft.Json;
 
-namespace Celbridge.Utilities.Services;
+namespace Celbridge.Logging.Services;
 
 public class LogSerializer : ILogSerializer
 {
@@ -30,7 +30,7 @@ public class LogSerializer : ILogSerializer
             Formatting = Formatting.None
         };
 
-        settings.Converters.Add(new ExecutedCommandMessageJsonConverter(ignoreCommandProperties));
+        settings.Converters.Add(new CommandExecutingMessageJsonConverter(ignoreCommandProperties));
         settings.Converters.Add(new StringEnumConverter());
         settings.Converters.Add(new EntityIdConverter());
         settings.Converters.Add(new ResourceKeyConverter());

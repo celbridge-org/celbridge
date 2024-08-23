@@ -11,8 +11,6 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddSingleton<IUtilityService, UtilityService>();
-
-        services.AddTransient<ILogSerializer, LogSerializer>();
-        services.AddTransient<ILogger, Logger>();
+        services.AddTransient<IDumpFile, DumpFile>();
     }
 }
