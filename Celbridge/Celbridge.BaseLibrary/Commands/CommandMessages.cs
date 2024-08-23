@@ -1,6 +1,6 @@
 ﻿namespace Celbridge.Commands;
 
 /// <summary>
-/// Sent when a command is executed.
+/// Message sent when a command is about to execute.
 /// </summary>
-public record ExecutedCommandMessage(IExecutableCommand Command, CommandExecutionMode ExecutionMode, float ElapsedTime);
+public record CommandExecutingMessage(IExecutableCommand Command, CommandExecutionMode ExecutionMode, float ElapsedTime);

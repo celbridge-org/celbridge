@@ -28,8 +28,9 @@ public class CommandSerializerContractResolver : DefaultContractResolver
             switch (property.PropertyName)
             {
                 case nameof(IExecutableCommand.CommandId):
-                case nameof(IExecutableCommand.UndoGroupId):
                 case nameof(IExecutableCommand.UndoStackName):
+                case nameof(IExecutableCommand.UndoGroupId):
+                case nameof(IExecutableCommand.CommandFlags):
                 case nameof(IExecutableCommand.ExecutionSource):
                     shouldSerialize = false;
                     break;

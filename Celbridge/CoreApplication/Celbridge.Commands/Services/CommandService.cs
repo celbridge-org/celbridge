@@ -335,9 +335,17 @@ public class CommandService : ICommandService
             {
                 try
                 {
+                    // Notify listeners that the command is about to execute
+                    var message = new CommandExecutingMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                    _messengerService.Send(message);
+
                     var scopeName = $"{executionMode} {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
+                        // Log the command execution
+                        string logEntry = _logSerializer.SerializeObject(message, false);
+                        _logger.LogInformation(logEntry);
+
                         if (executionMode == CommandExecutionMode.Undo)
                         {
                             //
@@ -394,13 +402,6 @@ public class CommandService : ICommandService
                             // the timer will be extended again. 
                             _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
                         }
-
-                        // Todo: Indicate whether the command succeeded or failed in the message
-                        var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
-                        _messengerService.Send(message);
-
-                        string logEntry = _logSerializer.SerializeObject(message, false);
-                        _logger.LogInformation(logEntry);
                     }
                 }
                 catch (Exception ex)
