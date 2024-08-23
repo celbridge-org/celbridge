@@ -20,7 +20,7 @@ public class ConsoleTests
 
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<IConsoleService, ConsoleService>();
-        services.AddSingleton<ILoggingService, LoggingService>();
+        services.AddSingleton<ILogger<CommandTests>, Logger<CommandTests>>();
 
         _serviceProvider = services.BuildServiceProvider();
     }

@@ -1,11 +1,13 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
+using Celbridge.Logging;
 using Celbridge.MainApplication.Services;
 using Celbridge.MainApplication;
 using Celbridge.Telemetry;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
+using Celbridge.Utilities;
 using Uno.UI;
 
 namespace Celbridge;
@@ -20,6 +22,11 @@ public class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+#if DEBUG && WINDOWS
+        // Open a console window for logging output
+        ConsoleHelper.AllocConsole();
+#endif
+
         // Load Extensions
         _extensionLoader.LoadExtension("Celbridge.Scripting");
         _extensionLoader.LoadExtension("Celbridge.ScriptUtils");
@@ -62,6 +69,11 @@ public class App : Application
 
         Host = builder.Build();
 
+        var logger = Host.Services.GetRequiredService<ILogger<App>>();
+        var utilityService = Host.Services.GetRequiredService<IUtilityService>();
+        var environmentInfo = utilityService.GetEnvironmentInfo();
+        logger.LogInformation(environmentInfo.ToString());
+
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
 
@@ -94,6 +106,10 @@ public class App : Application
 
         MainWindow.Closed += (s, e) =>
         {
+#if DEBUG && WINDOWS
+            ConsoleHelper.FreeConsole();
+#endif
+
             _legacyApp?.OnMainWindowClosed();
 
             // Todo: This doesn't get called on Skia+Gtk at all on exit.
@@ -104,6 +120,10 @@ public class App : Application
             var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
             Guard.IsNotNull(commandService);
             commandService.StopExecution();
+
+            // Flush any events that are still pending in the logger
+            var logger = Host.Services.GetRequiredService<ILogger<App>>();
+            logger.Shutdown();
         };
 
         rootFrame.Loaded += (s, e) =>
