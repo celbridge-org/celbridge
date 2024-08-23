@@ -10,8 +10,9 @@ public class CommandService : ICommandService
 {
     private const long SaveWorkspaceDelay = 250; // ms
 
+    private readonly ILogger<CommandService> _logger;
+    private readonly ILogSerializer _logSerializer;
     private readonly IMessengerService _messengerService;
-    private readonly ILoggingService _loggingService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
@@ -30,12 +31,14 @@ public class CommandService : ICommandService
     private long _saveWorkspaceTime;
 
     public CommandService(
+        ILogger<CommandService> logger,
+        ILogSerializer logSerializer,
         IMessengerService messengerService,
-        ILoggingService loggingService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
+        _logSerializer = logSerializer;
         _messengerService = messengerService;
-        _loggingService = loggingService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -298,7 +301,7 @@ public class CommandService : ICommandService
             var updateWorkspaceResult = await UpdateWorkspaceAsync(currentTime);
             if (updateWorkspaceResult.IsFailure)
             {
-                _loggingService.Error($"Failed to update workspace. {updateWorkspaceResult.Error}");
+                _logger.LogError($"Failed to update workspace. {updateWorkspaceResult.Error}");
             }
 
             // Find the first command that is ready to execute
@@ -332,77 +335,84 @@ public class CommandService : ICommandService
             {
                 try
                 {
-                    if (executionMode == CommandExecutionMode.Undo)
-                    {
-                        //
-                        // Execute command as an undo
-                        //
+                    // Notify listeners that the command is about to execute
+                    var message = new CommandExecutingMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                    _messengerService.Send(message);
 
-                        var undoResult = await command.UndoAsync();
-                        if (undoResult.IsSuccess)
-                        {
-                            // Push the undone command onto the redo stack
-                            _undoStack.PushRedoCommand(command);
-                        }
-                        else
-                        {
-                            _loggingService.Error($"Failed to undo command '{command}': {undoResult.Error}");
-                        }
-                    }
-                    else
+                    var scopeName = $"{executionMode} {command.GetType().Name}";
+                    using (_logger.BeginScope(scopeName))
                     {
-                        //
-                        // Execute the command as a regular execution or redo
-                        //
+                        // Log the command execution
+                        string logEntry = _logSerializer.SerializeObject(message, false);
+                        _logger.LogInformation(logEntry);
 
-                        var executeResult = await command.ExecuteAsync();
-                        if (executeResult.IsSuccess)
+                        if (executionMode == CommandExecutionMode.Undo)
                         {
-                            if (command.UndoStackName != UndoStackNames.None)
+                            //
+                            // Execute command as an undo
+                            //
+
+                            var undoResult = await command.UndoAsync();
+                            if (undoResult.IsSuccess)
                             {
-                                _undoStack.PushUndoCommand(command);
+                                // Push the undone command onto the redo stack
+                                _undoStack.PushRedoCommand(command);
+                            }
+                            else
+                            {
+                                _logger.LogError($"Failed to undo command '{command}': {undoResult.Error}");
                             }
                         }
                         else
                         {
-                            _loggingService.Error($"Command '{command}' failed: {executeResult.Error}");
-                        }
-                    }
+                            //
+                            // Execute the command as a regular execution or redo
+                            //
 
-                    // Update the resource registry if the command requires it.
-                    if (_workspaceWrapper.IsWorkspacePageLoaded &&
-                        command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
-                    {
-                        var updateResult = await UpdateResourcesAsync(command);
-                        if (updateResult.IsFailure)
+                            var executeResult = await command.ExecuteAsync();
+                            if (executeResult.IsSuccess)
+                            {
+                                if (command.UndoStackName != UndoStackNames.None)
+                                {
+                                    _undoStack.PushUndoCommand(command);
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogError($"Command '{command}' failed: {executeResult.Error}");
+                            }
+                        }
+
+                        // Update the resource registry if the command requires it.
+                        if (_workspaceWrapper.IsWorkspacePageLoaded &&
+                            command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
                         {
-                            _loggingService.Error($"Command '{command}' failed. {updateResult.Error}");
+                            var updateResult = await UpdateResourcesAsync(command);
+                            if (updateResult.IsFailure)
+                            {
+                                _logger.LogError($"Command '{command}' failed. {updateResult.Error}");
+                            }
+                        }
+
+                        // Save the workspace state if the command requires it.
+                        if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+                        {
+                            // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
+                            // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
+                            // the timer will be extended again. 
+                            _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
                         }
                     }
-
-                    // Save the workspace state if the command requires it.
-                    if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
-                    {
-                        // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
-                        // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
-                        // the timer will be extended again. 
-                        _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
-                    }
-
-                    // Todo: Indicate whether the command succeeded or failed in the message
-                    var message = new ExecutedCommandMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
-                    _messengerService.Send(message);
                 }
                 catch (Exception ex)
                 {
-                    _loggingService.Error($"Command '{command}' failed. {ex.Message}");
+                    _logger.LogError($"Command '{command}' failed. {ex.Message}");
                 }
             }
 
             await Task.Delay(1);
         }
     }
-
 
     public void StopExecution()
     {
