@@ -279,8 +279,6 @@ public class CommandService : ICommandService
         _ = StartExecutionAsync();
     }
 
-    private string _logMessage = string.Empty;
-
     private async Task StartExecutionAsync()
     {
         _stopwatch.Start();
