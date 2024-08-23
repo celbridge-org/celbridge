@@ -7,6 +7,7 @@ using Celbridge.Telemetry;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
+using Celbridge.Utilities;
 using Uno.UI;
 
 namespace Celbridge;
@@ -69,7 +70,9 @@ public class App : Application
         Host = builder.Build();
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
-        logger.LogTrace("Application started");
+        var utilityService = Host.Services.GetRequiredService<IUtilityService>();
+        var environmentInfo = utilityService.GetEnvironmentInfo();
+        logger.LogInformation(environmentInfo.ToString());
 
         // Setup the globally available helper for using the dependency injection framework.
         Core.ServiceLocator.Initialize(Host.Services);
