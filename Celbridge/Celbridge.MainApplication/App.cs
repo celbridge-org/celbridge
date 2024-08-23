@@ -63,7 +63,7 @@ public class App : Application
                     var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
                     MainApplication.ServiceConfiguration.ConfigureServices(services, extensions);
                 })
-            ); ;
+            );
 
         MainWindow = builder.Window;
 
