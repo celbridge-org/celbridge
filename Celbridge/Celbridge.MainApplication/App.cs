@@ -22,6 +22,11 @@ public class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Catch all types of unhandled exceptions
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+        this.UnhandledException += OnAppUnhandledException;
+
 #if DEBUG && WINDOWS
         // Open a console window for logging output
         ConsoleHelper.AllocConsole();
@@ -159,5 +164,33 @@ public class App : Application
         }
 
         MainWindow.Activate();
+    }
+
+    private void OnUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
+    {
+        HandleException(e.ExceptionObject as Exception);
+    }
+
+    private void OnUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+    {
+        HandleException(e.Exception);
+        // e.SetObserved(); // prevent the crash
+    }
+
+    private void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        HandleException(e.Exception);
+        // e.Handled = true; //  // prevent the crash
+    }
+
+    private void HandleException(Exception? exception)
+    {
+        if (Host is null)
+        {
+            return;
+        }
+
+        var logger = Host.Services.GetRequiredService<ILogger<App>>();
+        logger.LogError(exception, "An unhandled exception occurred");
     }
 }
