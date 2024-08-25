@@ -128,7 +128,9 @@ public class DataTransferService : IDataTransferService, IDisposable
             var createTransferResult = resourceService.CreateResourceTransfer(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
             {
-                return Result<IResourceTransfer>.Fail($"Failed to create resource transfer. {createTransferResult.Error}");
+                var failure = Result<IResourceTransfer>.Fail($"Failed to create resource transfer.");
+                failure.MergeErrors(createTransferResult);
+                return failure;
             }
             var resourceTransfer = createTransferResult.Value;
 
@@ -150,7 +152,9 @@ public class DataTransferService : IDataTransferService, IDisposable
         var getResult = await GetClipboardResourceTransfer(destFolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            var failure = Result.Fail("Failed to get clipboard resource transfer");
+            failure.MergeErrors(getResult);
+            return failure;
         }
         var description = getResult.Value;
 

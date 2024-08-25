@@ -80,7 +80,9 @@ public class ResourceService : IResourceService, IDisposable
         var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
         if (createItemsResult.IsFailure)
         {
-            return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items. {createItemsResult.Error}");
+            var failure = Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.");
+            failure.MergeErrors(createItemsResult);
+            return failure;
         }
         var transferItems = createItemsResult.Value;
 
@@ -112,9 +114,9 @@ public class ResourceService : IResourceService, IDisposable
                 {
                     // Ignore attempts to transfer a resource into a subfolder of itself.
                     // This check is case insensitive to err on the safe side for Windows file systems.
-                    // Without this check, a tranfer operation could generate thousands of nested folders!
+                    // Without this check, a transfer operation could generate thousands of nested folders!
                     // It is ok to "transfer" a resource to the same path however as this indicates a duplicate operation.
-                    continue;
+                    return Result<List<ResourceTransferItem>>.Fail($"Cannot transfer a resource into a subfolder of itself.");
                 }
 
                 ResourceType resourceType = ResourceType.Invalid;
@@ -169,14 +171,14 @@ public class ResourceService : IResourceService, IDisposable
 
             if (transferItems.Count == 0)
             {
-                return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items. Item list is empty.");
+                return Result<List<ResourceTransferItem>>.Fail($"Transfer item list is empty.");
             }
 
             return Result<List<ResourceTransferItem>>.Ok(transferItems);
         }
         catch (Exception ex)
         {
-            return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items. {ex}");
+            return Result<List<ResourceTransferItem>>.Fail(ex, $"Failed to create resource transfer items.");
         }
     }
 
