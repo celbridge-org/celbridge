@@ -53,6 +53,11 @@ public interface ILogger
     void LogWarning(string? message, params object?[] args);
 
     /// <summary>
+    /// Formats and writes an warning log message, including an error result.
+    /// </summary>
+    void LogWarning(Result result, string? message, params object?[] args);
+
+    /// <summary>
     /// Formats and writes an error log message, including an exception.
     /// </summary>
     void LogError(Exception? exception, string? message, params object?[] args);
@@ -63,6 +68,11 @@ public interface ILogger
     void LogError(string? message, params object?[] args);
 
     /// <summary>
+    /// Formats and writes an error log message, including an error result.
+    /// </summary>
+    void LogError(Result result, string? message, params object?[] args);
+
+    /// <summary>
     /// Formats and writes a critical error log message, including an exception.
     /// </summary>
     void LogCritical(Exception? exception, string? message, params object?[] args);
@@ -71,6 +81,11 @@ public interface ILogger
     /// Formats and writes a critical error log message.
     /// </summary>
     void LogCritical(string? message, params object?[] args);
+
+    /// <summary>
+    /// Formats and writes an warning log message, including an error result.
+    /// </summary>
+    void LogCritical(Result result, string? message, params object?[] args);
 
     /// <summary>
     /// Formats the message and creates a logging scope.
