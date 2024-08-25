@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Celbridge.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Logging.Services;
 
@@ -51,6 +52,15 @@ public class Logger<T> : ILogger<T>
         _logger.LogWarning(message, args);
     }
 
+    public void LogWarning(Result result, string? message, params object?[] args)
+    {
+        string output = GetErrorResultMessage(result, message, args);
+        if (!string.IsNullOrEmpty(output))
+        {
+            _logger.LogWarning(output);
+        }
+    }
+
     public void LogError(Exception? exception, string? message, params object?[] args)
     {
         _logger.LogError(exception, message, args);
@@ -59,6 +69,15 @@ public class Logger<T> : ILogger<T>
     public void LogError(string? message, params object?[] args)
     {
         _logger.LogError(message, args);
+    }
+
+    public void LogError(Result result, string? message, params object?[] args)
+    {
+        string output = GetErrorResultMessage(result, message, args);
+        if (!string.IsNullOrEmpty(output))
+        {
+            _logger.LogError(output);
+        }
     }
 
     public void LogCritical(Exception? exception, string? message, params object?[] args)
@@ -71,6 +90,15 @@ public class Logger<T> : ILogger<T>
         _logger.LogCritical(message, args);
     }
 
+    public void LogCritical(Result result, string? message, params object?[] args)
+    {
+        string output = GetErrorResultMessage(result, message, args);
+        if (!string.IsNullOrEmpty(output))
+        {
+            _logger.LogCritical(output);
+        }
+    }
+
     public IDisposable? BeginScope(string messageFormat, params object?[] args)
     {
         string message = string.Format(messageFormat, args);
@@ -80,5 +108,25 @@ public class Logger<T> : ILogger<T>
     public void Shutdown()
     {
         NLog.LogManager.Shutdown();
+    }
+
+    private static string GetErrorResultMessage(Result result, string? message, object?[] args)
+    {
+        string output = string.Empty;
+        if (!string.IsNullOrEmpty(message))
+        {
+            output = string.Format(message, args);
+        }
+
+        if (result.IsFailure)
+        {
+            if (!string.IsNullOrEmpty(output))
+            {
+                output += Environment.NewLine;
+            }
+            output += result.Error;
+        }
+
+        return output;
     }
 }
