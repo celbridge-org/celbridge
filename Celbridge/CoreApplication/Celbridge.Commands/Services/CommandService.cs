@@ -379,7 +379,7 @@ public class CommandService : ICommandService
                             }
                             else
                             {
-                                _logger.LogError($"Command '{command}' failed: {executeResult.Error}");
+                                _logger.LogError(executeResult, "Execute command failed");
                             }
                         }
 
