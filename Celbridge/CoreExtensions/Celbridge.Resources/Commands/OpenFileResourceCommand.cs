@@ -1,6 +1,5 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Resources.Commands;
 
@@ -18,24 +17,15 @@ public class OpenFileResourceCommand : CommandBase, IOpenFileResourceCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
-        Guard.IsNotNull(resourceRegistry);
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var getResult = resourceRegistry.GetResource(FileResource);
-        if (getResult.IsFailure)
+        var openResult = await documentsService.OpenFileDocument(FileResource);
+        if (openResult.IsFailure)
         {
-            return Result.Fail($"File resource not found. {FileResource}");
+            var failure = Result.Fail($"Failed to open file resource '{FileResource}'");
+            failure.MergeErrors(openResult);
+            return failure;
         }
-
-        var fileResource = getResult.Value as IFileResource;
-        if (fileResource is null)
-        {
-            return Result.Fail($"Resource is not a file. {FileResource}");
-        }
-
-        // Todo: Open the file resource via the documents service.
-
-        await Task.CompletedTask;
 
         return Result.Ok();
     }
