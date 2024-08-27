@@ -135,6 +135,17 @@ public partial class ResourceTreeViewModel : ObservableObject
     // Resource editing
     //
 
+    public void OpenFileResource(IFileResource fileResource)
+    {
+        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+
+        _commandService.Execute<IOpenFileResourceCommand>(command =>
+        {
+            command.FileResource = resourceKey;
+        });
+    }
+
     public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
     {
         var resourceRegistry = _resourceService.ResourceRegistry;
