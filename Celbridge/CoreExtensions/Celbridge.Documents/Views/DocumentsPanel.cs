@@ -18,18 +18,15 @@ public sealed partial class DocumentsPanel : UserControl
             .IsAddTabButtonVisible(false)
             .TabWidthMode(TabViewWidthMode.SizeToContent)
             //.TabCloseRequested = "DocumentTabView_TabCloseRequested"
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"));
+            .VerticalAlignment(VerticalAlignment.Stretch);
 
         // Create a placeholder TabViewItem
-        var tabViewItem = new TabViewItem
-        {
-            Header = "<Placeholder>",
-            Content = new TextBlock { Text = "This is a placeholder tab item." }
-        };
+        var documentTab1 = new DocumentTab();
+        documentTab1.ViewModel.Name = "Placeholder 1";
+        documentTab1.Content = new WebDocumentView();
 
         // Add the TabViewItem to the TabView
-        _tabView.TabItems.Add(tabViewItem);
+        _tabView.TabItems.Add(documentTab1);
 
         //
         // Set the data context and page content
