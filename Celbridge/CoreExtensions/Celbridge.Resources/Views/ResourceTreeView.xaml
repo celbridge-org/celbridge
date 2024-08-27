@@ -16,7 +16,6 @@
                     Placement="RightEdgeAlignedTop"
                     Opening="ResourceContextMenu_Opening">
             <MenuFlyoutItem Text="{x:Bind OpenString}" 
-                                Icon="Add"
                                 Click="OpenResource"
                                 IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
