@@ -241,6 +241,10 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
                 folderNode.IsExpanded = !folderNode.IsExpanded;
             }
         }
+        else if (resource is IFileResource fileResource)
+        {
+            ViewModel.OpenFileResource(fileResource);
+        }
     }
 
     private void AddFile(object? sender, RoutedEventArgs e)
