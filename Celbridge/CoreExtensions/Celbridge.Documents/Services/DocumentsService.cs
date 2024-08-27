@@ -2,6 +2,7 @@
 using Celbridge.Logging;
 using Celbridge.Resources;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Services;
 
@@ -10,6 +11,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DocumentsService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+
+    internal IDocumentsManager? DocumentsManager { get; set; }
 
     public DocumentsService(
         IServiceProvider serviceProvider,
@@ -28,23 +31,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenFileDocument(ResourceKey fileResource)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        Guard.IsNotNull(DocumentsManager);
 
-        var getResult = resourceRegistry.GetResource(fileResource);
-        if (getResult.IsFailure)
+        var openResult = await DocumentsManager.OpenFileDocument(fileResource);
+        if (openResult.IsFailure)
         {
-            return Result.Fail($"File resource not found: '{fileResource}'");
+            var failure = Result.Fail($"Failed to open file resource '{fileResource}'");
+            failure.MergeErrors(openResult);
+            return failure;
         }
-
-        var resource = getResult.Value as IFileResource;
-        if (resource is null)
-        {
-            return Result.Fail($"Resource is not a file: '{fileResource}'");
-        }
-
-        _logger.LogInformation($"Opening file resource document '{fileResource}'");
-
-        await Task.CompletedTask;
 
         return Result.Ok();
     }
