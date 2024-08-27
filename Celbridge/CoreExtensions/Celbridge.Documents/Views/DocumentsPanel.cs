@@ -1,8 +1,11 @@
-﻿using Celbridge.Documents.ViewModels;
+﻿using Celbridge.Documents.Services;
+using Celbridge.Documents.ViewModels;
+using Celbridge.Resources;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class DocumentsPanel : UserControl
+public sealed partial class DocumentsPanel : UserControl, IDocumentsView
 {
     private TabView _tabView;
 
@@ -14,19 +17,13 @@ public sealed partial class DocumentsPanel : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
+        ViewModel.DocumentsView = this;
+
         _tabView = new TabView()
             .IsAddTabButtonVisible(false)
             .TabWidthMode(TabViewWidthMode.SizeToContent)
             //.TabCloseRequested = "DocumentTabView_TabCloseRequested"
             .VerticalAlignment(VerticalAlignment.Stretch);
-
-        // Create a placeholder TabViewItem
-        var documentTab1 = new DocumentTab();
-        documentTab1.ViewModel.Name = "Placeholder 1";
-        documentTab1.Content = new WebDocumentView();
-
-        // Add the TabViewItem to the TabView
-        _tabView.TabItems.Add(documentTab1);
 
         //
         // Set the data context and page content
@@ -92,5 +89,49 @@ public sealed partial class DocumentsPanel : UserControl
             _tabView.TabStripFooter = new Grid()
                 .Width(48);
         }
+    }
+
+    public async Task<Result> OpenFileDocument(ResourceKey fileResource, string filePath)
+    {
+        // Check if the file is already opened
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (fileResource == tab.ViewModel.ResourceKey)
+            {
+                //  Activate the existing tab instead of opening a new one
+                _tabView.SelectedItem = tab;
+                return Result.Ok();
+            }
+        }
+
+        // Add a new DocumentTab to the TabView
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.ResourceKey = fileResource;
+        documentTab.ViewModel.FilePath = filePath;
+        documentTab.ViewModel.Name = fileResource.ResourceName;
+
+        var documentView = new WebDocumentView();
+
+        // Wait until the document control has loaded.
+        bool loaded = false;
+        documentView.Loaded += (sender, args) =>
+        {
+            loaded = true;
+        };
+
+        documentTab.Content = documentView;
+
+        _tabView.TabItems.Add(documentTab);
+        _tabView.SelectedItem = documentTab;
+
+        while (!loaded)
+        {
+            await Task.Delay(25);
+        }
+
+        return Result.Ok();
     }
 }
