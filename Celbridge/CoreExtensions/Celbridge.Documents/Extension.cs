@@ -11,6 +11,10 @@ public class Extension : IExtension
     {
         config.AddTransient<DocumentsPanel>();
         config.AddTransient<DocumentsPanelViewModel>();
+        config.AddTransient<DocumentTabViewModel>();
+        config.AddTransient<WebDocumentViewModel>();
+        config.AddTransient<TextDocumentViewModel>();
+
         config.AddTransient<IDocumentsService, DocumentsService>();
     }
 
