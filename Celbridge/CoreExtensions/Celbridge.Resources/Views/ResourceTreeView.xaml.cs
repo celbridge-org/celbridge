@@ -15,6 +15,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
+    private LocalizedString OpenString => _stringLocalizer.GetString("ResourceTree_Open");
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
     private LocalizedString FolderString => _stringLocalizer.GetString("ResourceTree_Folder");
     private LocalizedString FileString => _stringLocalizer.GetString("ResourceTree_File");
@@ -227,6 +228,21 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
     }
 
+    private void OpenResource(object? sender, RoutedEventArgs e)
+    {
+        var resource = AcquireContextMenuResource(sender);
+
+        if (resource is IFolderResource)
+        {
+            if (sender is MenuFlyoutItem menuFlyoutItem &&
+                menuFlyoutItem.DataContext is TreeViewNode folderNode)
+            {
+                // Opening a folder resource toggles the expanded state
+                folderNode.IsExpanded = !folderNode.IsExpanded;
+            }
+        }
+    }
+
     private void AddFile(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
@@ -288,12 +304,6 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         Guard.IsNotNull(resource);
 
         ViewModel.ShowRenameResourceDialog(resource);
-    }
-
-    private void OpenResource(object? sender, RoutedEventArgs e)
-    {
-        var element = sender as FrameworkElement;
-        Guard.IsNotNull(element);
     }
 
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)

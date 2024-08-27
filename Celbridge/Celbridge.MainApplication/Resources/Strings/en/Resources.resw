@@ -300,4 +300,7 @@
   <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
     <value>Enter a name for the new copy:</value>
   </data>
+  <data name="ResourceTree_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
 </root>
