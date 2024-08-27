@@ -15,6 +15,8 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
 
+    internal IDocumentsView DocumentsView { get; set; }
+
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
     public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
@@ -80,15 +82,22 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
             return Result.Fail($"Resource is not a file: '{fileResource}'");
         }
 
-        // Check if the file is already open
-        //  If so, activate the existing document
-        //  If not, create a new document tab
-        // Add resource to list of open documents
-        // Persist list to workspace state
+        string filePath = resourceRegistry.GetResourcePath(fileResource);
+        if (string.IsNullOrEmpty(filePath) ||
+            !File.Exists(filePath))
+        {
+            return Result.Fail($"File resource path does not exist: '{filePath}'");
+        }
 
-        // Todo: Add an interface to the DocumentsPanel view to allow the View Model to control it
+        var openResult = await DocumentsView.OpenFileDocument(fileResource, filePath);
+        if (openResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to open file document: {fileResource}");
+            failure.MergeErrors(openResult);
+            return failure;
+        }
 
-        _logger.LogInformation($"Opening file resource document '{fileResource}'");
+        _logger.LogInformation($"Opened file resource document '{fileResource}'");
 
         await Task.CompletedTask;
 
