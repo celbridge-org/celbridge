@@ -14,6 +14,15 @@
 	<PropertyGroup>
 		<!-- Bundles the WinAppSDK binaries -->
 		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+		<PackageCertificateThumbprint>CEB8411F585C9A7709B12315CDACA74199456F86</PackageCertificateThumbprint>
+		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+		<AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+		<GenerateTestArtifacts>True</GenerateTestArtifacts>
+		<AppxBundle>Never</AppxBundle>
+		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 
 		<!-- <SelfContained>true</SelfContained> -->
 	</PropertyGroup>
@@ -63,7 +72,7 @@
 		package has not yet been restored.
 	-->
 	<ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-		<ProjectCapability Include="Msix"/>
+		<ProjectCapability Include="Msix" />
 	</ItemGroup>
 
 	<!-- 
@@ -76,4 +85,8 @@
 	</PropertyGroup>
 
 	<Import Project="..\Celbridge.Base\base.props" />
+
+	<ItemGroup>
+	  <SourceGeneratorInput Remove="Celbridge.Windows_TemporaryKey.pfx" />
+	</ItemGroup>
 </Project>
