@@ -198,7 +198,7 @@ public class Result<T> : Result where T : notnull
         return new Result<T>(error, fileName, lineNumber);
     }
 
-    public static Result<T> Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
+    public new static Result<T> Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         return new Result<T>(exception, fileName, lineNumber);
     }

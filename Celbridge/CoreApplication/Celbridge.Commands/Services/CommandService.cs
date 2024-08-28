@@ -8,7 +8,10 @@ namespace Celbridge.Commands.Services;
 
 public class CommandService : ICommandService
 {
-    private const long SaveWorkspaceDelay = 250; // ms
+    /// <summary>
+    /// Time between flushing pending saves .
+    /// </summary>
+    private const double FlushPendingSaveInterval = 0.25; // seconds
 
     private readonly ILogger<CommandService> _logger;
     private readonly ILogSerializer _logSerializer;
@@ -16,19 +19,18 @@ public class CommandService : ICommandService
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // ExecutionTime is the time in milliseconds when the command should be executed
-    private record QueuedCommand(IExecutableCommand Command, long ExecutionTime, CommandExecutionMode ExecutionMode);
+    private record QueuedCommand(IExecutableCommand Command, CommandExecutionMode ExecutionMode);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
     private object _lock = new object();
 
     private readonly Stopwatch _stopwatch = new();
+    private double _lastFlushTime = 0;
 
     private bool _stopped = false;
 
     private UndoStack _undoStack = new ();
-
-    private long _saveWorkspaceTime;
 
     public CommandService(
         ILogger<CommandService> logger,
@@ -52,21 +54,7 @@ public class CommandService : ICommandService
         var command = CreateCommand<T>();
         command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
         configure.Invoke(command);
-        return EnqueueCommand(command, 0);
-    }
-
-    public Result Execute<T>
-    (
-        Action<T> configure,
-        uint delay,
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand
-    {
-        var command = CreateCommand<T>();
-        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
-        configure.Invoke(command);
-        return EnqueueCommand(command, delay);
+        return EnqueueCommand(command);
     }
 
     public Result Execute<T>
@@ -77,19 +65,7 @@ public class CommandService : ICommandService
     {
         var command = CreateCommand<T>();
         command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
-        return EnqueueCommand(command, 0);
-    }
-
-    public Result Execute<T>
-    (
-        uint delay,
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand
-    {
-        var command = CreateCommand<T>();
-        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
-        return EnqueueCommand(command, delay);
+        return EnqueueCommand(command);
     }
 
     public T CreateCommand<T>() where T : IExecutableCommand
@@ -102,21 +78,16 @@ public class CommandService : ICommandService
 
     public Result EnqueueCommand(IExecutableCommand command)
     {
-        return EnqueueCommand(command, 0);
-    }
-
-    public Result EnqueueCommand(IExecutableCommand command, uint delay)
-    {
         if (command.UndoStackName != UndoStackNames.None)
         {
             // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
             _undoStack.ClearRedoCommands(command.UndoStackName);
         }
 
-        return EnqueueCommandInternal(command, delay, CommandExecutionMode.Execute);
+        return EnqueueCommandInternal(command, CommandExecutionMode.Execute);
     }
 
-    private Result EnqueueCommandInternal(IExecutableCommand command, uint delay, CommandExecutionMode ExecutionMode)
+    private Result EnqueueCommandInternal(IExecutableCommand command, CommandExecutionMode ExecutionMode)
     {
         lock (_lock)
         {
@@ -125,8 +96,7 @@ public class CommandService : ICommandService
                 return Result.Fail($"Command '{command.CommandId}' is already in the execution queue");
             }
 
-            long executionTime = _stopwatch.ElapsedMilliseconds + delay;
-            _commandQueue.Add(new QueuedCommand(command, executionTime, ExecutionMode));
+            _commandQueue.Add(new QueuedCommand(command, ExecutionMode));
         }
 
         return Result.Ok();
@@ -186,8 +156,7 @@ public class CommandService : ICommandService
             foreach (var command in commandList)
             {
                 // Enqueue this command as an undo. 
-                // I'm assuming here that undos should always execute without delay, which may not be correct.
-                var enqueueResult = EnqueueCommandInternal(command, 0, CommandExecutionMode.Undo);
+                var enqueueResult = EnqueueCommandInternal(command, CommandExecutionMode.Undo);
                 if (enqueueResult.IsFailure)
                 {
                     return enqueueResult;
@@ -218,8 +187,7 @@ public class CommandService : ICommandService
             foreach (var command in commandList)
             {
                 // Enqueue this command as a redo (same as a normal execution).
-                // I'm assuming here that redos should always execute without delay, which may not be correct.
-                var enqueueResult = EnqueueCommandInternal(command, 0, CommandExecutionMode.Redo);
+                var enqueueResult = EnqueueCommandInternal(command, CommandExecutionMode.Redo);
                 if (enqueueResult.IsFailure)
                 {
                     return enqueueResult;
@@ -295,13 +263,12 @@ public class CommandService : ICommandService
                 break;
             }
 
-            var currentTime = _stopwatch.ElapsedMilliseconds;
-
-            // Saving the workspace should be performed while no command is executing.
-            var updateWorkspaceResult = await UpdateWorkspaceAsync(currentTime);
-            if (updateWorkspaceResult.IsFailure)
+            // To avoid race conditions, saving the workspace state and documents is performed while
+            // there are no executing commands, and no commands are executed until saving completes.
+            var flushResult = await FlushPendingSavesAsync();
+            if (flushResult.IsFailure)
             {
-                _logger.LogError($"Failed to update workspace. {updateWorkspaceResult.Error}");
+                _logger.LogError($"Failed to flush pending saves. {flushResult.Error}");
             }
 
             // Find the first command that is ready to execute
@@ -310,24 +277,12 @@ public class CommandService : ICommandService
 
             lock (_lock)
             {
-                int commandIndex = -1;
-                for (int i = 0; i < _commandQueue.Count; i++)
+                if (_commandQueue.Count > 0)
                 {
-                    var queuedCommand = _commandQueue[i];
-                    var commandExecutionTime = queuedCommand.ExecutionTime;
-                    if (currentTime >= commandExecutionTime)
-                    {
-                        commandIndex = i;
-                        break;
-                    }
-                }
-
-                if (commandIndex > -1)
-                {
-                    var item = _commandQueue[commandIndex];
+                    var item = _commandQueue[0];
                     command = item.Command;
                     executionMode = item.ExecutionMode;
-                    _commandQueue.RemoveAt(commandIndex);
+                    _commandQueue.RemoveAt(0);
                 }
             }
 
@@ -395,12 +350,10 @@ public class CommandService : ICommandService
                         }
 
                         // Save the workspace state if the command requires it.
-                        if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+                        if (_workspaceWrapper.IsWorkspacePageLoaded &&
+                            command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
                         {
-                            // To avoid saving too frequently, we set a timer to save the workspace state after a short delay.
-                            // If any commands with the SaveWorkspaceState flag are executed before this timer expires,
-                            // the timer will be extended again. 
-                            _saveWorkspaceTime = _stopwatch.ElapsedMilliseconds + SaveWorkspaceDelay;
+                            _workspaceWrapper.WorkspaceService.SetWorkspaceStateIsDirty();
                         }
                     }
                 }
@@ -420,21 +373,34 @@ public class CommandService : ICommandService
     }
 
     /// <summary>
-    /// Save the workspace state if a recently executed command has requested it
+    /// Flush any pending save operations before the next command executes.
     /// </summary>
-    private async Task<Result> UpdateWorkspaceAsync(long currentTime)
+    private async Task<Result> FlushPendingSavesAsync()
     {
-        if (_saveWorkspaceTime > 0 &&
-            currentTime > _saveWorkspaceTime)
+        var now = _stopwatch.Elapsed.TotalSeconds;
+        var deltaTime = now - _lastFlushTime;
+        if (deltaTime < FlushPendingSaveInterval)
         {
-            var saveResult = await _workspaceWrapper.WorkspaceService.SaveWorkspaceStateAsync();
-            _saveWorkspaceTime = 0; // Reset the timer
-
-            if (saveResult.IsFailure)
-            {
-                return saveResult;
-            }
+            // Not enough time has passed since the last flush.
+            return Result.Ok();
         }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            // No workspace is loaded, so there is nothing to save.
+            return Result.Ok();
+        }
+
+        var flushResult = await _workspaceWrapper.WorkspaceService.FlushPendingSaves();
+        if (flushResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to flush pending saves");
+            failure.MergeErrors(flushResult);
+            return failure;
+        }
+
+        // Restart the timer to account for time spent saving
+        _lastFlushTime = _stopwatch.Elapsed.TotalSeconds;
 
         return Result.Ok();
     }
