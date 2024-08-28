@@ -1,8 +1,9 @@
-﻿using Celbridge.Documents.ViewModels;
+﻿using Celbridge.Documents.Services;
+using Celbridge.Documents.ViewModels;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebDocumentView : UserControl
+public sealed partial class WebDocumentView : UserControl, IDocumentView
 {
     public WebDocumentViewModel ViewModel { get; }
 
@@ -21,5 +22,13 @@ public sealed partial class WebDocumentView : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(webView));
+    }
+
+    public bool IsDirty => false;
+
+    public async Task<Result> SaveDocument()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
     }
 }

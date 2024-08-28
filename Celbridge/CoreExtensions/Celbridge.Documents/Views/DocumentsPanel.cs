@@ -5,7 +5,7 @@ using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class DocumentsPanel : UserControl, IDocumentsView
+public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
 {
     private TabView _tabView;
 
@@ -159,12 +159,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
     {
         foreach (var tabItem in _tabView.TabItems)
         {
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
 
-            if (fileResource == tab.ViewModel.ResourceKey)
+            if (fileResource == documentTab.ViewModel.ResourceKey)
             {
-                var closeResult = await tab.ViewModel.CloseDocument();
+                var closeResult = await documentTab.ViewModel.CloseDocument();
                 if (closeResult.IsFailure)
                 {
                     var failure = Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'");
@@ -176,7 +176,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
 
                 if (didClose)
                 {
-                    _tabView.TabItems.Remove(tab);
+                    _tabView.TabItems.Remove(documentTab);
                 }
 
                 return Result.Ok();
@@ -184,5 +184,36 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
         }
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+    }
+
+    public async Task<Result> SaveModifiedDocuments()
+    {
+        List<ResourceKey> failedSaves = new();
+
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            var documentView = documentTab.Content as IDocumentView;
+            Guard.IsNotNull(documentView);
+
+            if (documentView.IsDirty)
+            {
+                var saveResult = await documentView.SaveDocument();
+                if (saveResult.IsFailure)
+                {
+                    // Make a note of the failed save and continue saving other documents
+                    failedSaves.Add(documentTab.ViewModel.ResourceKey);
+                }
+            }
+        }
+
+        if (failedSaves.Count > 0)
+        {
+            return Result.Fail($"Failed to save the following documents: {string.Join(", ", failedSaves)}");
+        }
+
+        return Result.Ok();
     }
 }

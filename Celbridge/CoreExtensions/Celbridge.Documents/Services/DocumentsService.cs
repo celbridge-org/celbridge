@@ -51,6 +51,21 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
+    public async Task<Result> SaveModifiedDocuments()
+    {
+        Guard.IsNotNull(DocumentsManager);
+
+        var saveResult = await DocumentsManager.SaveModifiedDocuments();
+        if (saveResult.IsFailure)
+        {
+            var failure = Result.Fail("Failed to save modified documents");
+            failure.MergeErrors(saveResult);
+            return failure;
+        }
+
+        return Result.Ok();
+    }
+
     private bool _disposed;
 
     public void Dispose()
