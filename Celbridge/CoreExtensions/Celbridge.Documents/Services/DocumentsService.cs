@@ -29,15 +29,30 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _serviceProvider.GetRequiredService<DocumentsPanel>();
     }
 
-    public async Task<Result> OpenFileDocument(ResourceKey fileResource)
+    public async Task<Result> OpenDocument(ResourceKey fileResource)
     {
         Guard.IsNotNull(DocumentsManager);
 
-        var openResult = await DocumentsManager.OpenFileDocument(fileResource);
+        var openResult = await DocumentsManager.OpenDocument(fileResource);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open file resource '{fileResource}'");
+            var failure = Result.Fail($"Failed to open document for file resource '{fileResource}'");
             failure.MergeErrors(openResult);
+            return failure;
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> CloseDocument(ResourceKey fileResource)
+    {
+        Guard.IsNotNull(DocumentsManager);
+
+        var closeResult = await DocumentsManager.CloseDocument(fileResource);
+        if (closeResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to close document for file resource '{fileResource}'");
+            failure.MergeErrors(closeResult);
             return failure;
         }
 

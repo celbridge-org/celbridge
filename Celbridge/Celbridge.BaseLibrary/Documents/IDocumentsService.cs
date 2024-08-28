@@ -13,7 +13,12 @@ public interface IDocumentsService
     object CreateDocumentsPanel();
 
     /// <summary>
-    /// Opens a file resource as an editable document.
+    /// Opens a file resource as an editable document in the documents panel.
     /// </summary>
-    Task<Result> OpenFileDocument(ResourceKey fileResource);
+    Task<Result> OpenDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// Closes an opened document in the documents panel.
+    /// </summary>
+    Task<Result> CloseDocument(ResourceKey fileResource);
 }
