@@ -63,7 +63,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _workspaceStateIsDirty = true;
     }
 
-    public async Task<Result> FlushPendingSaves()
+    public async Task<Result> FlushPendingSaves(double deltaTime)
     {
         // Save the workspace state after a delay to avoid saving too frequently
         if (_workspaceStateIsDirty)
@@ -72,16 +72,16 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to flush pending workspace state save");
+                var failure = Result.Fail($"Failed to save workspace state");
                 failure.MergeErrors(saveWorkspaceResult);
                 return failure;
             }
         }
 
-        var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments();
+        var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
         if (saveDocumentsResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to flush pending document saves");
+            var failure = Result.Fail($"Failed to save modified documents");
             failure.MergeErrors(saveDocumentsResult);
             return failure;
         }
@@ -104,7 +104,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
         if (setFoldersResult.IsFailure)
         {
-            return Result.Fail($"Failed to Save Workspace State. {setFoldersResult.Error}");
+            return Result.Fail($"Failed to set expanded folders. {setFoldersResult.Error}");
         }
 
         return Result.Ok();

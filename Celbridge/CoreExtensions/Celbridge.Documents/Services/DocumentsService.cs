@@ -8,7 +8,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
 
-    internal IDocumentsManager? DocumentsManager { get; set; }
+    internal IDocumentsPanelViewModel? DocumentsManager { get; set; }
 
     public DocumentsService(
         IServiceProvider serviceProvider)
@@ -51,11 +51,11 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> SaveModifiedDocuments()
+    public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
         Guard.IsNotNull(DocumentsManager);
 
-        var saveResult = await DocumentsManager.SaveModifiedDocuments();
+        var saveResult = await DocumentsManager.SaveModifiedDocuments(deltaTime);
         if (saveResult.IsFailure)
         {
             var failure = Result.Fail("Failed to save modified documents");
