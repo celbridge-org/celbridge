@@ -6,7 +6,7 @@ namespace Celbridge.Documents.Views;
 
 public class DocumentViewFactory
 {
-    public Result<Control> CreateDocumentView(ResourceKey fileResource, string filePath)
+    public async Task<Result<Control>> CreateDocumentView(ResourceKey fileResource, string filePath)
     {
         Control? documentView;
 
@@ -20,15 +20,12 @@ public class DocumentViewFactory
         {
             var textDocumentView = new TextDocumentView();
 
-            try
+            var loadResult = await textDocumentView.ViewModel.LoadDocument(filePath);
+            if (loadResult.IsFailure)
             {
-                // Read the file contents to initialize the text editor
-                var text = File.ReadAllText(filePath);
-                textDocumentView.ViewModel.Text = text;
-            }
-            catch (Exception ex)
-            {
-                return Result<Control>.Fail(ex, $"Failed to read file contents for file resource: '{fileResource}'");
+                var failure = Result<Control>.Fail($"Failed to create document view for file resource: '{fileResource}'");
+                failure.MergeErrors(loadResult);
+                return failure;
             }
 
             documentView = textDocumentView;
