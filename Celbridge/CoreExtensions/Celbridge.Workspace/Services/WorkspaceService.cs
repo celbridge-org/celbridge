@@ -26,6 +26,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private IResourceRegistryDumper _resourceRegistryDumper;
 
+    private bool _workspaceStateIsDirty;
+
     public WorkspaceService(
         IServiceProvider serviceProvider, 
         IProjectService projectService)
@@ -56,7 +58,34 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _resourceRegistryDumper.Initialize(logFolderPath);
     }
 
-    public async Task<Result> SaveWorkspaceStateAsync()
+    public void SetWorkspaceStateIsDirty()
+    {
+        _workspaceStateIsDirty = true;
+    }
+
+    public async Task<Result> FlushPendingSaves()
+    {
+        // Save the workspace state after a delay to avoid saving too frequently
+        if (_workspaceStateIsDirty)
+        {
+            _workspaceStateIsDirty = false;
+            var saveResult = await SaveWorkspaceStateAsync();
+            if (saveResult.IsFailure)
+            {
+                var failure = Result.Fail($"Failed to flush pending workspace state save");
+                failure.MergeErrors(saveResult);
+                return failure;
+            }
+        }
+
+        // Todo: Save pending modified documents
+
+        // Todo: Clear save icon on the status bar
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> SaveWorkspaceStateAsync()
     {
         // Save the expanded folders in the Resource Registry
 

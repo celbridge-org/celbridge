@@ -18,35 +18,11 @@ public interface ICommandService
     ) where T : IExecutableCommand;
 
     /// <summary>
-    /// Create, configure and enqueue a command in one step, with a delay.
-    /// The delay is the minimum time (in milliseconds) before the command will execute. 
-    /// </summary>
-    Result Execute<T>
-    (
-        Action<T> configure, 
-        uint delay,
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand;
-
-    /// <summary>
     /// Create and enqueue a command in one step.
     /// Use this for commands that don't need to be configured.
     /// </summary>
     Result Execute<T>
     (
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand;
-
-    /// <summary>
-    /// Create and enqueue a command in one step, with a delay.
-    /// Use this for commands that don't need to be configured.
-    /// The delay is the minimum time (in milliseconds) before the command will execute. 
-    /// </summary>
-    Result Execute<T>
-    (
-        uint delay,
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0
     ) where T : IExecutableCommand;
@@ -61,13 +37,6 @@ public interface ICommandService
     /// It will be executed when it reaches the front of the queue.
     /// </summary>
     Result EnqueueCommand(IExecutableCommand command);
-
-    /// <summary>
-    /// Add the command to the queue, with a delay.
-    /// The delay is the minimum time (in milliseconds) before the command will execute. 
-    /// Actual execution might take longer than the delay time, depending on what other commands execute ahead of it in the queue.
-    /// </summary>
-    Result EnqueueCommand(IExecutableCommand command, uint Delay);
 
     /// <summary>
     /// Returns true if a command of the given type is in the queue.
