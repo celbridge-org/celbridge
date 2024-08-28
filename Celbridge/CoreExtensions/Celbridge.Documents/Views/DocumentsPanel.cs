@@ -2,7 +2,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Resources;
 using CommunityToolkit.Diagnostics;
-using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Views;
 
@@ -11,6 +10,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
     private TabView _tabView;
 
     public DocumentsPanelViewModel ViewModel { get; }
+
+    private DocumentViewFactory _documentViewFactory = new();
 
     public DocumentsPanel()
     {
@@ -119,7 +120,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
             }
         }
 
-        var createResult = CreateDocumentView(fileResource, filePath);
+        var createResult = _documentViewFactory.CreateDocumentView(fileResource, filePath);
         if (createResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
@@ -152,34 +153,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
         }
 
         return Result.Ok();
-    }
-
-    private Result<Control> CreateDocumentView(ResourceKey fileResource, string filePath)
-    {
-        // Todo: Implement an extensible factory service for creating document views based on the file type.
-        // The main job of the factory is to customize the behaviour of one of the built-in document views that we provide (e.g. adding toolbar buttons).
-        // To do this properly, we should implement the Markdown/AsciiDoc editors via extension assemblies.
-
-        Control? documentView = null;
-
-        var extension = Path.GetExtension(filePath);
-        if (extension == ".web")
-        {
-            // Todo: Read the URL from the resource properties
-            documentView = new WebDocumentView();
-        }
-        else
-        {
-            // Todo: Read the file contents to initialize the text editor
-            documentView = new TextDocumentView();
-        }
-
-        if (documentView is null)
-        {
-            return Result<Control>.Fail($"Failed to create document view for file resource: '{fileResource}'");
-        }
-
-        return Result<Control>.Ok(documentView);
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource)

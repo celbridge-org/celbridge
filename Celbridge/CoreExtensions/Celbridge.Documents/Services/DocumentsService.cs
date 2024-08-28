@@ -1,7 +1,5 @@
 ﻿using Celbridge.Documents.Views;
-using Celbridge.Logging;
 using Celbridge.Resources;
-using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Services;
@@ -9,19 +7,13 @@ namespace Celbridge.Documents.Services;
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<DocumentsService> _logger;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     internal IDocumentsManager? DocumentsManager { get; set; }
 
     public DocumentsService(
-        IServiceProvider serviceProvider,
-        ILogger<DocumentsService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        _logger = logger;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public object CreateDocumentsPanel()
