@@ -120,7 +120,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
             }
         }
 
-        var createResult = _documentViewFactory.CreateDocumentView(fileResource, filePath);
+        var createResult = await _documentViewFactory.CreateDocumentView(fileResource, filePath);
         if (createResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
