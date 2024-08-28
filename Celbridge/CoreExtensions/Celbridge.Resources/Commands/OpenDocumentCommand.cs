@@ -3,14 +3,14 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class OpenFileResourceCommand : CommandBase, IOpenFileResourceCommand
+public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
     public ResourceKey FileResource { get; set; }
 
-    public OpenFileResourceCommand(IWorkspaceWrapper workspaceWrapper)
+    public OpenDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -19,7 +19,7 @@ public class OpenFileResourceCommand : CommandBase, IOpenFileResourceCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var openResult = await documentsService.OpenFileDocument(FileResource);
+        var openResult = await documentsService.OpenDocument(FileResource);
         if (openResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to open file resource '{FileResource}'");
@@ -33,10 +33,10 @@ public class OpenFileResourceCommand : CommandBase, IOpenFileResourceCommand
     //
     // Static methods for scripting support.
     //
-    public static void OpenFile(ResourceKey fileResource)
+    public static void OpenDocument(ResourceKey fileResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IOpenFileResourceCommand>(command =>
+        commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
         });

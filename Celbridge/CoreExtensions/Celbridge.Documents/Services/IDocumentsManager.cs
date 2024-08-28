@@ -8,7 +8,12 @@ namespace Celbridge.Documents.Services;
 internal interface IDocumentsManager
 {
     /// <summary>
-    /// Open a file document in the documents panel.
+    /// Open a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenFileDocument(ResourceKey fileResource);
+    Task<Result> OpenDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// Close an opened document in the documents panel.
+    /// </summary>
+    Task<Result> CloseDocument(ResourceKey fileResource);
 }

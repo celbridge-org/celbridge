@@ -1,0 +1,44 @@
+﻿using Celbridge.Commands;
+using Celbridge.Workspace;
+
+namespace Celbridge.Resources.Commands;
+
+public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
+{
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
+
+    public ResourceKey FileResource { get; set; }
+
+    public CloseDocumentCommand(IWorkspaceWrapper workspaceWrapper)
+    {
+        _workspaceWrapper = workspaceWrapper;
+    }
+
+    public override async Task<Result> ExecuteAsync()
+    {
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+        var openResult = await documentsService.CloseDocument(FileResource);
+        if (openResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to close document for file resource '{FileResource}'");
+            failure.MergeErrors(openResult);
+            return failure;
+        }
+
+        return Result.Ok();
+    }
+
+    //
+    // Static methods for scripting support.
+    //
+    public static void CloseDocument(ResourceKey fileResource)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ICloseDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+        });
+    }
+}
