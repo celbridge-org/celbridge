@@ -15,7 +15,7 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
 
-    internal IDocumentsView? DocumentsView { get; set; }
+    internal IDocumentsPanelView? DocumentsView { get; set; }
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
@@ -124,4 +124,20 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
 
         return Result.Ok();
     }
+
+    public async Task<Result> SaveModifiedDocuments()
+    {
+        Guard.IsNotNull(DocumentsView);
+
+        var saveResult = await DocumentsView.SaveModifiedDocuments();
+        if (saveResult.IsFailure)
+        {
+            var failure = Result.Fail("Failed to save modified documents");
+            failure.MergeErrors(saveResult);
+            return failure;
+        }
+
+        return Result.Ok();
+    }
+
 }
