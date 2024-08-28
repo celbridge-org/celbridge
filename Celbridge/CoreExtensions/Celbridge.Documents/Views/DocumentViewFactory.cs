@@ -18,8 +18,20 @@ public class DocumentViewFactory
         }
         else
         {
-            // Todo: Read the file contents to initialize the text editor
-            documentView = new TextDocumentView();
+            var textDocumentView = new TextDocumentView();
+
+            try
+            {
+                // Read the file contents to initialize the text editor
+                var text = File.ReadAllText(filePath);
+                textDocumentView.ViewModel.Text = text;
+            }
+            catch (Exception ex)
+            {
+                return Result<Control>.Fail(ex, $"Failed to read file contents for file resource: '{fileResource}'");
+            }
+
+            documentView = textDocumentView;
         }
 
         if (documentView is null)
