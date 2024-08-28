@@ -4,6 +4,9 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class TextDocumentViewModel : DocumentViewModel
 {
+    // Delay before saving the document after the most recent change
+    private const double SaveDelay = 2.0; // Seconds
+
     private string _filePath = string.Empty;
 
     [ObservableProperty]
@@ -11,6 +14,9 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     [ObservableProperty]
     private bool _isDirty = false;
+
+    [ObservableProperty]
+    private double _saveTimer;
 
     public async Task<Result> LoadDocument(string filePath)
     {
@@ -34,10 +40,31 @@ public partial class TextDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
+    public Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        if (!IsDirty)
+        {
+            return Result<bool>.Fail("Document is not dirty");
+        }
+
+        if (SaveTimer > 0)
+        {
+            SaveTimer -= deltaTime;
+            if (SaveTimer <= 0)
+            {
+                SaveTimer = 0;
+                return Result<bool>.Ok(true);
+            }
+        }
+
+        return Result<bool>.Ok(false);
+    }
+
     public async Task<Result> SaveDocument()
     {
         // Don't immediately try to save again if the save fails.
         IsDirty = false;
+        SaveTimer = 0;
 
         try
         {
@@ -62,5 +89,6 @@ public partial class TextDocumentViewModel : DocumentViewModel
     public void OnTextChanged()
     {
         IsDirty = true;
+        SaveTimer = SaveDelay;
     }
 }

@@ -5,7 +5,7 @@ namespace Celbridge.Documents.Services;
 /// <summary>
 /// Interface for interacting with the DocumentsPanelViewModel.
 /// </summary>
-internal interface IDocumentsManager
+internal interface IDocumentsPanelViewModel
 {
     /// <summary>
     /// Open a file resource as a document in the documents panel.
@@ -20,5 +20,5 @@ internal interface IDocumentsManager
     /// <summary>
     /// Save any modified documents to disk.
     /// </summary>
-    Task<Result> SaveModifiedDocuments();
+    Task<Result> SaveModifiedDocuments(double deltaTime);
 }

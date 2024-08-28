@@ -9,13 +9,13 @@ using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManager
+public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsPanelViewModel
 {
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
 
-    internal IDocumentsPanelView? DocumentsView { get; set; }
+    internal IDocumentsPanel? DocumentsView { get; set; }
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
@@ -125,11 +125,11 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
         return Result.Ok();
     }
 
-    public async Task<Result> SaveModifiedDocuments()
+    public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
         Guard.IsNotNull(DocumentsView);
 
-        var saveResult = await DocumentsView.SaveModifiedDocuments();
+        var saveResult = await DocumentsView.SaveModifiedDocuments(deltaTime);
         if (saveResult.IsFailure)
         {
             var failure = Result.Fail("Failed to save modified documents");

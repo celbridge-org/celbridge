@@ -26,6 +26,11 @@ public sealed partial class WebDocumentView : UserControl, IDocumentView
 
     public bool IsDirty => false;
 
+    public Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<Result> SaveDocument()
     {
         await Task.CompletedTask;
