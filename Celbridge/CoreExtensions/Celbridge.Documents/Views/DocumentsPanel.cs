@@ -1,12 +1,15 @@
 ﻿using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
 using Celbridge.Resources;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
+public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
+    private ILogger<DocumentsPanel> _logger;
+
     private TabView _tabView;
 
     public DocumentsPanelViewModel ViewModel { get; }
@@ -16,6 +19,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
     public DocumentsPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+
+        _logger = serviceProvider.GetRequiredService<ILogger<DocumentsPanel>>();
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
@@ -186,8 +191,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 
-    public async Task<Result> SaveModifiedDocuments()
+    public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
+        int savedCount = 0;
         List<ResourceKey> failedSaves = new();
 
         foreach (var tabItem in _tabView.TabItems)
@@ -200,11 +206,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
 
             if (documentView.IsDirty)
             {
+                var updateResult = documentView.UpdateSaveTimer(deltaTime);
+                Guard.IsTrue(updateResult.IsSuccess); // Should never fail
+
+                var shouldSave = updateResult.Value;
+                if (!shouldSave)
+                {
+                    continue;
+                }
+
                 var saveResult = await documentView.SaveDocument();
                 if (saveResult.IsFailure)
                 {
                     // Make a note of the failed save and continue saving other documents
                     failedSaves.Add(documentTab.ViewModel.ResourceKey);
+                }
+                else
+                {
+                    savedCount++;
                 }
             }
         }
@@ -212,6 +231,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanelView
         if (failedSaves.Count > 0)
         {
             return Result.Fail($"Failed to save the following documents: {string.Join(", ", failedSaves)}");
+        }
+
+        if (savedCount > 0)
+        {
+            _logger.LogInformation($"Saved {savedCount} modified documents");
         }
 
         return Result.Ok();

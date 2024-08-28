@@ -11,6 +11,13 @@ public interface IDocumentView
     bool IsDirty { get; }
 
     /// <summary>
+    /// Update the save timer on the document to avoid writing to disk too frequently.
+    /// Returns true when the timer has expired.
+    /// Fails if the document is not dirty.
+    /// </summary>
+    Result<bool> UpdateSaveTimer(double deltaTime);
+
+    /// <summary>
     /// Save the document to disk.
     /// </summary>
     Task<Result> SaveDocument();

@@ -30,6 +30,11 @@ public sealed partial class TextDocumentView : UserControl, IDocumentView
 
     public bool IsDirty => ViewModel.IsDirty;
 
+    public Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        return ViewModel.UpdateSaveTimer(deltaTime);
+    }
+
     public async Task<Result> SaveDocument()
     {
         return await ViewModel.SaveDocument();

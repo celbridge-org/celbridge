@@ -11,7 +11,7 @@ public class CommandService : ICommandService
     /// <summary>
     /// Time between flushing pending saves .
     /// </summary>
-    private const double FlushPendingSaveInterval = 0.25; // seconds
+    private const double FlushPendingSaveInterval = 0.2; // seconds
 
     private readonly ILogger<CommandService> _logger;
     private readonly ILogSerializer _logSerializer;
@@ -391,7 +391,7 @@ public class CommandService : ICommandService
             return Result.Ok();
         }
 
-        var flushResult = await _workspaceWrapper.WorkspaceService.FlushPendingSaves();
+        var flushResult = await _workspaceWrapper.WorkspaceService.FlushPendingSaves(deltaTime);
         if (flushResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to flush pending saves");

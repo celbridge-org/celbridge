@@ -24,6 +24,8 @@ public interface IDocumentsService
 
     /// <summary>
     /// Save any modified documents to disk.
+    /// This method is called on a timer to save modified documents at regular intervals.
+    /// Delta time is the time since this method was last called.
     /// </summary>
-    Task<Result> SaveModifiedDocuments();
+    Task<Result> SaveModifiedDocuments(double deltaTime);
 }
