@@ -32,7 +32,7 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsPanel
         // Give the Documents Service a reference to this view model via the internal IDocumentsManager interface.
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
-        documentsService.DocumentsManager = this;
+        documentsService.DocumentsPanelViewMode = this;
 
         _editorSettings = editorSettings;
 

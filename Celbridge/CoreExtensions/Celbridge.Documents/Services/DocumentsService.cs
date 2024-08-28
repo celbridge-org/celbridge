@@ -8,7 +8,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
 
-    internal IDocumentsPanelViewModel? DocumentsManager { get; set; }
+    internal IDocumentsPanelViewModel? DocumentsPanelViewMode { get; set; }
 
     public DocumentsService(
         IServiceProvider serviceProvider)
@@ -23,9 +23,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenDocument(ResourceKey fileResource)
     {
-        Guard.IsNotNull(DocumentsManager);
+        Guard.IsNotNull(DocumentsPanelViewMode);
 
-        var openResult = await DocumentsManager.OpenDocument(fileResource);
+        var openResult = await DocumentsPanelViewMode.OpenDocument(fileResource);
         if (openResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to open document for file resource '{fileResource}'");
@@ -38,9 +38,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> CloseDocument(ResourceKey fileResource)
     {
-        Guard.IsNotNull(DocumentsManager);
+        Guard.IsNotNull(DocumentsPanelViewMode);
 
-        var closeResult = await DocumentsManager.CloseDocument(fileResource);
+        var closeResult = await DocumentsPanelViewMode.CloseDocument(fileResource);
         if (closeResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to close document for file resource '{fileResource}'");
@@ -53,9 +53,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
-        Guard.IsNotNull(DocumentsManager);
+        Guard.IsNotNull(DocumentsPanelViewMode);
 
-        var saveResult = await DocumentsManager.SaveModifiedDocuments(deltaTime);
+        var saveResult = await DocumentsPanelViewMode.SaveModifiedDocuments(deltaTime);
         if (saveResult.IsFailure)
         {
             var failure = Result.Fail("Failed to save modified documents");
