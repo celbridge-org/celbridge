@@ -69,16 +69,22 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
-            var saveResult = await SaveWorkspaceStateAsync();
-            if (saveResult.IsFailure)
+            var saveWorkspaceResult = await SaveWorkspaceStateAsync();
+            if (saveWorkspaceResult.IsFailure)
             {
                 var failure = Result.Fail($"Failed to flush pending workspace state save");
-                failure.MergeErrors(saveResult);
+                failure.MergeErrors(saveWorkspaceResult);
                 return failure;
             }
         }
 
-        // Todo: Save pending modified documents
+        var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments();
+        if (saveDocumentsResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to flush pending document saves");
+            failure.MergeErrors(saveDocumentsResult);
+            return failure;
+        }
 
         // Todo: Clear save icon on the status bar
 

@@ -21,4 +21,9 @@ public interface IDocumentsService
     /// Closes an opened document in the documents panel.
     /// </summary>
     Task<Result> CloseDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// Save any modified documents to disk.
+    /// </summary>
+    Task<Result> SaveModifiedDocuments();
 }

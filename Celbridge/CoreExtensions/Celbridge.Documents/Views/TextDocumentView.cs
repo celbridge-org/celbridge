@@ -1,8 +1,9 @@
-﻿using Celbridge.Documents.ViewModels;
+﻿using Celbridge.Documents.Services;
+using Celbridge.Documents.ViewModels;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class TextDocumentView : UserControl
+public sealed partial class TextDocumentView : UserControl, IDocumentView
 {
     public TextDocumentViewModel ViewModel { get; }
 
@@ -25,5 +26,12 @@ public sealed partial class TextDocumentView : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(textBox));
+    }
+
+    public bool IsDirty => ViewModel.IsDirty;
+
+    public async Task<Result> SaveDocument()
+    {
+        return await ViewModel.SaveDocument();
     }
 }
