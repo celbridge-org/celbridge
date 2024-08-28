@@ -1,5 +1,5 @@
-﻿using Celbridge.Documents.Services;
-using Celbridge.Logging;
+﻿using Celbridge.Commands;
+using Celbridge.Documents.Services;
 using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
@@ -11,22 +11,22 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManager
 {
-    private readonly ILogger<DocumentsPanelViewModel> _logger;
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
 
-    internal IDocumentsView DocumentsView { get; set; }
+    internal IDocumentsView? DocumentsView { get; set; }
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
     public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
 
     public DocumentsPanelViewModel(
-        ILogger<DocumentsPanelViewModel> logger,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IEditorSettings editorSettings)
     {
-        _logger = logger;
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
 
         // Give the Documents Service a reference to this view model via the internal IDocumentsManager interface.
@@ -66,8 +66,18 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
         }
     }
 
-    public async Task<Result> OpenFileDocument(ResourceKey fileResource)
+    public void OnCloseDocumentRequested(ResourceKey fileResource)
     {
+        _commandService.Execute<ICloseDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+        });
+    }
+
+    public async Task<Result> OpenDocument(ResourceKey fileResource)
+    {
+        Guard.IsNotNull(DocumentsView);
+
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(fileResource);
@@ -89,17 +99,28 @@ public partial class DocumentsPanelViewModel : ObservableObject, IDocumentsManag
             return Result.Fail($"File resource path does not exist: '{filePath}'");
         }
 
-        var openResult = await DocumentsView.OpenFileDocument(fileResource, filePath);
+        var openResult = await DocumentsView.OpenDocument(fileResource, filePath);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open file document: {fileResource}");
+            var failure = Result.Fail($"Failed to open document for file resource: {fileResource}");
             failure.MergeErrors(openResult);
             return failure;
         }
 
-        _logger.LogInformation($"Opened file resource document '{fileResource}'");
+        return Result.Ok();
+    }
 
-        await Task.CompletedTask;
+    public async Task<Result> CloseDocument(ResourceKey fileResource)
+    {
+        Guard.IsNotNull(DocumentsView);
+
+        var closeResult = await DocumentsView.CloseDocument(fileResource);
+        if (closeResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to close document for file resource: {fileResource}");
+            failure.MergeErrors(closeResult);
+            return failure;
+        }
 
         return Result.Ok();
     }

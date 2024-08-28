@@ -2,7 +2,10 @@
 
 namespace Celbridge.Resources;
 
-public interface IOpenFileResourceCommand : IExecutableCommand
+/// <summary>
+/// Open a document in the documents panel.
+/// </summary>
+public interface IOpenDocumentCommand : IExecutableCommand
 {
     /// <summary>
     /// The resource key of the file to open.

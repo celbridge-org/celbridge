@@ -22,8 +22,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
         _tabView = new TabView()
             .IsAddTabButtonVisible(false)
             .TabWidthMode(TabViewWidthMode.SizeToContent)
-            //.TabCloseRequested = "DocumentTabView_TabCloseRequested"
             .VerticalAlignment(VerticalAlignment.Stretch);
+
+        _tabView.TabCloseRequested += TabView_CloseRequested;
 
         //
         // Set the data context and page content
@@ -39,6 +40,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
 
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
+    }
+
+    private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    {
+        var tab = args.Tab as DocumentTab;
+        Guard.IsNotNull(tab);
+
+        var fileResource = tab.ViewModel.ResourceKey;
+
+        ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
@@ -91,7 +102,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
         }
     }
 
-    public async Task<Result> OpenFileDocument(ResourceKey fileResource, string filePath)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath)
     {
         // Check if the file is already opened
         foreach (var tabItem in _tabView.TabItems)
@@ -133,5 +144,36 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsView
         }
 
         return Result.Ok();
+    }
+
+    public async Task<Result> CloseDocument(ResourceKey fileResource)
+    {
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (fileResource == tab.ViewModel.ResourceKey)
+            {
+                var closeResult = await tab.ViewModel.CloseDocument();
+                if (closeResult.IsFailure)
+                {
+                    var failure = Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'");
+                    failure.MergeErrors(closeResult);
+                    return failure;
+                }
+
+                var didClose = closeResult.Value;
+
+                if (didClose)
+                {
+                    _tabView.TabItems.Remove(tab);
+                }
+
+                return Result.Ok();
+            }
+        }
+
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 }
