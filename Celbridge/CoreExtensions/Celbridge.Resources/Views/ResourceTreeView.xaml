@@ -16,43 +16,44 @@
                     Placement="RightEdgeAlignedTop"
                     Opening="ResourceContextMenu_Opening">
             <MenuFlyoutItem Text="{x:Bind OpenString}" 
-                                Click="OpenResource"
-                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+                            Click="ResourceContextMenu_Open"
+                            IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
                 <MenuFlyoutItem Text="{x:Bind FolderString}" 
-                            Icon="Folder"
-                            Click="AddFolder"/>
+                                Icon="Folder"
+                                Click="ResourceContextMenu_AddFolder"/>
                 <MenuFlyoutItem Text="{x:Bind FileString}" 
                                 Icon="Add"
-                                Click="AddFile"/>
+                                Click="ResourceContextMenu_AddFile"/>
             </MenuFlyoutSubItem>
             <MenuFlyoutSubItem Text="{x:Bind EditString}">
                 <MenuFlyoutItem Text="{x:Bind CutString}" 
                                 Icon="Cut"
-                                Click="CutResource"
+                                Click="ResourceContextMenu_Cut"
                                 IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind CopyString}" 
                                 Icon="Copy"
-                                Click="CopyResource"
+                                Click="ResourceContextMenu_Copy"
                                 IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind PasteString}" 
                                 Icon="Paste"
-                                Click="PasteResource"
+                                Click="ResourceContextMenu_Paste"
                                 IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind DeleteString}" 
                                 Icon="Delete"
-                                Click="DeleteResource"
+                                Click="ResourceContextMenu_Delete"
                                 IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="{x:Bind RenameString}" 
                                 Icon="Edit"
-                                Click="RenameResource"
+                                Click="ResourceContextMenu_Rename"
                                 IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
             </MenuFlyoutSubItem>
         </MenuFlyout>
 
         <DataTemplate x:Key="FolderTemplate"
                       x:DataType="muxc:TreeViewNode">
-            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
+                               DoubleTapped="TreeViewItem_DoubleTapped">
                 <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{StaticResource OctIconsFontFamily}"
                               Glyph="&#xF016;" 
@@ -66,9 +67,10 @@
 
         <DataTemplate x:Key="FileTemplate"
                       x:DataType="muxc:TreeViewNode">
-            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
+                               DoubleTapped="TreeViewItem_DoubleTapped">
 
-                <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal">
                     <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
                               Glyph="{Binding Path=Content.Icon.FontCharacter}" 
                               Foreground="{Binding Path=Content.Icon.FontColor}"
@@ -100,9 +102,7 @@
                        DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
                        AllowDrop="True" 
                        DragOver="ResourcesTreeView_DragOver" 
-                       Drop="ResourcesTreeView_Drop"
-                       
-                       >
+                       Drop="ResourcesTreeView_Drop">
         </muxc:TreeView>
     </ScrollViewer>
 </UserControl>
