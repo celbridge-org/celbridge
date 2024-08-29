@@ -11,4 +11,9 @@ public interface ICloseDocumentCommand : IExecutableCommand
     /// The resource key of the opened document to close.
     /// </summary>
     ResourceKey FileResource { get; set; }
+
+    /// <summary>
+    /// Forces the document to close without allowing the document to cancel the close operation.
+    /// </summary>
+    bool ForceClose { get; set; }
 }

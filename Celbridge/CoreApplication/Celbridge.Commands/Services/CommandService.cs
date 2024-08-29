@@ -142,7 +142,7 @@ public class CommandService : ICommandService
         {
             if (IsUndoStackEmpty(undoStackName))
             {
-                return Result.Fail($"Failed to undo command. Undo stack '{undoStackName}' is empty");
+                return Result.Fail($"Undo stack '{undoStackName}' is empty");
             }
 
             // Pop next command(s) from the undo queue
@@ -173,7 +173,7 @@ public class CommandService : ICommandService
         {
             if (IsRedoStackEmpty(undoStackName))
             {
-                return Result.Fail($"Failed to redo command. Redo stack '{undoStackName}' is empty");
+                return Result.Fail($"Redo stack '{undoStackName}' is empty");
             }
 
             // Pop next command(s) from the redo queue
@@ -214,7 +214,9 @@ public class CommandService : ICommandService
         var undoResult = Undo(undoStackName);
         if (undoResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'. {undoResult.Error}");
+            var failure = Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'");
+            failure.MergeErrors(undoResult);
+            return failure;
         }
 
         return Result<bool>.Ok(true);
@@ -236,7 +238,9 @@ public class CommandService : ICommandService
         var redoResult = Redo(undoStackName);
         if (redoResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'. {redoResult.Error}");
+            var failure = Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'");
+            failure.MergeErrors(redoResult);
+            return failure;
         }
 
         return Result<bool>.Ok(true);
@@ -268,7 +272,7 @@ public class CommandService : ICommandService
             var flushResult = await FlushPendingSavesAsync();
             if (flushResult.IsFailure)
             {
-                _logger.LogError($"Failed to flush pending saves. {flushResult.Error}");
+                _logger.LogError(flushResult, "Failed to flush pending saves");
             }
 
             // Find the first command that is ready to execute
@@ -315,7 +319,7 @@ public class CommandService : ICommandService
                             }
                             else
                             {
-                                _logger.LogError($"Failed to undo command '{command}': {undoResult.Error}");
+                                _logger.LogError(undoResult, "Undo command failed");
                             }
                         }
                         else
@@ -345,7 +349,7 @@ public class CommandService : ICommandService
                             var updateResult = await UpdateResourcesAsync(command);
                             if (updateResult.IsFailure)
                             {
-                                _logger.LogError($"Command '{command}' failed. {updateResult.Error}");
+                                _logger.LogError(updateResult, "Update resources failed");
                             }
                         }
 
@@ -359,7 +363,7 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Command '{command}' failed. {ex.Message}");
+                    _logger.LogError(ex, $"Command failed due to an exception");
                 }
             }
 
