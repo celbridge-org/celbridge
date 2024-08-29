@@ -4,7 +4,6 @@ using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Celbridge.Messaging;
 
 namespace Celbridge.Resources.ViewModels;
 

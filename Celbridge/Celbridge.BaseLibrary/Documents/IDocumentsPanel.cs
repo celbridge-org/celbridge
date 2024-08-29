@@ -1,11 +1,11 @@
 ﻿using Celbridge.Resources;
 
-namespace Celbridge.Documents.Services;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with the DocumentsPanel view.
 /// </summary>
-internal interface IDocumentsPanel
+public interface IDocumentsPanel
 {
     /// <summary>
     /// Open a file resource as a document in the documents panel.

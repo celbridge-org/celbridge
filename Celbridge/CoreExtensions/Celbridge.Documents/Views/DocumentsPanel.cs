@@ -1,5 +1,4 @@
-﻿using Celbridge.Documents.Services;
-using Celbridge.Documents.ViewModels;
+﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Resources;
 using Celbridge.Workspace;
@@ -25,15 +24,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
-        // Give the Documents Service a reference to this panel via the internal IDocumentsPanel interface.
-        
+        // Give the Documents Service a reference to this panel       
         var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService as DocumentsService;
+        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         Guard.IsNotNull(documentsService);
         documentsService.DocumentsPanel = this;
 
         // Create the tab view
- 
         _tabView = new TabView()
             .IsAddTabButtonVisible(false)
             .TabWidthMode(TabViewWidthMode.SizeToContent)

@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents.Services;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with a document view.
