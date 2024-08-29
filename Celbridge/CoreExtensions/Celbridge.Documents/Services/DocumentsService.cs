@@ -10,7 +10,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    internal IDocumentsPanel? DocumentsPanel { get; set; }
+    public IDocumentsPanel? DocumentsPanel { get; set; }
 
     public DocumentsService(
         IServiceProvider serviceProvider,
