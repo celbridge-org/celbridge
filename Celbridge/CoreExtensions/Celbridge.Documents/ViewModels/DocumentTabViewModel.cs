@@ -16,14 +16,22 @@ public partial class DocumentTabViewModel : ObservableObject
 
     /// <summary>
     /// Close the opened document.
-    /// Returns false if the close operation was cancelled, e.g. via a confirmation dialog.
+    /// forceClose forces the document to close without allowing the document to cancel the close operation.
+    /// Returns false if the document cancelled the close operation, e.g. via a confirmation dialog.
     /// The call fails if the close operation failed due to an error.
     /// </summary>
-    public async Task<Result<bool>> CloseDocument()
+    public async Task<Result<bool>> CloseDocument(bool forceClose)
     {
         Guard.IsNotNull(DocumentView);
 
-        var canClose = await DocumentView.CanCloseDocument();
+        if (!File.Exists(FilePath))
+        {
+            // The file no longer exists, so we presume that it was deleted intentionally.
+            // Any pending save changes are discarded.
+            return Result<bool>.Ok(true);
+        }
+
+        var canClose = forceClose || await DocumentView.CanCloseDocument();
         if (!canClose)
         {
             // The close operation was cancelled by the document view.
