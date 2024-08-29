@@ -163,8 +163,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = new DocumentTab();
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.ViewModel.FileResource = fileResource;
-        documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.Name = fileResource.ResourceName;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
         // Wait until the document control has loaded.
         bool loaded = false;

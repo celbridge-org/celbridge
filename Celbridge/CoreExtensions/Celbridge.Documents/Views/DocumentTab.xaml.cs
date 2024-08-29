@@ -15,5 +15,9 @@ public partial class DocumentTab : TabViewItem
 
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<DocumentTabViewModel>();
+
+        // Notify the ViewModel when the view is loaded and unloaded
+        Loaded += (s, e) => ViewModel.OnViewLoaded();
+        Unloaded += (s, e) => ViewModel.OnViewUnloaded();
     }
 }

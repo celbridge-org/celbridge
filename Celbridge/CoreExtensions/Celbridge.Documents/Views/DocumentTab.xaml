@@ -10,7 +10,7 @@
     DataContext="{x:Bind ViewModel}">
 
     <muxc:TabViewItem.Header>
-        <TextBlock Text="{x:Bind ViewModel.Name, Mode=OneWay}" />
+        <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}" />
     </muxc:TabViewItem.Header>
 
 </muxc:TabViewItem>
