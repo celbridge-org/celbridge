@@ -18,6 +18,12 @@ public interface IDocumentView
     Result<bool> UpdateSaveTimer(double deltaTime);
 
     /// <summary>
+    /// Returns true if the document can be closed.
+    /// For example, this could be used to prompt the user to save changes before closing.
+    /// </summary>
+    Task<bool> CanCloseDocument();
+
+    /// <summary>
     /// Save the document to disk.
     /// </summary>
     Task<Result> SaveDocument();

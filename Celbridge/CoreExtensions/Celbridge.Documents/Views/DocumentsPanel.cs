@@ -59,7 +59,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var tab = args.Tab as DocumentTab;
         Guard.IsNotNull(tab);
 
-        var fileResource = tab.ViewModel.ResourceKey;
+        var fileResource = tab.ViewModel.FileResource;
 
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
@@ -122,7 +122,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
 
-            if (fileResource == tab.ViewModel.ResourceKey)
+            if (fileResource == tab.ViewModel.FileResource)
             {
                 //  Activate the existing tab instead of opening a new one
                 _tabView.SelectedItem = tab;
@@ -137,22 +137,26 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             failure.MergeErrors(createResult);
             return failure;
         }
-        var documentView = createResult.Value;
+        var documentControl = createResult.Value;
+
+        var documentView = documentControl as IDocumentView;
+        Guard.IsNotNull(documentView);
 
         // Add a new DocumentTab to the TabView
         var documentTab = new DocumentTab();
-        documentTab.ViewModel.ResourceKey = fileResource;
+        documentTab.ViewModel.DocumentView = documentView;
+        documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.Name = fileResource.ResourceName;
 
         // Wait until the document control has loaded.
         bool loaded = false;
-        documentView.Loaded += (sender, args) =>
+        documentControl.Loaded += (sender, args) =>
         {
             loaded = true;
         };
 
-        documentTab.Content = documentView;
+        documentTab.Content = documentControl;
 
         _tabView.TabItems.Add(documentTab);
         _tabView.SelectedItem = documentTab;
@@ -172,7 +176,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var documentTab = tabItem as DocumentTab;
             Guard.IsNotNull(documentTab);
 
-            if (fileResource == documentTab.ViewModel.ResourceKey)
+            if (fileResource == documentTab.ViewModel.FileResource)
             {
                 var closeResult = await documentTab.ViewModel.CloseDocument();
                 if (closeResult.IsFailure)
@@ -224,7 +228,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 if (saveResult.IsFailure)
                 {
                     // Make a note of the failed save and continue saving other documents
-                    failedSaves.Add(documentTab.ViewModel.ResourceKey);
+                    failedSaves.Add(documentTab.ViewModel.FileResource);
                 }
                 else
                 {
