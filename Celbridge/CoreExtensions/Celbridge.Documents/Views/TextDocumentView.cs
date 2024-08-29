@@ -2,7 +2,7 @@
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class TextDocumentView : UserControl, IDocumentView
+public sealed partial class TextDocumentView : DocumentView
 {
     public TextDocumentViewModel ViewModel { get; }
 
@@ -27,14 +27,20 @@ public sealed partial class TextDocumentView : UserControl, IDocumentView
             .Content(textBox));
     }
 
-    public bool IsDirty => ViewModel.IsDirty;
+    public override bool IsDirty => ViewModel.IsDirty;
 
-    public Result<bool> UpdateSaveTimer(double deltaTime)
+    public override Result<bool> UpdateSaveTimer(double deltaTime)
     {
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public async Task<Result> SaveDocument()
+    public override async Task<bool> CanCloseDocument()
+    {
+        await Task.CompletedTask;
+        return true;
+    }
+
+    public override async Task<Result> SaveDocument()
     {
         return await ViewModel.SaveDocument();
     }
