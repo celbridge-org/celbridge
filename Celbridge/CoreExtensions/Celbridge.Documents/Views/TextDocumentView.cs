@@ -1,4 +1,5 @@
 ﻿using Celbridge.Documents.ViewModels;
+using Celbridge.Resources;
 
 namespace Celbridge.Documents.Views;
 
@@ -43,5 +44,11 @@ public sealed partial class TextDocumentView : DocumentView
     public override async Task<Result> SaveDocument()
     {
         return await ViewModel.SaveDocument();
+    }
+
+    public override void UpdateDocumentResource(ResourceKey fileResource, string filePath)
+    {
+        ViewModel.FileResource = fileResource;
+        ViewModel.FilePath = filePath;
     }
 }

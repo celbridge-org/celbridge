@@ -1,4 +1,5 @@
 ﻿using Celbridge.Documents.ViewModels;
+using Celbridge.Resources;
 
 namespace Celbridge.Documents.Views;
 
@@ -21,5 +22,11 @@ public sealed partial class WebDocumentView : DocumentView
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(webView));
+    }
+
+    public override void UpdateDocumentResource(ResourceKey fileResource, string filePath)
+    {
+        ViewModel.FileResource = fileResource;
+        ViewModel.FilePath = filePath;
     }
 }

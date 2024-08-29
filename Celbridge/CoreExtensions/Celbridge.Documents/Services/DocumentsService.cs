@@ -1,5 +1,4 @@
-﻿using Celbridge.Commands;
-using Celbridge.Documents.Views;
+﻿using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
@@ -13,7 +12,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ILogger<DocumentsService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public IDocumentsPanel? DocumentsPanel { get; set; }
@@ -22,45 +20,12 @@ public class DocumentsService : IDocumentsService, IDisposable
         ILogger<DocumentsService> logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
-        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdated);
-    }
-
-    private void OnResourceRegistryUpdated(object recipient, ResourceRegistryUpdatedMessage message)
-    {
-        CloseDeletedDocuments();
-    }
-
-    private void CloseDeletedDocuments()
-    {
-        Guard.IsNotNull(DocumentsPanel);
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
-
-        // Get list of open documents
-        var openDocuments = DocumentsPanel.GetOpenDocuments();
-        foreach (var fileResource in openDocuments)
-        {
-            // Check if the open document is in the updated resource registry
-            var getResult = resourceRegistry.GetResource(fileResource);
-            if (getResult.IsFailure)
-            {
-                // The resource no longer exists in the registry, so close the document
-                _commandService.Execute<ICloseDocumentCommand>(command =>
-                {
-                    command.FileResource = fileResource;
-                    command.ForceClose = true;
-                });
-            }
-        }
     }
 
     public object CreateDocumentsPanel()
