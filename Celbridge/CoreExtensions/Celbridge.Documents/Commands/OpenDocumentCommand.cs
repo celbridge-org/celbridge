@@ -1,7 +1,8 @@
 ﻿using Celbridge.Commands;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 
-namespace Celbridge.Resources.Commands;
+namespace Celbridge.Documents.Commands;
 
 public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 {
