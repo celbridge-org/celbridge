@@ -1,4 +1,5 @@
-﻿using Celbridge.Documents.Views;
+﻿using Celbridge.Commands;
+using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
@@ -12,6 +13,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ILogger<DocumentsService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public IDocumentsPanel? DocumentsPanel { get; set; }
@@ -20,11 +22,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         ILogger<DocumentsService> logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdated);
@@ -32,10 +36,10 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnResourceRegistryUpdated(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        _ = CloseDeletedDocuments();
+        CloseDeletedDocuments();
     }
 
-    private async Task CloseDeletedDocuments()
+    private void CloseDeletedDocuments()
     {
         Guard.IsNotNull(DocumentsPanel);
 
@@ -49,11 +53,12 @@ public class DocumentsService : IDocumentsService, IDisposable
             var getResult = resourceRegistry.GetResource(fileResource);
             if (getResult.IsFailure)
             {
-                var closeResult = await CloseDocument(fileResource, true);
-                if (closeResult.IsFailure)
+                // The resource no longer exists in the registry, so close the document
+                _commandService.Execute<ICloseDocumentCommand>(command =>
                 {
-                    _logger.LogError(closeResult, $"Failed to close document for file resource: '{fileResource}'");
-                }
+                    command.FileResource = fileResource;
+                    command.ForceClose = true;
+                });
             }
         }
     }
