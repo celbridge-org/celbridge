@@ -312,6 +312,8 @@ public class CommandService : ICommandService
                             //
 
                             var undoResult = await command.UndoAsync();
+                            await Task.Delay(1); // Workaround for a bug in the colored console logger
+
                             if (undoResult.IsSuccess)
                             {
                                 // Push the undone command onto the redo stack
@@ -329,6 +331,8 @@ public class CommandService : ICommandService
                             //
 
                             var executeResult = await command.ExecuteAsync();
+                            await Task.Delay(1); // Workaround for a bug in the colored console logger
+
                             if (executeResult.IsSuccess)
                             {
                                 if (command.UndoStackName != UndoStackNames.None)
