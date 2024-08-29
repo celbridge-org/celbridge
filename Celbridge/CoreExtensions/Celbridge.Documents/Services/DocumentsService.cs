@@ -14,7 +14,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public IDocumentsPanel? DocumentsPanel { get; set; }
+    public IDocumentsPanel? DocumentsPanel { get; private set; }
 
     public DocumentsService(
         ILogger<DocumentsService> logger,
@@ -28,9 +28,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public object CreateDocumentsPanel()
+    public IDocumentsPanel CreateDocumentsPanel()
     {
-        return _serviceProvider.GetRequiredService<DocumentsPanel>();
+        DocumentsPanel = _serviceProvider.GetRequiredService<DocumentsPanel>();
+        return DocumentsPanel;
     }
 
     public async Task<Result> OpenDocument(ResourceKey fileResource)
