@@ -7,6 +7,8 @@ namespace Celbridge.Documents;
 /// </summary>
 public interface IDocumentsService
 {
+    IDocumentsPanel? DocumentsPanel { get; set; }
+
     /// <summary>
     /// Factory method to create the documents panel for the workspace UI.
     /// </summary>
