@@ -1,11 +1,17 @@
-﻿using Celbridge.Resources;
+﻿using Celbridge.Messaging;
+using Celbridge.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public abstract class DocumentViewModel : ObservableObject
+public abstract partial class DocumentViewModel : ObservableObject
 {
-    public ResourceKey FileResource { get; set; }
+    [ObservableProperty]
+    private ResourceKey _fileResource = string.Empty;
 
-    public string FilePath { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _filePath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDirty = false;
 }

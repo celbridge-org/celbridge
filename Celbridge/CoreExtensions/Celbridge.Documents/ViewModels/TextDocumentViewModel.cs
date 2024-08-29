@@ -7,13 +7,8 @@ public partial class TextDocumentViewModel : DocumentViewModel
     // Delay before saving the document after the most recent change
     private const double SaveDelay = 1.0; // Seconds
 
-    private string _filePath = string.Empty;
-
     [ObservableProperty]
     private string _text = string.Empty;
-
-    [ObservableProperty]
-    private bool _isDirty = false;
 
     [ObservableProperty]
     private double _saveTimer;
@@ -28,7 +23,7 @@ public partial class TextDocumentViewModel : DocumentViewModel
             var text = await File.ReadAllTextAsync(filePath);
             Text = text;
 
-            _filePath = filePath;
+            FilePath = filePath;
 
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
@@ -68,11 +63,11 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
         try
         {
-            await File.WriteAllTextAsync(_filePath, Text);
+            await File.WriteAllTextAsync(FilePath, Text);
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to write file contents: '{_filePath}'");
+            return Result.Fail(ex, $"Failed to write file contents: '{FilePath}'");
         }
 
         return Result.Ok();

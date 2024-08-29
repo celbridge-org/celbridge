@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Documents;
+﻿using Celbridge.Resources;
+
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with a document view.
@@ -27,4 +29,9 @@ public interface IDocumentView
     /// Save the document to disk.
     /// </summary>
     Task<Result> SaveDocument();
+
+    /// <summary>
+    /// Update the resource information for the document.
+    /// </summary>
+    void UpdateDocumentResource(ResourceKey fileResource, string filePath);
 }

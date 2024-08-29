@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Documents.Views;
+﻿using Celbridge.Resources;
+
+namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
@@ -18,6 +20,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     public virtual async Task<Result> SaveDocument()
     {
         await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    public virtual void UpdateDocumentResource(ResourceKey fileResource, string filePath)
+    {
         throw new NotImplementedException();
     }
 }
