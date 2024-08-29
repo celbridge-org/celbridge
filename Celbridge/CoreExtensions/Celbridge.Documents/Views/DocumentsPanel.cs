@@ -24,12 +24,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
-        // Give the Documents Service a reference to this panel       
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-        Guard.IsNotNull(documentsService);
-        documentsService.DocumentsPanel = this;
-
         // Create the tab view
         _tabView = new TabView()
             .IsAddTabButtonVisible(false)

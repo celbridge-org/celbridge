@@ -7,12 +7,15 @@ namespace Celbridge.Documents;
 /// </summary>
 public interface IDocumentsService
 {
-    IDocumentsPanel? DocumentsPanel { get; set; }
+    /// <summary>
+    /// The documents panel created via the CreateDocumentsPanel method.
+    /// </summary>
+    IDocumentsPanel? DocumentsPanel { get; }
 
     /// <summary>
     /// Factory method to create the documents panel for the workspace UI.
     /// </summary>
-    object CreateDocumentsPanel();
+    IDocumentsPanel CreateDocumentsPanel();
 
     /// <summary>
     /// Opens a file resource as an editable document in the documents panel.
