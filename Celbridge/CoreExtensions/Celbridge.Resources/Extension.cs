@@ -34,8 +34,6 @@ public class Extension : IExtension
         // Register commands
         //
         config.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
-        config.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
-        config.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
         config.AddTransient<IAddResourceCommand, AddResourceCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
