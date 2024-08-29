@@ -10,6 +10,8 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
     public ResourceKey FileResource { get; set; }
 
+    public bool ForceClose { get; set; }
+
     public CloseDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -19,7 +21,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var openResult = await documentsService.CloseDocument(FileResource);
+        var openResult = await documentsService.CloseDocument(FileResource, ForceClose);
         if (openResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to close document for file resource '{FileResource}'");
@@ -35,10 +37,16 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
     //
     public static void CloseDocument(ResourceKey fileResource)
     {
+        CloseDocument(fileResource, false);
+    }
+
+    public static void CloseDocument(ResourceKey fileResource, bool forceClose)
+    {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
+            command.ForceClose = forceClose;
         });
     }
 }

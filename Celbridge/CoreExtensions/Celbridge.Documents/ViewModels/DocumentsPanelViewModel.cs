@@ -11,7 +11,6 @@ namespace Celbridge.Documents.ViewModels;
 public partial class DocumentsPanelViewModel : ObservableObject
 {
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
@@ -20,12 +19,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public DocumentsPanelViewModel(
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IEditorSettings editorSettings)
     {
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
-
         _editorSettings = editorSettings;
 
         var settings = _editorSettings as INotifyPropertyChanged;

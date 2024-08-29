@@ -5,7 +5,7 @@ namespace Celbridge.Documents.ViewModels;
 public partial class TextDocumentViewModel : DocumentViewModel
 {
     // Delay before saving the document after the most recent change
-    private const double SaveDelay = 2.0; // Seconds
+    private const double SaveDelay = 1.0; // Seconds
 
     private string _filePath = string.Empty;
 

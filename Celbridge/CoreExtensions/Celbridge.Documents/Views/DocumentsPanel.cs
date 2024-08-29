@@ -114,6 +114,23 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
+    public List<ResourceKey> GetOpenDocuments()
+    {
+        var openDocuments = new List<ResourceKey>();
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            var fileResource = tab.ViewModel.FileResource;
+            Guard.IsFalse(openDocuments.Contains(fileResource));
+
+            openDocuments.Add(fileResource);
+        }
+
+        return openDocuments;
+    }
+
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath)
     {
         // Check if the file is already opened
@@ -169,7 +186,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
-    public async Task<Result> CloseDocument(ResourceKey fileResource)
+    public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
     {
         foreach (var tabItem in _tabView.TabItems)
         {
@@ -178,7 +195,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             if (fileResource == documentTab.ViewModel.FileResource)
             {
-                var closeResult = await documentTab.ViewModel.CloseDocument();
+                var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
                 if (closeResult.IsFailure)
                 {
                     var failure = Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'");

@@ -17,6 +17,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public virtual async Task<Result> SaveDocument()
     {
+        await Task.CompletedTask;
         throw new NotImplementedException();
     }
 }
