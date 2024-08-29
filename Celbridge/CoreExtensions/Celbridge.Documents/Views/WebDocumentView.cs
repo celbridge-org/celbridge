@@ -2,7 +2,7 @@
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebDocumentView : UserControl, IDocumentView
+public sealed partial class WebDocumentView : DocumentView
 {
     public WebDocumentViewModel ViewModel { get; }
 
@@ -21,18 +21,5 @@ public sealed partial class WebDocumentView : UserControl, IDocumentView
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(webView));
-    }
-
-    public bool IsDirty => false;
-
-    public Result<bool> UpdateSaveTimer(double deltaTime)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result> SaveDocument()
-    {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
     }
 }
