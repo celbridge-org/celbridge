@@ -1,6 +1,7 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Projects;
+using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -18,6 +19,7 @@ namespace Celbridge.Resources.Commands
         public ResourceTransferMode TransferMode { get; set; }
         public bool ExpandCopiedFolder { get; set; }
 
+        private readonly IMessengerService _messengerService;
         private readonly IWorkspaceWrapper _workspaceWrapper;
         private readonly IProjectService _projectService;
         private readonly IDialogService _dialogService;
@@ -29,11 +31,13 @@ namespace Celbridge.Resources.Commands
         private List<string> _copiedFolderPaths = new();
 
         public CopyResourceCommand(
+            IMessengerService messengerService,
             IWorkspaceWrapper workspaceWrapper,
             IProjectService projectService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
+            _messengerService = messengerService;
             _workspaceWrapper = workspaceWrapper;
             _projectService = projectService;
             _dialogService = dialogService;
@@ -78,7 +82,7 @@ namespace Celbridge.Resources.Commands
 
             if (_resourceType == typeof(IFileResource))
             {
-                var copyResult = await CopyFileInternal(SourceResource, _resolvedDestResource);
+                var copyResult = CopyFileResource(SourceResource, _resolvedDestResource);
                 if (copyResult.IsFailure)
                 {
                     await OnOperationFailed();
@@ -87,7 +91,7 @@ namespace Celbridge.Resources.Commands
             }
             else if (_resourceType == typeof(IFolderResource))
             {
-                var copyResult = await CopyFolderInternal(SourceResource, _resolvedDestResource);
+                var copyResult = CopyFolderResource(SourceResource, _resolvedDestResource);
                 if (copyResult.IsFailure)
                 {
                     await OnOperationFailed();
@@ -120,7 +124,7 @@ namespace Celbridge.Resources.Commands
                 if (_resourceType == typeof(IFileResource))
                 {
                     _resourceType = null;
-                    var copyResult = await CopyFileInternal(resolvedDestResource, SourceResource);
+                    var copyResult = CopyFileResource(resolvedDestResource, SourceResource);
                     if (copyResult.IsFailure)
                     {
                         await OnOperationFailed();
@@ -130,7 +134,7 @@ namespace Celbridge.Resources.Commands
                 else if (_resourceType == typeof(IFolderResource))
                 {
                     _resourceType = null;
-                    var copyResult = await CopyFolderInternal(resolvedDestResource, SourceResource);
+                    var copyResult = CopyFolderResource(resolvedDestResource, SourceResource);
                     if (copyResult.IsFailure)
                     {
                         await OnOperationFailed();
@@ -189,7 +193,7 @@ namespace Celbridge.Resources.Commands
             return Result.Ok();
         }
 
-        private async Task<Result> CopyFileInternal(ResourceKey resourceA, ResourceKey resourceB)
+        private Result CopyFileResource(ResourceKey resourceA, ResourceKey resourceB)
         {
             if (resourceA == resourceB)
             {
@@ -237,7 +241,11 @@ namespace Celbridge.Resources.Commands
                 }
                 else
                 {
-                    File.Move(filePathA, filePathB);                
+                    File.Move(filePathA, filePathB);
+
+                    // Notify opened documents that the resource key for this resource has changed
+                    var message = new ResourceKeyChangedMessage(resourceA, resourceB, filePathB);
+                    _messengerService.Send(message);
                 }
 
                 var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
@@ -252,12 +260,10 @@ namespace Celbridge.Resources.Commands
                 return Result.Fail($"Failed to copy file. {ex.Message}");
             }
 
-            await Task.CompletedTask;
-
             return Result.Ok();
         }
 
-        private async Task<Result> CopyFolderInternal(ResourceKey resourceA, ResourceKey resourceB)
+        private Result CopyFolderResource(ResourceKey resourceA, ResourceKey resourceB)
         {
             if (resourceA == resourceB)
             {
@@ -303,6 +309,9 @@ namespace Celbridge.Resources.Commands
                 else
                 {
                     Directory.Move(folderPathA, folderPathB);
+
+                    // Notify opened documents that the resources in this folder have moved.
+                    SendFolderResourceKeyChangedMessages(resourceRegistry, resourceA, resourceB);
                 }
 
             }
@@ -321,8 +330,6 @@ namespace Celbridge.Resources.Commands
             {
                 resourceRegistry.SetFolderIsExpanded(resourceB, true);
             }
-
-            await Task.CompletedTask;
 
             return Result.Ok();
         }
@@ -347,6 +354,51 @@ namespace Celbridge.Resources.Commands
                 command.DestResource = destResource;
                 command.TransferMode = operation;
             });
+        }
+
+        private void SendFolderResourceKeyChangedMessages(IResourceRegistry resourceRegistry, ResourceKey folderResourceA, ResourceKey folderResourceB)
+        {
+            var messages = new List<ResourceKeyChangedMessage>();
+
+            var getResourceResult = resourceRegistry.GetResource(folderResourceA);
+            Guard.IsTrue(getResourceResult.IsSuccess);
+
+            var sourceFolderA = getResourceResult.Value as FolderResource;
+            Guard.IsNotNull(sourceFolderA);
+
+            // Build a list of all the resources in the source folder (including the source folder itself)
+            List<ResourceKey> sourceResources = new();
+            PopulateSourceResources(sourceFolderA);
+
+            void PopulateSourceResources(FolderResource folderResource)
+            {
+                var folderKey = resourceRegistry.GetResourceKey(folderResource);
+                sourceResources.Add(folderKey);
+
+                foreach (var childResource in folderResource.Children)
+                {
+                    if (childResource is FolderResource childFolderResource)
+                    {
+                        PopulateSourceResources(childFolderResource);
+                    }
+                    else
+                    {
+                        var fileKey = resourceRegistry.GetResourceKey(childResource);
+                        sourceResources.Add(fileKey);
+                    }
+                }
+            }
+
+            // Send a message for every source resource that has moved
+            foreach (var sourceResource in sourceResources)
+            {
+                // Generate the destination resource key and path
+                var destResource = sourceResource.ToString().Replace(folderResourceA, folderResourceB);
+                var destPath = resourceRegistry.GetResourcePath(destResource);
+
+                var message = new ResourceKeyChangedMessage(sourceResource, destResource, destPath);
+                _messengerService.Send(message);
+            }
         }
 
         //

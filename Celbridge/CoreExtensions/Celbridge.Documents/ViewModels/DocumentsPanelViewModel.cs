@@ -1,4 +1,6 @@
-﻿using Celbridge.Settings;
+﻿using Celbridge.Commands;
+using Celbridge.Resources;
+using Celbridge.Settings;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -7,6 +9,7 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class DocumentsPanelViewModel : ObservableObject
 {
+    private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
@@ -14,8 +17,10 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
 
     public DocumentsPanelViewModel(
+        ICommandService commandService,
         IEditorSettings editorSettings)
     {
+        _commandService = commandService;
         _editorSettings = editorSettings;
 
         var settings = _editorSettings as INotifyPropertyChanged;
@@ -46,5 +51,13 @@ public partial class DocumentsPanelViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(IsRightPanelVisible));
         }
+    }
+
+    public void OnCloseDocumentRequested(ResourceKey fileResource)
+    {
+        _commandService.Execute<ICloseDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+        });
     }
 }

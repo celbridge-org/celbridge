@@ -42,7 +42,12 @@ public interface IWorkspaceService
     IDataTransferService DataTransferService { get; }
 
     /// <summary>
-    /// Save the workspace state to the database.
+    /// Set a flag to indicate that the workspace state is dirty and needs to be saved.
     /// </summary>
-    Task<Result> SaveWorkspaceStateAsync();
+    void SetWorkspaceStateIsDirty();
+
+    /// <summary>
+    /// Save any pending workspace data changes to disk.
+    /// </summary>
+    Task<Result> FlushPendingSaves(double deltaTime);
 }

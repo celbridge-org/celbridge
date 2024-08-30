@@ -1,35 +1,35 @@
 ﻿using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
+using Celbridge.Resources;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class DocumentsPanel : UserControl
+public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
+    private ILogger<DocumentsPanel> _logger;
+
     private TabView _tabView;
 
     public DocumentsPanelViewModel ViewModel { get; }
+
+    private DocumentViewFactory _documentViewFactory = new();
 
     public DocumentsPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
+        _logger = serviceProvider.GetRequiredService<ILogger<DocumentsPanel>>();
+
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
+        // Create the tab view
         _tabView = new TabView()
             .IsAddTabButtonVisible(false)
             .TabWidthMode(TabViewWidthMode.SizeToContent)
-            //.TabCloseRequested = "DocumentTabView_TabCloseRequested"
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"));
+            .VerticalAlignment(VerticalAlignment.Stretch);
 
-        // Create a placeholder TabViewItem
-        var tabViewItem = new TabViewItem
-        {
-            Header = "<Placeholder>",
-            Content = new TextBlock { Text = "This is a placeholder tab item." }
-        };
-
-        // Add the TabViewItem to the TabView
-        _tabView.TabItems.Add(tabViewItem);
+        _tabView.TabCloseRequested += TabView_CloseRequested;
 
         //
         // Set the data context and page content
@@ -45,6 +45,16 @@ public sealed partial class DocumentsPanel : UserControl
 
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
+    }
+
+    private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    {
+        var tab = args.Tab as DocumentTab;
+        Guard.IsNotNull(tab);
+
+        var fileResource = tab.ViewModel.FileResource;
+
+        ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
@@ -95,5 +105,157 @@ public sealed partial class DocumentsPanel : UserControl
             _tabView.TabStripFooter = new Grid()
                 .Width(48);
         }
+    }
+
+    public List<ResourceKey> GetOpenDocuments()
+    {
+        var openDocuments = new List<ResourceKey>();
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            var fileResource = tab.ViewModel.FileResource;
+            Guard.IsFalse(openDocuments.Contains(fileResource));
+
+            openDocuments.Add(fileResource);
+        }
+
+        return openDocuments;
+    }
+
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath)
+    {
+        // Check if the file is already opened
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (fileResource == tab.ViewModel.FileResource)
+            {
+                //  Activate the existing tab instead of opening a new one
+                _tabView.SelectedItem = tab;
+                return Result.Ok();
+            }
+        }
+
+        var createResult = await _documentViewFactory.CreateDocumentView(fileResource, filePath);
+        if (createResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
+            failure.MergeErrors(createResult);
+            return failure;
+        }
+        var documentControl = createResult.Value;
+
+        var documentView = documentControl as IDocumentView;
+        Guard.IsNotNull(documentView);
+
+        // Add a new DocumentTab to the TabView
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.DocumentView = documentView;
+        documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        // Wait until the document control has loaded.
+        bool loaded = false;
+        documentControl.Loaded += (sender, args) =>
+        {
+            loaded = true;
+        };
+
+        documentTab.Content = documentControl;
+
+        _tabView.TabItems.Add(documentTab);
+        _tabView.SelectedItem = documentTab;
+
+        while (!loaded)
+        {
+            await Task.Delay(25);
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
+    {
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            if (fileResource == documentTab.ViewModel.FileResource)
+            {
+                var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
+                if (closeResult.IsFailure)
+                {
+                    var failure = Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'");
+                    failure.MergeErrors(closeResult);
+                    return failure;
+                }
+
+                var didClose = closeResult.Value;
+
+                if (didClose)
+                {
+                    _tabView.TabItems.Remove(documentTab);
+                }
+
+                return Result.Ok();
+            }
+        }
+
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+    }
+
+    public async Task<Result> SaveModifiedDocuments(double deltaTime)
+    {
+        int savedCount = 0;
+        List<ResourceKey> failedSaves = new();
+
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            var documentView = documentTab.Content as IDocumentView;
+            Guard.IsNotNull(documentView);
+
+            if (documentView.IsDirty)
+            {
+                var updateResult = documentView.UpdateSaveTimer(deltaTime);
+                Guard.IsTrue(updateResult.IsSuccess); // Should never fail
+
+                var shouldSave = updateResult.Value;
+                if (!shouldSave)
+                {
+                    continue;
+                }
+
+                var saveResult = await documentView.SaveDocument();
+                if (saveResult.IsFailure)
+                {
+                    // Make a note of the failed save and continue saving other documents
+                    failedSaves.Add(documentTab.ViewModel.FileResource);
+                }
+                else
+                {
+                    savedCount++;
+                }
+            }
+        }
+
+        if (failedSaves.Count > 0)
+        {
+            return Result.Fail($"Failed to save the following documents: {string.Join(", ", failedSaves)}");
+        }
+
+        if (savedCount > 0)
+        {
+            _logger.LogInformation($"Saved {savedCount} modified documents");
+        }
+
+        return Result.Ok();
     }
 }
