@@ -138,11 +138,11 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void OpenFileResource(IFileResource fileResource)
     {
         var resourceRegistry = _resourceService.ResourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+        var resource = resourceRegistry.GetResourceKey(fileResource);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = resourceKey;
+            command.FileResource = resource;
         });
     }
 

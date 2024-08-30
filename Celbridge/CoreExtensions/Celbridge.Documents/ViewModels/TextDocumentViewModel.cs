@@ -39,7 +39,7 @@ public partial class TextDocumentViewModel : DocumentViewModel
     {
         if (!IsDirty)
         {
-            return Result<bool>.Fail("Document is not dirty");
+            return Result<bool>.Fail($"Document is not dirty: {FileResource}");
         }
 
         if (SaveTimer > 0)
