@@ -28,4 +28,10 @@ public interface IDocumentsPanel
     /// Save any modified documents to disk.
     /// </summary>    
     Task<Result> SaveModifiedDocuments(double deltaTime);
+
+    /// <summary>
+    /// Selects an opened document in the documents panel.
+    /// Fails if the specified document is not opened.
+    /// </summary>
+    Result SelectDocument(ResourceKey fileResource);
 }
