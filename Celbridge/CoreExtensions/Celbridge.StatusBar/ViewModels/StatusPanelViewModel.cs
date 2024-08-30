@@ -9,7 +9,7 @@ public partial class StatusPanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
 
     [ObservableProperty]
-    private string _statusText = string.Empty;
+    private string _selectedDocument = string.Empty;
 
     [ObservableProperty]
     private float _saveIconOpacity;
@@ -22,11 +22,13 @@ public partial class StatusPanelViewModel : ObservableObject
     public void OnLoaded()
     {
         _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
+        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
     }
 
     public void OnUnloaded()
     {
         _messengerService.Unregister<PendingDocumentSaveMessage>(this);
+        _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
     }
 
     private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)
@@ -39,5 +41,12 @@ public partial class StatusPanelViewModel : ObservableObject
         {
             SaveIconOpacity = 0;
         }
+    }
+
+    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    {
+        var resource = message.DocumentResource;
+
+        SelectedDocument = resource.ToString();
     }
 }

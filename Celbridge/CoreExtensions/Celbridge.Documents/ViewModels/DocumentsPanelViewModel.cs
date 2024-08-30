@@ -75,8 +75,14 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void UpdatePendingSaveCount(int pendingSaveCount)
     {
-        // Notfy the status bar about the current number of pending document saves.
+        // Notify the status bar about the current number of pending document saves.
         var message = new PendingDocumentSaveMessage(pendingSaveCount);
+        _messengerService.Send(message);
+    }
+
+    public void OnSelectedDocumentChanged(ResourceKey documentResource)
+    {
+        var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
     }
 }

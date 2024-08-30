@@ -26,8 +26,11 @@ public class StatusPanel : UserControl
             (
                 new TextBlock()
                     .Grid(column: 1)
+                    .HorizontalAlignment(HorizontalAlignment.Left)
                     .Margin(6, 3)
-                    .Text(x => x.Bind(() => ViewModel.StatusText)),
+                    .Opacity(0.75)
+                    .Text(x => x.Bind(() => ViewModel.SelectedDocument)
+                                .Mode(BindingMode.OneWay)),
                 new FontIcon()
                     .Grid(column: 2)
                     .HorizontalAlignment(HorizontalAlignment.Right)
