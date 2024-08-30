@@ -1,10 +1,10 @@
-﻿using Celbridge.DataTransfer;
-using Celbridge.Commands;
+﻿using Celbridge.Commands;
+using Celbridge.DataTransfer;
+using Celbridge.Documents;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Celbridge.Messaging;
 
 namespace Celbridge.Resources.ViewModels;
 
@@ -134,6 +134,17 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
     // Resource editing
     //
+
+    public void OpenFileResource(IFileResource fileResource)
+    {
+        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resource = resourceRegistry.GetResourceKey(fileResource);
+
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = resource;
+        });
+    }
 
     public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
     {

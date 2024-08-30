@@ -15,6 +15,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
+    private LocalizedString OpenString => _stringLocalizer.GetString("ResourceTree_Open");
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
     private LocalizedString FolderString => _stringLocalizer.GetString("ResourceTree_Folder");
     private LocalizedString FileString => _stringLocalizer.GetString("ResourceTree_File");
@@ -204,7 +205,48 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
     }
 
-    private void AddFolder(object? sender, RoutedEventArgs e)
+    private void TreeViewItem_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        var element = sender as FrameworkElement;
+        Guard.IsNotNull(element);
+
+        var treeViewNode = element.DataContext as TreeViewNode;
+        Guard.IsNotNull(treeViewNode);
+
+        var resource = treeViewNode.Content as IResource;
+        Guard.IsNotNull(resource);
+
+        OpenResource(resource, treeViewNode);
+    }
+
+    private void ResourceContextMenu_Open(object? sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        var treeViewNode = menuFlyoutItem.DataContext as TreeViewNode;
+        Guard.IsNotNull(treeViewNode);
+
+        var resource = treeViewNode.Content as IResource;
+        Guard.IsNotNull(resource);
+
+        OpenResource(resource, treeViewNode);
+    }
+
+    private void OpenResource(IResource resource, TreeViewNode node)
+    { 
+        if (resource is IFolderResource)
+        {
+            // Opening a folder resource toggles the expanded state
+            node.IsExpanded = !node.IsExpanded;
+        }
+        else if (resource is IFileResource fileResource)
+        {
+            ViewModel.OpenFileResource(fileResource);
+        }
+    }
+
+    private void ResourceContextMenu_AddFolder(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
 
@@ -227,7 +269,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
     }
 
-    private void AddFile(object? sender, RoutedEventArgs e)
+    private void ResourceContextMenu_AddFile(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
 
@@ -250,7 +292,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
     }
 
-    private void CutResource(object sender, RoutedEventArgs e)
+    private void ResourceContextMenu_Cut(object sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
@@ -258,7 +300,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.CutResourceToClipboard(resource);
     }
 
-    private void CopyResource(object sender, RoutedEventArgs e)
+    private void ResourceContextMenu_Copy(object sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
@@ -266,7 +308,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.CopyResourceToClipboard(resource);
     }
 
-    private void PasteResource(object sender, RoutedEventArgs e)
+    private void ResourceContextMenu_Paste(object sender, RoutedEventArgs e)
     {
         var destResource = AcquireContextMenuResource(sender);
 
@@ -274,7 +316,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.PasteResourceFromClipboard(destResource);
     }
 
-    private void DeleteResource(object? sender, RoutedEventArgs e)
+    private void ResourceContextMenu_Delete(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
@@ -282,18 +324,12 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.ShowDeleteResourceDialog(resource);
     }
 
-    private void RenameResource(object? sender, RoutedEventArgs e)
+    private void ResourceContextMenu_Rename(object? sender, RoutedEventArgs e)
     {
         var resource = AcquireContextMenuResource(sender);
         Guard.IsNotNull(resource);
 
         ViewModel.ShowRenameResourceDialog(resource);
-    }
-
-    private void OpenResource(object? sender, RoutedEventArgs e)
-    {
-        var element = sender as FrameworkElement;
-        Guard.IsNotNull(element);
     }
 
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)

@@ -26,6 +26,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private IResourceRegistryDumper _resourceRegistryDumper;
 
+    private bool _workspaceStateIsDirty;
+
     public WorkspaceService(
         IServiceProvider serviceProvider, 
         IProjectService projectService)
@@ -56,7 +58,41 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _resourceRegistryDumper.Initialize(logFolderPath);
     }
 
-    public async Task<Result> SaveWorkspaceStateAsync()
+    public void SetWorkspaceStateIsDirty()
+    {
+        _workspaceStateIsDirty = true;
+    }
+
+    public async Task<Result> FlushPendingSaves(double deltaTime)
+    {
+        // Todo: Save the workspace state after a delay to avoid saving too frequently
+
+        if (_workspaceStateIsDirty)
+        {
+            _workspaceStateIsDirty = false;
+            var saveWorkspaceResult = await SaveWorkspaceStateAsync();
+            if (saveWorkspaceResult.IsFailure)
+            {
+                var failure = Result.Fail($"Failed to save workspace state");
+                failure.MergeErrors(saveWorkspaceResult);
+                return failure;
+            }
+        }
+
+        var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
+        if (saveDocumentsResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to save modified documents");
+            failure.MergeErrors(saveDocumentsResult);
+            return failure;
+        }
+
+        // Todo: Clear save icon on the status bar if there are no pending saves
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> SaveWorkspaceStateAsync()
     {
         // Save the expanded folders in the Resource Registry
 
@@ -69,7 +105,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
         if (setFoldersResult.IsFailure)
         {
-            return Result.Fail($"Failed to Save Workspace State. {setFoldersResult.Error}");
+            var failure = Result.Fail($"Failed to save workspace state");
+            failure.MergeErrors(setFoldersResult);
+            return failure;
         }
 
         return Result.Ok();
