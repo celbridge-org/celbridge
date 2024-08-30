@@ -14,22 +14,26 @@ public class StatusPanel : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<StatusPanelViewModel>();
 
+        Loaded += (s, e) => ViewModel.OnLoaded();
+        Unloaded += (s, e) => ViewModel.OnUnloaded();
+
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
         var panelGrid = new Grid()
             .ColumnDefinitions("*, Auto, Auto, 48")
             .VerticalAlignment(VerticalAlignment.Center)
-            .Children(
+            .Children
+            (
                 new TextBlock()
                     .Grid(column: 1)
                     .Margin(6, 3)
-                    .Text("<Placeholder text>"),
-                new Button()
+                    .Text(x => x.Bind(() => ViewModel.StatusText)),
+                new FontIcon()
                     .Grid(column: 2)
-                    .Content(new FontIcon()
-                        .FontFamily(fontFamily)
-                        .Glyph(SaveGlyph)
-                    )
+                    .HorizontalAlignment(HorizontalAlignment.Right)
+                    .Opacity(x => x.Bind(() => ViewModel.SaveIconOpacity))
+                    .FontFamily(fontFamily)
+                    .Glyph(SaveGlyph)
             );
 
         //
