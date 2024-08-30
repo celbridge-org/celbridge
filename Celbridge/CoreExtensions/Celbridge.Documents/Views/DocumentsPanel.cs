@@ -28,6 +28,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             .VerticalAlignment(VerticalAlignment.Stretch);
 
         _tabView.TabCloseRequested += TabView_CloseRequested;
+        _tabView.SelectionChanged += TabView_SelectionChanged;
 
         //
         // Set the data context and page content
@@ -43,6 +44,19 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
+    }
+
+    private void TabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ResourceKey documentResource = ResourceKey.Empty;
+
+        var documentTab = _tabView.SelectedItem as DocumentTab;
+        if (documentTab is not null)
+        {
+            documentResource = documentTab.ViewModel.FileResource;
+        }
+
+        ViewModel.OnSelectedDocumentChanged(documentResource);
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)

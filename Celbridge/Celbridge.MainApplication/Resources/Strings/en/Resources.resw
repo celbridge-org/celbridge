@@ -123,9 +123,6 @@
   <data name="ConsolePanel_ClearButtonTooltip" xml:space="preserve">
     <value>Clear the console window</value>
   </data>
-  <data name="ConsolePanel_Title" xml:space="preserve">
-    <value>Console</value>
-  </data>
   <data name="DialogButton_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
@@ -302,5 +299,8 @@
   </data>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
+  </data>
+  <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
+    <value>Copy resource key to clipboard</value>
   </data>
 </root>

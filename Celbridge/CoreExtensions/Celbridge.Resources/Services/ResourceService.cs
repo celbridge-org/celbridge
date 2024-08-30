@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Projects;
 using Celbridge.Resources.Views;
 using Celbridge.Utilities.Services;
@@ -75,7 +76,7 @@ public class ResourceService : IResourceService, IDisposable
         return Result.Ok();
     }
 
-    public Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, ResourceTransferMode transferMode)
+    public Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode)
     {
         var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
         if (createItemsResult.IsFailure)

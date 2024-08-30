@@ -16,6 +16,12 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
         _key = key;
     }
 
+    /// <summary>
+    /// Returns an empty resource key.
+    /// In some contexts, an empty resource key may refer to the project folder.
+    /// </summary>
+    public static ResourceKey Empty => new ResourceKey();
+
     public override string ToString()
     {
         return _key ?? string.Empty;

@@ -37,8 +37,6 @@ public class Extension : IExtension
         config.AddTransient<IAddResourceCommand, AddResourceCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         config.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
-        config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
-        config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         config.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
         config.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         config.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();
