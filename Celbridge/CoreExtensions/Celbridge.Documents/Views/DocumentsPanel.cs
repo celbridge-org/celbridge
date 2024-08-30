@@ -284,4 +284,21 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         return Result.Ok();
     }
+
+    public Result SelectDocument(ResourceKey fileResource)
+    {
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            if (fileResource == documentTab.ViewModel.FileResource)
+            {
+                _tabView.SelectedItem = documentTab;
+                return Result.Ok();
+            }
+        }
+
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+    }
 }
