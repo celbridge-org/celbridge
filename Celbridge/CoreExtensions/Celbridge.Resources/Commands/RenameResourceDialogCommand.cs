@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -104,7 +105,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             {
                 command.SourceResource = Resource;
                 command.DestResource = destResource;
-                command.TransferMode = ResourceTransferMode.Move;
+                command.TransferMode = DataTransferMode.Move;
 
                 if (isExpandedFolder)
                 {

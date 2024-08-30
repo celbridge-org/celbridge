@@ -9,7 +9,6 @@ public sealed partial class ConsolePanel : UserControl
     private const string StrokeEraseGlyph = "\ued60";
 
     private IStringLocalizer _stringLocalizer;
-    private LocalizedString TitleString => _stringLocalizer.GetString("ConsolePanel_Title");
     private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
 
     private TabView _tabView;
