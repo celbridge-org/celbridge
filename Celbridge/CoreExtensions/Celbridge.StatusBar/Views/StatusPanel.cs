@@ -1,4 +1,5 @@
 ﻿using Celbridge.StatusBar.ViewModels;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.StatusBar.Views;
 
@@ -6,11 +7,14 @@ public class StatusPanel : UserControl
 {
     private const string SaveGlyph = "\ue74e";
 
+    private readonly IStringLocalizer _stringLocalizer;
+
     public StatusPanelViewModel ViewModel { get; }
 
     public StatusPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ViewModel = serviceProvider.GetRequiredService<StatusPanelViewModel>();
 
@@ -19,21 +23,36 @@ public class StatusPanel : UserControl
 
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
+        var selectedDocumentButton = new Button()
+            .Grid(column: 1)
+            .Command(x => x.Bind(() => ViewModel.CopyDocumentResourceCommand))
+            .Visibility(x => x.Bind(() => ViewModel.SelectedDocumentVisibility)
+                              .Mode(BindingMode.OneWay))
+            .Content
+            (
+                new TextBlock()
+                    .FontSize(12)
+                    .Text(x => x.Bind(() => ViewModel.SelectedDocument)
+                                .Mode(BindingMode.OneWay))
+            );
+
+        var tooltipString = _stringLocalizer.GetString("StatusPanel_CopyResourceKey");
+        ToolTipService.SetToolTip(selectedDocumentButton, tooltipString);
+
+        var saveIcon = new FontIcon()
+            .Grid(column: 2)
+            .HorizontalAlignment(HorizontalAlignment.Right)
+            .Opacity(x => x.Bind(() => ViewModel.SaveIconOpacity))
+            .FontFamily(fontFamily)
+            .Glyph(SaveGlyph);
+
         var panelGrid = new Grid()
             .ColumnDefinitions("*, Auto, Auto, 48")
             .VerticalAlignment(VerticalAlignment.Center)
             .Children
             (
-                new TextBlock()
-                    .Grid(column: 1)
-                    .Margin(6, 3)
-                    .Text(x => x.Bind(() => ViewModel.StatusText)),
-                new FontIcon()
-                    .Grid(column: 2)
-                    .HorizontalAlignment(HorizontalAlignment.Right)
-                    .Opacity(x => x.Bind(() => ViewModel.SaveIconOpacity))
-                    .FontFamily(fontFamily)
-                    .Glyph(SaveGlyph)
+                selectedDocumentButton,
+                saveIcon
             );
 
         //

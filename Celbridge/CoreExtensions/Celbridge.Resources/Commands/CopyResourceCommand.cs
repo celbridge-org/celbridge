@@ -1,4 +1,5 @@
 ﻿using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Resources.Models;
@@ -16,7 +17,7 @@ namespace Celbridge.Resources.Commands
 
         public ResourceKey SourceResource { get; set; }
         public ResourceKey DestResource { get; set; }
-        public ResourceTransferMode TransferMode { get; set; }
+        public DataTransferMode TransferMode { get; set; }
         public bool ExpandCopiedFolder { get; set; }
 
         private readonly IMessengerService _messengerService;
@@ -118,7 +119,7 @@ namespace Celbridge.Resources.Commands
             var resolvedDestResource = _resolvedDestResource;
             _resolvedDestResource = new();
 
-            if (TransferMode == ResourceTransferMode.Move)
+            if (TransferMode == DataTransferMode.Move)
             {
                 // Preform undo by moving the resource back to its original location
                 if (_resourceType == typeof(IFileResource))
@@ -146,7 +147,7 @@ namespace Celbridge.Resources.Commands
                     return Result.Fail($"Unknown resource type for key: {SourceResource}");
                 }
             }
-            else if (TransferMode == ResourceTransferMode.Copy)
+            else if (TransferMode == DataTransferMode.Copy)
             {
                 // Perform undo by deleting the previously copied resource.
                 var deleteResult = await DeleteCopiedResource();
@@ -232,7 +233,7 @@ namespace Celbridge.Resources.Commands
                     return Result.Fail($"Target folder does not exist: {parentFolderPathB}");
                 }
 
-                if (TransferMode == ResourceTransferMode.Copy)
+                if (TransferMode == DataTransferMode.Copy)
                 {
                     File.Copy(filePathA, filePathB);
 
@@ -299,7 +300,7 @@ namespace Celbridge.Resources.Commands
                     return Result.Fail($"Folder path already exists: {folderPathB}");
                 }
 
-                if (TransferMode == ResourceTransferMode.Copy)
+                if (TransferMode == DataTransferMode.Copy)
                 {
                     ResourceUtils.CopyFolder(folderPathA, folderPathB);
 
@@ -336,15 +337,15 @@ namespace Celbridge.Resources.Commands
 
         private async Task OnOperationFailed()
         {
-            var titleKey = TransferMode == ResourceTransferMode.Copy ? "ResourceTree_CopyResource" : "ResourceTree_MoveResource";
-            var messageKey = TransferMode == ResourceTransferMode.Copy ? "ResourceTree_CopyResourceFailed" : "ResourceTree_MoveResourceFailed";
+            var titleKey = TransferMode == DataTransferMode.Copy ? "ResourceTree_CopyResource" : "ResourceTree_MoveResource";
+            var messageKey = TransferMode == DataTransferMode.Copy ? "ResourceTree_CopyResourceFailed" : "ResourceTree_MoveResourceFailed";
 
             var titleString = _stringLocalizer.GetString(titleKey);
             var messageString = _stringLocalizer.GetString(messageKey, SourceResource, DestResource);
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
         }
 
-        private static void CopyResourceInternal(ResourceKey sourceResource, ResourceKey destResource, ResourceTransferMode operation)
+        private static void CopyResourceInternal(ResourceKey sourceResource, ResourceKey destResource, DataTransferMode operation)
         {
             // Execute the copy resource command
             var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
@@ -407,12 +408,12 @@ namespace Celbridge.Resources.Commands
 
         public static void CopyResource(ResourceKey sourceResource, ResourceKey destResource)
         {
-            CopyResourceInternal(sourceResource, destResource, ResourceTransferMode.Copy);
+            CopyResourceInternal(sourceResource, destResource, DataTransferMode.Copy);
         }
 
         public static void MoveResource(ResourceKey sourceResource, ResourceKey destResource)
         {
-            CopyResourceInternal(sourceResource, destResource, ResourceTransferMode.Move);
+            CopyResourceInternal(sourceResource, destResource, DataTransferMode.Move);
         }
     }
 }

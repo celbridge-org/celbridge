@@ -1,6 +1,7 @@
 ﻿using Celbridge.Commands;
+using Celbridge.Resources;
 
-namespace Celbridge.Resources;
+namespace Celbridge.DataTransfer;
 
 /// <summary>
 /// Pastes resources from the clipboard.

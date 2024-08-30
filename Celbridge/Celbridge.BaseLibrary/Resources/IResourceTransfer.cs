@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Resources;
+﻿using Celbridge.DataTransfer;
+
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Describes the transfer (move or copy) of a set of file or folder resources.
@@ -8,7 +10,7 @@ public interface IResourceTransfer
     /// <summary>
     /// Specifies whether the resources should be copied or moved when transfered.
     /// </summary>
-    ResourceTransferMode TransferMode { get; set; }
+    DataTransferMode TransferMode { get; set; }
 
     /// <summary>
     /// The resource items to be transferred.

@@ -1,6 +1,7 @@
 ﻿using Celbridge.DataTransfer;
 using Celbridge.Extensions;
 using Celbridge.Navigation;
+using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;
@@ -15,10 +16,21 @@ public class Extension : IExtension
         //
         // Register services
         //
-        config.AddTransient<WorkspacePageViewModel>();
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
         config.AddTransient<IDataTransferService, DataTransferService>();
+
+        //
+        // Register view models
+        //
+        config.AddTransient<WorkspacePageViewModel>();
+
+        //
+        // Register commands
+        //
+        config.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
+        config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
+        config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
     }
 
     public Result Initialize()
