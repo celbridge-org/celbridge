@@ -1,8 +1,8 @@
 ﻿using Celbridge.DataTransfer;
 using Celbridge.Commands;
-using Celbridge.Workspace;
+using Celbridge.Resources;
 
-namespace Celbridge.Resources.Commands;
+namespace Celbridge.Workspace.Commands;
 
 public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFromClipboardCommand
 {
