@@ -22,11 +22,11 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var openResult = await documentsService.CloseDocument(FileResource, ForceClose);
-        if (openResult.IsFailure)
+        var closeResult = await documentsService.CloseDocument(FileResource, ForceClose);
+        if (closeResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to close document for file resource '{FileResource}'");
-            failure.MergeErrors(openResult);
+            failure.MergeErrors(closeResult);
             return failure;
         }
 

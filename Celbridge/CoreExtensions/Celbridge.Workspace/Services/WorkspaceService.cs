@@ -65,7 +65,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public async Task<Result> FlushPendingSaves(double deltaTime)
     {
-        // Save the workspace state after a delay to avoid saving too frequently
+        // Todo: Save the workspace state after a delay to avoid saving too frequently
+
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
@@ -86,7 +87,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             return failure;
         }
 
-        // Todo: Clear save icon on the status bar
+        // Todo: Clear save icon on the status bar if there are no pending saves
 
         return Result.Ok();
     }
@@ -104,7 +105,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
         if (setFoldersResult.IsFailure)
         {
-            return Result.Fail($"Failed to set expanded folders. {setFoldersResult.Error}");
+            var failure = Result.Fail($"Failed to save workspace state");
+            failure.MergeErrors(setFoldersResult);
+            return failure;
         }
 
         return Result.Ok();

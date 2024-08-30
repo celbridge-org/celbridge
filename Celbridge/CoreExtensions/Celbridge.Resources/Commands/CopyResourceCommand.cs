@@ -368,9 +368,9 @@ namespace Celbridge.Resources.Commands
 
             // Build a list of all the resources in the source folder (including the source folder itself)
             List<ResourceKey> sourceResources = new();
-            GetSourceKeys(sourceFolderA);
+            PopulateSourceResources(sourceFolderA);
 
-            void GetSourceKeys(FolderResource folderResource)
+            void PopulateSourceResources(FolderResource folderResource)
             {
                 var folderKey = resourceRegistry.GetResourceKey(folderResource);
                 sourceResources.Add(folderKey);
@@ -379,7 +379,7 @@ namespace Celbridge.Resources.Commands
                 {
                     if (childResource is FolderResource childFolderResource)
                     {
-                        GetSourceKeys(childFolderResource);
+                        PopulateSourceResources(childFolderResource);
                     }
                     else
                     {
@@ -389,7 +389,7 @@ namespace Celbridge.Resources.Commands
                 }
             }
 
-            // Send a message for every resource that has moved
+            // Send a message for every source resource that has moved
             foreach (var sourceResource in sourceResources)
             {
                 // Generate the destination resource key and path

@@ -89,7 +89,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         if (!File.Exists(FilePath))
         {
-            // The file no longer exists, so we presume that it was deleted intentionally.
+            // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.
             return Result<bool>.Ok(true);
         }

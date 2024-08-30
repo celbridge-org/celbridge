@@ -6,6 +6,6 @@
 public record ResourceRegistryUpdatedMessage;
 
 /// <summary>
-/// A message sent when a resource has been renamed.
+/// A message sent when a resource has been moved or renamed.
 /// </summary>
 public record ResourceKeyChangedMessage(ResourceKey SourceResource, ResourceKey DestResource, string DestPath);
