@@ -90,6 +90,23 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
+    public Result SelectDocument(ResourceKey fileResource)
+    {
+        Guard.IsNotNull(DocumentsPanel);
+
+        var selectResult = DocumentsPanel.SelectDocument(fileResource);
+        if (selectResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to select opened document for file resource '{fileResource}'");
+            failure.MergeErrors(selectResult);
+            return failure;
+        }
+
+        _logger.LogTrace($"Selected document for file resource '{fileResource}'");
+
+        return Result.Ok();
+    }
+
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
         Guard.IsNotNull(DocumentsPanel);
@@ -140,7 +157,17 @@ public class DocumentsService : IDocumentsService, IDisposable
             });
         }
 
-        // Todo: Set the selected document
+        var selectedDocument = _editorSettings.PreviousSelectedDocument;
+        if (ResourceKey.IsValidKey(selectedDocument))
+        {
+            var fileResource = new ResourceKey(selectedDocument);
+
+            // Execute a command to select the previously selected document
+            _commandService.Execute<ISelectDocumentCommand>(command =>
+            {
+                command.FileResource = fileResource;
+            });
+        }
 
         return Result.Ok();
     }

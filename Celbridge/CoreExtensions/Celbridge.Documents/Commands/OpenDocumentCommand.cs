@@ -7,7 +7,6 @@ namespace Celbridge.Documents.Commands;
 public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
     public ResourceKey FileResource { get; set; }
 
@@ -23,7 +22,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         var openResult = await documentsService.OpenDocument(FileResource);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open file resource '{FileResource}'");
+            var failure = Result.Fail($"Failed to open document for file resource '{FileResource}'");
             failure.MergeErrors(openResult);
             return failure;
         }
