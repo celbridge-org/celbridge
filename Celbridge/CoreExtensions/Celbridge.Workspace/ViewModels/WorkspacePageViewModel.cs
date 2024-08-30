@@ -108,6 +108,9 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public async Task<Result> LoadWorkspaceAsync()
     {
+        // Short delay to allow the progress bar to display
+        await Task.Delay(100);
+
         //
         // Acquire the workspace database
         //
@@ -115,7 +118,9 @@ public partial class WorkspacePageViewModel : ObservableObject
         var acquireResult = await workspaceDataService.AcquireWorkspaceDataAsync();
         if (acquireResult.IsFailure)
         {
-            return Result.Fail($"Failed to load workspace. {acquireResult.Error}");
+            var failure = Result.Fail("Failed to acquire the workspace data");
+            failure.MergeErrors(acquireResult);
+            return failure;
         }
 
         var workspaceData = workspaceDataService.LoadedWorkspaceData;
@@ -141,7 +146,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to restore Project Panel view state. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred while restoring the Project Panel view state");
         }
 
         //
@@ -153,16 +158,31 @@ public partial class WorkspacePageViewModel : ObservableObject
             var updateResult = await resourceService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
-                return Result.Fail($"Failed to load workspace. {updateResult.Error}");
+                var failure = Result.Fail("Failed to update resources");
+                failure.MergeErrors(updateResult);
+                return failure;
             }
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to update the resource registry. {ex.Message}");
+            return Result.Fail(ex, $"Failed to update the resource registry");
         }
 
-        // Todo: Load the workspace here
-        await Task.Delay(500);
+        //
+        // Open previously opened documents
+        //
+        var documentsService = _workspaceService.DocumentsService;
+        var openResult = documentsService.OpenPreviousDocuments();
+        if (openResult.IsFailure)
+        {
+            var failure = Result.Fail("Failed to open previous documents");
+            failure.MergeErrors(openResult);
+            return failure;
+        }
+
+        // Allow a little time for the opened documents to populate.
+        // This also gives the user time to visually register the progress bar (in the case of a very fast load).
+        await Task.Delay(400);
 
         var message = new WorkspaceLoadedMessage();
         _messengerService.Send(message);
