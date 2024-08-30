@@ -149,6 +149,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
         var documentControl = createResult.Value;
 
+        // Sentinel value used to detect when the document control has finished loading.
+        bool loaded = false;
+        documentControl.Loaded += (sender, args) =>
+        {
+            loaded = true;
+        };
+
         var documentView = documentControl as IDocumentView;
         Guard.IsNotNull(documentView);
 
@@ -158,18 +165,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
-        // Wait until the document control has loaded.
-        bool loaded = false;
-        documentControl.Loaded += (sender, args) =>
-        {
-            loaded = true;
-        };
-
         documentTab.Content = documentControl;
 
         _tabView.TabItems.Add(documentTab);
         _tabView.SelectedItem = documentTab;
 
+        // Wait until the document control has loaded. This loop should always exit because UI elements always finish
+        // loading, even when the control has internal errors like missing resources, misconfigured bindings, etc.
         while (!loaded)
         {
             await Task.Delay(25);
