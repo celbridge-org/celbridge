@@ -34,4 +34,9 @@ public interface IDocumentsService
     /// Delta time is the time since this method was last called.
     /// </summary>
     Task<Result> SaveModifiedDocuments(double deltaTime);
+
+    /// <summary>
+    /// Opens any documents that were opened in the previous session.
+    /// </summary>
+    Result OpenPreviousDocuments();
 }
