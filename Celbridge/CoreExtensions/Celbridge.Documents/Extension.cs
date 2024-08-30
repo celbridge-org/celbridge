@@ -1,7 +1,8 @@
-﻿using Celbridge.Extensions;
+﻿using Celbridge.Documents.Commands;
+using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
-using Celbridge.Documents.Services;
+using Celbridge.Extensions;
 
 namespace Celbridge.Documents;
 
@@ -9,9 +10,33 @@ public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddTransient<DocumentsPanel>();
-        config.AddTransient<DocumentsPanelViewModel>();
+        //
+        // Register services
+        //
+
         config.AddTransient<IDocumentsService, DocumentsService>();
+
+        //
+        // Register UI elements
+        //
+
+        config.AddTransient<DocumentsPanel>();
+
+        //
+        // Register ViewModels
+        //
+
+        config.AddTransient<DocumentsPanelViewModel>();
+        config.AddTransient<DocumentTabViewModel>();
+        config.AddTransient<WebDocumentViewModel>();
+        config.AddTransient<TextDocumentViewModel>();
+
+        //
+        // Register commands
+        //
+
+        config.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
+        config.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
     }
 
     public Result Initialize()

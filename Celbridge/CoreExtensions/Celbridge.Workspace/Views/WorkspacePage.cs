@@ -61,8 +61,8 @@ public sealed partial class WorkspacePage : Page
 
         _showLeftPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Center)
-            .Margin(48, 0, 0, 0)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Margin(48, 8, 0, 0)
             .Command(ViewModel.ToggleLeftPanelCommand)
             .Content(new FontIcon()
                 .FontFamily(fontFamily)
@@ -81,7 +81,8 @@ public sealed partial class WorkspacePage : Page
 
         _showRightPanelButton = new Button()
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Center)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Margin(0, 8, 0, 0)
             .Command(ViewModel.ToggleRightPanelCommand)
             .Content(new FontIcon()
                 .FontFamily(fontFamily)
@@ -133,7 +134,6 @@ public sealed partial class WorkspacePage : Page
 
         _centerPanel = new Grid()
             .Grid(column: 1, row: 0)
-            .RowDefinitions("40, *")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Children(_showLeftPanelButton, _showRightPanelButton);
