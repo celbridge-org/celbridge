@@ -216,7 +216,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             {
                 command.SourceResource = sourceResource;
                 command.DestResource = destResource;
-                command.TransferMode = ResourceTransferMode.Move;
+                command.TransferMode = DataTransferMode.Move;
             });
         }
     }
@@ -235,7 +235,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = sourceResourceKey;
-            command.TransferMode = ResourceTransferMode.Move;
+            command.TransferMode = DataTransferMode.Move;
         });
     }
 
@@ -249,7 +249,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resourceKey;
-            command.TransferMode = ResourceTransferMode.Copy;
+            command.TransferMode = DataTransferMode.Copy;
         });
     }
 
@@ -274,7 +274,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         var destFolderResource = _resourceService.ResourceRegistry.GetContextMenuItemFolder(destResource);
-        var createResult = _resourceService.CreateResourceTransfer(sourcePaths, destFolderResource, ResourceTransferMode.Copy);
+        var createResult = _resourceService.CreateResourceTransfer(sourcePaths, destFolderResource, DataTransferMode.Copy);
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create resource transfer. {createResult.Error}");

@@ -1,16 +1,17 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Workspace;
+using Celbridge.DataTransfer;
+using Celbridge.Resources;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
-namespace Celbridge.Resources.Commands;
+namespace Celbridge.Workspace.Commands;
 
 public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipboardCommand
 {
     public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey SourceResource { get; set; }
-    public ResourceTransferMode TransferMode { get; set; }
+    public DataTransferMode TransferMode { get; set; }
   
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -68,11 +69,11 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         }
 
         var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = TransferMode == ResourceTransferMode.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
+        dataPackage.RequestedOperation = TransferMode == DataTransferMode.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
 
         dataPackage.SetStorageItems(storageItems);
-        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
-        Windows.ApplicationModel.DataTransfer.Clipboard.Flush();
+        Clipboard.SetContent(dataPackage);
+        Clipboard.Flush();
 
         return Result.Ok();
     }
@@ -87,7 +88,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;
-            command.TransferMode = ResourceTransferMode.Copy;
+            command.TransferMode = DataTransferMode.Copy;
         });
     }
 
@@ -97,7 +98,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;
-            command.TransferMode = ResourceTransferMode.Move;
+            command.TransferMode = DataTransferMode.Move;
         });
     }
 }

@@ -1,7 +1,9 @@
-﻿namespace Celbridge.Resources.Services;
+﻿using Celbridge.DataTransfer;
+
+namespace Celbridge.Resources.Services;
 
 public class ResourceTransfer : IResourceTransfer
 {
-    public ResourceTransferMode TransferMode { get; set; }
+    public DataTransferMode TransferMode { get; set; }
     public List<ResourceTransferItem> TransferItems { get; set;  } = new();
 }
