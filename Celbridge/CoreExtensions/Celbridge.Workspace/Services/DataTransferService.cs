@@ -1,5 +1,5 @@
-﻿using Celbridge.DataTransfer;
-using Celbridge.Commands;
+﻿using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 
@@ -122,8 +122,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             // Note whether the operation is a move or a copy
             var transferMode =
                 contentDescription.ContentOperation == ClipboardContentOperation.Move
-                ? ResourceTransferMode.Move
-                : ResourceTransferMode.Copy;
+                ? DataTransferMode.Move
+                : DataTransferMode.Copy;
 
             var createTransferResult = resourceService.CreateResourceTransfer(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
@@ -159,7 +159,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         var description = getResult.Value;
 
         if (description.TransferItems.Count == 1 &&
-            description.TransferMode == ResourceTransferMode.Copy)
+            description.TransferMode == DataTransferMode.Copy)
         {
             // If the source and destination resource are the same, display the duplicate
             // resource dialog instead of pasting the item.

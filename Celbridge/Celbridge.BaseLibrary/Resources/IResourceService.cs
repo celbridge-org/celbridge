@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Resources;
+﻿using Celbridge.DataTransfer;
+
+namespace Celbridge.Resources;
 
 /// <summary>
 /// The project service provides functionality to support the project panel in the workspace UI.
@@ -28,7 +30,7 @@ public interface IResourceService
     /// <summary>
     /// Create a Resource Transfer object describing the transfer of resources from a list of source paths to a destination folder.
     /// </summary>
-    Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, ResourceTransferMode transferMode);
+    Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode);
 
     /// <summary>
     /// Transfer resources to a destination folder resource.
