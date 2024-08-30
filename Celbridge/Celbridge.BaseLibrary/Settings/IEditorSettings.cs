@@ -27,6 +27,8 @@ public interface IEditorSettings : INotifyPropertyChanged
 
     List<string> PreviousOpenDocuments { get; set; }
 
+    string PreviousSelectedDocument { get; set; }
+
     string OpenAIKey { get; set; }
 
     string SheetsAPIKey { get; set; }

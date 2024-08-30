@@ -1,7 +1,9 @@
-﻿using Celbridge.Documents.Views;
+﻿using Celbridge.Commands;
+using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
@@ -10,6 +12,8 @@ namespace Celbridge.Documents.Services;
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private readonly ILogger<DocumentsService> _logger;
+    private readonly IEditorSettings _editorSettings;
+    private readonly ICommandService _commandService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -18,11 +22,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public DocumentsService(
         ILogger<DocumentsService> logger,
+        IEditorSettings editorSettings,
+        ICommandService commandService,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _editorSettings = editorSettings;
+        _commandService = commandService;
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
@@ -93,6 +101,46 @@ public class DocumentsService : IDocumentsService, IDisposable
             failure.MergeErrors(saveResult);
             return failure;
         }
+
+        return Result.Ok();
+    }
+
+    public Result OpenPreviousDocuments()
+    {
+        Guard.IsNotNull(DocumentsPanel);
+
+        var previousDocuments = _editorSettings.PreviousOpenDocuments;
+        if (previousDocuments.Count == 0)
+        {
+            return Result.Ok();
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+
+        foreach (var document in previousDocuments)
+        {
+            if (!ResourceKey.IsValidKey(document))
+            {
+                // An invalid resource key was saved in the settings somehow.
+                continue;
+            }
+
+            var fileResource = new ResourceKey(document);
+            var getResult = resourceRegistry.GetResource(fileResource);
+            if (getResult.IsFailure)
+            {
+                // This resource no longer exists so we can't open it again.
+                continue;
+            }
+
+            // Execute a command to load the document
+            _commandService.Execute<IOpenDocumentCommand>(command =>
+            {
+                command.FileResource = fileResource;
+            });
+        }
+
+        // Todo: Set the selected document
 
         return Result.Ok();
     }
