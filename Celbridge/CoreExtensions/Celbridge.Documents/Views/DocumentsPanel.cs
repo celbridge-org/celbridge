@@ -13,8 +13,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public DocumentsPanelViewModel ViewModel { get; }
 
-    private DocumentViewFactory _documentViewFactory = new();
-
     public DocumentsPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
@@ -140,7 +138,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
         }
 
-        var createResult = await _documentViewFactory.CreateDocumentView(fileResource, filePath);
+        var createResult = await ViewModel.CreateDocumentView(fileResource, filePath);
         if (createResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
@@ -214,6 +212,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
         int savedCount = 0;
+        int pendingSaveCount = 0;
         List<ResourceKey> failedSaves = new();
 
         foreach (var tabItem in _tabView.TabItems)
@@ -232,6 +231,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 var shouldSave = updateResult.Value;
                 if (!shouldSave)
                 {
+                    pendingSaveCount++;
                     continue;
                 }
 
@@ -257,6 +257,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             _logger.LogInformation($"Saved {savedCount} modified documents");
         }
+
+        ViewModel.UpdatePendingSaveCount(pendingSaveCount);
 
         return Result.Ok();
     }
