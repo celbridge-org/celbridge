@@ -29,9 +29,20 @@ public interface IDocumentsService
     Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose);
 
     /// <summary>
+    /// Selects an opened document in the documents panel.
+    /// Fails if the specified document is not opened.
+    /// </summary>
+    Result SelectDocument(ResourceKey fileResource);
+
+    /// <summary>
     /// Save any modified documents to disk.
     /// This method is called on a timer to save modified documents at regular intervals.
     /// Delta time is the time since this method was last called.
     /// </summary>
     Task<Result> SaveModifiedDocuments(double deltaTime);
+
+    /// <summary>
+    /// Opens any documents that were opened in the previous session.
+    /// </summary>
+    Result OpenPreviousDocuments();
 }

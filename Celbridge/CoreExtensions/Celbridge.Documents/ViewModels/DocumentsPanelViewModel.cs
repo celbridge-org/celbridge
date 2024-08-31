@@ -3,6 +3,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -16,6 +17,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
 
     private DocumentViewFactory _documentViewFactory = new();
+
+    private bool _isWorkspaceLoaded;
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
@@ -36,6 +39,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);
         settings.PropertyChanged += EditorSettings_PropertyChanged;
+
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
     }
 
     public void OnViewUnloaded()
@@ -43,6 +48,14 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);
         settings.PropertyChanged -= EditorSettings_PropertyChanged;
+
+        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+    }
+
+    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
+    {
+        // This will remain true for the lifetime of this view model
+        _isWorkspaceLoaded = true;
     }
 
     public async Task<Result<Control>> CreateDocumentView(ResourceKey fileResource, string filePath)
@@ -80,9 +93,34 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
+    public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
+    {
+        if (!_isWorkspaceLoaded)
+        {
+            // Ignore changes to the opened documents until the workspace has finished loading
+            return;
+        }
+
+        List<string> previousOpenedDocuments = [];
+        foreach (var resource in documentResources)
+        {
+            previousOpenedDocuments.Add(resource.ToString());
+        }
+
+        _editorSettings.PreviousOpenDocuments = previousOpenedDocuments;
+    }
+
     public void OnSelectedDocumentChanged(ResourceKey documentResource)
     {
         var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
+
+        if (!_isWorkspaceLoaded)
+        {
+            // Ignore changes to the selected document until the workspace has finished loading
+            return;
+        }
+
+        _editorSettings.PreviousSelectedDocument = documentResource.ToString();
     }
 }

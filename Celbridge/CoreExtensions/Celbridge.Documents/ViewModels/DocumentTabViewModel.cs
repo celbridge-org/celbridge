@@ -32,18 +32,19 @@ public partial class DocumentTabViewModel : ObservableObject
         _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
-    }
 
-    public virtual void OnViewLoaded()
-    {
+        // We can't use the view's Loaded & Unloaded methods to register & unregister here.
+        // Loaded and Unloaded are called when the UI element are added & removed from the visual tree.
+        // When a TabViewItem is reordered, it is first added in the new position and then removed in the old position.
+        // This means Unloaded is called first, followed by Load (opposite to what you might expect).
+
+        // To work around this, we register the message handlers in the constructor and then unregister in the 
+        // CloseDocument() method if the tab is actually closed. There's one more case to consider, when the DocumentTabView
+        // unloads (e.g. closing the open workspace). In this case, WeakReferenceMessenger should automatically clean up the
+        // message handlers beacuse the old DocumentTabViewModel has been destroyed.
+
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
-    }
-
-    public virtual void OnViewUnloaded()
-    {
-        _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
-        _messengerService.Unregister<ResourceKeyChangedMessage>(this);
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
@@ -91,6 +92,7 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.
+            UnregisterMessageHandlers();
             return Result<bool>.Ok(true);
         }
 
@@ -112,6 +114,13 @@ public partial class DocumentTabViewModel : ObservableObject
             }
         }
 
+        UnregisterMessageHandlers();
         return Result<bool>.Ok(true);
+    }
+
+    private void UnregisterMessageHandlers()
+    {
+        _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
+        _messengerService.Unregister<ResourceKeyChangedMessage>(this);
     }
 }
