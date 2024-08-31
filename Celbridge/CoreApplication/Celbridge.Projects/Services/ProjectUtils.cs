@@ -30,7 +30,9 @@ public static class ProjectUtils
         var loadResult = projectService.LoadProject(projectFilePath);
         if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to open project file '{projectFilePath}'. {loadResult.Error}");
+            var failure = Result.Fail($"Failed to open project file '{projectFilePath}'");
+            failure.MergeErrors(loadResult);
+            return failure;
         }
 
         var loadPageCancelationToken = new CancellationTokenSource();

@@ -132,12 +132,11 @@ public partial class WorkspacePageViewModel : ObservableObject
         try
         {
             // Set expanded folders
-            var getFoldersResult = await workspaceData.GetExpandedFoldersAsync();
-            if (getFoldersResult.IsSuccess)
+            var expandedFolders = await workspaceData.GetPropertyAsync<List<string>>("ExpandedFolders");
+            if (expandedFolders is not null &&
+                expandedFolders.Count > 0)
             {
-                var expandedFolders = getFoldersResult.Value;
                 var resourceRegistry = _workspaceService.ResourceService.ResourceRegistry;
-
                 foreach (var expandedFolder in expandedFolders)
                 {
                     resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
@@ -172,7 +171,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Open previously opened documents
         //
         var documentsService = _workspaceService.DocumentsService;
-        var openResult = documentsService.OpenPreviousDocuments();
+        var openResult = await documentsService.OpenPreviousDocuments();
         if (openResult.IsFailure)
         {
             var failure = Result.Fail("Failed to open previous documents");
