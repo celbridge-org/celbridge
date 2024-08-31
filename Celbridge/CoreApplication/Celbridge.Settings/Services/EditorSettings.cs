@@ -60,18 +60,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousLoadedProject), value);
     }
 
-    public List<string> PreviousOpenDocuments
-    {
-        get => GetValue<List<string>>(nameof(PreviousOpenDocuments), new());
-        set => SetValue(nameof(PreviousOpenDocuments), value);
-    }
-
-    public string PreviousSelectedDocument
-    {
-        get => GetValue<string>(nameof(PreviousSelectedDocument), string.Empty);
-        set => SetValue(nameof(PreviousSelectedDocument), value);
-    }
-
     public string OpenAIKey
     {
         get => GetValue<string>(nameof(OpenAIKey), string.Empty);

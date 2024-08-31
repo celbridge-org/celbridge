@@ -12,6 +12,8 @@ namespace Celbridge.Workspace.Services;
 
 public class WorkspaceService : IWorkspaceService, IDisposable
 {
+    private const string ExpandedFoldersKey = "ExpandedFolders";
+
     public bool IsLeftPanelVisible { get; }
     public bool IsRightPanelVisible { get; }
     public bool IsBottomPanelVisible { get; }
@@ -94,21 +96,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
+        var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
         // Save the expanded folders in the Resource Registry
 
         var resourceRegistry = ResourceService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
-
-        var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
-
-        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
-        if (setFoldersResult.IsFailure)
-        {
-            var failure = Result.Fail($"Failed to save workspace state");
-            failure.MergeErrors(setFoldersResult);
-            return failure;
-        }
+        await workspaceData.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
     }

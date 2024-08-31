@@ -42,7 +42,21 @@ public interface IDocumentsService
     Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
-    /// Opens any documents that were opened in the previous session.
+    /// Stores the list of previous open documents in persistent storage.
+    /// These documents will be opened at the start of the next editing session.
     /// </summary>
-    Result OpenPreviousDocuments();
+    Task SetPreviousOpenDocuments(List<ResourceKey> openDocuments);
+
+    /// <summary>
+    /// Stores the previous selected document in persistent storage.
+    /// This document will be selected at the start of the next editing session.
+    /// </summary>
+    Task SetPreviousSelectedDocument(ResourceKey selectedDocument);
+
+    /// <summary>
+    /// Opens any documents that were opened in the previous session.
+    /// This method completes when the commands have been scheduled to open the documents.
+    /// It does not wait until the documents have actually opened.
+    /// </summary>
+    Task<Result> OpenPreviousDocuments();
 }
