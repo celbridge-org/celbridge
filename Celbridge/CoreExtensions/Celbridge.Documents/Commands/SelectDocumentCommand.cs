@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
 
-public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
+public class SelectDocumentCommand : CommandBase, ISelectDocumentCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
@@ -12,9 +12,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
     public ResourceKey FileResource { get; set; }
 
-    public bool ForceClose { get; set; }
-
-    public CloseDocumentCommand(IWorkspaceWrapper workspaceWrapper)
+    public SelectDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -23,32 +21,27 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var closeResult = await documentsService.CloseDocument(FileResource, ForceClose);
-        if (closeResult.IsFailure)
+        var selectResult = documentsService.SelectDocument(FileResource);
+        if (selectResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to close document for file resource '{FileResource}'");
-            failure.MergeErrors(closeResult);
+            var failure = Result.Fail($"Failed to select document for file resource '{FileResource}'");
+            failure.MergeErrors(selectResult);
             return failure;
         }
 
+        await Task.CompletedTask;
         return Result.Ok();
     }
 
     //
     // Static methods for scripting support.
     //
-    public static void CloseDocument(ResourceKey fileResource)
-    {
-        CloseDocument(fileResource, false);
-    }
-
-    public static void CloseDocument(ResourceKey fileResource, bool forceClose)
+    public static void SelectDocument(ResourceKey fileResource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ICloseDocumentCommand>(command =>
+        commandService.Execute<ISelectDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
-            command.ForceClose = forceClose;
         });
     }
 }

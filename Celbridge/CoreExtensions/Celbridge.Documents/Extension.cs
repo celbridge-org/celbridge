@@ -37,6 +37,7 @@ public class Extension : IExtension
 
         config.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
         config.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
+        config.AddTransient<ISelectDocumentCommand, SelectDocumentCommand>();
     }
 
     public Result Initialize()
