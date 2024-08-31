@@ -2,6 +2,7 @@
 using Celbridge.Logging;
 using Celbridge.Resources;
 using CommunityToolkit.Diagnostics;
+using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
 
@@ -29,6 +30,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         _tabView.TabCloseRequested += TabView_CloseRequested;
         _tabView.SelectionChanged += TabView_SelectionChanged;
+        _tabView.TabItemsChanged += TabView_TabItemsChanged;
 
         //
         // Set the data context and page content
@@ -57,6 +59,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         ViewModel.OnSelectedDocumentChanged(documentResource);
+    }
+
+    private void TabView_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
+    {
+        var documentResources = GetOpenDocuments();
+        ViewModel.OnOpenDocumentsChanged(documentResources);
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -275,5 +283,22 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.UpdatePendingSaveCount(pendingSaveCount);
 
         return Result.Ok();
+    }
+
+    public Result SelectDocument(ResourceKey fileResource)
+    {
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            if (fileResource == documentTab.ViewModel.FileResource)
+            {
+                _tabView.SelectedItem = documentTab;
+                return Result.Ok();
+            }
+        }
+
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 }
