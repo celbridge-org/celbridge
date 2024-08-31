@@ -3,7 +3,6 @@ using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
@@ -11,8 +10,10 @@ namespace Celbridge.Documents.Services;
 
 public class DocumentsService : IDocumentsService, IDisposable
 {
+    private const string PreviousOpenDocumentsKey = "PreviousOpenDocuments";
+    private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
+
     private readonly ILogger<DocumentsService> _logger;
-    private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
@@ -22,14 +23,12 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public DocumentsService(
         ILogger<DocumentsService> logger,
-        IEditorSettings editorSettings,
         ICommandService commandService,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _editorSettings = editorSettings;
         _commandService = commandService;
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
@@ -122,29 +121,57 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Result OpenPreviousDocuments()
+    public async Task SetPreviousOpenDocuments(List<ResourceKey> openDocuments)
+    {
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        List<string> documents = [];
+        foreach (var fileResource in openDocuments)
+        {
+            documents.Add(fileResource.ToString());
+        }
+
+        await workspaceData.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
+    }
+
+    public async Task SetPreviousSelectedDocument(ResourceKey selectedDocument)
+    {
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        var fileResource = selectedDocument.ToString();
+
+        await workspaceData.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
+    }
+
+    public async Task<Result> OpenPreviousDocuments()
     {
         Guard.IsNotNull(DocumentsPanel);
 
-        var previousDocuments = _editorSettings.PreviousOpenDocuments;
-        if (previousDocuments.Count == 0)
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        var openDocuments = await workspaceData.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
+        if (openDocuments is null ||
+            openDocuments.Count == 0)
         {
             return Result.Ok();
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
 
-        foreach (var document in previousDocuments)
+        foreach (var resourceKey in openDocuments)
         {
-            if (!ResourceKey.IsValidKey(document))
+            if (!ResourceKey.IsValidKey(resourceKey))
             {
                 // An invalid resource key was saved in the settings somehow.
                 continue;
             }
 
-            var fileResource = new ResourceKey(document);
-            var getResult = resourceRegistry.GetResource(fileResource);
-            if (getResult.IsFailure)
+            var fileResource = new ResourceKey(resourceKey);
+            var getResourceResult = resourceRegistry.GetResource(fileResource);
+            if (getResourceResult.IsFailure)
             {
                 // This resource no longer exists so we can't open it again.
                 continue;
@@ -157,7 +184,12 @@ public class DocumentsService : IDocumentsService, IDisposable
             });
         }
 
-        var selectedDocument = _editorSettings.PreviousSelectedDocument;
+        var selectedDocument = await workspaceData.GetPropertyAsync<string>(PreviousSelectedDocumentKey);
+        if (string.IsNullOrEmpty(selectedDocument))
+        {
+            return Result.Ok();
+        }
+
         if (ResourceKey.IsValidKey(selectedDocument))
         {
             var fileResource = new ResourceKey(selectedDocument);

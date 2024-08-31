@@ -16,12 +16,19 @@ public interface IWorkspaceData
     Task<Result> SetDataVersionAsync(int version);
 
     /// <summary>
-    /// Returns a list of the expanded folders in the Resource Tree View.
+    /// Sets a property of type T with the specified key.
     /// </summary>
-    Task<Result<List<string>>> GetExpandedFoldersAsync();
+    Task SetPropertyAsync<T>(string key, T value) where T : notnull;
 
     /// <summary>
-    /// Expands the specified folders in the Resource Tree View.
+    /// Get the specified property as an object of type T.
+    /// Returns defaultValue if the key was not found or if the property could not be deserialized to type T.
     /// </summary>
-    Task<Result> SetExpandedFoldersAsync(List<string> folderNames);
+    Task<T?> GetPropertyAsync<T>(string key, T? defaultValue);
+
+    /// <summary>
+    /// Get the specified property as an object of type T.
+    /// Returns default(T) if the key was not found or if the property could not be deserialized to type T.
+    /// </summary>
+    Task<T?> GetPropertyAsync<T>(string key);
 }
