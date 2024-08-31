@@ -6,6 +6,8 @@ namespace Celbridge.Documents.Commands;
 
 public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 {
+    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
+
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
