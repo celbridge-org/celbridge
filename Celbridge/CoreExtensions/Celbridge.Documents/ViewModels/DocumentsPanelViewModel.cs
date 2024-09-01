@@ -98,25 +98,25 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
     {
-        // Ignore any events that happen while loading the workspace and opening the
-        // previously opened documents. 
         if (_isWorkspaceLoaded)
         {
+            // Ignore change events that happen while loading the workspace and opening the
+            // previously opened documents. 
             _documentsService.SetPreviousOpenDocuments(documentResources);
         }
     }
 
     public void OnSelectedDocumentChanged(ResourceKey documentResource)
     {
+        if (_isWorkspaceLoaded)
+        {
+            // Ignore change events that happen while loading the workspace and opening the
+            // previously opened documents. 
+            _documentsService.SetPreviousSelectedDocument(documentResource);
+        }
+
         // Notify the status panel that the selected document has changed
         var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
-
-        // Ignore any events that happen while loading the workspace and opening the
-        // previously opened documents. 
-        if (_isWorkspaceLoaded)
-        {
-            _documentsService.SetPreviousSelectedDocument(documentResource);
-        }
     }
 }

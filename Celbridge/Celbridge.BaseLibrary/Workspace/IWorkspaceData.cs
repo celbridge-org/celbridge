@@ -21,13 +21,13 @@ public interface IWorkspaceData
     Task SetPropertyAsync<T>(string key, T value) where T : notnull;
 
     /// <summary>
-    /// Get the specified property as an object of type T.
+    /// Gets the specified property as an object of type T.
     /// Returns defaultValue if the key was not found or if the property could not be deserialized to type T.
     /// </summary>
     Task<T?> GetPropertyAsync<T>(string key, T? defaultValue);
 
     /// <summary>
-    /// Get the specified property as an object of type T.
+    /// Gets the specified property as an object of type T.
     /// Returns default(T) if the key was not found or if the property could not be deserialized to type T.
     /// </summary>
     Task<T?> GetPropertyAsync<T>(string key);

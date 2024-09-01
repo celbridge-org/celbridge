@@ -6,7 +6,6 @@ using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace.Services;
 
