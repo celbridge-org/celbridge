@@ -8,6 +8,7 @@ namespace Celbridge.Workspace.Services;
 public class WorkspaceData : IDisposable, IWorkspaceData
 {
     private const int DataVersion = 1;
+    private const string DataVersionKey = nameof(DataVersion);
 
     private SQLiteAsyncConnection _connection;
 
@@ -21,30 +22,14 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<Result<int>> GetDataVersionAsync()
+    public async Task SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result<int>.Fail($"Failed to get data version");
-        }
-
-        return Result<int>.Ok(dataVersion.Version);
+        await SetPropertyAsync(DataVersionKey, version);
     }
 
-    public async Task<Result> SetDataVersionAsync(int version)
+    public async Task<int> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result.Fail($"Failed to get data version");
-        }
-
-        dataVersion.Version = version;
-
-        await _connection.UpdateAsync(dataVersion);
-
-        return Result.Ok();
+        return await GetPropertyAsync(DataVersionKey, 0);
     }
 
     public async Task SetPropertyAsync<T>(string key, T value) where T : notnull
@@ -124,15 +109,8 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         var workspaceData = new WorkspaceData(databasePath);
         Guard.IsNotNull(workspaceData);
 
-        // Todo: Store version number as a property instead of a dedicated table
-        await workspaceData._connection.CreateTableAsync<WorkspaceDataVersion>();
-        var dataVersion = new WorkspaceDataVersion 
-        { 
-            Version = DataVersion
-        };
-        await workspaceData._connection.InsertAsync(dataVersion);
-
         await workspaceData._connection.CreateTableAsync<WorkspaceProperty>();
+        await workspaceData.SetDataVersionAsync(DataVersion);
 
         // Close the database
         workspaceData.Dispose();
