@@ -1,9 +1,12 @@
+using Celbridge.Dialog;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
+using Celbridge.Workspace.Services;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using System.ComponentModel;
 using System.Windows.Input;
 
@@ -11,24 +14,41 @@ namespace Celbridge.Workspace.ViewModels;
 
 public partial class WorkspacePageViewModel : ObservableObject
 {
+    private readonly ILogger<WorkspacePageViewModel> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
+    private readonly IDialogService _dialogService;
+    private readonly WorkspaceLoader _workspaceLoader;
+    
+    private IProgressDialogToken? _progressDialogToken;
+
+    public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
     public WorkspacePageViewModel(
+        ILogger<WorkspacePageViewModel> logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IEditorSettings editorSettings)
+        IStringLocalizer stringLocalizer,
+        IEditorSettings editorSettings,
+        IDialogService dialogService,
+        WorkspaceLoader workspaceLoader)
     {
+        _logger = logger;
         _messengerService = messengerService;
-
+        _stringLocalizer = stringLocalizer;
         _editorSettings = editorSettings;
+        _dialogService = dialogService;
+        _workspaceLoader = workspaceLoader;
+
         _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
 
         // Create the workspace service and notify the user interface service
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
+        _workspaceLoader = workspaceLoader;
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -106,87 +126,39 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public async Task<Result> LoadWorkspaceAsync()
+    public async Task LoadWorkspaceAsync()
     {
+        // Show the progress dialog
+        var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
+        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
+
         // Short delay to allow the progress bar to display
         await Task.Delay(100);
 
-        //
-        // Acquire the workspace database
-        //
-        var workspaceDataService = _workspaceService.WorkspaceDataService;
-        var acquireResult = await workspaceDataService.AcquireWorkspaceDataAsync();
-        if (acquireResult.IsFailure)
-        {
-            var failure = Result.Fail("Failed to acquire the workspace data");
-            failure.MergeErrors(acquireResult);
-            return failure;
-        }
+        // Hide the progress dialog
+        _dialogService.ReleaseProgressDialog(_progressDialogToken);
 
-        var workspaceData = workspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
-
-        //
-        // Restore the Project Panel view state
-        //
-        try
+        // Load and initialize the workspace using the helper class
+        var loadResult = await _workspaceLoader.LoadWorkspaceAsync();
+        if (loadResult.IsFailure)
         {
-            // Set expanded folders
-            var expandedFolders = await workspaceData.GetPropertyAsync<List<string>>("ExpandedFolders");
-            if (expandedFolders is not null &&
-                expandedFolders.Count > 0)
+            _logger.LogError(loadResult, "Failed to load workspace");
+
+            // Notify the waiting LoadProject async method that a failure has occured via the cancellation token.
+            if (LoadProjectCancellationToken is not null)
             {
-                var resourceRegistry = _workspaceService.ResourceService.ResourceRegistry;
-                foreach (var expandedFolder in expandedFolders)
-                {
-                    resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
-                }
+                LoadProjectCancellationToken.Cancel();
             }
         }
-        catch (Exception ex)
+
+        _progressDialogToken = null;
+        LoadProjectCancellationToken = null;
+
+        if (loadResult.IsSuccess)
         {
-            return Result.Fail(ex, $"An exception occurred while restoring the Project Panel view state");
+            var message = new WorkspaceLoadedMessage();
+            _messengerService.Send(message);
         }
-
-        //
-        // Update the resource registry.
-        //
-        try
-        {
-            var resourceService = _workspaceService.ResourceService;
-            var updateResult = await resourceService.UpdateResourcesAsync();
-            if (updateResult.IsFailure)
-            {
-                var failure = Result.Fail("Failed to update resources");
-                failure.MergeErrors(updateResult);
-                return failure;
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex, $"Failed to update the resource registry");
-        }
-
-        //
-        // Open previously opened documents
-        //
-        var documentsService = _workspaceService.DocumentsService;
-        var openResult = await documentsService.OpenPreviousDocuments();
-        if (openResult.IsFailure)
-        {
-            var failure = Result.Fail("Failed to open previous documents");
-            failure.MergeErrors(openResult);
-            return failure;
-        }
-
-        // Allow a little time for the opened documents to populate.
-        // This also gives the user time to visually register the progress bar (in the case of a very fast load).
-        await Task.Delay(400);
-
-        var message = new WorkspaceLoadedMessage();
-        _messengerService.Send(message);
-
-        return Result.Ok();
     }
 }
 

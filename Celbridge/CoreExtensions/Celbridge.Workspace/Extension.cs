@@ -19,6 +19,7 @@ public class Extension : IExtension
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
         config.AddTransient<IDataTransferService, DataTransferService>();
+        config.AddTransient<WorkspaceLoader>();
 
         //
         // Register view models

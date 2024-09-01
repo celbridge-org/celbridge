@@ -70,7 +70,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             // Return to the home page so the user can decide what to do next
             _navigationService.NavigateToPage(HomePageName);
 
-            var failure = Result.Fail($"Failed to load project file: {ProjectFilePath}");
+            var failure = Result.Fail($"Failed to load project: '{ProjectFilePath}'");
             failure.MergeErrors(loadResult);
             return failure;
         }
