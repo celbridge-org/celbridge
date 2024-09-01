@@ -1,12 +1,14 @@
-﻿using SQLite;
+﻿using Celbridge.Workspace.Models;
 using CommunityToolkit.Diagnostics;
-using Celbridge.Workspace.Models;
+using SQLite;
+using System.Text.Json;
 
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceData : IDisposable, IWorkspaceData
 {
     private const int DataVersion = 1;
+    private const string DataVersionKey = nameof(DataVersion);
 
     private SQLiteAsyncConnection _connection;
 
@@ -20,61 +22,66 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         _connection = new SQLiteAsyncConnection(databasePath);
     }
 
-    public async Task<Result<int>> GetDataVersionAsync()
+    public async Task SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result<int>.Fail($"Failed to get data version");
-        }
-
-        return Result<int>.Ok(dataVersion.Version);
+        await SetPropertyAsync(DataVersionKey, version);
     }
 
-    public async Task<Result> SetDataVersionAsync(int version)
+    public async Task<int> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<WorkspaceDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result.Fail($"Failed to get data version");
-        }
-
-        dataVersion.Version = version;
-
-        await _connection.UpdateAsync(dataVersion);
-
-        return Result.Ok();
+        return await GetPropertyAsync(DataVersionKey, 0);
     }
 
-    public async Task<Result<List<string>>> GetExpandedFoldersAsync()
+    public async Task SetPropertyAsync<T>(string key, T value) where T : notnull
     {
         try
         {
-            var expandedFolders = await _connection.Table<ExpandedFolder>().ToListAsync();
-            var folderNames = expandedFolders.Select(ef => ef.Folder).ToList();
+            var serializedValue = JsonSerializer.Serialize(value);
+ 
+            var property = new WorkspaceProperty()
+            {
+                Key = key,
+                Value = serializedValue
+            };
 
-            return Result<List<string>>.Ok(folderNames);
+            var addedRows = await _connection.InsertOrReplaceAsync(property);
+            Guard.IsTrue(addedRows <= 1);
         }
         catch (Exception ex)
         {
-            return Result<List<string>>.Fail($"Failed to get expanded folders: {ex.Message}");
+            throw new InvalidOperationException($"Failed to set workspace property for key {key}", ex);
         }
     }
 
-    public async Task<Result> SetExpandedFoldersAsync(List<string> folderNames)
+    public async Task<T?> GetPropertyAsync<T>(string key, T? defaultValue)
     {
         try
         {
-            await _connection.DeleteAllAsync<ExpandedFolder>();
-            var expandedFolders = folderNames.Select(name => new ExpandedFolder { Folder = name }).ToList();
-            await _connection.InsertAllAsync(expandedFolders);
+            var property = await _connection.Table<WorkspaceProperty>().FirstOrDefaultAsync(p => p.Key == key);
 
-            return Result.Ok();
+            if (property == null)
+            {
+                return defaultValue;
+            }
+
+            var value = JsonSerializer.Deserialize<T>(property.Value);
+            if (value is null)
+            {
+                return defaultValue;
+            }
+
+            return value;
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to set expanded folders: {ex.Message}");
+            throw new InvalidOperationException($"Failed to get workspace property for key {key}", ex);
         }
+    }
+
+    public async Task<T?> GetPropertyAsync<T>(string key)
+    {
+        var defaultValue = default(T);
+        return await GetPropertyAsync<T>(key, defaultValue);
     }
 
     public static Result<IWorkspaceData> LoadWorkspaceData(string databasePath)
@@ -101,15 +108,8 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         var workspaceData = new WorkspaceData(databasePath);
         Guard.IsNotNull(workspaceData);
 
-        await workspaceData._connection.CreateTableAsync<WorkspaceDataVersion>();
-
-        var dataVersion = new WorkspaceDataVersion 
-        { 
-            Version = DataVersion
-        };
-        await workspaceData._connection.InsertAsync(dataVersion);
-
-        await workspaceData._connection.CreateTableAsync<ExpandedFolder>();
+        await workspaceData._connection.CreateTableAsync<WorkspaceProperty>();
+        await workspaceData.SetDataVersionAsync(DataVersion);
 
         // Close the database
         workspaceData.Dispose();

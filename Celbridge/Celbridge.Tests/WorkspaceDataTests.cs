@@ -54,21 +54,19 @@ public class WorkspaceDataTests
 
         var workspaceData = _workspaceDataService.LoadedWorkspaceData!;
         workspaceData.Should().NotBeNull();
-        var versionResult = await workspaceData.GetDataVersionAsync();
-        versionResult.IsSuccess.Should().BeTrue();
-        versionResult.Value.Should().Be(1);
+        var dataVersion = await workspaceData.GetDataVersionAsync();
+        dataVersion.Should().Be(1);
 
         // 
         // Set and get an expanded folders list in the workspace data
         //
         var expandedFolders = new List<string>() { "a", "b", "c" };
-        var setFoldersResult = await workspaceData.SetExpandedFoldersAsync(expandedFolders);
-        setFoldersResult.IsSuccess.Should().BeTrue();
+        await workspaceData.SetPropertyAsync("ExpandedFolders", expandedFolders);        
 
-        var getFoldersResult = await workspaceData.GetExpandedFoldersAsync();
-        getFoldersResult.IsSuccess.Should().BeTrue();
-
-        expandedFolders.SequenceEqual(getFoldersResult.Value);
+        var expandedFoldersProperty = await workspaceData.GetPropertyAsync<List<string>>("ExpandedFolders");
+        Guard.IsNotNull(expandedFoldersProperty);
+ 
+        expandedFolders.SequenceEqual(expandedFoldersProperty);
 
         //
         // Unload the workspace database

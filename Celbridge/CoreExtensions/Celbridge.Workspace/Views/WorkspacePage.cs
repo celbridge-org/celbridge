@@ -1,10 +1,7 @@
-﻿using Celbridge.Dialog;
+﻿using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.WinUI.Controls;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Celbridge.Workspace.Services;
 
 namespace Celbridge.Workspace.Views;
 
@@ -41,16 +38,9 @@ public sealed partial class WorkspacePage : Page
     private GridSplitter _bottomPanelSplitter;
 #endif
 
-    private IStringLocalizer _stringLocalizer;
-    private IDialogService _dialogService;
-    private IProgressDialogToken? _progressDialogToken;
-
     public WorkspacePage()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        _dialogService = serviceProvider.GetRequiredService<IDialogService>();
-
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
         //
@@ -243,11 +233,9 @@ public sealed partial class WorkspacePage : Page
         Unloaded += WorkspacePage_Unloaded;
     }
 
-    private CancellationTokenSource? _loadProjectCancellationToken;
-
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
-        _loadProjectCancellationToken = e.Parameter as CancellationTokenSource;
+        ViewModel.LoadProjectCancellationToken = e.Parameter as CancellationTokenSource;
     }
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
@@ -308,33 +296,7 @@ public sealed partial class WorkspacePage : Page
         var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
         _statusPanel.Children.Add(statusPanel);
 
-        // Todo: Use a command to do this and handle failure gracefully
-
-        async Task LoadWorkspaceAsync()
-        {
-            // Show the progress dialog
-            var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-            _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
-
-            var loadResult = await ViewModel.LoadWorkspaceAsync();
-
-            // Hide the progress dialog
-            _dialogService.ReleaseProgressDialog(_progressDialogToken);
-
-            if (loadResult.IsFailure)
-            {
-                // Notify the waiting LoadProject async method that a failure has occured via the cancellation token.
-                if (_loadProjectCancellationToken is not null)
-                {
-                    _loadProjectCancellationToken.Cancel();
-                }
-            }
-
-            _progressDialogToken = null;
-            _loadProjectCancellationToken = null;
-        }
-
-        _ = LoadWorkspaceAsync();
+        _ = ViewModel.LoadWorkspaceAsync();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
