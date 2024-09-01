@@ -14,6 +14,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
+    private readonly IDocumentsService _documentsService;
     private readonly IEditorSettings _editorSettings;
 
     private DocumentViewFactory _documentViewFactory = new();
@@ -27,10 +28,12 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
+        IDocumentsService documentsService,
         IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _documentsService = documentsService;
         _editorSettings = editorSettings;
     }
 
@@ -95,32 +98,25 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
     {
-        if (!_isWorkspaceLoaded)
+        if (_isWorkspaceLoaded)
         {
-            // Ignore changes to the opened documents until the workspace has finished loading
-            return;
+            // Ignore change events that happen while loading the workspace and opening the
+            // previously opened documents. 
+            _documentsService.SetPreviousOpenDocuments(documentResources);
         }
-
-        List<string> previousOpenedDocuments = [];
-        foreach (var resource in documentResources)
-        {
-            previousOpenedDocuments.Add(resource.ToString());
-        }
-
-        _editorSettings.PreviousOpenDocuments = previousOpenedDocuments;
     }
 
     public void OnSelectedDocumentChanged(ResourceKey documentResource)
     {
-        var message = new SelectedDocumentChangedMessage(documentResource);
-        _messengerService.Send(message);
-
-        if (!_isWorkspaceLoaded)
+        if (_isWorkspaceLoaded)
         {
-            // Ignore changes to the selected document until the workspace has finished loading
-            return;
+            // Ignore change events that happen while loading the workspace and opening the
+            // previously opened documents. 
+            _documentsService.SetPreviousSelectedDocument(documentResource);
         }
 
-        _editorSettings.PreviousSelectedDocument = documentResource.ToString();
+        // Notify the status panel that the selected document has changed
+        var message = new SelectedDocumentChangedMessage(documentResource);
+        _messengerService.Send(message);
     }
 }
