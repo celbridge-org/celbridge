@@ -54,9 +54,9 @@ public interface IDocumentsService
     Task SetPreviousSelectedDocument(ResourceKey selectedDocument);
 
     /// <summary>
-    /// Opens any documents that were opened in the previous session.
-    /// This method completes when the commands have been scheduled to open the documents.
-    /// It does not wait until the documents have actually opened.
+    /// Reopens documents that were left open in the previous session.
+    /// The method completes once the commands to open these documents have been scheduled.
+    /// Note that it does not wait for the documents to fully open.
     /// </summary>
     Task<Result> OpenPreviousDocuments();
 }
