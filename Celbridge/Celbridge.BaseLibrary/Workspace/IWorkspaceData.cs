@@ -8,12 +8,12 @@ public interface IWorkspaceData
     /// <summary>
     /// Gets the data version for the workspace data.
     /// </summary>
-    Task<Result<int>> GetDataVersionAsync();
+    Task<int> GetDataVersionAsync();
 
     /// <summary>
     /// Sets the data version for the workspace data.
     /// </summary>
-    Task<Result> SetDataVersionAsync(int version);
+    Task SetDataVersionAsync(int version);
 
     /// <summary>
     /// Sets a property of type T with the specified key.
