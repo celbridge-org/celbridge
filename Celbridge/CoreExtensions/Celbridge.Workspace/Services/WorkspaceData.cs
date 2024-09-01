@@ -81,7 +81,6 @@ public class WorkspaceData : IDisposable, IWorkspaceData
     public async Task<T?> GetPropertyAsync<T>(string key)
     {
         var defaultValue = default(T);
-
         return await GetPropertyAsync<T>(key, defaultValue);
     }
 
