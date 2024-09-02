@@ -1,5 +1,7 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Microsoft.UI.Xaml.Controls;
+using Windows.UI;
 
 namespace Celbridge.Documents.Views;
 
@@ -15,6 +17,10 @@ public sealed partial class WebDocumentView : DocumentView
 
         var webView = new WebView2()
             .Source(x => x.Bind(() => ViewModel.Source));
+
+        // Fixes a visual bug where the WebView2 control would show a white background briefly when
+        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
+        webView.DefaultBackgroundColor = Colors.Transparent;
 
         //
         // Set the data context and control content
