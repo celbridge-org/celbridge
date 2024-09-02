@@ -15,15 +15,18 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public string SourcePath { get; set; } = string.Empty;
     public ResourceKey DestResource { get; set; }
 
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
 
     private string _addedResourcePath = string.Empty;
 
     public AddResourceCommand(
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService)
     {
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
     }
@@ -31,14 +34,15 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public override async Task<Result> ExecuteAsync()
     {
         var addResult = await AddResourceAsync();
-        //if (addResult.IsFailure)
-        //{
-        //    var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-        //    var messageString = _stringLocalizer.GetString("ResourceTree_AddFileFailed", Resource);
+        if (addResult.IsSuccess)
+        {
+            _commandService.Execute<ISelectResourceCommand>(command =>
+            {
+                command.Resource = DestResource;
+            });
 
-        //    // Show alert
-        //    await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-        //}
+            return Result.Ok();
+        }
 
         return addResult;
     }
@@ -46,14 +50,9 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public override async Task<Result> UndoAsync()
     {
         var undoResult = await UndoAddResourceAsync();
-        //if (undoResult.IsFailure)
-        //{
-        //    var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-        //    var messageString = _stringLocalizer.GetString("ResourceTree_UndoAddFileFailed", Resource);
 
-        //    // Show alert
-        //    await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-        //}
+        // The user may have deliberately selected a resource since the add was executed, so it would be
+        // surprising if their selection was changed when undoing the add, so we leave the selected resource as is.
 
         return undoResult;
     }
