@@ -1,7 +1,5 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Microsoft.UI.Xaml.Controls;
-using Windows.UI;
 
 namespace Celbridge.Documents.Views;
 
