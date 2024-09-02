@@ -3,21 +3,21 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Views;
 
-public sealed partial class ResourcesPanel : UserControl, IResourcesPanel
+public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 {
     private IStringLocalizer _stringLocalizer;
-    private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ResourcesPanel_RefreshTooltip");
+    private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ExplorerPanel_RefreshTooltip");
 
-    public ResourcesPanelViewModel ViewModel { get; }
+    public ExplorerPanelViewModel ViewModel { get; }
 
     private readonly ResourceTreeView _resourceTreeView;
 
-    public ResourcesPanel()
+    public ExplorerPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        ViewModel = serviceProvider.GetRequiredService<ResourcesPanelViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<ExplorerPanelViewModel>();
 
         var refreshProjectButton = new Button()
             .Grid(column: 2)

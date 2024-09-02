@@ -8,13 +8,13 @@ using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Services;
 
-public class ResourceService : IResourceService, IDisposable
+public class ExplorerService : IExplorerService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
 
-    public IResourcesPanel? ResourcesPanel { get; private set; }
+    public IExplorerPanel? ExplorerPanel { get; private set; }
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
@@ -31,7 +31,7 @@ public class ResourceService : IResourceService, IDisposable
         }
     }
 
-    public ResourceService(
+    public ExplorerService(
         IServiceProvider serviceProvider,
         ICommandService commandService,
         IProjectService projectService,
@@ -56,10 +56,10 @@ public class ResourceService : IResourceService, IDisposable
         ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
     }
 
-    public IResourcesPanel CreateResourcesPanel()
+    public IExplorerPanel CreateExplorerPanel()
     {
-        ResourcesPanel = _serviceProvider.GetRequiredService<ResourcesPanel>();
-        return ResourcesPanel;
+        ExplorerPanel = _serviceProvider.GetRequiredService<ExplorerPanel>();
+        return ExplorerPanel;
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -246,16 +246,16 @@ public class ResourceService : IResourceService, IDisposable
 
     public ResourceKey GetSelectedResource()
     {
-        Guard.IsNotNull(ResourcesPanel);
+        Guard.IsNotNull(ExplorerPanel);
 
-        return ResourcesPanel.GetSelectedResource();
+        return ExplorerPanel.GetSelectedResource();
     }
 
     public Result SetSelectedResource(ResourceKey resource)
     {
-        Guard.IsNotNull(ResourcesPanel);
+        Guard.IsNotNull(ExplorerPanel);
 
-        return ResourcesPanel.SetSelectedResource(resource);
+        return ExplorerPanel.SetSelectedResource(resource);
     }
 
     private bool PathContainsSubPath(string path, string subPath)
@@ -286,7 +286,7 @@ public class ResourceService : IResourceService, IDisposable
         }
     }
 
-    ~ResourceService()
+    ~ExplorerService()
     {
         Dispose(false);
     }
