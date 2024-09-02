@@ -18,7 +18,6 @@ public class CommandService : ICommandService
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    // ExecutionTime is the time in milliseconds when the command should be executed
     private record QueuedCommand(IExecutableCommand Command, CommandExecutionMode ExecutionMode);
 
     private readonly List<QueuedCommand> _commandQueue = new();
@@ -44,12 +43,29 @@ public class CommandService : ICommandService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result Execute<T>
-    (
+    public Result Execute<T>(
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0) where T : IExecutableCommand
+    {
+        var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
+        return EnqueueCommand(command);
+    }
+
+    public async Task<Result> ExecuteNow<T>(
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0) where T : IExecutableCommand
+    {
+        var command = CreateCommand<T>();
+        command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
+
+        return await command.ExecuteAsync();
+    }
+
+    public Result Execute<T>(
         Action<T> configure,
         [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand
+        [CallerLineNumber] int lineNumber = 0) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
         command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
@@ -57,15 +73,16 @@ public class CommandService : ICommandService
         return EnqueueCommand(command);
     }
 
-    public Result Execute<T>
-    (
+    public async Task<Result> ExecuteNow<T>(
+        Action<T> configure,
         [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0
-    ) where T : IExecutableCommand
+        [CallerLineNumber] int lineNumber = 0) where T : IExecutableCommand
     {
         var command = CreateCommand<T>();
         command.ExecutionSource = $"{Path.GetFileName(filePath)}:{lineNumber}";
-        return EnqueueCommand(command);
+        configure.Invoke(command);
+
+        return await command.ExecuteAsync();
     }
 
     public T CreateCommand<T>() where T : IExecutableCommand

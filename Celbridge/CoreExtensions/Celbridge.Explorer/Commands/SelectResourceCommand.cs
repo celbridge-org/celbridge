@@ -19,7 +19,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = explorerService.SetSelectedResource(Resource);
+        var selectResult = explorerService.SelectResource(Resource);
         if (selectResult.IsFailure)
         {
             return selectResult;
