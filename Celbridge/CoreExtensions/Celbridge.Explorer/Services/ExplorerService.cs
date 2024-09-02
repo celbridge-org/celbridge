@@ -1,18 +1,25 @@
 ﻿using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Projects;
 using Celbridge.Explorer.Views;
+using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
+    private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
+
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<ExplorerService> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public IExplorerPanel? ExplorerPanel { get; private set; }
 
@@ -31,15 +38,25 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
+    public ResourceKey SelectedResource { get; private set; }
+
+    private bool _isWorkspaceLoaded;
+
     public ExplorerService(
         IServiceProvider serviceProvider,
+        ILogger<ExplorerService> logger,
+        IMessengerService messengerService,
         ICommandService commandService,
         IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
+        _messengerService = messengerService;
         _commandService = commandService;
         _projectService = projectService;
+        _workspaceWrapper = workspaceWrapper;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.
@@ -54,6 +71,26 @@ public class ExplorerService : IExplorerService, IDisposable
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
         ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
+
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
+        _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+    }
+
+    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
+    {
+        // Once set, this will remain true for the lifetime of the service
+        _isWorkspaceLoaded = true;
+    }
+
+    private void OnSelectedResourceChangedMessage(object recipient, SelectedResourceChangedMessage message)
+    {
+        SelectedResource = message.Resource;
+
+        if (_isWorkspaceLoaded)
+        {
+            // Ignore change events that happen while loading the workspace
+            _ = StoreSelectedResource();            
+        }
     }
 
     public IExplorerPanel CreateExplorerPanel()
@@ -244,18 +281,42 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public ResourceKey GetSelectedResource()
+    public Result SelectResource(ResourceKey resource)
     {
         Guard.IsNotNull(ExplorerPanel);
 
-        return ExplorerPanel.GetSelectedResource();
+        return ExplorerPanel.SelectResource(resource);
     }
 
-    public Result SetSelectedResource(ResourceKey resource)
+    public async Task StoreSelectedResource()
     {
-        Guard.IsNotNull(ExplorerPanel);
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
 
-        return ExplorerPanel.SetSelectedResource(resource);
+        await workspaceData.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
+    }
+
+    public async Task RestorePanelState()
+    {
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        var resource = await workspaceData.GetPropertyAsync<string>(PreviousSelectedResourceKey);
+        if (string.IsNullOrEmpty(resource))
+        {
+            return;
+        }
+
+        // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
+        var selectResult = await _commandService.ExecuteNow<ISelectResourceCommand>(command =>
+        {
+            command.Resource = resource;
+        });
+
+        if (selectResult.IsFailure)
+        {
+            _logger.LogWarning(selectResult, $"Failed to select previously selected resource '{resource}'");
+        }
     }
 
     private bool PathContainsSubPath(string path, string subPath)
@@ -280,6 +341,8 @@ public class ExplorerService : IExplorerService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+                _messengerService.Unregister<SelectedResourceChangedMessage>(this);
             }
 
             _disposed = true;

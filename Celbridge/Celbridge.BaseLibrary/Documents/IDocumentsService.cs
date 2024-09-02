@@ -13,6 +13,17 @@ public interface IDocumentsService
     IDocumentsPanel? DocumentsPanel { get; }
 
     /// <summary>
+    /// The resource key for the currently selected document.
+    /// This is the empty resource if no document is currently selected.
+    /// </summary>
+    ResourceKey SelectedDocument { get; }
+
+    /// <summary>
+    /// The list of currently open documents.
+    /// </summary>
+    List<ResourceKey> OpenDocuments { get; }
+
+    /// <summary>
     /// Factory method to create the documents panel for the workspace UI.
     /// </summary>
     IDocumentsPanel CreateDocumentsPanel();
@@ -42,21 +53,19 @@ public interface IDocumentsService
     Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
-    /// Stores the list of previous open documents in persistent storage.
+    /// Stores the list of currently open documents in persistent storage.
     /// These documents will be opened at the start of the next editing session.
     /// </summary>
-    Task SetPreviousOpenDocuments(List<ResourceKey> openDocuments);
+    Task StoreOpenDocuments();
 
     /// <summary>
-    /// Stores the previous selected document in persistent storage.
+    /// Stores the currently selected document in persistent storage.
     /// This document will be selected at the start of the next editing session.
     /// </summary>
-    Task SetPreviousSelectedDocument(ResourceKey selectedDocument);
+    Task StoreSelectedDocument();
 
     /// <summary>
-    /// Reopens documents that were left open in the previous session.
-    /// The method completes once the commands to open these documents have been scheduled.
-    /// Note that it does not wait for the documents to fully open.
+    /// Restores the state of the panel from the previous session.
     /// </summary>
-    Task<Result> OpenPreviousDocuments();
+    Task RestorePanelState();
 }

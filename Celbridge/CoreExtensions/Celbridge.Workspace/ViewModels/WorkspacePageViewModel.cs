@@ -132,8 +132,9 @@ public partial class WorkspacePageViewModel : ObservableObject
         var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
         _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
 
-        // Short delay to allow the progress bar to display
-        await Task.Delay(100);
+        // Short delay to allow the progress bar to display so the user knows something is happening.
+        // This is a case of "perceived performance is real performance".
+        await Task.Delay(1000);
 
         // Hide the progress dialog
         _dialogService.ReleaseProgressDialog(_progressDialogToken);
