@@ -48,7 +48,7 @@
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Inspector\Celbridge.Inspector.csproj" />
-    <ProjectReference Include="..\CoreExtensions\Celbridge.Resources\Celbridge.Resources.csproj" />
+    <ProjectReference Include="..\CoreExtensions\Celbridge.Explorer\Celbridge.Explorer.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.StatusBar\Celbridge.Status.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Workspace\Celbridge.Workspace.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />

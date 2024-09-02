@@ -1,5 +1,5 @@
 ﻿using Celbridge.Messaging;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;

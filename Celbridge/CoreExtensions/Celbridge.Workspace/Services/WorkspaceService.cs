@@ -3,7 +3,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
 

@@ -1,7 +1,7 @@
 ﻿using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using Celbridge.Status;
 
 namespace Celbridge.Workspace;

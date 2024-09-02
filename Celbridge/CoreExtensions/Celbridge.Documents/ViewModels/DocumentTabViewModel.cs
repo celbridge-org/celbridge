@@ -1,6 +1,6 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Messaging;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
