@@ -86,8 +86,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail("Workspace is not loaded");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.ResourceRegistry;
+        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+        var resourceRegistry = explorerService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
@@ -125,7 +125,7 @@ public class DataTransferService : IDataTransferService, IDisposable
                 ? DataTransferMode.Move
                 : DataTransferMode.Copy;
 
-            var createTransferResult = resourceService.CreateResourceTransfer(paths, destFolderResource, transferMode);
+            var createTransferResult = explorerService.CreateResourceTransfer(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
             {
                 var failure = Result<IResourceTransfer>.Fail($"Failed to create resource transfer.");
@@ -174,8 +174,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             }
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        return await resourceService.TransferResources(destFolderResource, description);
+        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+        return await explorerService.TransferResources(destFolderResource, description);
     }
 
     private bool _disposed;

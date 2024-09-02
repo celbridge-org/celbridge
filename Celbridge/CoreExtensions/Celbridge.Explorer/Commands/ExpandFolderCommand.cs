@@ -20,7 +20,7 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         Guard.IsNotNull(resourceRegistry);
 
         var getResult = resourceRegistry.GetResource(FolderResource);
