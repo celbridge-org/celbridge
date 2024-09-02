@@ -11,11 +11,11 @@ namespace Celbridge.Explorer.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
-    private readonly IResourceService _resourceService;
+    private readonly IExplorerService _explorerService;
     private readonly IDataTransferService _dataTransferService;
     private readonly ICommandService _commandService;
 
-    public IList<IResource> Resources => _resourceService.ResourceRegistry.RootFolder.Children;
+    public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
     public ResourceTreeViewModel(
         IMessengerService messengerService,
@@ -23,7 +23,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         ICommandService commandService)
     {
         _messengerService = messengerService;
-        _resourceService = workspaceWrapper.WorkspaceService.ResourceService;
+        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _commandService = commandService;
     }
@@ -37,10 +37,10 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Use the concrete type to set the resource tree view because the
         // interface does not expose the setter.
 
-        var resourceService = _resourceService as ResourceService;
-        Guard.IsNotNull(resourceService);
+        var explorerService = _explorerService as ExplorerService;
+        Guard.IsNotNull(explorerService);
 
-        resourceService.ResourceTreeView = resourceTreeView;
+        explorerService.ResourceTreeView = resourceTreeView;
 
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);        
     }
@@ -92,7 +92,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         if (contentDescription.ContentType == ClipboardContentType.Resource)
         {
-            var resourceRegistry = _resourceService.ResourceRegistry;
+            var resourceRegistry = _explorerService.ResourceRegistry;
             var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
 
             var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderResource);
@@ -111,7 +111,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void SetFolderIsExpanded(IFolderResource folder, bool isExpanded)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
         var folderResource = resourceRegistry.GetResourceKey(folder);
 
         bool currentRegistryState = resourceRegistry.IsFolderExpanded(folderResource);
@@ -137,7 +137,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OpenFileResource(IFileResource fileResource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
         var resource = resourceRegistry.GetResourceKey(fileResource);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
@@ -148,7 +148,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
 
         if (destFolder is null)
         {
@@ -168,7 +168,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowDeleteResourceDialog(IResource resource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to show the delete resource dialog
@@ -180,7 +180,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void ShowRenameResourceDialog(IResource resource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to show the rename resource dialog
@@ -195,14 +195,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         if (destFolder is null)
         {
             // A null folder reference indicates the root folder
-            destFolder = _resourceService.ResourceRegistry.RootFolder;
+            destFolder = _explorerService.ResourceRegistry.RootFolder;
         }
 
         foreach (var resource in resources)
         {
-            var sourceResource = _resourceService.ResourceRegistry.GetResourceKey(resource);
-            var destResource = _resourceService.ResourceRegistry.GetResourceKey(destFolder);
-            var resolvedDestResource = _resourceService.ResourceRegistry.ResolveDestinationResource(sourceResource, destResource);
+            var sourceResource = _explorerService.ResourceRegistry.GetResourceKey(resource);
+            var destResource = _explorerService.ResourceRegistry.GetResourceKey(destFolder);
+            var resolvedDestResource = _explorerService.ResourceRegistry.ResolveDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
             {
@@ -227,7 +227,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void CutResourceToClipboard(IResource sourceResource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
 
         var sourceResourceKey = resourceRegistry.GetResourceKey(sourceResource);
 
@@ -241,7 +241,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void CopyResourceToClipboard(IResource sourceResource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
 
         var resourceKey = resourceRegistry.GetResourceKey(sourceResource);
 
@@ -255,7 +255,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void PasteResourceFromClipboard(IResource? destResource)
     {
-        var resourceRegistry = _resourceService.ResourceRegistry;
+        var resourceRegistry = _explorerService.ResourceRegistry;
 
         var destFolderResource = resourceRegistry.GetContextMenuItemFolder(destResource);
 
@@ -273,15 +273,15 @@ public partial class ResourceTreeViewModel : ObservableObject
             return Result.Fail("Destination resource is null");
         }
 
-        var destFolderResource = _resourceService.ResourceRegistry.GetContextMenuItemFolder(destResource);
-        var createResult = _resourceService.CreateResourceTransfer(sourcePaths, destFolderResource, DataTransferMode.Copy);
+        var destFolderResource = _explorerService.ResourceRegistry.GetContextMenuItemFolder(destResource);
+        var createResult = _explorerService.CreateResourceTransfer(sourcePaths, destFolderResource, DataTransferMode.Copy);
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create resource transfer. {createResult.Error}");
         }
         var resourceTransfer = createResult.Value;
 
-        var transferResult = await _resourceService.TransferResources(destFolderResource, resourceTransfer);
+        var transferResult = await _explorerService.TransferResources(destFolderResource, resourceTransfer);
         if (transferResult.IsFailure)
         {
             return Result.Fail($"Failed to transfer resources. {transferResult.Error}");

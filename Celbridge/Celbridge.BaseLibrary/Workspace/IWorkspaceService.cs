@@ -27,9 +27,9 @@ public interface IWorkspaceService
     IDocumentsService DocumentsService { get; }
 
     /// <summary>
-    /// Returns the Resource Service associated with the workspace.
+    /// Returns the Explorer Service associated with the workspace.
     /// </summary>
-    IResourceService ResourceService { get; }
+    IExplorerService ExplorerService { get; }
 
     /// <summary>
     /// Returns the Status Service associated with the workspace.

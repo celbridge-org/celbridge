@@ -50,7 +50,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail("No workspace is loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
         if (string.IsNullOrEmpty(filePath) ||
@@ -159,7 +159,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Ok();
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         foreach (var resourceKey in openDocuments)
         {

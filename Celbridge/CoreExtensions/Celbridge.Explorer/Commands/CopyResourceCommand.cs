@@ -76,7 +76,7 @@ namespace Celbridge.Explorer.Commands
             // Copy the resource
             //
 
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
             // Resolve references to folder resource
             _resolvedDestResource = resourceRegistry.ResolveDestinationResource(SourceResource, DestResource);
@@ -249,7 +249,7 @@ namespace Celbridge.Explorer.Commands
                     _messengerService.Send(message);
                 }
 
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
                 var newParentFolder = resourceB.GetParent();
                 if (!newParentFolder.IsEmpty)
                 {
@@ -272,7 +272,7 @@ namespace Celbridge.Explorer.Commands
             }
 
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
+            var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
             var loadedProject = _projectService.LoadedProject;
 
             Guard.IsNotNull(loadedProject);

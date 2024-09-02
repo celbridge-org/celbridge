@@ -17,9 +17,9 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = resourceService.SetSelectedResource(Resource);
+        var selectResult = explorerService.SetSelectedResource(Resource);
         if (selectResult.IsFailure)
         {
             return selectResult;
