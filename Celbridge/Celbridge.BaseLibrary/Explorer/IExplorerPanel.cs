@@ -1,9 +1,9 @@
 ﻿namespace Celbridge.Explorer;
 
 /// <summary>
-/// Interface for interacting with the DocumentsPanel view.
+/// Interface for interacting with the Explorer Panel view.
 /// </summary>
-public interface IResourcesPanel
+public interface IExplorerPanel
 {
     /// <summary>
     /// Returns the selected resource in the explorer panel.

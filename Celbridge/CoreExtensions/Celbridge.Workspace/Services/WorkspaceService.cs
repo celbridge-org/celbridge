@@ -21,7 +21,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
-    public IResourceService ResourceService { get; }
+    public IExplorerService ExplorerService { get; }
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
 
@@ -39,7 +39,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
-        ResourceService = serviceProvider.GetRequiredService<IResourceService>();
+        ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
@@ -100,7 +100,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Save the expanded folders in the Resource Registry
 
-        var resourceRegistry = ResourceService.ResourceRegistry;
+        var resourceRegistry = ExplorerService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
         await workspaceData.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
@@ -128,7 +128,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
-                (ResourceService as IDisposable)!.Dispose();
+                (ExplorerService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
             }

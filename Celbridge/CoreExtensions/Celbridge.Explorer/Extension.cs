@@ -15,18 +15,18 @@ public class Extension : IExtension
         //
         // Register UI elements
         //
-        config.AddTransient<ResourcesPanel>();
+        config.AddTransient<ExplorerPanel>();
 
         //
         // Register View Models
         //
-        config.AddTransient<ResourcesPanelViewModel>();
+        config.AddTransient<ExplorerPanelViewModel>();
         config.AddTransient<ResourceTreeViewModel>();
 
         //
         // Register services
         //
-        config.AddTransient<IResourceService, ResourceService>();
+        config.AddTransient<IExplorerService, ExplorerService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
 
