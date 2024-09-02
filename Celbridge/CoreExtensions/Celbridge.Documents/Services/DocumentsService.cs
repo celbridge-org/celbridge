@@ -14,18 +14,24 @@ public class DocumentsService : IDocumentsService, IDisposable
     private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
 
     private readonly ILogger<DocumentsService> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public IDocumentsPanel? DocumentsPanel { get; private set; }
 
+    public ResourceKey SelectedDocument { get; private set; }
+
+    public List<ResourceKey> OpenDocuments { get; } = new();
+
+    private bool _isWorkspaceLoaded;
+
     public DocumentsService(
         ILogger<DocumentsService> logger,
+        IMessengerService messengerService,
         ICommandService commandService,
         IServiceProvider serviceProvider,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -33,6 +39,38 @@ public class DocumentsService : IDocumentsService, IDisposable
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
+        _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
+        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+    }
+
+    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
+    {
+        // Once set, this will remain true for the lifetime of the service
+        _isWorkspaceLoaded = true;
+    }
+
+    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    {
+        SelectedDocument = message.DocumentResource;
+
+        if (_isWorkspaceLoaded)
+        {
+            // Ignore change events that happen while loading the workspace
+            _ = StoreSelectedDocument();
+        }
+    }
+
+    private void OnOpenDocumentsChangedMessage(object recipient, OpenDocumentsChangedMessage message)
+    {
+        OpenDocuments.ReplaceWith(message.OpenDocuments);
+
+        if (_isWorkspaceLoaded)
+        {
+            // Ignore change events that happen while loading the workspace
+            _ = StoreOpenDocuments();
+        }
     }
 
     public IDocumentsPanel CreateDocumentsPanel()
@@ -116,13 +154,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task StoreOpenDocuments(List<ResourceKey> openDocuments)
+    public async Task StoreOpenDocuments()
     {
         var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
 
         List<string> documents = [];
-        foreach (var fileResource in openDocuments)
+        foreach (var fileResource in OpenDocuments)
         {
             documents.Add(fileResource.ToString());
         }
@@ -130,17 +168,17 @@ public class DocumentsService : IDocumentsService, IDisposable
         await workspaceData.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
     }
 
-    public async Task StoreSelectedDocument(ResourceKey selectedDocument)
+    public async Task StoreSelectedDocument()
     {
         var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
 
-        var fileResource = selectedDocument.ToString();
+        var fileResource = SelectedDocument.ToString();
 
         await workspaceData.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
     }
 
-    public async Task RestoreDocuments()
+    public async Task RestorePanelState()
     {
         Guard.IsNotNull(DocumentsPanel);
 
@@ -227,7 +265,9 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
+                _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+                _messengerService.Unregister<OpenDocumentsChangedMessage>(this);
+                _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
             }
 
             _disposed = true;

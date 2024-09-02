@@ -23,6 +23,11 @@ public interface IExplorerService
     IResourceTreeView ResourceTreeView { get; }
 
     /// <summary>
+    /// The currenlty selected resource in the Explorer Panel.
+    /// </summary>
+    ResourceKey SelectedResource { get; }
+
+    /// <summary>
     /// Factory method to create the resources panel for the workspace UI.
     /// </summary>
     IExplorerPanel CreateExplorerPanel();
@@ -43,24 +48,18 @@ public interface IExplorerService
     Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer);
 
     /// <summary>
-    /// Returns the selected resource in the explorer panel.
-    /// Returns an empty resource if no resource is currently selected.
-    /// </summary>
-    ResourceKey GetSelectedResource();
-
-    /// <summary>
     /// Select a resource in the explorer panel.
     /// </summary>
-    Result SetSelectedResource(ResourceKey resource);
+    Result SelectResource(ResourceKey resource);
 
     /// <summary>
-    /// Stores the previous selected resource in persistent storage.
+    /// Stores the selected resource in persistent storage.
     /// This resource will be selected at the start of the next editing session.
     /// </summary>
-    Task StoreSelectedResource(ResourceKey resource);
+    Task StoreSelectedResource();
 
     /// <summary>
-    /// Selects the resource that was selected in the previous session.
+    /// Restores the state of the panel from the previous session.
     /// </summary>
-    Task RestoreSelectedResource();
+    Task RestorePanelState();
 }
