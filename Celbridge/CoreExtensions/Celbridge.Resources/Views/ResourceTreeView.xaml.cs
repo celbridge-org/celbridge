@@ -94,7 +94,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return Result.Ok();
     }
 
-    private ResourceKey GetSelectedResource()
+    public ResourceKey GetSelectedResource()
     {
         ResourceKey selectedResourceKey = new();
         var selectedItem = ResourcesTreeView.SelectedItem as TreeViewNode;
@@ -111,21 +111,26 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return selectedResourceKey;
     }
 
-    private Result SetSelectedResource(ResourceKey selectedResourceKey)
+    public Result SetSelectedResource(ResourceKey resource)
     {
-        if (selectedResourceKey.IsEmpty)
+        if (resource.IsEmpty)
         {
-            return Result.Fail("Selected resource key is empty");
+            // An empty resource key indicates that no resource should be selected
+            ResourcesTreeView.SelectedItem = null;
+            return Result.Ok();
         }
 
-        var segments = selectedResourceKey.ToString().Split('/');
+        var segments = resource.ToString().Split('/');
         Guard.IsTrue(segments.Length >= 1);
 
         var node = FindNode(0, ResourcesTreeView.RootNodes);
-        if (node != null)
+
+        if (node is null)
         {
-            ResourcesTreeView.SelectedItem = node;
+            return Result.Fail($"No matching tree node found for resource: '{resource}'");
         }
+
+        ResourcesTreeView.SelectedItem = node;
 
         return Result.Ok();
 
