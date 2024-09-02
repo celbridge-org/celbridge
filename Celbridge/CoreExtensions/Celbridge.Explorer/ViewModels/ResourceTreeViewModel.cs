@@ -17,8 +17,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
-    private bool _isWorkspaceLoaded;
-
     public ResourceTreeViewModel(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
@@ -44,20 +42,12 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         explorerService.ResourceTreeView = resourceTreeView;
 
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);        
     }
 
     public void OnUnloaded()
     {
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
         _messengerService.Unregister<ClipboardContentChangedMessage>(this);
-    }
-
-    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
-    {
-        // This will remain true for the lifetime of this view model
-        _isWorkspaceLoaded = true;
     }
 
     private void OnClipboardContentChangedMessage(object recipient, ClipboardContentChangedMessage message)
@@ -300,12 +290,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         return Result.Ok();
     }
 
-    public void OnSelectedResourceChanged(ResourceKey selectedResource)
+    public void OnSelectedResourceChanged(ResourceKey resource)
     {
-        if (_isWorkspaceLoaded)
-        {
-            // Ignore change events that happen while loading the workspace
-            _ = _explorerService.StoreSelectedResource(selectedResource);
-        }
+        var message = new SelectedResourceChangedMessage(resource);
+        _messengerService.Send(message);
     }
 }

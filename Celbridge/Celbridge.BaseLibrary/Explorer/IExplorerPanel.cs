@@ -14,5 +14,5 @@ public interface IExplorerPanel
     /// <summary>
     /// Select a resource in the explorer panel.
     /// </summary>
-    Result SetSelectedResource(ResourceKey resource);
+    Result SelectResource(ResourceKey resource);
 }
