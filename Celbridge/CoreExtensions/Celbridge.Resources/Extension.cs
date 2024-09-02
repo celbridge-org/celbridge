@@ -41,6 +41,7 @@ public class Extension : IExtension
         config.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         config.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();
         config.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
+        config.AddTransient<ISelectResourceCommand, SelectResourceCommand>();
         config.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
 
         //
