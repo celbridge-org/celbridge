@@ -1,5 +1,5 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;

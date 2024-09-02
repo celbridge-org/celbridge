@@ -1,6 +1,6 @@
 ﻿using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
