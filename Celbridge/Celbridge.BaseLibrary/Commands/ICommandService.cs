@@ -8,21 +8,37 @@ namespace Celbridge.Commands;
 public interface ICommandService
 {
     /// <summary>
-    /// Create, configure and enqueue a command in one step.
+    /// Create and enqueue a command that does not require configuration.
     /// </summary>
-    Result Execute<T>
-    (
-        Action<T> configure, 
+    Result Execute<T>(
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0
     ) where T : IExecutableCommand;
 
     /// <summary>
-    /// Create and enqueue a command in one step.
-    /// Use this for commands that don't need to be configured.
+    /// Create and immediately execute a command that does not require configuration.
+    /// Note that immediately executed commands do not support command flags or undo/redo.
     /// </summary>
-    Result Execute<T>
-    (
+    Task<Result> ExecuteNow<T>(
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
+
+    /// <summary>
+    /// Create, configure and enqueue a command.
+    /// </summary>
+    Result Execute<T> (
+        Action<T> configure,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0
+    ) where T : IExecutableCommand;
+
+    /// <summary>
+    /// Create, configure and immediately execute a command.
+    /// Note that immediately executed commands do not support command flags or undo/redo.
+    /// </summary>
+    Task<Result> ExecuteNow<T>(
+        Action<T> configure,
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0
     ) where T : IExecutableCommand;

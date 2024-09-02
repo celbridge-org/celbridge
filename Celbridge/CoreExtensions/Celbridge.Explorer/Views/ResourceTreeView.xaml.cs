@@ -580,4 +580,23 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         return null;
     }
+
+    private void ResourcesTreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
+    {
+        Guard.IsNotNull(_resourceRegistry);
+
+        var node = args.AddedItems.FirstOrDefault() as TreeViewNode;
+        if (node is null ||
+            node.Content is null)
+        {
+            ViewModel.OnSelectedResourceChanged(ResourceKey.Empty);
+            return;
+        }
+
+        var resource = node.Content as IResource;
+        Guard.IsNotNull(resource);
+
+        var selectedResource = _resourceRegistry.GetResourceKey(resource);
+        ViewModel.OnSelectedResourceChanged(selectedResource);
+    }
 }

@@ -52,4 +52,15 @@ public interface IExplorerService
     /// Select a resource in the explorer panel.
     /// </summary>
     Result SetSelectedResource(ResourceKey resource);
+
+    /// <summary>
+    /// Stores the previous selected resource in persistent storage.
+    /// This resource will be selected at the start of the next editing session.
+    /// </summary>
+    Task StoreSelectedResource(ResourceKey resource);
+
+    /// <summary>
+    /// Selects the resource that was selected in the previous session.
+    /// </summary>
+    Task RestoreSelectedResource();
 }

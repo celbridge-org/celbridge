@@ -45,18 +45,16 @@ public interface IDocumentsService
     /// Stores the list of previous open documents in persistent storage.
     /// These documents will be opened at the start of the next editing session.
     /// </summary>
-    Task SetPreviousOpenDocuments(List<ResourceKey> openDocuments);
+    Task StoreOpenDocuments(List<ResourceKey> openDocuments);
 
     /// <summary>
     /// Stores the previous selected document in persistent storage.
     /// This document will be selected at the start of the next editing session.
     /// </summary>
-    Task SetPreviousSelectedDocument(ResourceKey selectedDocument);
+    Task StoreSelectedDocument(ResourceKey selectedDocument);
 
     /// <summary>
     /// Reopens documents that were left open in the previous session.
-    /// The method completes once the commands to open these documents have been scheduled.
-    /// Note that it does not wait for the documents to fully open.
     /// </summary>
-    Task<Result> OpenPreviousDocuments();
+    Task RestoreDocuments();
 }
