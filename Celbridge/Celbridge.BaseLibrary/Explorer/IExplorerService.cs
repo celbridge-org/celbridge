@@ -3,10 +3,15 @@
 namespace Celbridge.Explorer;
 
 /// <summary>
-/// The project service provides functionality to support the project panel in the workspace UI.
+/// Provides functionality to support the explorer panel in the workspace UI.
 /// </summary>
-public interface IResourceService
+public interface IExplorerService
 {
+    /// <summary>
+    /// Returns the Explorer Panel view.
+    /// </summary>
+    IExplorerPanel? ExplorerPanel { get; }
+
     /// <summary>
     /// Returns the Resource Registry associated with the loaded project.
     /// </summary>
@@ -20,7 +25,7 @@ public interface IResourceService
     /// <summary>
     /// Factory method to create the resources panel for the workspace UI.
     /// </summary>
-    IResourcesPanel CreateResourcesPanel();
+    IExplorerPanel CreateExplorerPanel();
 
     /// <summary>
     /// Update the resource registry and populate the resource tree view.

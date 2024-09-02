@@ -65,7 +65,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
         var loadedProject = _projectService.LoadedProject;
 
         Guard.IsNotNull(loadedProject);
@@ -219,7 +219,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a file in
         // that folder with the same name as the source file.
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
@@ -246,7 +246,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a folder in
         // that folder with the same name as the source folder.
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();

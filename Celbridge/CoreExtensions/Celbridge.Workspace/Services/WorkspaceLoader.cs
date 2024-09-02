@@ -44,7 +44,7 @@ public class WorkspaceLoader
             if (expandedFolders is not null &&
                 expandedFolders.Count > 0)
             {
-                var resourceRegistry = workspaceService.ResourceService.ResourceRegistry;
+                var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
                 foreach (var expandedFolder in expandedFolders)
                 {
                     resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
@@ -61,8 +61,8 @@ public class WorkspaceLoader
         //
         try
         {
-            var resourceService = workspaceService.ResourceService;
-            var updateResult = await resourceService.UpdateResourcesAsync();
+            var explorerService = workspaceService.ExplorerService;
+            var updateResult = await explorerService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
                 var failure = Result.Fail("Failed to update resources");
