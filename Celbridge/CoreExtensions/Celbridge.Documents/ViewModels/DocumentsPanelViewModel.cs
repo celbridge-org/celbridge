@@ -3,7 +3,6 @@ using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -76,19 +75,21 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void UpdatePendingSaveCount(int pendingSaveCount)
     {
-        // Notify the status bar about the current number of pending document saves.
+        // Notify the StatusPanelViewModel about the current number of pending document saves.
         var message = new PendingDocumentSaveMessage(pendingSaveCount);
         _messengerService.Send(message);
     }
 
     public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
     {
+        // Notify the DocumentsService about the current list of open documents.
         var message = new OpenDocumentsChangedMessage(documentResources);
         _messengerService.Send(message);
     }
 
     public void OnSelectedDocumentChanged(ResourceKey documentResource)
     {
+        // Notify the DocumentsService about the currently selected documents.
         var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
     }
