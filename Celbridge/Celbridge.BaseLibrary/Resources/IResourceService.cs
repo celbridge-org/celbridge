@@ -20,7 +20,7 @@ public interface IResourceService
     /// <summary>
     /// Factory method to create the resources panel for the workspace UI.
     /// </summary>
-    object CreateResourcesPanel();
+    IResourcesPanel CreateResourcesPanel();
 
     /// <summary>
     /// Update the resource registry and populate the resource tree view.
@@ -36,4 +36,15 @@ public interface IResourceService
     /// Transfer resources to a destination folder resource.
     /// </summary>
     Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer);
+
+    /// <summary>
+    /// Returns the selected resource in the explorer panel.
+    /// Returns an empty resource if no resource is currently selected.
+    /// </summary>
+    ResourceKey GetSelectedResource();
+
+    /// <summary>
+    /// Select a resource in the explorer panel.
+    /// </summary>
+    Result SetSelectedResource(ResourceKey resource);
 }
