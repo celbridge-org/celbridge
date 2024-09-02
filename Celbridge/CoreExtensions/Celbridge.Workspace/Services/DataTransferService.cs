@@ -1,7 +1,7 @@
 ﻿using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Messaging;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
 

@@ -1,6 +1,6 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
-using Celbridge.Resources;
+using Celbridge.Explorer;
 using CommunityToolkit.Diagnostics;
 using Windows.Foundation.Collections;
 

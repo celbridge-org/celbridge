@@ -1,0 +1,108 @@
+﻿<UserControl
+    x:Class="Celbridge.Explorer.Views.ResourceTreeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Explorer.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:models="using:Celbridge.Explorer.Models"
+    mc:Ignorable="d"
+    DataContext="{x:Bind ViewModel}"
+    Background="{ThemeResource ApplicationBackgroundBrush}">
+
+    <UserControl.Resources>
+        <MenuFlyout x:Name="ResourceContextMenu"
+                    Placement="RightEdgeAlignedTop"
+                    Opening="ResourceContextMenu_Opening">
+            <MenuFlyoutItem Text="{x:Bind OpenString}" 
+                            Click="ResourceContextMenu_Open"
+                            IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+            <MenuFlyoutSubItem Text="{x:Bind AddString}">
+                <MenuFlyoutItem Text="{x:Bind FolderString}" 
+                                Icon="Folder"
+                                Click="ResourceContextMenu_AddFolder"/>
+                <MenuFlyoutItem Text="{x:Bind FileString}" 
+                                Icon="Add"
+                                Click="ResourceContextMenu_AddFile"/>
+            </MenuFlyoutSubItem>
+            <MenuFlyoutSubItem Text="{x:Bind EditString}">
+                <MenuFlyoutItem Text="{x:Bind CutString}" 
+                                Icon="Cut"
+                                Click="ResourceContextMenu_Cut"
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="{x:Bind CopyString}" 
+                                Icon="Copy"
+                                Click="ResourceContextMenu_Copy"
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="{x:Bind PasteString}" 
+                                Icon="Paste"
+                                Click="ResourceContextMenu_Paste"
+                                IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="{x:Bind DeleteString}" 
+                                Icon="Delete"
+                                Click="ResourceContextMenu_Delete"
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="{x:Bind RenameString}" 
+                                Icon="Edit"
+                                Click="ResourceContextMenu_Rename"
+                                IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+            </MenuFlyoutSubItem>
+        </MenuFlyout>
+
+        <DataTemplate x:Key="FolderTemplate"
+                      x:DataType="muxc:TreeViewNode">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
+                               DoubleTapped="TreeViewItem_DoubleTapped">
+                <StackPanel Orientation="Horizontal">
+                    <FontIcon FontFamily="{StaticResource OctIconsFontFamily}"
+                              Glyph="&#xF016;" 
+                              FontSize="16" 
+                              Foreground="#FFCC40"/>
+                    <TextBlock Margin="8 0 0 0" 
+                               Text="{Binding Path=Content.Name, Mode=OneWay}" />
+                </StackPanel>
+            </muxc:TreeViewItem>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FileTemplate"
+                      x:DataType="muxc:TreeViewNode">
+            <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
+                               DoubleTapped="TreeViewItem_DoubleTapped">
+
+            <StackPanel Orientation="Horizontal">
+                    <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+                              Glyph="{Binding Path=Content.Icon.FontCharacter}" 
+                              Foreground="{Binding Path=Content.Icon.FontColor}"
+                              FontSize="16" 
+                              Margin="0 0 6 0"/>
+                    <TextBlock Margin="0" 
+                               Text="{Binding Path=Content.Name, Mode=OneWay}" />
+                </StackPanel>
+
+            </muxc:TreeViewItem>
+        </DataTemplate>
+
+        <local:FontFamilyConverter x:Key="FontFamilyConverter"/>
+
+        <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
+            FolderTemplate="{StaticResource FolderTemplate}"
+            FileTemplate="{StaticResource FileTemplate}" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  Grid.Row="3"
+                  VerticalAlignment="Stretch"
+                  ContextFlyout="{StaticResource ResourceContextMenu}">
+        <muxc:TreeView x:Name="ResourcesTreeView"
+                       ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
+                       CanReorderItems="True"
+                       SelectionMode="Single"
+                       KeyDown="TreeView_KeyDown"
+                       DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
+                       AllowDrop="True" 
+                       DragOver="ResourcesTreeView_DragOver" 
+                       Drop="ResourcesTreeView_Drop">
+        </muxc:TreeView>
+    </ScrollViewer>
+</UserControl>
