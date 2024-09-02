@@ -14,6 +14,8 @@ public class ResourceService : IResourceService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
 
+    public IResourcesPanel? ResourcesPanel { get; private set; }
+
     public IResourceRegistry ResourceRegistry { get; init; }
 
     private IResourceTreeView? _resourceTreeView;
@@ -54,9 +56,10 @@ public class ResourceService : IResourceService, IDisposable
         ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
     }
 
-    public object CreateResourcesPanel()
+    public IResourcesPanel CreateResourcesPanel()
     {
-        return _serviceProvider.GetRequiredService<ResourcesPanel>();
+        ResourcesPanel = _serviceProvider.GetRequiredService<ResourcesPanel>();
+        return ResourcesPanel;
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -239,6 +242,20 @@ public class ResourceService : IResourceService, IDisposable
         }
 
         return Result.Ok();
+    }
+
+    public ResourceKey GetSelectedResource()
+    {
+        Guard.IsNotNull(ResourcesPanel);
+
+        return ResourcesPanel.GetSelectedResource();
+    }
+
+    public Result SetSelectedResource(ResourceKey resource)
+    {
+        Guard.IsNotNull(ResourcesPanel);
+
+        return ResourcesPanel.SetSelectedResource(resource);
     }
 
     private bool PathContainsSubPath(string path, string subPath)

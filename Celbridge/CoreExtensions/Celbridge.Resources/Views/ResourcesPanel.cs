@@ -3,12 +3,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Views;
 
-public sealed partial class ResourcesPanel : UserControl
+public sealed partial class ResourcesPanel : UserControl, IResourcesPanel
 {
     private IStringLocalizer _stringLocalizer;
     private LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ResourcesPanel_RefreshTooltip");
 
     public ResourcesPanelViewModel ViewModel { get; }
+
+    private readonly ResourceTreeView _resourceTreeView;
 
     public ResourcesPanel()
     {
@@ -41,13 +43,13 @@ public sealed partial class ResourcesPanel : UserControl
                 refreshProjectButton
             );
 
-        var resourceTreeView = new ResourceTreeView()
+        _resourceTreeView = new ResourceTreeView()
             .Grid(row:1);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .Children(titleBar, resourceTreeView);
+            .Children(titleBar, _resourceTreeView);
            
         //
         // Set the data context and page content
@@ -55,5 +57,15 @@ public sealed partial class ResourcesPanel : UserControl
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
             .Content(panelGrid));
+    }
+
+    public ResourceKey GetSelectedResource()
+    {
+        return _resourceTreeView.GetSelectedResource();
+    }
+
+    public Result SetSelectedResource(ResourceKey resource)
+    {
+        return _resourceTreeView.SetSelectedResource(resource);
     }
 }
