@@ -73,11 +73,18 @@ public class WorkspaceLoader
         //
 
         // Select the previous selected resource in the Explorer Panel.
-        await explorerService.RestoreSelectedResource();
+        await explorerService.RestorePanelState();
 
         // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;
-        await documentsService.RestoreDocuments();
+        await documentsService.RestorePanelState();
+
+        //
+        // Update the current stored state of the workspace in preparation for the next session.
+        //
+        await explorerService.StoreSelectedResource();
+        await documentsService.StoreSelectedDocument();
+        await documentsService.StoreOpenDocuments();
 
         return Result.Ok();
     }

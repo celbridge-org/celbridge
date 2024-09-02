@@ -8,7 +8,12 @@ namespace Celbridge.Documents;
 public record PendingDocumentSaveMessage(int PendingSaveCount);
 
 /// <summary>
-/// A message sent when the selected document in the document panel changes.
+/// A message sent when the list of opened documents changes.
+/// </summary>
+public record OpenDocumentsChangedMessage(List<ResourceKey> OpenDocuments);
+
+/// <summary>
+/// A message sent when the selected document changes.
 /// </summary>
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 
