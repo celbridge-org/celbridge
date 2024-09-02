@@ -102,7 +102,8 @@
                        DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
                        AllowDrop="True" 
                        DragOver="ResourcesTreeView_DragOver" 
-                       Drop="ResourcesTreeView_Drop">
+                       Drop="ResourcesTreeView_Drop"
+                       SelectionChanged="ResourcesTreeView_SelectionChanged">
         </muxc:TreeView>
     </ScrollViewer>
 </UserControl>

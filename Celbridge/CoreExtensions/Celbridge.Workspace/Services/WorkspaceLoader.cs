@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using Celbridge.Commands;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
 
@@ -19,6 +20,8 @@ public class WorkspaceLoader
             return Result.Fail("Workspace service is not initialized");
         }
 
+        var explorerService = workspaceService.ExplorerService;
+
         //
         // Acquire the workspace database
         //
@@ -35,11 +38,11 @@ public class WorkspaceLoader
         Guard.IsNotNull(workspaceData);
 
         //
-        // Restore the Project Panel view state
+        // Populate the resource registry.
         //
         try
         {
-            // Set expanded folders
+            // Restore previous state of expanded folders before populating resources
             var expandedFolders = await workspaceData.GetPropertyAsync<List<string>>("ExpandedFolders");
             if (expandedFolders is not null &&
                 expandedFolders.Count > 0)
@@ -50,18 +53,7 @@ public class WorkspaceLoader
                     resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex, $"An exception occurred while restoring the Project Panel view state");
-        }
 
-        //
-        // Update the resource registry.
-        //
-        try
-        {
-            var explorerService = workspaceService.ExplorerService;
             var updateResult = await explorerService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
@@ -72,24 +64,20 @@ public class WorkspaceLoader
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to update the resource registry");
+            return Result.Fail(ex, $"An exception occurred while populating the resource registry");
         }
 
         //
-        // Open previously opened documents
+        // Restore the previous state of the workspace.
+        // Any failures that occur here are logged as warnings and do not prevent the workspace from loading.
         //
+
+        // Select the previous selected resource in the Explorer Panel.
+        await explorerService.RestoreSelectedResource();
+
+        // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;
-        var openResult = await documentsService.OpenPreviousDocuments();
-        if (openResult.IsFailure)
-        {
-            var failure = Result.Fail("Failed to open previous documents");
-            failure.MergeErrors(openResult);
-            return failure;
-        }
-
-        // Allow a little time for the opened documents to populate.
-        // This also gives the user time to visually register the progress bar (in the case of a very fast load).
-        await Task.Delay(400);
+        await documentsService.RestoreDocuments();
 
         return Result.Ok();
     }
