@@ -88,6 +88,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
         if (_isWorkspaceLoaded)
         {
+            // Ignore change events that happen while loading the workspace
             _ = StoreSelectedResource();            
         }
     }
