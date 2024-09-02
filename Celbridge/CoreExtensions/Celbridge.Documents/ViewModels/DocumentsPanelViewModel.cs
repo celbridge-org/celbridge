@@ -3,7 +3,6 @@ using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -14,12 +13,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly IDocumentsService _documentsService;
     private readonly IEditorSettings _editorSettings;
 
     private DocumentViewFactory _documentViewFactory = new();
-
-    private bool _isWorkspaceLoaded;
 
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
@@ -28,12 +24,10 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
-        IDocumentsService documentsService,
         IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
         _commandService = commandService;
-        _documentsService = documentsService;
         _editorSettings = editorSettings;
     }
 
@@ -42,8 +36,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);
         settings.PropertyChanged += EditorSettings_PropertyChanged;
-
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
     }
 
     public void OnViewUnloaded()
@@ -51,14 +43,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);
         settings.PropertyChanged -= EditorSettings_PropertyChanged;
-
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
-    }
-
-    private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
-    {
-        // This will remain true for the lifetime of this view model
-        _isWorkspaceLoaded = true;
     }
 
     public async Task<Result<Control>> CreateDocumentView(ResourceKey fileResource, string filePath)
@@ -91,31 +75,21 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void UpdatePendingSaveCount(int pendingSaveCount)
     {
-        // Notify the status bar about the current number of pending document saves.
+        // Notify the StatusPanelViewModel about the current number of pending document saves.
         var message = new PendingDocumentSaveMessage(pendingSaveCount);
         _messengerService.Send(message);
     }
 
     public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
     {
-        if (_isWorkspaceLoaded)
-        {
-            // Ignore change events that happen while loading the workspace and opening the
-            // previously opened documents. 
-            _documentsService.SetPreviousOpenDocuments(documentResources);
-        }
+        // Notify the DocumentsService about the current list of open documents.
+        var message = new OpenDocumentsChangedMessage(documentResources);
+        _messengerService.Send(message);
     }
 
     public void OnSelectedDocumentChanged(ResourceKey documentResource)
     {
-        if (_isWorkspaceLoaded)
-        {
-            // Ignore change events that happen while loading the workspace and opening the
-            // previously opened documents. 
-            _documentsService.SetPreviousSelectedDocument(documentResource);
-        }
-
-        // Notify the status panel that the selected document has changed
+        // Notify the DocumentsService about the currently selected documents.
         var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
     }
