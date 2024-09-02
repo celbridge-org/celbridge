@@ -5,7 +5,7 @@
 /// </summary>
 public enum WorkspacePanelType
 {
-    ResourcesPanel,
+    ExplorerPanel,
     ConsolePanel,
     InspectorPanel,
     StatusPanel,

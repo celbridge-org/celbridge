@@ -42,7 +42,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
