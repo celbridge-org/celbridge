@@ -1,8 +1,8 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Documents.Views;
+using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Explorer;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
@@ -44,11 +44,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     public async Task<Result> OpenDocument(ResourceKey fileResource)
     {
         Guard.IsNotNull(DocumentsPanel);
-
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            return Result.Fail("No workspace is loaded");
-        }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
@@ -121,7 +116,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task SetPreviousOpenDocuments(List<ResourceKey> openDocuments)
+    public async Task StoreOpenDocuments(List<ResourceKey> openDocuments)
     {
         var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
@@ -135,7 +130,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         await workspaceData.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
     }
 
-    public async Task SetPreviousSelectedDocument(ResourceKey selectedDocument)
+    public async Task StoreSelectedDocument(ResourceKey selectedDocument)
     {
         var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
@@ -145,7 +140,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         await workspaceData.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
     }
 
-    public async Task<Result> OpenPreviousDocuments()
+    public async Task RestoreDocuments()
     {
         Guard.IsNotNull(DocumentsPanel);
 
@@ -156,7 +151,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (openDocuments is null ||
             openDocuments.Count == 0)
         {
-            return Result.Ok();
+            return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
@@ -166,6 +161,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (!ResourceKey.IsValidKey(resourceKey))
             {
                 // An invalid resource key was saved in the settings somehow.
+                _logger.LogWarning($"Invalid resource key '{resourceKey}' found in previously open documents");
                 continue;
             }
 
@@ -173,35 +169,47 @@ public class DocumentsService : IDocumentsService, IDisposable
             var getResourceResult = resourceRegistry.GetResource(fileResource);
             if (getResourceResult.IsFailure)
             {
-                // This resource no longer exists so we can't open it again.
+                // This resource doesn't exist now so we can't open it again.
+                _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
                 continue;
             }
 
             // Execute a command to load the document
-            _commandService.Execute<IOpenDocumentCommand>(command =>
+            // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
+            var openResult = await _commandService.ExecuteNow<IOpenDocumentCommand>(command =>
             {
                 command.FileResource = fileResource;
             });
+
+            if (openResult.IsFailure)
+            {
+                _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
+            }
         }
 
         var selectedDocument = await workspaceData.GetPropertyAsync<string>(PreviousSelectedDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
-            return Result.Ok();
+            return;
         }
 
-        if (ResourceKey.IsValidKey(selectedDocument))
+        if (!ResourceKey.IsValidKey(selectedDocument))
         {
-            var fileResource = new ResourceKey(selectedDocument);
-
-            // Execute a command to select the previously selected document
-            _commandService.Execute<ISelectDocumentCommand>(command =>
-            {
-                command.FileResource = fileResource;
-            });
+            _logger.LogWarning($"Invalid resource key '{selectedDocument}' found for previously selected document");
+            return;
         }
 
-        return Result.Ok();
+        // Execute a command to select the previously selected document
+        // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
+        var selectResult = await _commandService.ExecuteNow<ISelectDocumentCommand>(command =>
+        {
+            command.FileResource = new ResourceKey(selectedDocument);
+        });
+
+        if (selectResult.IsFailure)
+        {
+            _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
+        }
     }
 
     private bool _disposed;

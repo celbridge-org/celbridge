@@ -1,18 +1,24 @@
 ﻿using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Projects;
 using Celbridge.Explorer.Views;
+using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
+    private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
+
+    private readonly ILogger<ExplorerService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public IExplorerPanel? ExplorerPanel { get; private set; }
 
@@ -32,14 +38,18 @@ public class ExplorerService : IExplorerService, IDisposable
     }
 
     public ExplorerService(
+        ILogger<ExplorerService> logger,
         IServiceProvider serviceProvider,
         ICommandService commandService,
         IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService)
     {
+        _logger = logger;
         _serviceProvider = serviceProvider;
         _commandService = commandService;
         _projectService = projectService;
+        _workspaceWrapper = workspaceWrapper;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.
@@ -256,6 +266,37 @@ public class ExplorerService : IExplorerService, IDisposable
         Guard.IsNotNull(ExplorerPanel);
 
         return ExplorerPanel.SetSelectedResource(resource);
+    }
+
+    public async Task StoreSelectedResource(ResourceKey resource)
+    {
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        await workspaceData.SetPropertyAsync(PreviousSelectedResourceKey, resource.ToString());
+    }
+
+    public async Task RestoreSelectedResource()
+    {
+        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
+        Guard.IsNotNull(workspaceData);
+
+        var resource = await workspaceData.GetPropertyAsync<string>(PreviousSelectedResourceKey);
+        if (string.IsNullOrEmpty(resource))
+        {
+            return;
+        }
+
+        // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
+        var selectResult = await _commandService.ExecuteNow<ISelectResourceCommand>(command =>
+        {
+            command.Resource = resource;
+        });
+
+        if (selectResult.IsFailure)
+        {
+            _logger.LogWarning(selectResult, $"Failed to select previously selected resource '{resource}'");
+        }
     }
 
     private bool PathContainsSubPath(string path, string subPath)

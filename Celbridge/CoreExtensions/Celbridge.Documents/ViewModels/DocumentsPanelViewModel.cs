@@ -100,9 +100,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         if (_isWorkspaceLoaded)
         {
-            // Ignore change events that happen while loading the workspace and opening the
-            // previously opened documents. 
-            _documentsService.SetPreviousOpenDocuments(documentResources);
+            // Ignore change events that happen while loading the workspace
+            _documentsService.StoreOpenDocuments(documentResources);
         }
     }
 
@@ -110,9 +109,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         if (_isWorkspaceLoaded)
         {
-            // Ignore change events that happen while loading the workspace and opening the
-            // previously opened documents. 
-            _documentsService.SetPreviousSelectedDocument(documentResource);
+            // Ignore change events that happen while loading the workspace
+            _documentsService.StoreSelectedDocument(documentResource);
         }
 
         // Notify the status panel that the selected document has changed

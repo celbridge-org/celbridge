@@ -133,7 +133,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
 
         // Short delay to allow the progress bar to display
-        await Task.Delay(100);
+        await Task.Delay(1000);
 
         // Hide the progress dialog
         _dialogService.ReleaseProgressDialog(_progressDialogToken);
