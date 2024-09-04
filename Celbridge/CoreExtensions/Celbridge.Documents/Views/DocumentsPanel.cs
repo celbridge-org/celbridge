@@ -160,42 +160,44 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
         }
 
-        var createResult = await ViewModel.CreateDocumentView(fileResource, filePath);
-        if (createResult.IsFailure)
+        // Create the document view
+
+        var fileExtension = System.IO.Path.GetExtension(filePath);
+        var createViewResult = ViewModel.CreateDocumentView(fileExtension);
+        if (createViewResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
-            failure.MergeErrors(createResult);
+            failure.MergeErrors(createViewResult);
             return failure;
         }
-        var documentControl = createResult.Value;
+        var documentView = createViewResult.Value;
 
-        // Sentinel value used to detect when the document control has finished loading.
-        bool loaded = false;
-        documentControl.Loaded += (sender, args) =>
+        //
+        // Load the document content
+        //
+
+        documentView.SetFileResourceAndPath(fileResource, filePath);        
+        var loadResult = await documentView.LoadContent();
+        if (loadResult.IsFailure)
         {
-            loaded = true;
-        };
+            var failure = Result.Fail($"Failed to load content for document: '{fileResource}'");
+            failure.MergeErrors(createViewResult);
+            return failure;
+        }
 
-        var documentView = documentControl as IDocumentView;
-        Guard.IsNotNull(documentView);
-
+        //
         // Add a new DocumentTab to the TabView
+        //
+
         var documentTab = new DocumentTab();
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
-        documentTab.Content = documentControl;
+        documentTab.Content = documentView as IDocumentView;
 
         _tabView.TabItems.Add(documentTab);
         _tabView.SelectedItem = documentTab;
-
-        // Wait until the document control has loaded. This loop should always exit because UI elements always finish
-        // loading, even when the control has internal errors like missing resources, misconfigured bindings, etc.
-        while (!loaded)
-        {
-            await Task.Delay(25);
-        }
 
         return Result.Ok();
     }
@@ -245,7 +247,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var documentView = documentTab.Content as IDocumentView;
             Guard.IsNotNull(documentView);
 
-            if (documentView.IsDirty)
+            if (documentView.HasUnsavedChanges)
             {
                 var updateResult = documentView.UpdateSaveTimer(deltaTime);
                 Guard.IsTrue(updateResult.IsSuccess); // Should never fail

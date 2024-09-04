@@ -29,7 +29,7 @@ public interface IDocumentsService
     IDocumentsPanel CreateDocumentsPanel();
 
     /// <summary>
-    /// Opens a file resource as an editable document in the documents panel.
+    /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource);
 
@@ -68,4 +68,9 @@ public interface IDocumentsService
     /// Restores the state of the panel from the previous session.
     /// </summary>
     Task RestorePanelState();
+
+    /// <summary>
+    /// Returns the appropriate document view type for a given file extension.
+    /// </summary>
+    DocumentViewType GetDocumentViewType(string fileExtension);
 }

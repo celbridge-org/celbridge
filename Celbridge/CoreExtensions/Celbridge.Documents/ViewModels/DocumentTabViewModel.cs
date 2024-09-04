@@ -41,7 +41,7 @@ public partial class DocumentTabViewModel : ObservableObject
         // To work around this, we register the message handlers in the constructor and then unregister in the 
         // CloseDocument() method if the tab is actually closed. There's one more case to consider, when the DocumentTabView
         // unloads (e.g. closing the open workspace). In this case, WeakReferenceMessenger should automatically clean up the
-        // message handlers beacuse the old DocumentTabViewModel has been destroyed.
+        // message handlers because the old DocumentTabViewModel has been destroyed.
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
@@ -74,7 +74,7 @@ public partial class DocumentTabViewModel : ObservableObject
             DocumentName = message.DestResource.ResourceName;
             FilePath = message.DestPath;
 
-            DocumentView.UpdateDocumentResource(FileResource, FilePath);
+            DocumentView.SetFileResourceAndPath(FileResource, FilePath);
         }
     }
 
@@ -103,7 +103,7 @@ public partial class DocumentTabViewModel : ObservableObject
             return Result<bool>.Ok(false);
         }
 
-        if (DocumentView.IsDirty)
+        if (DocumentView.HasUnsavedChanges)
         {
             var saveResult = await DocumentView.SaveDocument();
             if (saveResult.IsFailure)
@@ -115,6 +115,10 @@ public partial class DocumentTabViewModel : ObservableObject
         }
 
         UnregisterMessageHandlers();
+
+        // Notify the DocumentView that the document is about to close
+        DocumentView.OnDocumentClosing();
+
         return Result<bool>.Ok(true);
     }
 
