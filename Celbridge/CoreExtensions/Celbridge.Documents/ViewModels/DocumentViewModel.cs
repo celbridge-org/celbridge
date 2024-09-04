@@ -13,5 +13,5 @@ public abstract partial class DocumentViewModel : ObservableObject
     private string _filePath = string.Empty;
 
     [ObservableProperty]
-    private bool _isDirty = false;
+    private bool _hasUnsavedChanges = false;
 }

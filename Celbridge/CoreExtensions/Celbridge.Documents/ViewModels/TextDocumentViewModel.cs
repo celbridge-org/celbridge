@@ -1,5 +1,4 @@
-﻿using Celbridge.Explorer;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -14,28 +13,42 @@ public partial class TextDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    public Action? LoadedContent { get; internal set; }
-
-    public async Task<Result> LoadDocument(ResourceKey fileResource, string filePath)
+    public async Task<Result> LoadDocument()
     {
         try
         {
             PropertyChanged -= TextDocumentViewModel_PropertyChanged;
 
             // Read the file contents to initialize the text editor
-            var text = await File.ReadAllTextAsync(filePath);
+            var text = await File.ReadAllTextAsync(FilePath);
             Text = text;
 
-            FileResource = fileResource;
-            FilePath = filePath;
-
-            LoadedContent?.Invoke();
+            FileResource = FileResource;
+            FilePath = FilePath;
 
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to read file contents: '{filePath}'");
+            return Result.Fail(ex, $"Failed to load document file: '{FilePath}'");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> SaveDocument()
+    {
+        // Don't immediately try to save again if the save fails.
+        HasUnsavedChanges = false;
+        SaveTimer = 0;
+
+        try
+        {
+            await File.WriteAllTextAsync(FilePath, Text);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"Failed to save document file: '{FilePath}'");
         }
 
         return Result.Ok();
@@ -43,9 +56,9 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     public Result<bool> UpdateSaveTimer(double deltaTime)
     {
-        if (!IsDirty)
+        if (!HasUnsavedChanges)
         {
-            return Result<bool>.Fail($"Document is not dirty: {FileResource}");
+            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
         }
 
         if (SaveTimer > 0)
@@ -154,7 +167,7 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     public void OnTextChanged()
     {
-        IsDirty = true;
+        HasUnsavedChanges = true;
         SaveTimer = SaveDelay;
     }
 }

@@ -28,27 +28,26 @@ public sealed partial class DefaultDocumentView : DocumentView
             .Content(textBox));
     }
 
-    public override bool IsDirty => ViewModel.IsDirty;
+    public override void SetFileResourceAndPath(ResourceKey fileResource, string filePath)
+    {
+        ViewModel.FileResource = fileResource;
+        ViewModel.FilePath = filePath;
+    }
+
+    public override async Task<Result> LoadContent()
+    {
+        return await ViewModel.LoadDocument();
+    }
+
+    public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
 
     public override Result<bool> UpdateSaveTimer(double deltaTime)
     {
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<bool> CanCloseDocument()
-    {
-        await Task.CompletedTask;
-        return true;
-    }
-
     public override async Task<Result> SaveDocument()
     {
         return await ViewModel.SaveDocument();
-    }
-
-    public override void UpdateDocumentResource(ResourceKey fileResource, string filePath)
-    {
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
     }
 }

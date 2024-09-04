@@ -1,57 +1,32 @@
-﻿using Celbridge.Explorer;
-
-using Path = System.IO.Path;
-
-namespace Celbridge.Documents.Views;
+﻿namespace Celbridge.Documents.Views;
 
 public class DocumentViewFactory
 {
-    public async Task<Result<Control>> CreateDocumentView(ResourceKey fileResource, string filePath)
+    public Result<IDocumentView> CreateDocumentView(DocumentViewType viewType)
     {
-        Control? documentView;
+        IDocumentView? documentView = null;
 
-        var extension = Path.GetExtension(filePath);
-        if (extension == ".web")
+        switch (viewType)
         {
-            // Todo: Read the URL from the resource properties
-            documentView = new WebDocumentView();
-        }
-        else if (extension == ".cs")
-        {
-            var textDocumentView = new TextDocumentView();
-
-            var loadResult = await textDocumentView.ViewModel.LoadDocument(fileResource, filePath);
-            if (loadResult.IsFailure)
-            {
-                var failure = Result<Control>.Fail($"Failed to create document view for file resource: '{fileResource}'");
-                failure.MergeErrors(loadResult);
-                return failure;
-            }
-
-            await textDocumentView.IntializeEditor();
-
-            documentView = textDocumentView;
-        }
-        else
-        {
-            var defaultDocumentView = new DefaultDocumentView();
-
-            var loadResult = await defaultDocumentView.ViewModel.LoadDocument(fileResource, filePath);
-            if (loadResult.IsFailure)
-            {
-                var failure = Result<Control>.Fail($"Failed to create document view for file resource: '{fileResource}'");
-                failure.MergeErrors(loadResult);
-                return failure;
-            }
-
-            documentView = defaultDocumentView;
+            case DocumentViewType.DefaultDocument:
+                documentView = new DefaultDocumentView();
+                break;
+            case DocumentViewType.TextDocument:
+                documentView = new TextDocumentView();
+                break;
+            case DocumentViewType.WebDocument:
+                documentView = new WebDocumentView();
+                break;
+            case DocumentViewType.WebViewer:
+                // Todo: Implement viewer type
+                break;
         }
 
         if (documentView is null)
         {
-            return Result<Control>.Fail($"Failed to create document view for file resource: '{fileResource}'");
+            return Result<IDocumentView>.Fail($"Failed to create document view for document type: '{viewType}'");
         }
 
-        return Result<Control>.Ok(documentView);
+        return Result<IDocumentView>.Ok(documentView);
     }
 }

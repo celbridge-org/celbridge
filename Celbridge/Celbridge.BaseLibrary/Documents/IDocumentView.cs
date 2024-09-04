@@ -8,22 +8,26 @@ namespace Celbridge.Documents;
 public interface IDocumentView
 {
     /// <summary>
+    /// Sets the file resource and file path for the document.
+    /// </summary>
+    void SetFileResourceAndPath(ResourceKey fileResource, string filePath);
+
+    /// <summary>
+    /// Load the content of the document from the previously set file path.
+    /// </summary>
+    Task<Result> LoadContent();
+
+    /// <summary>
     /// Flag that indicates if the document has been modified and requires saving.
     /// </summary>
-    bool IsDirty { get; }
+    bool HasUnsavedChanges { get; }
 
     /// <summary>
     /// Update the save timer on the document to avoid writing to disk too frequently.
-    /// Returns true when the timer has expired.
-    /// Fails if the document is not dirty.
+    /// Returns true when the timer has expired, and the file should now be saved.
+    /// Fails if the document does not have unsaved changes.
     /// </summary>
     Result<bool> UpdateSaveTimer(double deltaTime);
-
-    /// <summary>
-    /// Returns true if the document can be closed.
-    /// For example, this could be used to prompt the user to save changes before closing.
-    /// </summary>
-    Task<bool> CanCloseDocument();
 
     /// <summary>
     /// Save the document to disk.
@@ -31,7 +35,15 @@ public interface IDocumentView
     Task<Result> SaveDocument();
 
     /// <summary>
-    /// Update the resource information for the document.
+    /// Returns true if the document can be closed.
+    /// For example, a document view could prompt the user to confirm closing the document, and return false
+    /// here to indicate that the user cancelled the close operation.
     /// </summary>
-    void UpdateDocumentResource(ResourceKey fileResource, string filePath);
+    Task<bool> CanCloseDocument();
+
+    /// <summary>
+    /// Called when the document is about to close.
+    /// Allows the document view to clear its state before it closes.
+    /// </summary>
+    void OnDocumentClosing();
 }

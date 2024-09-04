@@ -250,6 +250,25 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
+    public DocumentViewType GetDocumentViewType(string fileExtension)
+    {
+        // Todo: Load this lookup table from an embedded resource
+        var viewType = fileExtension switch
+        {
+            ".txt" or ".rtf" or ".cs" or ".js" or ".h" or ".cpp" or 
+            ".html" or ".css" or ".py" or ".rb" or ".json" or ".yaml" 
+                => DocumentViewType.TextDocument,
+            ".png" or ".jpg" or ".tiff" or ".bmp" or ".pdf" or ".wav" or 
+            ".mp3" or ".ogg" 
+                => DocumentViewType.WebViewer,
+            ".web" 
+                => DocumentViewType.WebDocument,
+            _ 
+                => DocumentViewType.DefaultDocument,
+        };
+        return viewType;
+    }
+
     private bool _disposed;
 
     public void Dispose()

@@ -1,5 +1,4 @@
-﻿using Celbridge.Explorer;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -14,24 +13,39 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    public async Task<Result> LoadDocument(ResourceKey fileResource, string filePath)
+    public async Task<Result> LoadDocument()
     {
         try
         {
             PropertyChanged -= TextDocumentViewModel_PropertyChanged;
 
             // Read the file contents to initialize the text editor
-            var text = await File.ReadAllTextAsync(filePath);
+            var text = await File.ReadAllTextAsync(FilePath);
             Text = text;
-
-            FileResource = fileResource;
-            FilePath = filePath;
 
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to read file contents: '{filePath}'");
+            return Result.Fail(ex, $"Failed to load document file: '{FilePath}'");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> SaveDocument()
+    {
+        // Don't immediately try to save again if the save fails.
+        HasUnsavedChanges = false;
+        SaveTimer = 0;
+
+        try
+        {
+            await File.WriteAllTextAsync(FilePath, Text);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"Failed to save document file: '{FilePath}'");
         }
 
         return Result.Ok();
@@ -39,9 +53,9 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
 
     public Result<bool> UpdateSaveTimer(double deltaTime)
     {
-        if (!IsDirty)
+        if (!HasUnsavedChanges)
         {
-            return Result<bool>.Fail($"Document is not dirty: {FileResource}");
+            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
         }
 
         if (SaveTimer > 0)
@@ -57,24 +71,6 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         return Result<bool>.Ok(false);
     }
 
-    public async Task<Result> SaveDocument()
-    {
-        // Don't immediately try to save again if the save fails.
-        IsDirty = false;
-        SaveTimer = 0;
-
-        try
-        {
-            await File.WriteAllTextAsync(FilePath, Text);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex, $"Failed to write file contents: '{FilePath}'");
-        }
-
-        return Result.Ok();
-    }
-
     private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Text))
@@ -85,7 +81,7 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
 
     public void OnTextChanged()
     {
-        IsDirty = true;
+        HasUnsavedChanges = true;
         SaveTimer = SaveDelay;
     }
 }
