@@ -14,6 +14,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
+    private readonly IDocumentsService _documentsService;
 
     private DocumentViewFactory _documentViewFactory = new();
 
@@ -24,11 +25,13 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IDocumentsService documentsService)
     {
         _messengerService = messengerService;
         _commandService = commandService;
         _editorSettings = editorSettings;
+        _documentsService = documentsService;
     }
 
     public void OnViewLoaded()
@@ -45,9 +48,10 @@ public partial class DocumentsPanelViewModel : ObservableObject
         settings.PropertyChanged -= EditorSettings_PropertyChanged;
     }
 
-    public async Task<Result<Control>> CreateDocumentView(ResourceKey fileResource, string filePath)
+    public Result<IDocumentView> CreateDocumentView(string fileExtension)
     {
-        return await _documentViewFactory.CreateDocumentView(fileResource, filePath);
+        DocumentViewType viewType = _documentsService.GetDocumentViewType(fileExtension);
+        return _documentViewFactory.CreateDocumentView(viewType);
     }
 
     private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
