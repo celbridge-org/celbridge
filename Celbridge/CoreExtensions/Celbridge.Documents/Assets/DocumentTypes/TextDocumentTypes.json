@@ -38,7 +38,7 @@
     "mips": [ ".s" ],
     "msdax": [ ".dax", ".msdax" ],
     "objective-c": [ ".m" ],
-    "pascal": [ ".pas", ".p", ".pp" ],
+    "pascal": [ ".pas", ".p"],
     "pascaligo": [ ".ligo" ],
     "perl": [ ".pl" ],
     "php": [ ".php", ".php4", ".php5", ".phtml", ".ctp" ],

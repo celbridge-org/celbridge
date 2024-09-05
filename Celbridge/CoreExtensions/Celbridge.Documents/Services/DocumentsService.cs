@@ -27,6 +27,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private bool _isWorkspaceLoaded;
 
+    private FileTypeHelper _fileTypeHelper;
+
     public DocumentsService(
         ILogger<DocumentsService> logger,
         IMessengerService messengerService,
@@ -43,6 +45,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+
+        _fileTypeHelper = new();
+        var loadResult = _fileTypeHelper.Initialize();
+        if (loadResult.IsFailure)
+        {
+            _logger.LogError(loadResult, "Failed to initialize file type helper");
+        }
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -252,21 +261,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        // Todo: Load this lookup table from an embedded resource
-        var viewType = fileExtension switch
-        {
-            ".txt" or ".rtf" or ".cs" or ".js" or ".h" or ".cpp" or 
-            ".html" or ".css" or ".py" or ".rb" or ".json" or ".yaml" 
-                => DocumentViewType.TextDocument,
-            ".png" or ".jpg" or ".tiff" or ".bmp" or ".pdf" or ".wav" or 
-            ".mp3" or ".ogg" 
-                => DocumentViewType.WebViewer,
-            ".web" 
-                => DocumentViewType.WebDocument,
-            _ 
-                => DocumentViewType.DefaultDocument,
-        };
-        return viewType;
+        return _fileTypeHelper.GetDocumentViewType(fileExtension);
     }
 
     private bool _disposed;
