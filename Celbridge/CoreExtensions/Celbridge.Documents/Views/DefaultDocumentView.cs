@@ -4,35 +4,33 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebDocumentView : DocumentView
+public sealed partial class DefaultDocumentView : DocumentView
 {
     private IResourceRegistry _resourceRegistry;
 
-    public WebDocumentViewModel ViewModel { get; }
+    public DefaultDocumentViewModel ViewModel { get; }
 
-    private WebView2 _webView;
-
-    public WebDocumentView(
+    public DefaultDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
-        ViewModel = serviceProvider.GetRequiredService<WebDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<DefaultDocumentViewModel>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        _webView = new WebView2()
-            .Source(x => x.Bind(() => ViewModel.Source));
-
-        // Fixes a visual bug where the WebView2 control would show a white background briefly when
-        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-        _webView.DefaultBackgroundColor = Colors.Transparent;
+        var textBox = new TextBox()
+            .Text(x => x.Bind(() => ViewModel.Text)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+            .AcceptsReturn(true)
+            .IsSpellCheckEnabled(false);
 
         //
         // Set the data context and control content
         // 
 
         this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(_webView));
+            .Content(textBox));
     }
 
     public override Result SetFileResource(ResourceKey fileResource)
@@ -46,7 +44,7 @@ public sealed partial class WebDocumentView : DocumentView
 
         if (!File.Exists(filePath))
         {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
+            return Result.Fail($"File resource does not exist on disk: {fileResource}");            
         }
 
         ViewModel.FileResource = fileResource;
@@ -57,6 +55,18 @@ public sealed partial class WebDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        return await ViewModel.LoadContent();
+        return await ViewModel.LoadDocument();
+    }
+
+    public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
+
+    public override Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        return ViewModel.UpdateSaveTimer(deltaTime);
+    }
+
+    public override async Task<Result> SaveDocument()
+    {
+        return await ViewModel.SaveDocument();
     }
 }

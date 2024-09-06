@@ -27,22 +27,31 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private bool _isWorkspaceLoaded;
 
+    private FileTypeHelper _fileTypeHelper;
+
     public DocumentsService(
+        IServiceProvider serviceProvider,
         ILogger<DocumentsService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _commandService = commandService;
-        _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+
+        _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
+        var loadResult = _fileTypeHelper.Initialize();
+        if (loadResult.IsFailure)
+        {
+            throw new InvalidProgramException("Failed to initialize file type helper");
+        }
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -77,6 +86,34 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         DocumentsPanel = _serviceProvider.GetRequiredService<DocumentsPanel>();
         return DocumentsPanel;
+    }
+
+    public Result<IDocumentView> CreateDocumentView(DocumentViewType viewType)
+    {
+        IDocumentView? documentView = null;
+
+        switch (viewType)
+        {
+            case DocumentViewType.DefaultDocument:
+                documentView = _serviceProvider.GetRequiredService<DefaultDocumentView>();
+                break;
+            case DocumentViewType.TextDocument:
+                documentView = _serviceProvider.GetRequiredService<TextDocumentView>();
+                break;
+            case DocumentViewType.WebDocument:
+                documentView = _serviceProvider.GetRequiredService<WebDocumentView>();
+                break;
+            case DocumentViewType.WebViewer:
+                // Todo: Implement viewer type
+                break;
+        }
+
+        if (documentView is null)
+        {
+            return Result<IDocumentView>.Fail($"Failed to create document view for document type: '{viewType}'");
+        }
+
+        return Result<IDocumentView>.Ok(documentView);
     }
 
     public async Task<Result> OpenDocument(ResourceKey fileResource)
@@ -248,6 +285,16 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
         }
+    }
+
+    public DocumentViewType GetDocumentViewType(string fileExtension)
+    {
+        return _fileTypeHelper.GetDocumentViewType(fileExtension);
+    }
+
+    public string GetDocumentLanguage(string fileExtension)
+    {
+        return _fileTypeHelper.GetDocumentLanguage(fileExtension);
     }
 
     private bool _disposed;
