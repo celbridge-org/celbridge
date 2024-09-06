@@ -1,17 +1,22 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
 public sealed partial class DefaultDocumentView : DocumentView
 {
+    private IResourceRegistry _resourceRegistry;
+
     public DefaultDocumentViewModel ViewModel { get; }
 
-    public DefaultDocumentView()
+    public DefaultDocumentView(
+        IServiceProvider serviceProvider,
+        IWorkspaceWrapper workspaceWrapper)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
         ViewModel = serviceProvider.GetRequiredService<DefaultDocumentViewModel>();
+
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var textBox = new TextBox()
             .Text(x => x.Bind(() => ViewModel.Text)
@@ -28,10 +33,19 @@ public sealed partial class DefaultDocumentView : DocumentView
             .Content(textBox));
     }
 
-    public override void SetFileResourceAndPath(ResourceKey fileResource, string filePath)
+    public override Result SetFileResource(ResourceKey fileResource)
     {
+        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+
+        if (!File.Exists(filePath))
+        {
+            return Result.Fail($"File resource does not exist: {fileResource}");            
+        }
+
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
+
+        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

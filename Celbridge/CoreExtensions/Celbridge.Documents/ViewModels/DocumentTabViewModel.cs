@@ -74,7 +74,8 @@ public partial class DocumentTabViewModel : ObservableObject
             DocumentName = message.DestResource.ResourceName;
             FilePath = message.DestPath;
 
-            DocumentView.SetFileResourceAndPath(FileResource, FilePath);
+            // Todo: Handle failure correctly - close the document with an error message?
+            DocumentView.SetFileResource(FileResource);
         }
     }
 
