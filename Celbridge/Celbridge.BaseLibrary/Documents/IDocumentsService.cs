@@ -70,7 +70,13 @@ public interface IDocumentsService
     Task RestorePanelState();
 
     /// <summary>
-    /// Returns the appropriate document view type for a given file extension.
+    /// Returns the appropriate document view type for the specified file extension.
     /// </summary>
     DocumentViewType GetDocumentViewType(string fileExtension);
+
+    /// <summary>
+    /// Returns the programming language that uses the specified file extension.
+    /// Returns an empty string if the extension is not a known programming language.
+    /// </summary>
+    string GetDocumentLanguage(string fileExtension);
 }

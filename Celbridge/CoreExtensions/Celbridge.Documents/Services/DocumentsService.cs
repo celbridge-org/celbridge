@@ -264,6 +264,11 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetDocumentViewType(fileExtension);
     }
 
+    public string GetDocumentLanguage(string fileExtension)
+    {
+        return _fileTypeHelper.GetDocumentLanguage(fileExtension);
+    }
+
     private bool _disposed;
 
     public void Dispose()
