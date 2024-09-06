@@ -9,8 +9,8 @@ public class FileTypeHelper
     private const string WebViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.WebViewerTypes.json";
 
     // Create a new dictionary to map file extensions to language codes
-    private Dictionary<string, string> _textDocumentTypes = new();
-    private List<string> _webViewerTypes = new();
+    private Dictionary<string, string> _extensionToLanguages = new();
+    private List<string> _webViewerExtensions = new();
 
     public Result Initialize()
     {
@@ -57,7 +57,7 @@ public class FileTypeHelper
             return string.Empty;
         }
 
-        if (_textDocumentTypes.TryGetValue(fileExtension,out var language))
+        if (_extensionToLanguages.TryGetValue(fileExtension,out var language))
         {
             return language;
         }
@@ -67,7 +67,7 @@ public class FileTypeHelper
 
     public bool IsWebViewerFile(string fileExtension)
     {
-        return _webViewerTypes.Contains(fileExtension);
+        return _webViewerExtensions.Contains(fileExtension);
     }
 
     private Result LoadTextDocumentTypes()
@@ -97,24 +97,13 @@ public class FileTypeHelper
         try
         {
             // Deserialize the JSON into a dictionary of language codes to file extensions
-            var languageToExtensions = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(json);
-
-            // Loop through the deserialized data and populate the new dictionary
-            foreach (var entry in languageToExtensions!)
+            var dictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+            if (dictionary is null)
             {
-                string language = entry.Key;
-                List<string> extensions = entry.Value;
-
-                foreach (string extension in extensions)
-                {
-                    if (_textDocumentTypes.TryGetValue(extension, out var existingValue))
-                    {
-                        return Result.Fail($"Failed to map extension '{extension}' to language '{language}' because it is already mapped to language '{existingValue}'.");
-                    }
-
-                    _textDocumentTypes[extension] = language;
-                }
+                return Result.Fail($"Failed to deserialize embedded resource: {TextDocumentTypesResourceName}");
             }
+
+            _extensionToLanguages.ReplaceWith(dictionary);
         }
         catch (Exception ex)
         {
@@ -153,7 +142,7 @@ public class FileTypeHelper
             // Deserialize the JSON into a list of file extensions
             var fileExtensions = JsonConvert.DeserializeObject<List<string>>(json);
 
-            _webViewerTypes.ReplaceWith(fileExtensions);
+            _webViewerExtensions.ReplaceWith(fileExtensions);
         }
         catch (Exception ex)
         {
