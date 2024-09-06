@@ -16,8 +16,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IDocumentsService _documentsService;
 
-    private DocumentViewFactory _documentViewFactory = new();
-
     public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
 
     public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
@@ -51,7 +49,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public Result<IDocumentView> CreateDocumentView(string fileExtension)
     {
         DocumentViewType viewType = _documentsService.GetDocumentViewType(fileExtension);
-        return _documentViewFactory.CreateDocumentView(viewType);
+        return _documentsService.CreateDocumentView(viewType);
     }
 
     private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)

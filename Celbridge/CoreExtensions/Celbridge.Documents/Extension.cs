@@ -15,6 +15,7 @@ public class Extension : IExtension
         //
 
         config.AddTransient<IDocumentsService, DocumentsService>();
+        config.AddTransient<FileTypeHelper>();
 
         //
         // Register UI elements
