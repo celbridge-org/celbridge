@@ -47,9 +47,14 @@ public sealed partial class TextDocumentView : DocumentView
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
+        if (_resourceRegistry.GetResource(fileResource).IsFailure)
+        {
+            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
+        }
+
         if (!File.Exists(filePath))
         {
-            return Result.Fail($"File resource does not exist: {fileResource}");
+            return Result.Fail($"File resource does not exist on disk: {fileResource}");
         }
 
         ViewModel.FileResource = fileResource;
