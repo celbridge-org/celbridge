@@ -10,8 +10,9 @@ using System.Text.Json.Nodes;
 
 namespace Celbridge.Telemetry.Services;
 
+
 public class TelemetryService : ITelemetryService
-{
+{    
     private readonly IMessengerService _messengerService;
     private readonly IUtilityService _utiltyService;
 
