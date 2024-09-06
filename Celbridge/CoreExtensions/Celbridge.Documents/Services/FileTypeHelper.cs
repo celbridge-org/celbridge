@@ -8,7 +8,6 @@ public class FileTypeHelper
     private const string TextDocumentTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextDocumentTypes.json";
     private const string WebViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.WebViewerTypes.json";
 
-    // Create a new dictionary to map file extensions to language codes
     private Dictionary<string, string> _extensionToLanguages = new();
     private List<string> _webViewerExtensions = new();
 
@@ -34,7 +33,11 @@ public class FileTypeHelper
         var documentLanguage = GetDocumentLanguage(fileExtension);
         if (!string.IsNullOrEmpty(documentLanguage))
         {
+#if WINDOWS
             return DocumentViewType.TextDocument;
+#else
+            return DocumentViewType.DefaultDocument;    
+#endif
         }
 
         if (IsWebViewerFile(fileExtension))
