@@ -11,7 +11,7 @@ public enum DocumentViewType
     DefaultDocument,
 
     /// <summary>
-    /// Text document editor using an advanced text editor control
+    /// Text document editor using an advanced text editor control.
     /// </summary>
     TextDocument,
 
@@ -21,7 +21,7 @@ public enum DocumentViewType
     WebDocument,
 
     /// <summary>
-    /// View a non-text file resource via a web view. (e.g. an image, audio clip or pdf file)
+    /// View a non-text file resource via a web view (e.g. an image, audio clip or pdf file).
     /// </summary>
     WebViewer
 }
