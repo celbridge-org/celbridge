@@ -54,7 +54,7 @@ public sealed partial class TextDocumentView : DocumentView
             return failure;
         }
 
-        var initResult = await SetupMonacoEditor();
+        var initResult = await InitializeTextEditor();
         if (initResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to load content for resource: {ViewModel.FileResource}");
@@ -114,7 +114,7 @@ public sealed partial class TextDocumentView : DocumentView
         ViewModel.Text = e.TryGetWebMessageAsString();
     }
 
-    private async Task<Result> SetupMonacoEditor()
+    private async Task<Result> InitializeTextEditor()
     {
         try
         {
