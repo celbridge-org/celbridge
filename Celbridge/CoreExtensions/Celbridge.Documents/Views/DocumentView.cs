@@ -6,7 +6,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 {
     public abstract Task<Result> LoadContent();
 
-    public virtual void SetFileResourceAndPath(ResourceKey fileResource, string filePath)
+    public virtual Result SetFileResource(ResourceKey fileResource)
     {
         throw new NotImplementedException();
     }

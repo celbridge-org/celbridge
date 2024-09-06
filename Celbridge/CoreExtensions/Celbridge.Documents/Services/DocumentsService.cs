@@ -95,13 +95,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         switch (viewType)
         {
             case DocumentViewType.DefaultDocument:
-                documentView = new DefaultDocumentView();
+                documentView = _serviceProvider.GetRequiredService<DefaultDocumentView>();
                 break;
             case DocumentViewType.TextDocument:
-                documentView = new TextDocumentView();
+                documentView = _serviceProvider.GetRequiredService<TextDocumentView>();
                 break;
             case DocumentViewType.WebDocument:
-                documentView = new WebDocumentView();
+                documentView = _serviceProvider.GetRequiredService<WebDocumentView>();
                 break;
             case DocumentViewType.WebViewer:
                 // Todo: Implement viewer type

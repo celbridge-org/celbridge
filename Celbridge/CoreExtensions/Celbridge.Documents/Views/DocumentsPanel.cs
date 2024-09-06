@@ -176,12 +176,19 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Load the document content
         //
 
-        documentView.SetFileResourceAndPath(fileResource, filePath);        
+        var setFileResult = documentView.SetFileResource(fileResource);
+        if (setFileResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to set file resource for document: '{fileResource}'");
+            failure.MergeErrors(setFileResult);
+            return failure;
+        }
+
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
             var failure = Result.Fail($"Failed to load content for document: '{fileResource}'");
-            failure.MergeErrors(createViewResult);
+            failure.MergeErrors(loadResult);
             return failure;
         }
 

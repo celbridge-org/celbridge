@@ -8,9 +8,10 @@ namespace Celbridge.Documents;
 public interface IDocumentView
 {
     /// <summary>
-    /// Sets the file resource and file path for the document.
+    /// Sets the file resource for the document.
+    /// Fails if the file resource does not exist on disk.
     /// </summary>
-    void SetFileResourceAndPath(ResourceKey fileResource, string filePath);
+    Result SetFileResource(ResourceKey fileResource);
 
     /// <summary>
     /// Load the content of the document from the previously set file path.
