@@ -30,15 +30,15 @@ public class DocumentsService : IDocumentsService, IDisposable
     private FileTypeHelper _fileTypeHelper;
 
     public DocumentsService(
+        IServiceProvider serviceProvider,
         ILogger<DocumentsService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _commandService = commandService;
-        _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
 
@@ -46,7 +46,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
 
-        _fileTypeHelper = new();
+        _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
@@ -86,6 +86,34 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         DocumentsPanel = _serviceProvider.GetRequiredService<DocumentsPanel>();
         return DocumentsPanel;
+    }
+
+    public Result<IDocumentView> CreateDocumentView(DocumentViewType viewType)
+    {
+        IDocumentView? documentView = null;
+
+        switch (viewType)
+        {
+            case DocumentViewType.DefaultDocument:
+                documentView = new DefaultDocumentView();
+                break;
+            case DocumentViewType.TextDocument:
+                documentView = new TextDocumentView();
+                break;
+            case DocumentViewType.WebDocument:
+                documentView = new WebDocumentView();
+                break;
+            case DocumentViewType.WebViewer:
+                // Todo: Implement viewer type
+                break;
+        }
+
+        if (documentView is null)
+        {
+            return Result<IDocumentView>.Fail($"Failed to create document view for document type: '{viewType}'");
+        }
+
+        return Result<IDocumentView>.Ok(documentView);
     }
 
     public async Task<Result> OpenDocument(ResourceKey fileResource)
