@@ -1,19 +1,24 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
 public sealed partial class WebDocumentView : DocumentView
 {
+    private IResourceRegistry _resourceRegistry;
+
     public WebDocumentViewModel ViewModel { get; }
 
     private WebView2 _webView;
 
-    public WebDocumentView()
+    public WebDocumentView(
+        IServiceProvider serviceProvider,
+        IWorkspaceWrapper workspaceWrapper)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
         ViewModel = serviceProvider.GetRequiredService<WebDocumentViewModel>();
+
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         _webView = new WebView2()
             .Source(x => x.Bind(() => ViewModel.Source));
@@ -30,10 +35,19 @@ public sealed partial class WebDocumentView : DocumentView
             .Content(_webView));
     }
 
-    public override void SetFileResourceAndPath(ResourceKey fileResource, string filePath)
+    public override Result SetFileResource(ResourceKey fileResource)
     {
+        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+
+        if (!File.Exists(filePath))
+        {
+            return Result.Fail($"File resource does not exist: {fileResource}");
+        }
+
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
+
+        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

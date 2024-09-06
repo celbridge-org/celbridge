@@ -1,22 +1,27 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
 public sealed partial class TextDocumentView : DocumentView
 {
+    private IResourceRegistry _resourceRegistry;
+
     public TextDocumentViewModel ViewModel { get; }
 
     private readonly WebView2 _webView;
 
     private bool _isEditorReady;
 
-    public TextDocumentView()
+    public TextDocumentView(
+        IServiceProvider serviceProvider,
+        IWorkspaceWrapper workspaceWrapper)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
         ViewModel = serviceProvider.GetRequiredService<TextDocumentViewModel>();
+
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         // Todo: Pool webviews for better responsiveness
         _webView = new WebView2();
@@ -38,10 +43,19 @@ public sealed partial class TextDocumentView : DocumentView
         _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
     }
 
-    public override void SetFileResourceAndPath(ResourceKey fileResource, string filePath)
+    public override Result SetFileResource(ResourceKey fileResource)
     {
+        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+
+        if (!File.Exists(filePath))
+        {
+            return Result.Fail($"File resource does not exist: {fileResource}");
+        }
+
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
+
+        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()
