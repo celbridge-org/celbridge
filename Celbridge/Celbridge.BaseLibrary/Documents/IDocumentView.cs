@@ -9,7 +9,7 @@ public interface IDocumentView
 {
     /// <summary>
     /// Sets the file resource for the document.
-    /// Fails if the file resource does not exist on disk.
+    /// Fails if the resource does not exist in the resource registry or in the file system.
     /// </summary>
     Result SetFileResource(ResourceKey fileResource);
 
