@@ -1,12 +1,9 @@
-﻿using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class TextDocumentViewModel : DocumentViewModel
+public partial class DefaultDocumentViewModel : DocumentViewModel
 {
-    private readonly IDocumentsService _documentsService;
-
     // Delay before saving the document after the most recent change
     private const double SaveDelay = 1.0; // Seconds
 
@@ -15,11 +12,6 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     [ObservableProperty]
     private double _saveTimer;
-
-    public TextDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
-    {
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-    }
 
     public async Task<Result> LoadDocument()
     {
@@ -30,9 +22,6 @@ public partial class TextDocumentViewModel : DocumentViewModel
             // Read the file contents to initialize the text editor
             var text = await File.ReadAllTextAsync(FilePath);
             Text = text;
-
-            FileResource = FileResource;
-            FilePath = FilePath;
 
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
@@ -80,17 +69,6 @@ public partial class TextDocumentViewModel : DocumentViewModel
         }
 
         return Result<bool>.Ok(false);
-    }
-
-    public string GetLanguage()
-    {
-        var extension = System.IO.Path.GetExtension(FilePath).ToLowerInvariant();
-        if (string.IsNullOrEmpty(extension))
-        {
-            return string.Empty;
-        }
-
-        return _documentsService.GetDocumentLanguage(extension);
     }
 
     private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
