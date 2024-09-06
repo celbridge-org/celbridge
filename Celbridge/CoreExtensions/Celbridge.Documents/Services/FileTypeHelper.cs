@@ -52,6 +52,11 @@ public class FileTypeHelper
 
     public string GetDocumentLanguage(string fileExtension)
     {
+        if (string.IsNullOrEmpty(fileExtension))
+        {
+            return string.Empty;
+        }
+
         if (_textDocumentTypes.TryGetValue(fileExtension,out var language))
         {
             return language;

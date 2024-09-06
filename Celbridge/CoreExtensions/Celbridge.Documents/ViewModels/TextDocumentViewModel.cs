@@ -4,6 +4,8 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class TextDocumentViewModel : DocumentViewModel
 {
+    private readonly IDocumentsService _documentsService;
+
     // Delay before saving the document after the most recent change
     private const double SaveDelay = 1.0; // Seconds
 
@@ -12,6 +14,11 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     [ObservableProperty]
     private double _saveTimer;
+
+    public TextDocumentViewModel(IDocumentsService documentsService)
+    {
+        _documentsService = documentsService;
+    }
 
     public async Task<Result> LoadDocument()
     {
@@ -76,85 +83,13 @@ public partial class TextDocumentViewModel : DocumentViewModel
 
     public string GetLanguage()
     {
-        // Todo: Get this lookup table from the Monaco or VSCode projects
-
-        string language;
         var extension = System.IO.Path.GetExtension(FilePath).ToLowerInvariant();
-
-        switch (extension)
+        if (string.IsNullOrEmpty(extension))
         {
-            case ".js":
-                language = "javascript";
-                break;
-            case ".ts":
-                language = "typescript";
-                break;
-            case ".json":
-                language = "json";
-                break;
-            case ".html":
-            case ".htm":
-                language = "html";
-                break;
-            case ".css":
-                language = "css";
-                break;
-            case ".scss":
-                language = "scss";
-                break;
-            case ".less":
-                language = "less";
-                break;
-            case ".md":
-                language = "markdown";
-                break;
-            case ".py":
-                language = "python";
-                break;
-            case ".java":
-                language = "java";
-                break;
-            case ".c":
-                language = "c";
-                break;
-            case ".cpp":
-                language = "cpp";
-                break;
-            case ".cs":
-                language = "csharp";
-                break;
-            case ".php":
-                language = "php";
-                break;
-            case ".rb":
-                language = "ruby";
-                break;
-            case ".go":
-                language = "go";
-                break;
-            case ".lua":
-                language = "lua";
-                break;
-            case ".xml":
-                language = "xml";
-                break;
-            case ".sql":
-                language = "sql";
-                break;
-            case ".yaml":
-            case ".yml":
-                language = "yaml";
-                break;
-            case ".sh":
-                language = "shell";
-                break;
-            // Add more cases as needed
-            default:
-                language = "plaintext";
-                break;
+            return string.Empty;
         }
 
-        return language;
+        return _documentsService.GetDocumentLanguage(extension);
     }
 
     private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
