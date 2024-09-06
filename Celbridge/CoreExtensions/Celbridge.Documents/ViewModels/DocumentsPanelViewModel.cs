@@ -1,8 +1,8 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Documents.Views;
-using Celbridge.Messaging;
 using Celbridge.Explorer;
+using Celbridge.Messaging;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -24,12 +24,12 @@ public partial class DocumentsPanelViewModel : ObservableObject
         IMessengerService messengerService,
         ICommandService commandService,
         IEditorSettings editorSettings,
-        IDocumentsService documentsService)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _commandService = commandService;
         _editorSettings = editorSettings;
-        _documentsService = documentsService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public void OnViewLoaded()

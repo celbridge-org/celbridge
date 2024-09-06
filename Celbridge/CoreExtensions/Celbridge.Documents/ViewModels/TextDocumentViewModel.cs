@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Celbridge.Workspace;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -15,9 +16,9 @@ public partial class TextDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    public TextDocumentViewModel(IDocumentsService documentsService)
+    public TextDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
     {
-        _documentsService = documentsService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public async Task<Result> LoadDocument()
