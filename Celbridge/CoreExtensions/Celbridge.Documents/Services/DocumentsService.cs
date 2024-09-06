@@ -50,7 +50,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
-            _logger.LogError(loadResult, "Failed to initialize file type helper");
+            throw new InvalidProgramException("Failed to initialize file type helper");
         }
     }
 
