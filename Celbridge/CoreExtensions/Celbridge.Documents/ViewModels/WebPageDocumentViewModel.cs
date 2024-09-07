@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class WebDocumentViewModel : DocumentViewModel
+public partial class WebPageDocumentViewModel : DocumentViewModel
 {
     [ObservableProperty]
     private string _source = string.Empty;
