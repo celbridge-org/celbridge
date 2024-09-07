@@ -6,29 +6,29 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class TextDocumentView : DocumentView
+public sealed partial class TextEditorDocumentView : DocumentView
 {
-    private readonly ILogger<TextDocumentView> _logger;
+    private readonly ILogger<TextEditorDocumentView> _logger;
     private readonly IResourceRegistry _resourceRegistry;
 
-    public TextDocumentViewModel ViewModel { get; }
+    public TextEditorDocumentViewModel ViewModel { get; }
 
     private readonly WebView2 _webView;
 
     private bool _isEditorReady;
 
-    public TextDocumentView(
-        ILogger<TextDocumentView> logger,
+    public TextEditorDocumentView(
+        ILogger<TextEditorDocumentView> logger,
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
      
-        ViewModel = serviceProvider.GetRequiredService<TextDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
 
 
-        // Todo: Pool webviews for better responsiveness
+        // Todo: Pool webviews to improve responsiveness
         _webView = new WebView2();
 
         // This fixes a visual bug where the WebView2 control would show a white background briefly when
