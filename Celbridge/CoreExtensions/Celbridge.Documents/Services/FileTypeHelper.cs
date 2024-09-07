@@ -5,21 +5,21 @@ namespace Celbridge.Documents.Services;
 
 public class FileTypeHelper
 {
-    private const string TextDocumentTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextDocumentTypes.json";
-    private const string WebViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.WebViewerTypes.json";
+    private const string TextEditorTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextEditorTypes.json";
+    private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
 
-    private Dictionary<string, string> _extensionToLanguages = new();
-    private List<string> _webViewerExtensions = new();
+    private Dictionary<string, string> _extensionToLanguage = new();
+    private List<string> _fileViewerExtensions = new();
 
     public Result Initialize()
     {
-        var loadTextResult = LoadTextDocumentTypes();
+        var loadTextResult = LoadTextEditorTypes();
         if (loadTextResult.IsFailure)
         {
             return loadTextResult;
         }
 
-        var loadWebResult = LoadWebViewerTypes();
+        var loadWebResult = LoadFileViewerTypes();
         if (loadWebResult.IsFailure)
         {
             return loadWebResult;
@@ -30,7 +30,7 @@ public class FileTypeHelper
 
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        var documentLanguage = GetDocumentLanguage(fileExtension);
+        var documentLanguage = GetTextEditorLanguage(fileExtension);
         if (!string.IsNullOrEmpty(documentLanguage))
         {
 #if WINDOWS
@@ -42,7 +42,7 @@ public class FileTypeHelper
 
         if (IsWebViewerFile(fileExtension))
         {
-            return DocumentViewType.WebViewer;
+            return DocumentViewType.FileViewer;
         }
 
         if (fileExtension == ".web")
@@ -53,14 +53,14 @@ public class FileTypeHelper
         return DocumentViewType.DefaultDocument;
     }
 
-    public string GetDocumentLanguage(string fileExtension)
+    public string GetTextEditorLanguage(string fileExtension)
     {
         if (string.IsNullOrEmpty(fileExtension))
         {
             return string.Empty;
         }
 
-        if (_extensionToLanguages.TryGetValue(fileExtension,out var language))
+        if (_extensionToLanguage.TryGetValue(fileExtension,out var language))
         {
             return language;
         }
@@ -70,17 +70,17 @@ public class FileTypeHelper
 
     public bool IsWebViewerFile(string fileExtension)
     {
-        return _webViewerExtensions.Contains(fileExtension);
+        return _fileViewerExtensions.Contains(fileExtension);
     }
 
-    private Result LoadTextDocumentTypes()
+    private Result LoadTextEditorTypes()
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        var stream = assembly.GetManifestResourceStream(TextDocumentTypesResourceName);
+        var stream = assembly.GetManifestResourceStream(TextEditorTypesResourceName);
         if (stream is null)
         {
-            return Result.Fail($"Embedded resource not found: {TextDocumentTypesResourceName}");
+            return Result.Fail($"Embedded resource not found: {TextEditorTypesResourceName}");
         }
 
         var json = string.Empty;
@@ -94,36 +94,36 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {TextDocumentTypesResourceName}");
+            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {TextEditorTypesResourceName}");
         }
 
         try
         {
-            // Deserialize the JSON into a dictionary of language codes to file extensions
+            // Deserialize the JSON into a dictionary mapping file extensions to languages
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
             if (dictionary is null)
             {
-                return Result.Fail($"Failed to deserialize embedded resource: {TextDocumentTypesResourceName}");
+                return Result.Fail($"Failed to deserialize embedded resource: {TextEditorTypesResourceName}");
             }
 
-            _extensionToLanguages.ReplaceWith(dictionary);
+            _extensionToLanguage.ReplaceWith(dictionary);
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {TextDocumentTypesResourceName}");
+            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {TextEditorTypesResourceName}");
         }
 
         return Result.Ok();
     }
 
-    private Result LoadWebViewerTypes()
+    private Result LoadFileViewerTypes()
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        var stream = assembly.GetManifestResourceStream(WebViewerTypesResourceName);
+        var stream = assembly.GetManifestResourceStream(FileViewerTypesResourceName);
         if (stream is null)
         {
-            return Result.Fail($"Embedded resource not found: {WebViewerTypesResourceName}");
+            return Result.Fail($"Embedded resource not found: {FileViewerTypesResourceName}");
         }
 
         var json = string.Empty;
@@ -137,7 +137,7 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {WebViewerTypesResourceName}");
+            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {FileViewerTypesResourceName}");
         }
 
         try
@@ -145,11 +145,11 @@ public class FileTypeHelper
             // Deserialize the JSON into a list of file extensions
             var fileExtensions = JsonConvert.DeserializeObject<List<string>>(json);
 
-            _webViewerExtensions.ReplaceWith(fileExtensions);
+            _fileViewerExtensions.ReplaceWith(fileExtensions);
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {WebViewerTypesResourceName}");
+            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {FileViewerTypesResourceName}");
         }
 
         return Result.Ok();
