@@ -58,8 +58,11 @@
                     <FontIcon FontFamily="{StaticResource OctIconsFontFamily}"
                               Glyph="&#xF016;" 
                               FontSize="16" 
+                              Margin="0 4 6 0" 
+                              VerticalAlignment="Center"
                               Foreground="#FFCC40"/>
-                    <TextBlock Margin="8 0 0 0" 
+                    <TextBlock Margin="0"
+                               VerticalAlignment="Center"
                                Text="{Binding Path=Content.Name, Mode=OneWay}" />
                 </StackPanel>
             </muxc:TreeViewItem>
@@ -74,9 +77,10 @@
                     <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
                               Glyph="{Binding Path=Content.Icon.FontCharacter}" 
                               Foreground="{Binding Path=Content.Icon.FontColor}"
-                              FontSize="16" 
-                              Margin="0 0 6 0"/>
-                    <TextBlock Margin="0" 
+                              FontSize="16"
+                              MinWidth="20"
+                              Margin="0"/>
+                    <TextBlock Margin="4 0 0 0" 
                                Text="{Binding Path=Content.Name, Mode=OneWay}" />
                 </StackPanel>
 
