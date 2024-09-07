@@ -18,7 +18,7 @@ public enum DocumentViewType
     /// <summary>
     /// View a web page document.
     /// </summary>
-    WebDocument,
+    WebPageDocument,
 
     /// <summary>
     /// View a non-text file resource via a web view (e.g. an image, audio clip or pdf file).

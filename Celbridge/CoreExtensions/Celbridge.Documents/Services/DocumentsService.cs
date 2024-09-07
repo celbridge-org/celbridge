@@ -100,8 +100,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             case DocumentViewType.TextDocument:
                 documentView = _serviceProvider.GetRequiredService<TextDocumentView>();
                 break;
-            case DocumentViewType.WebDocument:
-                documentView = _serviceProvider.GetRequiredService<WebDocumentView>();
+            case DocumentViewType.WebPageDocument:
+                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
                 break;
             case DocumentViewType.WebViewer:
                 // Todo: Implement viewer type
