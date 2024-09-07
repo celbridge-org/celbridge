@@ -23,7 +23,7 @@ public class Extension : IExtension
 
         config.AddTransient<DocumentsPanel>();
         config.AddTransient<DefaultDocumentView>();
-        config.AddTransient<WebDocumentView>();
+        config.AddTransient<WebPageDocumentView>();
         config.AddTransient<TextDocumentView>();
 
         //
@@ -33,7 +33,7 @@ public class Extension : IExtension
         config.AddTransient<DocumentsPanelViewModel>();
         config.AddTransient<DocumentTabViewModel>();
         config.AddTransient<DefaultDocumentViewModel>();
-        config.AddTransient<WebDocumentViewModel>();
+        config.AddTransient<WebPageDocumentViewModel>();
         config.AddTransient<TextDocumentViewModel>();
 
         //
