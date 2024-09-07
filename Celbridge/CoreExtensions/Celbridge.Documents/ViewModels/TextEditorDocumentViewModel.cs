@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class TextDocumentViewModel : DocumentViewModel
+public partial class TextEditorDocumentViewModel : DocumentViewModel
 {
     private readonly IDocumentsService _documentsService;
 
@@ -16,7 +16,7 @@ public partial class TextDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    public TextDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public TextEditorDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
     {
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
