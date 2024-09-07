@@ -98,13 +98,13 @@ public class DocumentsService : IDocumentsService, IDisposable
                 documentView = _serviceProvider.GetRequiredService<DefaultDocumentView>();
                 break;
             case DocumentViewType.TextDocument:
-                documentView = _serviceProvider.GetRequiredService<TextDocumentView>();
+                documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
                 break;
             case DocumentViewType.WebPageDocument:
                 documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
                 break;
-            case DocumentViewType.WebViewer:
-                // Todo: Implement viewer type
+            case DocumentViewType.FileViewer:
+                documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
                 break;
         }
 
@@ -294,7 +294,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public string GetDocumentLanguage(string fileExtension)
     {
-        return _fileTypeHelper.GetDocumentLanguage(fileExtension);
+        return _fileTypeHelper.GetTextEditorLanguage(fileExtension);
     }
 
     private bool _disposed;
