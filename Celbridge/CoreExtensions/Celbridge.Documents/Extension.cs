@@ -23,8 +23,9 @@ public class Extension : IExtension
 
         config.AddTransient<DocumentsPanel>();
         config.AddTransient<DefaultDocumentView>();
-        config.AddTransient<WebDocumentView>();
-        config.AddTransient<TextDocumentView>();
+        config.AddTransient<WebPageDocumentView>();
+        config.AddTransient<TextEditorDocumentView>();
+        config.AddTransient<FileViewerDocumentView>();
 
         //
         // Register ViewModels
@@ -33,8 +34,9 @@ public class Extension : IExtension
         config.AddTransient<DocumentsPanelViewModel>();
         config.AddTransient<DocumentTabViewModel>();
         config.AddTransient<DefaultDocumentViewModel>();
-        config.AddTransient<WebDocumentViewModel>();
-        config.AddTransient<TextDocumentViewModel>();
+        config.AddTransient<WebPageDocumentViewModel>();
+        config.AddTransient<TextEditorDocumentViewModel>();
+        config.AddTransient<FileViewerDocumentViewModel>();
 
         //
         // Register commands
