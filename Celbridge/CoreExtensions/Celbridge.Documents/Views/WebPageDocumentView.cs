@@ -4,19 +4,19 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebDocumentView : DocumentView
+public sealed partial class WebPageDocumentView : DocumentView
 {
     private IResourceRegistry _resourceRegistry;
 
-    public WebDocumentViewModel ViewModel { get; }
+    public WebPageDocumentViewModel ViewModel { get; }
 
     private WebView2 _webView;
 
-    public WebDocumentView(
+    public WebPageDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
-        ViewModel = serviceProvider.GetRequiredService<WebDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WebPageDocumentViewModel>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 

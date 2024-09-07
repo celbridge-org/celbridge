@@ -47,7 +47,7 @@ public class FileTypeHelper
 
         if (fileExtension == ".web")
         {
-            return DocumentViewType.WebDocument;
+            return DocumentViewType.WebPageDocument;
         }
 
         return DocumentViewType.DefaultDocument;
