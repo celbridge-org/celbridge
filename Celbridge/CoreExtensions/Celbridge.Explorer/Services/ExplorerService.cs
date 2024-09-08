@@ -195,18 +195,15 @@ public class ExplorerService : IExplorerService, IDisposable
                 }
                 else
                 {
-                    if (resourceType == ResourceType.File)
-                    {
-                        // This resource is outside the project folder, so we should add it to the project
-                        // via the AddResource command, which will create new metadata for the resource.
-                        // This is indicated by having an empty source resource property.
-                        var sourceResource = new ResourceKey();
-                        var filename = Path.GetFileName(sourcePath);
-                        var destResource = destFolderResource.Combine(filename);
+                    // This file or folder resource is outside the project folder, so we should add it to the project
+                    // via the AddResource command, which will create new metadata for the resource.
+                    // This behaviour is indicated by having an empty source resource property.
+                    var sourceResource = new ResourceKey();
+                    var resourcename = Path.GetFileName(sourcePath);
+                    var destResource = destFolderResource.Combine(resourcename);
 
-                        var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
-                        transferItems.Add(item);
-                    }
+                    var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
+                    transferItems.Add(item);
                 }
             }
 
