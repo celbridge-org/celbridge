@@ -496,6 +496,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void ResourcesTreeView_Drop(object sender, DragEventArgs e)
     {
+        Guard.IsNotNull(_resourceRegistry);
+
         e.Handled = true;
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
@@ -506,7 +508,11 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         IResource? destResource = null;
         var position = e.GetPosition(ResourcesTreeView);
         TreeViewNode? dropTargetNode = FindNodeAtPosition(ResourcesTreeView, position);
-        if (dropTargetNode is not null)
+        if (dropTargetNode is null)
+        {
+            destResource = _resourceRegistry.RootFolder;
+        }
+        else
         {
             destResource = dropTargetNode.Content as IResource;
         }
