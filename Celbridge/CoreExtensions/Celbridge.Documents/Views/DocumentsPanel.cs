@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Explorer;
 using CommunityToolkit.Diagnostics;
 using Windows.Foundation.Collections;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Documents.Views;
 
@@ -160,12 +161,29 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
         }
 
+        //
+        // Add a new DocumentTab to the TabView immediately.
+        // This provides some early visual feedback that the document is loading.
+        //
+
+        var documentTab = new DocumentTab();
+        _tabView.TabItems.Add(documentTab);
+        documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        // Select the tab and make the content active
+        _tabView.SelectedItem = documentTab;
+
+        int tabIndex = _tabView.TabItems.Count - 1;
+
         // Create the document view
 
         var fileExtension = System.IO.Path.GetExtension(filePath);
         var createViewResult = ViewModel.CreateDocumentView(fileExtension);
         if (createViewResult.IsFailure)
         {
+            _tabView.TabItems.RemoveAt(tabIndex);
+
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
             failure.MergeErrors(createViewResult);
             return failure;
@@ -179,6 +197,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var setFileResult = documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
         {
+            _tabView.TabItems.RemoveAt(tabIndex);
+
             var failure = Result.Fail($"Failed to set file resource for document: '{fileResource}'");
             failure.MergeErrors(setFileResult);
             return failure;
@@ -187,23 +207,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
+            _tabView.TabItems.RemoveAt(tabIndex);
+
             var failure = Result.Fail($"Failed to load content for document: '{fileResource}'");
             failure.MergeErrors(loadResult);
             return failure;
         }
 
-        //
-        // Add a new DocumentTab to the TabView
-        //
-
-        var documentTab = new DocumentTab();
         documentTab.ViewModel.DocumentView = documentView;
-        documentTab.ViewModel.FileResource = fileResource;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+        documentTab.Content = documentView;
 
-        documentTab.Content = documentView as IDocumentView;
-
-        _tabView.TabItems.Add(documentTab);
+        // Select the tab and force the content to refresh
+        _tabView.SelectedItem = null;
         _tabView.SelectedItem = documentTab;
 
         return Result.Ok();
