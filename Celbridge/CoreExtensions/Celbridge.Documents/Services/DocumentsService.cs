@@ -25,6 +25,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public List<ResourceKey> OpenDocuments { get; } = new();
 
+    public TextEditorPool TextEditorPool { get; } = new(3);
+
     private bool _isWorkspaceLoaded;
 
     private FileTypeHelper _fileTypeHelper;

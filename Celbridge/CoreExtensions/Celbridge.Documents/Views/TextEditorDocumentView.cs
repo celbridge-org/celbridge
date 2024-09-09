@@ -1,7 +1,9 @@
-﻿using Celbridge.Documents.ViewModels;
+﻿using Celbridge.Documents.Services;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
@@ -10,10 +12,11 @@ public sealed partial class TextEditorDocumentView : DocumentView
 {
     private readonly ILogger<TextEditorDocumentView> _logger;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IDocumentsService _documentsService;
 
     public TextEditorDocumentViewModel ViewModel { get; }
 
-    private readonly WebView2 _webView;
+    private WebView2? _webView;
 
     private bool _isEditorReady;
 
@@ -24,28 +27,16 @@ public sealed partial class TextEditorDocumentView : DocumentView
     {
         _logger = logger;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-     
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+
         ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
-
-
-        // Todo: Pool webviews to improve responsiveness
-        _webView = new WebView2();
-
-        // This fixes a visual bug where the WebView2 control would show a white background briefly when
-        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-        _webView.DefaultBackgroundColor = Colors.Transparent;
-        _webView.Visibility = Visibility.Collapsed;
 
         //
         // Set the data context and control content
         // 
 
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(_webView));
+        this.DataContext(ViewModel);
 
-        // Note that we can't use the Loaded and Unloaded events here because those events are fired when
-        // the tab views are reordered by the user.
-        _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
     }
 
     public override Result SetFileResource(ResourceKey fileResource)
@@ -70,6 +61,9 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
+        _webView = await AcquireWebView();
+        this.Content(_webView);
+
         var loadResult = await ViewModel.LoadDocument();
         if (loadResult.IsFailure)
         {
@@ -98,6 +92,39 @@ public sealed partial class TextEditorDocumentView : DocumentView
         return Result.Ok();
     }
 
+    private async Task<WebView2> AcquireWebView()
+    {
+        // Pool webviews to improve responsiveness
+
+        var documentsService = _documentsService as DocumentsService;
+        Guard.IsNotNull(documentsService);
+        var textEditorPool = documentsService.TextEditorPool;
+
+        var webView = await textEditorPool.AcquireTextEditorWebView();
+
+        // This fixes a visual bug where the WebView2 control would show a white background briefly when
+        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
+        webView.DefaultBackgroundColor = Colors.Transparent;
+        //webView.Visibility = Visibility.Collapsed;
+
+        // Note that we can't use the Loaded and Unloaded events here because those events are fired when
+        // the tab views are reordered by the user.
+        webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
+
+        return webView;
+    }
+
+    private void ReleaseWebView()
+    {
+        // Pool webviews to improve responsiveness
+
+        var documentsService = _documentsService as DocumentsService;
+        Guard.IsNotNull(documentsService);
+        var textEditorPool = documentsService.TextEditorPool;
+
+        textEditorPool.ReleaseTextEditorWebView(_webView!);
+    }
+
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
 
     public override Result<bool> UpdateSaveTimer(double deltaTime)
@@ -112,7 +139,11 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public override void OnDocumentClosing()
     {
-        _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+        _webView!.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+
+        ReleaseWebView();
+
+        _webView = null;
     }
 
     private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
