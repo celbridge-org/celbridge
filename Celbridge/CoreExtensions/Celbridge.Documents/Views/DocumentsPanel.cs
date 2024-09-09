@@ -167,9 +167,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         //
 
         var documentTab = new DocumentTab();
-        _tabView.TabItems.Add(documentTab);
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
+        // must be populated at this point.
+        _tabView.TabItems.Add(documentTab);
 
         // Select the tab and make the content active
         _tabView.SelectedItem = documentTab;
