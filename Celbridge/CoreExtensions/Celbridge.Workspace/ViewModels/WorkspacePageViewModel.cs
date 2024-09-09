@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
@@ -132,12 +133,9 @@ public partial class WorkspacePageViewModel : ObservableObject
         var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
         _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
 
-        // Short delay to allow the progress bar to display so the user knows something is happening.
-        // This is a case of "perceived performance is real performance".
-        await Task.Delay(1000);
-
-        // Hide the progress dialog
-        _dialogService.ReleaseProgressDialog(_progressDialogToken);
+        // Time how long it takes to open the workspace
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
 
         // Load and initialize the workspace using the helper class
         var loadResult = await _workspaceLoader.LoadWorkspaceAsync();
@@ -151,6 +149,19 @@ public partial class WorkspacePageViewModel : ObservableObject
                 LoadProjectCancellationToken.Cancel();
             }
         }
+
+        // Log how long it took to open the workspace
+        stopWatch.Stop();
+        var elapsed = (long)stopWatch.Elapsed.TotalMilliseconds;
+        _logger.LogInformation($"Workspace loaded in {elapsed} ms");
+
+        // Short delay so that the progress bar continues to display while the last document is reopening.
+        // If there are no documents to open, this gives the user a chance to visually register the
+        // progress bar updating, which feels more responsive than having the progress bar flash on screen momentarily.
+        await Task.Delay(1000);
+
+        // Hide the progress dialog
+        _dialogService.ReleaseProgressDialog(_progressDialogToken);
 
         _progressDialogToken = null;
         LoadProjectCancellationToken = null;
