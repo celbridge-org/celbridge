@@ -59,8 +59,8 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        _webView = await AcquireWebView();
-
+        var language = ViewModel.GetDocumentLanguage();
+        _webView = await AcquireTextEditorWebView(language);
         this.Content(_webView);
 
         var loadResult = await ViewModel.LoadDocument();
@@ -71,11 +71,6 @@ public sealed partial class TextEditorDocumentView : DocumentView
             return failure;
         }
 
-        // Set the Monaco editor language
-        var language = ViewModel.GetDocumentLanguage();
-        var script = $"monaco.editor.setModelLanguage(window.editor.getModel(), '{language}');";
-        await _webView.CoreWebView2.ExecuteScriptAsync(script);
-
         // Send the loaded text content to Monaco editor
         _webView.CoreWebView2.PostWebMessageAsString(ViewModel.Text);
 
@@ -85,13 +80,13 @@ public sealed partial class TextEditorDocumentView : DocumentView
         return Result.Ok();
     }
 
-    private async Task<WebView2> AcquireWebView()
+    private async Task<WebView2> AcquireTextEditorWebView(string language)
     {
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
         var textEditorPool = documentsService.TextEditorPool;
 
-        var webView = await textEditorPool.AcquireTextEditorWebView();
+        var webView = await textEditorPool.AcquireTextEditorWebView(language);
 
         return webView;
     }
