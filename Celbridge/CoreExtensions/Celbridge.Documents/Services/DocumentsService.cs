@@ -25,6 +25,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public List<ResourceKey> OpenDocuments { get; } = new();
 
+    // This utility is only used internally and is not exposed via IDocumentService
+    internal TextEditorWebViewPool TextEditorWebViewPool { get; } = new(3);
+
     private bool _isWorkspaceLoaded;
 
     private FileTypeHelper _fileTypeHelper;
