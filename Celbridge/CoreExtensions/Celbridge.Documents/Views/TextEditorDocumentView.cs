@@ -84,20 +84,20 @@ public sealed partial class TextEditorDocumentView : DocumentView
     {
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
-        var textEditorPool = documentsService.TextEditorPool;
+        var pool = documentsService.TextEditorWebViewPool;
 
-        var webView = await textEditorPool.AcquireTextEditorWebView(language);
+        var webView = await pool.AcquireTextEditorWebView(language);
 
         return webView;
     }
 
-    private void ReleaseWebView()
+    private void ReleaseTextEditorWebView()
     {
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
-        var textEditorPool = documentsService.TextEditorPool;
+        var pool = documentsService.TextEditorWebViewPool;
 
-        textEditorPool.ReleaseTextEditorWebView(_webView!);
+        pool.ReleaseTextEditorWebView(_webView!);
     }
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
@@ -116,7 +116,7 @@ public sealed partial class TextEditorDocumentView : DocumentView
     {
         _webView!.WebMessageReceived -= TextDocumentView_WebMessageReceived;
 
-        ReleaseWebView();
+        ReleaseTextEditorWebView();
 
         _webView = null;
     }
