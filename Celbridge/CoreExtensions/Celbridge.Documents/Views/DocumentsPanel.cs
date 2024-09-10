@@ -168,6 +168,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
