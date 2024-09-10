@@ -31,9 +31,6 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
             var text = await File.ReadAllTextAsync(FilePath);
             Text = text;
 
-            FileResource = FileResource;
-            FilePath = FilePath;
-
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
         catch (Exception ex)
@@ -82,7 +79,7 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
         return Result<bool>.Ok(false);
     }
 
-    public string GetLanguage()
+    public string GetDocumentLanguage()
     {
         var extension = System.IO.Path.GetExtension(FilePath).ToLowerInvariant();
         if (string.IsNullOrEmpty(extension))
