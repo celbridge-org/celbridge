@@ -31,9 +31,6 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
             var text = await File.ReadAllTextAsync(FilePath);
             Text = text;
 
-            FileResource = FileResource;
-            FilePath = FilePath;
-
             PropertyChanged += TextDocumentViewModel_PropertyChanged;
         }
         catch (Exception ex)
