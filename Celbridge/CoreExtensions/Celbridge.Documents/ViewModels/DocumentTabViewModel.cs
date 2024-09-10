@@ -94,6 +94,10 @@ public partial class DocumentTabViewModel : ObservableObject
             // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.
             UnregisterMessageHandlers();
+
+            // Notify the DocumentView that the document is about to close
+            DocumentView.OnDocumentClosing();
+
             return Result<bool>.Ok(true);
         }
 
