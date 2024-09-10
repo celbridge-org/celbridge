@@ -1,17 +1,19 @@
-﻿using Microsoft.Web.WebView2.Core;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Web.WebView2.Core;
+using System.Collections.Concurrent;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Services;
 
 public class TextEditorPool
 {
-    private readonly Queue<WebView2> _pool;
+    private readonly ConcurrentQueue<WebView2> _pool;
     private readonly int _maxPoolSize;
 
     public TextEditorPool(int poolSize)
     {
         _maxPoolSize = poolSize;
-        _pool = new Queue<WebView2>();
+        _pool = new ConcurrentQueue<WebView2>();
 
         InitializePool();
     }
@@ -26,25 +28,33 @@ public class TextEditorPool
         }
     }
 
-    public async Task<WebView2> AcquireTextEditorWebView()
+    public async Task<WebView2> AcquireTextEditorWebView(string language)
     {
-        if (_pool.Count > 0)
+        WebView2? webView;
+        if (!_pool.TryDequeue(out webView))
         {
-            var instance = _pool.Dequeue();
-            return instance;
+            // Create a new instance if the pool is empty            
+            webView = await CreateTextEditorWebView();
         }
-        else
-        {
-            // Optionally create a new instance if the pool is empty            
-            return await CreateTextEditorWebView();
-        }
+        Guard.IsNotNull(webView);
+
+        // Set the Monaco editor language
+        var script = $"monaco.editor.setModelLanguage(window.editor.getModel(), '{language}');";
+        await webView.CoreWebView2.ExecuteScriptAsync(script);
+
+        return webView;
     }
 
-    public void ReleaseTextEditorWebView(WebView2 webView)
+    public async void ReleaseTextEditorWebView(WebView2 webView)
     {
-        // Todo: Reset Monaco editor state
+        // Todo: This isn't really pooling as we're allowing the existing WebView to go out of scope and
+        // instantiating a completely new WebView. This does ensure that the web view & Monaco editor
+        // start in a pristine state, but we might want to try reusing the existing instance at some point.
 
-        _pool.Enqueue(webView);
+        webView.CoreWebView2.Navigate("about:blank");
+
+        var newWebView = await CreateTextEditorWebView();
+        _pool.Enqueue(newWebView);
     }
 
     private static async Task<WebView2> CreateTextEditorWebView()
@@ -62,10 +72,6 @@ public class TextEditorPool
             CoreWebView2HostResourceAccessKind.Allow);
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
-
-        // Set the default language
-        // Todo: This is probably redundant? We now set the language when the content loads.
-        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.language = 'text';");
 
         // Todo: Choose theme based on user settings
         var theme = "vs-dark";
