@@ -5,12 +5,12 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Services;
 
-public class TextEditorPool
+public class TextEditorWebViewPool
 {
     private readonly ConcurrentQueue<WebView2> _pool;
     private readonly int _maxPoolSize;
 
-    public TextEditorPool(int poolSize)
+    public TextEditorWebViewPool(int poolSize)
     {
         _maxPoolSize = poolSize;
         _pool = new ConcurrentQueue<WebView2>();
