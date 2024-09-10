@@ -82,7 +82,7 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
         return Result<bool>.Ok(false);
     }
 
-    public string GetLanguage()
+    public string GetDocumentLanguage()
     {
         var extension = System.IO.Path.GetExtension(FilePath).ToLowerInvariant();
         if (string.IsNullOrEmpty(extension))
