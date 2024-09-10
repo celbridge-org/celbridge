@@ -1,4 +1,5 @@
 ﻿using Microsoft.Web.WebView2.Core;
+using Windows.Foundation;
 
 namespace Celbridge.Documents.Services;
 
@@ -30,7 +31,6 @@ public class TextEditorPool
         if (_pool.Count > 0)
         {
             var instance = _pool.Dequeue();
-            instance.Visibility = Visibility.Visible;
             return instance;
         }
         else
@@ -42,13 +42,18 @@ public class TextEditorPool
 
     public void ReleaseTextEditorWebView(WebView2 webView)
     {
-        webView.Visibility = Visibility.Collapsed;
+        // Todo: Reset Monaco editor state
+
         _pool.Enqueue(webView);
     }
 
     private static async Task<WebView2> CreateTextEditorWebView()
     {
         var webView = new WebView2();
+
+        // This fixes a visual bug where the WebView2 control would show a white background briefly when
+        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
+        webView.DefaultBackgroundColor = Colors.Transparent;
 
         await webView.EnsureCoreWebView2Async();
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -57,6 +62,9 @@ public class TextEditorPool
             CoreWebView2HostResourceAccessKind.Allow);
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+        // Set the default language
+        // Todo: This is probably redundant? We now set the language when the content loads.
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.language = 'text';");
 
         // Todo: Choose theme based on user settings
@@ -65,8 +73,28 @@ public class TextEditorPool
 
         webView.CoreWebView2.Navigate("http://MonacoEditor/index.html");
 
-        // Optionally hide the WebView2 instance
-        webView.Visibility = Visibility.Collapsed;
+        bool isEditorReady = false;
+        TypedEventHandler<WebView2, CoreWebView2WebMessageReceivedEventArgs> onWebMessageReceived = (sender, e) =>
+        {
+            var message = e.TryGetWebMessageAsString();
+
+            if (message == "editor_ready")
+            {
+                isEditorReady = true;
+                return;
+            }
+
+            throw new InvalidOperationException($"Expected 'editor_ready' message, but received: {message}");
+        };
+
+        webView.WebMessageReceived += onWebMessageReceived;
+
+        while (!isEditorReady)
+        {
+            await Task.Delay(50);
+        }
+
+        webView.WebMessageReceived -= onWebMessageReceived;
 
         return webView;
     }
