@@ -1,5 +1,4 @@
-﻿using Celbridge.Commands;
-using CommunityToolkit.Diagnostics;
+﻿using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
 

@@ -1,6 +1,5 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;

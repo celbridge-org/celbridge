@@ -1,9 +1,7 @@
 ﻿using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
-using Celbridge.Explorer;
 using CommunityToolkit.Diagnostics;
 using Windows.Foundation.Collections;
-using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Documents.Views;
 

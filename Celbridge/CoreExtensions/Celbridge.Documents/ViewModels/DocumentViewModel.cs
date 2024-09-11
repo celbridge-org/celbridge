@@ -1,6 +1,4 @@
-﻿using Celbridge.Messaging;
-using Celbridge.Explorer;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
