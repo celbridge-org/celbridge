@@ -1,5 +1,4 @@
-﻿using Celbridge.Core;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace Celbridge.Logging.Services;
 

@@ -1,6 +1,4 @@
-﻿using Celbridge.Explorer;
-
-namespace Celbridge.Documents;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with a document view.
