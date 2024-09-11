@@ -1,5 +1,4 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace;

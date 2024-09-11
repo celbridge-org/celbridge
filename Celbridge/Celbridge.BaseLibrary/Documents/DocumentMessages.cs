@@ -1,6 +1,4 @@
-﻿using Celbridge.Explorer;
-
-namespace Celbridge.Documents;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// A message that indicates the current number of pending document saves.

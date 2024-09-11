@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer;
+﻿using Celbridge.Core;
 
 namespace Celbridge.Tests;
 
