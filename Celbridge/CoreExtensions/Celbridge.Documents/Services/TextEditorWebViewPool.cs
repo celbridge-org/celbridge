@@ -15,7 +15,9 @@ public class TextEditorWebViewPool
         _maxPoolSize = poolSize;
         _pool = new ConcurrentQueue<WebView2>();
 
+#if WINDOWS
         InitializePool();
+#endif
     }
 
     private async void InitializePool()
