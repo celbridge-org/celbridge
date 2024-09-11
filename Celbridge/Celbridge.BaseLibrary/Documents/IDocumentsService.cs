@@ -1,6 +1,4 @@
-﻿using Celbridge.Explorer;
-
-namespace Celbridge.Documents;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.

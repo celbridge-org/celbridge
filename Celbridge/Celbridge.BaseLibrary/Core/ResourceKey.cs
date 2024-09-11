@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Explorer;
+﻿namespace Celbridge.Core;
 
 /// <summary>
 /// A unique identifier for project resources.
@@ -34,8 +34,8 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     public override bool Equals(object? obj)
     {
-        return obj is not null && 
-            obj is ResourceKey other && 
+        return obj is not null &&
+            obj is ResourceKey other &&
             Equals(other);
     }
 

@@ -1,5 +1,4 @@
-﻿using Celbridge.Explorer;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Projects.Services;
 
