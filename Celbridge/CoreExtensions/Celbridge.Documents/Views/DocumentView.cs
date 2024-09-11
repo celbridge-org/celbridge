@@ -1,6 +1,4 @@
-﻿using Celbridge.Explorer;
-
-namespace Celbridge.Documents.Views;
+﻿namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
