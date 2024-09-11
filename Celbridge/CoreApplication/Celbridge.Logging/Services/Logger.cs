@@ -1,5 +1,4 @@
-﻿using Celbridge.Core;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Logging.Services;
 

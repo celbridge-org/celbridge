@@ -5,7 +5,6 @@ using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Workspace.Views;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Workspace;
 

@@ -1,6 +1,4 @@
 ﻿using Celbridge.Logging.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
 
