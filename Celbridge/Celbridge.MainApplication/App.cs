@@ -18,7 +18,6 @@ public class App : Application
     protected IHost? Host { get; private set; }
 
     private ExtensionLoader _extensionLoader = new();
-    private LegacyAppHelper? _legacyApp = new();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -57,8 +56,6 @@ public class App : Application
                 .UseLocalization()
                 .ConfigureServices((context, services) =>
                 {
-                    _legacyApp?.RegisterServices(services);
-
                     // Register the IDispatcher service to support running code on the UI thread.
                     // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
@@ -107,15 +104,11 @@ public class App : Application
             MainWindow.Title = localizer["ApplicationName"];
         }
 
-        _legacyApp?.Initialize(Host.Services, MainWindow);
-
         MainWindow.Closed += (s, e) =>
         {
 #if DEBUG && WINDOWS
             ConsoleHelper.FreeConsole();
 #endif
-
-            _legacyApp?.OnMainWindowClosed();
 
             // Todo: This doesn't get called on Skia+Gtk at all on exit.
             // Ideally on all platforms we would stop executing commands as soon as the application starts exiting.
@@ -133,8 +126,6 @@ public class App : Application
 
         rootFrame.Loaded += (s, e) =>
         {
-            _legacyApp?.OnFrameLoaded(rootFrame);
-
             //
             // Initialize the user interface and page navigation services
             // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
