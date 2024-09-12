@@ -43,7 +43,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\Celbridge.Legacy\Celbridge.Legacy.csproj" />
     <ProjectReference Include="..\CoreApplication\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\CoreExtensions\Celbridge.Documents\Celbridge.Documents.csproj" />

@@ -12,7 +12,6 @@ public sealed partial class MainPage : Page
     public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
     public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
-    public LocalizedString LegacyAppString => _stringLocalizer.GetString($"MainPage_LegacyApp");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -51,12 +50,7 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.OpenFile))
                     .Tag(MainPageViewModel.OpenProjectTag)
-                    .Content(OpenProjectString),
-                new NavigationViewItemSeparator(),
-                new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.Admin))
-                    .Tag(MainPageViewModel.LegacyTag)
-                    .Content(LegacyAppString)
+                    .Content(OpenProjectString)
                 )
                 .Content(_contentFrame);
 
