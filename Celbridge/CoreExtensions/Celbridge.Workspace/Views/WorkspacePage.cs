@@ -206,7 +206,9 @@ public sealed partial class WorkspacePage : Page
             .RowDefinitions("*, 200, 32")
             .Children(_leftPanel, _centerPanel, _bottomPanel, _statusPanel, _rightPanel
 #if WINDOWS
-            , _leftPanelSplitter, _rightPanelSplitter, _bottomPanelSplitter
+            // Fix: This is causing a weird exception since I removed the legacy application support
+            // Hopefully updating to the latest Uno Platform and splitter package fixes it
+//            , _leftPanelSplitter, _rightPanelSplitter, _bottomPanelSplitter
 #endif
             );
 
