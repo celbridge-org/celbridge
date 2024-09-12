@@ -159,9 +159,6 @@
   <data name="MainPage_Home" xml:space="preserve">
     <value>Home</value>
   </data>
-  <data name="MainPage_LegacyApp" xml:space="preserve">
-    <value>Open legacy app</value>
-  </data>
   <data name="MainPage_NewProject" xml:space="preserve">
     <value>New project</value>
   </data>
