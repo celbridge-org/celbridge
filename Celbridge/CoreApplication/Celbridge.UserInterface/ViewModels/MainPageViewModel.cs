@@ -16,11 +16,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
     public const string SettingsTag = "Settings";
-    public const string LegacyTag = "Legacy";
 
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
-    private const string LegacyPageName = "Shell";
 
     private readonly IMessengerService _messengerService;
     private readonly ILogger<MainPageViewModel> _logger;
@@ -125,10 +123,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
             case SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
-                break;
-
-            case LegacyTag:
-                _navigationService.NavigateToPage(LegacyPageName);
                 break;
         }
 
