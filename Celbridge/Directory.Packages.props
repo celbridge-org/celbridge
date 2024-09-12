@@ -53,11 +53,5 @@
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
     <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
-    <!-- Legacy dependencies -->
-    <PackageVersion Include="IronPython" Version="2.7.12" />
-    <PackageVersion Include="IronPython.StdLib" Version="2.7.12" />
-    <PackageVersion Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform" Version="4.1.0" />
-    <PackageVersion Include="OpenAI" Version="1.10.0" />
-    <PackageVersion Include="Scriban" Version="5.9.1" />
   </ItemGroup>
 </Project>
