@@ -129,23 +129,27 @@ public sealed partial class TextEditorDocumentView : DocumentView
         // Hopefully we can just call a js function to do that rather than using messages.
 
         // Todo: Set the dirty flag and call this when it's time to save
-        _ = GetTextData();
-
-        ViewModel.Text = e.TryGetWebMessageAsString();
+        var message = e.TryGetWebMessageAsString();
+        if (message == "did_change_content")
+        {
+             _ = ReadTextData();
+        }
     }
 
-    private async Task GetTextData()
+    private async Task ReadTextData()
     {
         if (_webView == null)
         {
             return;
         }
 
-        // var script = "return getEditorContent();";
         var script = "getTextData();";
         var editorContent = await _webView.ExecuteScriptAsync(script);
         var textData = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(editorContent);
 
-        _logger.LogInformation($"Text data: {textData}");
+        if (textData != null)
+        {
+            ViewModel.Text = textData;
+        }
     }
 }
