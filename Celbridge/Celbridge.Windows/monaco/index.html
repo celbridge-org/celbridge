@@ -77,6 +77,10 @@
             }
         }
 
+        function getTextData() {
+            return window.editor.getValue();
+        }
+
         // Receive text data from Uno and display it in the Monaco Editor
         function setTextData(text) {
             if (!window.isWebView) {
