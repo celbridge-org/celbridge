@@ -19,6 +19,16 @@ public class App : Application
 
     private ExtensionLoader _extensionLoader = new();
 
+    public App()
+    {
+// Uncomment this to force the application theme to light or dark
+//#if HAS_UNO
+//    Uno.UI.ApplicationHelper.RequestedCustomTheme = nameof(ApplicationTheme.Dark);
+//#else
+//    this.RequestedTheme = ApplicationTheme.Light;
+//#endif
+    }
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Catch all types of unhandled exceptions
