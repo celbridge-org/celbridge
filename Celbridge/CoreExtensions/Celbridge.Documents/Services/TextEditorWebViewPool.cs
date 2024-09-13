@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using Celbridge.UserInterface;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using System.Collections.Concurrent;
 using Windows.Foundation;
@@ -75,9 +76,12 @@ public class TextEditorWebViewPool
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-        // Todo: Choose theme based on user settings
-        var theme = "vs-dark";
-        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{theme}';");
+        // Set Monaco color theme to match the user interface theme
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var theme = userInterfaceService.UserInterfaceTheme;
+        var vsTheme = theme == UserInterfaceTheme.Light ? "vs-light" : "vs-dark";
+        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{vsTheme}';");
 
         webView.CoreWebView2.Navigate("http://MonacoEditor/index.html");
 
