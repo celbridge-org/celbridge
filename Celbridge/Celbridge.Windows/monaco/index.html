@@ -103,8 +103,7 @@
                 }
 
                 // Send text data from Monaco Editor to Uno
-                var text = window.editor.getValue();
-                postWebViewMessage(text)
+                postWebViewMessage("did_change_content");
             });
         }
 
