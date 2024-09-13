@@ -4,6 +4,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
@@ -127,6 +128,24 @@ public sealed partial class TextEditorDocumentView : DocumentView
         // Todo: Use a web message to flag when the content has changed, then request it when saving.
         // Hopefully we can just call a js function to do that rather than using messages.
 
+        // Todo: Set the dirty flag and call this when it's time to save
+        _ = GetTextData();
+
         ViewModel.Text = e.TryGetWebMessageAsString();
+    }
+
+    private async Task GetTextData()
+    {
+        if (_webView == null)
+        {
+            return;
+        }
+
+        // var script = "return getEditorContent();";
+        var script = "getTextData();";
+        var editorContent = await _webView.ExecuteScriptAsync(script);
+        var textData = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(editorContent);
+
+        _logger.LogInformation($"Text data: {textData}");
     }
 }
