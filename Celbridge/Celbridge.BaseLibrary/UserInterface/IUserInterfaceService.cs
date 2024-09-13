@@ -15,4 +15,9 @@ public interface IUserInterfaceService
     /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
     /// </summary>
     object XamlRoot { get; }
+
+    /// <summary>
+    /// Color theme of the user interface
+    /// </summary>
+    UserInterfaceTheme UserInterfaceTheme { get; }
 }

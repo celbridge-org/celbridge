@@ -1,5 +1,6 @@
 ﻿using Celbridge.Dialog;
 using Celbridge.FilePicker;
+using Uno.Toolkit.UI;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -16,10 +17,10 @@ public class UserInterfaceService : IUserInterfaceService
     // These properties provide convenient access to various user interface related services
     //
     public IFilePickerService FilePickerService { get; private set; }
-    public IDialogService DialogService { get; private set;  }
+    public IDialogService DialogService { get; private set; }
 
     public UserInterfaceService(
-        IMessengerService messengerService, 
+        IMessengerService messengerService,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {
@@ -41,6 +42,15 @@ public class UserInterfaceService : IUserInterfaceService
         // Broadcast a message whenever the main window acquires or loses focus (Windows only).
         _mainWindow.Activated += MainWindow_Activated;
 #endif
+    }
+
+    public UserInterfaceTheme UserInterfaceTheme
+    {
+        get
+        {
+            var rootTheme = SystemThemeHelper.GetRootTheme(_xamlRoot);
+            return rootTheme == Microsoft.UI.Xaml.ApplicationTheme.Light ? UserInterfaceTheme.Light : UserInterfaceTheme.Dark;
+        }
     }
 
 #if WINDOWS
