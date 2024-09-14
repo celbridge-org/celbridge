@@ -11,9 +11,6 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
     private const double SaveDelay = 1.0; // Seconds
 
     [ObservableProperty]
-    private string _text = string.Empty;
-
-    [ObservableProperty]
     private double _saveTimer;
 
     public TextEditorDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
@@ -21,27 +18,21 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
-    public async Task<Result> LoadDocument()
+    public async Task<Result<string>> LoadDocument()
     {
         try
         {
-            PropertyChanged -= TextDocumentViewModel_PropertyChanged;
-
             // Read the file contents to initialize the text editor
             var text = await File.ReadAllTextAsync(FilePath);
-            Text = text;
-
-            PropertyChanged += TextDocumentViewModel_PropertyChanged;
+            return Result<string>.Ok(text);
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to load document file: '{FilePath}'");
+            return Result<string>.Fail(ex, $"Failed to load document file: '{FilePath}'");
         }
-
-        return Result.Ok();
     }
 
-    public async Task<Result> SaveDocument()
+    public async Task<Result> SaveDocument(string text)
     {
         // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;
@@ -49,7 +40,7 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
 
         try
         {
-            await File.WriteAllTextAsync(FilePath, Text);
+            await File.WriteAllTextAsync(FilePath, text);
         }
         catch (Exception ex)
         {
@@ -88,14 +79,6 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
         }
 
         return _documentsService.GetDocumentLanguage(extension);
-    }
-
-    private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(Text))
-        {
-            OnTextChanged();
-        }
     }
 
     public void OnTextChanged()
