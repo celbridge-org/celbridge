@@ -77,12 +77,19 @@
             }
         }
 
+        function getTextData() {
+            return window.editor.getValue();
+        }
+
         // Receive text data from Uno and display it in the Monaco Editor
         function setTextData(text) {
             if (!window.isWebView) {
                 return;
             }
             window.editor.setValue(text);
+
+            // Set a flag to indicate that the text data has been initialized
+            window.initializedTextData = true
         }
 
         function initMonacoEditor() {
@@ -98,9 +105,14 @@
                     return;
                 }
 
+                if (!window.initializedTextData)
+                {
+                    // Don't report text changes until after the text data has been initialized
+                    return;
+                }
+
                 // Send text data from Monaco Editor to Uno
-                var text = window.editor.getValue();
-                postWebViewMessage(text)
+                postWebViewMessage("did_change_content");
             });
         }
 

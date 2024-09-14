@@ -4,6 +4,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
@@ -70,9 +71,10 @@ public sealed partial class TextEditorDocumentView : DocumentView
             failure.MergeErrors(loadResult);
             return failure;
         }
+        var text = loadResult.Value;
 
         // Send the loaded text content to Monaco editor
-        _webView.CoreWebView2.PostWebMessageAsString(ViewModel.Text);
+        _webView.CoreWebView2.PostWebMessageAsString(text);
 
         // Listen for text updates from the web view
         _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
@@ -109,7 +111,16 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        return await ViewModel.SaveDocument();
+        var readResult = await ReadTextData();
+        if (readResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to save document: '{ViewModel.FileResource}'");
+            failure.MergeErrors(readResult);
+            return failure;
+        }
+        var textData = readResult.Value;
+
+        return await ViewModel.SaveDocument(textData);
     }
 
     public override void OnDocumentClosing()
@@ -123,10 +134,37 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        // Update the text in the view model
-        // Todo: Use a web message to flag when the content has changed, then request it when saving.
-        // Hopefully we can just call a js function to do that rather than using messages.
+        var message = e.TryGetWebMessageAsString();
+        if (message == "did_change_content")
+        {
+            // Mark the document as pending a save
+            ViewModel.OnTextChanged();
+        }
+    }
 
-        ViewModel.Text = e.TryGetWebMessageAsString();
+    private async Task<Result<string>> ReadTextData()
+    {
+        if (_webView == null)
+        {
+            return Result<string>.Fail("WebView is null");
+        }
+
+        try
+        {
+            var script = "getTextData();";
+            var editorContent = await _webView.ExecuteScriptAsync(script);
+            var textData = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(editorContent);
+
+            if (textData != null)
+            {
+                return Result<string>.Ok(textData);
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail(ex, "An exception occured while reading the text data");
+        }
+
+        return Result<string>.Fail("Failed to read text data");
     }
 }
