@@ -87,6 +87,9 @@
                 return;
             }
             window.editor.setValue(text);
+
+            // Set a flag to indicate that the text data has been initialized
+            window.initializedTextData = true
         }
 
         function initMonacoEditor() {
@@ -99,6 +102,12 @@
 
             window.editor.getModel().onDidChangeContent((event) => {
                 if (!window.isWebView) {
+                    return;
+                }
+
+                if (!window.initializedTextData)
+                {
+                    // Don't report text changes until after the text data has been initialized
                     return;
                 }
 
