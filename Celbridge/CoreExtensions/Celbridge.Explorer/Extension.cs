@@ -29,6 +29,7 @@ public class Extension : IExtension
         config.AddTransient<IExplorerService, ExplorerService>();
         config.AddTransient<IResourceRegistry, ResourceRegistry>();
         config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
+        config.AddTransient<ResourceArchiver>();
 
         //
         // Register commands
