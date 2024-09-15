@@ -5,6 +5,10 @@ using System.IO.Compression;
 
 namespace Celbridge.Explorer.Services;
 
+/// <summary>
+/// Archives resources by storing a copy of the resource and then deleting it.
+/// The previously archived resource can later be unarchived back to the original location, e.g. as part of an undo operation.
+/// </summary>
 public class ResourceArchiver
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;

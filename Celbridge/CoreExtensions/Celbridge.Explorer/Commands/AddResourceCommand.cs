@@ -130,6 +130,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                     }
                     else
                     {
+                        // This is a regular command execution, not a redo, so just create an empty text file.
                         File.WriteAllText(addedResourcePath, string.Empty);
                     }
                 }
