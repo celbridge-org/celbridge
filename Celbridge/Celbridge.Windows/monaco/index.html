@@ -116,12 +116,6 @@
             });
         }
 
-        function focusEditor() {
-            if (window.editor) {
-                window.editor.focus();
-            }
-        }
-
         initMonacoEditor();
         listenForWebViewMessages();
         postWebViewMessage("editor_ready"); // Tell Uno that the editor is initialized
