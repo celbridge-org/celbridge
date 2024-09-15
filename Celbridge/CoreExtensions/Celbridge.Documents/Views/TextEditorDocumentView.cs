@@ -1,8 +1,6 @@
 ﻿using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
@@ -11,7 +9,6 @@ namespace Celbridge.Documents.Views;
 
 public sealed partial class TextEditorDocumentView : DocumentView
 {
-    private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
 
@@ -21,10 +18,8 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public TextEditorDocumentView(
         IServiceProvider serviceProvider,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
@@ -90,15 +85,11 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
         var webView = await pool.AcquireTextEditorWebView(language);
 
-        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
-
         return webView;
     }
 
     private void ReleaseTextEditorWebView()
     {
-        _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
-
         // TextEditorWebViewPool is not exposed via the public interface
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
@@ -134,23 +125,6 @@ public sealed partial class TextEditorDocumentView : DocumentView
         ReleaseTextEditorWebView();
 
         _webView = null;
-    }
-
-    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
-    {
-        _ = SetEditorFocus();
-    }
-
-    private async Task SetEditorFocus()
-    {
-        Guard.IsNotNull(_webView);
-
-        //_webView.Focus(FocusState.Pointer);
-
-        //await FocusManager.TryFocusAsync(_webView, FocusState.Pointer);
-
-        //var script = "focusEditor();";
-        //await _webView.ExecuteScriptAsync(script);
     }
 
     private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
