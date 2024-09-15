@@ -1,10 +1,9 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
-using System.IO.Compression;
+using Celbridge.Explorer.Services;
 
 namespace Celbridge.Explorer.Commands
 {
@@ -15,10 +14,7 @@ namespace Celbridge.Explorer.Commands
 
         public ResourceKey Resource { get; set; }
 
-        private Type? _deletedResourceType;
-        private string _archivePath = string.Empty;
-        private bool _folderWasEmpty;
-        private bool _folderWasExpanded;
+        private ResourceArchiver _archiver;
 
         private readonly IWorkspaceWrapper _workspaceWrapper;
         private readonly IUtilityService _utilityService;
@@ -26,6 +22,7 @@ namespace Celbridge.Explorer.Commands
         private readonly IStringLocalizer _stringLocalizer;
 
         public DeleteResourceCommand(
+            IServiceProvider serviceProvider,
             IWorkspaceWrapper workspaceWrapper,
             IUtilityService utilityService,
             IDialogService dialogService,
@@ -35,6 +32,8 @@ namespace Celbridge.Explorer.Commands
             _utilityService = utilityService;
             _dialogService = dialogService;
             _stringLocalizer = stringLocalizer;
+
+            _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
         }
 
         public override async Task<Result> ExecuteAsync()
@@ -51,7 +50,7 @@ namespace Celbridge.Explorer.Commands
 
             if (resource is IFileResource)
             {
-                var deleteResult = await DeleteFileAsync();
+                var deleteResult = await _archiver.DeleteResourceAsync(Resource);
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
@@ -63,7 +62,7 @@ namespace Celbridge.Explorer.Commands
             }
             else if (resource is IFolderResource)
             {
-                var deleteResult = await DeleteFolderAsync();
+                var deleteResult = await _archiver.DeleteResourceAsync(Resource);
                 if (deleteResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
@@ -83,12 +82,9 @@ namespace Celbridge.Explorer.Commands
 
         public override async Task<Result> UndoAsync()
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-
-            if (_deletedResourceType == typeof(IFileResource))
+            if (_archiver.DeletedResourceType == ResourceType.File)
             {
-                _deletedResourceType = null;
-                var undoResult = await UndoDeleteFileAsync();
+                var undoResult = await _archiver.UndoDeleteResourceAsync();
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
@@ -98,10 +94,9 @@ namespace Celbridge.Explorer.Commands
                     return undoResult;
                 }
             }
-            else if (_deletedResourceType == typeof(IFolderResource))
+            else if (_archiver.DeletedResourceType == ResourceType.Folder)
             {
-                _deletedResourceType = null;
-                var undoResult = await UndoDeleteFolderAsync();
+                var undoResult = await _archiver.UndoDeleteResourceAsync();
                 if (undoResult.IsFailure)
                 {
                     var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
@@ -113,191 +108,8 @@ namespace Celbridge.Explorer.Commands
             }
             else
             {
-                return Result.Fail($"Unknown resource type for key: {Resource}");
+                return Result.Fail($"Invalid deleted resource type for key: {Resource}");
             }
-
-            return Result.Ok();
-        }
-
-        private async Task<Result> DeleteFileAsync()
-        {
-            if (!_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                return Result.Fail($"Failed to delete file. Workspace is not loaded");
-            }
-
-            if (Resource.IsEmpty)
-            {
-                return Result.Fail("Failed to delete file. Resource key is empty");
-            }
-
-            try
-            {
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-                var deleteFilePath = resourceRegistry.GetResourcePath(Resource);
-
-                if (!File.Exists(deleteFilePath))
-                {
-                    return Result.Fail($"Failed to delete file. File does not exist: {deleteFilePath}");
-                }
-
-                _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
-                if (File.Exists(_archivePath))
-                {
-                    File.Delete(_archivePath);
-                }
-
-                var archiveFolderPath = Path.GetDirectoryName(_archivePath)!;
-                Directory.CreateDirectory(archiveFolderPath);
-
-                using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
-                {
-                    archive.CreateEntryFromFile(deleteFilePath, Resource);
-                }
-
-                File.Delete(deleteFilePath);
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to delete file. {ex.Message}");
-            }
-
-            // Record that a file was deleted
-            _deletedResourceType = typeof(IFileResource);
-
-            await Task.CompletedTask;
-
-            return Result.Ok();
-        }
-
-        private async Task<Result> UndoDeleteFileAsync()
-        {
-            if (!_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                return Result.Fail($"Failed to undo file delete. Workspace is not loaded");
-            }
-
-            if (!File.Exists(_archivePath))
-            {
-                return Result.Fail($"Failed to undo file delete. Archive does not exist: {_archivePath}");
-            }
-
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-            var projectFolderPath = resourceRegistry.GetResourcePath(resourceRegistry.RootFolder);
-
-            try
-            {
-                ZipFile.ExtractToDirectory(_archivePath, projectFolderPath);
-                File.Delete(_archivePath);
-                _archivePath = string.Empty;
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to undo file delete. {ex.Message}");
-            }
-
-            await Task.CompletedTask;
-
-            return Result.Ok();
-        }
-
-        private async Task<Result> DeleteFolderAsync()
-        {
-            if (!_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                return Result.Fail($"Failed to delete folder. Workspace is not loaded");
-            }
-
-            if (Resource.IsEmpty)
-            {
-                return Result.Fail("Failed to delete folder. Resource key is empty");
-            }
-
-            try
-            {
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-                var deleteFolderPath = resourceRegistry.GetResourcePath(Resource);
-
-                if (!Directory.Exists(deleteFolderPath))
-                {
-                    return Result.Fail($"Failed to delete folder. Folder does not exist: {deleteFolderPath}");
-                }
-
-                var files = Directory.GetFiles(deleteFolderPath);
-                var directories = Directory.GetDirectories(deleteFolderPath);
-
-                if (files.Length == 0 && directories.Length == 0)
-                {
-                    _folderWasEmpty = true;
-                }
-                else
-                {
-                    _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
-                    if (File.Exists(_archivePath))
-                    {
-                        File.Delete(_archivePath);
-                    }
-
-                    var archiveFolderPath = Path.GetDirectoryName(_archivePath)!;
-                    Directory.CreateDirectory(archiveFolderPath);
-
-                    ZipFile.CreateFromDirectory(deleteFolderPath, _archivePath, CompressionLevel.Optimal, includeBaseDirectory: false);
-                }
-
-                _folderWasExpanded = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.IsFolderExpanded(Resource);
-
-                Directory.Delete(deleteFolderPath, true);
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to delete folder. {ex.Message}");
-            }
-
-            await Task.CompletedTask;
-
-            // Record that a file was deleted
-            _deletedResourceType = typeof(IFolderResource);
-
-            return Result.Ok();
-        }
-
-        private async Task<Result> UndoDeleteFolderAsync()
-        {
-            if (!_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                return Result.Fail($"Failed to undo folder delete. Workspace is not loaded");
-            }
-
-            try
-            {
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-                var folderPath = resourceRegistry.GetResourcePath(Resource);
-
-                if (_folderWasEmpty)
-                {
-                    Directory.CreateDirectory(folderPath);
-                    _folderWasEmpty = false;
-                }
-                else
-                {
-                    if (!File.Exists(_archivePath))
-                    {
-                        return Result.Fail($"Failed to undo folder delete. Archive does not exist: {_archivePath}");
-                    }
-
-                    ZipFile.ExtractToDirectory(_archivePath, folderPath);
-                    File.Delete(_archivePath);
-                    _archivePath = string.Empty;
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to undo folder delete. {ex.Message}");
-            }
-
-            _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.SetFolderIsExpanded(Resource, _folderWasExpanded);
-
-            await Task.CompletedTask;
 
             return Result.Ok();
         }
