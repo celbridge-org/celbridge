@@ -1,10 +1,8 @@
 ﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Projects;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using System.IO.Compression;
 
@@ -23,20 +21,17 @@ namespace Celbridge.Explorer.Commands
         private bool _folderWasExpanded;
 
         private readonly IWorkspaceWrapper _workspaceWrapper;
-        private readonly IProjectService _projectService;
         private readonly IUtilityService _utilityService;
         private readonly IDialogService _dialogService;
         private readonly IStringLocalizer _stringLocalizer;
 
         public DeleteResourceCommand(
             IWorkspaceWrapper workspaceWrapper,
-            IProjectService projectService,
             IUtilityService utilityService,
             IDialogService dialogService,
             IStringLocalizer stringLocalizer)
         {
             _workspaceWrapper = workspaceWrapper;
-            _projectService = projectService;
             _utilityService = utilityService;
             _dialogService = dialogService;
             _stringLocalizer = stringLocalizer;
@@ -131,9 +126,6 @@ namespace Celbridge.Explorer.Commands
                 return Result.Fail($"Failed to delete file. Workspace is not loaded");
             }
 
-            var loadedProject = _projectService.LoadedProject;
-            Guard.IsNotNull(loadedProject);
-
             if (Resource.IsEmpty)
             {
                 return Result.Fail("Failed to delete file. Resource key is empty");
@@ -141,9 +133,8 @@ namespace Celbridge.Explorer.Commands
 
             try
             {
-                var projectFolderPath = loadedProject.ProjectFolderPath;
-                var deleteFilePath = Path.Combine(projectFolderPath, Resource);
-                deleteFilePath = Path.GetFullPath(deleteFilePath);
+                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+                var deleteFilePath = resourceRegistry.GetResourcePath(Resource);
 
                 if (!File.Exists(deleteFilePath))
                 {
@@ -191,10 +182,8 @@ namespace Celbridge.Explorer.Commands
                 return Result.Fail($"Failed to undo file delete. Archive does not exist: {_archivePath}");
             }
 
-            var loadedProject = _projectService.LoadedProject;
-            Guard.IsNotNull(loadedProject);
-
-            var projectFolderPath = loadedProject.ProjectFolderPath;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            var projectFolderPath = resourceRegistry.GetResourcePath(resourceRegistry.RootFolder);
 
             try
             {
@@ -219,9 +208,6 @@ namespace Celbridge.Explorer.Commands
                 return Result.Fail($"Failed to delete folder. Workspace is not loaded");
             }
 
-            var loadedProject = _projectService.LoadedProject;
-            Guard.IsNotNull(loadedProject);
-
             if (Resource.IsEmpty)
             {
                 return Result.Fail("Failed to delete folder. Resource key is empty");
@@ -229,9 +215,8 @@ namespace Celbridge.Explorer.Commands
 
             try
             {
-                var projectFolderPath = loadedProject.ProjectFolderPath;
-                var deleteFolderPath = Path.Combine(projectFolderPath, Resource);
-                deleteFolderPath = Path.GetFullPath(deleteFolderPath);
+                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+                var deleteFolderPath = resourceRegistry.GetResourcePath(Resource);
 
                 if (!Directory.Exists(deleteFolderPath))
                 {
@@ -283,14 +268,10 @@ namespace Celbridge.Explorer.Commands
                 return Result.Fail($"Failed to undo folder delete. Workspace is not loaded");
             }
 
-            var loadedProject = _projectService.LoadedProject;
-            Guard.IsNotNull(loadedProject);
-
-            var projectFolderPath = loadedProject.ProjectFolderPath;
-
             try
             {
-                var folderPath = Path.GetFullPath(Path.Combine(projectFolderPath, Resource));
+                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+                var folderPath = resourceRegistry.GetResourcePath(Resource);
 
                 if (_folderWasEmpty)
                 {
