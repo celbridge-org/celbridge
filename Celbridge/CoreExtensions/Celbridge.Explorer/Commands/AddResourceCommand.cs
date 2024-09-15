@@ -21,7 +21,10 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     private string _addedResourcePath = string.Empty;
 
+    private readonly ResourceArchiver _archiver;
+
     public AddResourceCommand(
+        IServiceProvider serviceProvider,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService)
@@ -29,6 +32,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
+
+        _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -111,7 +116,22 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
                 if (string.IsNullOrEmpty(SourcePath))
                 {
-                    File.WriteAllText(addedResourcePath, string.Empty);
+                    if (_archiver.ArchivedResourceType == ResourceType.File)
+                    {
+                        // This is a redo of previously undone add resource command, so restore the archived
+                        // version of the file.
+                        var unarchiveResult = await _archiver.UnarchiveResourceAsync();
+                        if (unarchiveResult.IsFailure)
+                        {
+                            var failure = Result.Fail($"Failed to unarchive resource: {DestResource}");
+                            failure.MergeErrors(unarchiveResult);
+                            return failure;
+                        }
+                    }
+                    else
+                    {
+                        File.WriteAllText(addedResourcePath, string.Empty);
+                    }
                 }
                 else
                 {
@@ -186,7 +206,15 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             if (ResourceType == ResourceType.File &&
                 File.Exists(addedResourcePath))
             {
-                File.Delete(addedResourcePath);
+                // Archive the file instead of just deleting it.
+                // This preserves any changes that the user made since adding the resource.
+                var archiveResult = await _archiver.ArchiveResourceAsync(DestResource);
+                if (archiveResult.IsFailure)
+                {
+                    var failure = Result.Fail($"Failed to archive file resource: {DestResource}");
+                    failure.MergeErrors(archiveResult);
+                    return failure;
+                }
             }
             else if (ResourceType == ResourceType.Folder &&
                 Directory.Exists(addedResourcePath))
