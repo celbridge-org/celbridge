@@ -16,7 +16,7 @@ public class ResourceArchiver
     private bool _folderWasEmpty;
     private bool _folderWasExpanded;
 
-    public ResourceType DeletedResourceType { get; private set; }
+    public ResourceType ArchivedResourceType { get; private set; }
 
     public ResourceArchiver(
         IWorkspaceWrapper workspaceWrapper,
@@ -27,7 +27,7 @@ public class ResourceArchiver
         _utilityService = utilityService;
     }
 
-    public async Task<Result> DeleteResourceAsync(ResourceKey resource)
+    public async Task<Result> ArchiveResourceAsync(ResourceKey resource)
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
@@ -42,7 +42,7 @@ public class ResourceArchiver
         var getResult = _resourceRegistry.GetResource(resource);
         if (getResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to delete resource: '{resource}'");
+            var failure = Result.Fail($"Failed to archive resource: '{resource}'");
             failure.MergeErrors(getResult);
             return failure;
         }
@@ -50,31 +50,31 @@ public class ResourceArchiver
         var r = getResult.Value;
         if (r is IFileResource)
         {
-            return await DeleteFileAsync(resource);
+            return await ArchiveFileAsync(resource);
         }
         else if (r is IFolderResource)
         {
-            return await DeleteFolderAsync(resource);
+            return await ArchiveFolderAsync(resource);
         }
 
         throw new InvalidOperationException("Invalid resource type");
     }
 
-    public async Task<Result> UndoDeleteResourceAsync()
+    public async Task<Result> UnarchiveResourceAsync()
     {
-        if (DeletedResourceType == ResourceType.File)
+        if (ArchivedResourceType == ResourceType.File)
         {
-            return await UndoDeleteFileAsync();
+            return await UnarchiveFileAsync();
         }
-        else if (DeletedResourceType == ResourceType.Folder)
+        else if (ArchivedResourceType == ResourceType.Folder)
         {
-            return await UndoDeleteFolderAsync();
+            return await UnarchiveFolderAsync();
         }
 
         throw new InvalidOperationException("Invalid resource type");
     }
 
-    private async Task<Result> DeleteFileAsync(ResourceKey resource)
+    private async Task<Result> ArchiveFileAsync(ResourceKey resource)
     {
         try
         {
@@ -82,7 +82,7 @@ public class ResourceArchiver
 
             if (!File.Exists(deleteFilePath))
             {
-                return Result.Fail($"Failed to delete file. File does not exist: {deleteFilePath}");
+                return Result.Fail($"File does not exist: {deleteFilePath}");
             }
 
             _archivePath = _utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, ".zip");
@@ -103,11 +103,11 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to delete file. {ex.Message}");
+            return Result.Fail(ex, $"An exception occured while archiving file: '{resource}'");
         }
 
-        // Record that a file resource was deleted so we can undo it later
-        DeletedResourceType = ResourceType.File;
+        // Record that the file resource was archived so we can unarchive it later
+        ArchivedResourceType = ResourceType.File;
         _resource = resource;
 
         await Task.CompletedTask;
@@ -115,16 +115,16 @@ public class ResourceArchiver
         return Result.Ok();
     }
 
-    private async Task<Result> UndoDeleteFileAsync()
+    private async Task<Result> UnarchiveFileAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to undo file delete. Workspace is not loaded");
+            return Result.Fail($"Failed to unarchive file. Workspace is not loaded");
         }
 
         if (!File.Exists(_archivePath))
         {
-            return Result.Fail($"Failed to undo file delete. Archive does not exist: {_archivePath}");
+            return Result.Fail($"Failed to unarchive file. Archive does not exist: {_archivePath}");
         }
 
         var projectFolderPath = _resourceRegistry.GetResourcePath(_resourceRegistry.RootFolder);
@@ -137,21 +137,21 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to undo file delete. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred while unarchiving file: '{_resource}'");
         }
 
-        DeletedResourceType = ResourceType.Invalid;
+        ArchivedResourceType = ResourceType.Invalid;
 
         await Task.CompletedTask;
 
         return Result.Ok();
     }
 
-    private async Task<Result> DeleteFolderAsync(ResourceKey resource)
+    private async Task<Result> ArchiveFolderAsync(ResourceKey resource)
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to delete folder. Workspace is not loaded");
+            return Result.Fail($"Workspace is not loaded");
         }
 
         if (resource.IsEmpty)
@@ -163,7 +163,7 @@ public class ResourceArchiver
         var getResult = _resourceRegistry.GetResource(resource);
         if (getResult.IsFailure)
         {
-            return Result.Fail($"Failed to delete folder resource: '{resource}'");
+            return Result.Fail($"Failed to get folder resource: '{resource}'");
         }
         var r = getResult.Value;
 
@@ -178,7 +178,7 @@ public class ResourceArchiver
 
             if (!Directory.Exists(deleteFolderPath))
             {
-                return Result.Fail($"Failed to delete folder. Folder does not exist: {deleteFolderPath}");
+                return Result.Fail($"Folder does not exist: {deleteFolderPath}");
             }
 
             var files = Directory.GetFiles(deleteFolderPath);
@@ -208,23 +208,23 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to delete folder. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred while archiving folder: '{resource}'");
         }
 
         await Task.CompletedTask;
 
-        // Record that a folder resource was deleted so we can undo it later
-        DeletedResourceType = ResourceType.Folder;
+        // Record that the folder resource was archived so we can undo it later
+        ArchivedResourceType = ResourceType.Folder;
         _resource = resource;
 
         return Result.Ok();
     }
 
-    private async Task<Result> UndoDeleteFolderAsync()
+    private async Task<Result> UnarchiveFolderAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to undo folder delete. Workspace is not loaded");
+            return Result.Fail($"Workspace is not loaded");
         }
 
         try
@@ -240,7 +240,7 @@ public class ResourceArchiver
             {
                 if (!File.Exists(_archivePath))
                 {
-                    return Result.Fail($"Failed to undo folder delete. Archive does not exist: {_archivePath}");
+                    return Result.Fail($"Archive does not exist: {_archivePath}");
                 }
 
                 ZipFile.ExtractToDirectory(_archivePath, folderPath);
@@ -250,12 +250,12 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to undo folder delete. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred while unarchiving folder: {_resource}");
         }
 
         _resourceRegistry.SetFolderIsExpanded(_resource, _folderWasExpanded);
 
-        DeletedResourceType = ResourceType.Invalid;
+        ArchivedResourceType = ResourceType.Invalid;
         _folderWasEmpty = false;
         _folderWasExpanded = false;
 
