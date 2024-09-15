@@ -1,17 +1,14 @@
 ﻿using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
 public sealed partial class TextEditorDocumentView : DocumentView
 {
-    private readonly ILogger<TextEditorDocumentView> _logger;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
 
@@ -20,11 +17,9 @@ public sealed partial class TextEditorDocumentView : DocumentView
     private WebView2? _webView;
 
     public TextEditorDocumentView(
-        ILogger<TextEditorDocumentView> logger,
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
@@ -95,10 +90,10 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     private void ReleaseTextEditorWebView()
     {
+        // TextEditorWebViewPool is not exposed via the public interface
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
         var pool = documentsService.TextEditorWebViewPool;
-
         pool.ReleaseTextEditorWebView(_webView!);
     }
 
