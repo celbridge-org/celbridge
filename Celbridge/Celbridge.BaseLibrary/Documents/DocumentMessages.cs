@@ -15,7 +15,6 @@ public record OpenDocumentsChangedMessage(List<ResourceKey> OpenDocuments);
 /// </summary>
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 
-
 /// <summary>
 /// A message sent when an open document's resource has been renamed or moved.
 /// </summary>

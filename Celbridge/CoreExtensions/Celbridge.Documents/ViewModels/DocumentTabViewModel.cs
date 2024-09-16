@@ -24,6 +24,8 @@ public partial class DocumentTabViewModel : ObservableObject
 
     public IDocumentView? DocumentView { get; set; }
 
+    private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;
+
     public DocumentTabViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
@@ -49,18 +51,33 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        // Check if the open document is in the updated resource registry
-        var getResult = _resourceRegistry.GetResource(FileResource);
-        if (getResult.IsFailure)
+        if (_pendingResourceKeyChangedMessage is not null)
         {
-            // The resource no longer exists, so close the document.
-            // We force the close operation because the resource no longer exists.
-            // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
-            _commandService.Execute<ICloseDocumentCommand>(command =>
+            // This open document's resource has been renamed just prior to this registry update.
+            // Tell the document service to update the file resource for the document.
+
+            var oldResource = _pendingResourceKeyChangedMessage.SourceResource;
+            var newResource = _pendingResourceKeyChangedMessage.DestResource;
+            _pendingResourceKeyChangedMessage = null;
+
+            var documentMessage = new DocumentResourceChangedMessage(oldResource, newResource);
+            _messengerService.Send(documentMessage);
+        }
+        else
+        {
+            // Check if the open document is in the updated resource registry
+            var getResult = _resourceRegistry.GetResource(FileResource);
+            if (getResult.IsFailure)
             {
-                command.FileResource = FileResource;
-                command.ForceClose = true;
-            });
+                // The resource no longer exists, so close the document.
+                // We force the close operation because the resource no longer exists.
+                // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
+                _commandService.Execute<ICloseDocumentCommand>(command =>
+                {
+                    command.FileResource = FileResource;
+                    command.ForceClose = true;
+                });
+            }
         }
     }
 
@@ -70,9 +87,11 @@ public partial class DocumentTabViewModel : ObservableObject
 
         if (message.SourceResource == FileResource)
         {
-            // Tell the document service to update the file resource for the document
-            var documentMessage = new DocumentResourceChangedMessage(message.SourceResource, message.DestResource);
-            _messengerService.Send(documentMessage);
+            // We should never receive multiple ResourceKeyChangedMessages for the same resource before the next registry update.
+            Guard.IsNull(_pendingResourceKeyChangedMessage);
+
+            // Delay handling the message until the next ResourceRegistryUpdatedMessage is received.
+            _pendingResourceKeyChangedMessage = message;
         }
     }
 
