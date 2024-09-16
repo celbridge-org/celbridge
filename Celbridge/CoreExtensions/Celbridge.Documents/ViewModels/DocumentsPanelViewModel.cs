@@ -45,10 +45,44 @@ public partial class DocumentsPanelViewModel : ObservableObject
         settings.PropertyChanged -= EditorSettings_PropertyChanged;
     }
 
-    public Result<IDocumentView> CreateDocumentView(string fileExtension)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, string filePath)
     {
+        // Create the document view
+
+        var fileExtension = System.IO.Path.GetExtension(filePath);
+
         DocumentViewType viewType = _documentsService.GetDocumentViewType(fileExtension);
-        return _documentsService.CreateDocumentView(viewType);
+
+        var createViewResult = _documentsService.CreateDocumentView(viewType);
+        if (createViewResult.IsFailure)
+        {
+            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+            failure.MergeErrors(createViewResult);
+            return failure;
+        }
+        var documentView = createViewResult.Value;
+
+        //
+        // Load the document content
+        //
+
+        var setFileResult = documentView.SetFileResource(fileResource);
+        if (setFileResult.IsFailure)
+        {
+            var failure = Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'");
+            failure.MergeErrors(setFileResult);
+            return failure;
+        }
+
+        var loadResult = await documentView.LoadContent();
+        if (loadResult.IsFailure)
+        {
+            var failure = Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'");
+            failure.MergeErrors(loadResult);
+            return failure;
+        }
+
+        return Result<IDocumentView>.Ok(documentView);
     }
 
     private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)

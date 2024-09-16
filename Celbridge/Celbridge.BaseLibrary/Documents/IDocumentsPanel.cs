@@ -36,5 +36,5 @@ public interface IDocumentsPanel
     /// <summary>
     /// Change the resource of an opened document.
     /// </summary>
-    Result ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
+    Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
 }

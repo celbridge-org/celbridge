@@ -50,6 +50,8 @@ public sealed partial class TextEditorDocumentView : DocumentView
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
 
+        // Todo: Update the language of the document based on the file extension
+
         return Result.Ok();
     }
 
