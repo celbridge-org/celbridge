@@ -319,14 +319,19 @@ public class DocumentsService : IDocumentsService, IDisposable
         var newExtension = Path.GetExtension(newResource);
         var newDocumentType = _fileTypeHelper.GetDocumentViewType(newExtension);
 
-        var changeResult = DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
-        if (changeResult.IsFailure)
+        var changeDocumentResource = async Task () =>
         {
-            // Todo: Test this case!
-            // Log the error and close the document to get back to a consistent state
-            _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
-            _ = CloseDocument(oldResource, true);
-        }
+            var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
+            if (changeResult.IsFailure)
+            {
+                // Todo: Test this case!
+                // Log the error and close the document to get back to a consistent state
+                _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
+                await CloseDocument(oldResource, true);
+            }
+        };
+
+        _ = changeDocumentResource();
     }
 
     private bool _disposed;
