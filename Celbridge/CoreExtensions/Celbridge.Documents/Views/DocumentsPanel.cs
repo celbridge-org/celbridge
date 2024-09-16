@@ -327,4 +327,41 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
+
+    public Result ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType)
+    {
+        // Find the document tab for the old resource
+        DocumentTab? documentTab = null;
+        foreach (var tabItem in _tabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (oldResource == tab.ViewModel.FileResource)
+            {
+                documentTab = tab;
+                break;
+            }
+        }
+
+        if (documentTab is null)
+        {
+            // The document isn't open, so we don't need to do anything
+            return Result.Ok();
+        }
+
+        // Todo: If the old and new document types don't match, recreate the document view
+
+        var documentView = documentTab.Content as IDocumentView;
+        Guard.IsNotNull(documentView);
+
+        documentTab.ViewModel.FileResource = newResource;
+        documentTab.ViewModel.DocumentName = newResource.ResourceName;
+        documentTab.ViewModel.FilePath = newResourcePath;
+
+        // Todo: Handle failure correctly - close the document with an error message?
+        documentView.SetFileResource(newResource);
+
+        return Result.Ok();
+    }
 }
