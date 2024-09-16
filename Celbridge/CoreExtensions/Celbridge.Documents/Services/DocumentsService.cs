@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Services;
 
@@ -47,6 +48,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
         _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
         var loadResult = _fileTypeHelper.Initialize();
@@ -299,6 +301,34 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(fileExtension);
     }
 
+    private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
+    {
+        Guard.IsNotNull(DocumentsPanel);
+
+        var oldResource = message.OldResource.ToString();
+        var newResource = message.NewResource.ToString();
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var newResourcePath = resourceRegistry.GetResourcePath(message.NewResource);
+
+        Guard.IsTrue(File.Exists(newResourcePath));
+
+        var oldExtension = Path.GetExtension(oldResource);
+        var oldDocumentType = _fileTypeHelper.GetDocumentViewType(oldExtension);
+
+        var newExtension = Path.GetExtension(newResource);
+        var newDocumentType = _fileTypeHelper.GetDocumentViewType(newExtension);
+
+        var changeResult = DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
+        if (changeResult.IsFailure)
+        {
+            // Todo: Test this case!
+            // Log the error and close the document to get back to a consistent state
+            _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
+            _ = CloseDocument(oldResource, true);
+        }
+    }
+
     private bool _disposed;
 
     public void Dispose()
@@ -317,6 +347,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 _messengerService.Unregister<WorkspaceLoadedMessage>(this);
                 _messengerService.Unregister<OpenDocumentsChangedMessage>(this);
                 _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
+                _messengerService.Unregister<DocumentResourceChangedMessage>(this);
             }
 
             _disposed = true;

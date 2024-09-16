@@ -70,12 +70,9 @@ public partial class DocumentTabViewModel : ObservableObject
 
         if (message.SourceResource == FileResource)
         {
-            FileResource = message.DestResource;
-            DocumentName = message.DestResource.ResourceName;
-            FilePath = message.DestPath;
-
-            // Todo: Handle failure correctly - close the document with an error message?
-            DocumentView.SetFileResource(FileResource);
+            // Tell the document service to update the file resource for the document
+            var documentMessage = new DocumentResourceChangedMessage(message.SourceResource, message.DestResource);
+            _messengerService.Send(documentMessage);
         }
     }
 
