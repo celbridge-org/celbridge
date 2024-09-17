@@ -6,22 +6,25 @@
 public enum DocumentViewType
 {
     /// <summary>
-    /// Text document editor using a standard TextBox control.
+    /// An unsupported document format.
+    /// The resource has an unrecognized file extension.
     /// </summary>
-    DefaultDocument,
+    UnsupportedFormat,
 
     /// <summary>
-    /// Text document editor using an advanced text editor control.
+    /// Text document edited using a text editor control.
+    /// e.g. .txt, .cs, .json, .xml, etc.
     /// </summary>
     TextDocument,
 
     /// <summary>
-    /// View a web page document.
+    /// A web page document with the .web extension.
     /// </summary>
     WebPageDocument,
 
     /// <summary>
-    /// View a non-text file resource via a web view (e.g. an image, audio clip or pdf file).
+    /// A non-text file resource viewed via a web view.
+    /// e.g. an image, audio clip, pdf file, etc.
     /// </summary>
     FileViewer
 }

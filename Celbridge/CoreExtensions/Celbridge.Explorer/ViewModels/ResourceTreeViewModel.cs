@@ -11,21 +11,23 @@ namespace Celbridge.Explorer.ViewModels;
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
-    private readonly IExplorerService _explorerService;
-    private readonly IDataTransferService _dataTransferService;
     private readonly ICommandService _commandService;
+    private readonly IExplorerService _explorerService;
+    private readonly IDocumentsService _documentsService;
+    private readonly IDataTransferService _dataTransferService;
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
     public ResourceTreeViewModel(
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _commandService = commandService;
+        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
     }
 
     //
@@ -71,10 +73,16 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Set to true if the current context menu item is a valid resource.
+    /// Set to true if the selected context menu item is a valid file or folder resource.
     /// </summary>
     [ObservableProperty]
     private bool _isResourceSelected;
+
+    /// <summary>
+    /// Set to true if the selected context menu item is a file resource that can be opened as a document.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDocumentResourceSelected;
 
     /// <summary>
     /// Set to true if the clipboard content contains a resource.
@@ -84,12 +92,15 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     private async Task UpdateContextMenuOptions(IResource? resource)
     {
+        // Some context menu options are only available if a resource is selected
         IsResourceSelected = resource is not null;
 
+        // The Open context menu option is only available for file resources that can be opened as documents
+        IsDocumentResourceSelected = IsSupportedDocumentFormat(resource);
+
+        // The Paste context menu option is only available if there is a resource on the clipboard
         bool isResourceOnClipboard = false;
-
         var contentDescription = _dataTransferService.GetClipboardContentDescription();
-
         if (contentDescription.ContentType == ClipboardContentType.Resource)
         {
             var resourceRegistry = _explorerService.ResourceRegistry;
@@ -103,6 +114,21 @@ public partial class ResourceTreeViewModel : ObservableObject
             }
         }
         IsResourceOnClipboard = isResourceOnClipboard;
+    }
+
+    private bool IsSupportedDocumentFormat(IResource? resource)
+    {
+        if (resource is not null &&
+            resource is IFileResource fileResource)
+        {
+            var resourceRegistry = _explorerService.ResourceRegistry;
+            var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+            var documentType = _documentsService.GetDocumentViewType(resourceKey);
+
+            return documentType != DocumentViewType.UnsupportedFormat;
+        }
+
+        return false;
     }
 
     //
@@ -135,8 +161,14 @@ public partial class ResourceTreeViewModel : ObservableObject
     // Resource editing
     //
 
-    public void OpenFileResource(IFileResource fileResource)
+    public void OpenDocument(IFileResource fileResource)
     {
+        if (!IsSupportedDocumentFormat(fileResource))
+        {
+            // Attempting to open an unsupported resource has no effect.
+            return;
+        }
+
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resource = resourceRegistry.GetResourceKey(fileResource);
 

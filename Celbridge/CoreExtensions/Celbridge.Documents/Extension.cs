@@ -22,7 +22,7 @@ public class Extension : IExtension
         //
 
         config.AddTransient<DocumentsPanel>();
-        config.AddTransient<DefaultDocumentView>();
+        config.AddTransient<TextBoxDocumentView>();
         config.AddTransient<WebPageDocumentView>();
         config.AddTransient<TextEditorDocumentView>();
         config.AddTransient<FileViewerDocumentView>();
