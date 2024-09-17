@@ -3,15 +3,13 @@ using Celbridge.Scripting.Services;
 
 namespace Celbridge.Scripting;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IExtensionServiceCollection config)
     {
+        //
+        // Register services
+        //
         config.AddSingleton<IScriptingService, ScriptingService>();
-    }
-
-    public Result Initialize()
-    {
-        return Result.Ok();
     }
 }

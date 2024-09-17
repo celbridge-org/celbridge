@@ -16,11 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
-    <ProjectReference Include="..\CoreApplication\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
-    <ProjectReference Include="..\CoreApplication\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\CoreExtensions\Celbridge.Console\Celbridge.Console.csproj" />
-    <ProjectReference Include="..\CoreExtensions\Celbridge.Explorer\Celbridge.Explorer.csproj" />
-    <ProjectReference Include="..\CoreExtensions\Celbridge.Scripting\Celbridge.Scripting.csproj" />
-    <ProjectReference Include="..\CoreExtensions\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
+    <ProjectReference Include="..\Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 </Project>

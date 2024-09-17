@@ -31,6 +31,16 @@ public class Extension : IExtension
         config.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
+
+        //
+        // Register workspace sub-projects
+        //
+        Console.ServiceConfiguration.ConfigureServices(config);
+        Documents.ServiceConfiguration.ConfigureServices(config);
+        Explorer.ServiceConfiguration.ConfigureServices(config);
+        Inspector.ServiceConfiguration.ConfigureServices(config);
+        Scripting.ServiceConfiguration.ConfigureServices(config);
+        Status.ServiceConfiguration.ConfigureServices(config);
     }
 
     public Result Initialize()
@@ -38,6 +48,11 @@ public class Extension : IExtension
         var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
 
         navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
+
+        //
+        // Initialize workspace sub-projects
+        //
+        ScriptUtils.ServiceConfiguration.Initialize();
 
         return Result.Ok();
     }

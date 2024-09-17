@@ -1,23 +1,18 @@
-﻿using Celbridge.Extensions;
-using Celbridge.Console.Services;
+﻿using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;
+using Celbridge.Extensions;
 
 namespace Celbridge.Console;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IExtensionServiceCollection config)
     {
         config.AddTransient<ConsolePanel>();
         config.AddTransient<ConsolePanelViewModel>();
         config.AddTransient<ConsoleView>();
         config.AddTransient<ConsoleViewModel>();
         config.AddSingleton<IConsoleService, ConsoleService>();
-    }
-
-    public Result Initialize()
-    {
-        return Result.Ok();
     }
 }
