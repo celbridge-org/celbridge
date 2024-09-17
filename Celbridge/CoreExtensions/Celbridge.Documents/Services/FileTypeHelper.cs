@@ -36,6 +36,10 @@ public class FileTypeHelper
             return DocumentViewType.TextDocument;
         }
 
+#if WINDOWS
+
+        // Documents that use a webview are currently only supported on Windows
+
         if (IsWebViewerFile(fileExtension))
         {
             return DocumentViewType.FileViewer;
@@ -45,6 +49,7 @@ public class FileTypeHelper
         {
             return DocumentViewType.WebPageDocument;
         }
+#endif
 
         return DocumentViewType.Unsupported;
     }
