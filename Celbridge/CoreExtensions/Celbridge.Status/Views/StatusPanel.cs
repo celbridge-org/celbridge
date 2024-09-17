@@ -1,9 +1,10 @@
-﻿using Celbridge.StatusBar.ViewModels;
+﻿using Celbridge.Status;
+using Celbridge.Status.ViewModels;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.StatusBar.Views;
+namespace Celbridge.Status.Views;
 
-public class StatusPanel : UserControl
+public class StatusPanel : UserControl, IStatusPanel
 {
     private const string SaveGlyph = "\ue74e";
 
