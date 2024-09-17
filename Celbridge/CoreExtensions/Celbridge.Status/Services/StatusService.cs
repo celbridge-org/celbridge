@@ -1,4 +1,4 @@
-﻿using Celbridge.StatusBar.Views;
+﻿using Celbridge.Status.Views;
 
 namespace Celbridge.Status.Services;
 
@@ -11,9 +11,9 @@ public class StatusService : IStatusService, IDisposable
         _serviceProvider = serviceProvider;
     }
 
-    public object CreateStatusPanel()
+    public IStatusPanel CreateStatusPanel()
     {
-        return _serviceProvider.GetRequiredService<StatusPanel>();
+        return _serviceProvider.GetRequiredService<IStatusPanel>();
     }
 
     private bool _disposed;
