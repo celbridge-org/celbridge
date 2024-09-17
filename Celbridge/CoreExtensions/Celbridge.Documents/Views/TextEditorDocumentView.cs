@@ -54,7 +54,7 @@ public sealed partial class TextEditorDocumentView : DocumentView
         if (_webView is not null)
         {
             // If _webView has already been created, then this method is being called as part of a resource rename/move.
-            // Update the Monaco editor language in case the file extension has changed.
+            // Update the text editor language in case the file extension has changed.
             await UpdateTextEditorLanguage();
         }
 
@@ -139,9 +139,6 @@ public sealed partial class TextEditorDocumentView : DocumentView
         }
     }
 
-    /// <summary>
-    /// Set the Monaco editor language based on the file extension.
-    /// </summary>
     private async Task UpdateTextEditorLanguage()
     {
         Guard.IsNotNull(_webView);
