@@ -158,6 +158,17 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result<IDocumentView>.Ok(documentView);
     }
 
+    public string GetDocumentLanguage(ResourceKey fileResource)
+    {
+        var extension = Path.GetExtension(fileResource).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension))
+        {
+            return string.Empty;
+        }
+
+        return _fileTypeHelper.GetTextEditorLanguage(extension);
+    }
+
     public async Task<Result> OpenDocument(ResourceKey fileResource)
     {
         Guard.IsNotNull(DocumentsPanel);
@@ -327,11 +338,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
         }
-    }
-
-    public string GetDocumentLanguage(string fileExtension)
-    {
-        return _fileTypeHelper.GetTextEditorLanguage(fileExtension);
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
