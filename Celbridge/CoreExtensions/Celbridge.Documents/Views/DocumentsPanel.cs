@@ -332,7 +332,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (oldDocumentType == newDocumentType)
         {
-            var setResult = oldDocumentView.SetFileResource(newResource);
+            var setResult = await oldDocumentView.SetFileResource(newResource);
             if (setResult.IsFailure)
             {
                 var failure = Result.Fail($"Failed to set file resource for document: '{newResource}'");
