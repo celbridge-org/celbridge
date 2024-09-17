@@ -1,16 +1,16 @@
 ﻿using Celbridge.Commands.Services;
-using Celbridge.Extensions;
 using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
+using Celbridge.Extensions;
 using Celbridge.Validators;
 
 namespace Celbridge.Explorer;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IExtensionServiceCollection config)
     {
         //
         // Register UI elements
@@ -49,10 +49,5 @@ public class Extension : IExtension
         // Register validators
         //
         config.AddTransient<IResourceNameValidator, ResourceNameValidator>();
-    }
-
-    public Result Initialize()
-    {
-        return Result.Ok();
     }
 }

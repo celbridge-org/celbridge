@@ -5,16 +5,27 @@ using Celbridge.Inspector.Views;
 
 namespace Celbridge.Inspector;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IExtensionServiceCollection config)
     {
+        //
+        // Register UI elements
+        //
         config.AddTransient<InspectorPanel>();
+
+        //
+        // Register View Models
+        //
         config.AddTransient<InspectorPanelViewModel>();
+
+        //
+        // Register services
+        //
         config.AddTransient<IInspectorService, InspectorService>();
     }
 
-    public Result Initialize()
+    public static Result Initialize()
     {
         return Result.Ok();
     }

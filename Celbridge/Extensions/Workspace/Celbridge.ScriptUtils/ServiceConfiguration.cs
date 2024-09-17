@@ -1,15 +1,10 @@
-﻿using Celbridge.Extensions;
-using Celbridge.Scripting;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Celbridge.Scripting;
 
 namespace Celbridge.ScriptUtils;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
-    {}
-
-    public Result Initialize()
+    public static Result Initialize()
     {
         //
         // Bind to the utilities defined in this assembly
