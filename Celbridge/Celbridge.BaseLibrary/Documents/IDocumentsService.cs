@@ -34,6 +34,11 @@ public interface IDocumentsService
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource);
 
     /// <summary>
+    /// Returns the document view type for the specified file resource.
+    /// </summary>
+    DocumentViewType GetDocumentViewType(ResourceKey fileResource);
+
+    /// <summary>
     /// Returns the text editor language associated with the specified file resource.
     /// Returns an empty string if no matching language is found.
     /// </summary>
