@@ -24,6 +24,8 @@ public partial class DocumentTabViewModel : ObservableObject
 
     public IDocumentView? DocumentView { get; set; }
 
+    private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;
+
     public DocumentTabViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
@@ -49,33 +51,45 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        // Check if the open document is in the updated resource registry
-        var getResult = _resourceRegistry.GetResource(FileResource);
-        if (getResult.IsFailure)
+        if (_pendingResourceKeyChangedMessage is not null)
         {
-            // The resource no longer exists, so close the document.
-            // We force the close operation because the resource no longer exists.
-            // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
-            _commandService.Execute<ICloseDocumentCommand>(command =>
+            // This open document's resource has been renamed just prior to this registry update.
+            // Tell the document service to update the file resource for the document.
+
+            var oldResource = _pendingResourceKeyChangedMessage.SourceResource;
+            var newResource = _pendingResourceKeyChangedMessage.DestResource;
+            _pendingResourceKeyChangedMessage = null;
+
+            var documentMessage = new DocumentResourceChangedMessage(oldResource, newResource);
+            _messengerService.Send(documentMessage);
+        }
+        else
+        {
+            // Check if the open document is in the updated resource registry
+            var getResult = _resourceRegistry.GetResource(FileResource);
+            if (getResult.IsFailure)
             {
-                command.FileResource = FileResource;
-                command.ForceClose = true;
-            });
+                // The resource no longer exists, so close the document.
+                // We force the close operation because the resource no longer exists.
+                // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
+                _commandService.Execute<ICloseDocumentCommand>(command =>
+                {
+                    command.FileResource = FileResource;
+                    command.ForceClose = true;
+                });
+            }
         }
     }
 
     private void OnResourceKeyChangedMessage(object recipient, ResourceKeyChangedMessage message)
     {
-        Guard.IsNotNull(DocumentView);
-
         if (message.SourceResource == FileResource)
         {
-            FileResource = message.DestResource;
-            DocumentName = message.DestResource.ResourceName;
-            FilePath = message.DestPath;
+            // We should never receive multiple ResourceKeyChangedMessages for the same resource before the next registry update.
+            Guard.IsNull(_pendingResourceKeyChangedMessage);
 
-            // Todo: Handle failure correctly - close the document with an error message?
-            DocumentView.SetFileResource(FileResource);
+            // Delay handling the message until the next ResourceRegistryUpdatedMessage is received.
+            _pendingResourceKeyChangedMessage = message;
         }
     }
 
@@ -93,15 +107,15 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.
-            UnregisterMessageHandlers();
 
-            // Notify the DocumentView that the document is about to close
-            DocumentView.OnDocumentClosing();
+            // Clean up the DocumentView state before the document closes
+            UnregisterMessageHandlers();
+            DocumentView.PrepareToClose();
 
             return Result<bool>.Ok(true);
         }
 
-        var canClose = forceClose || await DocumentView.CanCloseDocument();
+        var canClose = forceClose || await DocumentView.CanClose();
         if (!canClose)
         {
             // The close operation was cancelled by the document view.
@@ -119,10 +133,9 @@ public partial class DocumentTabViewModel : ObservableObject
             }
         }
 
+        // Clean up the DocumentView state before the document closes
         UnregisterMessageHandlers();
-
-        // Notify the DocumentView that the document is about to close
-        DocumentView.OnDocumentClosing();
+        DocumentView.PrepareToClose();
 
         return Result<bool>.Ok(true);
     }

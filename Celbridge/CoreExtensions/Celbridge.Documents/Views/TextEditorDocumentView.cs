@@ -50,6 +50,8 @@ public sealed partial class TextEditorDocumentView : DocumentView
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
 
+        // Todo: Update the language of the document based on the file extension
+
         return Result.Ok();
     }
 
@@ -118,7 +120,7 @@ public sealed partial class TextEditorDocumentView : DocumentView
         return await ViewModel.SaveDocument(textData);
     }
 
-    public override void OnDocumentClosing()
+    public override void PrepareToClose()
     {
         _webView!.WebMessageReceived -= TextDocumentView_WebMessageReceived;
 

@@ -204,6 +204,8 @@ namespace Celbridge.Explorer.Commands
             var loadedProject = _projectService.LoadedProject;
             Guard.IsNotNull(loadedProject);
 
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            
             if (resourceA.IsEmpty || resourceB.IsEmpty)
             {
                 return Result.Fail("Resource key is empty.");
@@ -249,7 +251,6 @@ namespace Celbridge.Explorer.Commands
                     _messengerService.Send(message);
                 }
 
-                var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
                 var newParentFolder = resourceB.GetParent();
                 if (!newParentFolder.IsEmpty)
                 {
@@ -312,7 +313,7 @@ namespace Celbridge.Explorer.Commands
                     Directory.Move(folderPathA, folderPathB);
 
                     // Notify opened documents that the resources in this folder have moved.
-                    SendFolderResourceKeyChangedMessages(resourceRegistry, resourceA, resourceB);
+                    SendFolderResourceKeyChangedMessages(resourceA, resourceB);
                 }
 
             }
@@ -357,8 +358,10 @@ namespace Celbridge.Explorer.Commands
             });
         }
 
-        private void SendFolderResourceKeyChangedMessages(IResourceRegistry resourceRegistry, ResourceKey folderResourceA, ResourceKey folderResourceB)
+        private void SendFolderResourceKeyChangedMessages(ResourceKey folderResourceA, ResourceKey folderResourceB)
         {
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
             var messages = new List<ResourceKeyChangedMessage>();
 
             var getResourceResult = resourceRegistry.GetResource(folderResourceA);

@@ -178,44 +178,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         int tabIndex = _tabView.TabItems.Count - 1;
 
-        // Create the document view
-
-        var fileExtension = System.IO.Path.GetExtension(filePath);
-        var createViewResult = ViewModel.CreateDocumentView(fileExtension);
-        if (createViewResult.IsFailure)
+        var createResult = await ViewModel.CreateDocumentView(fileResource, filePath);
+        if (createResult.IsFailure)
         {
             _tabView.TabItems.RemoveAt(tabIndex);
 
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
-            failure.MergeErrors(createViewResult);
+            failure.MergeErrors(createResult);
             return failure;
         }
-        var documentView = createViewResult.Value;
+        var documentView = createResult.Value;
 
-        //
-        // Load the document content
-        //
-
-        var setFileResult = documentView.SetFileResource(fileResource);
-        if (setFileResult.IsFailure)
-        {
-            _tabView.TabItems.RemoveAt(tabIndex);
-
-            var failure = Result.Fail($"Failed to set file resource for document: '{fileResource}'");
-            failure.MergeErrors(setFileResult);
-            return failure;
-        }
-
-        var loadResult = await documentView.LoadContent();
-        if (loadResult.IsFailure)
-        {
-            _tabView.TabItems.RemoveAt(tabIndex);
-
-            var failure = Result.Fail($"Failed to load content for document: '{fileResource}'");
-            failure.MergeErrors(loadResult);
-            return failure;
-        }
-
+        // Populate the tab content
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
@@ -326,5 +300,81 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+    }
+
+    public async Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType)
+    {
+        // Find the document tab for the old resource
+        DocumentTab? documentTab = null;
+        int tabIndex = -1;
+        for (int i = 0; i < _tabView.TabItems.Count; i++)
+        {
+            object? tabItem = _tabView.TabItems[i];
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (oldResource == tab.ViewModel.FileResource)
+            {
+                documentTab = tab;
+                tabIndex = i;
+                break;
+            }
+        }
+
+        if (documentTab is null)
+        {
+            // The document isn't open, so we don't need to do anything
+            return Result.Ok();
+        }
+
+        var oldDocumentView = documentTab.Content as IDocumentView;
+        Guard.IsNotNull(oldDocumentView);
+
+        if (oldDocumentType == newDocumentType)
+        {
+            var setResult = oldDocumentView.SetFileResource(newResource);
+            if (setResult.IsFailure)
+            {
+                var failure = Result.Fail($"Failed to set file resource for document: '{newResource}'");
+                failure.MergeErrors(setResult);
+                return failure;
+            }
+        }
+        else
+        {
+            var createResult = await ViewModel.CreateDocumentView(newResource, newResourcePath);
+            if (createResult.IsFailure)
+            {
+                var failure = Result.Fail($"Failed to create document view for resource: '{newResource}'");
+                failure.MergeErrors(createResult);
+                return failure;
+            }
+            var newDocumentView = createResult.Value;
+
+            // Clean up the old DocumentView state
+            oldDocumentView.PrepareToClose();
+
+            // Populate the tab content
+            documentTab.ViewModel.DocumentView = newDocumentView;
+            documentTab.Content = newDocumentView;
+
+            // At this point there should be no remaining references to oldDocumentView, so it should go
+            // out of scope and eventually be cleaned up by GC.
+
+            var selectedIndex = _tabView.SelectedIndex;
+            if (selectedIndex == tabIndex)
+            {
+                // This document is the selected tab.
+                // Force a layout update to display its new contents.
+                _tabView.SelectedIndex = -1;
+                _tabView.SelectedIndex = selectedIndex;
+            }
+        }
+
+        documentTab.ViewModel.FileResource = newResource;
+        documentTab.ViewModel.DocumentName = newResource.ResourceName;
+        documentTab.ViewModel.FilePath = newResourcePath;
+
+        return Result.Ok();
     }
 }
