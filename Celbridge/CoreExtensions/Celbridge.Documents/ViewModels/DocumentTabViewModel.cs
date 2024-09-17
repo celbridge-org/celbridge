@@ -83,8 +83,6 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private void OnResourceKeyChangedMessage(object recipient, ResourceKeyChangedMessage message)
     {
-        Guard.IsNotNull(DocumentView);
-
         if (message.SourceResource == FileResource)
         {
             // We should never receive multiple ResourceKeyChangedMessages for the same resource before the next registry update.
@@ -109,15 +107,15 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.
-            UnregisterMessageHandlers();
 
-            // Notify the DocumentView that the document is about to close
-            DocumentView.OnDocumentClosing();
+            // Clean up the DocumentView state before the document closes
+            UnregisterMessageHandlers();
+            DocumentView.PrepareToClose();
 
             return Result<bool>.Ok(true);
         }
 
-        var canClose = forceClose || await DocumentView.CanCloseDocument();
+        var canClose = forceClose || await DocumentView.CanClose();
         if (!canClose)
         {
             // The close operation was cancelled by the document view.
@@ -135,10 +133,9 @@ public partial class DocumentTabViewModel : ObservableObject
             }
         }
 
+        // Clean up the DocumentView state before the document closes
         UnregisterMessageHandlers();
-
-        // Notify the DocumentView that the document is about to close
-        DocumentView.OnDocumentClosing();
+        DocumentView.PrepareToClose();
 
         return Result<bool>.Ok(true);
     }
