@@ -12,6 +12,13 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
+    <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
+    <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
+    <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
+    <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />
+    <ProjectReference Include="..\Celbridge.ScriptUtils\Celbridge.ScriptUtils.csproj" />
+    <ProjectReference Include="..\Celbridge.Status\Celbridge.Status.csproj" />
     <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
   </ItemGroup>
   
