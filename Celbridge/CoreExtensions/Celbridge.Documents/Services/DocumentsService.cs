@@ -109,15 +109,22 @@ public class DocumentsService : IDocumentsService, IDisposable
         IDocumentView? documentView = null;
         switch (viewType)
         {
-            case DocumentViewType.DefaultDocument:
-                documentView = _serviceProvider.GetRequiredService<DefaultDocumentView>();
-                break;
+            case DocumentViewType.Unsupported:
+                return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
+
             case DocumentViewType.TextDocument:
+#if WINDOWS
                 documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
                 break;
+#else
+                documentView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
+                break;
+#endif
+
             case DocumentViewType.WebPageDocument:
                 documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
                 break;
+
             case DocumentViewType.FileViewer:
                 documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
                 break;

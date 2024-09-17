@@ -33,11 +33,7 @@ public class FileTypeHelper
         var documentLanguage = GetTextEditorLanguage(fileExtension);
         if (!string.IsNullOrEmpty(documentLanguage))
         {
-#if WINDOWS
             return DocumentViewType.TextDocument;
-#else
-            return DocumentViewType.DefaultDocument;    
-#endif
         }
 
         if (IsWebViewerFile(fileExtension))
@@ -50,7 +46,7 @@ public class FileTypeHelper
             return DocumentViewType.WebPageDocument;
         }
 
-        return DocumentViewType.DefaultDocument;
+        return DocumentViewType.Unsupported;
     }
 
     public string GetTextEditorLanguage(string fileExtension)
