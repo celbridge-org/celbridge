@@ -31,7 +31,7 @@ public class TextEditorWebViewPool
         }
     }
 
-    public async Task<WebView2> AcquireTextEditorWebView(string language)
+    public async Task<WebView2> AcquireInstance()
     {
         WebView2? webView;
         if (!_pool.TryDequeue(out webView))
@@ -41,18 +41,14 @@ public class TextEditorWebViewPool
         }
         Guard.IsNotNull(webView);
 
-        // Set the Monaco editor language
-        var script = $"monaco.editor.setModelLanguage(window.editor.getModel(), '{language}');";
-        await webView.CoreWebView2.ExecuteScriptAsync(script);
-
         return webView;
     }
 
-    public async void ReleaseTextEditorWebView(WebView2 webView)
+    public async void ReleaseInstance(WebView2 webView)
     {
         // Todo: This isn't really pooling as we're allowing the existing WebView to go out of scope and
-        // instantiating a completely new WebView. This does ensure that the web view & Monaco editor
-        // start in a pristine state, but we might want to try reusing the existing instance at some point.
+        // then instantiating a completely new WebView. This ensures that the web view & Monaco editor start in a
+        // pristine state, but we might want to try reusing the existing instance to improve performance and memory usage.
 
         webView.CoreWebView2.Navigate("about:blank");
 

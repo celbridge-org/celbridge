@@ -92,6 +92,10 @@
             window.initializedTextData = true
         }
 
+        function setLanguage(language) {
+            monaco.editor.setModelLanguage(window.editor.getModel(), language);
+        }
+
         function initMonacoEditor() {
             window.editor = monaco.editor.create(document.getElementById('container'), {
                 language: "plaintext",
