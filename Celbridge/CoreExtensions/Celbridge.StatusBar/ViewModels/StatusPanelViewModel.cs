@@ -5,7 +5,7 @@ using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace Celbridge.StatusBar.ViewModels;
+namespace Celbridge.Status.ViewModels;
 
 public partial class StatusPanelViewModel : ObservableObject
 {

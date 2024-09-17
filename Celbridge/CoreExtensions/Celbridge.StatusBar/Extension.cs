@@ -1,18 +1,17 @@
 ﻿using Celbridge.Extensions;
-using Celbridge.Status;
 using Celbridge.Status.Services;
-using Celbridge.StatusBar.ViewModels;
-using Celbridge.StatusBar.Views;
+using Celbridge.Status.ViewModels;
+using Celbridge.Status.Views;
 
-namespace Celbridge.StatusBar;
+namespace Celbridge.Status;
 
 public class Extension : IExtension
 {
     public void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddTransient<StatusPanel>();
-        config.AddTransient<StatusPanelViewModel>();
         config.AddTransient<IStatusService, StatusService>();
+        config.AddTransient<IStatusPanel, StatusPanel>();
+        config.AddTransient<StatusPanelViewModel>();
     }
 
     public Result Initialize()
