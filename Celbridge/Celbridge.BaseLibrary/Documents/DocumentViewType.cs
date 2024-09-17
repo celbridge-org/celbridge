@@ -6,12 +6,12 @@
 public enum DocumentViewType
 {
     /// <summary>
-    /// Text document editor using a standard TextBox control.
+    /// An unsupported document type using an unrecognized extension.
     /// </summary>
-    DefaultDocument,
+    Unsupported,
 
     /// <summary>
-    /// Text document editor using an advanced text editor control.
+    /// Text document editor using a text editor control.
     /// </summary>
     TextDocument,
 
