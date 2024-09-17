@@ -45,42 +45,16 @@ public partial class DocumentsPanelViewModel : ObservableObject
         settings.PropertyChanged -= EditorSettings_PropertyChanged;
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, string filePath)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
     {
-        // Create the document view
-
-        var fileExtension = System.IO.Path.GetExtension(filePath);
-
-        DocumentViewType viewType = _documentsService.GetDocumentViewType(fileExtension);
-
-        var createViewResult = _documentsService.CreateDocumentView(viewType);
-        if (createViewResult.IsFailure)
+        var createResult = await _documentsService.CreateDocumentView(fileResource);
+        if (createResult.IsFailure)
         {
-            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
-            failure.MergeErrors(createViewResult);
+            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'");
+            failure.MergeErrors(createResult);
             return failure;
         }
-        var documentView = createViewResult.Value;
-
-        //
-        // Load the document content
-        //
-
-        var setFileResult = await documentView.SetFileResource(fileResource);
-        if (setFileResult.IsFailure)
-        {
-            var failure = Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'");
-            failure.MergeErrors(setFileResult);
-            return failure;
-        }
-
-        var loadResult = await documentView.LoadContent();
-        if (loadResult.IsFailure)
-        {
-            var failure = Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'");
-            failure.MergeErrors(loadResult);
-            return failure;
-        }
+        var documentView = createResult.Value;
 
         return Result<IDocumentView>.Ok(documentView);
     }
