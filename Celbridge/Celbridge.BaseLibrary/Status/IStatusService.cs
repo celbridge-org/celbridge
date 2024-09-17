@@ -8,5 +8,5 @@ public interface IStatusService
     /// <summary>
     /// Factory method to create the status panel for the workspace UI.
     /// </summary>
-    object CreateStatusPanel();
+    IStatusPanel CreateStatusPanel();
 }
