@@ -35,7 +35,7 @@ public sealed partial class WebPageDocumentView : DocumentView
             .Content(_webView));
     }
 
-    public override Result SetFileResource(ResourceKey fileResource)
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
@@ -51,6 +51,8 @@ public sealed partial class WebPageDocumentView : DocumentView
 
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
+
+        await Task.CompletedTask;
 
         return Result.Ok();
     }

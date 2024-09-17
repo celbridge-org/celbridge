@@ -2,12 +2,9 @@
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
-    public abstract Task<Result> LoadContent();
+    public abstract Task<Result> SetFileResource(ResourceKey fileResource);
 
-    public virtual Result SetFileResource(ResourceKey fileResource)
-    {
-        throw new NotImplementedException();
-    }
+    public abstract Task<Result> LoadContent();
 
     public virtual bool HasUnsavedChanges => false;
 
