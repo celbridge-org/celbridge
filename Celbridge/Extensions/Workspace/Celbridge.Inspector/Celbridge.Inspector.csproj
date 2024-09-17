@@ -7,12 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\DocumentTypes\TextEditorTypes.json" />
-    <EmbeddedResource Include="Assets\DocumentTypes\FileViewerTypes.json" />
+    <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Celbridge.CoreExtension\Celbridge.CoreExtension.csproj" />
-  </ItemGroup>
-
+  
 </Project>
