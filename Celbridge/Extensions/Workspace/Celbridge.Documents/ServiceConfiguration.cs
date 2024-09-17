@@ -6,9 +6,9 @@ using Celbridge.Extensions;
 
 namespace Celbridge.Documents;
 
-public class Extension : IExtension
+public static class ServiceConfiguration
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IExtensionServiceCollection config)
     {
         //
         // Register services
@@ -45,10 +45,5 @@ public class Extension : IExtension
         config.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
         config.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
         config.AddTransient<ISelectDocumentCommand, SelectDocumentCommand>();
-    }
-
-    public Result Initialize()
-    {
-        return Result.Ok();
     }
 }
