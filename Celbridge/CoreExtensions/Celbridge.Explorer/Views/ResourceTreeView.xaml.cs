@@ -247,7 +247,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
         else if (resource is IFileResource fileResource)
         {
-            ViewModel.OpenFileResource(fileResource);
+            ViewModel.OpenDocument(fileResource);
         }
     }
 
