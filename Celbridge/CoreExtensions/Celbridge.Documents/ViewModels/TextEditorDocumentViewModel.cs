@@ -72,13 +72,7 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
 
     public string GetDocumentLanguage()
     {
-        var extension = System.IO.Path.GetExtension(FilePath).ToLowerInvariant();
-        if (string.IsNullOrEmpty(extension))
-        {
-            return string.Empty;
-        }
-
-        return _documentsService.GetDocumentLanguage(extension);
+        return _documentsService.GetDocumentLanguage(FileResource);
     }
 
     public void OnTextChanged()
