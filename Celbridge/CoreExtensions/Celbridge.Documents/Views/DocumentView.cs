@@ -22,12 +22,12 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         throw new NotImplementedException();
     }
 
-    public virtual async Task<bool> CanCloseDocument()
+    public virtual async Task<bool> CanClose()
     {
         await Task.CompletedTask;
         return true;
     }
 
-    public virtual void OnDocumentClosing()
+    public virtual void PrepareToClose()
     {}
 }

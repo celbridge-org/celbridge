@@ -32,4 +32,9 @@ public interface IDocumentsPanel
     /// Fails if the specified document is not opened.
     /// </summary>
     Result SelectDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// Change the resource of an opened document.
+    /// </summary>
+    Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
 }
