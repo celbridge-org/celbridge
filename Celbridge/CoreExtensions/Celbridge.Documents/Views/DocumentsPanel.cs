@@ -306,14 +306,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         // Find the document tab for the old resource
         DocumentTab? documentTab = null;
-        foreach (var tabItem in _tabView.TabItems)
+        int tabIndex = -1;
+        for (int i = 0; i < _tabView.TabItems.Count; i++)
         {
+            object? tabItem = _tabView.TabItems[i];
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
 
             if (oldResource == tab.ViewModel.FileResource)
             {
                 documentTab = tab;
+                tabIndex = i;
                 break;
             }
         }
@@ -348,9 +351,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
             var newDocumentView = createResult.Value;
 
+            // Clean up the old DocumentView state
+            oldDocumentView.PrepareToClose();
+
             // Populate the tab content
             documentTab.ViewModel.DocumentView = newDocumentView;
             documentTab.Content = newDocumentView;
+
+            // At this point there should be no remaining references to oldDocumentView, so it should go
+            // out of scope and eventually be cleaned up by GC.
+
+            var selectedIndex = _tabView.SelectedIndex;
+            if (selectedIndex == tabIndex)
+            {
+                // This document is the selected tab.
+                // Force a layout update to display its new contents.
+                _tabView.SelectedIndex = -1;
+                _tabView.SelectedIndex = selectedIndex;
+            }
         }
 
         documentTab.ViewModel.FileResource = newResource;

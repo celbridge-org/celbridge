@@ -120,7 +120,7 @@ public sealed partial class TextEditorDocumentView : DocumentView
         return await ViewModel.SaveDocument(textData);
     }
 
-    public override void OnDocumentClosing()
+    public override void PrepareToClose()
     {
         _webView!.WebMessageReceived -= TextDocumentView_WebMessageReceived;
 
