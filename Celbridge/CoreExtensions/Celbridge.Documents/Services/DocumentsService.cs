@@ -158,6 +158,20 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result<IDocumentView>.Ok(documentView);
     }
 
+    /// <summary>
+    /// Returns the document view type for the specified file resource.
+    /// </summary>
+    public DocumentViewType GetDocumentViewType(ResourceKey fileResource)
+    {
+        var extension = Path.GetExtension(fileResource).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension))
+        {
+            return DocumentViewType.Unsupported;
+        }
+
+        return _fileTypeHelper.GetDocumentViewType(extension);
+    }
+
     public string GetDocumentLanguage(ResourceKey fileResource)
     {
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
