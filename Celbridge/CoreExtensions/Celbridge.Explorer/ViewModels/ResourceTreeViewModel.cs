@@ -73,13 +73,13 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Set to true if the current context menu item is a valid resource.
+    /// Set to true if the selected context menu item is a valid file or folder resource.
     /// </summary>
     [ObservableProperty]
     private bool _isResourceSelected;
 
     /// <summary>
-    /// Set to true if the current context menu item is a file resource that can be opened as a document.
+    /// Set to true if the selected context menu item is a file resource that can be opened as a document.
     /// </summary>
     [ObservableProperty]
     private bool _isDocumentResourceSelected;
@@ -96,7 +96,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         IsResourceSelected = resource is not null;
 
         // The Open context menu option is only available for file resources that can be opened as documents
-        IsDocumentResourceSelected = IsSupportedDocument(resource);
+        IsDocumentResourceSelected = IsSupportedDocumentFormat(resource);
 
         // The Paste context menu option is only available if there is a resource on the clipboard
         bool isResourceOnClipboard = false;
@@ -116,7 +116,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         IsResourceOnClipboard = isResourceOnClipboard;
     }
 
-    private bool IsSupportedDocument(IResource? resource)
+    private bool IsSupportedDocumentFormat(IResource? resource)
     {
         if (resource is not null &&
             resource is IFileResource fileResource)
@@ -125,7 +125,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             var resourceKey = resourceRegistry.GetResourceKey(fileResource);
             var documentType = _documentsService.GetDocumentViewType(resourceKey);
 
-            return documentType != DocumentViewType.Unsupported;
+            return documentType != DocumentViewType.UnsupportedFormat;
         }
 
         return false;
@@ -163,7 +163,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OpenDocument(IFileResource fileResource)
     {
-        if (!IsSupportedDocument(fileResource))
+        if (!IsSupportedDocumentFormat(fileResource))
         {
             // Attempting to open an unsupported resource has no effect.
             return;

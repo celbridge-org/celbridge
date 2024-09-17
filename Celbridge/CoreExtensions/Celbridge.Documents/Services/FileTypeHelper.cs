@@ -51,7 +51,7 @@ public class FileTypeHelper
         }
 #endif
 
-        return DocumentViewType.Unsupported;
+        return DocumentViewType.UnsupportedFormat;
     }
 
     public string GetTextEditorLanguage(string fileExtension)
