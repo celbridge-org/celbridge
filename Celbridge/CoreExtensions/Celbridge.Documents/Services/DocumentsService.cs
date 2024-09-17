@@ -92,10 +92,21 @@ public class DocumentsService : IDocumentsService, IDisposable
         return DocumentsPanel;
     }
 
-    public Result<IDocumentView> CreateDocumentView(DocumentViewType viewType)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
     {
-        IDocumentView? documentView = null;
+        // Create the document view
 
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var filePath = resourceRegistry.GetResourcePath(fileResource);
+        var fileExtension = Path.GetExtension(filePath);
+
+        var viewType = _fileTypeHelper.GetDocumentViewType(fileExtension);
+
+        //
+        // Create the apporpriate document view control for this document type
+        //
+
+        IDocumentView? documentView = null;
         switch (viewType)
         {
             case DocumentViewType.DefaultDocument:
@@ -114,7 +125,27 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         if (documentView is null)
         {
-            return Result<IDocumentView>.Fail($"Failed to create document view for document type: '{viewType}'");
+            return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+        }
+
+        //
+        // Load the content from the document file
+        //
+
+        var setFileResult = await documentView.SetFileResource(fileResource);
+        if (setFileResult.IsFailure)
+        {
+            var failure = Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'");
+            failure.MergeErrors(setFileResult);
+            return failure;
+        }
+
+        var loadResult = await documentView.LoadContent();
+        if (loadResult.IsFailure)
+        {
+            var failure = Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'");
+            failure.MergeErrors(loadResult);
+            return failure;
         }
 
         return Result<IDocumentView>.Ok(documentView);
@@ -289,11 +320,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
         }
-    }
-
-    public DocumentViewType GetDocumentViewType(string fileExtension)
-    {
-        return _fileTypeHelper.GetDocumentViewType(fileExtension);
     }
 
     public string GetDocumentLanguage(string fileExtension)
