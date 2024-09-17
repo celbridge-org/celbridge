@@ -46,14 +46,17 @@ public class TextEditorWebViewPool
 
     public async void ReleaseInstance(WebView2 webView)
     {
-        // Todo: This isn't really pooling as we're allowing the existing WebView to go out of scope and
-        // then instantiating a completely new WebView. This ensures that the web view & Monaco editor start in a
-        // pristine state, but we might want to try reusing the existing instance to improve performance and memory usage.
+        // Todo: This isn't really pooling as we're allowing the existing WebView to go out of scope and then just adding a new WebView
+        // instance to the pool. This ensures that the web view & Monaco editor start in a pristine state, but we might want to try reusing
+        // the existing instance to improve performance and memory usage.
 
         webView.CoreWebView2.Navigate("about:blank");
 
-        var newWebView = await CreateTextEditorWebView();
-        _pool.Enqueue(newWebView);
+        if (_pool.Count < _maxPoolSize)
+        {
+            var newWebView = await CreateTextEditorWebView();
+            _pool.Enqueue(newWebView);
+        }
     }
 
     private static async Task<WebView2> CreateTextEditorWebView()
