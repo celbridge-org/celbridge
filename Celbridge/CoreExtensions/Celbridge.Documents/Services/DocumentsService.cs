@@ -324,7 +324,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
             if (changeResult.IsFailure)
             {
-                // Todo: Test this case!
                 // Log the error and close the document to get back to a consistent state
                 _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
                 await CloseDocument(oldResource, true);
