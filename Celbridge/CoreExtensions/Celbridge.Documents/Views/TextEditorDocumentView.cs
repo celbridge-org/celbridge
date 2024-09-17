@@ -5,6 +5,8 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 
+using Path = System.IO.Path;
+
 namespace Celbridge.Documents.Views;
 
 public sealed partial class TextEditorDocumentView : DocumentView
@@ -30,10 +32,9 @@ public sealed partial class TextEditorDocumentView : DocumentView
         // 
 
         this.DataContext(ViewModel);
-
     }
 
-    public override Result SetFileResource(ResourceKey fileResource)
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
@@ -50,15 +51,27 @@ public sealed partial class TextEditorDocumentView : DocumentView
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
 
-        // Todo: Update the language of the document based on the file extension
+        if (_webView is not null)
+        {
+            // If _webView has already been created, then this method is being called as part of a resource rename/move.
+            // Update the Monaco editor language in case the file extension has changed.
+            await UpdateTextEditorLanguage();
+        }
 
         return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()
     {
-        var language = ViewModel.GetDocumentLanguage();
-        _webView = await AcquireTextEditorWebView(language);
+        // TextEditorWebViewPool is not exposed via the public interface
+        var documentsService = _documentsService as DocumentsService;
+        Guard.IsNotNull(documentsService);
+        var pool = documentsService.TextEditorWebViewPool;
+
+        _webView = await pool.AcquireInstance();
+
+        await UpdateTextEditorLanguage();
+
         this.Content(_webView);
 
         var loadResult = await ViewModel.LoadDocument();
@@ -73,30 +86,10 @@ public sealed partial class TextEditorDocumentView : DocumentView
         // Send the loaded text content to Monaco editor
         _webView.CoreWebView2.PostWebMessageAsString(text);
 
-        // Listen for text updates from the web view
+        // Start listening for text updates from the web view
         _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
 
         return Result.Ok();
-    }
-
-    private async Task<WebView2> AcquireTextEditorWebView(string language)
-    {
-        var documentsService = _documentsService as DocumentsService;
-        Guard.IsNotNull(documentsService);
-        var pool = documentsService.TextEditorWebViewPool;
-
-        var webView = await pool.AcquireTextEditorWebView(language);
-
-        return webView;
-    }
-
-    private void ReleaseTextEditorWebView()
-    {
-        // TextEditorWebViewPool is not exposed via the public interface
-        var documentsService = _documentsService as DocumentsService;
-        Guard.IsNotNull(documentsService);
-        var pool = documentsService.TextEditorWebViewPool;
-        pool.ReleaseTextEditorWebView(_webView!);
     }
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
@@ -122,9 +115,16 @@ public sealed partial class TextEditorDocumentView : DocumentView
 
     public override void PrepareToClose()
     {
-        _webView!.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+        Guard.IsNotNull(_webView);
 
-        ReleaseTextEditorWebView();
+        _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+
+        // Release the webvuew back to the pool.
+        // TextEditorWebViewPool is not exposed via the public interface
+        var documentsService = _documentsService as DocumentsService;
+        Guard.IsNotNull(documentsService);
+        var pool = documentsService.TextEditorWebViewPool;
+        pool.ReleaseInstance(_webView!);
 
         _webView = null;
     }
@@ -137,6 +137,19 @@ public sealed partial class TextEditorDocumentView : DocumentView
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
         }
+    }
+
+    /// <summary>
+    /// Set the Monaco editor language based on the file extension.
+    /// </summary>
+    private async Task UpdateTextEditorLanguage()
+    {
+        Guard.IsNotNull(_webView);
+
+        var language = ViewModel.GetDocumentLanguage();
+
+        var script = $"setLanguage('{language}');";
+        await _webView.CoreWebView2.ExecuteScriptAsync(script);
     }
 
     private async Task<Result<string>> ReadTextData()

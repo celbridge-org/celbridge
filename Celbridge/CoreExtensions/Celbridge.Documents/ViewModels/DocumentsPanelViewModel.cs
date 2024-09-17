@@ -66,7 +66,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         // Load the document content
         //
 
-        var setFileResult = documentView.SetFileResource(fileResource);
+        var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
         {
             var failure = Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'");

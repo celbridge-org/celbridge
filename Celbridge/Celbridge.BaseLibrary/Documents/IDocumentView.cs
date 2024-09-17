@@ -9,7 +9,7 @@ public interface IDocumentView
     /// Sets the file resource for the document view.
     /// Fails if the resource does not exist in the resource registry or in the file system.
     /// </summary>
-    Result SetFileResource(ResourceKey fileResource);
+    Task<Result> SetFileResource(ResourceKey fileResource);
 
     /// <summary>
     /// Load the document content into the document view using the previously set file resource.
