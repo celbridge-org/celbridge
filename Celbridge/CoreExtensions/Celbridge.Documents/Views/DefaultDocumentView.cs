@@ -33,7 +33,7 @@ public sealed partial class DefaultDocumentView : DocumentView
             .Content(textBox));
     }
 
-    public override Result SetFileResource(ResourceKey fileResource)
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
@@ -49,6 +49,8 @@ public sealed partial class DefaultDocumentView : DocumentView
 
         ViewModel.FileResource = fileResource;
         ViewModel.FilePath = filePath;
+
+        await Task.CompletedTask;
 
         return Result.Ok();
     }
