@@ -17,7 +17,7 @@
                     Opening="ResourceContextMenu_Opening">
             <MenuFlyoutItem Text="{x:Bind OpenString}" 
                             Click="ResourceContextMenu_Open"
-                            IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}"/>
+                            IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}"/>
             <MenuFlyoutSubItem Text="{x:Bind AddString}">
                 <MenuFlyoutItem Text="{x:Bind FolderString}" 
                                 Icon="Folder"

@@ -34,6 +34,17 @@ public interface IDocumentsService
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource);
 
     /// <summary>
+    /// Returns the document view type for the specified file resource.
+    /// </summary>
+    DocumentViewType GetDocumentViewType(ResourceKey fileResource);
+
+    /// <summary>
+    /// Returns the text editor language associated with the specified file resource.
+    /// Returns an empty string if no matching language is found.
+    /// </summary>
+    string GetDocumentLanguage(ResourceKey fileResource);
+
+    /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource);
@@ -73,10 +84,4 @@ public interface IDocumentsService
     /// Restores the state of the panel from the previous session.
     /// </summary>
     Task RestorePanelState();
-
-    /// <summary>
-    /// Returns the language associated with the specified file extension.
-    /// Returns an empty string if no matching language is found.
-    /// </summary>
-    string GetDocumentLanguage(string fileExtension);
 }

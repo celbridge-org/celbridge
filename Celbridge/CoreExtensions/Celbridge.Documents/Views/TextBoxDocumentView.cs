@@ -4,13 +4,13 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class DefaultDocumentView : DocumentView
+public sealed partial class TextBoxDocumentView : DocumentView
 {
     private IResourceRegistry _resourceRegistry;
 
     public DefaultDocumentViewModel ViewModel { get; }
 
-    public DefaultDocumentView(
+    public TextBoxDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
