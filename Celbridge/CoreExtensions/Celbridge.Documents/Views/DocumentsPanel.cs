@@ -178,7 +178,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         int tabIndex = _tabView.TabItems.Count - 1;
 
-        var createResult = await ViewModel.CreateDocumentView(fileResource, filePath);
+        var createResult = await ViewModel.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
         {
             _tabView.TabItems.RemoveAt(tabIndex);
@@ -342,7 +342,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
         else
         {
-            var createResult = await ViewModel.CreateDocumentView(newResource, newResourcePath);
+            var createResult = await ViewModel.CreateDocumentView(newResource);
             if (createResult.IsFailure)
             {
                 var failure = Result.Fail($"Failed to create document view for resource: '{newResource}'");

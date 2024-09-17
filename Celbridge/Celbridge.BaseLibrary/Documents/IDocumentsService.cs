@@ -27,9 +27,11 @@ public interface IDocumentsService
     IDocumentsPanel CreateDocumentsPanel();
 
     /// <summary>
-    /// Factory method to create a document view for the specified view type.
+    /// Create a document view for the specified file resource.
+    /// The type of document view created is based on the file extension.
+    /// Fails if the file resource does not exist.
     /// </summary>
-    Result<IDocumentView> CreateDocumentView(DocumentViewType viewType);
+    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource);
 
     /// <summary>
     /// Opens a file resource as a document in the documents panel.
@@ -71,11 +73,6 @@ public interface IDocumentsService
     /// Restores the state of the panel from the previous session.
     /// </summary>
     Task RestorePanelState();
-
-    /// <summary>
-    /// Returns the document view type for the specified file extension.
-    /// </summary>
-    DocumentViewType GetDocumentViewType(string fileExtension);
 
     /// <summary>
     /// Returns the language associated with the specified file extension.
