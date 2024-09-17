@@ -6,9 +6,10 @@
 public enum DocumentViewType
 {
     /// <summary>
-    /// An unsupported document type with an unrecognized file extension.
+    /// An unsupported document format.
+    /// The resource has an unrecognized file extension.
     /// </summary>
-    Unsupported,
+    UnsupportedFormat,
 
     /// <summary>
     /// Text document edited using a text editor control.

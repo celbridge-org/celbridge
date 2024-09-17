@@ -109,7 +109,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         IDocumentView? documentView = null;
         switch (viewType)
         {
-            case DocumentViewType.Unsupported:
+            case DocumentViewType.UnsupportedFormat:
                 return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
 
             case DocumentViewType.TextDocument:
@@ -166,7 +166,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
         if (string.IsNullOrEmpty(extension))
         {
-            return DocumentViewType.Unsupported;
+            return DocumentViewType.UnsupportedFormat;
         }
 
         return _fileTypeHelper.GetDocumentViewType(extension);
