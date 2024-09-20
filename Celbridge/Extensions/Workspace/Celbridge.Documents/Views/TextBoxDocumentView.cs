@@ -1,4 +1,4 @@
-﻿using Celbridge.Documents.ViewModels;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
 
@@ -19,7 +19,7 @@ public sealed partial class TextBoxDocumentView : DocumentView
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var textBox = new TextBox()
-            .Text(x => x.Bind(() => ViewModel.Text)
+            .Text(x => x.Binding(() => ViewModel.Text)
                         .Mode(BindingMode.TwoWay)
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .AcceptsReturn(true)
