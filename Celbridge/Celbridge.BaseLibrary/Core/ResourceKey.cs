@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Core;
+namespace Celbridge.Core;
 
 /// <summary>
 /// A unique identifier for project resources.
@@ -65,7 +65,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
-    // Implicit conversion from string to ResourceKey
+    /// Implicit conversion from string to ResourceKey
     /// </summary>
     public static implicit operator ResourceKey(string key) => new ResourceKey(key);
 
@@ -164,6 +164,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// - Specified relative to the project folder. 
     /// - Absolute paths, parent and same directory references are not supported.
     /// - '/' is used as the path separator on all platforms, backslashes are not allowed.
+    /// </summary>
     public static bool IsValidKey(string key)
     {
         if (string.IsNullOrWhiteSpace(key))

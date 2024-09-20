@@ -1,5 +1,4 @@
 using Celbridge.Dialog;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace.Services;
@@ -13,9 +12,11 @@ using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
+using IWorkspaceLogger = Logging.ILogger<WorkspacePageViewModel>;
+
 public partial class WorkspacePageViewModel : ObservableObject
 {
-    private readonly ILogger<WorkspacePageViewModel> _logger;
+    private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IEditorSettings _editorSettings;
@@ -28,7 +29,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
     public WorkspacePageViewModel(
-        ILogger<WorkspacePageViewModel> logger,
+        IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,

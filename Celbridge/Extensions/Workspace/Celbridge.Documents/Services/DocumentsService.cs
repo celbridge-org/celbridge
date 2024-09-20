@@ -1,19 +1,22 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Services;
+
+using IDocumentsLogger = Logging.ILogger<DocumentsService>;
 
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private const string PreviousOpenDocumentsKey = "PreviousOpenDocuments";
     private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
 
-    private readonly ILogger<DocumentsService> _logger;
+    private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IServiceProvider _serviceProvider;
@@ -34,7 +37,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public DocumentsService(
         IServiceProvider serviceProvider,
-        ILogger<DocumentsService> logger,
+        IDocumentsLogger logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)

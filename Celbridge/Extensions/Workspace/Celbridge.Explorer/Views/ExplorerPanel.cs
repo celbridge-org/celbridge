@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer.ViewModels;
+using Celbridge.Explorer.ViewModels;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Views;
@@ -37,7 +37,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
             .Children(
                 new TextBlock()
                     .Grid(column: 0)
-                    .Text(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
+                    .Text(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
                     .Margin(48, 0, 0, 0)
                     .VerticalAlignment(VerticalAlignment.Center),
                 refreshProjectButton

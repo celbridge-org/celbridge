@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -33,14 +33,14 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
         ViewModel = serviceProvider.GetRequiredService<AlertDialogViewModel>();
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
+            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .CloseButtonText(OkString)
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Left)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .Children(
                     new TextBlock()
-                        .Text(x => x.Bind(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
+                        .Text(x => x.Binding(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
                         .TextWrapping(TextWrapping.WrapWholeWords)
                     )
                 )

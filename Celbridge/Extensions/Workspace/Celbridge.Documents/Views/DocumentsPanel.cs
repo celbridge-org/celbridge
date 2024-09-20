@@ -1,13 +1,14 @@
-﻿using Celbridge.Documents.ViewModels;
-using Celbridge.Logging;
+using Celbridge.Documents.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
 
+using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
+
 public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
-    private ILogger<DocumentsPanel> _logger;
+    private IDocumentsLogger _logger;
 
     private TabView _tabView;
 
@@ -17,7 +18,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
-        _logger = serviceProvider.GetRequiredService<ILogger<DocumentsPanel>>();
+        _logger = serviceProvider.GetRequiredService<IDocumentsLogger>();
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 

@@ -1,5 +1,7 @@
-﻿using Celbridge.Projects.Models;
+using Celbridge.Projects.Models;
 using SQLite;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Services;
 

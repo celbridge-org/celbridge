@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 using Celbridge.Projects;
 
 namespace Celbridge.UserInterface.Views;
@@ -31,7 +31,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         var newProjectName = 
             new TextBox()
                 .Header(new TextBlock().Text(ProjectNameString))
-                .Text(x => x.Bind(() => ViewModel.ProjectName)
+                .Text(x => x.Binding(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
                 .MinWidth(200)
@@ -48,7 +48,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .PlaceholderText(ProjectFolderPlaceholderString)
                     .Margin(4)
                     .IsSpellCheckEnabled(false)
-                    .Text(x => x.Bind(() => ViewModel.ProjectFolderPath)
+                    .Text(x => x.Binding(() => ViewModel.ProjectFolderPath)
                         .Mode(BindingMode.TwoWay)
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)),
                 new Button()
@@ -70,7 +70,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                 .Title(TitleString)
                 .PrimaryButtonText(CreateString)
                 .SecondaryButtonText(CancelString)
-                .IsPrimaryButtonEnabled(x => x.Bind(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))
+                .IsPrimaryButtonEnabled(x => x.Binding(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))
                 .Content(stackPanel)
             );
 
