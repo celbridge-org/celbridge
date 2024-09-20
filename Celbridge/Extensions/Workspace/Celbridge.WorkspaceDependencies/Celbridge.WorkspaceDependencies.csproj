@@ -33,7 +33,7 @@
     This should be the ONLY directly referenced project in any extension project.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
   
 </Project>
