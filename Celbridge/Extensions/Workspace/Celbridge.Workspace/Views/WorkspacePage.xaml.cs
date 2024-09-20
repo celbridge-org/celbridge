@@ -1,12 +1,14 @@
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
-using CommunityToolkit.WinUI.Controls;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     public WorkspacePageViewModel ViewModel { get; }
 
     public WorkspacePage()
@@ -16,10 +18,35 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+
+        ApplyPanelButtonTooltips();
+
         DataContext = ViewModel;
 
         Loaded += WorkspacePage_Loaded;
         Unloaded += WorkspacePage_Unloaded;
+    }
+
+    private void ApplyPanelButtonTooltips()
+    {
+        // Left panel 
+        ToolTipService.SetToolTip(ShowLeftPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowLeftPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(HideLeftPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideLeftPanelButton, PlacementMode.Bottom);
+
+        // Right panel 
+        ToolTipService.SetToolTip(ShowRightPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowRightPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(HideRightPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideRightPanelButton, PlacementMode.Bottom);
+
+        // Bottom panel 
+        ToolTipService.SetToolTip(ShowBottomPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowBottomPanelButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(HideBottomPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideBottomPanelButton, PlacementMode.Top);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
