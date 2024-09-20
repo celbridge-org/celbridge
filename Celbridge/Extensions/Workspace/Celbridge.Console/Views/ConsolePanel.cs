@@ -1,4 +1,4 @@
-﻿using Celbridge.Console.ViewModels;
+using Celbridge.Console.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
@@ -15,10 +15,9 @@ public sealed partial class ConsolePanel : UserControl
 
     public ConsolePanelViewModel ViewModel { get; }
 
-    public ConsolePanel()
+    public ConsolePanel(IStringLocalizer stringLocalizer)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _stringLocalizer = stringLocalizer;
 
         ViewModel = CreateViewModel();
 
@@ -100,6 +99,7 @@ public sealed partial class ConsolePanel : UserControl
 
         var button = new Button()
             .Grid(column: 1)
+            .Margin(4)
             .HorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Top)
             .Command(command)
@@ -118,9 +118,11 @@ public sealed partial class ConsolePanel : UserControl
 
     private void CreateConsoleTabViewItem(TabView tabView)
     {
+        var consoleView = new ConsoleView();
+
         var tabViewItem = new TabViewItem()
             .Header("Console")
-            .Content(new ConsoleView());
+            .Content(consoleView);
 
         tabViewItem.CloseRequested += (sender, args) =>
         {

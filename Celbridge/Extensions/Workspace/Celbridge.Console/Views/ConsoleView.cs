@@ -1,4 +1,4 @@
-﻿using Celbridge.Console.Models;
+using Celbridge.Console.Models;
 using Celbridge.Console.ViewModels;
 using Microsoft.UI.Input;
 using Windows.System;
@@ -6,7 +6,7 @@ using Windows.UI.Core;
 
 namespace Celbridge.Console.Views;
 
-public class ConsoleView : UserControl
+public partial class ConsoleView : UserControl
 {
     private const string PlayGlyph = "\ue768";
 
@@ -52,7 +52,7 @@ public class ConsoleView : UserControl
                             .Padding(0)
                     );
             })
-            .ItemsSource(x => x.Bind(() => ViewModel.ConsoleLogItems).OneWay())
+            .ItemsSource(x => x.Binding(() => ViewModel.ConsoleLogItems).OneWay())
             .ItemContainerStyle(new Style(typeof(ListViewItem))
             {
                 Setters =
@@ -67,7 +67,7 @@ public class ConsoleView : UserControl
         _commandTextBox = new TextBox()
             .Grid(column: 0)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
-            .Text(x => x.Bind(() => ViewModel.CommandText)
+            .Text(x => x.Binding(() => ViewModel.CommandText)
                         .Mode(BindingMode.TwoWay)
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .VerticalAlignment(VerticalAlignment.Bottom)

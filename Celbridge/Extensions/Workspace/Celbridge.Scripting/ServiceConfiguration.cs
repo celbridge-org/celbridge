@@ -1,4 +1,4 @@
-﻿using Celbridge.Extensions;
+using Celbridge.Extensions;
 using Celbridge.Scripting.Services;
 
 namespace Celbridge.Scripting;
@@ -10,6 +10,6 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        config.AddSingleton<IScriptingService, ScriptingService>();
+        config.AddTransient<IScriptingService, ScriptingService>();
     }
 }

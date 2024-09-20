@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -24,7 +24,7 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
         ViewModel = serviceProvider.GetRequiredService<ProgressDialogViewModel>();
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
+            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .Content(new Grid()
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)

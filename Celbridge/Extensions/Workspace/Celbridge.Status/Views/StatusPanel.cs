@@ -1,10 +1,9 @@
-﻿using Celbridge.Status;
 using Celbridge.Status.ViewModels;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Status.Views;
 
-public class StatusPanel : UserControl, IStatusPanel
+public partial class StatusPanel : UserControl, IStatusPanel
 {
     private const string SaveGlyph = "\ue74e";
 
@@ -26,14 +25,14 @@ public class StatusPanel : UserControl, IStatusPanel
 
         var selectedDocumentButton = new Button()
             .Grid(column: 1)
-            .Command(x => x.Bind(() => ViewModel.CopyDocumentResourceCommand))
-            .Visibility(x => x.Bind(() => ViewModel.SelectedDocumentVisibility)
+            .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
+            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility)
                               .Mode(BindingMode.OneWay))
             .Content
             (
                 new TextBlock()
                     .FontSize(12)
-                    .Text(x => x.Bind(() => ViewModel.SelectedDocument)
+                    .Text(x => x.Binding(() => ViewModel.SelectedDocument)
                                 .Mode(BindingMode.OneWay))
             );
 
@@ -43,7 +42,7 @@ public class StatusPanel : UserControl, IStatusPanel
         var saveIcon = new FontIcon()
             .Grid(column: 2)
             .HorizontalAlignment(HorizontalAlignment.Right)
-            .Opacity(x => x.Bind(() => ViewModel.SaveIconOpacity))
+            .Opacity(x => x.Binding(() => ViewModel.SaveIconOpacity))
             .FontFamily(fontFamily)
             .Glyph(SaveGlyph);
 
