@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 using Windows.System;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -41,12 +41,12 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         _inputTextbox = new TextBox()
             .Header
             (
-                x => x.Bind(() => ViewModel.HeaderText)
+                x => x.Binding(() => ViewModel.HeaderText)
                       .Mode(BindingMode.OneWay)
             )
             .Text
             (
-                x => x.Bind(() => ViewModel.InputText)
+                x => x.Binding(() => ViewModel.InputText)
                       .Mode(BindingMode.TwoWay)
                       .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)
             )
@@ -58,10 +58,10 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         this.DataContext
         (
             ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
+            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .PrimaryButtonText(OkString)
             .SecondaryButtonText(CancelSting)
-            .IsPrimaryButtonEnabled(x => x.Bind(() => ViewModel.IsSubmitEnabled).Mode(BindingMode.OneWay))
+            .IsPrimaryButtonEnabled(x => x.Binding(() => ViewModel.IsSubmitEnabled).Mode(BindingMode.OneWay))
             .Content
             (
                 new StackPanel()
@@ -74,14 +74,14 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
                         new TextBlock()
                             .Text
                             (
-                                x => x.Bind(() => ViewModel.ErrorText)
+                                x => x.Binding(() => ViewModel.ErrorText)
                                       .Mode(BindingMode.OneWay)
                             )
                             .Foreground(ThemeResource.Get<Brush>("ErrorTextBrush"))
                             .Margin(6, 4, 0, 0)
                             .Opacity
                             (
-                                x => x.Bind(() => ViewModel.IsTextValid)
+                                x => x.Binding(() => ViewModel.IsTextValid)
                                       .Mode(BindingMode.OneWay)
                                       .Convert((valid) => valid ? 0 : 1)
                             )

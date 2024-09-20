@@ -1,4 +1,4 @@
-﻿using Celbridge.Console.Services;
+using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;
 using Celbridge.Extensions;
@@ -13,6 +13,6 @@ public static class ServiceConfiguration
         config.AddTransient<ConsolePanelViewModel>();
         config.AddTransient<ConsoleView>();
         config.AddTransient<ConsoleViewModel>();
-        config.AddSingleton<IConsoleService, ConsoleService>();
+        config.AddTransient<IConsoleService, ConsoleService>();
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Input;
+using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -72,8 +72,8 @@ public sealed partial class MainPage : Page
         Guard.IsNotNull(mainWindow);
 
 #if WINDOWS
-        // WinUI displays a light title bar in dark mode by default. It looks terrible, so
-        // We override the title bar in dark mode to use a dark version.
+        // WinUI displays a light title bar in dark mode by default. 
+        // This looks terrible, so we override the title bar in dark mode to use a dark version.
         if (_userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark)
         {
             // Setup the custom title bar (Windows only)
@@ -101,6 +101,8 @@ public sealed partial class MainPage : Page
             }
         };
 #else
+        Guard.IsNotNull(mainWindow);
+        Guard.IsNotNull(mainWindow.CoreWindow);
         mainWindow.CoreWindow.KeyDown += (s, e) =>
         {
             if (OnKeyDown(e.VirtualKey))

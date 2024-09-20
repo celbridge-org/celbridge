@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -34,7 +34,7 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         ViewModel = serviceProvider.GetRequiredService<ConfirmationDialogViewModel>();
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Bind(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
+            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
             .PrimaryButtonText(OkString)
             .SecondaryButtonText(CancelString)
             .Content(new Grid()
@@ -42,7 +42,7 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
                 .VerticalAlignment(VerticalAlignment.Center)
                 .Children(
                     new TextBlock()
-                        .Text(x => x.Bind(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
+                        .Text(x => x.Binding(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
                         .TextWrapping(TextWrapping.WrapWholeWords)
                     )
                 )

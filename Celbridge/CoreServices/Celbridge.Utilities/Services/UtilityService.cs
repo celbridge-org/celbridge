@@ -1,6 +1,7 @@
-﻿using Celbridge.Utilities;
+using Celbridge.Utilities;
 using System.Reflection;
-using Windows.Storage;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Messaging.Services;
 

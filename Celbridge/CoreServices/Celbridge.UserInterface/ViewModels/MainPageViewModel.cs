@@ -1,7 +1,6 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
-using Celbridge.Logging;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -21,7 +20,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private const string SettingsPageName = "SettingsPage";
 
     private readonly IMessengerService _messengerService;
-    private readonly ILogger<MainPageViewModel> _logger;
+    private readonly Logging.ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
     private readonly IDialogService _dialogService;
     private readonly IFilePickerService _filePickerService;
@@ -31,7 +30,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public MainPageViewModel(
         IMessengerService messengerService,
-        ILogger<MainPageViewModel> logger, 
+        Logging.ILogger<MainPageViewModel> logger, 
         INavigationService navigationService,
         IDialogService dialogService,
         IFilePickerService filePickerService,
