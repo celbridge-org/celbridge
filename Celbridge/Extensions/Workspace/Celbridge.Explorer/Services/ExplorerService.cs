@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Views;
 using Celbridge.Logging;
@@ -10,12 +10,14 @@ using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Services;
 
+using IExplorerLogger = Logging.ILogger<IExplorerService>;
+
 public class ExplorerService : IExplorerService, IDisposable
 {
     private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<ExplorerService> _logger;
+    private readonly IExplorerLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
@@ -44,7 +46,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public ExplorerService(
         IServiceProvider serviceProvider,
-        ILogger<ExplorerService> logger,
+        IExplorerLogger logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IProjectService projectService,

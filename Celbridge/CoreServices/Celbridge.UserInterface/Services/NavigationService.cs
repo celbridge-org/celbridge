@@ -1,18 +1,17 @@
-﻿using Celbridge.Logging;
 using Celbridge.Navigation;
 
 namespace Celbridge.UserInterface.Services;
 
 public class NavigationService : INavigationService
 {
-    private ILogger<NavigationService> _logger;
+    private readonly Logging.ILogger<NavigationService> _logger;
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
 
-    private Dictionary<string, Type> _pageTypes = new();
+    private readonly Dictionary<string, Type> _pageTypes = new();
 
-    public NavigationService(ILogger<NavigationService> logger)
+    public NavigationService(Logging.ILogger<NavigationService> logger)
     {
         _logger = logger;
     }

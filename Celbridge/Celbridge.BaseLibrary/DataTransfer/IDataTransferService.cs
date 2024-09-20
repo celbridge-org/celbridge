@@ -1,9 +1,9 @@
-﻿using Celbridge.Explorer;
+using Celbridge.Explorer;
 
 namespace Celbridge.DataTransfer;
 
 /// <summary>
-/// Services to support data transfer operations, such as cut, copy & paste and drag & drop.
+/// Services to support data transfer operations, such as cut, copy, paste + drag and drop.
 /// </summary>
 public interface IDataTransferService
 {
