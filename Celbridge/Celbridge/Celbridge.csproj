@@ -1,0 +1,52 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net8.0-maccatalyst;net8.0-windows10.0.22621;net8.0-desktop</TargetFrameworks>
+    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <ApplicationTitle>Celbridge</ApplicationTitle>
+    <ApplicationId>com.AnTulcha.Celbridge</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationPublisher>An Tulcha</ApplicationPublisher>
+    <Description>An open source visual programming IDE.</Description>
+
+    <UnoFeatures>
+      CSharpMarkup;
+      Lottie;
+      Hosting;
+      Toolkit;
+      Logging;
+      Mvvm;
+      Configuration;
+      Localization;
+      ThemeService;
+    </UnoFeatures>
+
+    <DefaultLanguage>en-US</DefaultLanguage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- To include content from a library project, you have to both copy it in the library project and link to it here in the executable project -->
+    <Content Include="..\Extensions\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- Excluding these files as they trigger localization warnings during the build process -->
+    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UnoImage Include="Assets\Images\title_icon.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
+    <ProjectReference Include="..\Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+  </ItemGroup>
+
+</Project>

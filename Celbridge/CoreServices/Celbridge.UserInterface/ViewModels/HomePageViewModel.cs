@@ -1,19 +1,18 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 using Celbridge.FilePicker;
-using Celbridge.Logging;
 using Celbridge.Navigation;
 
 namespace Celbridge.UserInterface.ViewModels;
 
 public partial class HomePageViewModel : ObservableObject
 {
-    private readonly ILogger<HomePageViewModel> _logger;
+    private readonly Logging.ILogger<HomePageViewModel> _logger;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
 
     public HomePageViewModel(
         INavigationService navigationService,
-        ILogger<HomePageViewModel> logger,
+        Logging.ILogger<HomePageViewModel> logger,
         IFilePickerService filePickerService,
         IDialogService dialogService)
     {

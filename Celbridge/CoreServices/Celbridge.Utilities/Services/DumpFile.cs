@@ -1,4 +1,8 @@
-﻿namespace Celbridge.Utilities.Services;
+using CommunityToolkit.Diagnostics;
+
+using Path = System.IO.Path;
+
+namespace Celbridge.Utilities.Services;
 
 public class DumpFile : IDumpFile
 {
@@ -9,6 +13,8 @@ public class DumpFile : IDumpFile
         try
         {
             var directory = Path.GetDirectoryName(dumpFilePath);
+            Guard.IsNotNull(directory);
+
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);

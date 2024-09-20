@@ -1,4 +1,4 @@
-﻿using Celbridge.Documents.ViewModels;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
 
@@ -21,7 +21,7 @@ public sealed partial class FileViewerDocumentView : DocumentView
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         _webView = new WebView2()
-            .Source(x => x.Bind(() => ViewModel.Source));
+            .Source(x => x.Binding(() => ViewModel.Source));
 
         // Fixes a visual bug where the WebView2 control would show a white background briefly when
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412

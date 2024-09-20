@@ -6,6 +6,9 @@ using System.Runtime.CompilerServices;
 
 namespace Celbridge.Commands.Services;
 
+using ICommandLogger = Logging.ILogger<CommandService>;
+using Path = System.IO.Path;
+
 public class CommandService : ICommandService
 {
     /// <summary>
@@ -13,7 +16,7 @@ public class CommandService : ICommandService
     /// </summary>
     private const double FlushPendingSaveInterval = 0.2; // seconds
 
-    private readonly ILogger<CommandService> _logger;
+    private readonly ICommandLogger _logger;
     private readonly ILogSerializer _logSerializer;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -32,7 +35,7 @@ public class CommandService : ICommandService
     private UndoStack _undoStack = new ();
 
     public CommandService(
-        ILogger<CommandService> logger,
+        ICommandLogger logger,
         ILogSerializer logSerializer,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)

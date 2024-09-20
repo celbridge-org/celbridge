@@ -1,11 +1,11 @@
 using Celbridge.Core;
-using Celbridge.Logging;
 using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Windows.Foundation.Collections;
-using Windows.Storage;
 
 namespace Celbridge.Settings.Services;
+
+using ISettingsLogger = Logging.ILogger<SettingsGroup>;
 
 /// <summary>
 /// Persists a set of key value properties using the Uno Platform Storage API.
@@ -14,11 +14,11 @@ namespace Celbridge.Settings.Services;
 /// </summary>
 public class SettingsGroup : ISettingsGroup
 {
-    private ILogger<SettingsGroup> _logger;
+    private ISettingsLogger _logger;
     private string? _groupName;
     private IPropertySet _propertySet;
 
-    public SettingsGroup(ILogger<SettingsGroup> logger)
+    public SettingsGroup(ISettingsLogger logger)
     {
         _logger = logger;
 
