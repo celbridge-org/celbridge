@@ -22,8 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CoreServices", "CoreService
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Logging", "CoreServices\Celbridge.Logging\Celbridge.Logging.csproj", "{393D6D74-A69E-4FAD-8F1F-F19CC86576B7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.BaseLibrary", "Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj", "{C8057D79-6741-4733-A5BA-56D24DC48B91}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Messaging", "CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj", "{A60A3D74-C197-4661-984A-506A4562043E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Telemetry", "CoreServices\Celbridge.Telemetry\Celbridge.Telemetry.csproj", "{6AEB8E8A-5BD7-42BD-9CC7-6804F04FFA76}"
@@ -62,6 +60,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Status", "Extensi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Workspace", "Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj", "{DEFEC18F-C27F-4A6A-8E28-816D5EC41372}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.BaseLibrary", "CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj", "{CA4203CF-D0E3-414C-8223-37F2CC98E741}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -84,10 +84,6 @@ Global
 		{393D6D74-A69E-4FAD-8F1F-F19CC86576B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{393D6D74-A69E-4FAD-8F1F-F19CC86576B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{393D6D74-A69E-4FAD-8F1F-F19CC86576B7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C8057D79-6741-4733-A5BA-56D24DC48B91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C8057D79-6741-4733-A5BA-56D24DC48B91}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C8057D79-6741-4733-A5BA-56D24DC48B91}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C8057D79-6741-4733-A5BA-56D24DC48B91}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A60A3D74-C197-4661-984A-506A4562043E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A60A3D74-C197-4661-984A-506A4562043E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A60A3D74-C197-4661-984A-506A4562043E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -156,6 +152,10 @@ Global
 		{DEFEC18F-C27F-4A6A-8E28-816D5EC41372}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEFEC18F-C27F-4A6A-8E28-816D5EC41372}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEFEC18F-C27F-4A6A-8E28-816D5EC41372}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA4203CF-D0E3-414C-8223-37F2CC98E741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA4203CF-D0E3-414C-8223-37F2CC98E741}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA4203CF-D0E3-414C-8223-37F2CC98E741}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA4203CF-D0E3-414C-8223-37F2CC98E741}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -181,6 +181,7 @@ Global
 		{9422D6F7-0BA3-4620-84BE-0C32D296FA36} = {CC17E582-A891-4395-8AC3-F7BD7033C028}
 		{65323329-E614-41D1-8B53-624C3113D6DE} = {CC17E582-A891-4395-8AC3-F7BD7033C028}
 		{DEFEC18F-C27F-4A6A-8E28-816D5EC41372} = {CC17E582-A891-4395-8AC3-F7BD7033C028}
+		{CA4203CF-D0E3-414C-8223-37F2CC98E741} = {CBDD78F8-9AF9-4805-8B33-6CDA18F7E94B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {695F2378-3B43-4460-9FB8-6D27C121D85D}
