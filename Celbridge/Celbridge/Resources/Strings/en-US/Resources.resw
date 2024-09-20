@@ -300,4 +300,10 @@
   <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
     <value>Copy resource key to clipboard</value>
   </data>
+  <data name="WorkspacePage_ShowPanelTooltip" xml:space="preserve">
+    <value>Show panel</value>
+  </data>
+  <data name="WorkspacePage_HidePanelTooltip" xml:space="preserve">
+    <value>Hide panel</value>
+  </data>
 </root>
