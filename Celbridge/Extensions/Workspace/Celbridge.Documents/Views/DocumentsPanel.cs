@@ -32,6 +32,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _tabView.SelectionChanged += TabView_SelectionChanged;
         _tabView.TabItemsChanged += TabView_TabItemsChanged;
 
+        // This prevents the TabView from showing an annoying "Ctrl+F4" tooltip whenever the
+        // mouse hovers over the tab view. This is a weird shortcut anyway because it only seems to work
+        // when the Tab header has focus, not the content in the tab.
+        ToolTipService.SetToolTip(_tabView, null);
+
         //
         // Set the data context and page content
         // 
