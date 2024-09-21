@@ -10,39 +10,22 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
     private IDocumentsLogger _logger;
 
-    private TabView _tabView;
-
     public DocumentsPanelViewModel ViewModel { get; }
 
     public DocumentsPanel()
     {
+        InitializeComponent();
+
         var serviceProvider = ServiceLocator.ServiceProvider;
 
         _logger = serviceProvider.GetRequiredService<IDocumentsLogger>();
 
         ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
 
-        // Create the tab view
-        _tabView = new TabView()
-            .IsAddTabButtonVisible(false)
-            .TabWidthMode(TabViewWidthMode.SizeToContent)
-            .VerticalAlignment(VerticalAlignment.Stretch);
-
-        _tabView.TabCloseRequested += TabView_CloseRequested;
-        _tabView.SelectionChanged += TabView_SelectionChanged;
-        _tabView.TabItemsChanged += TabView_TabItemsChanged;
-
-        // This prevents the TabView from showing an annoying "Ctrl+F4" tooltip whenever the
-        // mouse hovers over the tab view. This is a weird shortcut anyway because it only seems to work
-        // when the Tab header has focus, not the content in the tab.
-        ToolTipService.SetToolTip(_tabView, null);
-
         //
-        // Set the data context and page content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(_tabView));
+        // Set the data context
+        //
+        this.DataContext = ViewModel;
 
         UpdateTabstripEnds();
 
@@ -57,7 +40,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         ResourceKey documentResource = ResourceKey.Empty;
 
-        var documentTab = _tabView.SelectedItem as DocumentTab;
+        var documentTab = TabView.SelectedItem as DocumentTab;
         if (documentTab is not null)
         {
             documentResource = documentTab.ViewModel.FileResource;
@@ -70,6 +53,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         var documentResources = GetOpenDocuments();
         ViewModel.OnOpenDocumentsChanged(documentResources);
+
+        ToolTipService.SetToolTip(TabView, null);
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -113,21 +98,21 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (ViewModel.IsLeftPanelVisible)
         {
-            _tabView.TabStripHeader = null;
+            TabView.TabStripHeader = null;
         }
         else
         {
-            _tabView.TabStripHeader = new Grid()
+            TabView.TabStripHeader = new Grid()
                 .Width(96);
         }
 
         if (ViewModel.IsRightPanelVisible)
         {
-            _tabView.TabStripFooter = null;
+            TabView.TabStripFooter = null;
         }
         else
         {
-            _tabView.TabStripFooter = new Grid()
+            TabView.TabStripFooter = new Grid()
                 .Width(48);
         }
     }
@@ -135,7 +120,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public List<ResourceKey> GetOpenDocuments()
     {
         var openDocuments = new List<ResourceKey>();
-        foreach (var tabItem in _tabView.TabItems)
+        foreach (var tabItem in TabView.TabItems)
         {
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
@@ -152,7 +137,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath)
     {
         // Check if the file is already opened
-        foreach (var tabItem in _tabView.TabItems)
+        foreach (var tabItem in TabView.TabItems)
         {
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
@@ -160,7 +145,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             if (fileResource == tab.ViewModel.FileResource)
             {
                 //  Activate the existing tab instead of opening a new one
-                _tabView.SelectedItem = tab;
+                TabView.SelectedItem = tab;
                 return Result.Ok();
             }
         }
@@ -177,17 +162,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
         // must be populated at this point.
-        _tabView.TabItems.Add(documentTab);
+        TabView.TabItems.Add(documentTab);
 
         // Select the tab and make the content active
-        _tabView.SelectedItem = documentTab;
+        TabView.SelectedItem = documentTab;
 
-        int tabIndex = _tabView.TabItems.Count - 1;
+        int tabIndex = TabView.TabItems.Count - 1;
 
         var createResult = await ViewModel.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
         {
-            _tabView.TabItems.RemoveAt(tabIndex);
+            TabView.TabItems.RemoveAt(tabIndex);
 
             var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
             failure.MergeErrors(createResult);
@@ -200,15 +185,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.Content = documentView;
 
         // Select the tab and force the content to refresh
-        _tabView.SelectedItem = null;
-        _tabView.SelectedItem = documentTab;
+        TabView.SelectedItem = null;
+        TabView.SelectedItem = documentTab;
 
         return Result.Ok();
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
     {
-        foreach (var tabItem in _tabView.TabItems)
+        foreach (var tabItem in TabView.TabItems)
         {
             var documentTab = tabItem as DocumentTab;
             Guard.IsNotNull(documentTab);
@@ -227,7 +212,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
                 if (didClose)
                 {
-                    _tabView.TabItems.Remove(documentTab);
+                    TabView.TabItems.Remove(documentTab);
                 }
 
                 return Result.Ok();
@@ -243,7 +228,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         int pendingSaveCount = 0;
         List<ResourceKey> failedSaves = new();
 
-        foreach (var tabItem in _tabView.TabItems)
+        foreach (var tabItem in TabView.TabItems)
         {
             var documentTab = tabItem as DocumentTab;
             Guard.IsNotNull(documentTab);
@@ -293,14 +278,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public Result SelectDocument(ResourceKey fileResource)
     {
-        foreach (var tabItem in _tabView.TabItems)
+        foreach (var tabItem in TabView.TabItems)
         {
             var documentTab = tabItem as DocumentTab;
             Guard.IsNotNull(documentTab);
 
             if (fileResource == documentTab.ViewModel.FileResource)
             {
-                _tabView.SelectedItem = documentTab;
+                TabView.SelectedItem = documentTab;
                 return Result.Ok();
             }
         }
@@ -313,9 +298,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Find the document tab for the old resource
         DocumentTab? documentTab = null;
         int tabIndex = -1;
-        for (int i = 0; i < _tabView.TabItems.Count; i++)
+        for (int i = 0; i < TabView.TabItems.Count; i++)
         {
-            object? tabItem = _tabView.TabItems[i];
+            object? tabItem = TabView.TabItems[i];
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
 
@@ -367,13 +352,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // At this point there should be no remaining references to oldDocumentView, so it should go
             // out of scope and eventually be cleaned up by GC.
 
-            var selectedIndex = _tabView.SelectedIndex;
+            var selectedIndex = TabView.SelectedIndex;
             if (selectedIndex == tabIndex)
             {
                 // This document is the selected tab.
                 // Force a layout update to display its new contents.
-                _tabView.SelectedIndex = -1;
-                _tabView.SelectedIndex = selectedIndex;
+                TabView.SelectedIndex = -1;
+                TabView.SelectedIndex = selectedIndex;
             }
         }
 
