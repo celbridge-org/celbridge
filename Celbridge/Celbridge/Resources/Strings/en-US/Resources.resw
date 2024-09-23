@@ -303,7 +303,13 @@
   <data name="WorkspacePage_ShowPanelTooltip" xml:space="preserve">
     <value>Show panel</value>
   </data>
+  <data name="WorkspacePage_ShowAllPanelsTooltip" xml:space="preserve">
+    <value>Show all panels (F4)</value>
+  </data>
   <data name="WorkspacePage_HidePanelTooltip" xml:space="preserve">
     <value>Hide panel</value>
+  </data>
+  <data name="WorkspacePage_HideAllPanelsTooltip" xml:space="preserve">
+    <value>Hide all panels (F4)</value>
   </data>
 </root>
