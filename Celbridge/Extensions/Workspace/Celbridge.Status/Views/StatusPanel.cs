@@ -23,35 +23,50 @@ public partial class StatusPanel : UserControl, IStatusPanel
 
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-        var selectedDocumentButton = new Button()
+        var selectDocumentButton = new Button()
             .Grid(column: 1)
-            .Margin(4)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
+            .Content
+            (
+                 new TextBlock()
+                 .Text(x => x.Binding(() => ViewModel.SelectedDocument).Mode(BindingMode.OneWay))
+            );
+
+        var copyDocumentButton = new Button()
+            .Grid(column: 2)
+            .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
+            .Margin(4)
             .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility)
                               .Mode(BindingMode.OneWay))
             .Content
             (
-                new TextBlock()
-                    .Text(x => x.Binding(() => ViewModel.SelectedDocument)
-                                .Mode(BindingMode.OneWay))
+                new StackPanel()
+                .Orientation(Orientation.Horizontal)
+                .Children
+                (
+                    new SymbolIcon()
+                    .Symbol(Symbol.Copy)
+                )
             );
 
         var tooltipString = _stringLocalizer.GetString("StatusPanel_CopyResourceKey");
-        ToolTipService.SetToolTip(selectedDocumentButton, tooltipString);
+        ToolTipService.SetToolTip(copyDocumentButton, tooltipString);
 
         var saveIcon = new FontIcon()
-            .Grid(column: 2)
+            .Grid(column: 3)
             .HorizontalAlignment(HorizontalAlignment.Right)
             .Opacity(x => x.Binding(() => ViewModel.SaveIconOpacity))
             .FontFamily(fontFamily)
             .Glyph(SaveGlyph);
 
         var panelGrid = new Grid()
-            .ColumnDefinitions("48, Auto, Auto, *")
+            .ColumnDefinitions("48, Auto, Auto, Auto, *")
             .VerticalAlignment(VerticalAlignment.Center)
             .Children
             (
-                selectedDocumentButton,
+                selectDocumentButton,
+                copyDocumentButton,
                 saveIcon
             );
 
