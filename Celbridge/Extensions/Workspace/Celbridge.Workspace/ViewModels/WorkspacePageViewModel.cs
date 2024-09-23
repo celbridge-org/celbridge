@@ -8,7 +8,6 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
@@ -27,6 +26,9 @@ public partial class WorkspacePageViewModel : ObservableObject
     private IProgressDialogToken? _progressDialogToken;
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
+
+    [ObservableProperty]
+    private bool _allPanelsVisible;
 
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
@@ -51,12 +53,29 @@ public partial class WorkspacePageViewModel : ObservableObject
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
         _workspaceLoader = workspaceLoader;
+
+        UpdateAllPanelsVisible();
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
+
+        if (e.PropertyName == nameof(IsLeftPanelVisible) ||
+            e.PropertyName == nameof(IsRightPanelVisible) ||
+            e.PropertyName == nameof(IsBottomPanelVisible))
+        {
+            UpdateAllPanelsVisible();
+        }
+    }
+
+    private void UpdateAllPanelsVisible()
+    {
+        AllPanelsVisible =
+            _editorSettings.IsLeftPanelVisible && 
+            _editorSettings.IsRightPanelVisible && 
+            _editorSettings.IsBottomPanelVisible;
     }
 
     public float LeftPanelWidth
@@ -111,6 +130,15 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
+    }
+
+    public ICommand ToggleAllPanelsCommand => new RelayCommand(TogglAllPanels_Executed);
+    private void TogglAllPanels_Executed()
+    {
+        bool visible = !AllPanelsVisible;
+        _editorSettings.IsLeftPanelVisible = visible;
+        _editorSettings.IsRightPanelVisible = visible;
+        _editorSettings.IsBottomPanelVisible = visible;
     }
 
     public void OnWorkspacePageUnloaded()

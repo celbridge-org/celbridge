@@ -25,13 +25,13 @@ public partial class StatusPanel : UserControl, IStatusPanel
 
         var selectedDocumentButton = new Button()
             .Grid(column: 1)
+            .Margin(4)
             .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
             .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility)
                               .Mode(BindingMode.OneWay))
             .Content
             (
                 new TextBlock()
-                    .FontSize(12)
                     .Text(x => x.Binding(() => ViewModel.SelectedDocument)
                                 .Mode(BindingMode.OneWay))
             );
@@ -47,7 +47,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
             .Glyph(SaveGlyph);
 
         var panelGrid = new Grid()
-            .ColumnDefinitions("*, Auto, Auto, 48")
+            .ColumnDefinitions("48, Auto, Auto, *")
             .VerticalAlignment(VerticalAlignment.Center)
             .Children
             (

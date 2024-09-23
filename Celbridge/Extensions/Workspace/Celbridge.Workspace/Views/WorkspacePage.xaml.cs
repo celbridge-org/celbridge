@@ -47,6 +47,13 @@ public sealed partial class WorkspacePage : Page
         ToolTipService.SetPlacement(ShowBottomPanelButton, PlacementMode.Top);
         ToolTipService.SetToolTip(HideBottomPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
         ToolTipService.SetPlacement(HideBottomPanelButton, PlacementMode.Top);
+
+        // Show / Hide all buttons
+        ToolTipService.SetToolTip(ShowAllPanelsButton, _stringLocalizer["WorkspacePage_ShowAllPanelsTooltip"]);
+        ToolTipService.SetPlacement(ShowAllPanelsButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(HideAllPanelsButton, _stringLocalizer["WorkspacePage_HideAllPanelsTooltip"]);
+        ToolTipService.SetPlacement(HideAllPanelsButton, PlacementMode.Top);
+
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -74,6 +81,7 @@ public sealed partial class WorkspacePage : Page
         }
 
         UpdatePanels();
+        UpdateToggleAllPanelsButton();
 
         LeftPanel.SizeChanged += (s, e) => ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
         RightPanel.SizeChanged += (s, e) => ViewModel.RightPanelWidth = (float)e.NewSize.Width;
@@ -125,6 +133,9 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsRightPanelVisible):
             case nameof(ViewModel.IsBottomPanelVisible):
                 UpdatePanels();
+                break;
+            case nameof(ViewModel.AllPanelsVisible):
+                UpdateToggleAllPanelsButton();
                 break;
         }
     }
@@ -191,6 +202,20 @@ public sealed partial class WorkspacePage : Page
             BottomPanel.Visibility = Visibility.Collapsed;
             BottomPanelRow.MinHeight = 0;
             BottomPanelRow.Height = new GridLength(0);
+        }
+    }
+
+    private void UpdateToggleAllPanelsButton()
+    {
+        if (ViewModel.AllPanelsVisible)
+        {
+            ShowAllPanelsButton.Visibility = Visibility.Collapsed;
+            HideAllPanelsButton.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ShowAllPanelsButton.Visibility = Visibility.Visible;
+            HideAllPanelsButton.Visibility = Visibility.Collapsed;
         }
     }
 }
