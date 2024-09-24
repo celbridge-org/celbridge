@@ -64,8 +64,8 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         return _resourceTreeView.GetSelectedResource();
     }
 
-    public Result SelectResource(ResourceKey resource)
+    public async Task<Result> SelectResource(ResourceKey resource)
     {
-        return _resourceTreeView.SetSelectedResource(resource);
+        return await _resourceTreeView.SetSelectedResource(resource);
     }
 }

@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Commands;
@@ -19,7 +19,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = explorerService.SelectResource(Resource);
+        var selectResult = await explorerService.SelectResource(Resource);
         if (selectResult.IsFailure)
         {
             return selectResult;

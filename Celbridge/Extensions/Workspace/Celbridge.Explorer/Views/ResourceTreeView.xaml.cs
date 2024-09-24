@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer.ViewModels;
+using Celbridge.Explorer.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
@@ -88,7 +88,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         // Attempt to re-select the previously selected resource
         if (_resourceRegistry.GetResource(selectedResourceKey) != null)
         {
-            SetSelectedResource(selectedResourceKey);
+            await SetSelectedResource(selectedResourceKey);
         }
 
         return Result.Ok();
@@ -111,8 +111,10 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return selectedResourceKey;
     }
 
-    public Result SetSelectedResource(ResourceKey resource)
+    public async Task<Result> SetSelectedResource(ResourceKey resource)
     {
+        Guard.IsNotNull(_resourceRegistry);
+
         if (resource.IsEmpty)
         {
             // An empty resource key indicates that no resource should be selected
@@ -131,6 +133,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
 
         ResourcesTreeView.SelectedItem = node;
+
+        await Task.CompletedTask;
 
         return Result.Ok();
 

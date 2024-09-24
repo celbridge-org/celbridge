@@ -73,6 +73,21 @@ public partial class StatusPanelViewModel : ObservableObject
         }
     }
 
+    public IRelayCommand SelectDocumentResourceCommand => new RelayCommand(SelectDocumentResource_Executed);
+    private void SelectDocumentResource_Executed()
+    {
+        if (string.IsNullOrEmpty(SelectedDocument))
+        {
+            return;
+        }
+
+        // Select the selected document resource in the Explorer panel
+        _commandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = SelectedDocument;
+        });
+    }
+
     public IRelayCommand CopyDocumentResourceCommand => new RelayCommand(CopyDocumentResource_Executed);
     private void CopyDocumentResource_Executed()
     {
