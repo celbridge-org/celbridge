@@ -26,6 +26,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
         var selectDocumentButton = new Button()
             .Grid(column: 1)
             .VerticalAlignment(VerticalAlignment.Center)
+            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
             .Command(x => x.Binding(() => ViewModel.SelectDocumentResourceCommand))
             .Content
             (
@@ -37,8 +38,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
             .Grid(column: 2)
             .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
             .Margin(4)
-            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility)
-                              .Mode(BindingMode.OneWay))
+            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
             .Content
             (
                 new StackPanel()
