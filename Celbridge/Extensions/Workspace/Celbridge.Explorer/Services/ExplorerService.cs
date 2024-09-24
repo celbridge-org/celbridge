@@ -280,11 +280,11 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public Result SelectResource(ResourceKey resource)
+    public async Task<Result> SelectResource(ResourceKey resource)
     {
         Guard.IsNotNull(ExplorerPanel);
 
-        return ExplorerPanel.SelectResource(resource);
+        return await ExplorerPanel.SelectResource(resource);
     }
 
     public async Task StoreSelectedResource()
