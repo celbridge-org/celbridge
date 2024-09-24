@@ -7,6 +7,7 @@ using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Celbridge.Settings;
 
 namespace Celbridge.Explorer.Services;
 
@@ -19,6 +20,7 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IExplorerLogger _logger;
     private readonly IMessengerService _messengerService;
+    private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -48,6 +50,7 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         IExplorerLogger logger,
         IMessengerService messengerService,
+        IEditorSettings editorSettings,
         ICommandService commandService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
@@ -56,6 +59,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
+        _editorSettings = editorSettings;
         _commandService = commandService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
@@ -280,11 +284,24 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> SelectResource(ResourceKey resource)
+    public async Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel)
     {
         Guard.IsNotNull(ExplorerPanel);
 
-        return await ExplorerPanel.SelectResource(resource);
+        var selectResult = await ExplorerPanel.SelectResource(resource);
+        if (selectResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to select resource: {resource}");
+            failure.MergeErrors(selectResult);
+            return failure;
+        }
+
+        if (showExplorerPanel)
+        {
+            _editorSettings.IsLeftPanelVisible = true;
+        }
+
+        return Result.Ok();
     }
 
     public async Task StoreSelectedResource()
