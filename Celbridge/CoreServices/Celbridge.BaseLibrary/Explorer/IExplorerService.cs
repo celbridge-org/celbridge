@@ -50,7 +50,7 @@ public interface IExplorerService
     /// <summary>
     /// Select a resource in the explorer panel.
     /// </summary>
-    Task<Result> SelectResource(ResourceKey resource);
+    Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel);
 
     /// <summary>
     /// Stores the selected resource in persistent storage.

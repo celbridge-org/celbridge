@@ -9,6 +9,8 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
     public ResourceKey Resource { get; set; }
 
+    public bool ShowExplorerPanel { get; set; } = true;
+
     public SelectResourceCommand(
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -19,7 +21,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = await explorerService.SelectResource(Resource);
+        var selectResult = await explorerService.SelectResource(Resource, ShowExplorerPanel);
         if (selectResult.IsFailure)
         {
             return selectResult;
@@ -32,12 +34,18 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     //
     // Static methods for scripting support.
     //
-    public static void SelectResource(ResourceKey Resource)
+    public static void SelectResource(ResourceKey resource, bool showExplorerPanel)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ISelectResourceCommand>(command =>
         {
-            command.Resource = Resource;
+            command.Resource = resource;
+            command.ShowExplorerPanel = showExplorerPanel;
         });
+    }
+
+    public static void SelectResource(ResourceKey resource)
+    {
+        SelectResource(resource, true);
     }
 }
