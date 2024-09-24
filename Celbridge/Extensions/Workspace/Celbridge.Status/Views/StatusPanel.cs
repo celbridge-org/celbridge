@@ -26,7 +26,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
         var selectDocumentButton = new Button()
             .Grid(column: 1)
             .VerticalAlignment(VerticalAlignment.Center)
-            .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
+            .Command(x => x.Binding(() => ViewModel.SelectDocumentResourceCommand))
             .Content
             (
                  new TextBlock()
