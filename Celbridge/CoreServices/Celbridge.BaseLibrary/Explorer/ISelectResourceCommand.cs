@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 
 namespace Celbridge.Explorer;
 
@@ -11,4 +11,9 @@ public interface ISelectResourceCommand : IExecutableCommand
     /// The resource to select.
     /// </summary>
     ResourceKey Resource { get; set; }
+
+    /// <summary>
+    /// Show the explorer panel if it is hidden.
+    /// </summary>
+    bool ShowExplorerPanel { get; set; }
 }
