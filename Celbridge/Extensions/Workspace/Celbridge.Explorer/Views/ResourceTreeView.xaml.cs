@@ -122,6 +122,15 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             return Result.Ok();
         }
 
+        // Check if the requested resource exists in the registry
+        var getResult = _resourceRegistry.GetResource(resource);
+        if (getResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to get resource: {resource}");
+            failure.MergeErrors(getResult);
+            return failure;
+        }
+
         var segments = resource.ToString().Split('/');
         Guard.IsTrue(segments.Length >= 1);
 
@@ -155,10 +164,12 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
                     }
 
                     if (resource is IFolderResource &&
-                        node.HasChildren &&
-                        !node.HasUnrealizedChildren)
+                        node.HasChildren)
                     {
-                        // Matched part of the part, now check the next segment
+                        // Force the node to expand so it's children are realized
+                        node.IsExpanded = true;
+
+                        // We've matched this segment with a folder, now check the next segment
                         return FindNode(segmentIndex + 1, node.Children);
                     }
                 }
