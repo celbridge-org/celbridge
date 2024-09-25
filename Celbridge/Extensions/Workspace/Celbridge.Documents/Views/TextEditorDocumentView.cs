@@ -1,4 +1,4 @@
-﻿using Celbridge.Documents.Services;
+using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
@@ -136,6 +136,10 @@ public sealed partial class TextEditorDocumentView : DocumentView
         {
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
+        }
+        if (message == "toggle_focus_mode")
+        {
+            ViewModel.ToggleFocusMode();
         }
     }
 
