@@ -34,7 +34,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
                  .Text(x => x.Binding(() => ViewModel.SelectedDocument).Mode(BindingMode.OneWay))
             );
 
-        // Set tooltip for select document button
+        // Set tooltip for select resource button
         var tooltip = _stringLocalizer.GetString("StatusPanel_SelectResourceTooltip");
         ToolTipService.SetToolTip(selectDocumentButton, tooltip);
         ToolTipService.SetPlacement(selectDocumentButton, PlacementMode.Top);
