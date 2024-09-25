@@ -113,15 +113,36 @@
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0,1,0,0">
 
-      <Button x:Name="ShowBottomPanelButton"
-              Command="{x:Bind ViewModel.ToggleBottomPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
+      <Button x:Name="ExitFocusModeButton"
+              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
+              HorizontalAlignment="Left"
               Margin="4">
+        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                  Glyph="&#xE92C;" />
+        <Button.KeyboardAccelerators>
+          <KeyboardAccelerator Key="F4"/>
+        </Button.KeyboardAccelerators>
+      </Button>
+
+      <Button x:Name="EnterFocusModeButton"
+              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
+              HorizontalAlignment="Left"
+              Margin="4">
+        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                  Glyph="&#xE92D;" />
+        <Button.KeyboardAccelerators>
+          <KeyboardAccelerator Key="F4"/>
+        </Button.KeyboardAccelerators>
+      </Button>
+
+      <Button x:Name="ShowBottomPanelButton"
+            Command="{x:Bind ViewModel.ToggleBottomPanelCommand}"             
+            HorizontalAlignment="Right"
+            Margin="4">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE70E;"/>
       </Button>
-
+     
     </Grid>
 
     <!-- Grid splitters -->

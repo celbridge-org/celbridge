@@ -1,10 +1,12 @@
-﻿using Celbridge.Workspace;
+using Celbridge.Commands;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
 public partial class TextEditorDocumentViewModel : DocumentViewModel
 {
+    private readonly ICommandService _commandService;
     private readonly IDocumentsService _documentsService;
 
     // Delay before saving the document after the most recent change
@@ -13,8 +15,11 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    public TextEditorDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public TextEditorDocumentViewModel(
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _commandService = commandService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
@@ -79,5 +84,10 @@ public partial class TextEditorDocumentViewModel : DocumentViewModel
     {
         HasUnsavedChanges = true;
         SaveTimer = SaveDelay;
+    }
+
+    public void ToggleFocusMode()
+    {
+        _commandService.Execute<IToggleFocusModeCommand>();
     }
 }

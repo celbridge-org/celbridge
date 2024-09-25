@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Explorer;
+namespace Celbridge.Explorer;
 
 /// <summary>
 /// Interface for interacting with the Explorer Panel view.
@@ -13,6 +13,7 @@ public interface IExplorerPanel
 
     /// <summary>
     /// Select a resource in the explorer panel.
+    /// Automatically expands the folders containing the resource.
     /// </summary>
-    Result SelectResource(ResourceKey resource);
+    Task<Result> SelectResource(ResourceKey resource);
 }

@@ -1,4 +1,4 @@
-﻿using Celbridge.DataTransfer;
+using Celbridge.DataTransfer;
 using Celbridge.Extensions;
 using Celbridge.Navigation;
 using Celbridge.Workspace.Commands;
@@ -31,6 +31,7 @@ public class Extension : IExtension
         config.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
+        config.AddTransient<IToggleFocusModeCommand, ToggleFocusModeCommand>();
 
         //
         // Register workspace sub-projects

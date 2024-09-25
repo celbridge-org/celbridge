@@ -1,6 +1,7 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,6 +34,7 @@ public partial class StatusPanelViewModel : ObservableObject
     {
         _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChanged);
     }
 
     public void OnUnloaded()
@@ -60,6 +62,30 @@ public partial class StatusPanelViewModel : ObservableObject
         SelectedDocument = resource.ToString();
 
         SelectedDocumentVisibility = string.IsNullOrEmpty(SelectedDocument) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnResourceKeyChanged(object recipient, ResourceKeyChangedMessage message)
+    {
+        if (SelectedDocument == message.SourceResource)
+        {
+            // Update the button text to match the new name of the resource
+            SelectedDocument = message.DestResource;
+        }
+    }
+
+    public IRelayCommand SelectDocumentResourceCommand => new RelayCommand(SelectDocumentResource_Executed);
+    private void SelectDocumentResource_Executed()
+    {
+        if (string.IsNullOrEmpty(SelectedDocument))
+        {
+            return;
+        }
+
+        // Select the selected document resource in the Explorer panel
+        _commandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = SelectedDocument;
+        });
     }
 
     public IRelayCommand CopyDocumentResourceCommand => new RelayCommand(CopyDocumentResource_Executed);
