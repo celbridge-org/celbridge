@@ -126,7 +126,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         var getResult = _resourceRegistry.GetResource(resource);
         if (getResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to get resource: {resource}");
+            var failure = Result.Fail($"Failed to get resource from resource registry: {resource}");
             failure.MergeErrors(getResult);
             return failure;
         }

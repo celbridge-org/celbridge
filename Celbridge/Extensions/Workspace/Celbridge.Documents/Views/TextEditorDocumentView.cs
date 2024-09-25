@@ -137,7 +137,7 @@ public sealed partial class TextEditorDocumentView : DocumentView
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
         }
-        if (message == "toggle_focus_mode")
+        else if (message == "toggle_focus_mode")
         {
             ViewModel.ToggleFocusMode();
         }
