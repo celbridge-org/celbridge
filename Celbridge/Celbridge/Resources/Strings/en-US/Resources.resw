@@ -312,4 +312,7 @@
   <data name="WorkspacePage_EnterFocusModeTooltip" xml:space="preserve">
     <value>Enter focus mode (F4)</value>
   </data>
+  <data name="StatusPanel_SelectResourceTooltip" xml:space="preserve">
+    <value>Select resource in explorer panel</value>
+  </data>
 </root>
