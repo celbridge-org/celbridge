@@ -9,6 +9,7 @@ public class ToggleFocusModeCommand : CommandBase, IToggleFocusModeCommand
 
     public ToggleFocusModeCommand(IEditorSettings editorSettings)
     {
+        _editorSettings = editorSettings;
     }
 
     public override async Task<Result> ExecuteAsync()
