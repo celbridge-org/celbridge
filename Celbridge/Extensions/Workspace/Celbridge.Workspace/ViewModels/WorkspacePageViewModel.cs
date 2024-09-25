@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.Settings;
@@ -8,7 +9,6 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Windows.Input;
 
 namespace Celbridge.Workspace.ViewModels;
 
@@ -19,6 +19,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
@@ -28,11 +29,15 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
+    [ObservableProperty]
+    private bool _isFocusModeActive;
+
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
+        ICommandService commandService,
         IEditorSettings editorSettings,
         IDialogService dialogService,
         WorkspaceLoader workspaceLoader)
@@ -40,6 +45,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _logger = logger;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
+        _commandService = commandService;
         _editorSettings = editorSettings;
         _dialogService = dialogService;
         _workspaceLoader = workspaceLoader;
@@ -51,12 +57,27 @@ public partial class WorkspacePageViewModel : ObservableObject
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
         _workspaceLoader = workspaceLoader;
+
+        UpdateIsFocusModeActive();
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
+
+        if (e.PropertyName == nameof(IsLeftPanelVisible) ||
+            e.PropertyName == nameof(IsRightPanelVisible))
+        {
+            UpdateIsFocusModeActive();
+        }
+    }
+
+    private void UpdateIsFocusModeActive()
+    {
+        IsFocusModeActive =
+            !_editorSettings.IsLeftPanelVisible &&
+            !_editorSettings.IsRightPanelVisible;
     }
 
     public float LeftPanelWidth
@@ -111,6 +132,12 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void ToggleBottomPanel_Executed()
     {
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
+    }
+
+    public ICommand ToggleFocusModeCommand => new RelayCommand(ToggleFocusMode_Executed);
+    private void ToggleFocusMode_Executed()
+    {
+        _commandService.Execute<IToggleFocusModeCommand>();
     }
 
     public void OnWorkspacePageUnloaded()

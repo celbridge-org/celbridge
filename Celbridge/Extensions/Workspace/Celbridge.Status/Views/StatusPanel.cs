@@ -23,35 +23,55 @@ public partial class StatusPanel : UserControl, IStatusPanel
 
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-        var selectedDocumentButton = new Button()
+        var selectDocumentButton = new Button()
             .Grid(column: 1)
-            .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
-            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility)
-                              .Mode(BindingMode.OneWay))
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
+            .Command(x => x.Binding(() => ViewModel.SelectDocumentResourceCommand))
             .Content
             (
-                new TextBlock()
-                    .FontSize(12)
-                    .Text(x => x.Binding(() => ViewModel.SelectedDocument)
-                                .Mode(BindingMode.OneWay))
+                 new TextBlock()
+                 .Text(x => x.Binding(() => ViewModel.SelectedDocument).Mode(BindingMode.OneWay))
+            );
+
+        // Set tooltip for select resource button
+        var tooltip = _stringLocalizer.GetString("StatusPanel_SelectResourceTooltip");
+        ToolTipService.SetToolTip(selectDocumentButton, tooltip);
+        ToolTipService.SetPlacement(selectDocumentButton, PlacementMode.Top);
+
+        var copyDocumentButton = new Button()
+            .Grid(column: 2)
+            .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
+            .Margin(4)
+            .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
+            .Content
+            (
+                new StackPanel()
+                .Orientation(Orientation.Horizontal)
+                .Children
+                (
+                    new SymbolIcon()
+                    .Symbol(Symbol.Copy)
+                )
             );
 
         var tooltipString = _stringLocalizer.GetString("StatusPanel_CopyResourceKey");
-        ToolTipService.SetToolTip(selectedDocumentButton, tooltipString);
+        ToolTipService.SetToolTip(copyDocumentButton, tooltipString);
 
         var saveIcon = new FontIcon()
-            .Grid(column: 2)
+            .Grid(column: 3)
             .HorizontalAlignment(HorizontalAlignment.Right)
             .Opacity(x => x.Binding(() => ViewModel.SaveIconOpacity))
             .FontFamily(fontFamily)
             .Glyph(SaveGlyph);
 
         var panelGrid = new Grid()
-            .ColumnDefinitions("*, Auto, Auto, 48")
+            .ColumnDefinitions("48, Auto, Auto, Auto, *")
             .VerticalAlignment(VerticalAlignment.Center)
             .Children
             (
-                selectedDocumentButton,
+                selectDocumentButton,
+                copyDocumentButton,
                 saveIcon
             );
 

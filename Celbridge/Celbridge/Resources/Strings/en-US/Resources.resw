@@ -303,7 +303,16 @@
   <data name="WorkspacePage_ShowPanelTooltip" xml:space="preserve">
     <value>Show panel</value>
   </data>
+  <data name="WorkspacePage_ExitFocusModeTooltip" xml:space="preserve">
+    <value>Exit focus mode (F4)</value>
+  </data>
   <data name="WorkspacePage_HidePanelTooltip" xml:space="preserve">
     <value>Hide panel</value>
+  </data>
+  <data name="WorkspacePage_EnterFocusModeTooltip" xml:space="preserve">
+    <value>Enter focus mode (F4)</value>
+  </data>
+  <data name="StatusPanel_SelectResourceTooltip" xml:space="preserve">
+    <value>Select resource in explorer panel</value>
   </data>
 </root>

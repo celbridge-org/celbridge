@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Windows.ApplicationModel.DataTransfer;
@@ -8,8 +8,6 @@ namespace Celbridge.Workspace.Commands;
 
 public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipboardCommand
 {
-    public override string UndoStackName => UndoStackNames.None;
-
     public ResourceKey SourceResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
   

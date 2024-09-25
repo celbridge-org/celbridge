@@ -120,6 +120,14 @@
             });
         }
 
+        // Listen for focus mode key press
+        window.addEventListener('keydown', function (event) {
+            if (event.key === 'F4') {
+                event.preventDefault(); // Prevent Monaco from handling F4
+                window.chrome.webview.postMessage('toggle_focus_mode');
+            }
+        });
+
         initMonacoEditor();
         listenForWebViewMessages();
         postWebViewMessage("editor_ready"); // Tell Uno that the editor is initialized

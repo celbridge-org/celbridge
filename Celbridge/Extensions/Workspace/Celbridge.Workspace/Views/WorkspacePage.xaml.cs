@@ -47,6 +47,13 @@ public sealed partial class WorkspacePage : Page
         ToolTipService.SetPlacement(ShowBottomPanelButton, PlacementMode.Top);
         ToolTipService.SetToolTip(HideBottomPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
         ToolTipService.SetPlacement(HideBottomPanelButton, PlacementMode.Top);
+
+        // Focus mode
+        ToolTipService.SetToolTip(EnterFocusModeButton, _stringLocalizer["WorkspacePage_EnterFocusModeTooltip"]);
+        ToolTipService.SetPlacement(EnterFocusModeButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(ExitFocusModeButton, _stringLocalizer["WorkspacePage_ExitFocusModeTooltip"]);
+        ToolTipService.SetPlacement(ExitFocusModeButton, PlacementMode.Top);
+
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -74,6 +81,7 @@ public sealed partial class WorkspacePage : Page
         }
 
         UpdatePanels();
+        UpdateFocusModeButton();
 
         LeftPanel.SizeChanged += (s, e) => ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
         RightPanel.SizeChanged += (s, e) => ViewModel.RightPanelWidth = (float)e.NewSize.Width;
@@ -125,6 +133,9 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsRightPanelVisible):
             case nameof(ViewModel.IsBottomPanelVisible):
                 UpdatePanels();
+                break;
+            case nameof(ViewModel.IsFocusModeActive):
+                UpdateFocusModeButton();
                 break;
         }
     }
@@ -191,6 +202,22 @@ public sealed partial class WorkspacePage : Page
             BottomPanel.Visibility = Visibility.Collapsed;
             BottomPanelRow.MinHeight = 0;
             BottomPanelRow.Height = new GridLength(0);
+        }
+    }
+
+    private void UpdateFocusModeButton()
+    {
+        if (ViewModel.IsFocusModeActive)
+        {
+            // Show the exit focus mode button
+            EnterFocusModeButton.Visibility = Visibility.Collapsed;
+            ExitFocusModeButton.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            // Show the enter focus mode button
+            EnterFocusModeButton.Visibility = Visibility.Visible;
+            ExitFocusModeButton.Visibility = Visibility.Collapsed;
         }
     }
 }
