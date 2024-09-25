@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer.ViewModels;
+using Celbridge.Explorer.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
@@ -88,7 +88,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         // Attempt to re-select the previously selected resource
         if (_resourceRegistry.GetResource(selectedResourceKey) != null)
         {
-            SetSelectedResource(selectedResourceKey);
+            await SetSelectedResource(selectedResourceKey);
         }
 
         return Result.Ok();
@@ -111,13 +111,24 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return selectedResourceKey;
     }
 
-    public Result SetSelectedResource(ResourceKey resource)
+    public async Task<Result> SetSelectedResource(ResourceKey resource)
     {
+        Guard.IsNotNull(_resourceRegistry);
+
         if (resource.IsEmpty)
         {
             // An empty resource key indicates that no resource should be selected
             ResourcesTreeView.SelectedItem = null;
             return Result.Ok();
+        }
+
+        // Check if the requested resource exists in the registry
+        var getResult = _resourceRegistry.GetResource(resource);
+        if (getResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to get resource from resource registry: {resource}");
+            failure.MergeErrors(getResult);
+            return failure;
         }
 
         var segments = resource.ToString().Split('/');
@@ -131,6 +142,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
 
         ResourcesTreeView.SelectedItem = node;
+
+        await Task.CompletedTask;
 
         return Result.Ok();
 
@@ -151,10 +164,12 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
                     }
 
                     if (resource is IFolderResource &&
-                        node.HasChildren &&
-                        !node.HasUnrealizedChildren)
+                        node.HasChildren)
                     {
-                        // Matched part of the part, now check the next segment
+                        // Force the node to expand so it's children are realized
+                        node.IsExpanded = true;
+
+                        // We've matched this segment with a folder, now check the next segment
                         return FindNode(segmentIndex + 1, node.Children);
                     }
                 }
