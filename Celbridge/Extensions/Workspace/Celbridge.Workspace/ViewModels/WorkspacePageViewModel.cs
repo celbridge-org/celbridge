@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.Settings;
@@ -18,6 +19,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
@@ -28,13 +30,14 @@ public partial class WorkspacePageViewModel : ObservableObject
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
     [ObservableProperty]
-    private bool _allPanelsVisible;
+    private bool _isFocusModeActive;
 
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
+        ICommandService commandService,
         IEditorSettings editorSettings,
         IDialogService dialogService,
         WorkspaceLoader workspaceLoader)
@@ -42,6 +45,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _logger = logger;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
+        _commandService = commandService;
         _editorSettings = editorSettings;
         _dialogService = dialogService;
         _workspaceLoader = workspaceLoader;
@@ -54,7 +58,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(message);
         _workspaceLoader = workspaceLoader;
 
-        UpdateAllPanelsVisible();
+        UpdateIsFocusModeActive();
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -63,19 +67,17 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(e);
 
         if (e.PropertyName == nameof(IsLeftPanelVisible) ||
-            e.PropertyName == nameof(IsRightPanelVisible) ||
-            e.PropertyName == nameof(IsBottomPanelVisible))
+            e.PropertyName == nameof(IsRightPanelVisible))
         {
-            UpdateAllPanelsVisible();
+            UpdateIsFocusModeActive();
         }
     }
 
-    private void UpdateAllPanelsVisible()
+    private void UpdateIsFocusModeActive()
     {
-        AllPanelsVisible =
-            _editorSettings.IsLeftPanelVisible && 
-            _editorSettings.IsRightPanelVisible && 
-            _editorSettings.IsBottomPanelVisible;
+        IsFocusModeActive =
+            !_editorSettings.IsLeftPanelVisible &&
+            !_editorSettings.IsRightPanelVisible;
     }
 
     public float LeftPanelWidth
@@ -132,13 +134,10 @@ public partial class WorkspacePageViewModel : ObservableObject
         _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
     }
 
-    public ICommand ToggleAllPanelsCommand => new RelayCommand(TogglAllPanels_Executed);
-    private void TogglAllPanels_Executed()
+    public ICommand ToggleFocusModeCommand => new RelayCommand(ToggleFocusMode_Executed);
+    private void ToggleFocusMode_Executed()
     {
-        bool visible = !AllPanelsVisible;
-        _editorSettings.IsLeftPanelVisible = visible;
-        _editorSettings.IsRightPanelVisible = visible;
-        _editorSettings.IsBottomPanelVisible = visible;
+        _commandService.Execute<IToggleFocusModeCommand>();
     }
 
     public void OnWorkspacePageUnloaded()
