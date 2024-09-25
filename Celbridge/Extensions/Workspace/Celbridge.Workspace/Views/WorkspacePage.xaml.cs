@@ -48,11 +48,11 @@ public sealed partial class WorkspacePage : Page
         ToolTipService.SetToolTip(HideBottomPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
         ToolTipService.SetPlacement(HideBottomPanelButton, PlacementMode.Top);
 
-        // Show / Hide all buttons
-        ToolTipService.SetToolTip(ShowAllPanelsButton, _stringLocalizer["WorkspacePage_ShowAllPanelsTooltip"]);
-        ToolTipService.SetPlacement(ShowAllPanelsButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(HideAllPanelsButton, _stringLocalizer["WorkspacePage_HideAllPanelsTooltip"]);
-        ToolTipService.SetPlacement(HideAllPanelsButton, PlacementMode.Top);
+        // Focus mode
+        ToolTipService.SetToolTip(EnterFocusModeButton, _stringLocalizer["WorkspacePage_EnterFocusModeTooltip"]);
+        ToolTipService.SetPlacement(EnterFocusModeButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(ExitFocusModeButton, _stringLocalizer["WorkspacePage_ExitFocusModeTooltip"]);
+        ToolTipService.SetPlacement(ExitFocusModeButton, PlacementMode.Top);
 
     }
 
@@ -81,7 +81,7 @@ public sealed partial class WorkspacePage : Page
         }
 
         UpdatePanels();
-        UpdateToggleAllPanelsButton();
+        UpdateFocusModeButton();
 
         LeftPanel.SizeChanged += (s, e) => ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
         RightPanel.SizeChanged += (s, e) => ViewModel.RightPanelWidth = (float)e.NewSize.Width;
@@ -134,8 +134,8 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsBottomPanelVisible):
                 UpdatePanels();
                 break;
-            case nameof(ViewModel.AllPanelsVisible):
-                UpdateToggleAllPanelsButton();
+            case nameof(ViewModel.IsFocusModeActive):
+                UpdateFocusModeButton();
                 break;
         }
     }
@@ -205,17 +205,19 @@ public sealed partial class WorkspacePage : Page
         }
     }
 
-    private void UpdateToggleAllPanelsButton()
+    private void UpdateFocusModeButton()
     {
-        if (ViewModel.AllPanelsVisible)
+        if (ViewModel.IsFocusModeActive)
         {
-            ShowAllPanelsButton.Visibility = Visibility.Collapsed;
-            HideAllPanelsButton.Visibility = Visibility.Visible;
+            // Show the exit focus mode button
+            EnterFocusModeButton.Visibility = Visibility.Collapsed;
+            ExitFocusModeButton.Visibility = Visibility.Visible;
         }
         else
         {
-            ShowAllPanelsButton.Visibility = Visibility.Visible;
-            HideAllPanelsButton.Visibility = Visibility.Collapsed;
+            // Show the enter focus mode button
+            EnterFocusModeButton.Visibility = Visibility.Visible;
+            ExitFocusModeButton.Visibility = Visibility.Collapsed;
         }
     }
 }
