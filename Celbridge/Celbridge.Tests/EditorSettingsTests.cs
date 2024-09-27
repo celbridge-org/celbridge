@@ -33,14 +33,14 @@ public class EditorSettingsTests
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Check the default value system is working
-        editorSettings.IsLeftPanelVisible.Should().BeTrue();
+        editorSettings.IsExplorerPanelVisible.Should().BeTrue();
 
         // Set a property
-        editorSettings.IsLeftPanelVisible = false;
-        editorSettings.IsLeftPanelVisible.Should().BeFalse();
+        editorSettings.IsExplorerPanelVisible = false;
+        editorSettings.IsExplorerPanelVisible.Should().BeFalse();
 
         // Reset the property to default
         editorSettings.Reset();
-        editorSettings.IsLeftPanelVisible.Should().BeTrue();
+        editorSettings.IsExplorerPanelVisible.Should().BeTrue();
     }
 }

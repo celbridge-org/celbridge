@@ -297,7 +297,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
         if (showExplorerPanel)
         {
-            _editorSettings.IsLeftPanelVisible = true;
+            _editorSettings.IsExplorerPanelVisible = true;
         }
 
         return Result.Ok();
