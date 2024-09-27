@@ -33,14 +33,14 @@
               Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,3,4,0">
+              Margin="0,3,2,0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76B;"/>
       </Button>
       
     </Grid>
 
-    <!-- Center Panel -->
+    <!-- Documents Panel -->
     <Grid x:Name="DocumentsPanel"
           Grid.Column="1"
           Background="{ThemeResource ApplicationBackgroundBrush}">
@@ -78,7 +78,7 @@
               Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,3,4,0">
+              Margin="0,3,2,0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76C;"/>
       </Button>
@@ -110,8 +110,7 @@
                 Grid.Column="2"
                 Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
                 HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Margin="0 4 4 0">
+                VerticalAlignment="Center">
           <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE70D;"/>
         </Button>
@@ -130,7 +129,7 @@
       <Button x:Name="ExitFocusModeButton"
               Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
               HorizontalAlignment="Left"
-              Margin="4">
+              Margin="2">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE92C;" />
         <Button.KeyboardAccelerators>
@@ -141,7 +140,7 @@
       <Button x:Name="EnterFocusModeButton"
               Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
               HorizontalAlignment="Left"
-              Margin="4">
+              Margin="2">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE92D;" />
         <Button.KeyboardAccelerators>
@@ -152,7 +151,8 @@
       <Button x:Name="ShowToolsPanelButton"
             Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"             
             HorizontalAlignment="Right"
-            Margin="4">
+            VerticalAlignment="Center"
+            Margin="0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE70E;"/>
       </Button>
@@ -182,6 +182,8 @@
                            Grid.Row="1"
                            Grid.RowSpan="1"
                            VerticalAlignment="Top"
+                           Height="4"
+                           Margin="0"
                            ResizeDirection="Auto"
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
