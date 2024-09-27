@@ -13,8 +13,20 @@ public class Extension : IExtension
     public void ConfigureServices(IExtensionServiceCollection config)
     {
         //
+        // Register workspace sub-projects
+        //
+
+        Console.ServiceConfiguration.ConfigureServices(config);
+        Documents.ServiceConfiguration.ConfigureServices(config);
+        Explorer.ServiceConfiguration.ConfigureServices(config);
+        Inspector.ServiceConfiguration.ConfigureServices(config);
+        Scripting.ServiceConfiguration.ConfigureServices(config);
+        Status.ServiceConfiguration.ConfigureServices(config);
+
+        //
         // Register services
         //
+
         config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
         config.AddTransient<IDataTransferService, DataTransferService>();
@@ -23,25 +35,17 @@ public class Extension : IExtension
         //
         // Register view models
         //
+
         config.AddTransient<WorkspacePageViewModel>();
 
         //
         // Register commands
         //
+
         config.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         config.AddTransient<IToggleFocusModeCommand, ToggleFocusModeCommand>();
-
-        //
-        // Register workspace sub-projects
-        //
-        Console.ServiceConfiguration.ConfigureServices(config);
-        Documents.ServiceConfiguration.ConfigureServices(config);
-        Explorer.ServiceConfiguration.ConfigureServices(config);
-        Inspector.ServiceConfiguration.ConfigureServices(config);
-        Scripting.ServiceConfiguration.ConfigureServices(config);
-        Status.ServiceConfiguration.ConfigureServices(config);
     }
 
     public Result Initialize()

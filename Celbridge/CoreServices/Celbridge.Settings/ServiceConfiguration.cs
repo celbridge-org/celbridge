@@ -1,4 +1,4 @@
-﻿using Celbridge.Settings.Services;
+using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Settings;
@@ -10,6 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+
         services.AddSingleton<IEditorSettings, EditorSettings>();
 
         if (IsStorageAPIAvailable)
