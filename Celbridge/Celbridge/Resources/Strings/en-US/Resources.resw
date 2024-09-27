@@ -315,4 +315,7 @@
   <data name="StatusPanel_SelectResourceTooltip" xml:space="preserve">
     <value>Select resource in explorer panel</value>
   </data>
+  <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
+    <value>Console</value>
+  </data>
 </root>
