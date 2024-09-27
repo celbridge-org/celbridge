@@ -13,6 +13,8 @@ public sealed partial class WorkspacePage : Page
 
     public WorkspacePageViewModel ViewModel { get; }
 
+    private LocalizedString ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
+
     public WorkspacePage()
     {
         InitializeComponent();
@@ -117,7 +119,7 @@ public sealed partial class WorkspacePage : Page
         InspectorPanel.Children.Add(inspectorPanel);
 
         var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-        ToolsPanel.Children.Insert(0, consolePanel);
+        // ToolsPanel.Children.Insert(0, consolePanel);
 
         var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
         StatusPanel.Children.Add(statusPanel);
