@@ -1,4 +1,3 @@
-﻿
 namespace Celbridge.Console;
 
 /// <summary>
@@ -18,9 +17,9 @@ public enum MessageType
 public interface IConsoleService
 {
     /// <summary>
-    /// Factory method to create the console panel for the Workspace UI.
+    /// Returns the console panel view.
     /// </summary>
-    object CreateConsolePanel();
+    IConsolePanel ConsolePanel { get; }
 
     /// <summary>
     /// Factory method to create a CommandHistory instance.

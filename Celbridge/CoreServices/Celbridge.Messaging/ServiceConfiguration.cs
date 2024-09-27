@@ -1,4 +1,4 @@
-﻿using Celbridge.Messaging.Services;
+using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Messaging;
@@ -10,6 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+
         services.AddSingleton<IMessengerService, MessengerService>();
     }
 }

@@ -24,7 +24,8 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public IExplorerPanel? ExplorerPanel { get; private set; }
+    private IExplorerPanel? _explorerPanel;
+    public IExplorerPanel ExplorerPanel => _explorerPanel!;
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
@@ -77,8 +78,14 @@ public class ExplorerService : IExplorerService, IDisposable
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
         ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
 
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+    }
+
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
+    {
+        _explorerPanel = _serviceProvider.GetRequiredService<IExplorerPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -96,12 +103,6 @@ public class ExplorerService : IExplorerService, IDisposable
             // Ignore change events that happen while loading the workspace
             _ = StoreSelectedResource();            
         }
-    }
-
-    public IExplorerPanel CreateExplorerPanel()
-    {
-        ExplorerPanel = _serviceProvider.GetRequiredService<ExplorerPanel>();
-        return ExplorerPanel;
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -356,6 +357,7 @@ public class ExplorerService : IExplorerService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
                 _messengerService.Unregister<WorkspaceLoadedMessage>(this);
                 _messengerService.Unregister<SelectedResourceChangedMessage>(this);
             }

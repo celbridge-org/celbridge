@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -16,13 +15,14 @@ public class DocumentsService : IDocumentsService, IDisposable
     private const string PreviousOpenDocumentsKey = "PreviousOpenDocuments";
     private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
 
-    private readonly IDocumentsLogger _logger;
-    private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
+    private readonly IDocumentsLogger _logger;
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public IDocumentsPanel? DocumentsPanel { get; private set; }
+    private IDocumentsPanel? _documentsPanel;
+    public IDocumentsPanel DocumentsPanel => _documentsPanel!;
 
     public ResourceKey SelectedDocument { get; private set; }
 
@@ -43,11 +43,12 @@ public class DocumentsService : IDocumentsService, IDisposable
         IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
         _logger = logger;
         _commandService = commandService;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
 
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
@@ -59,6 +60,11 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
         }
+    }
+
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
+    {
+        _documentsPanel = _serviceProvider.GetRequiredService<IDocumentsPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -87,12 +93,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             // Ignore change events that happen while loading the workspace
             _ = StoreOpenDocuments();
         }
-    }
-
-    public IDocumentsPanel CreateDocumentsPanel()
-    {
-        DocumentsPanel = _serviceProvider.GetRequiredService<DocumentsPanel>();
-        return DocumentsPanel;
     }
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
@@ -188,8 +188,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenDocument(ResourceKey fileResource)
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
@@ -214,8 +212,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var closeResult = await DocumentsPanel.CloseDocument(fileResource, forceClose);
         if (closeResult.IsFailure)
         {
@@ -231,8 +227,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Result SelectDocument(ResourceKey fileResource)
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var selectResult = DocumentsPanel.SelectDocument(fileResource);
         if (selectResult.IsFailure)
         {
@@ -248,8 +242,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var saveResult = await DocumentsPanel.SaveModifiedDocuments(deltaTime);
         if (saveResult.IsFailure)
         {
@@ -287,8 +279,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task RestorePanelState()
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
         Guard.IsNotNull(workspaceData);
 
@@ -359,8 +349,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
     {
-        Guard.IsNotNull(DocumentsPanel);
-
         var oldResource = message.OldResource.ToString();
         var newResource = message.NewResource.ToString();
 

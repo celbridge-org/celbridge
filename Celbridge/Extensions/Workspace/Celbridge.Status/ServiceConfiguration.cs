@@ -1,4 +1,4 @@
-﻿using Celbridge.Extensions;
+using Celbridge.Extensions;
 using Celbridge.Status.Services;
 using Celbridge.Status.ViewModels;
 using Celbridge.Status.Views;
@@ -10,12 +10,12 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IExtensionServiceCollection config)
     {
         //
-        // Register UI elements
+        // Register views
         //
         config.AddTransient<IStatusPanel, StatusPanel>();
 
         //
-        // Register View Models
+        // Register view models
         //
         config.AddTransient<StatusPanelViewModel>();
 

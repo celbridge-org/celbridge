@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
@@ -7,6 +8,7 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public WorkspacePageViewModel ViewModel { get; }
@@ -18,6 +20,7 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ApplyPanelButtonTooltips();
@@ -97,22 +100,26 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
+        // Send a message to tell services to initialize their workspace panels
+        var message = new WorkspaceWillPopulatePanelsMessage();
+        _messengerService.Send(message);
+
         // Insert the child panels at the start of the children collection so that the panel toggle
         // buttons take priority for accepting input.
 
-        var consolePanel = workspaceService.ConsoleService.CreateConsolePanel() as UIElement;
-        ToolsPanel.Children.Insert(0, consolePanel);
-
-        var documentsPanel = workspaceService.DocumentsService.CreateDocumentsPanel() as UIElement;
-        DocumentsPanel.Children.Insert(0, documentsPanel);
-
-        var inspectorPanel = workspaceService.InspectorService.CreateInspectorPanel() as UIElement;
-        InspectorPanel.Children.Add(inspectorPanel);
-
-        var explorerPanel = workspaceService.ExplorerService.CreateExplorerPanel() as UIElement;
+        var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
         ExplorerPanel.Children.Insert(0, explorerPanel);
 
-        var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
+        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
+        DocumentsPanel.Children.Insert(0, documentsPanel);
+
+        var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
+        InspectorPanel.Children.Add(inspectorPanel);
+
+        var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
+        ToolsPanel.Children.Insert(0, consolePanel);
+
+        var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
         StatusPanel.Children.Add(statusPanel);
 
         _ = ViewModel.LoadWorkspaceAsync();

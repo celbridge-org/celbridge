@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Workspace;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Sent when the workspace service has been created.
@@ -10,6 +10,12 @@ public record WorkspaceServiceCreatedMessage(IWorkspaceService WorkspaceService)
 /// Sent when the workspace has finished loading and is ready to be used.
 /// </summary>
 public record WorkspaceLoadedMessage();
+
+/// <summary>
+/// Sent when the workspace page has loaded and is about to populate the workspace panels.
+/// Services should listen for this message and create their panels.
+/// </summary>
+public record WorkspaceWillPopulatePanelsMessage();
 
 /// <summary>
 /// Sent when the loaded workspace has finished unloading.

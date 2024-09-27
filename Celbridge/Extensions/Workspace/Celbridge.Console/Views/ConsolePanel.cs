@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl
+public sealed partial class ConsolePanel : UserControl, IConsolePanel
 {
     private const string StrokeEraseGlyph = "\ued60";
 
