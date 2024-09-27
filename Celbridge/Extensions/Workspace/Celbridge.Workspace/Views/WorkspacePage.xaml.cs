@@ -119,7 +119,7 @@ public sealed partial class WorkspacePage : Page
         InspectorPanel.Children.Add(inspectorPanel);
 
         var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-        // ToolsPanel.Children.Insert(0, consolePanel);
+        ToolsContent.Children.Add(consolePanel);
 
         var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
         StatusPanel.Children.Add(statusPanel);

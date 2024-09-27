@@ -20,13 +20,11 @@ public static class ServiceConfiguration
         //
 
         config.AddTransient<IConsolePanel, ConsolePanel>();
-        config.AddTransient<ConsoleView>();
 
         //
         // Register view models
         //
 
         config.AddTransient<ConsolePanelViewModel>();
-        config.AddTransient<ConsoleViewModel>();
     }
 }
