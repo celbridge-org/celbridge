@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
@@ -6,9 +6,9 @@
 public interface IDocumentsService
 {
     /// <summary>
-    /// The documents panel created via the CreateDocumentsPanel method.
+    /// Returns the documents panel view.
     /// </summary>
-    IDocumentsPanel? DocumentsPanel { get; }
+    IDocumentsPanel DocumentsPanel { get; }
 
     /// <summary>
     /// The resource key for the currently selected document.
@@ -20,11 +20,6 @@ public interface IDocumentsService
     /// The list of currently open documents.
     /// </summary>
     List<ResourceKey> OpenDocuments { get; }
-
-    /// <summary>
-    /// Factory method to create the documents panel for the workspace UI.
-    /// </summary>
-    IDocumentsPanel CreateDocumentsPanel();
 
     /// <summary>
     /// Create a document view for the specified file resource.

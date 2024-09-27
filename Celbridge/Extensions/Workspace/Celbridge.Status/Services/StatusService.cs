@@ -1,19 +1,29 @@
-﻿using Celbridge.Status.Views;
+using Celbridge.Messaging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Status.Services;
 
 public class StatusService : IStatusService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
 
-    public StatusService(IServiceProvider serviceProvider)
+    private IStatusPanel? _statusPanel;
+    public IStatusPanel StatusPanel => _statusPanel!;
+
+    public StatusService(
+        IServiceProvider serviceProvider,
+        IMessengerService messengerService)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
+
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
     }
 
-    public IStatusPanel CreateStatusPanel()
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
     {
-        return _serviceProvider.GetRequiredService<IStatusPanel>();
+        _statusPanel = _serviceProvider.GetRequiredService<IStatusPanel>();
     }
 
     private bool _disposed;
@@ -31,6 +41,7 @@ public class StatusService : IStatusService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
             }
 
             _disposed = true;

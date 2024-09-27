@@ -10,6 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+
         config.AddTransient<IScriptingService, ScriptingService>();
     }
 }

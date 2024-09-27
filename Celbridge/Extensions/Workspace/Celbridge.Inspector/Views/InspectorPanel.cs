@@ -1,9 +1,9 @@
-﻿using Celbridge.Inspector.ViewModels;
+using Celbridge.Inspector.ViewModels;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Inspector.Views;
 
-public sealed partial class InspectorPanel : UserControl
+public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 {
     public LocalizedString TitleString => _stringLocalizer.GetString($"InspectorPanel_Title");
 

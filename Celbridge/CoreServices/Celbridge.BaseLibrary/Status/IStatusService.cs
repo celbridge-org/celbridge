@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Status;
+namespace Celbridge.Status;
 
 /// <summary>
 /// The status service provides functionality to support the status panel in the workspace UI.
@@ -6,7 +6,7 @@
 public interface IStatusService
 {
     /// <summary>
-    /// Factory method to create the status panel for the workspace UI.
+    /// Returns the status panel view.
     /// </summary>
-    IStatusPanel CreateStatusPanel();
+    IStatusPanel StatusPanel { get; }
 }

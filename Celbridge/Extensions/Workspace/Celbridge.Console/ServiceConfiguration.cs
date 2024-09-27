@@ -9,10 +9,24 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IExtensionServiceCollection config)
     {
-        config.AddTransient<ConsolePanel>();
-        config.AddTransient<ConsolePanelViewModel>();
-        config.AddTransient<ConsoleView>();
-        config.AddTransient<ConsoleViewModel>();
+        //
+        // Register services
+        //
+
         config.AddTransient<IConsoleService, ConsoleService>();
+
+        //
+        // Register views
+        //
+
+        config.AddTransient<IConsolePanel, ConsolePanel>();
+        config.AddTransient<ConsoleView>();
+
+        //
+        // Register view models
+        //
+
+        config.AddTransient<ConsolePanelViewModel>();
+        config.AddTransient<ConsoleViewModel>();
     }
 }
