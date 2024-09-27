@@ -89,20 +89,34 @@
     <Grid x:Name="ToolsPanel"
           Grid.Column="1"
           Grid.Row="1"
+          RowDefinitions="40, *"
           MinHeight="100"
           Background="{ThemeResource PanelBackgroundBBrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0,1,0,0">
 
-      <Button x:Name="HideToolsPanelButton"
-              Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0 4 4 0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE70D;"/>
-      </Button>
+      <Grid Grid.Row="0"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource PanelBorderBrush}"
+            BorderThickness="0,0,0,1"
+            ColumnDefinitions="Auto, *, Auto">
 
+        <TextBlock Grid.Column="0"
+                   Text="{x:Bind ToolsPanelTitle}"
+                   VerticalAlignment="Center"
+                   Margin="6,0,0,0"/>
+
+        <Button x:Name="HideToolsPanelButton"
+                Grid.Column="2"
+                Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0 4 4 0">
+          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                  Glyph="&#xE70D;"/>
+        </Button>
+
+      </Grid>      
     </Grid>
 
     <!-- Status Panel -->
