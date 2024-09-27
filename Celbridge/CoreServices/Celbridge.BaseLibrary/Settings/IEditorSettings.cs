@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace Celbridge.Settings;
 
@@ -7,17 +7,17 @@ namespace Celbridge.Settings;
 /// </summary>
 public interface IEditorSettings : INotifyPropertyChanged
 {
-    bool IsLeftPanelVisible { get; set; }
+    bool IsExplorerPanelVisible { get; set; }
 
-    float LeftPanelWidth { get; set; }
+    float ExplorerPanelWidth { get; set; }
 
-    bool IsRightPanelVisible { get; set; }
+    bool IsInspectorPanelVisible { get; set; }
 
-    float RightPanelWidth { get; set; }
+    float InspectorPanelWidth { get; set; }
 
-    bool IsBottomPanelVisible { get; set; }
+    bool IsToolsPanelVisible { get; set; }
 
-    float BottomPanelHeight { get; set; }
+    float ToolsPanelHeight { get; set; }
 
     float DetailPanelHeight { get; set; }
 

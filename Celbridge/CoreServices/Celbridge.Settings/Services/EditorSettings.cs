@@ -6,40 +6,40 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         : base(settingsGroup, nameof(EditorSettings))
     {}
 
-    public bool IsLeftPanelVisible
+    public bool IsExplorerPanelVisible
     {
-        get => GetValue<bool>(nameof(IsLeftPanelVisible), true);
-        set => SetValue(nameof(IsLeftPanelVisible), value);
+        get => GetValue<bool>(nameof(IsExplorerPanelVisible), true);
+        set => SetValue(nameof(IsExplorerPanelVisible), value);
     }
 
-    public float LeftPanelWidth
+    public float ExplorerPanelWidth
     {
-        get => GetValue<float>(nameof(LeftPanelWidth), 250);
-        set => SetValue(nameof(LeftPanelWidth), value);
+        get => GetValue<float>(nameof(ExplorerPanelWidth), 250);
+        set => SetValue(nameof(ExplorerPanelWidth), value);
     }
 
-    public bool IsRightPanelVisible
+    public bool IsInspectorPanelVisible
     {
-        get => GetValue<bool>(nameof(IsRightPanelVisible), true);
-        set => SetValue(nameof(IsRightPanelVisible), value);
+        get => GetValue<bool>(nameof(IsInspectorPanelVisible), true);
+        set => SetValue(nameof(IsInspectorPanelVisible), value);
     }
 
-    public float RightPanelWidth
+    public float InspectorPanelWidth
     {
-        get => GetValue<float>(nameof(RightPanelWidth), 250);
-        set => SetValue(nameof(RightPanelWidth), value);
+        get => GetValue<float>(nameof(InspectorPanelWidth), 250);
+        set => SetValue(nameof(InspectorPanelWidth), value);
     }
 
-    public bool IsBottomPanelVisible
+    public bool IsToolsPanelVisible
     {
-        get => GetValue<bool>(nameof(IsBottomPanelVisible), true);
-        set => SetValue(nameof(IsBottomPanelVisible), value);
+        get => GetValue<bool>(nameof(IsToolsPanelVisible), true);
+        set => SetValue(nameof(IsToolsPanelVisible), value);
     }
 
-    public float BottomPanelHeight
+    public float ToolsPanelHeight
     {
-        get => GetValue<float>(nameof(BottomPanelHeight), 200);
-        set => SetValue(nameof(BottomPanelHeight), value);
+        get => GetValue<float>(nameof(ToolsPanelHeight), 200);
+        set => SetValue(nameof(ToolsPanelHeight), value);
     }
 
     public float DetailPanelHeight
