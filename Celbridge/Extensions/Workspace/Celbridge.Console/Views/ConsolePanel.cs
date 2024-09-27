@@ -1,141 +1,179 @@
+using Celbridge.Console.Models;
 using Celbridge.Console.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel
+public partial class ConsolePanel : UserControl, IConsolePanel
 {
+    private const string PlayGlyph = "\ue768";
     private const string StrokeEraseGlyph = "\ued60";
 
-    private IStringLocalizer _stringLocalizer;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    // Todo: Add tooltip for execute button
     private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
 
-    private TabView _tabView;
+    private readonly ScrollViewer _scrollViewer;
+    private readonly TextBox _commandTextBox;
 
     public ConsolePanelViewModel ViewModel { get; }
 
-    public ConsolePanel(IStringLocalizer stringLocalizer)
+    public ConsolePanel(
+        IServiceProvider serviceProvider,
+        IStringLocalizer stringLocalizer)
     {
         _stringLocalizer = stringLocalizer;
 
-        ViewModel = CreateViewModel();
+        ViewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
 
-        _tabView = CreateTabView();
-
-        // Todo: Provide an extension point to add custom toolbar buttons here
-        var clearButton = CreateButton(StrokeEraseGlyph, ClearButtonTooltipString, ViewModel.ClearCommand);
-
-        // The third column here prevents the clear button from overlapping the panel collapse button
-        var panelContent = new Grid()
-            .ColumnDefinitions("*, Auto, 48")
-            .Children
-            (
-                _tabView,
-                clearButton
-            );
-
-        //
-        // Set the data context page content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(panelContent));
-    }
-
-    private ConsolePanelViewModel CreateViewModel()
-    {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var viewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
-
-        viewModel.OnAddConsoleTab += () =>
+        Unloaded += (sender, e) =>
         {
-            CreateConsoleTabViewItem(_tabView);
+            ViewModel.ConsoleView_Unloaded();
         };
 
-        viewModel.OnClearConsole += () =>
-        {
-            var tabViewItem = _tabView.SelectedItem as TabViewItem;
-            Guard.IsNotNull(tabViewItem);
-
-            var consoleView = tabViewItem.Content as ConsoleView;
-            Guard.IsNotNull(consoleView);
-
-            consoleView.ViewModel.ClearCommand.Execute(this);
-        };
-
-        return viewModel;
-    }
-
-    private TabView CreateTabView()
-    {
-        var tabView = new TabView()
-            .Grid(columnSpan: 3)
-            .TabWidthMode(TabViewWidthMode.SizeToContent)
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
-            .IsAddTabButtonVisible(true)
-            .AddTabButtonCommand(ViewModel.AddConsoleTabCommand)
-#if WINDOWS
-            .CanReorderTabs(true)
-            .CanDragTabs(true)
-#endif
-            .TabStripFooter
-            (
-                new Grid()
-                    .Width(96)
-                    .Height(40)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-            );
-
-        CreateConsoleTabViewItem(tabView);
-
-        return tabView;
-    }
-
-    private UIElement CreateButton(string iconGlyph, LocalizedString tooltipText, ICommand command)
-    {
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-        var button = new Button()
+        _scrollViewer = new ScrollViewer()
+            .Grid(row: 0)
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
+            .Content(new ListView()
+            .ItemTemplate<ConsoleLogItem>(item =>
+            {
+                return new StackPanel()
+                    .Orientation(Orientation.Horizontal)
+                    .Children
+                    (
+                        new FontIcon()
+                            .FontFamily(fontFamily)
+                            .FontSize(12)
+                            .Foreground(() => item.Color)
+                            .VerticalAlignment(VerticalAlignment.Top)
+                            .Margin(0,6,0,0)
+                            .Glyph(() => item.Glyph),
+                        new TextBlock()
+                            .Text(() => item.LogText)
+                            .TextWrapping(TextWrapping.Wrap)
+                            .Margin(6, 0, 0, 0)
+                            .Padding(0)
+                    );
+            })
+            .ItemsSource(x => x.Binding(() => ViewModel.ConsoleLogItems).OneWay())
+            .ItemContainerStyle(new Style(typeof(ListViewItem))
+            {
+                Setters =
+                {
+                    new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
+                    new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
+                    new Setter(FrameworkElement.MinHeightProperty, 24),
+                }
+            })
+        );
+
+        _commandTextBox = new TextBox()
+            .Grid(column: 0)
+            .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
+            .Text(x => x.Binding(() => ViewModel.CommandText)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .IsSpellCheckEnabled(false)
+            .TextWrapping(TextWrapping.Wrap)
+            .AcceptsReturn(true);
+
+        _commandTextBox.KeyDown += CommandTextBox_KeyDown;
+
+#if WINDOWS
+        // On Windows, AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
+        // use PreviewKeyDown to intercept it.
+        _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
+#endif
+
+        var submitButton = new Button()
             .Grid(column: 1)
-            .Margin(4)
-            .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .Command(command)
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .Command(ViewModel.SubmitCommand)
             .Content
             (
                 new FontIcon()
                     .FontFamily(fontFamily)
-                    .Glyph(iconGlyph)
+                    .Glyph(PlayGlyph)
             );
 
-        ToolTipService.SetToolTip(button, tooltipText);
-        ToolTipService.SetPlacement(button, PlacementMode.Top);
+        // Todo: Localize this tooltip
+        ToolTipService.SetToolTip(submitButton, "Shift + Enter to run command");
 
-        return button!;
+        var commandLine = new Grid()
+            .Grid(row: 1)
+            .ColumnDefinitions("*, auto")
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(_commandTextBox, submitButton);
+
+        var consoleGrid = new Grid()
+            .RowDefinitions("*, auto")
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Children(_scrollViewer, commandLine);
+
+        this.DataContext(ViewModel, (userControl, vm) => userControl
+            .Content(consoleGrid));
     }
 
-    private void CreateConsoleTabViewItem(TabView tabView)
+#if WINDOWS
+    private void CommandTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var consoleView = new ConsoleView();
-
-        var tabViewItem = new TabViewItem()
-            .Header("Console")
-            .Content(consoleView);
-
-        tabViewItem.CloseRequested += (sender, args) =>
+        if (e.Key == VirtualKey.Enter)
         {
-            var consoleView = sender.Content as ConsoleView;
-            Guard.IsNotNull(consoleView);
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
 
-            // Give the view model an opportunity to handle the close event
-            consoleView.ViewModel.CloseCommand.Execute(this);
+            if (shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
 
-            tabView.TabItems.Remove(args.Tab);
-        };
-        
-        tabView.TabItems.Add(tabViewItem);
-        tabView.SelectedItem = tabViewItem;
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+
+                e.Handled = true;
+            }
+        }
+    }
+#endif
+
+    public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            // This does not get called on Windows, because of the issue with AcceptsReturn described above.
+            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+
+            if (shift)
+            {
+                ViewModel.SubmitCommand.Execute(this);
+
+                // Scroll to the end of the output list
+                _scrollViewer.UpdateLayout();
+                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Up)
+        {
+            ViewModel.SelectPreviousCommand.Execute(this);
+            e.Handled = true;
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
+        else if (e.Key == VirtualKey.Down)
+        {
+            ViewModel.SelectNextCommand.Execute(this);
+            e.Handled = true;
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
     }
 }
