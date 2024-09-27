@@ -114,8 +114,9 @@
           <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE70D;"/>
         </Button>
-
       </Grid>      
+      <Grid x:Name="ToolsContent"
+            Grid.Row="1"/>
     </Grid>
 
     <!-- Status Panel -->
