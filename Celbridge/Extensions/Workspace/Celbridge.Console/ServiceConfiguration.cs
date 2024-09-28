@@ -14,6 +14,7 @@ public static class ServiceConfiguration
         //
 
         config.AddTransient<IConsoleService, ConsoleService>();
+        config.AddTransient<ICommandHistory, CommandHistory>();
 
         //
         // Register views
