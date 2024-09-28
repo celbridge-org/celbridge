@@ -1,4 +1,4 @@
-﻿using Celbridge.Documents.Commands;
+using Celbridge.Documents.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
@@ -18,17 +18,17 @@ public static class ServiceConfiguration
         config.AddTransient<FileTypeHelper>();
 
         //
-        // Register Views
+        // Register views
         //
 
-        config.AddTransient<DocumentsPanel>();
+        config.AddTransient<IDocumentsPanel, DocumentsPanel>();
         config.AddTransient<TextBoxDocumentView>();
         config.AddTransient<WebPageDocumentView>();
         config.AddTransient<TextEditorDocumentView>();
         config.AddTransient<FileViewerDocumentView>();
 
         //
-        // Register ViewModels
+        // Register view models
         //
 
         config.AddTransient<DocumentsPanelViewModel>();

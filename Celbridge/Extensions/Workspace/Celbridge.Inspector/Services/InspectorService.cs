@@ -1,19 +1,30 @@
-﻿using Celbridge.Inspector.Views;
+using Celbridge.Inspector.Views;
+using Celbridge.Messaging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Inspector.Services;
 
 public class InspectorService : IInspectorService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
 
-    public InspectorService(IServiceProvider serviceProvider)
+    private IInspectorPanel? _inspectorPanel;
+    public IInspectorPanel InspectorPanel => _inspectorPanel!;
+
+    public InspectorService(
+        IServiceProvider serviceProvider,
+        IMessengerService messengerService)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
+
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
     }
 
-    public object CreateInspectorPanel()
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
     {
-        return _serviceProvider.GetRequiredService<InspectorPanel>();
+        _inspectorPanel = _serviceProvider.GetRequiredService<IInspectorPanel>();
     }
 
     private bool _disposed;
@@ -31,6 +42,7 @@ public class InspectorService : IInspectorService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
             }
 
             _disposed = true;

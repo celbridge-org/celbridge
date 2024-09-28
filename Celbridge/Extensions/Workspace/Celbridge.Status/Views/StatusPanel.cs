@@ -42,7 +42,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
         var copyDocumentButton = new Button()
             .Grid(column: 2)
             .Command(x => x.Binding(() => ViewModel.CopyDocumentResourceCommand))
-            .Margin(4)
+            .Margin(2)
             .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
             .Content
             (
