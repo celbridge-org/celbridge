@@ -26,11 +26,6 @@ public class ConsoleService : IConsoleService, IDisposable
         _consolePanel = _serviceProvider.GetRequiredService<IConsolePanel>();
     }
 
-    public ICommandHistory CreateCommandHistory()
-    {
-        return new CommandHistory();
-    }
-
     public event Action<MessageType, string>? OnPrint;
 
     public void Print(MessageType printType, string message)

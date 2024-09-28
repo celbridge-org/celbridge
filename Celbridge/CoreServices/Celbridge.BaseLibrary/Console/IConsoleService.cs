@@ -22,11 +22,6 @@ public interface IConsoleService
     IConsolePanel ConsolePanel { get; }
 
     /// <summary>
-    /// Factory method to create a CommandHistory instance.
-    /// </summary>
-    ICommandHistory CreateCommandHistory();
-
-    /// <summary>
     /// Event fired when the Print() method is called.
     /// </summary>
     event Action<MessageType, string> OnPrint;
