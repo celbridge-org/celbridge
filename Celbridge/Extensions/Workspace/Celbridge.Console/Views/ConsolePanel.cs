@@ -14,8 +14,8 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
     private readonly IStringLocalizer _stringLocalizer;
 
-    // Todo: Add tooltip for execute button
     private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
+    private LocalizedString ExecuteCommandTooltipString => _stringLocalizer.GetString("ConsolePanel_ExecuteCommandTooltip");
 
     private readonly ScrollViewer _scrollViewer;
     private readonly TextBox _commandTextBox;
@@ -93,10 +93,10 @@ public partial class ConsolePanel : UserControl, IConsolePanel
         _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
 #endif
 
-        var submitButton = new Button()
+        var executeButton = new Button()
             .Grid(column: 1)
             .VerticalAlignment(VerticalAlignment.Bottom)
-            .Command(ViewModel.SubmitCommand)
+            .Command(ViewModel.ExecuteCommand)
             .Content
             (
                 new FontIcon()
@@ -104,14 +104,13 @@ public partial class ConsolePanel : UserControl, IConsolePanel
                     .Glyph(PlayGlyph)
             );
 
-        // Todo: Localize this tooltip
-        ToolTipService.SetToolTip(submitButton, "Shift + Enter to run command");
+        ToolTipService.SetToolTip(executeButton, ExecuteCommandTooltipString);
 
         var commandLine = new Grid()
             .Grid(row: 1)
             .ColumnDefinitions("*, auto")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(_commandTextBox, submitButton);
+            .Children(_commandTextBox, executeButton);
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
@@ -132,7 +131,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
             if (shift)
             {
-                ViewModel.SubmitCommand.Execute(this);
+                ViewModel.ExecuteCommand.Execute(this);
 
                 // Scroll to the end of the output list
                 _scrollViewer.UpdateLayout();
@@ -154,7 +153,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
             if (shift)
             {
-                ViewModel.SubmitCommand.Execute(this);
+                ViewModel.ExecuteCommand.Execute(this);
 
                 // Scroll to the end of the output list
                 _scrollViewer.UpdateLayout();
