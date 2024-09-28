@@ -66,8 +66,8 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
 
-        if (e.PropertyName == nameof(IsLeftPanelVisible) ||
-            e.PropertyName == nameof(IsRightPanelVisible))
+        if (e.PropertyName == nameof(IsExplorerPanelVisible) ||
+            e.PropertyName == nameof(IsInspectorPanelVisible))
         {
             UpdateIsFocusModeActive();
         }
@@ -76,62 +76,62 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void UpdateIsFocusModeActive()
     {
         IsFocusModeActive =
-            !_editorSettings.IsLeftPanelVisible &&
-            !_editorSettings.IsRightPanelVisible;
+            !_editorSettings.IsExplorerPanelVisible &&
+            !_editorSettings.IsInspectorPanelVisible;
     }
 
-    public float LeftPanelWidth
+    public float ExplorerPanelWidth
     {
-        get => _editorSettings.LeftPanelWidth;
-        set => _editorSettings.LeftPanelWidth = value;
+        get => _editorSettings.ExplorerPanelWidth;
+        set => _editorSettings.ExplorerPanelWidth = value;
     }
 
-    public float RightPanelWidth
+    public float InspectorPanelWidth
     {
-        get => _editorSettings.RightPanelWidth;
-        set => _editorSettings.RightPanelWidth = value;
+        get => _editorSettings.InspectorPanelWidth;
+        set => _editorSettings.InspectorPanelWidth = value;
     }
 
-    public float BottomPanelHeight
+    public float ToolsPanelHeight
     {
-        get => _editorSettings.BottomPanelHeight;
-        set => _editorSettings.BottomPanelHeight = value;
+        get => _editorSettings.ToolsPanelHeight;
+        set => _editorSettings.ToolsPanelHeight = value;
     }
 
-    public bool IsLeftPanelVisible
+    public bool IsExplorerPanelVisible
     {
-        get => _editorSettings.IsLeftPanelVisible;
-        set => _editorSettings.IsLeftPanelVisible = value;
+        get => _editorSettings.IsExplorerPanelVisible;
+        set => _editorSettings.IsExplorerPanelVisible = value;
     }
 
-    public bool IsRightPanelVisible
+    public bool IsInspectorPanelVisible
     {
-        get => _editorSettings.IsRightPanelVisible;
-        set => _editorSettings.IsRightPanelVisible = value;
+        get => _editorSettings.IsInspectorPanelVisible;
+        set => _editorSettings.IsInspectorPanelVisible = value;
     }
 
-    public bool IsBottomPanelVisible
+    public bool IsToolsPanelVisible
     {
-        get => _editorSettings.IsBottomPanelVisible;
-        set => _editorSettings.IsBottomPanelVisible = value;
+        get => _editorSettings.IsToolsPanelVisible;
+        set => _editorSettings.IsToolsPanelVisible = value;
     }
 
-    public ICommand ToggleLeftPanelCommand => new RelayCommand(ToggleLeftPanel_Executed);
-    private void ToggleLeftPanel_Executed()
+    public ICommand ToggleExplorerPanelCommand => new RelayCommand(ToggleExplorerPanel_Executed);
+    private void ToggleExplorerPanel_Executed()
     {
-        _editorSettings.IsLeftPanelVisible = !_editorSettings.IsLeftPanelVisible;
+        _editorSettings.IsExplorerPanelVisible = !_editorSettings.IsExplorerPanelVisible;
     }
 
-    public ICommand ToggleRightPanelCommand => new RelayCommand(ToggleRightPanel_Executed);
-    private void ToggleRightPanel_Executed()
+    public ICommand ToggleInspectorPanelCommand => new RelayCommand(ToggleInspectorPanel_Executed);
+    private void ToggleInspectorPanel_Executed()
     {
-        _editorSettings.IsRightPanelVisible = !_editorSettings.IsRightPanelVisible;
+        _editorSettings.IsInspectorPanelVisible = !_editorSettings.IsInspectorPanelVisible;
     }
 
-    public ICommand ToggleBottomPanelCommand => new RelayCommand(ToggleBottomPanel_Executed);
-    private void ToggleBottomPanel_Executed()
+    public ICommand ToggleToolsPanelCommand => new RelayCommand(ToggleToolsPanel_Executed);
+    private void ToggleToolsPanel_Executed()
     {
-        _editorSettings.IsBottomPanelVisible = !_editorSettings.IsBottomPanelVisible;
+        _editorSettings.IsToolsPanelVisible = !_editorSettings.IsToolsPanelVisible;
     }
 
     public ICommand ToggleFocusModeCommand => new RelayCommand(ToggleFocusMode_Executed);

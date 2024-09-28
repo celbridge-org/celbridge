@@ -28,11 +28,6 @@ public interface IExplorerService
     ResourceKey SelectedResource { get; }
 
     /// <summary>
-    /// Factory method to create the resources panel for the workspace UI.
-    /// </summary>
-    IExplorerPanel CreateExplorerPanel();
-
-    /// <summary>
     /// Update the resource registry and populate the resource tree view.
     /// </summary>
     Task<Result> UpdateResourcesAsync();

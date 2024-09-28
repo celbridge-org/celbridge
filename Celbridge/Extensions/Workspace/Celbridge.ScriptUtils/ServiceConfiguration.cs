@@ -1,4 +1,4 @@
-﻿using Celbridge.Scripting;
+using Celbridge.Scripting;
 
 namespace Celbridge.ScriptUtils;
 

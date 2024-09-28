@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands.Services;
+using Celbridge.Commands.Services;
 using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
@@ -13,27 +13,32 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IExtensionServiceCollection config)
     {
         //
-        // Register UI elements
+        // Register services
         //
-        config.AddTransient<ExplorerPanel>();
+
+        config.AddTransient<IExplorerService, ExplorerService>();
+        config.AddTransient<IResourceRegistry, ResourceRegistry>();
+        config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
+        config.AddTransient<IResourceNameValidator, ResourceNameValidator>();
+        config.AddTransient<ResourceArchiver>();
 
         //
-        // Register View Models
+        // Register views
         //
+
+        config.AddTransient<IExplorerPanel, ExplorerPanel>();
+
+        //
+        // Register view models
+        //
+
         config.AddTransient<ExplorerPanelViewModel>();
         config.AddTransient<ResourceTreeViewModel>();
 
         //
-        // Register services
-        //
-        config.AddTransient<IExplorerService, ExplorerService>();
-        config.AddTransient<IResourceRegistry, ResourceRegistry>();
-        config.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
-        config.AddTransient<ResourceArchiver>();
-
-        //
         // Register commands
         //
+
         config.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
         config.AddTransient<IAddResourceCommand, AddResourceCommand>();
         config.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
@@ -44,10 +49,5 @@ public static class ServiceConfiguration
         config.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
         config.AddTransient<ISelectResourceCommand, SelectResourceCommand>();
         config.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
-
-        //
-        // Register validators
-        //
-        config.AddTransient<IResourceNameValidator, ResourceNameValidator>();
     }
 }
