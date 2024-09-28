@@ -2,11 +2,14 @@ using Celbridge.Scripting;
 using Celbridge.Console.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using Celbridge.Utilities;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject
 {
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IConsoleService _consoleService;
     private readonly ICommandHistory _commandHistory;
     private IScriptContext? _scriptContext;
@@ -26,9 +29,12 @@ public partial class ConsolePanelViewModel : ObservableObject
     }
 
     public ConsolePanelViewModel(
+        IStringLocalizer stringLocalizer,
+        IUtilityService utilityService,
         IConsoleService consoleService,
         IScriptingService scriptingService)
     {
+        _stringLocalizer = stringLocalizer;
         _consoleService = consoleService;
 
         async Task InitScriptContext()
@@ -41,6 +47,10 @@ public partial class ConsolePanelViewModel : ObservableObject
         _commandHistory = _consoleService.CreateCommandHistory();
 
         _consoleService.OnPrint += Print;
+
+        var environmentInfo = utilityService.GetEnvironmentInfo();
+        var versionString = stringLocalizer.GetString("ConsolePanel_ApplicationVersion", environmentInfo.AppVersion);
+        Print(MessageType.Info, versionString);
     }
 
     public void ConsoleView_Unloaded()

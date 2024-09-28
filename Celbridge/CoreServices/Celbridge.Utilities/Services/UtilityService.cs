@@ -26,15 +26,16 @@ public class UtilityService : IUtilityService
 
     public EnvironmentInfo GetEnvironmentInfo()
     {
-        var version = Assembly.GetExecutingAssembly().GetName().Version;
-        var appVersion = version != null 
-            ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}" 
-            : "unknown";
-
 #if WINDOWS
         var platform = "Windows";
+        var packageVersion = Package.Current.Id.Version;
+        var appVersion = $"{packageVersion.Major}.{packageVersion.Minor}.{packageVersion.Build}.{packageVersion.Revision}";
 #else
         var platform = "SkiaGtk";
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        var appVersion = version != null
+            ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}"
+            : "unknown";
 #endif
 
 #if DEBUG
