@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Settings.Services;
+namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
 {
@@ -32,7 +32,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public bool IsToolsPanelVisible
     {
-        get => GetValue<bool>(nameof(IsToolsPanelVisible), true);
+        get => GetValue<bool>(nameof(IsToolsPanelVisible), false);
         set => SetValue(nameof(IsToolsPanelVisible), value);
     }
 

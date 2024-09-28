@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Console;
+namespace Celbridge.Console;
 
 public interface ICommandHistory
 {
@@ -15,7 +15,17 @@ public interface ICommandHistory
     /// <summary>
     /// Remove all commands from the history.
     /// </summary>
-    void Clear();
+    void ClearCommandHistory();
+
+    /// <summary>
+    /// Save the command history to persistent storage.
+    /// </summary>
+    Task SaveCommandHistory();
+
+    /// <summary>
+    /// Load the command history from persistent storage.
+    /// </summary>
+    Task LoadCommandHistory();
 
     /// <summary>
     /// Add a command to the history.

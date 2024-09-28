@@ -322,6 +322,6 @@
     <value>Execute the entered text as a console command (Enter)</value>
   </data>
   <data name="ConsolePanel_ApplicationVersion" xml:space="preserve">
-    <value>Celbridge console v{0}. Use the text box below to enter commands.</value>
+    <value>Celbridge console v{0}. Enter commands in the text box below.</value>
   </data>
 </root>
