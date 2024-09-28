@@ -54,8 +54,8 @@ public partial class ConsolePanelViewModel : ObservableObject
         _consoleLogItems.Clear();
     }
 
-    public ICommand SubmitCommand => new AsyncRelayCommand(Submit_Executed);
-    private async Task Submit_Executed()
+    public ICommand ExecuteCommand => new AsyncRelayCommand(ExecuteCommand_Executed);
+    private async Task ExecuteCommand_Executed()
     {
         if (_scriptContext is null)
         {

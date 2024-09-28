@@ -318,4 +318,7 @@
   <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
     <value>Console</value>
   </data>
+  <data name="ConsolePanel_ExecuteCommandTooltip" xml:space="preserve">
+    <value>Execute the entered text as a console command (Enter)</value>
+  </data>
 </root>
