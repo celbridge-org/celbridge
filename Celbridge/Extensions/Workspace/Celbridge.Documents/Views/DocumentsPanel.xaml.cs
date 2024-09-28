@@ -83,8 +83,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.IsLeftPanelVisible) ||
-            e.PropertyName == nameof(ViewModel.IsRightPanelVisible))
+        if (e.PropertyName == nameof(ViewModel.IsExplorerPanelVisible) ||
+            e.PropertyName == nameof(ViewModel.IsInspectorPanelVisible))
         {
             UpdateTabstripEnds();
         }
@@ -96,7 +96,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // TabStrip at the top of the center panel. To fix this, we dynamically add an invisible TabStripHeader and
         // TabStripFooter which adjusts the position of the tabs so that they don't overlap the toggle buttons.
 
-        if (ViewModel.IsLeftPanelVisible)
+        if (ViewModel.IsExplorerPanelVisible)
         {
             TabView.TabStripHeader = null;
         }
@@ -106,7 +106,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 .Width(96);
         }
 
-        if (ViewModel.IsRightPanelVisible)
+        if (ViewModel.IsInspectorPanelVisible)
         {
             TabView.TabStripFooter = null;
         }

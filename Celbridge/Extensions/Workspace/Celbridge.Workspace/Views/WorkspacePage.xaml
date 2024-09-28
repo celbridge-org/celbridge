@@ -10,43 +10,43 @@
   <Grid x:Name="LayoutRoot">
     
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="LeftPanelColumn" Width="Auto" MinWidth="100"/>
+      <ColumnDefinition x:Name="ExplorerPanelColumn" Width="Auto" MinWidth="100"/>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition x:Name="RightPanelColumn" Width="Auto" MinWidth="100"/>
+      <ColumnDefinition x:Name="InspectorPanelColumn" Width="Auto" MinWidth="100"/>
     </Grid.ColumnDefinitions>
     
     <Grid.RowDefinitions>
       <RowDefinition Height="*"/>
-      <RowDefinition x:Name="BottomPanelRow" Height="Auto" MinHeight="100"/>
+      <RowDefinition x:Name="ToolsPanelRow" Height="Auto" MinHeight="100"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Left Panel -->
-    <Grid x:Name="LeftPanel"
+    <!-- Explorer Panel -->
+    <Grid x:Name="ExplorerPanel"
           Grid.RowSpan="3"
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="1,0,1,0">
 
-      <Button x:Name="HideLeftPanelButton"
-              Command="{x:Bind ViewModel.ToggleLeftPanelCommand}"
+      <Button x:Name="HideExplorerPanelButton"
+              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,3,4,0">
+              Margin="0,3,2,0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76B;"/>
       </Button>
       
     </Grid>
 
-    <!-- Center Panel -->
-    <Grid x:Name="CenterPanel"
+    <!-- Documents Panel -->
+    <Grid x:Name="DocumentsPanel"
           Grid.Column="1"
           Background="{ThemeResource ApplicationBackgroundBrush}">
 
-      <Button x:Name="ShowLeftPanelButton"
-              Command="{x:Bind ViewModel.ToggleLeftPanelCommand}"
+      <Button x:Name="ShowExplorerPanelButton"
+              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Left"
               VerticalAlignment="Top"
               Margin="48,8,0,0">
@@ -54,8 +54,8 @@
                   Glyph="&#xE76C;"/>
       </Button>
 
-      <Button x:Name="ShowRightPanelButton"
-              Command="{x:Bind ViewModel.ToggleRightPanelCommand}"
+      <Button x:Name="ShowInspectorPanelButton"
+              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
               Margin="0,4,0,0">
@@ -64,8 +64,8 @@
       </Button>
     </Grid>
 
-    <!-- Right Panel -->
-    <Grid x:Name="RightPanel"
+    <!-- Inspector Panel -->
+    <Grid x:Name="InspectorPanel"
           Grid.Column="2"
           Grid.Row="0"
           Grid.RowSpan="3"
@@ -74,35 +74,49 @@
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="1,0,1,0">
 
-      <Button x:Name="HideRightPanelButton"
-              Command="{x:Bind ViewModel.ToggleRightPanelCommand}"
+      <Button x:Name="HideInspectorPanelButton"
+              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
-              Margin="0,3,4,0">
+              Margin="0,3,2,0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76C;"/>
       </Button>
 
     </Grid>
 
-    <!-- Bottom Panel -->
-    <Grid x:Name="BottomPanel"
+    <!-- Tools Panel -->
+    <Grid x:Name="ToolsPanel"
           Grid.Column="1"
           Grid.Row="1"
+          RowDefinitions="40, *"
           MinHeight="100"
           Background="{ThemeResource PanelBackgroundBBrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0,1,0,0">
 
-      <Button x:Name="HideBottomPanelButton"
-              Command="{x:Bind ViewModel.ToggleBottomPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0 4 4 0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE70D;"/>
-      </Button>
+      <Grid Grid.Row="0"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource PanelBorderBrush}"
+            BorderThickness="0,0,0,1"
+            ColumnDefinitions="Auto, *, Auto">
 
+        <TextBlock Grid.Column="0"
+                   Text="{x:Bind ToolsPanelTitle}"
+                   VerticalAlignment="Center"
+                   Margin="6,0,0,0"/>
+
+        <Button x:Name="HideToolsPanelButton"
+                Grid.Column="2"
+                Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center">
+          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                  Glyph="&#xE70D;"/>
+        </Button>
+      </Grid>      
+      <Grid x:Name="ToolsContent"
+            Grid.Row="1"/>
     </Grid>
 
     <!-- Status Panel -->
@@ -116,7 +130,7 @@
       <Button x:Name="ExitFocusModeButton"
               Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
               HorizontalAlignment="Left"
-              Margin="4">
+              Margin="2">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE92C;" />
         <Button.KeyboardAccelerators>
@@ -127,7 +141,7 @@
       <Button x:Name="EnterFocusModeButton"
               Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
               HorizontalAlignment="Left"
-              Margin="4">
+              Margin="2">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE92D;" />
         <Button.KeyboardAccelerators>
@@ -135,10 +149,11 @@
         </Button.KeyboardAccelerators>
       </Button>
 
-      <Button x:Name="ShowBottomPanelButton"
-            Command="{x:Bind ViewModel.ToggleBottomPanelCommand}"             
+      <Button x:Name="ShowToolsPanelButton"
+            Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"             
             HorizontalAlignment="Right"
-            Margin="4">
+            VerticalAlignment="Center"
+            Margin="0">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE70E;"/>
       </Button>
@@ -147,7 +162,7 @@
 
     <!-- Grid splitters -->
 
-    <controls:GridSplitter x:Name="LeftPanelSplitter"
+    <controls:GridSplitter x:Name="ExplorerPanelSplitter"
                            Grid.Column="0"
                            Grid.RowSpan="3"
                            HorizontalAlignment="Right"
@@ -155,7 +170,7 @@
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
 
-    <controls:GridSplitter x:Name="RightPanelSplitter"
+    <controls:GridSplitter x:Name="InspectorPanelSplitter"
                            Grid.Column="2"
                            Grid.RowSpan="3"
                            HorizontalAlignment="Left"
@@ -163,11 +178,13 @@
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
 
-    <controls:GridSplitter x:Name="BottomPanelSplitter"
+    <controls:GridSplitter x:Name="ToolsPanelSplitter"
                            Grid.Column="1"
                            Grid.Row="1"
                            Grid.RowSpan="1"
                            VerticalAlignment="Top"
+                           Height="4"
+                           Margin="0"
                            ResizeDirection="Auto"
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>

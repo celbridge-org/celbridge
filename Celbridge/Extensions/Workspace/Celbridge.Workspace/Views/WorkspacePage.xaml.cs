@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using CommunityToolkit.Diagnostics;
@@ -7,9 +8,12 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public WorkspacePageViewModel ViewModel { get; }
+
+    private LocalizedString ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
 
     public WorkspacePage()
     {
@@ -18,6 +22,7 @@ public sealed partial class WorkspacePage : Page
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
 
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         ApplyPanelButtonTooltips();
@@ -30,30 +35,29 @@ public sealed partial class WorkspacePage : Page
 
     private void ApplyPanelButtonTooltips()
     {
-        // Left panel 
-        ToolTipService.SetToolTip(ShowLeftPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowLeftPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideLeftPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideLeftPanelButton, PlacementMode.Bottom);
+        // Explorer panel 
+        ToolTipService.SetToolTip(ShowExplorerPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowExplorerPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(HideExplorerPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideExplorerPanelButton, PlacementMode.Bottom);
 
-        // Right panel 
-        ToolTipService.SetToolTip(ShowRightPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowRightPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideRightPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideRightPanelButton, PlacementMode.Bottom);
+        // Inspector panel 
+        ToolTipService.SetToolTip(ShowInspectorPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowInspectorPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(HideInspectorPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideInspectorPanelButton, PlacementMode.Bottom);
 
-        // Bottom panel 
-        ToolTipService.SetToolTip(ShowBottomPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowBottomPanelButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(HideBottomPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideBottomPanelButton, PlacementMode.Top);
+        // Tools panel 
+        ToolTipService.SetToolTip(ShowToolsPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowToolsPanelButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(HideToolsPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideToolsPanelButton, PlacementMode.Top);
 
-        // Focus mode
+        // Focus mode button
         ToolTipService.SetToolTip(EnterFocusModeButton, _stringLocalizer["WorkspacePage_EnterFocusModeTooltip"]);
         ToolTipService.SetPlacement(EnterFocusModeButton, PlacementMode.Top);
         ToolTipService.SetToolTip(ExitFocusModeButton, _stringLocalizer["WorkspacePage_ExitFocusModeTooltip"]);
         ToolTipService.SetPlacement(ExitFocusModeButton, PlacementMode.Top);
-
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -63,29 +67,29 @@ public sealed partial class WorkspacePage : Page
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
-        var leftPanelWidth = ViewModel.LeftPanelWidth;
-        var rightPanelWidth = ViewModel.RightPanelWidth;
-        var bottomPanelHeight = ViewModel.BottomPanelHeight;
+        var leftPanelWidth = ViewModel.ExplorerPanelWidth;
+        var rightPanelWidth = ViewModel.InspectorPanelWidth;
+        var bottomPanelHeight = ViewModel.ToolsPanelHeight;
 
         if (leftPanelWidth > 0)
         {
-            LeftPanelColumn.Width = new GridLength(leftPanelWidth);
+            ExplorerPanelColumn.Width = new GridLength(leftPanelWidth);
         }
         if (rightPanelWidth > 0)
         {
-            RightPanelColumn.Width = new GridLength(rightPanelWidth);
+            InspectorPanelColumn.Width = new GridLength(rightPanelWidth);
         }
         if (bottomPanelHeight > 0)
         {
-            BottomPanelRow.Height = new GridLength(bottomPanelHeight);
+            ToolsPanelRow.Height = new GridLength(bottomPanelHeight);
         }
 
         UpdatePanels();
         UpdateFocusModeButton();
 
-        LeftPanel.SizeChanged += (s, e) => ViewModel.LeftPanelWidth = (float)e.NewSize.Width;
-        RightPanel.SizeChanged += (s, e) => ViewModel.RightPanelWidth = (float)e.NewSize.Width;
-        BottomPanel.SizeChanged += (s, e) => ViewModel.BottomPanelHeight = (float)e.NewSize.Height;
+        ExplorerPanel.SizeChanged += (s, e) => ViewModel.ExplorerPanelWidth = (float)e.NewSize.Width;
+        InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
+        ToolsPanel.SizeChanged += (s, e) => ViewModel.ToolsPanelHeight = (float)e.NewSize.Height;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -98,22 +102,26 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
+        // Send a message to tell services to initialize their workspace panels
+        var message = new WorkspaceWillPopulatePanelsMessage();
+        _messengerService.Send(message);
+
         // Insert the child panels at the start of the children collection so that the panel toggle
         // buttons take priority for accepting input.
 
-        var consolePanel = workspaceService.ConsoleService.CreateConsolePanel() as UIElement;
-        BottomPanel.Children.Insert(0, consolePanel);
+        var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
+        ExplorerPanel.Children.Insert(0, explorerPanel);
 
-        var documentsPanel = workspaceService.DocumentsService.CreateDocumentsPanel() as UIElement;
-        CenterPanel.Children.Insert(0, documentsPanel);
+        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
+        DocumentsPanel.Children.Insert(0, documentsPanel);
 
-        var inspectorPanel = workspaceService.InspectorService.CreateInspectorPanel() as UIElement;
-        RightPanel.Children.Add(inspectorPanel);
+        var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
+        InspectorPanel.Children.Add(inspectorPanel);
 
-        var explorerPanel = workspaceService.ExplorerService.CreateExplorerPanel() as UIElement;
-        LeftPanel.Children.Insert(0, explorerPanel);
+        var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
+        ToolsContent.Children.Add(consolePanel);
 
-        var statusPanel = workspaceService.StatusService.CreateStatusPanel() as UIElement;
+        var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
         StatusPanel.Children.Add(statusPanel);
 
         _ = ViewModel.LoadWorkspaceAsync();
@@ -129,9 +137,9 @@ public sealed partial class WorkspacePage : Page
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.IsLeftPanelVisible):
-            case nameof(ViewModel.IsRightPanelVisible):
-            case nameof(ViewModel.IsBottomPanelVisible):
+            case nameof(ViewModel.IsExplorerPanelVisible):
+            case nameof(ViewModel.IsInspectorPanelVisible):
+            case nameof(ViewModel.IsToolsPanelVisible):
                 UpdatePanels();
                 break;
             case nameof(ViewModel.IsFocusModeActive):
@@ -146,62 +154,62 @@ public sealed partial class WorkspacePage : Page
         // Update button visibility based on panel visibility state
         //
 
-        ShowLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideLeftPanelButton.Visibility = ViewModel.IsLeftPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        ShowExplorerPanelButton.Visibility = ViewModel.IsExplorerPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        HideExplorerPanelButton.Visibility = ViewModel.IsExplorerPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        ShowRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideRightPanelButton.Visibility = ViewModel.IsRightPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        ShowInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        HideInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        ShowBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideBottomPanelButton.Visibility = ViewModel.IsBottomPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        ShowToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        HideToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
         //
         // Update panel and splitter visibility based on the panel visibility state
         //
 
-        if (ViewModel.IsLeftPanelVisible)
+        if (ViewModel.IsExplorerPanelVisible)
         {
-            LeftPanelSplitter.Visibility = Visibility.Visible;
-            LeftPanel.Visibility = Visibility.Visible;
-            LeftPanelColumn.MinWidth = 100;
-            LeftPanelColumn.Width = new GridLength(ViewModel.LeftPanelWidth);
+            ExplorerPanelSplitter.Visibility = Visibility.Visible;
+            ExplorerPanel.Visibility = Visibility.Visible;
+            ExplorerPanelColumn.MinWidth = 100;
+            ExplorerPanelColumn.Width = new GridLength(ViewModel.ExplorerPanelWidth);
         }
         else
         {
-            LeftPanelSplitter.Visibility = Visibility.Collapsed;
-            LeftPanel.Visibility = Visibility.Collapsed;
-            LeftPanelColumn.MinWidth = 0;
-            LeftPanelColumn.Width = new GridLength(0);
+            ExplorerPanelSplitter.Visibility = Visibility.Collapsed;
+            ExplorerPanel.Visibility = Visibility.Collapsed;
+            ExplorerPanelColumn.MinWidth = 0;
+            ExplorerPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.IsRightPanelVisible)
+        if (ViewModel.IsInspectorPanelVisible)
         {
-            RightPanelSplitter.Visibility = Visibility.Visible;
-            RightPanel.Visibility = Visibility.Visible;
-            RightPanelColumn.MinWidth = 100;
-            RightPanelColumn.Width = new GridLength(ViewModel.RightPanelWidth);
+            InspectorPanelSplitter.Visibility = Visibility.Visible;
+            InspectorPanel.Visibility = Visibility.Visible;
+            InspectorPanelColumn.MinWidth = 100;
+            InspectorPanelColumn.Width = new GridLength(ViewModel.InspectorPanelWidth);
         }
         else
         {
-            RightPanelSplitter.Visibility = Visibility.Collapsed;
-            RightPanel.Visibility = Visibility.Collapsed;
-            RightPanelColumn.MinWidth = 0;
-            RightPanelColumn.Width = new GridLength(0);
+            InspectorPanelSplitter.Visibility = Visibility.Collapsed;
+            InspectorPanel.Visibility = Visibility.Collapsed;
+            InspectorPanelColumn.MinWidth = 0;
+            InspectorPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.IsBottomPanelVisible)
+        if (ViewModel.IsToolsPanelVisible)
         {
-            BottomPanelSplitter.Visibility = Visibility.Visible;
-            BottomPanel.Visibility = Visibility.Visible;
-            BottomPanelRow.MinHeight = 100;
-            BottomPanelRow.Height = new GridLength(ViewModel.BottomPanelHeight);
+            ToolsPanelSplitter.Visibility = Visibility.Visible;
+            ToolsPanel.Visibility = Visibility.Visible;
+            ToolsPanelRow.MinHeight = 100;
+            ToolsPanelRow.Height = new GridLength(ViewModel.ToolsPanelHeight);
         }
         else
         {
-            BottomPanelSplitter.Visibility = Visibility.Collapsed;
-            BottomPanel.Visibility = Visibility.Collapsed;
-            BottomPanelRow.MinHeight = 0;
-            BottomPanelRow.Height = new GridLength(0);
+            ToolsPanelSplitter.Visibility = Visibility.Collapsed;
+            ToolsPanel.Visibility = Visibility.Collapsed;
+            ToolsPanelRow.MinHeight = 0;
+            ToolsPanelRow.Height = new GridLength(0);
         }
     }
 

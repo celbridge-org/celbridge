@@ -23,7 +23,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
             .Grid(column: 2)
             .Content(new SymbolIcon(Symbol.Refresh))
             .Command(ViewModel.RefreshResourceTreeCommand)
-            .Margin(0, 0, 8, 0)
+            .Margin(0, 0, 2, 0)
             .VerticalAlignment(VerticalAlignment.Center);
 
         ToolTipService.SetToolTip(refreshProjectButton, RefreshTooltipString);
@@ -33,7 +33,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
             .Background(ThemeResource.Get<Brush>("PanelBackgroundBrush"))
             .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
             .BorderThickness(0, 0, 0, 1)
-            .ColumnDefinitions("Auto, *, Auto, 44")
+            .ColumnDefinitions("Auto, *, Auto, 46")
             .Children(
                 new TextBlock()
                     .Grid(column: 0)

@@ -1,19 +1,29 @@
-﻿using Celbridge.Console.Views;
+using Celbridge.Messaging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
 
-    public ConsoleService(IServiceProvider serviceProvider)
+    private IConsolePanel? _consolePanel;
+    public IConsolePanel ConsolePanel => _consolePanel!;
+
+    public ConsoleService(
+        IServiceProvider serviceProvider,
+        IMessengerService messengerService)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
+
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
     }
 
-    public object CreateConsolePanel()
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
     {
-        return _serviceProvider.GetRequiredService<ConsolePanel>();
+        _consolePanel = _serviceProvider.GetRequiredService<IConsolePanel>();
     }
 
     public ICommandHistory CreateCommandHistory()
@@ -43,6 +53,7 @@ public class ConsoleService : IConsoleService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
             }
 
             _disposed = true;

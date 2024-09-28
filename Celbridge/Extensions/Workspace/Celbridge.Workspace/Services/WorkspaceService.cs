@@ -13,9 +13,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 {
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
-    public bool IsLeftPanelVisible { get; }
-    public bool IsRightPanelVisible { get; }
-    public bool IsBottomPanelVisible { get; }
+    public bool IsExplorerPanelVisible { get; }
+    public bool IsInspectorPanelVisible { get; }
+    public bool IsToolsPanelVisible { get; }
 
     public IWorkspaceDataService WorkspaceDataService { get; }
     public IConsoleService ConsoleService { get; }

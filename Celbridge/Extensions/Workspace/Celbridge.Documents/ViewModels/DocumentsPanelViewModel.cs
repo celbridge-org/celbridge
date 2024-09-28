@@ -15,9 +15,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IDocumentsService _documentsService;
 
-    public bool IsLeftPanelVisible => _editorSettings.IsLeftPanelVisible;
+    public bool IsExplorerPanelVisible => _editorSettings.IsExplorerPanelVisible;
 
-    public bool IsRightPanelVisible => _editorSettings.IsRightPanelVisible;
+    public bool IsInspectorPanelVisible => _editorSettings.IsInspectorPanelVisible;
 
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
@@ -64,13 +64,13 @@ public partial class DocumentsPanelViewModel : ObservableObject
         // 
         // Map the changed editor setting to the corresponding view model property.
         //
-        if (e.PropertyName == nameof(IEditorSettings.IsLeftPanelVisible))
+        if (e.PropertyName == nameof(IEditorSettings.IsExplorerPanelVisible))
         {
-            OnPropertyChanged(nameof(IsLeftPanelVisible));
+            OnPropertyChanged(nameof(IsExplorerPanelVisible));
         }
-        else if (e.PropertyName == nameof(IEditorSettings.IsRightPanelVisible))
+        else if (e.PropertyName == nameof(IEditorSettings.IsInspectorPanelVisible))
         {
-            OnPropertyChanged(nameof(IsRightPanelVisible));
+            OnPropertyChanged(nameof(IsInspectorPanelVisible));
         }
     }
 

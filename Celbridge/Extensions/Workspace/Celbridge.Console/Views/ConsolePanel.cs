@@ -1,141 +1,147 @@
+using Celbridge.Console.Models;
 using Celbridge.Console.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Windows.System;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl
+public partial class ConsolePanel : UserControl, IConsolePanel
 {
-    private const string StrokeEraseGlyph = "\ued60";
+    private readonly IStringLocalizer _stringLocalizer;
 
-    private IStringLocalizer _stringLocalizer;
+    private LocalizedString ExecuteCommandTooltipString => _stringLocalizer.GetString("ConsolePanel_ExecuteCommandTooltip");
     private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
 
-    private TabView _tabView;
+    private readonly ScrollViewer _scrollViewer;
+    private readonly TextBox _commandTextBox;
 
     public ConsolePanelViewModel ViewModel { get; }
 
-    public ConsolePanel(IStringLocalizer stringLocalizer)
+    public ConsolePanel(
+        IServiceProvider serviceProvider,
+        IStringLocalizer stringLocalizer)
     {
         _stringLocalizer = stringLocalizer;
 
-        ViewModel = CreateViewModel();
+        ViewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
 
-        _tabView = CreateTabView();
-
-        // Todo: Provide an extension point to add custom toolbar buttons here
-        var clearButton = CreateButton(StrokeEraseGlyph, ClearButtonTooltipString, ViewModel.ClearCommand);
-
-        // The third column here prevents the clear button from overlapping the panel collapse button
-        var panelContent = new Grid()
-            .ColumnDefinitions("*, Auto, 48")
-            .Children
-            (
-                _tabView,
-                clearButton
-            );
-
-        //
-        // Set the data context page content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(panelContent));
-    }
-
-    private ConsolePanelViewModel CreateViewModel()
-    {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var viewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
-
-        viewModel.OnAddConsoleTab += () =>
+        Unloaded += (sender, e) =>
         {
-            CreateConsoleTabViewItem(_tabView);
+            ViewModel.ConsoleView_Unloaded();
         };
 
-        viewModel.OnClearConsole += () =>
-        {
-            var tabViewItem = _tabView.SelectedItem as TabViewItem;
-            Guard.IsNotNull(tabViewItem);
+        var symbolFontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-            var consoleView = tabViewItem.Content as ConsoleView;
-            Guard.IsNotNull(consoleView);
+        _scrollViewer = new ScrollViewer()
+            .Grid(row: 0)
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
+            .Content(new ListView()
+            .ItemTemplate<ConsoleLogItem>(item =>
+            {
+                return new StackPanel()
+                    .Orientation(Orientation.Horizontal)
+                    .Children
+                    (
+                        new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .FontSize(12)
+                            .Foreground(() => item.Color)
+                            .VerticalAlignment(VerticalAlignment.Top)
+                            .Margin(0,6,0,0)
+                            .Glyph(() => item.Glyph),
+                        new TextBlock()
+                            .Text(() => item.LogText)
+                            .TextWrapping(TextWrapping.Wrap)
+                            .Margin(6, 0, 0, 0)
+                            .Padding(0)
+                    );
+            })
+            .ItemsSource(x => x.Binding(() => ViewModel.ConsoleLogItems).OneWay())
+            .ItemContainerStyle(new Style(typeof(ListViewItem))
+            {
+                Setters =
+                {
+                    new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
+                    new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
+                    new Setter(FrameworkElement.MinHeightProperty, 24),
+                }
+            })
+        );
 
-            consoleView.ViewModel.ClearCommand.Execute(this);
-        };
+        _commandTextBox = new TextBox()
+            .Grid(column: 0)
+            .Margin(0, 0, 2, 0)
+            .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
+            .Text(x => x.Binding(() => ViewModel.CommandText)
+                        .Mode(BindingMode.TwoWay)
+                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+            .VerticalAlignment(VerticalAlignment.Bottom)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .IsSpellCheckEnabled(false);
 
-        return viewModel;
-    }
+        _commandTextBox.KeyDown += CommandTextBox_KeyDown;
 
-    private TabView CreateTabView()
-    {
-        var tabView = new TabView()
-            .Grid(columnSpan: 3)
-            .TabWidthMode(TabViewWidthMode.SizeToContent)
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
-            .IsAddTabButtonVisible(true)
-            .AddTabButtonCommand(ViewModel.AddConsoleTabCommand)
-#if WINDOWS
-            .CanReorderTabs(true)
-            .CanDragTabs(true)
-#endif
-            .TabStripFooter
-            (
-                new Grid()
-                    .Width(96)
-                    .Height(40)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-            );
-
-        CreateConsoleTabViewItem(tabView);
-
-        return tabView;
-    }
-
-    private UIElement CreateButton(string iconGlyph, LocalizedString tooltipText, ICommand command)
-    {
-        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
-
-        var button = new Button()
+        var executeButton = new Button()
             .Grid(column: 1)
-            .Margin(4)
-            .HorizontalAlignment(HorizontalAlignment.Right)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .Command(command)
+            .Margin(0, 0, 2, 0)
+            .Command(ViewModel.ExecuteCommand)
             .Content
             (
-                new FontIcon()
-                    .FontFamily(fontFamily)
-                    .Glyph(iconGlyph)
+                new SymbolIcon()
+                .Symbol(Symbol.Play)
             );
 
-        ToolTipService.SetToolTip(button, tooltipText);
-        ToolTipService.SetPlacement(button, PlacementMode.Top);
+        var clearButton = new Button()
+            .Grid(column: 2)
+            .Margin(0)
+            .Command(ViewModel.ClearCommand)
+            .Content
+            (
+                new SymbolIcon()
+                .Symbol(Symbol.Clear)
+            );
 
-        return button!;
+        ToolTipService.SetToolTip(executeButton, ExecuteCommandTooltipString);
+        ToolTipService.SetToolTip(clearButton, ClearButtonTooltipString);
+
+        var commandLine = new Grid()
+            .Grid(row: 1)
+            .ColumnDefinitions("*, auto, auto")
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(_commandTextBox, executeButton, clearButton);
+
+        var consoleGrid = new Grid()
+            .RowDefinitions("*, auto")
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Children(_scrollViewer, commandLine);
+
+        this.DataContext(ViewModel, (userControl, vm) => userControl
+            .Content(consoleGrid));
     }
 
-    private void CreateConsoleTabViewItem(TabView tabView)
+    public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
-        var consoleView = new ConsoleView();
-
-        var tabViewItem = new TabViewItem()
-            .Header("Console")
-            .Content(consoleView);
-
-        tabViewItem.CloseRequested += (sender, args) =>
+        if (e.Key == VirtualKey.Enter)
         {
-            var consoleView = sender.Content as ConsoleView;
-            Guard.IsNotNull(consoleView);
+            ViewModel.ExecuteCommand.Execute(this);
 
-            // Give the view model an opportunity to handle the close event
-            consoleView.ViewModel.CloseCommand.Execute(this);
+            // Scroll to the end of the output list
+            _scrollViewer.UpdateLayout();
+            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
 
-            tabView.TabItems.Remove(args.Tab);
-        };
-        
-        tabView.TabItems.Add(tabViewItem);
-        tabView.SelectedItem = tabViewItem;
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Up)
+        {
+            ViewModel.SelectPreviousCommand.Execute(this);
+            e.Handled = true;
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
+        else if (e.Key == VirtualKey.Down)
+        {
+            ViewModel.SelectNextCommand.Execute(this);
+            e.Handled = true;
+            _commandTextBox.SelectionStart = _commandTextBox.Text.Length;
+        }
     }
 }
