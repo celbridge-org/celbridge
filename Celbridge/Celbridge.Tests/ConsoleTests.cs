@@ -1,10 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Celbridge.Logging.Services;
-using Celbridge.Messaging;
-using Celbridge.Logging;
-using Celbridge.Console;
 using Celbridge.Console.Services;
+using Celbridge.Console;
+using Celbridge.Logging.Services;
+using Celbridge.Logging;
 using Celbridge.Messaging.Services;
+using Celbridge.Messaging;
+using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
 
@@ -21,6 +22,7 @@ public class ConsoleTests
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<IConsoleService, ConsoleService>();
         services.AddSingleton<ILogger<CommandTests>, Logger<CommandTests>>();
+        services.AddTransient<CommandHistory>();
 
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -37,7 +39,9 @@ public class ConsoleTests
     [Test]
     public void ICanSelectNextAndPreviousCommandHistory()
     {
-        var commandHistory = new CommandHistory() as ICommandHistory;
+        Guard.IsNotNull(_serviceProvider);
+
+        var commandHistory = _serviceProvider.GetRequiredService<CommandHistory>();
 
         // Add command "A" to the history
         commandHistory.AddCommand("A");
