@@ -1,9 +1,7 @@
 using Celbridge.Console.Models;
 using Celbridge.Console.ViewModels;
 using Microsoft.Extensions.Localization;
-using Microsoft.UI.Input;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.Console.Views;
 
@@ -81,17 +79,9 @@ public partial class ConsolePanel : UserControl, IConsolePanel
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
             .VerticalAlignment(VerticalAlignment.Bottom)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .IsSpellCheckEnabled(false)
-            .TextWrapping(TextWrapping.Wrap)
-            .AcceptsReturn(true);
+            .IsSpellCheckEnabled(false);
 
         _commandTextBox.KeyDown += CommandTextBox_KeyDown;
-
-#if WINDOWS
-        // On Windows, AcceptsReturn causes the TextBox to swallow the KeyDown event for Enter, so we need to
-        // use PreviewKeyDown to intercept it.
-        _commandTextBox.PreviewKeyDown += CommandTextBox_PreviewKeyDown;
-#endif
 
         var executeButton = new Button()
             .Grid(column: 1)
@@ -121,45 +111,16 @@ public partial class ConsolePanel : UserControl, IConsolePanel
             .Content(consoleGrid));
     }
 
-#if WINDOWS
-    private void CommandTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == VirtualKey.Enter)
-        {
-            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
-
-            if (shift)
-            {
-                ViewModel.ExecuteCommand.Execute(this);
-
-                // Scroll to the end of the output list
-                _scrollViewer.UpdateLayout();
-                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-
-                e.Handled = true;
-            }
-        }
-    }
-#endif
-
     public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)
         {
-            // This does not get called on Windows, because of the issue with AcceptsReturn described above.
-            CoreVirtualKeyStates shiftState = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-            bool shift = (shiftState & CoreVirtualKeyStates.Down) != 0;
+            ViewModel.ExecuteCommand.Execute(this);
 
-            if (shift)
-            {
-                ViewModel.ExecuteCommand.Execute(this);
+            // Scroll to the end of the output list
+            _scrollViewer.UpdateLayout();
+            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
 
-                // Scroll to the end of the output list
-                _scrollViewer.UpdateLayout();
-                _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-
-            }
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.Up)
