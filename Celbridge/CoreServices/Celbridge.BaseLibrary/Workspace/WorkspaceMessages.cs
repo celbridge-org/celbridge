@@ -13,7 +13,7 @@ public record WorkspaceLoadedMessage();
 
 /// <summary>
 /// Sent when the workspace page has loaded and is about to populate the workspace panels.
-/// Services should listen for this message and create their panels.
+/// Workspace services should create their panel views when they receive this message.
 /// </summary>
 public record WorkspaceWillPopulatePanelsMessage();
 
