@@ -1,9 +1,11 @@
-using Celbridge.Scripting;
 using Celbridge.Console.Models;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
+using Celbridge.Messaging;
+using Celbridge.Scripting;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
+using System.Collections.ObjectModel;
 
 namespace Celbridge.Console.ViewModels;
 
@@ -29,6 +31,8 @@ public partial class ConsolePanelViewModel : ObservableObject
     }
 
     public ConsolePanelViewModel(
+        IMessengerService messengerService,
+        IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         IUtilityService utilityService,
         IConsoleService consoleService,
@@ -44,13 +48,19 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         var _ = InitScriptContext();
 
-        _commandHistory = _consoleService.CreateCommandHistory();
+        _commandHistory = serviceProvider.GetRequiredService<ICommandHistory>();
 
         _consoleService.OnPrint += Print;
 
         var environmentInfo = utilityService.GetEnvironmentInfo();
         var versionString = stringLocalizer.GetString("ConsolePanel_ApplicationVersion", environmentInfo.AppVersion);
         Print(MessageType.Info, versionString);
+
+        messengerService.Register<WorkspaceLoadedMessage>(this, (sender, message) =>
+        {
+            _ = _commandHistory.LoadCommandHistory();
+            messengerService.Unregister<WorkspaceLoadedMessage>(this);
+        });
     }
 
     public void ConsoleView_Unloaded()
@@ -101,6 +111,9 @@ public partial class ConsolePanelViewModel : ObservableObject
             if (executeResult.IsSuccess)
             {
                _commandHistory.AddCommand(command);
+
+                // The command history persists between sessions.
+                await _commandHistory.SaveCommandHistory();
             }
         }
 

@@ -1,18 +1,56 @@
-﻿namespace Celbridge.Console.Services;
+using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
+
+namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {
+    private IWorkspaceDataService? _workspaceDataService;
+
     private List<string> _commands = new();
     private int _commandIndex;
 
-    public uint MaxHistorySize { get; set; } = 200;
+    public uint MaxHistorySize { get; set; } = 100;
 
     public uint NumCommands => (uint)_commands.Count;
 
-    public void Clear()
+    public CommandHistory()
+    {}
+
+    public CommandHistory(IWorkspaceWrapper workspaceWrapper)
+    {
+        _workspaceDataService = workspaceWrapper.WorkspaceService.WorkspaceDataService;
+    }
+
+    public void ClearCommandHistory()
     {
         _commands.Clear();
         _commandIndex = 0;
+    }
+
+    public async Task SaveCommandHistory()
+    {
+        Guard.IsNotNull(_workspaceDataService);
+
+        IWorkspaceData workspaceData = _workspaceDataService.LoadedWorkspaceData!;
+
+        await workspaceData.SetPropertyAsync<List<string>>("commandHistory", _commands);
+    }
+
+    public async Task LoadCommandHistory()
+    {
+        Guard.IsNotNull(_workspaceDataService);
+
+        IWorkspaceData workspaceData = _workspaceDataService.LoadedWorkspaceData!;
+
+        var commands = await workspaceData.GetPropertyAsync<List<string>>("commandHistory", null);
+        if (commands is not null)
+        {
+            _commands.ReplaceWith(commands);
+
+            // Set the command index to one after the last entry
+            _commandIndex = _commands.Count;
+        }
     }
 
     public void AddCommand(string commandText)
