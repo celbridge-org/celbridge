@@ -25,6 +25,10 @@
     </UnoFeatures>
 
     <DefaultLanguage>en-US</DefaultLanguage>
+
+    <PackageCertificateThumbprint>4100DB32C9502803763B1C125070FECE6F587FDE</PackageCertificateThumbprint>
+
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
 
   <ItemGroup>
