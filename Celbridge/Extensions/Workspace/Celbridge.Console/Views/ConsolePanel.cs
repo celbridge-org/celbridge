@@ -7,13 +7,10 @@ namespace Celbridge.Console.Views;
 
 public partial class ConsolePanel : UserControl, IConsolePanel
 {
-    private const string PlayGlyph = "\ue768";
-    private const string StrokeEraseGlyph = "\ued60";
-
     private readonly IStringLocalizer _stringLocalizer;
 
-    private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
     private LocalizedString ExecuteCommandTooltipString => _stringLocalizer.GetString("ConsolePanel_ExecuteCommandTooltip");
+    private LocalizedString ClearButtonTooltipString => _stringLocalizer.GetString("ConsolePanel_ClearButtonTooltip");
 
     private readonly ScrollViewer _scrollViewer;
     private readonly TextBox _commandTextBox;
@@ -33,7 +30,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
             ViewModel.ConsoleView_Unloaded();
         };
 
-        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+        var symbolFontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
         _scrollViewer = new ScrollViewer()
             .Grid(row: 0)
@@ -46,7 +43,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
                     .Children
                     (
                         new FontIcon()
-                            .FontFamily(fontFamily)
+                            .FontFamily(symbolFontFamily)
                             .FontSize(12)
                             .Foreground(() => item.Color)
                             .VerticalAlignment(VerticalAlignment.Top)
@@ -73,6 +70,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
         _commandTextBox = new TextBox()
             .Grid(column: 0)
+            .Margin(0, 0, 2, 0)
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Text(x => x.Binding(() => ViewModel.CommandText)
                         .Mode(BindingMode.TwoWay)
@@ -85,22 +83,32 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
         var executeButton = new Button()
             .Grid(column: 1)
-            .VerticalAlignment(VerticalAlignment.Bottom)
+            .Margin(0, 0, 2, 0)
             .Command(ViewModel.ExecuteCommand)
             .Content
             (
-                new FontIcon()
-                    .FontFamily(fontFamily)
-                    .Glyph(PlayGlyph)
+                new SymbolIcon()
+                .Symbol(Symbol.Play)
+            );
+
+        var clearButton = new Button()
+            .Grid(column: 2)
+            .Margin(0)
+            .Command(ViewModel.ClearCommand)
+            .Content
+            (
+                new SymbolIcon()
+                .Symbol(Symbol.Clear)
             );
 
         ToolTipService.SetToolTip(executeButton, ExecuteCommandTooltipString);
+        ToolTipService.SetToolTip(clearButton, ClearButtonTooltipString);
 
         var commandLine = new Grid()
             .Grid(row: 1)
-            .ColumnDefinitions("*, auto")
+            .ColumnDefinitions("*, auto, auto")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(_commandTextBox, executeButton);
+            .Children(_commandTextBox, executeButton, clearButton);
 
         var consoleGrid = new Grid()
             .RowDefinitions("*, auto")
