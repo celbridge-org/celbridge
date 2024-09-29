@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Console.Models;
 using Celbridge.Messaging;
 using Celbridge.Scripting;
@@ -12,6 +13,7 @@ namespace Celbridge.Console.ViewModels;
 public partial class ConsolePanelViewModel : ObservableObject
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
     private readonly IConsoleService _consoleService;
     private readonly ICommandHistory _commandHistory;
     private IScriptContext? _scriptContext;
@@ -34,11 +36,13 @@ public partial class ConsolePanelViewModel : ObservableObject
         IMessengerService messengerService,
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
+        ICommandService commandService,
         IUtilityService utilityService,
         IConsoleService consoleService,
         IScriptingService scriptingService)
     {
         _stringLocalizer = stringLocalizer;
+        _commandService = commandService;
         _consoleService = consoleService;
 
         async Task InitScriptContext()
@@ -58,9 +62,19 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         messengerService.Register<WorkspaceLoadedMessage>(this, (sender, message) =>
         {
-            _ = _commandHistory.LoadCommandHistory();
+            _ = _commandHistory.Load();
             messengerService.Unregister<WorkspaceLoadedMessage>(this);
         });
+    }
+
+    public void ClearLog()
+    {
+        _consoleLogItems.Clear();
+    }
+
+    public void ClearHistory()
+    {
+        _commandHistory.Clear();
     }
 
     public void ConsoleView_Unloaded()
@@ -68,10 +82,10 @@ public partial class ConsolePanelViewModel : ObservableObject
         _consoleService.OnPrint -= Print;
     }
 
-    public ICommand ClearCommand => new RelayCommand(Clear_Executed);
-    private void Clear_Executed()
+    public ICommand ClearLogCommand => new RelayCommand(ClearLog_Executed);
+    private void ClearLog_Executed()
     {
-        _consoleLogItems.Clear();
+        _commandService.Execute<IClearLogCommand>();
     }
 
     public ICommand ExecuteCommand => new AsyncRelayCommand(ExecuteCommand_Executed);
@@ -110,10 +124,14 @@ public partial class ConsolePanelViewModel : ObservableObject
             var executeResult = await executor.ExecuteAsync();
             if (executeResult.IsSuccess)
             {
-               _commandHistory.AddCommand(command);
+                // The ClearHistory() command should not be added to the history
+                if (!command.StartsWith("ClearHistory()"))
+                {
+                   _commandHistory.AddCommand(command);
+                }
 
                 // The command history persists between sessions.
-                await _commandHistory.SaveCommandHistory();
+                await _commandHistory.Save();
             }
         }
 
