@@ -1,6 +1,4 @@
-using Celbridge.BaseLibrary.Commands;
-
-namespace Celbridge.Commands.Commands;
+namespace Celbridge.Commands;
 
 public class UndoCommand : CommandBase, IUndoCommand
 {
