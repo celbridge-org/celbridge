@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -7,7 +7,6 @@ namespace Celbridge.Explorer.Commands;
 
 public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCommand
 {
-    public override string UndoStackName => UndoStackNames.None;
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }

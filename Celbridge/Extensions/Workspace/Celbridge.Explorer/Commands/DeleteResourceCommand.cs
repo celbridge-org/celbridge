@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Commands
 {
     public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     {
-        public override string UndoStackName => UndoStackNames.Project;
+        public override UndoStackName UndoStackName => UndoStackName.Explorer;
         public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
         public ResourceKey Resource { get; set; }
