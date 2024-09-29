@@ -15,17 +15,17 @@ public interface ICommandHistory
     /// <summary>
     /// Remove all commands from the history.
     /// </summary>
-    void ClearCommandHistory();
+    void Clear();
 
     /// <summary>
     /// Save the command history to persistent storage.
     /// </summary>
-    Task SaveCommandHistory();
+    Task Save();
 
     /// <summary>
     /// Load the command history from persistent storage.
     /// </summary>
-    Task LoadCommandHistory();
+    Task Load();
 
     /// <summary>
     /// Add a command to the history.
