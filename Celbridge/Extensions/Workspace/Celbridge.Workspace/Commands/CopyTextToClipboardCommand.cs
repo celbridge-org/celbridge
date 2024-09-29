@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -6,8 +6,6 @@ namespace Celbridge.Workspace.Commands;
 
 public class CopyTextToClipboardCommand : CommandBase, ICopyTextToClipboardCommand
 {
-    public override string UndoStackName => UndoStackNames.None;
-
     public string Text { get; set; } = string.Empty;
     public DataTransferMode TransferMode { get; set; }
 

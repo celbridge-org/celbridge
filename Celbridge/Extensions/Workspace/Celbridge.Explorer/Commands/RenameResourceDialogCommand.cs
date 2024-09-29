@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Validators;
@@ -9,7 +9,6 @@ namespace Celbridge.Explorer.Commands;
 
 public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCommand
 {
-    public override string UndoStackName => UndoStackNames.None;
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }

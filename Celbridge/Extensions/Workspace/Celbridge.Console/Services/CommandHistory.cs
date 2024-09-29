@@ -10,9 +10,9 @@ public class CommandHistory : ICommandHistory
     private List<string> _commands = new();
     private int _commandIndex;
 
-    public uint MaxHistorySize { get; set; } = 100;
+    public int MaxHistorySize { get; set; } = 100;
 
-    public uint NumCommands => (uint)_commands.Count;
+    public int NumCommands => _commands.Count;
 
     public CommandHistory()
     {}
@@ -22,13 +22,13 @@ public class CommandHistory : ICommandHistory
         _workspaceDataService = workspaceWrapper.WorkspaceService.WorkspaceDataService;
     }
 
-    public void ClearCommandHistory()
+    public void Clear()
     {
         _commands.Clear();
         _commandIndex = 0;
     }
 
-    public async Task SaveCommandHistory()
+    public async Task Save()
     {
         Guard.IsNotNull(_workspaceDataService);
 
@@ -37,7 +37,7 @@ public class CommandHistory : ICommandHistory
         await workspaceData.SetPropertyAsync<List<string>>("commandHistory", _commands);
     }
 
-    public async Task LoadCommandHistory()
+    public async Task Load()
     {
         Guard.IsNotNull(_workspaceDataService);
 
@@ -61,18 +61,17 @@ public class CommandHistory : ICommandHistory
             return;
         }
 
-        bool repeatedCommand = _commands.Count > 0 && _commands[_commands.Count - 1] == commandText;
-        if (!repeatedCommand)
-        {
-            // If the same command is entered repeatedly, only store the first instance
-            _commands.Add(commandText);
-        }
+        // Remove any previously entered identical command.
+        // The same commands tend to be entered repeatedly, so this reduces clutter.
+        _commands.RemoveAll(c => c == commandText);
 
-        // Limit how big the history can grow
-        while (_commands.Count > MaxHistorySize)
+        _commands.Add(commandText);
+
+        // Constrain the size of the command history buffer
+        int removeCount = _commands.Count - MaxHistorySize;
+        if (removeCount > 0)
         {
-            // This is potentially expensive, could replace with a linked list implementation.
-            _commands.RemoveAt(0);
+            _commands.RemoveRange(0, removeCount);
         }
 
         // Set the command index to one after the last entry
