@@ -22,13 +22,13 @@ public class CommandHistory : ICommandHistory
         _workspaceDataService = workspaceWrapper.WorkspaceService.WorkspaceDataService;
     }
 
-    public void ClearCommandHistory()
+    public void Clear()
     {
         _commands.Clear();
         _commandIndex = 0;
     }
 
-    public async Task SaveCommandHistory()
+    public async Task Save()
     {
         Guard.IsNotNull(_workspaceDataService);
 
@@ -37,7 +37,7 @@ public class CommandHistory : ICommandHistory
         await workspaceData.SetPropertyAsync<List<string>>("commandHistory", _commands);
     }
 
-    public async Task LoadCommandHistory()
+    public async Task Load()
     {
         Guard.IsNotNull(_workspaceDataService);
 
