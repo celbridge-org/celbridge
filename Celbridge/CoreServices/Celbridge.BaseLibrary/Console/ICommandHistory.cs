@@ -5,12 +5,12 @@ public interface ICommandHistory
     /// <summary>
     /// The maximum number of commands to store in the history.
     /// </summary>
-    uint MaxHistorySize { get; set; }
+    int MaxHistorySize { get; set; }
 
     /// <summary>
     /// The number of commands currently stored in the history.
     /// </summary>
-    uint NumCommands { get; }
+    int NumCommands { get; }
 
     /// <summary>
     /// Remove all commands from the history.
