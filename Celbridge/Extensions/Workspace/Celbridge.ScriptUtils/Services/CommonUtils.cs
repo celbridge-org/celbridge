@@ -1,6 +1,4 @@
-﻿using Celbridge.Commands;
 using Celbridge.Dialog;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.ScriptUtils.Services;
 
@@ -15,30 +13,6 @@ public class CommonUtils
             var dialogService = ServiceLocator.ServiceProvider.GetRequiredService<IDialogService>();
             dialogService.ShowAlertDialogAsync(title, message);
         });
-    }
-
-    public static void Undo(string stackName)
-    {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Undo(stackName);
-    }
-
-    public static void Undo()
-    {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.TryUndo();
-    }
-
-    public static void Redo(string stackName)
-    {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Redo(stackName);
-    }
-
-    public static void Redo()
-    {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.TryRedo();
     }
 }
 
