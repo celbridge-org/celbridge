@@ -1,4 +1,4 @@
-﻿using Celbridge.DataTransfer;
+using Celbridge.DataTransfer;
 using Celbridge.Commands;
 
 namespace Celbridge.Workspace.Commands;
@@ -6,8 +6,6 @@ namespace Celbridge.Workspace.Commands;
 public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFromClipboardCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-
-    public override string UndoStackName => UndoStackNames.None;
 
     public ResourceKey DestFolderResource { get; set; }
 

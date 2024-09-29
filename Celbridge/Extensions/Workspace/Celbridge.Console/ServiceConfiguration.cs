@@ -27,5 +27,14 @@ public static class ServiceConfiguration
         //
 
         config.AddTransient<ConsolePanelViewModel>();
+
+        //
+        // Register commands
+        // 
+
+        config.AddTransient<IClearLogCommand, ClearLogCommand>();
+        config.AddTransient<IClearHistoryCommand, ClearHistoryCommand>();
+        config.AddTransient<IUndoCommand, UndoCommand>();
+        config.AddTransient<IRedoCommand, RedoCommand>();
     }
 }
