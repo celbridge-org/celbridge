@@ -1,4 +1,6 @@
-namespace Celbridge.Commands;
+using Celbridge.Commands;
+
+namespace Celbridge.Console;
 
 /// <summary>
 /// Undo the command in the specified undo stack.

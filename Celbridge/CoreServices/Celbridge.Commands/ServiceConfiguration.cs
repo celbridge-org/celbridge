@@ -11,12 +11,5 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ICommandService, CommandService>();
-
-        //
-        // Register commands
-        //
-
-        services.AddTransient<IUndoCommand, UndoCommand>();
-        services.AddTransient<IRedoCommand, RedoCommand>();
     }
 }
