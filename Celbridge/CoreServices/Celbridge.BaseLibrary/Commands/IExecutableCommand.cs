@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Commands;
+namespace Celbridge.Commands;
 
 /// <summary>
 /// A command that can be executed via the command service.
@@ -19,7 +19,7 @@ public interface IExecutableCommand
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.
     /// </summary>
-    string UndoStackName { get; }
+    UndoStackName UndoStackName { get; }
 
     /// <summary>
     /// Flags to configure behaviour when executing the command.
