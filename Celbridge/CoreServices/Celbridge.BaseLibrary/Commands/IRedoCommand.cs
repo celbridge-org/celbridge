@@ -1,6 +1,4 @@
-using Celbridge.Commands;
-
-namespace Celbridge.BaseLibrary.Commands;
+namespace Celbridge.Commands;
 
 /// <summary>
 /// Redo the command in the specified undo stack.
