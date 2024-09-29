@@ -1,4 +1,6 @@
-namespace Celbridge.Commands;
+using Celbridge.Commands;
+
+namespace Celbridge.Console;
 
 public class RedoCommand : CommandBase, IRedoCommand
 {
