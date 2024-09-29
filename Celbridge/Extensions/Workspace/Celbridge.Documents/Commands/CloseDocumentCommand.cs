@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -36,6 +36,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
     //
     // Static methods for scripting support.
     //
+
     public static void CloseDocument(ResourceKey fileResource)
     {
         CloseDocument(fileResource, false);

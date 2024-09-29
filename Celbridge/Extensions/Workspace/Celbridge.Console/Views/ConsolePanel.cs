@@ -94,7 +94,7 @@ public partial class ConsolePanel : UserControl, IConsolePanel
         var clearButton = new Button()
             .Grid(column: 2)
             .Margin(0)
-            .Command(ViewModel.ClearCommand)
+            .Command(ViewModel.ClearLogCommand)
             .Content
             (
                 new SymbolIcon()

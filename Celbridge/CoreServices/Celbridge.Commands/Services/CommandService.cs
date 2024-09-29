@@ -98,7 +98,7 @@ public class CommandService : ICommandService
 
     public Result EnqueueCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName != UndoStackNames.None)
+        if (command.UndoStackName != UndoStackName.None)
         {
             // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
             _undoStack.ClearRedoCommands(command.UndoStackName);
@@ -138,9 +138,9 @@ public class CommandService : ICommandService
         }
     }
 
-    public string ActiveUndoStack { get; set; } = UndoStackNames.None;
+    public UndoStackName ActiveUndoStack { get; set; } = UndoStackName.None;
 
-    public bool IsUndoStackEmpty(string undoStackName)
+    public bool IsUndoStackEmpty(UndoStackName undoStackName)
     {
         lock (_lock)
         {
@@ -148,7 +148,7 @@ public class CommandService : ICommandService
         }
     }
 
-    public bool IsRedoStackEmpty(string undoStackName)
+    public bool IsRedoStackEmpty(UndoStackName undoStackName)
     {
         lock (_lock)
         {
@@ -156,7 +156,7 @@ public class CommandService : ICommandService
         }
     }
 
-    public Result Undo(string undoStackName)
+    public Result Undo(UndoStackName undoStackName)
     {
         lock (_lock)
         {
@@ -187,7 +187,7 @@ public class CommandService : ICommandService
         return Result.Ok();
     }
 
-    public Result Redo(string undoStackName)
+    public Result Redo(UndoStackName undoStackName)
     {
         lock (_lock)
         {
@@ -220,8 +220,8 @@ public class CommandService : ICommandService
 
     public Result<bool> TryUndo()
     {
-        string undoStackName = ActiveUndoStack;
-        if (undoStackName == UndoStackNames.None)
+        UndoStackName undoStackName = ActiveUndoStack;
+        if (undoStackName == UndoStackName.None)
         {
             return Result<bool>.Ok(false);
         }
@@ -244,8 +244,8 @@ public class CommandService : ICommandService
 
     public Result<bool> TryRedo()
     {
-        string undoStackName = ActiveUndoStack;
-        if (undoStackName == UndoStackNames.None)
+        UndoStackName undoStackName = ActiveUndoStack;
+        if (undoStackName == UndoStackName.None)
         {
             return Result<bool>.Ok(false);
         }
@@ -355,7 +355,7 @@ public class CommandService : ICommandService
 
                             if (executeResult.IsSuccess)
                             {
-                                if (command.UndoStackName != UndoStackNames.None)
+                                if (command.UndoStackName != UndoStackName.None)
                                 {
                                     _undoStack.PushUndoCommand(command);
                                 }
