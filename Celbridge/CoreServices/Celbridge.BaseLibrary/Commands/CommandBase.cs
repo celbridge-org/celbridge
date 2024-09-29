@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Commands;
+namespace Celbridge.Commands;
 
 /// <summary>
 /// Base class for commands that can be executed via the command service.
@@ -19,7 +19,7 @@ public abstract class CommandBase : IExecutableCommand
     /// <summary>
     /// Name of the undo stack to add this command to after it executes.
     /// </summary>
-    public virtual string UndoStackName => UndoStackNames.None;
+    public virtual UndoStackName UndoStackName => Commands.UndoStackName.None;
 
     /// <summary>
     /// Flags to configure behaviour when executing the command.

@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -8,7 +8,6 @@ namespace Celbridge.Explorer.Commands;
 
 public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDialogCommand
 {
-    public override string UndoStackName => UndoStackNames.None;
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }

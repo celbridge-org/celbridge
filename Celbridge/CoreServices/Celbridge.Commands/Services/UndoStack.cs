@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Commands.Services;
 
@@ -17,14 +17,14 @@ public class UndoStack
 {
     private List<UndoStackItem> _operations = new();
 
-    public int GetUndoCount(string undoStackName)
+    public int GetUndoCount(UndoStackName undoStackName)
     {
         return _operations.Count(item =>
             item.Operation == UndoStackOperation.Undo && 
             item.Command.UndoStackName == undoStackName);
     }
 
-    public int GetRedoCount(string undoStackName)
+    public int GetRedoCount(UndoStackName undoStackName)
     {
         return _operations.Count(item =>
             item.Operation == UndoStackOperation.Redo &&
@@ -33,7 +33,7 @@ public class UndoStack
 
     public Result PushUndoCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName == UndoStackNames.None)
+        if (command.UndoStackName == UndoStackName.None)
         {
             return Result.Fail($"Failed to push undo command. The 'None' undo stack may not contain commands.");
         }
@@ -52,7 +52,7 @@ public class UndoStack
 
     public Result PushRedoCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName == UndoStackNames.None)
+        if (command.UndoStackName == UndoStackName.None)
         {
             return Result.Fail($"Failed to push redo command. The 'None' undo stack may not contain commands.");
         }
@@ -69,9 +69,9 @@ public class UndoStack
         return Result.Ok();
     }
 
-    public Result<IEnumerable<IExecutableCommand>> PopCommands(string undoStackName, UndoStackOperation operation)
+    public Result<IEnumerable<IExecutableCommand>> PopCommands(UndoStackName undoStackName, UndoStackOperation operation)
     {
-        if (undoStackName == UndoStackNames.None)
+        if (undoStackName == UndoStackName.None)
         {
             return Result<IEnumerable<IExecutableCommand>>.Fail($"Failed to pop commands for '{operation}'. The 'None' undo stack may not contain commands.");
         }
@@ -126,9 +126,9 @@ public class UndoStack
         return Result<IEnumerable<IExecutableCommand>>.Ok(commands);
     }
 
-    public Result ClearRedoCommands(string undoStackName)
+    public Result ClearRedoCommands(UndoStackName undoStackName)
     {
-        if (undoStackName == UndoStackNames.None)
+        if (undoStackName == UndoStackName.None)
         {
             return Result.Fail($"Failed to clear redo commands. The 'None' undo stack may not contain commands.");
         }

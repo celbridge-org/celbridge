@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Projects;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
-    public override string UndoStackName => UndoStackNames.Project;
+    public override UndoStackName UndoStackName => UndoStackName.Explorer;
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }

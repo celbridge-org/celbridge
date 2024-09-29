@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace Celbridge.Commands;
 
@@ -67,23 +67,23 @@ public interface ICommandService
     /// <summary>
     /// The undo stack associated with the most recently focussed UI element.
     /// </summary>
-    string ActiveUndoStack { get; set; }
+    UndoStackName ActiveUndoStack { get; set; }
 
     /// <summary>
     /// Returns true if the specified undo stack is empty.
     /// </summary>
-    bool IsUndoStackEmpty(string undoStackName);
+    bool IsUndoStackEmpty(UndoStackName undoStackName);
 
     /// <summary>
     /// Returns true if the specified redo stack is empty.
     /// </summary>
-    bool IsRedoStackEmpty(string undoStackName);
+    bool IsRedoStackEmpty(UndoStackName undoStackName);
 
     /// <summary>
     /// Pop the most recent command from the specified undo stack and execute it.
     /// The call fails if no undo command was found in the redo stack.
     /// </summary>
-    Result Undo(string undoStackName);
+    Result Undo(UndoStackName undoStackName);
 
     /// <summary>
     /// Attempt to pop the most recent undo command from the Active Undo Stack and execute it.
@@ -96,7 +96,7 @@ public interface ICommandService
     /// Pop the most recently undone command from the specified undo stack and execute it.
     /// The call fails if no undone command was found in the undo stack.
     /// </summary>
-    Result Redo(string undoStackName);
+    Result Redo(UndoStackName undoStackName);
 
     /// <summary>
     /// Attempt to pop the most recent redo command from the Active Undo Stack and execute it.
