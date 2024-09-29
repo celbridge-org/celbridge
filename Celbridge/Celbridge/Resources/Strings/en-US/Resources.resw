@@ -324,4 +324,7 @@
   <data name="ConsolePanel_ApplicationVersion" xml:space="preserve">
     <value>Celbridge console v{0}. Enter commands in the text box below.</value>
   </data>
+  <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
+    <value>Alert</value>
+  </data>
 </root>

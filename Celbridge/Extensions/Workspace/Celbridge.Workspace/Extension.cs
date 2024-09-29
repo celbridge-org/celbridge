@@ -46,6 +46,7 @@ public class Extension : IExtension
         config.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         config.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         config.AddTransient<IToggleFocusModeCommand, ToggleFocusModeCommand>();
+        config.AddTransient<IAlertCommand, AlertCommand>();
     }
 
     public Result Initialize()
