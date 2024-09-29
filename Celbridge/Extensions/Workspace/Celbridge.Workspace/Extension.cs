@@ -55,11 +55,6 @@ public class Extension : IExtension
 
         navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
 
-        //
-        // Initialize workspace sub-projects
-        //
-        ScriptUtils.ServiceConfiguration.Initialize();
-
         return Result.Ok();
     }
 }
