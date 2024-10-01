@@ -6,7 +6,7 @@ namespace Celbridge.Console;
 public enum MessageType
 {
     Command,
-    Info,
+    Information,
     Warning,
     Error,
 }

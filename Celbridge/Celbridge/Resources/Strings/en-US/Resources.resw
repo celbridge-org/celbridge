@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -321,8 +321,8 @@
   <data name="ConsolePanel_ExecuteCommandTooltip" xml:space="preserve">
     <value>Execute the entered text as a console command (Enter)</value>
   </data>
-  <data name="ConsolePanel_ApplicationVersion" xml:space="preserve">
-    <value>Celbridge console v{0}. Enter commands in the text box below.</value>
+  <data name="ConsolePanel_WelcomeMessage" xml:space="preserve">
+    <value>Welcome to Celbridge v{0}! Type 'Help()' for a list of available commands.</value>
   </data>
   <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
     <value>Alert</value>

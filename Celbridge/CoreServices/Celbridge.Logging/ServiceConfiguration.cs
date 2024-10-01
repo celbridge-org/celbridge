@@ -1,6 +1,9 @@
-﻿using Celbridge.Logging.Services;
+using Celbridge.Logging.Services;
 using Microsoft.Extensions.Logging;
+using NLog;
 using NLog.Extensions.Logging;
+
+using MSLogging = Microsoft.Extensions.Logging;
 
 namespace Celbridge.Logging;
 
@@ -12,7 +15,7 @@ public static class ServiceConfiguration
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
-            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.SetMinimumLevel(MSLogging.LogLevel.Trace);
             builder.AddNLog("NLog.config");
         });
 
