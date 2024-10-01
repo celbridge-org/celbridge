@@ -18,5 +18,5 @@ public interface IScriptingService
     /// <summary>
     /// Returns help documentation describing the available scripting methods.
     /// </summary>
-    string GetHelpText();
+    string GetHelpText(string searchTerm);
 }
