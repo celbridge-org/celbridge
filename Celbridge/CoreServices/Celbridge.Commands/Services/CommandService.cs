@@ -321,9 +321,9 @@ public class CommandService : ICommandService
                     var scopeName = $"{executionMode} {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
-                        // Log the command execution
+                        // Log the command execution at the debug level
                         string logEntry = _logSerializer.SerializeObject(message, false);
-                        _logger.LogInformation(logEntry);
+                        _logger.LogDebug(logEntry);
 
                         if (executionMode == CommandExecutionMode.Undo)
                         {
@@ -387,7 +387,7 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Command failed due to an exception");
+                    _logger.LogError(ex, $"An exception occurred when executing the command. Check the log file for more information.");
                 }
             }
 
