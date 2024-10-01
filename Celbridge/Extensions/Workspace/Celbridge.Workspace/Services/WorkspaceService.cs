@@ -1,9 +1,10 @@
-﻿using Celbridge.Console;
+using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Projects;
 using Celbridge.Explorer;
+using Celbridge.Scripting;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
 
@@ -18,6 +19,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public bool IsToolsPanelVisible { get; }
 
     public IWorkspaceDataService WorkspaceDataService { get; }
+    public IScriptingService ScriptingService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
@@ -36,6 +38,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
+        ScriptingService = serviceProvider.GetRequiredService<IScriptingService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();

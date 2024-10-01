@@ -181,7 +181,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Log how long it took to open the workspace
         stopWatch.Stop();
         var elapsed = (long)stopWatch.Elapsed.TotalMilliseconds;
-        _logger.LogInformation($"Workspace loaded in {elapsed} ms");
+        _logger.LogDebug($"Workspace loaded in {elapsed} ms");
 
         // Short delay so that the progress bar continues to display while the last document is reopening.
         // If there are no documents to open, this gives the user a chance to visually register the

@@ -116,13 +116,13 @@ public partial class App : Application
 
         Host = builder.Build();
 
+        // Setup the globally available helper for using the dependency injection framework.
+        Core.ServiceLocator.Initialize(Host.Services);
+
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
         var utilityService = Host.Services.GetRequiredService<IUtilityService>();
         var environmentInfo = utilityService.GetEnvironmentInfo();
-        logger.LogInformation(environmentInfo.ToString());
-
-        // Setup the globally available helper for using the dependency injection framework.
-        Core.ServiceLocator.Initialize(Host.Services);
+        logger.LogDebug(environmentInfo.ToString());
 
         // Start the telemetry service
         // Todo: Don't start this service unless the user has opted-in to telemetry.
