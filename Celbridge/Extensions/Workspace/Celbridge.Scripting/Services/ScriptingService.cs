@@ -1,11 +1,15 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
+using Celbridge.Console.Services;
 using System.Reflection;
+using System.Text;
 
 namespace Celbridge.Scripting.Services;
 
 public class ScriptingService : IScriptingService
 {
     private List<string> _contextSetupCommands = new();
+
+    public List<string> _methodDescriptions = new();
 
     public ScriptingService()
     {
@@ -51,6 +55,16 @@ public class ScriptingService : IScriptingService
     public void AddContextSetupCommand(string command)
     {
         _contextSetupCommands.Add(command);
+    }
+
+    public string GetHelpText()
+    {
+        var sb = new StringBuilder();
+        foreach (var methodDescription in _methodDescriptions)
+        {
+            sb.AppendLine(methodDescription);
+        }
+        return sb.ToString();
     }
 
     private Result BindExecutableCommands()
@@ -101,6 +115,33 @@ public class ScriptingService : IScriptingService
             AddContextSetupCommand(script);
         }
 
+        var methodPrinter = new MethodPrinter();
+        foreach (var commandType in commandTypes)
+        {
+            var methodSignatures = methodPrinter.GetMethodSignatures(commandType);
+            _methodDescriptions.AddRange(methodSignatures);
+        }
+
         return Result.Ok();
+    }
+
+    public List<string> GetMethodSignatures(Type type)
+    {
+        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+
+        var methodSignatures = new List<string>();
+        foreach (var method in methods)
+        {
+            string methodName = method.Name;
+
+            var parameters = method.GetParameters()
+                                   .Select(p => $"{p.ParameterType.Name} {p.Name}")
+                                   .ToArray();
+
+            string methodSignature = $"{methodName}({string.Join(", ", parameters)})";
+            methodSignatures.Add(methodSignature);
+        }
+
+        return methodSignatures;
     }
 }

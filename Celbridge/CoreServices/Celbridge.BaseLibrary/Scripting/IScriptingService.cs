@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Scripting;
+namespace Celbridge.Scripting;
 
 /// <summary>
 /// The scripting service supports the execution of C#, F#, Python, etc. scripts.
@@ -14,4 +14,9 @@ public interface IScriptingService
     /// Add a command to be executed when the ScriptContext is created.
     /// </summary>
     void AddContextSetupCommand(string command);
+
+    /// <summary>
+    /// Returns help documentation describing the available scripting methods.
+    /// </summary>
+    string GetHelpText();
 }
