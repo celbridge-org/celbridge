@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Console.Models;
+namespace Celbridge.Console.Models;
 
 public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Timestamp)
 {
@@ -43,24 +43,6 @@ public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Times
                 case MessageType.Error:
                     return ErrorGlyph;
             }
-        }
-    }
-
-    /// <summary>
-    /// Returns the log text with all newline characters converted to spaces.
-    /// </summary>
-    public string LogTextAsOneLine
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(LogText))
-            {
-                return string.Empty;
-            }
-
-            return LogText.Replace("\r\n", " ")  // Handle \r\n first to avoid turning them into double spaces
-                .Replace("\n", " ")
-                .Replace("\r", " ");
         }
     }
 }
