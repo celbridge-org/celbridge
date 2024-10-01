@@ -142,7 +142,12 @@ public partial class ConsolePanel : UserControl, IConsolePanel
             .Content(consoleGrid));
     }
 
-    public void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
+    public Task<Result> InitializeScripting()
+    {
+        return ViewModel.InitializeScripting();
+    }
+
+    private void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)
         {

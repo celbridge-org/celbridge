@@ -21,6 +21,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
+    private readonly IUtilityService _utilityService;
     private readonly IConsoleService _consoleService;
     private readonly IScriptingService _scriptingService;
     private readonly ICommandHistory _commandHistory;
@@ -55,36 +56,39 @@ public partial class ConsolePanelViewModel : ObservableObject
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
+        _utilityService = utilityService;
 
         _consoleService = workspaceWrapper.WorkspaceService.ConsoleService;
         _scriptingService = workspaceWrapper.WorkspaceService.ScriptingService;
-
-        async Task InitScriptContext()
-        {
-            _scriptContext = await _scriptingService.CreateScriptContext();
-        }
-
-        var _ = InitScriptContext();
 
         _commandHistory = serviceProvider.GetRequiredService<ICommandHistory>();
 
         _consoleService.OnPrint += AppendLogEntry;
 
-        messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspacePageLoadedMessage);
-
         messengerService.Register<LogEventMessage>(this, OnLogEventMessage);
-
-        var environmentInfo = utilityService.GetEnvironmentInfo();
-        var welcomeString = stringLocalizer.GetString("ConsolePanel_WelcomeMessage", environmentInfo.AppVersion);
-        _logger.LogInformation(welcomeString);
     }
 
-    private void OnWorkspacePageLoadedMessage(object recipient, WorkspaceLoadedMessage message)
+    public async Task<Result> InitializeScripting()
     {
-        _ = _commandHistory.Load();
+        try
+        {
+            // Init the scripting context
+            _scriptContext = await _scriptingService.CreateScriptContext();
 
-        // We can only receive this message once so stop listening for it
-        _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+            // Load previous command history
+            await _commandHistory.Load();
+
+            // Display the welcome message
+            var environmentInfo = _utilityService.GetEnvironmentInfo();
+            var welcomeString = _stringLocalizer.GetString("ConsolePanel_WelcomeMessage", environmentInfo.AppVersion);
+            _logger.LogInformation(welcomeString);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, "An exception occurred when initializing scripting");
+        }
     }
 
     private void OnLogEventMessage(object recipient, LogEventMessage message)
