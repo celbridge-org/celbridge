@@ -387,6 +387,8 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
+                    // I decided not to localize this because exceptions should never occur. This is not text that the
+                    // user is expected to ever see.
                     _logger.LogError(ex, $"An exception occurred when executing the command. Check the log file for more information.");
                 }
             }
