@@ -128,6 +128,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
                 (WorkspaceDataService as IDisposable)!.Dispose();
+                (ScriptingService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
