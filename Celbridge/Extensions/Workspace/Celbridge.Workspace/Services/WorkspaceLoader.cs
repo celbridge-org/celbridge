@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
 
@@ -84,6 +84,18 @@ public class WorkspaceLoader
         await explorerService.StoreSelectedResource();
         await documentsService.StoreSelectedDocument();
         await documentsService.StoreOpenDocuments();
+
+        //
+        // Initialize console scripting support
+        //
+        var consoleService = workspaceService.ConsoleService;
+        var initResult = await consoleService.ConsolePanel.InitializeScripting();
+        if (initResult.IsFailure)
+        {
+            var failure = Result.Fail("Failed to initialize console scripting");
+            failure.MergeErrors(initResult);
+            return failure;
+        }
 
         return Result.Ok();
     }
