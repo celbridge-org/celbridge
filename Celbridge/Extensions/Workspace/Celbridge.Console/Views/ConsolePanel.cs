@@ -1,6 +1,8 @@
 using Celbridge.Console.Models;
 using Celbridge.Console.ViewModels;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
 
 namespace Celbridge.Console.Views;
@@ -25,6 +27,15 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
         ViewModel = serviceProvider.GetRequiredService<ConsolePanelViewModel>();
 
+        ViewModel.LogEntryAdded += () =>
+        {
+            Guard.IsNotNull(_scrollViewer);
+
+            // Scroll to the end of the output list
+            _scrollViewer.UpdateLayout();
+            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
+        };
+
         Unloaded += (sender, e) =>
         {
             ViewModel.ConsoleView_Unloaded();
@@ -32,29 +43,31 @@ public partial class ConsolePanel : UserControl, IConsolePanel
 
         var symbolFontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-        _scrollViewer = new ScrollViewer()
-            .Grid(row: 0)
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
-            .Content(new ListView()
+        var listView = new ListView()
             .ItemTemplate<ConsoleLogItem>(item =>
             {
-                return new StackPanel()
-                    .Orientation(Orientation.Horizontal)
-                    .Children
-                    (
-                        new FontIcon()
-                            .FontFamily(symbolFontFamily)
-                            .FontSize(12)
-                            .Foreground(() => item.Color)
-                            .VerticalAlignment(VerticalAlignment.Top)
-                            .Margin(0,6,0,0)
-                            .Glyph(() => item.Glyph),
-                        new TextBlock()
-                            .Text(() => item.LogText)
-                            .TextWrapping(TextWrapping.Wrap)
-                            .Margin(6, 0, 0, 0)
-                            .Padding(0)
-                    );
+                var fontIcon = new FontIcon()
+                    .Grid(column: 0)
+                    .FontFamily(symbolFontFamily)
+                    .FontSize(14)
+                    .Foreground(() => item.Color)
+                    .VerticalAlignment(VerticalAlignment.Top)
+                    .Margin(0, 4, 0, 0)
+                    .Glyph(() => item.Glyph);
+
+                var textBlock = new TextBlock()
+                    .Grid(column: 1)
+                    .Text(() => item.LogText)
+                    .Margin(6, 0, 0, 0)
+                    .Padding(0)
+                    .MinHeight(16)
+                    .TextWrapping(TextWrapping.Wrap)
+                    .IsHitTestVisible(true)
+                    .IsTextSelectionEnabled(true);
+
+                return new Grid()
+                    .ColumnDefinitions("16, *")
+                    .Children(fontIcon, textBlock);
             })
             .ItemsSource(x => x.Binding(() => ViewModel.ConsoleLogItems).OneWay())
             .ItemContainerStyle(new Style(typeof(ListViewItem))
@@ -63,10 +76,17 @@ public partial class ConsolePanel : UserControl, IConsolePanel
                 {
                     new Setter(Control.PaddingProperty, new Thickness(0)), // Remove padding inside each item
                     new Setter(FrameworkElement.MarginProperty, new Thickness(6, 0, 6, 0)), // Minimal vertical margin between items
-                    new Setter(FrameworkElement.MinHeightProperty, 24),
+                    new Setter(FrameworkElement.MinHeightProperty, 24)
                 }
-            })
-        );
+            });
+
+        listView.Transitions.Clear();
+
+        _scrollViewer = new ScrollViewer()
+            .Grid(row: 0)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundBBrush"))
+            .Content(listView);
 
         _commandTextBox = new TextBox()
             .Grid(column: 0)
@@ -124,11 +144,6 @@ public partial class ConsolePanel : UserControl, IConsolePanel
         if (e.Key == VirtualKey.Enter)
         {
             ViewModel.ExecuteCommand.Execute(this);
-
-            // Scroll to the end of the output list
-            _scrollViewer.UpdateLayout();
-            _scrollViewer.ScrollToVerticalOffset(_scrollViewer.ScrollableHeight);
-
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.Up)
