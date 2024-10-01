@@ -10,6 +10,8 @@ public class HelpCommand : CommandBase, IHelpCommand
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
+    public string SearchTerm { get; set; } = string.Empty;
+
     public HelpCommand(
         ILogger<HelpCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
@@ -27,7 +29,7 @@ public class HelpCommand : CommandBase, IHelpCommand
 
         var scriptingService = _workspaceWrapper.WorkspaceService.ScriptingService;
 
-        var helpText = scriptingService.GetHelpText();
+        var helpText = scriptingService.GetHelpText(SearchTerm);
 
         _logger.LogInformation(helpText);
 
@@ -39,9 +41,17 @@ public class HelpCommand : CommandBase, IHelpCommand
     // Static methods for scripting support.
     //
 
-    public static void Help()
+    public static void Help(string searchTerm)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IHelpCommand>();
+        commandService.Execute<IHelpCommand>(command =>
+        {
+            command.SearchTerm = searchTerm;
+        });
+    }
+
+    public static void Help()
+    {
+        Help(string.Empty);
     }
 }
