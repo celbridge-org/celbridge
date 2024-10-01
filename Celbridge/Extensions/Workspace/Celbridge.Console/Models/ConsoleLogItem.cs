@@ -16,7 +16,7 @@ public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Times
                 case MessageType.Command:
                     return "LightBlue";
                 default:
-                case MessageType.Info:
+                case MessageType.Information:
                     return "LightGreen";
                 case MessageType.Warning:
                     return "Yellow";
@@ -36,7 +36,7 @@ public record ConsoleLogItem(MessageType LogType, string LogText, DateTime Times
                 case MessageType.Command:
                     return ChevronRightGlyph;
                 default:
-                case MessageType.Info:
+                case MessageType.Information:
                     return InfoGlyph;
                 case MessageType.Warning:
                     return WarningGlyph;
