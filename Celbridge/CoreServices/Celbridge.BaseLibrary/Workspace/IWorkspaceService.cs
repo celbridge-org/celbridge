@@ -1,7 +1,8 @@
-﻿using Celbridge.Console;
+using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Scripting;
 using Celbridge.Status;
 
 namespace Celbridge.Workspace;
@@ -15,6 +16,11 @@ public interface IWorkspaceService
     /// Returns the Workspace Data Service associated with the workspace.
     /// </summary>
     IWorkspaceDataService WorkspaceDataService { get; }
+
+    /// <summary>
+    /// Returns the Scripting Service associated with the workspace.
+    /// </summary>
+    IScriptingService ScriptingService { get; }
 
     /// <summary>
     /// Returns the Console Service associated with the workspace.

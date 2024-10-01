@@ -36,5 +36,6 @@ public static class ServiceConfiguration
         config.AddTransient<IClearHistoryCommand, ClearHistoryCommand>();
         config.AddTransient<IUndoCommand, UndoCommand>();
         config.AddTransient<IRedoCommand, RedoCommand>();
+        config.AddTransient<IHelpCommand, HelpCommand>();
     }
 }
