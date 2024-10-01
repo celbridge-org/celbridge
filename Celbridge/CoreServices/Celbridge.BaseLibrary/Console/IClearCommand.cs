@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Console;
 
 /// <summary>
-/// Clears the console log.
+/// Clear the console log.
 /// </summary>
-public interface IClearLogCommand : IExecutableCommand
+public interface IClearCommand : IExecutableCommand
 {}

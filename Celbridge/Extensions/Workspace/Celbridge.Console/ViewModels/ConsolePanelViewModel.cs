@@ -168,7 +168,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     public ICommand ClearLogCommand => new RelayCommand(ClearLog_Executed);
     private void ClearLog_Executed()
     {
-        _commandService.Execute<IClearLogCommand>();
+        _commandService.Execute<IClearCommand>();
     }
 
     public ICommand ExecuteCommand => new AsyncRelayCommand(ExecuteCommand_Executed);
