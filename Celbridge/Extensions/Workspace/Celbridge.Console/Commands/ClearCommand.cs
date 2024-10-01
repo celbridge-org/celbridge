@@ -5,11 +5,11 @@ using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Console;
 
-public class ClearLogCommand : CommandBase, IClearLogCommand
+public class ClearCommand : CommandBase, IClearCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ClearLogCommand(IWorkspaceWrapper workspaceWrapper)
+    public ClearCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -36,9 +36,9 @@ public class ClearLogCommand : CommandBase, IClearLogCommand
     // Static methods for scripting support.
     //
 
-    public static void ClearLog()
+    public static void Clear()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IClearLogCommand>();
+        commandService.Execute<IClearCommand>();
     }
 }
