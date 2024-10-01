@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console.Services;
+using Microsoft.Extensions.Localization;
 using System.Reflection;
 using System.Text;
 
@@ -7,12 +8,16 @@ namespace Celbridge.Scripting.Services;
 
 public class ScriptingService : IScriptingService
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     private List<string> _contextSetupCommands = new();
 
     public List<string> _methodDescriptions = new();
 
-    public ScriptingService()
+    public ScriptingService(IStringLocalizer stringLocalizer)
     {
+        _stringLocalizer = stringLocalizer;
+
         // Add context setup commands to bind all static methods defined on classes that
         // implement IExecutableCommand.
         var bindResult = BindExecutableCommands();
@@ -57,14 +62,26 @@ public class ScriptingService : IScriptingService
         _contextSetupCommands.Add(command);
     }
 
-    public string GetHelpText()
+    public string GetHelpText(string searchTerm)
     {
         var sb = new StringBuilder();
         foreach (var methodDescription in _methodDescriptions)
         {
-            sb.AppendLine(methodDescription);
+            if (methodDescription.Contains(searchTerm, StringComparison.InvariantCultureIgnoreCase))
+            {
+                sb.AppendLine(methodDescription);
+            }
+
         }
-        return sb.ToString();
+
+        var helpText = sb.ToString();
+        if (string.IsNullOrEmpty(helpText))
+        {
+            // Inform the user that no matching method signatures were found
+            helpText = _stringLocalizer.GetString("ScriptingService_NoMatchesFound", searchTerm);
+        }
+
+        return helpText;
     }
 
     private Result BindExecutableCommands()

@@ -327,4 +327,7 @@
   <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
     <value>Alert</value>
   </data>
+  <data name="ScriptingService_NoMatchesFound" xml:space="preserve">
+    <value>No commands were found matching search term '{0}'.</value>
+  </data>
 </root>
