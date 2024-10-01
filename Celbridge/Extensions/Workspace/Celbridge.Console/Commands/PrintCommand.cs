@@ -24,6 +24,8 @@ public class PrintCommand : CommandBase, IPrintCommand
         switch (MessageType)
         {
             case MessageType.Command:
+                // Command log entries have a specific icon in the console log.
+                // If the user attempts to print using MessageType.Command we just map it to MessageType.Information instead.
             case MessageType.Information:
                 _logger.LogInformation(Message);
                 break;
