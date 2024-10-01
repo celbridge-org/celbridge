@@ -1,34 +1,39 @@
 using Celbridge.Commands;
 using Celbridge.Console.Services;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using System.Reflection;
 using System.Text;
 
+using Path = System.IO.Path;
+
 namespace Celbridge.Scripting.Services;
 
-public class ScriptingService : IScriptingService
+public class ScriptingService : IScriptingService, IDisposable
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private List<string> _contextSetupCommands = new();
+    private List<string> _methodDescriptions = new();
+    private bool _initialized = false;
 
-    public List<string> _methodDescriptions = new();
-
-    public ScriptingService(IStringLocalizer stringLocalizer)
+    public ScriptingService(
+        IStringLocalizer stringLocalizer, 
+        IWorkspaceWrapper workspaceWrapper)
     {
         _stringLocalizer = stringLocalizer;
-
-        // Add context setup commands to bind all static methods defined on classes that
-        // implement IExecutableCommand.
-        var bindResult = BindExecutableCommands();
-        if (bindResult.IsFailure)
-        {
-            throw new InvalidOperationException(bindResult.Error);
-        }
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public async Task<IScriptContext> CreateScriptContext()
     {
+        if (!_initialized)
+        {
+            BindScriptingMethods();
+            _initialized = true;
+        }
+
         var context = new DotNetInteractiveContext();
 
         foreach (var command in _contextSetupCommands)
@@ -71,7 +76,6 @@ public class ScriptingService : IScriptingService
             {
                 sb.AppendLine(methodDescription);
             }
-
         }
 
         var helpText = sb.ToString();
@@ -84,7 +88,27 @@ public class ScriptingService : IScriptingService
         return helpText;
     }
 
-    private Result BindExecutableCommands()
+    public List<string> GetMethodSignatures(Type type)
+    {
+        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+
+        var methodSignatures = new List<string>();
+        foreach (var method in methods)
+        {
+            string methodName = method.Name;
+
+            var parameters = method.GetParameters()
+                                   .Select(p => $"{p.ParameterType.Name} {p.Name}")
+                                   .ToArray();
+
+            string methodSignature = $"{methodName}({string.Join(", ", parameters)})";
+            methodSignatures.Add(methodSignature);
+        }
+
+        return methodSignatures;
+    }
+
+    private Result BindScriptingMethods()
     {
         //
         // Find all classes that inherit from IExecutableCommand
@@ -132,6 +156,9 @@ public class ScriptingService : IScriptingService
             AddContextSetupCommand(script);
         }
 
+        //
+        // Populate the method descriptions for the Help() command
+        //
         var methodPrinter = new MethodPrinter();
         foreach (var commandType in commandTypes)
         {
@@ -139,26 +166,45 @@ public class ScriptingService : IScriptingService
             _methodDescriptions.AddRange(methodSignatures);
         }
 
+        //
+        // Set the current directory to the project folder so that ResourceKeys are valid relative paths
+        //
+        var projectFolderPath = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.ProjectFolderPath;
+        projectFolderPath = Path.GetFullPath(projectFolderPath);
+        projectFolderPath = projectFolderPath.Replace(@"\", @"\\");
+
+        if (Path.Exists(projectFolderPath))
+        {
+            var currentDirScript = $"System.IO.Directory.SetCurrentDirectory(\"{projectFolderPath}\");";
+            AddContextSetupCommand(currentDirScript);
+        }
+
         return Result.Ok();
     }
 
-    public List<string> GetMethodSignatures(Type type)
+    private bool _disposed;
+
+    public void Dispose()
     {
-        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        var methodSignatures = new List<string>();
-        foreach (var method in methods)
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
         {
-            string methodName = method.Name;
+            if (disposing)
+            {
+                // Dispose managed objects here
+            }
 
-            var parameters = method.GetParameters()
-                                   .Select(p => $"{p.ParameterType.Name} {p.Name}")
-                                   .ToArray();
-
-            string methodSignature = $"{methodName}({string.Join(", ", parameters)})";
-            methodSignatures.Add(methodSignature);
+            _disposed = true;
         }
+    }
 
-        return methodSignatures;
+    ~ScriptingService()
+    {
+        Dispose(false);
     }
 }
