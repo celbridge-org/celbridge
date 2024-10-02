@@ -38,5 +38,6 @@ public static class ServiceConfiguration
         config.AddTransient<IRedoCommand, RedoCommand>();
         config.AddTransient<IHelpCommand, HelpCommand>();
         config.AddTransient<IPrintCommand, PrintCommand>();
+        config.AddTransient<IRunCommand, RunCommand>();
     }
 }
