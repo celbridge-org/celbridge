@@ -125,9 +125,9 @@ public partial class App : Application
         logger.LogDebug(environmentInfo.ToString());
 
         // Start the telemetry service
-        // Todo: Don't start this service unless the user has opted-in to telemetry.
-        var telemetryService = Host.Services.GetRequiredService<ITelemetryService>();
-        telemetryService.Initialize();
+        // Todo: Enable this once we have user opt-in UI for telemetry.
+        // var telemetryService = Host.Services.GetRequiredService<ITelemetryService>();
+        // telemetryService.Initialize();
 
         // Initialize the Core Services
         CoreServices.ServiceConfiguration.Initialize();
