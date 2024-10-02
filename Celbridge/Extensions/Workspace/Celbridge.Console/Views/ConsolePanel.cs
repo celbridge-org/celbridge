@@ -147,6 +147,11 @@ public partial class ConsolePanel : UserControl, IConsolePanel
         return ViewModel.InitializeScripting();
     }
 
+    public Task<Result> ExecuteCommand(string command, bool logCommand)
+    {
+        return ViewModel.Execute(command, logCommand);
+    }
+
     private void CommandTextBox_KeyDown(object? sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter)

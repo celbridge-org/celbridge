@@ -5,6 +5,7 @@ using Celbridge.Messaging;
 using Celbridge.Scripting;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Newtonsoft.Json;
@@ -81,7 +82,17 @@ public partial class ConsolePanelViewModel : ObservableObject
             // Display the welcome message
             var environmentInfo = _utilityService.GetEnvironmentInfo();
             var welcomeString = _stringLocalizer.GetString("ConsolePanel_WelcomeMessage", environmentInfo.AppVersion);
-            _logger.LogInformation(welcomeString);
+
+            // .Net Interactive generates an error if the first script executed by the user is a #!import command.
+            // As a workaround, we use scripting to log the welcome message, so subsequent #!import commands work fine.
+            var script = $"Print(\"{welcomeString}\")";
+            var executeResult = await Execute(script, false);
+            if (executeResult.IsFailure)
+            {
+                var failure = Result.Fail("Failed to print welcom message");
+                failure.MergeErrors(executeResult);
+                return failure;
+            }
 
             return Result.Ok();
         }
@@ -187,16 +198,42 @@ public partial class ConsolePanelViewModel : ObservableObject
         // Remove leading and trailing whitespace from the entered text
         var command = CommandText.Trim();
 
+        var executeResult = await Execute(CommandText, true);
+        if (executeResult.IsSuccess)
+        {
+            // The ClearHistory() command should not be added to the history
+            if (!command.StartsWith("ClearHistory()"))
+            {
+                _commandHistory.AddCommand(command);
+            }
+
+            // The command history persists between sessions.
+            await _commandHistory.Save();
+        }
+
+        CommandText = string.Empty;
+    }
+
+    public async Task<Result> Execute(string command, bool logCommand)
+    {
+        Guard.IsNotNull(_scriptContext);
+
+        // Trim the command again in case this method was call externally
+        command = command.Trim();
+
         var createResult = _scriptContext.CreateExecutor(command);
 
         if (createResult.IsSuccess)
         {
             var executor = createResult.Value;
 
-            // The command service will log detailed information about the command when it executes.
-            // Here we just want to display a human readable version of the command, so we append it directly
-            // rather than going via the logger.
-            AppendLogEntry(MessageType.Command, command);
+            if (logCommand)
+            {
+                // The command service will log detailed information about the command when it executes.
+                // Here we just want to display a human readable version of the command, so we append it directly
+                // rather than going via the logger.
+                AppendLogEntry(MessageType.Command, command);
+            }
 
             executor.OnOutput += (output) =>
             {
@@ -211,18 +248,11 @@ public partial class ConsolePanelViewModel : ObservableObject
             var executeResult = await executor.ExecuteAsync();
             if (executeResult.IsSuccess)
             {
-                // The ClearHistory() command should not be added to the history
-                if (!command.StartsWith("ClearHistory()"))
-                {
-                   _commandHistory.AddCommand(command);
-                }
-
-                // The command history persists between sessions.
-                await _commandHistory.Save();
+                return Result.Ok();
             }
         }
 
-        CommandText = string.Empty;
+        return createResult;
     }
 
     public ICommand SelectNextCommand => new RelayCommand(SelectNextCommand_Executed);
