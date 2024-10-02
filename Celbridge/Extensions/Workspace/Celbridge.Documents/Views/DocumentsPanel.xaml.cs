@@ -268,7 +268,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (savedCount > 0)
         {
-            _logger.LogInformation($"Saved {savedCount} modified documents");
+            _logger.LogDebug($"Saved {savedCount} modified documents");
         }
 
         ViewModel.UpdatePendingSaveCount(pendingSaveCount);
