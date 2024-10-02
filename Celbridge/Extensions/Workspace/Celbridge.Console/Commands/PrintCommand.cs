@@ -45,33 +45,29 @@ public class PrintCommand : CommandBase, IPrintCommand
     // Static methods for scripting support.
     //
 
-    public static void Print(string message)
+    public static void Print(object message)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IPrintCommand>(command =>
-        {
-            command.Message = message;
-            command.MessageType = MessageType.Information;
-        });
+        Print(MessageType.Information, message);
     }
 
-    public static void PrintWarning(string message)
+    public static void PrintWarning(object message)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IPrintCommand>(command =>
-        {
-            command.Message = message;
-            command.MessageType = MessageType.Warning;
-        });
+        Print(MessageType.Warning, message);
     }
 
-    public static void PrintError(string message)
+    public static void PrintError(object message)
     {
+        Print(MessageType.Error, message);
+    }
+
+    private static void Print(MessageType messageType, object message)
+    {
+        var messageText = message.ToString() ?? string.Empty;
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<IPrintCommand>(command =>
         {
-            command.Message = message;
-            command.MessageType = MessageType.Error;
+            command.Message = messageText;
+            command.MessageType = messageType;
         });
     }
 }
