@@ -26,10 +26,10 @@
                 Grid.Column="1"
                 HorizontalAlignment="Left"
                 Margin="0,0,0,30">
-      <TextBlock Text="Celbridge"
+      <TextBlock Text="{x:Bind TitleString}"
                  FontSize="36"
                  FontWeight="Bold"/>
-      <TextBlock Text="v0.0.0.1"
+      <TextBlock Text="{x:Bind SubtitleString}"
                  FontSize="18"
                  Opacity="0.75"/>
     </StackPanel>
@@ -49,7 +49,7 @@
                   VerticalAlignment="Top"
                   HorizontalAlignment="Left"
                   Margin="0,0,50,0">
-        <TextBlock Text="Start"
+        <TextBlock Text="{x:Bind StartString}"
                    FontSize="18"
                    Margin="0,0,0,20"/>
 
