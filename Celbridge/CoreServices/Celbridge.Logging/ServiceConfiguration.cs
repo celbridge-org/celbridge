@@ -1,6 +1,5 @@
 using Celbridge.Logging.Services;
 using Microsoft.Extensions.Logging;
-using NLog;
 using NLog.Extensions.Logging;
 
 using MSLogging = Microsoft.Extensions.Logging;

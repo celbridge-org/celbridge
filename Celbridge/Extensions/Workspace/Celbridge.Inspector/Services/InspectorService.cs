@@ -1,4 +1,3 @@
-using Celbridge.Inspector.Views;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 

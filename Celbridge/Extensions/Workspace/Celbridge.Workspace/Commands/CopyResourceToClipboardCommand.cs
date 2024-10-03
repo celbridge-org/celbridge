@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
 
 namespace Celbridge.Workspace.Commands;
 
