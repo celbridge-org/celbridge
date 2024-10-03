@@ -54,11 +54,11 @@
                    Margin="0,0,0,20"/>
 
         <StackPanel Spacing="10">
-          <Button Content="New Project..."
+          <Button Content="{x:Bind NewProjectString}"
                   HorizontalAlignment="Left"
                   Background="{ThemeResource AccentColor}"
                   Command="{x:Bind ViewModel.NewProjectCommand}"/>
-          <Button Content="Open Project..."
+          <Button Content="{x:Bind OpenProjectString}"
                   HorizontalAlignment="Left"
                   Background="{ThemeResource AccentColor}"
                   Command="{x:Bind ViewModel.OpenProjectCommand}"/>
