@@ -1,6 +1,7 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -9,61 +10,31 @@ public partial class HomePageViewModel : ObservableObject
     private readonly Logging.ILogger<HomePageViewModel> _logger;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
+    private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
         INavigationService navigationService,
         Logging.ILogger<HomePageViewModel> logger,
         IFilePickerService filePickerService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        MainMenuUtils mainMenuUtils)
     {
         _logger = logger;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
+        _mainMenuUtils = mainMenuUtils;
     }
 
-    public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
-    private async Task SelectFile_ExecutedAsync()
+    public IAsyncRelayCommand NewProjectCommand => new AsyncRelayCommand(NewProjectCommand_Executed);
+    private async Task NewProjectCommand_Executed()
     {
-        var extensions = new List<string>()
-        {
-            ".txt"
-        };
-
-        var result = await _filePickerService.PickSingleFileAsync(extensions);
-        if (result.IsFailure)
-        {
-            _logger.LogError(result.Error);
-            return;
-        }
-
-        var path = result.Value;
-        _logger.LogInformation($"Selected path is : {path}");
+        await _mainMenuUtils.CreateProjectAsync();
     }
 
-    public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
-    private async Task SelectFolder_ExecutedAsync()
+    public IAsyncRelayCommand OpenProjectCommand => new AsyncRelayCommand(OpenProjectCommand_Executed);
+    private async Task OpenProjectCommand_Executed()
     {
-        var result = await _filePickerService.PickSingleFolderAsync();
-        if (result.IsFailure)
-        {
-            _logger.LogError(result.Error);
-            return;
-        }
-
-        var path = result.Value;
-        _logger.LogInformation($"Selected path is : {path}");
-    }
-
-    public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);
-    private async Task ShowAlertDialog_ExecutedAsync()
-    {
-        await _dialogService.ShowAlertDialogAsync("Some title", "Some message");
-    }
-
-    public ICommand ShowProgressDialogCommand => new RelayCommand(ShowProgressDialog_Executed);
-    private void ShowProgressDialog_Executed()
-    {
-        _dialogService.AcquireProgressDialog("Some title");
+        await _mainMenuUtils.OpenProjectAsync();
     }
 }
 
