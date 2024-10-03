@@ -345,4 +345,10 @@
   <data name="HomePage_Subtitle" xml:space="preserve">
     <value>Visual coding for humans</value>
   </data>
+  <data name="HomePage_RecentlyOpened" xml:space="preserve">
+    <value>Recently opened</value>
+  </data>
+  <data name="HomePage_NoRecentProjects" xml:space="preserve">
+    <value>You have no recent projects.</value>
+  </data>
 </root>
