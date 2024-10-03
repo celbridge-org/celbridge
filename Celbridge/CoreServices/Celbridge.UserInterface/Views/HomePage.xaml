@@ -81,7 +81,7 @@
                      Foreground="{ThemeResource AccentColor}"
                      VerticalAlignment="Top"
                      Margin="0,0,10,0"/>
-          <TextBlock Text="Recently Opened"
+          <TextBlock Text="{x:Bind RecentlyOpenedString}"
                      FontSize="18"
                      Margin="0,0,0,20"/>
         </StackPanel>
@@ -97,7 +97,7 @@
 
         <!-- Example of no recent files -->
         <TextBlock x:Name="NoRecentFilesMessage"
-                   Text="You have no recent projects."
+                   Text="{x:Bind NoRecentProjectsString}"
                    FontSize="16"
                    Visibility="Visible"/>
       </StackPanel>

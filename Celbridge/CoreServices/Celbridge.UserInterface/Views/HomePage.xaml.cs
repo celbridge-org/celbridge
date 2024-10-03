@@ -9,6 +9,8 @@ public sealed partial class HomePage : Page
     public LocalizedString StartString => _stringLocalizer.GetString("HomePage_Start");
     public LocalizedString NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
+    public LocalizedString RecentlyOpenedString => _stringLocalizer.GetString("HomePage_RecentlyOpened");
+    public LocalizedString NoRecentProjectsString => _stringLocalizer.GetString("HomePage_NoRecentProjects");
 
     public HomePageViewModel ViewModel { get; private set; }
 
