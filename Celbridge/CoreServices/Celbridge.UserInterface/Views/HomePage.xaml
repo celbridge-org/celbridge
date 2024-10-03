@@ -56,10 +56,12 @@
         <StackPanel Spacing="10">
           <Button Content="New Project..."
                   HorizontalAlignment="Left"
-                  Background="{ThemeResource AccentColor}"/>
+                  Background="{ThemeResource AccentColor}"
+                  Command="{x:Bind ViewModel.NewProjectCommand}"/>
           <Button Content="Open Project..."
                   HorizontalAlignment="Left"
-                  Background="{ThemeResource AccentColor}"/>
+                  Background="{ThemeResource AccentColor}"
+                  Command="{x:Bind ViewModel.OpenProjectCommand}"/>
         </StackPanel>
 
       </StackPanel>
@@ -74,7 +76,8 @@
                   BorderThickness="5">
 
         <StackPanel Orientation="Horizontal">
-          <TextBlock Text="✦" FontSize="18"
+          <TextBlock Text="✦"
+                     FontSize="18"
                      Foreground="{ThemeResource AccentColor}"
                      VerticalAlignment="Top"
                      Margin="0,0,10,0"/>

@@ -27,6 +27,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
+    private readonly MainMenuUtils _mainMenuUtils;
 
     public MainPageViewModel(
         IMessengerService messengerService,
@@ -36,7 +37,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IFilePickerService filePickerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        MainMenuUtils mainMenuUtils)
     {
         _messengerService = messengerService;
         _logger = logger;
@@ -46,6 +48,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
         _editorSettings = editorSettings;
+        _mainMenuUtils = mainMenuUtils;
     }
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
@@ -113,11 +116,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NewProjectTag:
-                _ = CreateProjectAsync();
+                _ = _mainMenuUtils.CreateProjectAsync();
                 return;
 
             case OpenProjectTag:
-                _ = OpenProjectAsync();
+                _ = _mainMenuUtils.OpenProjectAsync();
                 return;
 
             case SettingsTag:
@@ -126,34 +129,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
-    }
-
-    private async Task CreateProjectAsync()
-    {
-        var showResult = await _dialogService.ShowNewProjectDialogAsync();
-        if (showResult.IsSuccess)
-        {
-            var projectConfig = showResult.Value;
-
-            _commandService.Execute<ICreateProjectCommand>((command) =>
-            {
-                command.Config = projectConfig;
-            });
-        }
-    }
-
-    private async Task OpenProjectAsync()
-    {
-        var result = await _filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
-        if (result.IsSuccess)
-        {
-            var projectFilePath = result.Value;
-
-            _commandService.Execute<ILoadProjectCommand>((command) =>
-            {
-                command.ProjectFilePath = projectFilePath;
-            });
-        }
     }
 
     private async Task NavigateToHomeAsync()
