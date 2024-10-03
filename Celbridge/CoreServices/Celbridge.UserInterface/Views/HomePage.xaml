@@ -1,0 +1,103 @@
+﻿<Page
+    x:Class="Celbridge.UserInterface.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.UserInterface.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+  <Grid Padding="40">
+
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/>
+      <ColumnDefinition Width="4*"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Title and Subtitle -->
+    <StackPanel Grid.Row="0"
+                Grid.Column="1"
+                HorizontalAlignment="Left"
+                Margin="0,0,0,30">
+      <TextBlock Text="Celbridge"
+                 FontSize="36"
+                 FontWeight="Bold"/>
+      <TextBlock Text="v0.0.0.1"
+                 FontSize="18"
+                 Opacity="0.75"/>
+    </StackPanel>
+
+    <!-- Main Content -->
+    <Grid Grid.Row="1"
+          Grid.Column="1"
+          HorizontalAlignment="Stretch">
+
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="2*"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Start section -->
+      <StackPanel Grid.Column="0"
+                  VerticalAlignment="Top"
+                  HorizontalAlignment="Left"
+                  Margin="0,0,50,0">
+        <TextBlock Text="Start"
+                   FontSize="18"
+                   Margin="0,0,0,20"/>
+
+        <StackPanel Spacing="10">
+          <Button Content="New Project..."
+                  HorizontalAlignment="Left"
+                  Background="{ThemeResource AccentColor}"/>
+          <Button Content="Open Project..."
+                  HorizontalAlignment="Left"
+                  Background="{ThemeResource AccentColor}"/>
+        </StackPanel>
+
+      </StackPanel>
+
+      <!-- Recently Opened Files section -->
+      <StackPanel Grid.Column="1"
+                  VerticalAlignment="Top"
+                  HorizontalAlignment="Right"
+                  Padding="16"
+                  Background="{ThemeResource PanelBackgroundABrush}"
+                  BorderBrush="{ThemeResource PanelBorderBrush}"
+                  BorderThickness="5">
+
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="✦" FontSize="18"
+                     Foreground="{ThemeResource AccentColor}"
+                     VerticalAlignment="Top"
+                     Margin="0,0,10,0"/>
+          <TextBlock Text="Recently Opened"
+                     FontSize="18"
+                     Margin="0,0,0,20"/>
+        </StackPanel>
+
+        <ItemsControl x:Name="RecentFilesList"
+                      Margin="0,0,0,20">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" FontSize="16" Padding="0,10"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Example of no recent files -->
+        <TextBlock x:Name="NoRecentFilesMessage"
+                   Text="You have no recent projects."
+                   FontSize="16"
+                   Visibility="Visible"/>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Page>
