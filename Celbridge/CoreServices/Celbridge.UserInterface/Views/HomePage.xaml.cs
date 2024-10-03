@@ -4,8 +4,11 @@ public sealed partial class HomePage : Page
 {
     private IStringLocalizer _stringLocalizer;
 
-    public LocalizedString NewProjectString => _stringLocalizer.GetString("MainPage_NewProject");
-    public LocalizedString OpenProjectString => _stringLocalizer.GetString("MainPage_OpenProject");
+    public LocalizedString TitleString => _stringLocalizer.GetString("HomePage_Title");
+    public LocalizedString SubtitleString => _stringLocalizer.GetString("HomePage_Subtitle");
+    public LocalizedString StartString => _stringLocalizer.GetString("HomePage_Start");
+    public LocalizedString NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
+    public LocalizedString OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
 
     public HomePageViewModel ViewModel { get; private set; }
 
