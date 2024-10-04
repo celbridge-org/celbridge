@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Newtonsoft.Json.Linq;
 
 using Path = System.IO.Path;
@@ -6,11 +7,20 @@ namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService
 {
+    private const int RecentProjectsMax = 5;
+
+    private readonly IEditorSettings _editorSettings;
+
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
     private const string DefaultLogFolder = "Library/Logs";
 
     public IProject? LoadedProject { get; private set; }
+
+    public ProjectService(IEditorSettings editorSettings)
+    {
+        _editorSettings = editorSettings;
+    }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
     {
@@ -106,6 +116,16 @@ public class ProjectService : IProjectService
 
             // Both data files have successfully loaded, so we can now populate the member variables
             LoadedProject = loadResult.Value;
+
+            // Update the recent projects list in editor settings
+            var recentProjects = _editorSettings.RecentProjects;
+            recentProjects.Remove(projectPath);
+            recentProjects.Insert(0, projectPath);
+            while (recentProjects.Count > RecentProjectsMax)
+            {
+                recentProjects.RemoveAt(recentProjects.Count - 1);
+            }
+            _editorSettings.RecentProjects = recentProjects;
 
             return Result.Ok();
         }

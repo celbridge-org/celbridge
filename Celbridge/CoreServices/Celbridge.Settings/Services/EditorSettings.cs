@@ -60,6 +60,12 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousLoadedProject), value);
     }
 
+    public List<string> RecentProjects
+    {
+        get => GetValue<List<string>>(nameof(RecentProjects), new List<string>());
+        set => SetValue(nameof(RecentProjects), value);
+    }
+
     public string OpenAIKey
     {
         get => GetValue<string>(nameof(OpenAIKey), string.Empty);
