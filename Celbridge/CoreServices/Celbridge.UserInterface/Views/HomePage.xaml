@@ -8,99 +8,101 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-  <Grid Padding="40">
-
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
+  <Grid>
     
+    <Grid.RowDefinitions>
+      <RowDefinition Height="60"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*"/>
-      <ColumnDefinition Width="4*"/>
+      <ColumnDefinition Width="100"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
-    <!-- Title and Subtitle -->
-    <StackPanel Grid.Row="0"
-                Grid.Column="1"
-                HorizontalAlignment="Left"
-                Margin="0,0,0,30">
+    <!-- Title section -->
+    <StackPanel Grid.Row="1"
+                Grid.Column="1">
       <TextBlock Text="{x:Bind TitleString}"
                  FontSize="36"
                  FontWeight="Bold"/>
       <TextBlock Text="{x:Bind SubtitleString}"
-                 FontSize="18"
+                 FontSize="22"
                  Opacity="0.75"/>
     </StackPanel>
 
-    <!-- Main Content -->
-    <Grid Grid.Row="1"
-          Grid.Column="1"
-          HorizontalAlignment="Stretch">
+    <!-- Start section -->
+    <StackPanel Grid.Row="3"
+                Grid.Column="1">
+      <TextBlock Text="{x:Bind StartString}"
+                 FontSize="18"
+                 Margin="0,0,0,12"/>
 
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="2*"/>
-      </Grid.ColumnDefinitions>
-
-      <!-- Start section -->
-      <StackPanel Grid.Column="0"
-                  VerticalAlignment="Top"
-                  HorizontalAlignment="Left"
-                  Margin="0,0,50,0">
-        <TextBlock Text="{x:Bind StartString}"
-                   FontSize="18"
-                   Margin="0,0,0,20"/>
-
-        <StackPanel Spacing="10">
-          <Button Content="{x:Bind NewProjectString}"
-                  HorizontalAlignment="Left"
-                  Background="{ThemeResource AccentColor}"
-                  Command="{x:Bind ViewModel.NewProjectCommand}"/>
-          <Button Content="{x:Bind OpenProjectString}"
-                  HorizontalAlignment="Left"
-                  Background="{ThemeResource AccentColor}"
-                  Command="{x:Bind ViewModel.OpenProjectCommand}"/>
-        </StackPanel>
-
-      </StackPanel>
-
-      <!-- Recently Opened Files section -->
-      <StackPanel Grid.Column="1"
-                  VerticalAlignment="Top"
-                  HorizontalAlignment="Right"
-                  Padding="16"
-                  Background="{ThemeResource PanelBackgroundABrush}"
-                  BorderBrush="{ThemeResource PanelBorderBrush}"
-                  BorderThickness="5">
-
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.NewProjectCommand}">
         <StackPanel Orientation="Horizontal">
-          <TextBlock Text="✦"
-                     FontSize="18"
-                     Foreground="{ThemeResource AccentColor}"
-                     VerticalAlignment="Top"
-                     Margin="0,0,10,0"/>
-          <TextBlock Text="{x:Bind RecentlyOpenedString}"
-                     FontSize="18"
-                     Margin="0,0,0,20"/>
+          <SymbolIcon Symbol="NewFolder" />
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind NewProjectString}"/>
         </StackPanel>
+      </HyperlinkButton>
 
-        <ItemsControl x:Name="RecentFilesList"
-                      Margin="0,0,0,20">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding}" FontSize="16" Padding="0,10"/>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.OpenProjectCommand}">
+        <StackPanel Orientation="Horizontal">
+          <SymbolIcon Symbol="OpenLocal" />
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind OpenProjectString}"/>
+        </StackPanel>
+      </HyperlinkButton>
 
-        <!-- Example of no recent files -->
-        <TextBlock x:Name="NoRecentFilesMessage"
-                   Text="{x:Bind NoRecentProjectsString}"
-                   FontSize="16"
-                   Visibility="Visible"/>
-      </StackPanel>
-    </Grid>
+    </StackPanel>
+
+    <!-- Recent section -->
+    <StackPanel Grid.Row="5"
+                Grid.Column="1"
+                Spacing="2">
+
+      <TextBlock Text="{x:Bind RecentString}"
+                 FontSize="18"
+                 Margin="0,0,0,12"/>
+
+      <ItemsControl x:Name="RecentFilesList"
+                    ItemsSource="{x:Bind ViewModel.RecentProjects}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+
+            <StackPanel Orientation="Horizontal">
+
+              <Grid MinWidth="100">
+                <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                                 Click="RecentProjectButton_Click"                                 
+                                 ToolTipService.ToolTip="{Binding ProjectFolderPath}"
+                                 ToolTipService.Placement="Bottom">
+                  <StackPanel Orientation="Horizontal">
+                    <SymbolIcon Symbol ="OpenLocal" />
+                    <TextBlock Margin="8 0 0 0"
+                               Text="{Binding ProjectName}"/>
+                  </StackPanel>
+                </HyperlinkButton>
+              </Grid>
+
+              <TextBlock VerticalAlignment="Center"
+                         Opacity="0.75"
+                         Margin="6 0 0 0"
+                         Text="{Binding ProjectFolderPath}"/>              
+            </StackPanel>
+            
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+
+      </ItemsControl>
+
+    </StackPanel>
+    
   </Grid>
 </Page>
