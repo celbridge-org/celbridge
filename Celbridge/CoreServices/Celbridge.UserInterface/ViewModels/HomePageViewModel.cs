@@ -5,6 +5,8 @@ using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels;
 
+public record RecentProject(string ProjectFolderPath, string ProjectName);
+
 public partial class HomePageViewModel : ObservableObject
 {
     private readonly Logging.ILogger<HomePageViewModel> _logger;
@@ -24,6 +26,12 @@ public partial class HomePageViewModel : ObservableObject
         _dialogService = dialogService;
         _mainMenuUtils = mainMenuUtils;
     }
+
+    public List<RecentProject> RecentProjects = new List<RecentProject>() 
+    {
+        new RecentProject("c:/TestA", "ProjectA"),
+        new RecentProject("c://TestB", "ProjectB"),
+    };
 
     public IAsyncRelayCommand NewProjectCommand => new AsyncRelayCommand(NewProjectCommand_Executed);
     private async Task NewProjectCommand_Executed()
