@@ -343,10 +343,10 @@
     <value>Celbridge</value>
   </data>
   <data name="HomePage_Subtitle" xml:space="preserve">
-    <value>Visual coding for humans</value>
+    <value>We are the makers</value>
   </data>
-  <data name="HomePage_RecentlyOpened" xml:space="preserve">
-    <value>Recently opened</value>
+  <data name="HomePage_Recent" xml:space="preserve">
+    <value>Recent</value>
   </data>
   <data name="HomePage_NoRecentProjects" xml:space="preserve">
     <value>You have no recent projects.</value>

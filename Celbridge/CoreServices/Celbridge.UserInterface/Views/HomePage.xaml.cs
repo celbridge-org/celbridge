@@ -9,8 +9,7 @@ public sealed partial class HomePage : Page
     public LocalizedString StartString => _stringLocalizer.GetString("HomePage_Start");
     public LocalizedString NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
-    public LocalizedString RecentlyOpenedString => _stringLocalizer.GetString("HomePage_RecentlyOpened");
-    public LocalizedString NoRecentProjectsString => _stringLocalizer.GetString("HomePage_NoRecentProjects");
+    public LocalizedString RecentString => _stringLocalizer.GetString("HomePage_Recent");
 
     public HomePageViewModel ViewModel { get; private set; }
 
@@ -22,5 +21,19 @@ public sealed partial class HomePage : Page
         ViewModel = serviceProvider.GetRequiredService<HomePageViewModel>();
 
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+    }
+
+    private void RecentProjectButton_Click(object sender, RoutedEventArgs e)
+    {
+        var button = sender as HyperlinkButton;
+        Guard.IsNotNull(button);
+
+        var recentProject = button.DataContext as RecentProject;
+        if (recentProject == null)
+        {
+            return;
+        }
+
+        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, recentProject.ProjectName + ".celbridge");
     }
 }
