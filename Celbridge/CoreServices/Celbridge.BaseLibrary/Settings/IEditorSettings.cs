@@ -25,6 +25,8 @@ public interface IEditorSettings : INotifyPropertyChanged
 
     string PreviousLoadedProject { get; set; }
 
+    List<string> RecentProjects { get; set; }
+
     string OpenAIKey { get; set; }
 
     string SheetsAPIKey { get; set; }
