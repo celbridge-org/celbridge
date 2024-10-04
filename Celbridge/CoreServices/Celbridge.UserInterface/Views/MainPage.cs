@@ -48,7 +48,7 @@ public sealed partial class MainPage : Page
                     .Tag(MainPageViewModel.NewProjectTag)
                     .Content(NewProjectString),
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.OpenFile))
+                    .Icon(new SymbolIcon(Symbol.OpenLocal))
                     .Tag(MainPageViewModel.OpenProjectTag)
                     .Content(OpenProjectString)
                 )

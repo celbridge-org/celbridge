@@ -83,17 +83,13 @@
                                  Click="RecentProjectButton_Click"                                 
                                  ToolTipService.ToolTip="{Binding ProjectFolderPath}"
                                  ToolTipService.Placement="Bottom">
-                  <StackPanel Orientation="Horizontal">
-                    <SymbolIcon Symbol ="OpenLocal" />
                     <TextBlock Margin="8 0 0 0"
                                Text="{Binding ProjectName}"/>
-                  </StackPanel>
                 </HyperlinkButton>
               </Grid>
 
               <TextBlock VerticalAlignment="Center"
                          Opacity="0.75"
-                         Margin="6 0 0 0"
                          Text="{Binding ProjectFolderPath}"/>              
             </StackPanel>
             
