@@ -1,4 +1,4 @@
-﻿using Celbridge.FilePicker;
+using Celbridge.FilePicker;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using System.ComponentModel;
@@ -19,6 +19,9 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private string _projectFolderPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _createSubfolder = true;
 
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
@@ -74,7 +77,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var config = new NewProjectConfig(ProjectName, ProjectFolderPath);
+        var config = new NewProjectConfig(ProjectName, ProjectFolderPath, CreateSubfolder);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
