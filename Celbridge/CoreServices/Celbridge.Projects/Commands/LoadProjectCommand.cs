@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Navigation;
-using Celbridge.Projects.Services;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -13,6 +12,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private const string HomePageName = "HomePage";
     private const string WorkspacePageName = "WorkspacePage";
 
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
@@ -21,6 +21,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public LoadProjectCommand(
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         INavigationService navigationService,
@@ -28,6 +29,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _navigationService = navigationService;
@@ -54,7 +56,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
+        await _commandService.ExecuteNow<IUnloadProjectCommand>();
 
         // Load the project
         var loadResult = await LoadProjectAsync(ProjectFilePath);
