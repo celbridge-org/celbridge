@@ -116,11 +116,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NewProjectTag:
-                _ = _mainMenuUtils.CreateProjectAsync();
+                _ = _mainMenuUtils.ShowNewProjectDialogAsync();
                 return;
 
             case OpenProjectTag:
-                _ = _mainMenuUtils.OpenProjectAsync();
+                _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
                 return;
 
             case SettingsTag:
