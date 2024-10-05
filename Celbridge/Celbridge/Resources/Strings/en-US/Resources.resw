@@ -351,4 +351,10 @@
   <data name="HomePage_NoRecentProjects" xml:space="preserve">
     <value>You have no recent projects.</value>
   </data>
+  <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
+    <value>Create project in a new subfolder</value>
+  </data>
+  <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
+    <value>Places the project file in a new subfolder with the same name as the project</value>
+  </data>
 </root>
