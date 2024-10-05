@@ -8,5 +8,5 @@ public static class FileExtensions
     /// <summary>
     /// Celbridge project file extension.
     /// </summary>
-    public const string CelbridgeProject = ".celbridge";
+    public const string CelbridgeProject = ".celproject";
 }
