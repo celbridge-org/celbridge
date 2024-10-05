@@ -96,7 +96,6 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
             .Orientation(Orientation.Vertical)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Spacing(8)
-            .MinWidth(600)
             .Children(newProjectName, selectFolder, createSubfolder, saveLocation);
 
         this.DataContext(ViewModel, (dialog, vm) => 
