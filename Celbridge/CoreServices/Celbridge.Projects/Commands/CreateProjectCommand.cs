@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Navigation;
 using Celbridge.Projects.Services;
 using Celbridge.Workspace;
@@ -61,12 +61,12 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     // Static methods for scripting support.
     //
 
-    public static void CreateProject(string projectName, string folder)
+    public static void CreateProject(string projectName, string folder, bool createSubfolder)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICreateProjectCommand>(command =>
         {
-            command.Config = new NewProjectConfig(projectName, folder);
+            command.Config = new NewProjectConfig(projectName, folder, createSubfolder);
         });
     }
 }

@@ -64,7 +64,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
             .HorizontalAlignment(HorizontalAlignment.Center)
             .VerticalAlignment(VerticalAlignment.Center)
             .Content(CreateSubfolderString)
-            .IsChecked(true)
+            .IsChecked(x => x.Binding(() => ViewModel.CreateSubfolder))
             .ToolTipService(PlacementMode.Bottom, null, CreateSubfolderTooltipString);
 
         var stackPanel = new StackPanel()
