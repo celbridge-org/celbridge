@@ -3,20 +3,4 @@ namespace Celbridge.Projects;
 /// <summary>
 /// Configuration for a new project.
 /// </summary>
-public record NewProjectConfig(string ProjectName, string DestFolderPath, bool CreateSubfolder)
-{
-    public string ProjectFolder
-    {
-        get 
-        {
-            if (CreateSubfolder)
-            {
-                return Path.Combine(DestFolderPath, ProjectName);
-            }
-
-            return DestFolderPath;
-        }
-    }
-
-    public string ProjectFilePath => Path.Combine(ProjectFolder, $"{ProjectName}{FileExtensions.CelbridgeProject}");
-}
+public record NewProjectConfig(string ProjectFilePath);
