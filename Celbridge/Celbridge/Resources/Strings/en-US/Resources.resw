@@ -159,12 +159,6 @@
   <data name="MainPage_Home" xml:space="preserve">
     <value>Home</value>
   </data>
-  <data name="MainPage_NewProject" xml:space="preserve">
-    <value>New project</value>
-  </data>
-  <data name="MainPage_OpenProject" xml:space="preserve">
-    <value>Open project</value>
-  </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
   </data>
@@ -329,5 +323,41 @@
   </data>
   <data name="ScriptingService_NoMatchesFound" xml:space="preserve">
     <value>No commands were found matching search term '{0}'.</value>
+  </data>
+  <data name="HomePage_NewProject" xml:space="preserve">
+    <value>New project</value>
+  </data>
+  <data name="HomePage_OpenProject" xml:space="preserve">
+    <value>Open project</value>
+  </data>
+  <data name="MainPage_NewProject" xml:space="preserve">
+    <value>New project</value>
+  </data>
+  <data name="MainPage_OpenProject" xml:space="preserve">
+    <value>Open project</value>
+  </data>
+  <data name="HomePage_Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="HomePage_Title" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="HomePage_Subtitle" xml:space="preserve">
+    <value>We are the makers</value>
+  </data>
+  <data name="HomePage_Recent" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="HomePage_NoRecentProjects" xml:space="preserve">
+    <value>You have no recent projects.</value>
+  </data>
+  <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
+    <value>Create project in a new subfolder</value>
+  </data>
+  <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
+    <value>Places the project file in a new subfolder with the same name as the project</value>
+  </data>
+  <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
+    <value>The project will be saved at this location.</value>
   </data>
 </root>

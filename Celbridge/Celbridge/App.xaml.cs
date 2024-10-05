@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Commands.Services;
 using Celbridge.Services;
-using Celbridge.Telemetry;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
