@@ -52,7 +52,7 @@ public class ProjectService : IProjectService
         }
 
         var extension = Path.GetExtension(projectName);
-        if (extension != FileExtensions.CelbridgeProject)
+        if (extension != FileNames.ProjectFileExtension)
         {
             return Result.Fail($"Project file extension is not valid: '{projectName}'");
         }
