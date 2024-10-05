@@ -136,7 +136,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var config = new NewProjectConfig(ProjectName, DestFolderPath, CreateSubfolder);
+        var config = new NewProjectConfig(DestProjectFilePath);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
