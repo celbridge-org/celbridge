@@ -16,6 +16,8 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public LocalizedString ProjectNamePlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
     public LocalizedString ProjectFolderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
     public LocalizedString ProjectFolderPlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
+    public LocalizedString CreateSubfolderString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolder");
+    public LocalizedString CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
 
     public NewProjectDialog()
     {
@@ -36,7 +38,6 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
                 .MinWidth(200)
                 .PlaceholderText(ProjectNamePlaceholderString);
-
 
         var selectFolder = new Grid()
             .ColumnDefinitions("*, 50")
@@ -59,11 +60,18 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .Command(ViewModel.SelectFolderCommand)
                 );
 
-        var stackPanel = 
-            new StackPanel()
-                .Orientation(Orientation.Vertical)
-                .HorizontalAlignment(HorizontalAlignment.Left)
-                .Children(newProjectName, selectFolder);
+        var createSubfolder = new CheckBox()
+            .HorizontalAlignment(HorizontalAlignment.Center)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Content(CreateSubfolderString)
+            .IsChecked(true)
+            .ToolTipService(PlacementMode.Bottom, null, CreateSubfolderTooltipString);
+
+        var stackPanel = new StackPanel()
+            .Orientation(Orientation.Vertical)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Spacing(8)
+            .Children(newProjectName, selectFolder, createSubfolder);
 
         this.DataContext(ViewModel, (dialog, vm) => 
             dialog
