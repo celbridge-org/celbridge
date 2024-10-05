@@ -357,4 +357,7 @@
   <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
     <value>Places the project file in a new subfolder with the same name as the project</value>
   </data>
+  <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
+    <value>The project will be saved at this location.</value>
+  </data>
 </root>
