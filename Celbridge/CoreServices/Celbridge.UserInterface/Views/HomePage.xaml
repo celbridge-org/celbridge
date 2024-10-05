@@ -81,7 +81,7 @@
               <Grid MinWidth="100">
                 <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
                                  Click="RecentProjectButton_Click"                                 
-                                 ToolTipService.ToolTip="{Binding ProjectFolderPath}"
+                                 ToolTipService.ToolTip="{Binding ProjectFilePath}"
                                  ToolTipService.Placement="Bottom">
                     <TextBlock Margin="8 0 0 0"
                                Text="{Binding ProjectName}"/>
