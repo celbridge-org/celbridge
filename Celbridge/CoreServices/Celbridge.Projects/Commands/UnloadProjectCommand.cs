@@ -1,6 +1,5 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.Projects.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
@@ -29,7 +28,7 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
             return Result.Ok();
         }
 
-        return await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
+        return await _projectService.UnloadProjectAsync();
     }
 
     //
