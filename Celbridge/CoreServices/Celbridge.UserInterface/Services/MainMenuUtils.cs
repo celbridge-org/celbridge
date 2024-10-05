@@ -23,7 +23,7 @@ public class MainMenuUtils
         _commandService = commandService;
     }
 
-    public async Task CreateProjectAsync()
+    public async Task ShowNewProjectDialogAsync()
     {
         var showResult = await _dialogService.ShowNewProjectDialogAsync();
         if (showResult.IsSuccess)
@@ -37,7 +37,7 @@ public class MainMenuUtils
         }
     }
 
-    public async Task OpenProjectAsync()
+    public async Task ShowOpenProjectDialogAsync()
     {
         var result = await _filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
         if (result.IsSuccess)
