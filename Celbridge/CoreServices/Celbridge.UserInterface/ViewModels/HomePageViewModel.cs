@@ -4,11 +4,10 @@ using Celbridge.FilePicker;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Models;
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels;
-
-public record RecentProject(string ProjectFolderPath, string ProjectName);
 
 public partial class HomePageViewModel : ObservableObject
 {
@@ -41,28 +40,15 @@ public partial class HomePageViewModel : ObservableObject
     private void PopulateRecentProjects()
     {
         var recentProjects = _editorSettings.RecentProjects;
-        foreach (var recentProject in recentProjects)
+        foreach (var projectFilePath in recentProjects)
         {
-            if (!File.Exists(recentProject))
+            if (!File.Exists(projectFilePath))
             {
+                // Don't list project files that no longer exist
                 continue;
             }
 
-            try
-            {
-                var projectFolderPath = Path.GetDirectoryName(recentProject);
-                var projectName = Path.GetFileName(recentProject);
-                projectName = Path.GetFileNameWithoutExtension(projectName);
-
-                if (!string.IsNullOrEmpty(projectFolderPath))
-                {
-                    RecentProjects.Add(new RecentProject(projectFolderPath, projectName));
-                }
-            }
-            catch (Exception)
-            {
-                continue;
-            }
+            RecentProjects.Add(new RecentProject(projectFilePath));
         }
     }
 
