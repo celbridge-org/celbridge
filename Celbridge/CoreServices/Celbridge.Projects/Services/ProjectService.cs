@@ -29,7 +29,7 @@ public class ProjectService : IProjectService
             return Result.Fail("New project config is null.");
         }
 
-        if (string.IsNullOrWhiteSpace(config.Folder))
+        if (string.IsNullOrWhiteSpace(config.DestFolderPath))
         {
             return Result.Fail("Project folder is empty.");
         }
@@ -48,11 +48,16 @@ public class ProjectService : IProjectService
 
         try
         {
-            // Todo: Create the data files in a temp directory and moved them into place if all operations succeed
+            // Todo: Create the data files in a temp directory first and move them into place when all operations succeed
 
-            if (Directory.Exists(config.ProjectFolder))
+            //
+            // Create the project subfolder (if required)
+            //
+
+            if (config.CreateSubfolder &&
+                Directory.Exists(config.ProjectFolder))
             {
-                return Result<string>.Fail($"Project folder already exists: {config.ProjectFolder}");
+                return Result<string>.Fail($"Project subfolder already exists: {config.ProjectFolder}");
             }
 
             Directory.CreateDirectory(config.ProjectFolder);

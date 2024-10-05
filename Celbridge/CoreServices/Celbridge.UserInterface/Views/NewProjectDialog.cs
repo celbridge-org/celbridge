@@ -5,6 +5,8 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 {
+    private const string InfoGlyph = "\ue946";
+
     private IStringLocalizer _stringLocalizer;
 
     public NewProjectDialogViewModel ViewModel { get; }
@@ -18,6 +20,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public LocalizedString ProjectFolderPlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
     public LocalizedString CreateSubfolderString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolder");
     public LocalizedString CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
+    public LocalizedString SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
 
     public NewProjectDialog()
     {
@@ -49,7 +52,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .PlaceholderText(ProjectFolderPlaceholderString)
                     .Margin(4)
                     .IsSpellCheckEnabled(false)
-                    .Text(x => x.Binding(() => ViewModel.ProjectFolderPath)
+                    .Text(x => x.Binding(() => ViewModel.DestFolderPath)
                         .Mode(BindingMode.TwoWay)
                         .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged)),
                 new Button()
@@ -61,17 +64,40 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                 );
 
         var createSubfolder = new CheckBox()
-            .HorizontalAlignment(HorizontalAlignment.Center)
-            .VerticalAlignment(VerticalAlignment.Center)
+            .HorizontalAlignment(HorizontalAlignment.Left)
             .Content(CreateSubfolderString)
-            .IsChecked(x => x.Binding(() => ViewModel.CreateSubfolder))
+            .IsChecked(x => x.Binding(() => ViewModel.CreateSubfolder).Mode(BindingMode.TwoWay))
             .ToolTipService(PlacementMode.Bottom, null, CreateSubfolderTooltipString);
+
+        var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
+        var saveLocation = new StackPanel()
+            .Orientation(Orientation.Horizontal)
+            .Opacity(x => x.Binding(() => ViewModel.IsCreateButtonEnabled)
+                .Mode(BindingMode.OneWay)
+                .Convert(isEnabled => isEnabled ? 1 : 0))
+            .Margin(0, 8, 0 ,0)
+            .ToolTipService(PlacementMode.Top, null, SaveLocationTooltipString)
+            .Children(
+                new FontIcon()
+                    .HorizontalAlignment(HorizontalAlignment.Left)
+                    .VerticalAlignment(VerticalAlignment.Center)
+                    .FontFamily(fontFamily)
+                    .Glyph(InfoGlyph),
+                new TextBlock()
+                    .VerticalAlignment(VerticalAlignment.Center)
+                    .Margin(6, 0, 0, 0)
+                    .FontSize(12)
+                    .Text(x => x.Binding(() => ViewModel.ProjectSaveLocation).Mode(BindingMode.OneWay))
+                    .TextWrapping(TextWrapping.Wrap)
+            );
 
         var stackPanel = new StackPanel()
             .Orientation(Orientation.Vertical)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Spacing(8)
-            .Children(newProjectName, selectFolder, createSubfolder);
+            .MinWidth(600)
+            .Children(newProjectName, selectFolder, createSubfolder, saveLocation);
 
         this.DataContext(ViewModel, (dialog, vm) => 
             dialog

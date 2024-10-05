@@ -29,13 +29,13 @@ public sealed partial class MainPage : Page
         ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
 
         _contentFrame = new Frame()
-            .Background(StaticResource.Get<Brush>("ApplicationBackgroundBrush"))
+            .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
 
         _mainNavigation = new NavigationView()
             .Name("MainNavigation")
             .Grid(row: 1)
-            .Background(StaticResource.Get<Brush>("PanelBackgroundABrush"))
+            .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .IsBackButtonVisible(NavigationViewBackButtonVisible.Collapsed)
             .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftMinimal)
             .MenuItems(
