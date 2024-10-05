@@ -12,7 +12,6 @@
             <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
             <Color x:Key="PanelBorderColor">#EBECF0</Color>
             <Color x:Key="ErrorColor">#FF0000</Color>
-            <Color x:Key="AccentColor">#228B22</Color>
         </ResourceDictionary>
 
         <!-- Dark Theme -->
@@ -24,7 +23,6 @@
             <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
             <Color x:Key="PanelBorderColor">#1E1F22</Color>
             <Color x:Key="ErrorTextColor">#FF0000</Color>
-            <Color x:Key="AccentColor">#228B22</Color>
         </ResourceDictionary>
         
     </ResourceDictionary.ThemeDictionaries>
