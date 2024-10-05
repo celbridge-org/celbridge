@@ -1,3 +1,5 @@
+using Celbridge.UserInterface.Models;
+
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class HomePage : Page
