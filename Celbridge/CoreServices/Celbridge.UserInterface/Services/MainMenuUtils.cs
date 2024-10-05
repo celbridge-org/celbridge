@@ -39,7 +39,7 @@ public class MainMenuUtils
 
     public async Task ShowOpenProjectDialogAsync()
     {
-        var result = await _filePickerService.PickSingleFileAsync(new List<string> { ".celbridge" });
+        var result = await _filePickerService.PickSingleFileAsync(new List<string> { FileExtensions.CelbridgeProject });
         if (result.IsSuccess)
         {
             var projectFilePath = result.Value;

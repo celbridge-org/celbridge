@@ -5,8 +5,6 @@ namespace Celbridge.Projects;
 /// </summary>
 public record NewProjectConfig(string ProjectName, string DestFolderPath, bool CreateSubfolder)
 {
-    private const string ProjectFileExtension = ".celbridge";
-
     public string ProjectFolder
     {
         get 
@@ -20,5 +18,5 @@ public record NewProjectConfig(string ProjectName, string DestFolderPath, bool C
         }
     }
 
-    public string ProjectFilePath => Path.Combine(ProjectFolder, $"{ProjectName}{ProjectFileExtension}");
+    public string ProjectFilePath => Path.Combine(ProjectFolder, $"{ProjectName}{FileExtensions.CelbridgeProject}");
 }

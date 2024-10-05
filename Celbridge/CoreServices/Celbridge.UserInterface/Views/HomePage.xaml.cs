@@ -34,7 +34,7 @@ public sealed partial class HomePage : Page
             return;
         }
 
-        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, recentProject.ProjectName + ".celbridge");
+        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, recentProject.ProjectName + FileExtensions.CelbridgeProject);
         ViewModel.OpenProject(projectFilePath);
     }
 }
