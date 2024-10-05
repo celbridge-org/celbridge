@@ -1,4 +1,6 @@
+using Celbridge.Navigation;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 using Newtonsoft.Json.Linq;
 
 using Path = System.IO.Path;
@@ -10,16 +12,25 @@ public class ProjectService : IProjectService
     private const int RecentProjectsMax = 5;
 
     private readonly IEditorSettings _editorSettings;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly INavigationService _navigationService;
 
     private const string ProjectDataFileKey = "projectDataFile";
     private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
     private const string DefaultLogFolder = "Library/Logs";
 
+    private const string EmptyPageName = "EmptyPage";
+
     public IProject? LoadedProject { get; private set; }
 
-    public ProjectService(IEditorSettings editorSettings)
+    public ProjectService(
+        IEditorSettings editorSettings,
+        IWorkspaceWrapper workspaceWrapper,
+        INavigationService navigationService)
     {
         _editorSettings = editorSettings;
+        _workspaceWrapper = workspaceWrapper;
+        _navigationService = navigationService;
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
@@ -149,12 +160,29 @@ public class ProjectService : IProjectService
         }
     }
 
-    public Result UnloadProject()
+    public async Task<Result> UnloadProjectAsync()
     {
         if (LoadedProject is null)
         {
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail("Failed to unload project data because no project is loaded");
+        }
+
+        // Todo: Notify the workspace that it is about to close.
+        // The workspace may want to perform some operations (e.g. save changes) before we close it.
+
+        // Force the Workspace page to unload by navigating to an empty page.
+        _navigationService.NavigateToPage(EmptyPageName);
+
+        // Wait until the workspace is fully unloaded
+        while (_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            await Task.Delay(50);
         }
 
         var disposableProject = LoadedProject as IDisposable;

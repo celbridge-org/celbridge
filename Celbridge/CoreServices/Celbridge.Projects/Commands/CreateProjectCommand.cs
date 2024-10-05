@@ -1,9 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.Projects.Services;
 using Celbridge.Workspace;
-
-using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Commands;
 
@@ -37,17 +34,15 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
         // Close any open project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
-
-        //
-        // Ensure the parent folder exists
-        //
+        await _commandService.ExecuteNow<IUnloadProjectCommand>();
 
         // Create the new project
-        var createResult = await CreateProjectAsync(Config);
+        var createResult = await _projectService.CreateProjectAsync(Config);
         if (createResult.IsFailure)
         {
-            return Result.Fail($"Failed to create new project. {createResult.Error}");
+            var failure = Result.Fail($"Failed to create project.");
+            failure.MergeErrors(createResult);
+            return failure;
         }
 
         // Load the newly created project
@@ -57,24 +52,6 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         });
 
         return Result.Ok();
-    }
-
-    private async Task<Result> CreateProjectAsync(NewProjectConfig projectConfig)
-    {
-        try
-        {
-            var createResult = await _projectService.CreateProjectAsync(projectConfig);
-            if (createResult.IsSuccess)
-            {
-                return Result.Ok();
-            }
-
-            return Result.Fail($"Failed to create new project. {createResult.Error}");
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex, "An exception occurred when creating the project.");
-        }
     }
 
     //
