@@ -27,6 +27,18 @@
       <uap:VisualElements  DisplayName="Celbridge" Description="A visual scripting application">
         <uap:DefaultTile/>
       </uap:VisualElements >
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="celbridge_project">
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/json">.celproject</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Celbridge project</uap:DisplayName>
+            <uap:InfoTip>Celbridge project</uap:InfoTip>
+            <uap:EditFlags OpenIsSafe="true"/>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
