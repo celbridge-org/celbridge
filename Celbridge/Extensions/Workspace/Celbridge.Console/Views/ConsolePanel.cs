@@ -82,8 +82,6 @@ public partial class ConsolePanel : UserControl, IConsolePanel
                 }
             });
 
-        listView.Transitions.Clear();
-
         _scrollViewer = new ScrollViewer()
             .Grid(row: 0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
