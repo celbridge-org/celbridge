@@ -1,4 +1,4 @@
-﻿using Celbridge.FilePicker;
+using Celbridge.FilePicker;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using System.ComponentModel;
@@ -7,6 +7,9 @@ namespace Celbridge.UserInterface.ViewModels;
 
 public partial class NewProjectDialogViewModel : ObservableObject
 {
+    private const int MaxLocationLength = 80;
+
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
@@ -18,42 +21,101 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private string _projectName = string.Empty;
 
     [ObservableProperty]
-    private string _projectFolderPath = string.Empty;
+    private string _destFolderPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _createSubfolder = true;
+
+    [ObservableProperty]
+    private string _destProjectFilePath = string.Empty;
+
+    [ObservableProperty]
+    private string _projectSaveLocation = string.Empty;
 
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
     public NewProjectDialogViewModel(
+        IStringLocalizer stringLocalizer,
         IEditorSettings editorSettings,
         IProjectService projectService,
         IFilePickerService filePickerService)
     {
+        _stringLocalizer = stringLocalizer;
         _editorSettings = editorSettings;
         _projectService = projectService;
         _filePickerService = filePickerService;
 
-        _projectFolderPath = _editorSettings.PreviousNewProjectFolderPath;
+        _destFolderPath = _editorSettings.PreviousNewProjectFolderPath;
 
         PropertyChanged += NewProjectDialogViewModel_PropertyChanged;
     }
 
     private void NewProjectDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        var parentFolderExists = Directory.Exists(ProjectFolderPath);
-        var projectFolderExists = Directory.Exists(Path.Combine(ProjectFolderPath, ProjectName));
-
-        if (e.PropertyName == nameof(ProjectFolderPath) ||
-            e.PropertyName == nameof(ProjectName))
+        if (e.PropertyName == nameof(DestFolderPath) ||
+            e.PropertyName == nameof(ProjectName) ||
+            e.PropertyName == nameof(CreateSubfolder))
         {
-            var isValid = ResourceKey.IsValidSegment(ProjectName);
 
-            // Todo: Show a message explaining why the create button is disabled
-            IsCreateButtonEnabled = isValid && parentFolderExists && !projectFolderExists;
+            if (!ResourceKey.IsValidSegment(ProjectName))
+            {
+                // Project name is not a valid filename
+                IsCreateButtonEnabled = false;
+                DestProjectFilePath = string.Empty;
+                return;
+            }
+
+            string destProjectFilePath;
+
+            if (CreateSubfolder)
+            {
+                var subfolderPath = Path.Combine(DestFolderPath, ProjectName);
+                if (Directory.Exists(subfolderPath))
+                {
+                    // A subfolder with this name already exists
+                    IsCreateButtonEnabled = false;
+                    DestProjectFilePath = string.Empty;
+                    return;
+                }
+
+                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{FileExtensions.CelbridgeProject}");
+            }
+            else
+            {
+                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{FileExtensions.CelbridgeProject}");
+            }
+
+            if (File.Exists(destProjectFilePath)) 
+            { 
+                // A project file with the same name already exists
+                IsCreateButtonEnabled = false;
+                DestProjectFilePath = string.Empty;
+                return;
+            }
+
+            IsCreateButtonEnabled = true;
+            DestProjectFilePath = destProjectFilePath;
         }
 
-        if (e.PropertyName == nameof(ProjectFolderPath) && parentFolderExists)
+        if (e.PropertyName == nameof(DestProjectFilePath))
         {
-            // Remember the newly selected folder
-            _editorSettings.PreviousNewProjectFolderPath = ProjectFolderPath;
+            ProjectSaveLocation = DestProjectFilePath;
+
+            if (DestProjectFilePath.Length <= MaxLocationLength)
+            {
+                ProjectSaveLocation = DestProjectFilePath;
+            }
+            else
+            {
+                int clippedLength = DestProjectFilePath.Length - MaxLocationLength + 3; // 3 for ellipses
+                ProjectSaveLocation = "..." + DestProjectFilePath.Substring(clippedLength);
+            }
+        }
+
+        if (e.PropertyName == nameof(DestFolderPath) && Path.Exists(DestFolderPath))
+        {
+            // Remember the newly selected destination folder
+            _editorSettings.PreviousNewProjectFolderPath = DestFolderPath;
         }
     }
 
@@ -66,7 +128,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             var folder = pickResult.Value;
             if (Directory.Exists(folder))
             {
-                ProjectFolderPath = pickResult.Value;
+                DestFolderPath = pickResult.Value;
             }
         }
     }
@@ -74,7 +136,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var config = new NewProjectConfig(ProjectName, ProjectFolderPath);
+        var config = new NewProjectConfig(DestProjectFilePath);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null

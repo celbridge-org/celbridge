@@ -1,7 +1,6 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Navigation;
-using Celbridge.Projects.Services;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -11,7 +10,9 @@ namespace Celbridge.Projects.Commands;
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
     private const string HomePageName = "HomePage";
+    private const string WorkspacePageName = "WorkspacePage";
 
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
@@ -20,6 +21,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public LoadProjectCommand(
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         INavigationService navigationService,
@@ -27,6 +29,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _navigationService = navigationService;
@@ -53,10 +56,10 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
+        await _commandService.ExecuteNow<IUnloadProjectCommand>();
 
         // Load the project
-        var loadResult = await ProjectUtils.LoadProjectAsync(_workspaceWrapper, _navigationService, _projectService, ProjectFilePath);
+        var loadResult = await LoadProjectAsync(ProjectFilePath);
 
         if (loadResult.IsFailure)
         {
@@ -76,6 +79,34 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         _editorSettings.PreviousLoadedProject = ProjectFilePath;
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> LoadProjectAsync(string projectFilePath)
+    {
+        var loadResult = _projectService.LoadProject(projectFilePath);
+        if (loadResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to open project file '{projectFilePath}'");
+            failure.MergeErrors(loadResult);
+            return failure;
+        }
+
+        var loadPageCancelationToken = new CancellationTokenSource();
+        _navigationService.NavigateToPage(WorkspacePageName, loadPageCancelationToken);
+
+        // Wait until the workspace page either loads or cancels loading due to an error
+        while (!_workspaceWrapper.IsWorkspacePageLoaded &&
+               !loadPageCancelationToken.IsCancellationRequested)
+        {
+            await Task.Delay(50);
+        }
+
+        if (loadPageCancelationToken.IsCancellationRequested)
+        {
+            return Result.Fail("Failed to open project because an error occured");
+        }
 
         return Result.Ok();
     }

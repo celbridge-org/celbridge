@@ -1,6 +1,5 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Navigation;
-using Celbridge.Projects.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
@@ -33,26 +32,24 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
             return Result.Fail("Failed to create new project because config is null.");
         }
 
-        var projectFilePath = Config.ProjectFilePath;
-
-        if (File.Exists(projectFilePath))
-        {
-            return Result.Fail($"Failed to create project file at '{projectFilePath}' because the file already exists.");
-        }
-
         // Close any open project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await ProjectUtils.UnloadProjectAsync(_workspaceWrapper, _navigationService, _projectService);
+        await _commandService.ExecuteNow<IUnloadProjectCommand>();
 
         // Create the new project
-        var createResult = await ProjectUtils.CreateProjectAsync(_projectService, Config);
+        var createResult = await _projectService.CreateProjectAsync(Config);
         if (createResult.IsFailure)
         {
-            return Result.Fail($"Failed to create new project. {createResult.Error}");
+            var failure = Result.Fail($"Failed to create project.");
+            failure.MergeErrors(createResult);
+            return failure;
         }
 
-        // Load the new project
-        _commandService.Execute<ILoadProjectCommand>(command => command.ProjectFilePath = projectFilePath);
+        // Load the newly created project
+        _commandService.Execute<ILoadProjectCommand>(command =>
+        {
+            command.ProjectFilePath = Config.ProjectFilePath;
+        });
 
         return Result.Ok();
     }
@@ -61,12 +58,12 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     // Static methods for scripting support.
     //
 
-    public static void CreateProject(string projectName, string folder)
+    public static void CreateProject(string projectFilePath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         commandService.Execute<ICreateProjectCommand>(command =>
         {
-            command.Config = new NewProjectConfig(projectName, folder);
+            command.Config = new NewProjectConfig(projectFilePath);
         });
     }
 }

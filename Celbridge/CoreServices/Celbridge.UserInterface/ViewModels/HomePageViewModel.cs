@@ -1,69 +1,83 @@
+using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
+using Celbridge.Projects;
+using Celbridge.Settings;
+using Celbridge.UserInterface.Models;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels;
 
 public partial class HomePageViewModel : ObservableObject
 {
     private readonly Logging.ILogger<HomePageViewModel> _logger;
+    private readonly ICommandService _commandService;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
+    private readonly IEditorSettings _editorSettings;
+    private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
         INavigationService navigationService,
         Logging.ILogger<HomePageViewModel> logger,
+        ICommandService commandService,
+        IEditorSettings editorSettings,
         IFilePickerService filePickerService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        MainMenuUtils mainMenuUtils)
     {
         _logger = logger;
+        _commandService = commandService;
+        _editorSettings = editorSettings;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
+        _mainMenuUtils = mainMenuUtils;
+
+        PopulateRecentProjects();
     }
 
-    public ICommand SelectFileCommand => new AsyncRelayCommand(SelectFile_ExecutedAsync);
-    private async Task SelectFile_ExecutedAsync()
+    private void PopulateRecentProjects()
     {
-        var extensions = new List<string>()
+        var recentProjects = _editorSettings.RecentProjects;
+        foreach (var projectFilePath in recentProjects)
         {
-            ".txt"
-        };
+            if (!File.Exists(projectFilePath))
+            {
+                // Don't list project files that no longer exist
+                continue;
+            }
 
-        var result = await _filePickerService.PickSingleFileAsync(extensions);
-        if (result.IsFailure)
+            RecentProjects.Add(new RecentProject(projectFilePath));
+        }
+    }
+
+    public List<RecentProject> RecentProjects = new();
+
+    public IAsyncRelayCommand NewProjectCommand => new AsyncRelayCommand(NewProjectCommand_Executed);
+    private async Task NewProjectCommand_Executed()
+    {
+        await _mainMenuUtils.ShowNewProjectDialogAsync();
+    }
+
+    public IAsyncRelayCommand OpenProjectCommand => new AsyncRelayCommand(OpenProjectCommand_Executed);
+    private async Task OpenProjectCommand_Executed()
+    {
+        await _mainMenuUtils.ShowOpenProjectDialogAsync();
+    }
+
+    public void OpenProject(string projectFilePath)
+    {
+        if (!File.Exists(projectFilePath)) 
         {
-            _logger.LogError(result.Error);
+            _logger.LogError($"Project file does not exist: {projectFilePath}");
             return;
         }
 
-        var path = result.Value;
-        _logger.LogInformation($"Selected path is : {path}");
-    }
-
-    public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolder_ExecutedAsync);
-    private async Task SelectFolder_ExecutedAsync()
-    {
-        var result = await _filePickerService.PickSingleFolderAsync();
-        if (result.IsFailure)
+        _commandService.Execute<ILoadProjectCommand>((command) =>
         {
-            _logger.LogError(result.Error);
-            return;
-        }
-
-        var path = result.Value;
-        _logger.LogInformation($"Selected path is : {path}");
-    }
-
-    public ICommand ShowAlertDialogCommand => new AsyncRelayCommand(ShowAlertDialog_ExecutedAsync);
-    private async Task ShowAlertDialog_ExecutedAsync()
-    {
-        await _dialogService.ShowAlertDialogAsync("Some title", "Some message");
-    }
-
-    public ICommand ShowProgressDialogCommand => new RelayCommand(ShowProgressDialog_Executed);
-    private void ShowProgressDialog_Executed()
-    {
-        _dialogService.AcquireProgressDialog("Some title");
+            command.ProjectFilePath = projectFilePath;
+        });
     }
 }
 

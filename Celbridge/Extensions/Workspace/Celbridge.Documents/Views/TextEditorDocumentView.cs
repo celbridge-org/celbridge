@@ -5,8 +5,6 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Documents.Views;
 
 public sealed partial class TextEditorDocumentView : DocumentView

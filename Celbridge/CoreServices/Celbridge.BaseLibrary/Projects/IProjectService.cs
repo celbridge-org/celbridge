@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Projects;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Provides services for managing projects.
@@ -28,5 +28,5 @@ public interface IProjectService
     /// <summary>
     /// Unloads the currently loaded project.
     /// </summary>
-    Result UnloadProject();
+    Task<Result> UnloadProjectAsync();
 }

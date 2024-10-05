@@ -22,6 +22,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
+        services.AddSingleton<MainMenuUtils>();
 
         //
         // Register view models
