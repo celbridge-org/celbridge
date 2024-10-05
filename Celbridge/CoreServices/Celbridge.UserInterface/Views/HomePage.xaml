@@ -1,0 +1,104 @@
+﻿<Page
+    x:Class="Celbridge.UserInterface.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.UserInterface.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+  <Grid>
+    
+    <Grid.RowDefinitions>
+      <RowDefinition Height="60"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="100"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Title section -->
+    <StackPanel Grid.Row="1"
+                Grid.Column="1">
+      <TextBlock Text="{x:Bind TitleString}"
+                 FontSize="36"
+                 FontWeight="Bold"/>
+      <TextBlock Text="{x:Bind SubtitleString}"
+                 FontSize="22"
+                 Opacity="0.75"/>
+    </StackPanel>
+
+    <!-- Start section -->
+    <StackPanel Grid.Row="3"
+                Grid.Column="1">
+      <TextBlock Text="{x:Bind StartString}"
+                 FontSize="18"
+                 Margin="0,0,0,12"/>
+
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.NewProjectCommand}">
+        <StackPanel Orientation="Horizontal">
+          <SymbolIcon Symbol="NewFolder" />
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind NewProjectString}"/>
+        </StackPanel>
+      </HyperlinkButton>
+
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.OpenProjectCommand}">
+        <StackPanel Orientation="Horizontal">
+          <SymbolIcon Symbol="OpenLocal" />
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind OpenProjectString}"/>
+        </StackPanel>
+      </HyperlinkButton>
+
+    </StackPanel>
+
+    <!-- Recent section -->
+    <StackPanel Grid.Row="5"
+                Grid.Column="1"
+                Spacing="2">
+
+      <TextBlock Text="{x:Bind RecentString}"
+                 FontSize="18"
+                 Margin="0,0,0,12"/>
+
+      <ItemsControl x:Name="RecentFilesList"
+                    ItemsSource="{x:Bind ViewModel.RecentProjects}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+
+            <StackPanel Orientation="Horizontal">
+
+              <Grid MinWidth="100">
+                <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                                 Click="RecentProjectButton_Click"                                 
+                                 ToolTipService.ToolTip="{Binding ProjectFilePath}"
+                                 ToolTipService.Placement="Bottom">
+                    <TextBlock Margin="8 0 0 0"
+                               Text="{Binding ProjectName}"/>
+                </HyperlinkButton>
+              </Grid>
+
+              <TextBlock VerticalAlignment="Center"
+                         Opacity="0.75"
+                         Text="{Binding ProjectFolderPath}"/>              
+            </StackPanel>
+            
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+
+      </ItemsControl>
+
+    </StackPanel>
+    
+  </Grid>
+</Page>
