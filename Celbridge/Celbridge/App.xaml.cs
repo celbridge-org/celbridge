@@ -8,6 +8,13 @@ using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Uno.Resizetizer;
 
+#if WINDOWS
+using Celbridge.Settings;
+using Windows.ApplicationModel.Activation;
+#endif
+
+using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
+
 namespace Celbridge;
 
 public partial class App : Application
@@ -122,6 +129,29 @@ public partial class App : Application
         var utilityService = Host.Services.GetRequiredService<IUtilityService>();
         var environmentInfo = utilityService.GetEnvironmentInfo();
         logger.LogDebug(environmentInfo.ToString());
+
+        // Check if the application was opened with a project file argument 
+#if WINDOWS
+        var activatedEventArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (activatedEventArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
+        {
+            var fileArgs = activatedEventArgs.Data as IFileActivatedEventArgs;
+            if (fileArgs != null && fileArgs.Files.Any())
+            {
+                var storageFile = fileArgs.Files.FirstOrDefault() as StorageFile;
+                if (storageFile != null)
+                {
+                    var projectFile = storageFile.Path;
+                    logger.LogDebug($"Launched with project file: {projectFile}");
+                    if (File.Exists(projectFile))
+                    {
+                        var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
+                        editorSettings.PreviousLoadedProject = projectFile;
+                    }
+                }
+            }
+        }
+#endif
 
         // Start the telemetry service
         // Todo: Enable this once we have user opt-in UI for telemetry.
