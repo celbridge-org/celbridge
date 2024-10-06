@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer.Models;
+using Celbridge.Explorer.Models;
 using Celbridge.UserInterface;
 using System.Text;
 
@@ -282,6 +282,12 @@ public class ResourceRegistry : IResourceRegistry
 
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
+
+        // Exclude the project data folder from the resource registry
+        if (folderResource.ParentFolder is null)
+        {
+            subFolderPaths.RemoveAll(path => path.EndsWith(FileNames.ProjectDataFolder));
+        }
 
         folderResource.Children.Clear();
 
