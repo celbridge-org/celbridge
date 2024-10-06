@@ -16,8 +16,6 @@ public class ProjectService : IProjectService
     private readonly INavigationService _navigationService;
 
     private const string ProjectDataFileKey = "projectDataFile";
-    private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
-    private const string DefaultLogFolder = "Library/Logs";
 
     private const string EmptyPageName = "EmptyPage";
 
@@ -74,21 +72,21 @@ public class ProjectService : IProjectService
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
 
-            var projectFolder = Path.GetDirectoryName(projectFilePath);
-            if (string.IsNullOrEmpty(projectFolder))
+            var projectFolderPath = Path.GetDirectoryName(projectFilePath);
+            if (string.IsNullOrEmpty(projectFolderPath))
             {
                 return Result.Fail($"Failed to get folder for project file path: '{projectFilePath}'");
             }
 
-            if (!Directory.Exists(projectFolder))
+            if (!Directory.Exists(projectFolderPath))
             {
-                Directory.CreateDirectory(projectFolder);
+                Directory.CreateDirectory(projectFolderPath);
             }
 
             // Write the project JSON file in the project folder
             var projectJson = $$"""
                 {
-                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataFile}}",
+                    "{{ProjectDataFileKey}}": "{{FileNames.ProjectDataFolder}}/{{FileNames.ProjectDataFile}}",
                 }
                 """;
 
@@ -98,14 +96,11 @@ public class ProjectService : IProjectService
             // Create a database file inside a folder named after the project
             //
 
-            var databasePath = Path.Combine(projectFolder, DefaultProjectDataFile);
+            var databasePath = Path.Combine(projectFolderPath, FileNames.ProjectDataFolder, FileNames.ProjectDataFile);
             string dataFolderPath = Path.GetDirectoryName(databasePath)!;
             Directory.CreateDirectory(dataFolderPath);
 
-            var logFolderPath = Path.Combine(projectFolder, DefaultLogFolder);
-            Directory.CreateDirectory(logFolderPath);
-
-            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, databasePath, logFolderPath);
+            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, databasePath);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project database: '{databasePath}'");
@@ -131,9 +126,8 @@ public class ProjectService : IProjectService
 
             string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
             string projectDataPath = Path.GetFullPath(Path.Combine(projectFolderPath, projectDataPathRelative));
-            string logFolderPath = Path.GetFullPath(Path.Combine(projectFolderPath, DefaultLogFolder));
 
-            var loadResult = Project.LoadProject(projectPath, projectDataPath, logFolderPath);
+            var loadResult = Project.LoadProject(projectPath, projectDataPath);
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load project database: {projectDataPath}");

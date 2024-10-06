@@ -27,8 +27,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
 
-    private IResourceRegistryDumper _resourceRegistryDumper;
-
     private bool _workspaceStateIsDirty;
 
     public WorkspaceService(
@@ -55,11 +53,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var databaseFolder = Path.GetDirectoryName(project.DatabasePath);
         Guard.IsNotNullOrEmpty(databaseFolder);
         WorkspaceDataService.DatabaseFolder = databaseFolder;
-
-        // Dump the resource registry to a file in the logs folder
-        string logFolderPath = project.LogFolderPath;
-        _resourceRegistryDumper = serviceProvider.GetRequiredService<IResourceRegistryDumper>();
-        _resourceRegistryDumper.Initialize(logFolderPath);
     }
 
     public void SetWorkspaceStateIsDirty()
