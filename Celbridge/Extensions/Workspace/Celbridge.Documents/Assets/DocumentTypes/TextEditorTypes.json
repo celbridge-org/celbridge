@@ -1,4 +1,4 @@
-﻿{
+{
   ".abap": "abap",
   ".aes": "aes",
   ".ascx": "xml",
@@ -13,6 +13,7 @@
   ".c": "c",
   ".cake": "csharp",
   ".cc": "cpp",
+  ".celproject": "json",
   ".cjs": "javascript",
   ".clj": "clojure",
   ".cljc": "clojure",

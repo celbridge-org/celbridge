@@ -86,7 +86,7 @@ public class ProjectService : IProjectService
             // Write the project JSON file in the project folder
             var projectJson = $$"""
                 {
-                    "{{ProjectDataFileKey}}": "{{FileNames.ProjectDataFolder}}/{{FileNames.ProjectDataFile}}",
+                    "{{ProjectDataFileKey}}": "{{FileNames.ProjectDataFolder}}/{{FileNames.ProjectDataFile}}"
                 }
                 """;
 
