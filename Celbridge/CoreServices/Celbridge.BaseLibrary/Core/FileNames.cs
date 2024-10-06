@@ -14,4 +14,9 @@ public static class FileNames
     /// Project data folder name.
     /// </summary>
     public const string ProjectDataFolder = "CelData";
+
+    /// <summary>
+    /// Project data file.
+    /// </summary>
+    public const string ProjectDataFile = "CelData.db";
 }

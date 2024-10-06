@@ -15,9 +15,8 @@ public class Project : IDisposable, IProject
     public string ProjectFilePath { get; init; }
     public string ProjectFolderPath { get; init; }
     public string DatabasePath { get; init; }
-    public string LogFolderPath { get; init; }
 
-    private Project(string projectFilePath, string databasePath, string logFolderPath)
+    private Project(string projectFilePath, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
@@ -30,7 +29,6 @@ public class Project : IDisposable, IProject
 
         ProjectFilePath = projectFilePath;
         DatabasePath = databasePath;
-        LogFolderPath = logFolderPath;
 
         _connection = new SQLiteAsyncConnection(databasePath);
     }
@@ -61,23 +59,22 @@ public class Project : IDisposable, IProject
         return Result.Ok();
     }
 
-    public static Result<IProject> LoadProject(string projectPath, string databasePath, string logFolderPath)
+    public static Result<IProject> LoadProject(string projectPath, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(projectPath);
         Guard.IsNotNullOrWhiteSpace(databasePath);
-        Guard.IsNotNullOrWhiteSpace(logFolderPath);
 
-        var project = new Project(projectPath, databasePath, logFolderPath);
+        var project = new Project(projectPath, databasePath);
         Guard.IsNotNull(project);
 
         return Result<IProject>.Ok(project);
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath, string databasePath, string logFolderPath)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var project = new Project(projectFilePath, databasePath, logFolderPath);
+        var project = new Project(projectFilePath, databasePath);
         Guard.IsNotNull(project);
 
         var dataVersion = new ProjectDataVersion 
