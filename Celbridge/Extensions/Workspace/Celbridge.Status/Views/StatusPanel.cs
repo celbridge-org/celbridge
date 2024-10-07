@@ -23,7 +23,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
 
         var fontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
 
-        var selectDocumentButton = new Button()
+        var selectDocumentButton = new HyperlinkButton()
             .Grid(column: 1)
             .VerticalAlignment(VerticalAlignment.Center)
             .Visibility(x => x.Binding(() => ViewModel.SelectedDocumentVisibility).Mode(BindingMode.OneWay))
