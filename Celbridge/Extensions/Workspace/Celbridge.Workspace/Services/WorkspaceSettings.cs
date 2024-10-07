@@ -1,11 +1,11 @@
-﻿using Celbridge.Workspace.Models;
+using Celbridge.Workspace.Models;
 using CommunityToolkit.Diagnostics;
 using SQLite;
 using System.Text.Json;
 
 namespace Celbridge.Workspace.Services;
 
-public class WorkspaceData : IDisposable, IWorkspaceData
+public class WorkspaceSettings : IDisposable, IWorkspaceSettings
 {
     private const int DataVersion = 1;
     private const string DataVersionKey = nameof(DataVersion);
@@ -14,7 +14,7 @@ public class WorkspaceData : IDisposable, IWorkspaceData
 
     public string DatabasePath { get; init; }
 
-    private WorkspaceData(string databasePath)
+    private WorkspaceSettings(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
         DatabasePath = databasePath;
@@ -84,37 +84,59 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         return await GetPropertyAsync<T>(key, defaultValue);
     }
 
-    public static Result<IWorkspaceData> LoadWorkspaceData(string databasePath)
+    public static Result<IWorkspaceSettings> LoadWorkspaceSettings(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
         try
         {
-            var workspaceData = new WorkspaceData(databasePath);
-            Guard.IsNotNull(workspaceData);
+            var workspaceSettings = new WorkspaceSettings(databasePath);
+            Guard.IsNotNull(workspaceSettings);
 
-            return Result<IWorkspaceData>.Ok(workspaceData);
+            return Result<IWorkspaceSettings>.Ok(workspaceSettings);
         }
         catch (Exception ex)
         {
-            return Result<IWorkspaceData>.Fail($"Failed to load workspace database. {ex.Message}");
+            return Result<IWorkspaceSettings>.Fail($"Failed to load workspace settings database. {ex.Message}");
         }
     }
 
-    public static async Task<Result> CreateWorkspaceDataAsync(string databasePath)
+    public static async Task<Result> CreateWorkspaceSettingsAsync(string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var workspaceData = new WorkspaceData(databasePath);
-        Guard.IsNotNull(workspaceData);
+        try
+        {
+            // Ensure parent folder exists
+            var parentFolder = Path.GetDirectoryName(databasePath);
+            Guard.IsNotNull(parentFolder);
 
-        await workspaceData._connection.CreateTableAsync<WorkspaceProperty>();
-        await workspaceData.SetDataVersionAsync(DataVersion);
+            if (!Directory.Exists(parentFolder))
+            {
+                Directory.CreateDirectory(parentFolder);
 
-        // Close the database
-        workspaceData.Dispose();
+#if WINDOWS
+                // Hide the folder in windows explorer
+                var attributes = File.GetAttributes(parentFolder);
+                File.SetAttributes(parentFolder, attributes | System.IO.FileAttributes.Hidden);
+#endif
+            }
 
-        return Result.Ok();
+            // Create and initialize the workspace settings database
+            using (var workspaceSettings = new WorkspaceSettings(databasePath))
+            {
+                Guard.IsNotNull(workspaceSettings);
+
+                await workspaceSettings._connection.CreateTableAsync<WorkspaceProperty>();
+                await workspaceSettings.SetDataVersionAsync(DataVersion);
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, "An exception occurred when creating the workspace settings database");
+        }
     }
 
     private bool _disposed = false;
@@ -138,7 +160,7 @@ public class WorkspaceData : IDisposable, IWorkspaceData
         }
     }
 
-    ~WorkspaceData()
+    ~WorkspaceSettings()
     {
         Dispose(false);
     }

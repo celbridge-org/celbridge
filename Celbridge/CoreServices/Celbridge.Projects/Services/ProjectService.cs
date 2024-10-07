@@ -16,12 +16,10 @@ public class ProjectService : IProjectService
     private readonly INavigationService _navigationService;
 
     private const string ProjectDataFileKey = "projectDataFile";
-    private const string DefaultProjectDataFile = "Library/ProjectData/ProjectData.db";
-    private const string DefaultLogFolder = "Library/Logs";
 
     private const string EmptyPageName = "EmptyPage";
 
-    public IProject? LoadedProject { get; private set; }
+    public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
         IEditorSettings editorSettings,
@@ -52,7 +50,7 @@ public class ProjectService : IProjectService
         }
 
         var extension = Path.GetExtension(projectName);
-        if (extension != FileExtensions.CelbridgeProject)
+        if (extension != FileNameConstants.ProjectFileExtension)
         {
             return Result.Fail($"Project file extension is not valid: '{projectName}'");
         }
@@ -64,88 +62,45 @@ public class ProjectService : IProjectService
     {
         try
         {
-            // Todo: Create the data files in a temp directory first and move them into place when all operations succeed
-
-            // Ensure the project folder exists
-
             var projectFilePath = config.ProjectFilePath;
             if (File.Exists(projectFilePath))
             {
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
 
-            var projectFolder = Path.GetDirectoryName(projectFilePath);
-            if (string.IsNullOrEmpty(projectFolder))
-            {
-                return Result.Fail($"Failed to get folder for project file path: '{projectFilePath}'");
-            }
-
-            if (!Directory.Exists(projectFolder))
-            {
-                Directory.CreateDirectory(projectFolder);
-            }
-
-            // Write the project JSON file in the project folder
-            var projectJson = $$"""
-                {
-                    "{{ProjectDataFileKey}}": "{{DefaultProjectDataFile}}",
-                }
-                """;
-
-            await File.WriteAllTextAsync(config.ProjectFilePath, projectJson);
-
-            //
-            // Create a database file inside a folder named after the project
-            //
-
-            var databasePath = Path.Combine(projectFolder, DefaultProjectDataFile);
-            string dataFolderPath = Path.GetDirectoryName(databasePath)!;
-            Directory.CreateDirectory(dataFolderPath);
-
-            var logFolderPath = Path.Combine(projectFolder, DefaultLogFolder);
-            Directory.CreateDirectory(logFolderPath);
-
-            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, databasePath, logFolderPath);
+            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath);
             if (createResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project database: '{databasePath}'");
+                return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'");
             }
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to create project: '{config.ProjectFilePath}'");
+            return Result.Fail(ex, $"An exception occured when creating project: '{config.ProjectFilePath}'");
         }
     }
 
-    public Result LoadProject(string projectPath)
+    public Result LoadProject(string projectFilePath)
     {
         try
         {
-            var projectJsonData = File.ReadAllText(projectPath);
-            var jsonObject = JObject.Parse(projectJsonData);
-            Guard.IsNotNull(jsonObject);
-
-            var projectFolderPath = Path.GetDirectoryName(projectPath)!; 
-
-            string projectDataPathRelative = jsonObject["projectDataFile"]!.ToString();
-            string projectDataPath = Path.GetFullPath(Path.Combine(projectFolderPath, projectDataPathRelative));
-            string logFolderPath = Path.GetFullPath(Path.Combine(projectFolderPath, DefaultLogFolder));
-
-            var loadResult = Project.LoadProject(projectPath, projectDataPath, logFolderPath);
+            var loadResult = Project.LoadProject(projectFilePath);
             if (loadResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project database: {projectDataPath}");
+                var failure = Result.Fail($"Failed to load project: {projectFilePath}");
+                failure.MergeErrors(loadResult);
+                return failure;
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
-            LoadedProject = loadResult.Value;
+            CurrentProject = loadResult.Value;
 
             // Update the recent projects list in editor settings
             var recentProjects = _editorSettings.RecentProjects;
-            recentProjects.Remove(projectPath);
-            recentProjects.Insert(0, projectPath);
+            recentProjects.Remove(projectFilePath);
+            recentProjects.Insert(0, projectFilePath);
             while (recentProjects.Count > RecentProjectsMax)
             {
                 recentProjects.RemoveAt(recentProjects.Count - 1);
@@ -162,7 +117,7 @@ public class ProjectService : IProjectService
 
     public async Task<Result> UnloadProjectAsync()
     {
-        if (LoadedProject is null)
+        if (CurrentProject is null)
         {
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
@@ -185,10 +140,10 @@ public class ProjectService : IProjectService
             await Task.Delay(50);
         }
 
-        var disposableProject = LoadedProject as IDisposable;
+        var disposableProject = CurrentProject as IDisposable;
         Guard.IsNotNull(disposableProject);
         disposableProject.Dispose();
-        LoadedProject = null;
+        CurrentProject = null;
 
         return Result.Ok();
     }

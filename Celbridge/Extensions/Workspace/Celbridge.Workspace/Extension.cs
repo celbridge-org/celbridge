@@ -27,7 +27,7 @@ public class Extension : IExtension
         // Register services
         //
 
-        config.AddTransient<IWorkspaceDataService, WorkspaceDataService>();
+        config.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         config.AddTransient<IWorkspaceService, WorkspaceService>();
         config.AddTransient<IDataTransferService, DataTransferService>();
         config.AddTransient<WorkspaceLoader>();

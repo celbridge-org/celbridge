@@ -1,9 +1,9 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Unload the loaded project.
+/// Unload the current loaded project.
 /// </summary>
 public interface IUnloadProjectCommand : IExecutableCommand
 {}

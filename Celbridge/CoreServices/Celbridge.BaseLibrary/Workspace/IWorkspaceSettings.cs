@@ -1,17 +1,17 @@
-﻿namespace Celbridge.Workspace;
+namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages the workspace data associated with a loaded project.
+/// Manages the workspace settings associated with the current loaded project.
 /// </summary>
-public interface IWorkspaceData
+public interface IWorkspaceSettings
 {
     /// <summary>
-    /// Gets the data version for the workspace data.
+    /// Gets the data version for the workspace settings.
     /// </summary>
     Task<int> GetDataVersionAsync();
 
     /// <summary>
-    /// Sets the data version for the workspace data.
+    /// Sets the data version for the workspace settings.
     /// </summary>
     Task SetDataVersionAsync(int version);
 
