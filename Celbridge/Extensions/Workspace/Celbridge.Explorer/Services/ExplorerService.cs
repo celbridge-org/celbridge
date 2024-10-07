@@ -334,6 +334,20 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
+    public async Task<Result> OpenApplication(ResourceKey resource)
+    {
+        var path = ResourceRegistry.GetResourcePath(resource);
+        var openResult = await ResourceUtils.OpenApplication(path);
+        if (openResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to open associated application for resource: {resource}");
+            failure.MergeErrors(openResult);
+            return failure;
+        }
+
+        return Result.Ok();
+    }
+
     public async Task<Result> OpenFileManager(ResourceKey resource)
     {
         var path = ResourceRegistry.GetResourcePath(resource);
