@@ -229,7 +229,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
         // Execute a command to open the resource in the system file manager
-        _commandService.Execute<IOpenExplorerCommand>(command =>
+        _commandService.Execute<IOpenFileManagerCommand>(command =>
         {
             command.Resource = resourceKey;
         });

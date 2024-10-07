@@ -3,13 +3,13 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Commands;
 
-public class OpenExplorerCommand : CommandBase, IOpenExplorerCommand
+public class OpenFileManagerCommand : CommandBase, IOpenFileManagerCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey Resource { get; set; }
 
-    public OpenExplorerCommand(
+    public OpenFileManagerCommand(
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -31,10 +31,11 @@ public class OpenExplorerCommand : CommandBase, IOpenExplorerCommand
     //
     // Static methods for scripting support.
     //
-    public static void OpenExplorer(ResourceKey resource)
+
+    public static void OpenFileManager(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IOpenExplorerCommand>(command =>
+        commandService.Execute<IOpenFileManagerCommand>(command =>
         {
             command.Resource = resource;
         });
