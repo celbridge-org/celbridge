@@ -34,6 +34,43 @@ public class ResourceUtils
         }
     }
 
+    public static async Task<Result> OpenApplication(string path)
+    {
+        await Task.CompletedTask;
+
+#if WINDOWS
+        try
+        {
+            if (File.Exists(path))
+            {
+                StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+                bool launchResult = await Launcher.LaunchFileAsync(file);
+                if (launchResult)
+                {
+                    return Result.Ok();
+                }
+            }
+            else
+            {
+                var openResult = await OpenFileManager(path);
+                if (openResult.IsSuccess)
+                {
+                    var failure = Result.Fail($"Failed to open file manager for path: {path}");
+                    return Result.Ok();
+                }
+            }
+
+            return Result.Fail($"Failed to open associated application for path: {path}");
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"An exception occurred when opening the associated application: {path}");
+        }
+#else
+        return Result.Fail("Launching associated application is only supported on Windows");
+#endif
+    }
+
     public static async Task<Result> OpenFileManager(string path)
     {
         await Task.CompletedTask;
