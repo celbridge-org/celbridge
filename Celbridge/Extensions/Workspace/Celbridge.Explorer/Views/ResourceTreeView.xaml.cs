@@ -25,6 +25,9 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private LocalizedString PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private LocalizedString RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
+    private LocalizedString OpenInString => _stringLocalizer.GetString("ResourceTree_OpenIn");
+    private LocalizedString OpenInExplorerString => _stringLocalizer.GetString("ResourceTree_OpenInExplorer");
+    private LocalizedString OpenInApplicationString => _stringLocalizer.GetString("ResourceTree_OpenInApplication");
 
     public ResourceTreeView()
     {
@@ -350,6 +353,20 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         Guard.IsNotNull(resource);
 
         ViewModel.ShowRenameResourceDialog(resource);
+    }
+
+    private void ResourceContextMenu_OpenInExplorer(object sender, RoutedEventArgs e)
+    {
+        // A null resource here indicates the root folder
+        var resource = AcquireContextMenuResource(sender);
+        ViewModel.OpenResourceInExplorer(resource);
+    }
+
+    private void ResourceContextMenu_OpenInApplication(object sender, RoutedEventArgs e)
+    {
+        // A null resource here indicates the root folder
+        var resource = AcquireContextMenuResource(sender);
+        ViewModel.OpenResourceInApplication(resource);
     }
 
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)

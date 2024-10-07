@@ -360,4 +360,13 @@
   <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
     <value>The project will be saved at this location.</value>
   </data>
+  <data name="ResourceTree_OpenIn" xml:space="preserve">
+    <value>Open in</value>
+  </data>
+  <data name="ResourceTree_OpenInExplorer" xml:space="preserve">
+    <value>File Explorer</value>
+  </data>
+  <data name="ResourceTree_OpenInApplication" xml:space="preserve">
+    <value>Associated application</value>
+  </data>
 </root>
