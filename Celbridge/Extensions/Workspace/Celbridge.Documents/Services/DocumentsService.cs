@@ -255,7 +255,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task StoreOpenDocuments()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         List<string> documents = [];
@@ -269,7 +269,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task StoreSelectedDocument()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         var fileResource = SelectedDocument.ToString();
@@ -279,7 +279,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task RestorePanelState()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);

@@ -32,7 +32,7 @@ public class CommandHistory : ICommandHistory
     {
         Guard.IsNotNull(_workspaceSettingsService);
 
-        var workspaceSettings = _workspaceSettingsService.LoadedWorkspaceSettings!;
+        var workspaceSettings = _workspaceSettingsService.WorkspaceSettings!;
 
         await workspaceSettings.SetPropertyAsync<List<string>>("commandHistory", _commands);
     }
@@ -41,7 +41,7 @@ public class CommandHistory : ICommandHistory
     {
         Guard.IsNotNull(_workspaceSettingsService);
 
-        var workspaceSettings = _workspaceSettingsService.LoadedWorkspaceSettings!;
+        var workspaceSettings = _workspaceSettingsService.WorkspaceSettings!;
 
         var commands = await workspaceSettings.GetPropertyAsync<List<string>>("commandHistory", null);
         if (commands is not null)

@@ -33,7 +33,7 @@ public class WorkspaceLoader
             return failure;
         }
 
-        var workspaceSettings = workspaceSettingsService.LoadedWorkspaceSettings;
+        var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         //
