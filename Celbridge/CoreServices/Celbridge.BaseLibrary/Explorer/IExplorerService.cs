@@ -57,4 +57,14 @@ public interface IExplorerService
     /// Restores the state of the panel from the previous session.
     /// </summary>
     Task RestorePanelState();
+
+    /// <summary>
+    /// Open the specified resource in the system file manager.
+    /// </summary>
+    Task<Result> OpenFileManager(ResourceKey resource);
+
+    /// <summary>
+    /// Open the specified resource in the associated application.
+    /// </summary>
+    Task<Result> OpenApplication(ResourceKey resource);
 }
