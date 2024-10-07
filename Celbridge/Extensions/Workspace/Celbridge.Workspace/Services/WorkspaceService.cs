@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.Scripting;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
+using Celbridge.Settings;
 
 namespace Celbridge.Workspace.Services;
 
@@ -14,9 +15,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 {
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
-    public bool IsExplorerPanelVisible { get; }
-    public bool IsInspectorPanelVisible { get; }
-    public bool IsToolsPanelVisible { get; }
+    private readonly IEditorSettings _editorSettings;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
@@ -30,10 +29,15 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private bool _workspaceStateIsDirty;
 
+    private bool _showToolsPanelOnExitFocusMode;
+
     public WorkspaceService(
-        IServiceProvider serviceProvider, 
+        IServiceProvider serviceProvider,
+        IEditorSettings editorSettings,
         IProjectService projectService)
     {
+        _editorSettings = editorSettings;
+
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
@@ -54,6 +58,38 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceSettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
+    }
+
+    public void ToggleFocusMode()
+    {
+        // Are we in focus mode?
+        bool isFocusModeActive = !_editorSettings.IsExplorerPanelVisible &&
+            !_editorSettings.IsInspectorPanelVisible;
+
+        if (isFocusModeActive)
+        {
+            // Exit focus mode
+            _editorSettings.IsExplorerPanelVisible = true;
+            _editorSettings.IsInspectorPanelVisible = true;
+
+            if (_showToolsPanelOnExitFocusMode)
+            {
+                // Make the tools panel visible only if the flag was set when we entered focus mode
+                _editorSettings.IsToolsPanelVisible = true;
+                _showToolsPanelOnExitFocusMode = false;
+            }
+        }
+        else
+        {
+            // Enter focus mode
+
+            // Remember if we should make the tools panel visible when we exit focus mode
+            _showToolsPanelOnExitFocusMode = _editorSettings.IsToolsPanelVisible;
+
+            _editorSettings.IsExplorerPanelVisible = false;
+            _editorSettings.IsInspectorPanelVisible = false;
+            _editorSettings.IsToolsPanelVisible = false;
+        }
     }
 
     public void SetWorkspaceStateIsDirty()
