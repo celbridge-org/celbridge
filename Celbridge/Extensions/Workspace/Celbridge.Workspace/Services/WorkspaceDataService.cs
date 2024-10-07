@@ -1,26 +1,20 @@
-﻿using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceDataService : IWorkspaceDataService, IDisposable
 {
-    private const string WorkspaceDatabaseName = "Workspace.db";
-
     public IWorkspaceData? LoadedWorkspaceData { get; private set; }
 
-    public string? DatabaseFolder { get; set; }
+    public string? WorkspaceDataFolderPath { get; set; }
 
     public async Task<Result> AcquireWorkspaceDataAsync()
     {
-        //
-        // Derive the workspace database path from the project database path
-        //
-
-        if (string.IsNullOrEmpty(DatabaseFolder))
+        if (string.IsNullOrEmpty(WorkspaceDataFolderPath))
         {
-            return Result.Fail("Failed to acquire workspace data because database folder has not been set.");
+            return Result.Fail("Failed to acquire workspace data because data folder has not been set.");
         }
-        var workspaceDatabasePath = Path.Combine(DatabaseFolder, WorkspaceDatabaseName);
+        var workspaceDatabasePath = Path.Combine(WorkspaceDataFolderPath, FileNameConstants.WorkspaceDataFile);
 
         //
         // Create the workspace database if it doesn't exist yet

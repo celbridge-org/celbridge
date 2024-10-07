@@ -283,10 +283,14 @@ public class ResourceRegistry : IResourceRegistry
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
 
-        // Exclude the project data folder from the resource registry
+        // Exclude the internal data folders from the resource registry.
+        // The user should not need to interact direclty with the data in these folders during normal usage.
         if (folderResource.ParentFolder is null)
         {
-            subFolderPaths.RemoveAll(path => path.EndsWith(FileNames.ProjectDataFolder));
+            subFolderPaths.RemoveAll(path =>
+            {
+                return path.EndsWith(FileNameConstants.ProjectDataFolder) || path.EndsWith(FileNameConstants.WorkspaceDataFolder);
+            });
         }
 
         folderResource.Children.Clear();

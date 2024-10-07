@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Workspace;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Provides services for managing workspace databases.
@@ -13,7 +13,7 @@ public interface IWorkspaceDataService
     /// <summary>
     /// Folder containing the workspace database
     /// </summary>
-    string? DatabaseFolder { get; set; }
+    string? WorkspaceDataFolderPath { get; set; }
 
     /// <summary>
     /// Loads the workspace database associated with the loaded project database.
