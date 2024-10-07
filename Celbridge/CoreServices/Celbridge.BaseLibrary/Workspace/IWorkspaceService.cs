@@ -18,6 +18,11 @@ public interface IWorkspaceService
     IWorkspaceSettingsService WorkspaceSettingsService { get; }
 
     /// <summary>
+    /// Returns the Workspace Settings associated with the workspace.
+    /// </summary>
+    IWorkspaceSettings WorkspaceSettings { get; }
+
+    /// <summary>
     /// Returns the Scripting Service associated with the workspace.
     /// </summary>
     IScriptingService ScriptingService { get; }
