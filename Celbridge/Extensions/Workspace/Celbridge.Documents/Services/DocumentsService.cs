@@ -255,8 +255,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task StoreOpenDocuments()
     {
-        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
         List<string> documents = [];
         foreach (var fileResource in OpenDocuments)
@@ -264,25 +264,25 @@ public class DocumentsService : IDocumentsService, IDisposable
             documents.Add(fileResource.ToString());
         }
 
-        await workspaceData.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
+        await workspaceSettings.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
     }
 
     public async Task StoreSelectedDocument()
     {
-        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
         var fileResource = SelectedDocument.ToString();
 
-        await workspaceData.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
+        await workspaceSettings.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
     }
 
     public async Task RestorePanelState()
     {
-        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.LoadedWorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
-        var openDocuments = await workspaceData.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
+        var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
         if (openDocuments is null ||
             openDocuments.Count == 0)
         {
@@ -322,7 +322,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
         }
 
-        var selectedDocument = await workspaceData.GetPropertyAsync<string>(PreviousSelectedDocumentKey);
+        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
             return;

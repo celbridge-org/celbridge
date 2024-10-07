@@ -13,9 +13,9 @@ namespace Celbridge.Workspace;
 public interface IWorkspaceService
 {
     /// <summary>
-    /// Returns the Workspace Data Service associated with the workspace.
+    /// Returns the Workspace Settings Service associated with the workspace.
     /// </summary>
-    IWorkspaceDataService WorkspaceDataService { get; }
+    IWorkspaceSettingsService WorkspaceSettingsService { get; }
 
     /// <summary>
     /// Returns the Scripting Service associated with the workspace.
@@ -53,7 +53,7 @@ public interface IWorkspaceService
     void SetWorkspaceStateIsDirty();
 
     /// <summary>
-    /// Save any pending workspace data changes to disk.
+    /// Save any pending workspace settings changes to disk.
     /// </summary>
     Task<Result> FlushPendingSaves(double deltaTime);
 }
