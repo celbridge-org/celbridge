@@ -9,7 +9,8 @@ public class Project : IDisposable, IProject
 {
     private const int DataVersion = 1;
 
-    private ProjectConfig _projectConfig = new();
+    private ProjectConfig? _projectConfig;
+    public IProjectConfig ProjectConfig => _projectConfig!;
 
     private SQLiteAsyncConnection? _connection;
     private SQLiteAsyncConnection Connection => _connection!;
@@ -72,10 +73,16 @@ public class Project : IDisposable, IProject
 
             project.PopulatePaths(projectFilePath);
 
+            //
             // Load project properties from the project file
+            //
 
             var configJson = File.ReadAllText(projectFilePath);
-            var initResult = project._projectConfig.Initialize(configJson);
+
+            var projectConfig = serviceProvider.GetRequiredService<IProjectConfig>() as ProjectConfig;
+            Guard.IsNotNull(projectConfig);
+
+            var initResult = projectConfig.Initialize(configJson);
             if (initResult.IsFailure)
             {
                 var failure = Result<IProject>.Fail($"Failed to initialize project configuration");
@@ -83,7 +90,11 @@ public class Project : IDisposable, IProject
                 return failure;
             }
 
+            project._projectConfig = projectConfig;
+
+            //
             // Load project database
+            //
 
             if (!Directory.Exists(project.ProjectDataFolderPath))
             {

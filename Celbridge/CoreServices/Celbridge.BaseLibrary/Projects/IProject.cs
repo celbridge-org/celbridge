@@ -26,6 +26,11 @@ public interface IProject
     string ProjectDataFolderPath { get; }
 
     /// <summary>
+    /// Gets the project configuration.
+    /// </summary>
+    public IProjectConfig ProjectConfig { get; }
+
+    /// <summary>
     /// Gets the data version for the project data.
     /// </summary>
     Task<Result<int>> GetDataVersionAsync();
