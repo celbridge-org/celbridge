@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Projects.Services;
 
-public class ProjectConfig
+public class ProjectConfig : IProjectConfig
 {
     private readonly Dictionary<string, string> _properties = new();
 
