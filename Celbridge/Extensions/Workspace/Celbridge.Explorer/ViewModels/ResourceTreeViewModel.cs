@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
@@ -217,6 +217,19 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // Execute a command to show the rename resource dialog
         _commandService.Execute<IRenameResourceDialogCommand>(command =>
+        {
+            command.Resource = resourceKey;
+        });
+    }
+
+    public void OpenResourceInExplorer(IResource? resource)
+    {
+        // A null resource here indicates the root folder
+        var resourceRegistry = _explorerService.ResourceRegistry;
+        var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
+
+        // Execute a command to open the resource in the system file explorer
+        _commandService.Execute<IOpenExplorerCommand>(command =>
         {
             command.Resource = resourceKey;
         });

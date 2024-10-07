@@ -48,6 +48,10 @@
                         Click="ResourceContextMenu_Rename"
                         IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
       </MenuFlyoutSubItem>
+      <MenuFlyoutSubItem Text="{x:Bind OpenInString}">
+        <MenuFlyoutItem Text="{x:Bind OpenInExplorerString}"
+                        Click="ResourceContextMenu_OpenInExplorer"/>
+      </MenuFlyoutSubItem>
     </MenuFlyout>
 
     <DataTemplate x:Key="FolderTemplate"
