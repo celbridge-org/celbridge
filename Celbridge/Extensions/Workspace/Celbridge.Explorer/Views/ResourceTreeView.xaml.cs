@@ -362,6 +362,13 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.OpenResourceInExplorer(resource);
     }
 
+    private void ResourceContextMenu_OpenInApplication(object sender, RoutedEventArgs e)
+    {
+        // A null resource here indicates the root folder
+        var resource = AcquireContextMenuResource(sender);
+        ViewModel.OpenResourceInApplication(resource);
+    }
+
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         // Only folder resources can be expanded

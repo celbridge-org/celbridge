@@ -235,6 +235,19 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
+    public void OpenResourceInApplication(IResource? resource)
+    {
+        // A null resource here indicates the root folder
+        var resourceRegistry = _explorerService.ResourceRegistry;
+        var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
+
+        // Execute a command to open the resource with the associated application
+        _commandService.Execute<IOpenApplicationCommand>(command =>
+        {
+            command.Resource = resourceKey;
+        });
+    }
+
     public void MoveResourcesToFolder(List<IResource> resources, IFolderResource? destFolder)
     {
         if (destFolder is null)
