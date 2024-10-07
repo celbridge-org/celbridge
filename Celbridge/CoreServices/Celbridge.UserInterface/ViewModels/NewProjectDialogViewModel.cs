@@ -85,11 +85,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
                     return;
                 }
 
-                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{FileNames.ProjectFileExtension}");
+                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{FileNameConstants.ProjectFileExtension}");
             }
             else
             {
-                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{FileNames.ProjectFileExtension}");
+                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{FileNameConstants.ProjectFileExtension}");
             }
 
             if (File.Exists(destProjectFilePath)) 

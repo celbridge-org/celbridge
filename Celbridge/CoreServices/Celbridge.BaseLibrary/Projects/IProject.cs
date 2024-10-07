@@ -21,9 +21,9 @@ public interface IProject
     string ProjectFolderPath { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project database.
+    /// Returns the path to the folder containing the project database.
     /// </summary>
-    string DatabasePath { get; }
+    string ProjectDataFolderPath { get; }
 
     /// <summary>
     /// Gets the data version for the project data.

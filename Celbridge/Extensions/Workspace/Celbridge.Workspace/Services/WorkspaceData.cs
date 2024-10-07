@@ -1,7 +1,8 @@
-﻿using Celbridge.Workspace.Models;
+using Celbridge.Workspace.Models;
 using CommunityToolkit.Diagnostics;
 using SQLite;
 using System.Text.Json;
+
 
 namespace Celbridge.Workspace.Services;
 
@@ -105,16 +106,38 @@ public class WorkspaceData : IDisposable, IWorkspaceData
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
-        var workspaceData = new WorkspaceData(databasePath);
-        Guard.IsNotNull(workspaceData);
+        try
+        {
+            // Ensure parent folder exists
+            var parentFolder = Path.GetDirectoryName(databasePath);
+            Guard.IsNotNull(parentFolder);
 
-        await workspaceData._connection.CreateTableAsync<WorkspaceProperty>();
-        await workspaceData.SetDataVersionAsync(DataVersion);
+            if (!Directory.Exists(parentFolder))
+            {
+                Directory.CreateDirectory(parentFolder);
 
-        // Close the database
-        workspaceData.Dispose();
+#if WINDOWS
+                // Hide the folder in windows explorer
+                var attributes = File.GetAttributes(parentFolder);
+                File.SetAttributes(parentFolder, attributes | System.IO.FileAttributes.Hidden);
+#endif
+            }
 
-        return Result.Ok();
+            // Create and initialize the workspace database
+            using (var workspaceData = new WorkspaceData(databasePath))
+            {
+                Guard.IsNotNull(workspaceData);
+
+                await workspaceData._connection.CreateTableAsync<WorkspaceProperty>();
+                await workspaceData.SetDataVersionAsync(DataVersion);
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, "An exception occurred when creating the workspace database");
+        }
     }
 
     private bool _disposed = false;

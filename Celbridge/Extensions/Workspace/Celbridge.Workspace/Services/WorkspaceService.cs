@@ -50,9 +50,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         var project = projectService.LoadedProject;
         Guard.IsNotNull(project);
-        var databaseFolder = Path.GetDirectoryName(project.DatabasePath);
-        Guard.IsNotNullOrEmpty(databaseFolder);
-        WorkspaceDataService.DatabaseFolder = databaseFolder;
+        var workspaceDataFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceDataFolder);
+        Guard.IsNotNullOrEmpty(workspaceDataFolder);
+        WorkspaceDataService.WorkspaceDataFolderPath = workspaceDataFolder;
     }
 
     public void SetWorkspaceStateIsDirty()

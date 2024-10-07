@@ -1,4 +1,5 @@
-﻿using Celbridge.Workspace;
+using Celbridge.Core;
+using Celbridge.Workspace;
 using Celbridge.Workspace.Services;
 using CommunityToolkit.Diagnostics;
 
@@ -40,7 +41,7 @@ public class WorkspaceDataTests
         Guard.IsNotNull(_workspaceDataService);
         Guard.IsNotNullOrEmpty(_workspaceFolderPath);
 
-        var databasePath = Path.Combine(_workspaceFolderPath, "Workspace.db");
+        var databasePath = Path.Combine(_workspaceFolderPath, FileNameConstants.WorkspaceDataFile);
 
         var createResult = await _workspaceDataService.CreateWorkspaceDataAsync(databasePath);
         createResult.IsSuccess.Should().BeTrue();

@@ -9,33 +9,26 @@ public class Project : IDisposable, IProject
 {
     private const int DataVersion = 1;
 
-    private SQLiteAsyncConnection _connection;
+    private ProjectConfig _projectConfig = new();
 
-    public string ProjectName { get; init; }
-    public string ProjectFilePath { get; init; }
-    public string ProjectFolderPath { get; init; }
-    public string DatabasePath { get; init; }
+    private SQLiteAsyncConnection? _connection;
+    private SQLiteAsyncConnection Connection => _connection!;
 
-    private Project(string projectFilePath, string databasePath)
-    {
-        Guard.IsNotNullOrWhiteSpace(projectFilePath);
-        Guard.IsNotNullOrWhiteSpace(databasePath);
+    private string? _projectFilePath;
+    public string ProjectFilePath => _projectFilePath!;
 
-        ProjectName = Path.GetFileNameWithoutExtension(projectFilePath);
-        Guard.IsNotNullOrWhiteSpace(ProjectName);
+    private string? _projectName;
+    public string ProjectName => _projectName!;
 
-        ProjectFolderPath = Path.GetDirectoryName(projectFilePath)!;
-        Guard.IsNotNullOrWhiteSpace(ProjectFolderPath);
+    private string? _projectFolderPath;
+    public string ProjectFolderPath => _projectFolderPath!;
 
-        ProjectFilePath = projectFilePath;
-        DatabasePath = databasePath;
-
-        _connection = new SQLiteAsyncConnection(databasePath);
-    }
+    private string? _projectDataFolderPath;
+    public string ProjectDataFolderPath => _projectDataFolderPath!;
 
     public async Task<Result<int>> GetDataVersionAsync()
     {
-        var dataVersion = await _connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await Connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result<int>.Fail($"Failed to get data version for Project Data");
@@ -46,7 +39,7 @@ public class Project : IDisposable, IProject
 
     public async Task<Result> SetDataVersionAsync(int version)
     {
-        var dataVersion = await _connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
+        var dataVersion = await Connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
         if (dataVersion == null)
         {
             return Result.Fail($"Failed to set data version for Project Data");
@@ -54,41 +47,126 @@ public class Project : IDisposable, IProject
 
         dataVersion.Version = version;
 
-        await _connection.UpdateAsync(dataVersion);
+        await Connection.UpdateAsync(dataVersion);
         
         return Result.Ok();
     }
 
-    public static Result<IProject> LoadProject(string projectPath, string databasePath)
+    public static Result<IProject> LoadProject(string projectFilePath)
     {
-        Guard.IsNotNullOrWhiteSpace(projectPath);
-        Guard.IsNotNullOrWhiteSpace(databasePath);
+        if (string.IsNullOrWhiteSpace(projectFilePath))
+        {
+            return Result<IProject>.Fail("Project file path is empty");
+        }
 
-        var project = new Project(projectPath, databasePath);
-        Guard.IsNotNull(project);
+        if (!File.Exists(projectFilePath))
+        {
+            return Result<IProject>.Fail($"Project file does not exist: '{projectFilePath}'");
+        }
 
-        return Result<IProject>.Ok(project);
+        try
+        {
+            var serviceProvider = ServiceLocator.ServiceProvider;
+            var project = serviceProvider.GetRequiredService<IProject>() as Project;
+            Guard.IsNotNull(project);
+
+            project.PopulatePaths(projectFilePath);
+
+            // Load project properties from the project file
+
+            var configJson = File.ReadAllText(projectFilePath);
+            var initResult = project._projectConfig.Initialize(configJson);
+            if (initResult.IsFailure)
+            {
+                var failure = Result<IProject>.Fail($"Failed to initialize project configuration");
+                failure.MergeErrors(initResult);
+                return failure;
+            }
+
+            // Load project database
+
+            if (!Directory.Exists(project.ProjectDataFolderPath))
+            {
+                return Result<IProject>.Fail($"Project data folder does not exist: '{project.ProjectDataFolderPath}'");
+            }
+
+            var projectDataFilePath = Path.Combine(project.ProjectDataFolderPath, FileNameConstants.ProjectDataFile);
+            project._connection = new SQLiteAsyncConnection(projectDataFilePath);
+
+            return Result<IProject>.Ok(project);
+        }
+        catch (Exception ex)
+        {
+            return Result<IProject>.Fail(ex, $"An exception occured when loading the project: {projectFilePath}");
+        }
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath, string databasePath)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath)
     {
-        Guard.IsNotNullOrWhiteSpace(databasePath);
+        Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
-        var project = new Project(projectFilePath, databasePath);
-        Guard.IsNotNull(project);
+        // Todo: Create the data files in a temp directory first and move them into place when all operations succeed
 
-        var dataVersion = new ProjectDataVersion 
-        { 
-            Version = DataVersion 
-        };
+        try
+        {
+            var serviceProvider = ServiceLocator.ServiceProvider;
+            using (var project = serviceProvider.GetRequiredService<IProject>() as Project)
+            {
+                Guard.IsNotNull(project);
 
-        await project._connection.CreateTableAsync<ProjectDataVersion>();
-        await project._connection.InsertAsync(dataVersion);
+                if (string.IsNullOrEmpty(projectFilePath))
+                {
+                    return Result.Fail("Project file path is empty");
+                }
 
-        // Close the database
-        project.Dispose();
+                if (File.Exists(projectFilePath))
+                {
+                    return Result.Fail($"Project file already exists exist: {projectFilePath}");
+                }
+
+                project.PopulatePaths(projectFilePath);
+
+                if (!Directory.Exists(project.ProjectDataFolderPath))
+                {
+                    // Create the project folder if it doesn't already exist
+                    Directory.CreateDirectory(project.ProjectDataFolderPath);
+                }
+
+                // Todo: Populate this with project configuration options
+                File.WriteAllText(projectFilePath, "{}");
+
+                var projectDataFilePath = Path.Combine(project.ProjectDataFolderPath, FileNameConstants.ProjectDataFile);
+                project._connection = new SQLiteAsyncConnection(projectDataFilePath);
+
+                var dataVersion = new ProjectDataVersion
+                {
+                    Version = DataVersion
+                };
+
+                // Initialize the project data
+                await project._connection.CreateTableAsync<ProjectDataVersion>();
+                await project._connection.InsertAsync(dataVersion);
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"An exception occurred when creating the project: {projectFilePath}");
+        }
 
         return Result.Ok();
+    }
+
+    private void PopulatePaths(string projectFilePath)
+    {
+        _projectFilePath = projectFilePath;
+
+        _projectName = Path.GetFileNameWithoutExtension(projectFilePath);
+        Guard.IsNotNullOrWhiteSpace(ProjectName);
+
+        _projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
+        Guard.IsNotNullOrWhiteSpace(ProjectFolderPath);
+
+        _projectDataFolderPath = Path.Combine(ProjectFolderPath, FileNameConstants.ProjectDataFolder);
     }
 
     private bool _disposed = false;
