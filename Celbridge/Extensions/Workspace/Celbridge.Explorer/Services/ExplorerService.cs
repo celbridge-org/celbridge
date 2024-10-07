@@ -334,6 +334,20 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
+    public async Task<Result> OpenFileManager(ResourceKey resource)
+    {
+        var path = ResourceRegistry.GetResourcePath(resource);
+        var openResult = await ResourceUtils.OpenFileManager(path);
+        if (openResult.IsFailure)
+        {
+            var failure = Result.Fail($"Failed to open file manager for resource: {resource}");
+            failure.MergeErrors(openResult);
+            return failure;
+        }
+
+        return Result.Ok(); 
+    }
+
     private bool PathContainsSubPath(string path, string subPath)
     {
         string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
