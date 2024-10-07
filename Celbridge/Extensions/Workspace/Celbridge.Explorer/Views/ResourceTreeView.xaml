@@ -51,6 +51,8 @@
       <MenuFlyoutSubItem Text="{x:Bind OpenInString}">
         <MenuFlyoutItem Text="{x:Bind OpenInExplorerString}"
                         Click="ResourceContextMenu_OpenInExplorer"/>
+        <MenuFlyoutItem Text="{x:Bind OpenInApplicationString}"
+                        Click="ResourceContextMenu_OpenInApplication"/>
       </MenuFlyoutSubItem>
     </MenuFlyout>
 
