@@ -2,6 +2,7 @@ using Celbridge.Explorer.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.System;
@@ -145,6 +146,13 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
 
         ResourcesTreeView.SelectedItem = node;
+
+        // Scroll the list view to bring the selected item into view
+        var itemContainer = (TreeViewItem)ResourcesTreeView.ContainerFromNode(node);
+        if (itemContainer != null)
+        {
+            itemContainer.StartBringIntoView();
+        }
 
         await Task.CompletedTask;
 
