@@ -84,7 +84,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         navigationService.SetNavigationProvider(this);
 
         // Open the previous project if one was loaded last time we ran the application.
-        var previousProjectFile = _editorSettings.PreviousLoadedProject;
+        var previousProjectFile = _editorSettings.PreviousProject;
         if (!string.IsNullOrEmpty(previousProjectFile) &&
             File.Exists(previousProjectFile))
         {
@@ -145,7 +145,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
 
         // Clear the previous project so we don't try to reload it next time the application starts
-        _editorSettings.PreviousLoadedProject = string.Empty;
+        _editorSettings.PreviousProject = string.Empty;
         _navigationService.NavigateToPage(HomePageName);
     }
 

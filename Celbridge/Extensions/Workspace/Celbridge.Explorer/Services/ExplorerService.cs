@@ -75,7 +75,7 @@ public class ExplorerService : IExplorerService, IDisposable
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
-        ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
+        ResourceRegistry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
@@ -305,18 +305,18 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task StoreSelectedResource()
     {
-        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
-        await workspaceData.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
+        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
     }
 
     public async Task RestorePanelState()
     {
-        var workspaceData = _workspaceWrapper.WorkspaceService.WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
-        var resource = await workspaceData.GetPropertyAsync<string>(PreviousSelectedResourceKey);
+        var resource = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourceKey);
         if (string.IsNullOrEmpty(resource))
         {
             return;

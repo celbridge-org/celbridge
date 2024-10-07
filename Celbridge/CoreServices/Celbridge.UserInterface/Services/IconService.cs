@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -210,6 +210,11 @@ public class IconService : IIconService
 
     private void PopulateFileExtensionDefinitions(JObject iconData)
     {
+        // Edit 'file-icons-icon-theme.json' to change the icon definition.
+        // Note that there are multiple "fileExtensions" sections in the JSON document, the section
+        // you want to edit starts around line 11855.
+        // Original json file available here: https://github.com/file-icons/vscode/tree/master/icons
+
         var fileExtensions = iconData["fileExtensions"] as JObject;
         Guard.IsNotNull(fileExtensions);
 

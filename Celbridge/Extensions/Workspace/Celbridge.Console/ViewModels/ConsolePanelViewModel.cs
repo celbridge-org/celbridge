@@ -89,7 +89,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             var executeResult = await Execute(script, false);
             if (executeResult.IsFailure)
             {
-                var failure = Result.Fail("Failed to print welcom message");
+                var failure = Result.Fail("Failed to print welcome message");
                 failure.MergeErrors(executeResult);
                 return failure;
             }

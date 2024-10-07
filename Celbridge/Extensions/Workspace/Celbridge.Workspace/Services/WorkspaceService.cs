@@ -18,7 +18,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public bool IsInspectorPanelVisible { get; }
     public bool IsToolsPanelVisible { get; }
 
-    public IWorkspaceDataService WorkspaceDataService { get; }
+    public IWorkspaceSettingsService WorkspaceSettingsService { get; }
+    public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
     public IScriptingService ScriptingService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
@@ -26,8 +27,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IExplorerService ExplorerService { get; }
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
-
-    private IResourceRegistryDumper _resourceRegistryDumper;
 
     private bool _workspaceStateIsDirty;
 
@@ -37,7 +36,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         // Create instances of the required sub-services
 
-        WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
+        WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
         ScriptingService = serviceProvider.GetRequiredService<IScriptingService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -47,19 +46,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
-        // Let the workspace data service know where to find the workspace database
+        // Let the workspace settings service know where to find the workspace settings database
         //
 
-        var project = projectService.LoadedProject;
+        var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
-        var databaseFolder = Path.GetDirectoryName(project.DatabasePath);
-        Guard.IsNotNullOrEmpty(databaseFolder);
-        WorkspaceDataService.DatabaseFolder = databaseFolder;
-
-        // Dump the resource registry to a file in the logs folder
-        string logFolderPath = project.LogFolderPath;
-        _resourceRegistryDumper = serviceProvider.GetRequiredService<IResourceRegistryDumper>();
-        _resourceRegistryDumper.Initialize(logFolderPath);
+        var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceSettingsFolder);
+        Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
+        WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
     public void SetWorkspaceStateIsDirty()
@@ -98,14 +92,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
-        var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        Guard.IsNotNull(WorkspaceSettings);
 
         // Save the expanded folders in the Resource Registry
 
         var resourceRegistry = ExplorerService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
-        await workspaceData.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
+        await WorkspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
     }
@@ -127,7 +120,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
-                (WorkspaceDataService as IDisposable)!.Dispose();
+                (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (ScriptingService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();

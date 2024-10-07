@@ -56,7 +56,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // Note: We can't use the resource registry to check this because if the user moved the file
         // in the Tree View then the resource may have already been moved in the resource registry.
 
-        var projectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
+        var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         if (string.IsNullOrEmpty(projectFolderPath))
         {
             return Result.Fail("Project folder path is empty.");
@@ -201,8 +201,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             return Result.Fail($"Source and destination are the same: '{resourceA}'");
         }
 
-        var loadedProject = _projectService.LoadedProject;
-        Guard.IsNotNull(loadedProject);
+        var project = _projectService.CurrentProject;
+        Guard.IsNotNull(project);
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         
@@ -213,7 +213,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         try
         {
-            var projectFolderPath = loadedProject.ProjectFolderPath;
+            var projectFolderPath = project.ProjectFolderPath;
             var filePathA = Path.Combine(projectFolderPath, resourceA);
             filePathA = Path.GetFullPath(filePathA);
             var filePathB = Path.Combine(projectFolderPath, resourceB);
@@ -274,9 +274,9 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
-        var loadedProject = _projectService.LoadedProject;
+        var project = _projectService.CurrentProject;
 
-        Guard.IsNotNull(loadedProject);
+        Guard.IsNotNull(project);
 
         if (resourceA.IsEmpty || resourceB.IsEmpty)
         {
@@ -285,7 +285,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         try
         {
-            var projectFolderPath = loadedProject.ProjectFolderPath;
+            var projectFolderPath = project.ProjectFolderPath;
             var folderPathA = Path.Combine(projectFolderPath, resourceA);
             folderPathA = Path.GetFullPath(folderPathA);
             var folderPathB = Path.Combine(projectFolderPath, resourceB);

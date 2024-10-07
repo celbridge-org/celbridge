@@ -146,7 +146,7 @@ public partial class App : Application
                     if (File.Exists(projectFile))
                     {
                         var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
-                        editorSettings.PreviousLoadedProject = projectFile;
+                        editorSettings.PreviousProject = projectFile;
                     }
                 }
             }
