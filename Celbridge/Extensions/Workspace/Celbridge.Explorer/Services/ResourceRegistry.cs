@@ -280,18 +280,16 @@ public class ResourceRegistry : IResourceRegistry
 
         var existingChildren = folderResource.Children.ToDictionary(child => child.Name);
 
-        var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
+        // Get filtered list of subfolders in this folder
 
-        // Exclude the internal data folders from the resource registry.
-        // The user should not need to interact directly with the data in these folders during normal usage.
-        if (folderResource.ParentFolder is null)
-        {
-            subFolderPaths.RemoveAll(path =>
-            {
-                return path.EndsWith(FileNameConstants.ProjectDataFolder) || path.EndsWith(FileNameConstants.WorkspaceSettingsFolder);
-            });
-        }
+        bool isRootFolder = folderResource.ParentFolder is null;
+        var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
+        RemoveHiddenFolders(subFolderPaths, isRootFolder);
+
+        // Get filtered list of files in this folder
+
+        var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
+        RemoveHiddenFiles(filePaths);
 
         folderResource.Children.Clear();
 
@@ -368,5 +366,62 @@ public class ResourceRegistry : IResourceRegistry
     public bool IsFolderExpanded(ResourceKey folderResource)
     {
         return ExpandedFolders.Contains(folderResource);
+    }
+
+    // Remove hidden folders from a list of folder paths
+    private static void RemoveHiddenFolders(List<string> folderPaths, bool isRootFolder)
+    {
+        folderPaths.RemoveAll(path =>
+        {
+            if (Path.GetFileName(path).StartsWith('.'))
+            {
+                // Ignore files or folders that start with a dot.
+                // This includes the .celbridge folder which is used to store workspace settings.
+                return true;
+            }
+
+#if WINDOWS
+            var attributes = File.GetAttributes(path);
+            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
+            {
+                // Windows only: Ignore folders with the 'hidden' attribute
+                return true;
+            }
+#endif
+
+            if (isRootFolder &&
+                path.EndsWith(FileNameConstants.ProjectDataFolder))
+            {
+                // Ignore the "CelData" project data folder
+                return true;
+            }
+
+            return false;
+        });
+    }
+
+    // Remove hidden files from a list of folder paths
+    private static void RemoveHiddenFiles(List<string> filePaths)
+    {
+        // Ignore hidden files
+        filePaths.RemoveAll(path =>
+        {
+            if (Path.GetFileName(path).StartsWith('.'))
+            {
+                // Ignore files that start with a dot.
+                return true;
+            }
+
+#if WINDOWS
+            var attributes = File.GetAttributes(path);
+            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
+            {
+                // Windows only: Ignore files with the 'hidden' attribute
+                return true;
+            }
+#endif
+
+            return false;
+        });
     }
 }
