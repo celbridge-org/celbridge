@@ -289,7 +289,7 @@ public class ResourceRegistry : IResourceRegistry
         {
             subFolderPaths.RemoveAll(path =>
             {
-                return path.EndsWith(FileNameConstants.ProjectDataFolder) || path.EndsWith(FileNameConstants.WorkspaceDataFolder);
+                return path.EndsWith(FileNameConstants.ProjectDataFolder) || path.EndsWith(FileNameConstants.WorkspaceSettingsFolder);
             });
         }
 

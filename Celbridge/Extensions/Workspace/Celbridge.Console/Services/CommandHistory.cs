@@ -5,7 +5,7 @@ namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {
-    private IWorkspaceDataService? _workspaceDataService;
+    private IWorkspaceSettingsService? _workspaceSettingsService;
 
     private List<string> _commands = new();
     private int _commandIndex;
@@ -19,7 +19,7 @@ public class CommandHistory : ICommandHistory
 
     public CommandHistory(IWorkspaceWrapper workspaceWrapper)
     {
-        _workspaceDataService = workspaceWrapper.WorkspaceService.WorkspaceDataService;
+        _workspaceSettingsService = workspaceWrapper.WorkspaceService.WorkspaceSettingsService;
     }
 
     public void Clear()
@@ -30,20 +30,20 @@ public class CommandHistory : ICommandHistory
 
     public async Task Save()
     {
-        Guard.IsNotNull(_workspaceDataService);
+        Guard.IsNotNull(_workspaceSettingsService);
 
-        IWorkspaceData workspaceData = _workspaceDataService.LoadedWorkspaceData!;
+        var workspaceSettings = _workspaceSettingsService.LoadedWorkspaceSettings!;
 
-        await workspaceData.SetPropertyAsync<List<string>>("commandHistory", _commands);
+        await workspaceSettings.SetPropertyAsync<List<string>>("commandHistory", _commands);
     }
 
     public async Task Load()
     {
-        Guard.IsNotNull(_workspaceDataService);
+        Guard.IsNotNull(_workspaceSettingsService);
 
-        IWorkspaceData workspaceData = _workspaceDataService.LoadedWorkspaceData!;
+        var workspaceSettings = _workspaceSettingsService.LoadedWorkspaceSettings!;
 
-        var commands = await workspaceData.GetPropertyAsync<List<string>>("commandHistory", null);
+        var commands = await workspaceSettings.GetPropertyAsync<List<string>>("commandHistory", null);
         if (commands is not null)
         {
             _commands.ReplaceWith(commands);
