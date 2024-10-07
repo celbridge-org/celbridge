@@ -23,10 +23,10 @@ public static class FileNameConstants
     /// <summary>
     /// Folder containing the workspace settings data file.
     /// </summary>
-    public const string WorkspaceDataFolder = ".celbridge";
+    public const string WorkspaceSettingsFolder = ".celbridge";
 
     /// <summary>
     /// File containing the workspace settings data.
     /// </summary>
-    public const string WorkspaceDataFile = "Workspace.db";
+    public const string WorkspaceSettingsFile = "WorkspaceSettings.db";
 }

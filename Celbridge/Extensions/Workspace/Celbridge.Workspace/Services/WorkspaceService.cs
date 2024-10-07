@@ -18,7 +18,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public bool IsInspectorPanelVisible { get; }
     public bool IsToolsPanelVisible { get; }
 
-    public IWorkspaceDataService WorkspaceDataService { get; }
+    public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IScriptingService ScriptingService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
@@ -35,7 +35,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         // Create instances of the required sub-services
 
-        WorkspaceDataService = serviceProvider.GetRequiredService<IWorkspaceDataService>();
+        WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
         ScriptingService = serviceProvider.GetRequiredService<IScriptingService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -45,14 +45,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
-        // Let the workspace data service know where to find the workspace database
+        // Let the workspace settings service know where to find the workspace settings database
         //
 
         var project = projectService.LoadedProject;
         Guard.IsNotNull(project);
-        var workspaceDataFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceDataFolder);
-        Guard.IsNotNullOrEmpty(workspaceDataFolder);
-        WorkspaceDataService.WorkspaceDataFolderPath = workspaceDataFolder;
+        var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceSettingsFolder);
+        Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
+        WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
     public void SetWorkspaceStateIsDirty()
@@ -91,14 +91,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
-        var workspaceData = WorkspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = WorkspaceSettingsService.LoadedWorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
         // Save the expanded folders in the Resource Registry
 
         var resourceRegistry = ExplorerService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
-        await workspaceData.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
+        await workspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
     }
@@ -120,7 +120,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
-                (WorkspaceDataService as IDisposable)!.Dispose();
+                (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (ScriptingService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
