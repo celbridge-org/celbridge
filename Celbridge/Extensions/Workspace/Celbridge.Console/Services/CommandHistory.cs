@@ -1,10 +1,11 @@
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {
-    private IWorkspaceService _workspaceService;
+    private IWorkspaceService? _workspaceService;
 
     private List<string> _commands = new();
     private int _commandIndex;
@@ -12,6 +13,10 @@ public class CommandHistory : ICommandHistory
     public int MaxHistorySize { get; set; } = 100;
 
     public int NumCommands => _commands.Count;
+
+    // Parameterless constructor used for unit tests
+    public CommandHistory()
+    {}
 
     public CommandHistory(IWorkspaceWrapper workspaceWrapper)
     {
@@ -26,6 +31,8 @@ public class CommandHistory : ICommandHistory
 
     public async Task Save()
     {
+        Guard.IsNotNull(_workspaceService);
+
         var workspaceSettings = _workspaceService.WorkspaceSettings;
 
         await workspaceSettings.SetPropertyAsync("commandHistory", _commands);
@@ -33,6 +40,8 @@ public class CommandHistory : ICommandHistory
 
     public async Task Load()
     {
+        Guard.IsNotNull(_workspaceService);
+
         var workspaceSettings = _workspaceService.WorkspaceSettings;
 
         var commands = await workspaceSettings.GetPropertyAsync<List<string>>("commandHistory", null);
