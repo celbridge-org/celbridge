@@ -49,5 +49,7 @@ public static class ServiceConfiguration
         config.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
         config.AddTransient<ISelectResourceCommand, SelectResourceCommand>();
         config.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
+        config.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
+        config.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
     }
 }
