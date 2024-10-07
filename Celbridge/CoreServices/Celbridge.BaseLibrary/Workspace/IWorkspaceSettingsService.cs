@@ -8,7 +8,7 @@ public interface IWorkspaceSettingsService
     /// <summary>
     /// Returns the currently loaded workspace settings.
     /// </summary>
-    IWorkspaceSettings? LoadedWorkspaceSettings { get; }
+    IWorkspaceSettings? WorkspaceSettings { get; }
     
     /// <summary>
     /// Folder containing the workspace settings database

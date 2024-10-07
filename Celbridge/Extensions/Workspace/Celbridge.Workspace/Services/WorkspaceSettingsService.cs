@@ -4,7 +4,7 @@ namespace Celbridge.Workspace.Services;
 
 public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 {
-    public IWorkspaceSettings? LoadedWorkspaceSettings { get; private set; }
+    public IWorkspaceSettings? WorkspaceSettings { get; private set; }
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
@@ -46,7 +46,7 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
     {
         try
         {
-            var createResult = await WorkspaceSettings.CreateWorkspaceSettingsAsync(databasePath);
+            var createResult = await Services.WorkspaceSettings.CreateWorkspaceSettingsAsync(databasePath);
             return createResult;
         }
         catch (Exception ex) 
@@ -59,13 +59,13 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
     {
         try
         {
-            var loadResult = WorkspaceSettings.LoadWorkspaceSettings(databasePath);
+            var loadResult = Services.WorkspaceSettings.LoadWorkspaceSettings(databasePath);
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load workspace settings database: {databasePath}");
             }
 
-            LoadedWorkspaceSettings = loadResult.Value;
+            WorkspaceSettings = loadResult.Value;
 
             return Result.Ok();
         }
@@ -77,18 +77,18 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 
     public Result UnloadWorkspaceSettings()
     {
-        if (LoadedWorkspaceSettings is null)
+        if (WorkspaceSettings is null)
         {
-            Guard.IsNull(LoadedWorkspaceSettings);
+            Guard.IsNull(WorkspaceSettings);
 
             // Unloading a workspace that is not loaded is a no-op
             return Result.Ok();
         }
 
-        var disposable = LoadedWorkspaceSettings as IDisposable;
+        var disposable = WorkspaceSettings as IDisposable;
         Guard.IsNotNull(disposable);
         disposable.Dispose();
-        LoadedWorkspaceSettings = null;
+        WorkspaceSettings = null;
 
         return Result.Ok();
     }
@@ -107,7 +107,7 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         {
             if (disposing)
             {
-                if (LoadedWorkspaceSettings is not null)
+                if (WorkspaceSettings is not null)
                 {
                     UnloadWorkspaceSettings();
                 }

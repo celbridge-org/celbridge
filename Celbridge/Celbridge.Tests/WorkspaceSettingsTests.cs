@@ -53,7 +53,7 @@ public class WorkspaceSettingsTests
         // Check data version
         //
 
-        var workspaceSettings = _workspaceSettingsService.LoadedWorkspaceSettings!;
+        var workspaceSettings = _workspaceSettingsService.WorkspaceSettings!;
         workspaceSettings.Should().NotBeNull();
         var dataVersion = await workspaceSettings.GetDataVersionAsync();
         dataVersion.Should().Be(1);
@@ -74,7 +74,7 @@ public class WorkspaceSettingsTests
         //
 
         _workspaceSettingsService.UnloadWorkspaceSettings();
-        _workspaceSettingsService.LoadedWorkspaceSettings.Should().BeNull();
+        _workspaceSettingsService.WorkspaceSettings.Should().BeNull();
 
         //
         // Delete the workspace settings database file

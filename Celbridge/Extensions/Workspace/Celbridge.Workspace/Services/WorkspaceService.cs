@@ -91,7 +91,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
-        var workspaceSettings = WorkspaceSettingsService.LoadedWorkspaceSettings;
+        var workspaceSettings = WorkspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         // Save the expanded folders in the Resource Registry
