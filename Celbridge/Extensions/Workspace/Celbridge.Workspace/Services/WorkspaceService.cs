@@ -19,6 +19,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public bool IsToolsPanelVisible { get; }
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
+    public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
     public IScriptingService ScriptingService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
@@ -91,14 +92,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
-        var workspaceSettings = WorkspaceSettingsService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        Guard.IsNotNull(WorkspaceSettings);
 
         // Save the expanded folders in the Resource Registry
 
         var resourceRegistry = ExplorerService.ResourceRegistry;
         var expandedFolders = resourceRegistry.ExpandedFolders;
-        await workspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
+        await WorkspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
     }
