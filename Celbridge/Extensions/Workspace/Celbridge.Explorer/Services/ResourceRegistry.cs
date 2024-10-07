@@ -284,7 +284,7 @@ public class ResourceRegistry : IResourceRegistry
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
 
         // Exclude the internal data folders from the resource registry.
-        // The user should not need to interact direclty with the data in these folders during normal usage.
+        // The user should not need to interact directly with the data in these folders during normal usage.
         if (folderResource.ParentFolder is null)
         {
             subFolderPaths.RemoveAll(path =>
