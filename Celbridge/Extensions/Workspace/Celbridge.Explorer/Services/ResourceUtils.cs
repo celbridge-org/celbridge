@@ -1,4 +1,7 @@
-﻿namespace Celbridge.Explorer.Services;
+using Microsoft.UI.Xaml.Controls;
+using Windows.System;
+
+namespace Celbridge.Explorer.Services;
 
 public class ResourceUtils
 {
@@ -29,5 +32,64 @@ public class ResourceUtils
             string tempPath = Path.Combine(destFolder, subdir.Name);
             CopyFolder(subdir.FullName, tempPath);
         }
+    }
+
+    public static async Task<Result> OpenFileManager(string path)
+    {
+        await Task.CompletedTask;
+
+#if WINDOWS
+        try
+        {
+            if (File.Exists(path))
+            {
+                StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+                StorageFolder storageFolder = await file.GetParentAsync();
+                var options = new FolderLauncherOptions();
+                options.ItemsToSelect.Add(file);
+
+                bool launchResult = await Launcher.LaunchFolderAsync(storageFolder, options);
+                if (launchResult)
+                {
+                    return Result.Ok();
+                }
+            }
+            else
+            {
+                string folder = string.Empty;
+                if (Directory.Exists(path))
+                {
+                    folder = path;
+                }
+                else
+                {
+                    // Try the parent folder
+                    var parentFolder = Path.GetDirectoryName(path)!;
+                    if (Directory.Exists(parentFolder))
+                    {
+                        folder = parentFolder;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(folder))
+                {
+                    StorageFolder storageFolder = await StorageFolder.GetFolderFromPathAsync(folder);
+                    bool result = await Launcher.LaunchFolderAsync(storageFolder);
+                    if (result)
+                    {
+                        return Result.Ok();
+                    }
+                }
+            }
+
+            return Result.Fail($"Failed to open file manager for path: {path}");
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"An exception occurred when opening the path in the file manager: {path}");
+        }
+#else
+        return Result.Fail("File manager is only supported on Windows");
+#endif
     }
 }
