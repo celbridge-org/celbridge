@@ -305,7 +305,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task StoreSelectedResource()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         await workspaceSettings.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
@@ -313,7 +313,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task RestorePanelState()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         var resource = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourceKey);
