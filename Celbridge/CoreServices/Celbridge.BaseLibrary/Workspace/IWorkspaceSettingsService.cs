@@ -1,12 +1,12 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages workspace settings associated with the loaded project.
+/// Manages workspace settings associated with the current loaded project.
 /// </summary>
 public interface IWorkspaceSettingsService
 {
     /// <summary>
-    /// Returns the currently loaded workspace settings.
+    /// Returns the workspace settings for the current loaded project.
     /// </summary>
     IWorkspaceSettings? WorkspaceSettings { get; }
     
@@ -16,7 +16,7 @@ public interface IWorkspaceSettingsService
     string? WorkspaceSettingsFolderPath { get; set; }
 
     /// <summary>
-    /// Loads the workspace settings database associated with the loaded project.
+    /// Loads the workspace settings database associated with the current loaded project.
     /// Creates the workspace settings database if it doesn't exist.
     /// </summary>
     Task<Result> AcquireWorkspaceSettingsAsync();

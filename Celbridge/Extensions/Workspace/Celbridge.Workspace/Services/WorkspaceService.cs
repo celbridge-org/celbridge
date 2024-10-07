@@ -49,7 +49,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Let the workspace settings service know where to find the workspace settings database
         //
 
-        var project = projectService.LoadedProject;
+        var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
         var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceSettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);

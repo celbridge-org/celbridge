@@ -19,7 +19,7 @@ public partial class ExplorerPanelViewModel : ObservableObject
 
         // The project data is guaranteed to have been loaded at this point, so it's safe to just
         // acquire a reference via the ProjectService.
-        var project = projectService.LoadedProject!;
+        var project = projectService.CurrentProject!;
 
         TitleText = project.ProjectName;
     }

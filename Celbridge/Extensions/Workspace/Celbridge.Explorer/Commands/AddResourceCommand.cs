@@ -71,9 +71,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
-        var loadedProject = _projectService.LoadedProject;
-
-        Guard.IsNotNull(loadedProject);
 
         //
         // Validate the resource key

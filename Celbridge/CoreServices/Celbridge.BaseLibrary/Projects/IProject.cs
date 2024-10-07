@@ -11,12 +11,12 @@ public interface IProject
     string ProjectName { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project file.
+    /// Returns the path to the current loaded project file.
     /// </summary>
     string ProjectFilePath { get; }
 
     /// <summary>
-    /// Returns the path to the folder containing the loaded project.
+    /// Returns the path to the folder containing the current loaded project file.
     /// </summary>
     string ProjectFolderPath { get; }
 

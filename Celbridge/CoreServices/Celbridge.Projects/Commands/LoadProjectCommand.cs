@@ -47,7 +47,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Fail("Failed to load project because path is empty.");
         }
 
-        if (_projectService.LoadedProject?.ProjectFilePath == ProjectFilePath)
+        if (_projectService.CurrentProject?.ProjectFilePath == ProjectFilePath)
         {
             // The project is already loaded.
             // We can just early out here as we're already in the expected end state.
@@ -63,7 +63,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         if (loadResult.IsFailure)
         {
-            _editorSettings.PreviousLoadedProject = string.Empty;
+            _editorSettings.PreviousProject = string.Empty;
 
             var titleString = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
             var messageString = _stringLocalizer.GetString("LoadProjectFailedAlert_Message", ProjectFilePath);
@@ -78,7 +78,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return failure;
         }
 
-        _editorSettings.PreviousLoadedProject = ProjectFilePath;
+        _editorSettings.PreviousProject = ProjectFilePath;
 
         return Result.Ok();
     }

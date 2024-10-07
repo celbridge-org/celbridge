@@ -22,7 +22,7 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded && _projectService.LoadedProject is null)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded && _projectService.CurrentProject is null)
         {
             // We're already in the desired state so we can early out.
             return Result.Ok();
