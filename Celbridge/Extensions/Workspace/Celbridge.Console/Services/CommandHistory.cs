@@ -1,11 +1,10 @@
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Console.Services;
 
 public class CommandHistory : ICommandHistory
 {
-    private IWorkspaceSettings? _workspaceSettings;
+    private IWorkspaceService _workspaceService;
 
     private List<string> _commands = new();
     private int _commandIndex;
@@ -14,12 +13,9 @@ public class CommandHistory : ICommandHistory
 
     public int NumCommands => _commands.Count;
 
-    public CommandHistory()
-    {}
-
     public CommandHistory(IWorkspaceWrapper workspaceWrapper)
     {
-        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _workspaceService = workspaceWrapper.WorkspaceService;
     }
 
     public void Clear()
@@ -30,16 +26,16 @@ public class CommandHistory : ICommandHistory
 
     public async Task Save()
     {
-        Guard.IsNotNull(_workspaceSettings);
+        var workspaceSettings = _workspaceService.WorkspaceSettings;
 
-        await _workspaceSettings.SetPropertyAsync("commandHistory", _commands);
+        await workspaceSettings.SetPropertyAsync("commandHistory", _commands);
     }
 
     public async Task Load()
     {
-        Guard.IsNotNull(_workspaceSettings);
+        var workspaceSettings = _workspaceService.WorkspaceSettings;
 
-        var commands = await _workspaceSettings.GetPropertyAsync<List<string>>("commandHistory", null);
+        var commands = await workspaceSettings.GetPropertyAsync<List<string>>("commandHistory", null);
         if (commands is not null)
         {
             _commands.ReplaceWith(commands);
