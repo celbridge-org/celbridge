@@ -6,12 +6,12 @@ namespace Celbridge.Projects;
 public interface IProjectService
 {
     /// <summary>
-    /// Returns the currently loaded project.
+    /// Returns the current loaded project.
     /// </summary>
-    IProject? LoadedProject { get; }
+    IProject? CurrentProject { get; }
 
     /// <summary>
-    /// Checks if a new project config is valid.
+    /// Check if a new project config is valid.
     /// </summary>
     Result ValidateNewProjectConfig(NewProjectConfig config);
 
@@ -26,7 +26,7 @@ public interface IProjectService
     Result LoadProject(string projectFilePath);
 
     /// <summary>
-    /// Unloads the currently loaded project.
+    /// Unload the current loaded project.
     /// </summary>
     Task<Result> UnloadProjectAsync();
 }
