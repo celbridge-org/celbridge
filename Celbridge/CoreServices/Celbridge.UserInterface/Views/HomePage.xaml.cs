@@ -36,7 +36,7 @@ public sealed partial class HomePage : Page
             return;
         }
 
-        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, $"{recentProject.ProjectName}{FileNames.ProjectFileExtension}");
+        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, $"{recentProject.ProjectName}{FileNameConstants.ProjectFileExtension}");
         ViewModel.OpenProject(projectFilePath);
     }
 }
