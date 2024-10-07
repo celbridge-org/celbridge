@@ -1,35 +1,26 @@
 using Celbridge.Commands;
-using Celbridge.Settings;
 
 namespace Celbridge.Workspace.Commands;
 
 public class ToggleFocusModeCommand : CommandBase, IToggleFocusModeCommand
 {
-    private readonly IEditorSettings _editorSettings;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ToggleFocusModeCommand(IEditorSettings editorSettings)
+    public ToggleFocusModeCommand(IWorkspaceWrapper workspaceWrapper)
     {
-        _editorSettings = editorSettings;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        // Are we in focus mode?
-        bool isFocusModeActive = !_editorSettings.IsExplorerPanelVisible && 
-            !_editorSettings.IsInspectorPanelVisible;
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail("Workspace is not loaded.");
+        }
 
-        if (isFocusModeActive) 
-        {
-            // Exit focus mode
-            _editorSettings.IsExplorerPanelVisible = true;
-            _editorSettings.IsInspectorPanelVisible = true;
-        }
-        else
-        {
-            // Enter focus mode
-            _editorSettings.IsExplorerPanelVisible = false;
-            _editorSettings.IsInspectorPanelVisible = false;
-        }
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+
+        workspaceService.ToggleFocusMode();
 
         await Task.CompletedTask;
 

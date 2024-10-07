@@ -53,6 +53,11 @@ public interface IWorkspaceService
     IDataTransferService DataTransferService { get; }
 
     /// <summary>
+    /// Toggle focus mode on/off by hiding and showing the workspace panels.
+    /// </summary>
+    void ToggleFocusMode();
+
+    /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.
     /// </summary>
     void SetWorkspaceStateIsDirty();
