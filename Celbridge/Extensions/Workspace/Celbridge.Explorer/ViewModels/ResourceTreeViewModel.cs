@@ -228,7 +228,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
-        // Execute a command to open the resource in the system file explorer
+        // Execute a command to open the resource in the system file manager
         _commandService.Execute<IOpenExplorerCommand>(command =>
         {
             command.Resource = resourceKey;
