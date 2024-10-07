@@ -19,7 +19,7 @@ public class ProjectService : IProjectService
 
     private const string EmptyPageName = "EmptyPage";
 
-    public IProject? LoadedProject { get; private set; }
+    public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
         IEditorSettings editorSettings,
@@ -95,7 +95,7 @@ public class ProjectService : IProjectService
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
-            LoadedProject = loadResult.Value;
+            CurrentProject = loadResult.Value;
 
             // Update the recent projects list in editor settings
             var recentProjects = _editorSettings.RecentProjects;
@@ -117,7 +117,7 @@ public class ProjectService : IProjectService
 
     public async Task<Result> UnloadProjectAsync()
     {
-        if (LoadedProject is null)
+        if (CurrentProject is null)
         {
             // Unloading a project that is not loaded is a no-op
             return Result.Ok();
@@ -140,10 +140,10 @@ public class ProjectService : IProjectService
             await Task.Delay(50);
         }
 
-        var disposableProject = LoadedProject as IDisposable;
+        var disposableProject = CurrentProject as IDisposable;
         Guard.IsNotNull(disposableProject);
         disposableProject.Dispose();
-        LoadedProject = null;
+        CurrentProject = null;
 
         return Result.Ok();
     }

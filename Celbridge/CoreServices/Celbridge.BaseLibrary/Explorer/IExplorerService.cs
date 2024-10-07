@@ -13,12 +13,12 @@ public interface IExplorerService
     IExplorerPanel? ExplorerPanel { get; }
 
     /// <summary>
-    /// Returns the Resource Registry associated with the loaded project.
+    /// Returns the Resource Registry associated with the current project.
     /// </summary>
     IResourceRegistry ResourceRegistry { get; }
 
     /// <summary>
-    /// Returns the Resource Tree View associated with the loaded project.
+    /// Returns the Resource Tree View associated with the current project.
     /// </summary>
     IResourceTreeView ResourceTreeView { get; }
 

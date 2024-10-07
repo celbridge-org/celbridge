@@ -1,7 +1,7 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages the workspace settings associated with the loaded project.
+/// Manages the workspace settings associated with the current loaded project.
 /// </summary>
 public interface IWorkspaceSettings
 {

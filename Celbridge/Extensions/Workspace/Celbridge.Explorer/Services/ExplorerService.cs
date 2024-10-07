@@ -75,7 +75,7 @@ public class ExplorerService : IExplorerService, IDisposable
         // Create the resource registry for the project.
         // The registry is populated later once the workspace UI is fully loaded.
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
-        ResourceRegistry.ProjectFolderPath = _projectService.LoadedProject!.ProjectFolderPath;
+        ResourceRegistry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
