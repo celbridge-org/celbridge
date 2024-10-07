@@ -22,19 +22,19 @@ public class WorkspaceLoader
         var explorerService = workspaceService.ExplorerService;
 
         //
-        // Acquire the workspace database
+        // Acquire the workspace settings
         //
-        var workspaceDataService = workspaceService.WorkspaceDataService;
-        var acquireResult = await workspaceDataService.AcquireWorkspaceDataAsync();
+        var workspaceSettingsService = workspaceService.WorkspaceSettingsService;
+        var acquireResult = await workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         if (acquireResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to acquire the workspace data");
+            var failure = Result.Fail("Failed to acquire the workspace settings");
             failure.MergeErrors(acquireResult);
             return failure;
         }
 
-        var workspaceData = workspaceDataService.LoadedWorkspaceData;
-        Guard.IsNotNull(workspaceData);
+        var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
 
         //
         // Populate the resource registry.
@@ -42,7 +42,7 @@ public class WorkspaceLoader
         try
         {
             // Restore previous state of expanded folders before populating resources
-            var expandedFolders = await workspaceData.GetPropertyAsync<List<string>>("ExpandedFolders");
+            var expandedFolders = await workspaceSettings.GetPropertyAsync<List<string>>("ExpandedFolders");
             if (expandedFolders is not null &&
                 expandedFolders.Count > 0)
             {

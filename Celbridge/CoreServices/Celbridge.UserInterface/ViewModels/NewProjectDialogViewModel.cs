@@ -52,6 +52,13 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     private void NewProjectDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(DestFolderPath) && Path.Exists(DestFolderPath))
+        {
+            // Remember the newly selected destination folder
+            var trimmedPath = DestFolderPath.TrimEnd('/').TrimEnd('\\');
+           _editorSettings.PreviousNewProjectFolderPath = trimmedPath;
+        }
+
         if (e.PropertyName == nameof(DestFolderPath) ||
             e.PropertyName == nameof(ProjectName) ||
             e.PropertyName == nameof(CreateSubfolder))
@@ -78,11 +85,11 @@ public partial class NewProjectDialogViewModel : ObservableObject
                     return;
                 }
 
-                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{FileExtensions.CelbridgeProject}");
+                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{FileNameConstants.ProjectFileExtension}");
             }
             else
             {
-                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{FileExtensions.CelbridgeProject}");
+                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{FileNameConstants.ProjectFileExtension}");
             }
 
             if (File.Exists(destProjectFilePath)) 
@@ -110,12 +117,6 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 int clippedLength = DestProjectFilePath.Length - MaxLocationLength + 3; // 3 for ellipses
                 ProjectSaveLocation = "..." + DestProjectFilePath.Substring(clippedLength);
             }
-        }
-
-        if (e.PropertyName == nameof(DestFolderPath) && Path.Exists(DestFolderPath))
-        {
-            // Remember the newly selected destination folder
-            _editorSettings.PreviousNewProjectFolderPath = DestFolderPath;
         }
     }
 

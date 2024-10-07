@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer.Models;
+using Celbridge.Explorer.Models;
 using Celbridge.UserInterface;
 using System.Text;
 
@@ -282,6 +282,16 @@ public class ResourceRegistry : IResourceRegistry
 
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
+
+        // Exclude the internal data folders from the resource registry.
+        // The user should not need to interact directly with the data in these folders during normal usage.
+        if (folderResource.ParentFolder is null)
+        {
+            subFolderPaths.RemoveAll(path =>
+            {
+                return path.EndsWith(FileNameConstants.ProjectDataFolder) || path.EndsWith(FileNameConstants.WorkspaceSettingsFolder);
+            });
+        }
 
         folderResource.Children.Clear();
 

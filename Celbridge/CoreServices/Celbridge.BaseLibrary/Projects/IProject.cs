@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Projects;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Manages all project data for a Celbridge project.
@@ -11,24 +11,24 @@ public interface IProject
     string ProjectName { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project file.
+    /// Returns the path to the current loaded project file.
     /// </summary>
     string ProjectFilePath { get; }
 
     /// <summary>
-    /// Returns the path to the folder containing the loaded project.
+    /// Returns the path to the folder containing the current loaded project file.
     /// </summary>
     string ProjectFolderPath { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project database.
+    /// Returns the path to the folder containing the project database.
     /// </summary>
-    string DatabasePath { get; }
+    string ProjectDataFolderPath { get; }
 
     /// <summary>
-    /// Returns the path to the loaded project's log folder.
+    /// Gets the project configuration.
     /// </summary>
-    string LogFolderPath { get; }
+    public IProjectConfig ProjectConfig { get; }
 
     /// <summary>
     /// Gets the data version for the project data.
