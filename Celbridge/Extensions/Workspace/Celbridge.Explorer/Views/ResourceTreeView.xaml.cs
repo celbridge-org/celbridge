@@ -2,7 +2,6 @@ using Celbridge.Explorer.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.System;
@@ -570,12 +569,12 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
             foreach (var item in items)
             {
-                if (item is Windows.Storage.StorageFile storageFile)
+                if (item is StorageFile storageFile)
                 {
                     var filePath = Path.GetFullPath(storageFile.Path);
                     sourcePaths.Add(filePath);
                 }
-                else if (item is Windows.Storage.StorageFolder storageFolder)
+                else if (item is StorageFolder storageFolder)
                 {
                     var folderPath = Path.GetFullPath(storageFolder.Path);
                     sourcePaths.Add(folderPath);
