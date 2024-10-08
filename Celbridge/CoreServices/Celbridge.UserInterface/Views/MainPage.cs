@@ -90,6 +90,27 @@ public sealed partial class MainPage : Page
 
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
+
+        // Listen for keyboard input events (required for undo / redo)
+#if WINDOWS
+        mainWindow.Content.KeyDown += (s, e) =>
+        {
+            if (OnKeyDown(e.Key))
+            {
+                e.Handled = true;
+            }
+        };
+#else
+        Guard.IsNotNull(mainWindow);
+        Guard.IsNotNull(mainWindow.CoreWindow);
+        mainWindow.CoreWindow.KeyDown += (s, e) =>
+        {
+            if (OnKeyDown(e.VirtualKey))
+            {
+                e.Handled = true;
+            }
+        };
+#endif
     }
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
