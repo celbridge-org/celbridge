@@ -104,6 +104,7 @@ public sealed partial class WebPageDocumentView : DocumentView
         {
             if (s.State == CoreWebView2DownloadState.Completed)
             {
+                // Move the file to the requested path, with undo support.
                 // _logger.LogInformation($"Downloaded: {requestedPath}");
                 _commandService.Execute<IAddResourceCommand>(command =>
                 {
