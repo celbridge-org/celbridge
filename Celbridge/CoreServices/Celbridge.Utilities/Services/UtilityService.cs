@@ -24,6 +24,44 @@ public class UtilityService : IUtilityService
         return archivePath;
     }
 
+    public Result<string> GetUniquePath(string path)
+    {
+        try
+        {
+            path = Path.GetFullPath(path);
+
+            string directoryPath = Path.GetDirectoryName(path)!;
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(path);
+            string extension = Path.GetExtension(path);
+            string uniqueName = Path.GetFileName(path);
+            int count = 1;
+
+            while (File.Exists(Path.Combine(directoryPath, uniqueName)) || 
+                Directory.Exists(Path.Combine(directoryPath, uniqueName)))
+            {
+                if (!string.IsNullOrEmpty(extension))
+                {
+                    // If it's a file, add the number before the extension
+                    uniqueName = $"{nameWithoutExtension} ({count}){extension}";
+                }
+                else
+                {
+                    // If it's a folder (or file with no extension), just append the number
+                    uniqueName = $"{nameWithoutExtension} ({count})";
+                }
+                count++;
+            }
+
+            var output = Path.Combine(directoryPath, uniqueName);
+
+            return Result<string>.Ok(output);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail(ex, $"An exception occurred when generating a unique path: {path}");
+        }
+    }
+
     public EnvironmentInfo GetEnvironmentInfo()
     {
 #if WINDOWS
