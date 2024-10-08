@@ -61,7 +61,7 @@ public sealed partial class WebPageDocumentView : DocumentView
     }
 
 
-    private async void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
+    private void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
     {
         var downloadPath = args.ResultFilePath; 
         var filename = Path.GetFileName(downloadPath);
