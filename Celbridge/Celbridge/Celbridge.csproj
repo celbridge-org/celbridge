@@ -26,7 +26,7 @@
 
     <DefaultLanguage>en-US</DefaultLanguage>
 
-    <PackageCertificateThumbprint>4100DB32C9502803763B1C125070FECE6F587FDE</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>8C33BC6BB5186CD08869A86EC7BBAE1A4A7703F6</PackageCertificateThumbprint>
 
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
