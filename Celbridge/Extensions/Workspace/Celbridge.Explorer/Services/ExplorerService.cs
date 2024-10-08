@@ -273,13 +273,6 @@ public class ExplorerService : IExplorerService, IDisposable
         // Expand the destination folder so the user can see the newly transfered resources immediately.
         ResourceRegistry.SetFolderIsExpanded(destFolderResource, true);
 
-        // Refresh the resource registry and tree view
-        var updateResult = await UpdateResourcesAsync();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to update resources. {updateResult.Error}");
-        }
-
         return Result.Ok();
     }
 
