@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Utilities;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Provides access to common low-level utility methods.
@@ -10,6 +10,11 @@ public interface IUtilityService
     /// The path includes the specified folder name and extension.
     /// </summary>
     string GetTemporaryFilePath(string folderName, string extension);
+
+    /// <summary>
+    /// Returns a path which is guaranteed not to clash with any existing file or folder.
+    /// </summary>
+    Result<string> GetUniquePath(string path);
 
     /// <summary>
     /// Returns environment information the runtime application.
