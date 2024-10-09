@@ -51,6 +51,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
     <ProjectReference Include="..\Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\Extensions\Markdown\Celbridge.Markdown\Celbridge.Markdown.csproj" />
   </ItemGroup>
 
 </Project>

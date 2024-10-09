@@ -1,6 +1,6 @@
-using Celbridge.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Services;
+namespace Celbridge.Extensions.Services;
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with dependency injection without
