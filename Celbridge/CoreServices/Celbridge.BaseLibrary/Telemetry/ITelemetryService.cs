@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Telemetry;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Telemetry;
 
 /// <summary>
 /// Records telemetry events to a remote server and to a local log file.

@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Scripting;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Scripting;
 
 /// <summary>
 /// A script context is an environment for script execution.

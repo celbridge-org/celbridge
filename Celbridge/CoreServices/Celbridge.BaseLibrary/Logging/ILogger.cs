@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Logging;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Logging;
 
 /// <summary>
 /// Generic wrapper for the Microsoft.Extensions.Logging extension methods.

@@ -1,6 +1,6 @@
-﻿using System.Runtime.CompilerServices; // For [CallerFilePath] and [CallerLineNumber]
+﻿using System.Runtime.CompilerServices;
 
-namespace Celbridge.Core;
+namespace Celbridge.Foundation;
 
 /**
  * A lightweight Result type for returning success or failure from methods.

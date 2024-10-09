@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Foundation;
 using Celbridge.Scripting;
 using Celbridge.Status;
 

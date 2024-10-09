@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Foundation;
 using Windows.System;
 
 namespace Celbridge.UserInterface.ViewModels;

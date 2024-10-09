@@ -1,6 +1,7 @@
 using NLog.Targets;
 using NLog;
 using Celbridge.Messaging;
+using Celbridge.Foundation;
 
 namespace Celbridge.Logging.Services;
 
