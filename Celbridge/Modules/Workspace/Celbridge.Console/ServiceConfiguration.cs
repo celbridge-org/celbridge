@@ -1,13 +1,13 @@
 using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
 using Celbridge.Console.Views;
-using Celbridge.Extensions;
+using Celbridge.Modules;
 
 namespace Celbridge.Console;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services
