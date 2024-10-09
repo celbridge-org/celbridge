@@ -101,7 +101,8 @@
                 language: "plaintext",
                 automaticLayout: true,
                 theme: window.theme || "vs-light",
-                minimap: { autohide: true }
+                minimap: { autohide: true },
+                wordWrap: "on"
             });
 
             window.editor.getModel().onDidChangeContent((event) => {
