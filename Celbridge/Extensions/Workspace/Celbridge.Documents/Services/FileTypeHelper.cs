@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Reflection;
 
 namespace Celbridge.Documents.Services;
@@ -30,26 +30,21 @@ public class FileTypeHelper
 
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        var documentLanguage = GetTextEditorLanguage(fileExtension);
-        if (!string.IsNullOrEmpty(documentLanguage))
+        if (fileExtension == ".web")
         {
-            return DocumentViewType.TextDocument;
+            return DocumentViewType.WebPageDocument;
         }
-
-#if WINDOWS
-
-        // Documents that use a webview are currently only supported on Windows
 
         if (IsWebViewerFile(fileExtension))
         {
             return DocumentViewType.FileViewer;
         }
 
-        if (fileExtension == ".web")
+        var documentLanguage = GetTextEditorLanguage(fileExtension);
+        if (!string.IsNullOrEmpty(documentLanguage))
         {
-            return DocumentViewType.WebPageDocument;
+            return DocumentViewType.TextDocument;
         }
-#endif
 
         return DocumentViewType.UnsupportedFormat;
     }
