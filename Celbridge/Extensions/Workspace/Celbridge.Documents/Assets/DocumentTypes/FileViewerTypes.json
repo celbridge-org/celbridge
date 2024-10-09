@@ -1,21 +1,21 @@
-﻿[
-  ".jpg",
-  ".jpeg",
-  ".png",
+[
   ".gif",
-  ".svg",
-  ".webp",
   ".ico",
+  ".jpeg",
+  ".jpg",
+  ".mp3",
   ".mp4",
-  ".webm",
   ".ogg",
   ".ogv",
-  ".mp3",
-  ".wav",
+  ".otf",
   ".pdf",
-  ".woff",
-  ".woff2",
+  ".png",
+  ".svg",
   ".ttf",
-  ".otf"
+  ".wav",
+  ".webm",
+  ".webp",
+  ".woff",
+  ".woff2"
 ]
 
