@@ -23,8 +23,10 @@
   </PropertyGroup>
   
   <ItemGroup>
-	  <PackageReference Include="sqlite-net-pcl" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
 	  <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
+    <PackageReference Include="Newtonsoft.Json"/>
+	  <PackageReference Include="sqlite-net-pcl" />
   </ItemGroup>
   
   <ItemGroup>
@@ -34,7 +36,6 @@
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
     <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />
     <ProjectReference Include="..\Celbridge.Status\Celbridge.Status.csproj" />
-    <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
   </ItemGroup>
   
 </Project>

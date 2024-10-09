@@ -24,10 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="Newtonsoft.Json" />
     <!-- .Net Interactive-->
     <PackageReference Include="Microsoft.DotNet.Interactive" />
     <PackageReference Include="Microsoft.DotNet.Interactive.CSharp" />
@@ -39,6 +37,10 @@
     <PackageReference Include="Microsoft.DotNet.Interactive.PackageManagement" />
     <PackageReference Include="Microsoft.DotNet.Interactive.Formatting" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Features" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 
 </Project>
