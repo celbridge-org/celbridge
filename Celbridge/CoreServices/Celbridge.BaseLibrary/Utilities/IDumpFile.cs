@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Utilities;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// A simple dump file utility.

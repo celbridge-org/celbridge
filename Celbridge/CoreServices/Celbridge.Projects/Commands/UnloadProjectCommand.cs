@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Foundation;
 using Celbridge.Navigation;
 using Celbridge.Workspace;
 

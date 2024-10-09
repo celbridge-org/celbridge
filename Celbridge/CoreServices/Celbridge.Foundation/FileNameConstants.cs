@@ -1,4 +1,4 @@
-namespace Celbridge.Core;
+namespace Celbridge.Foundation;
 
 /// <summary>
 /// Strings constants for Celbridge file names.

@@ -1,4 +1,4 @@
-using Celbridge.Core;
+using Celbridge.Foundation;
 using CommunityToolkit.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;

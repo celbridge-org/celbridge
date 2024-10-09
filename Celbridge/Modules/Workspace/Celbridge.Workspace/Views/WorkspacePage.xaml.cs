@@ -1,3 +1,4 @@
+using Celbridge.Foundation;
 using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;

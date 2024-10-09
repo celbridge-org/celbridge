@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Documents;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with a document view.

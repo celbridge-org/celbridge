@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Explorer;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Explorer;
 
 /// <summary>
 /// The resource tree view provides functionality to populate the resource tree view in the project panel.

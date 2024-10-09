@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
+using Celbridge.Foundation;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;

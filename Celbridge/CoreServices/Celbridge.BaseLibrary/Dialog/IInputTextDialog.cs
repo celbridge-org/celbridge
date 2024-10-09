@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Dialog;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Dialog;
 
 /// <summary>
 /// A modal dialog that allows the user to input a text string.

@@ -7,6 +7,7 @@ using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Commands;
 

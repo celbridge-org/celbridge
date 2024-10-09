@@ -1,4 +1,5 @@
 using Celbridge.Explorer.ViewModels;
+using Celbridge.Foundation;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Views;

@@ -8,6 +8,7 @@ using Celbridge.Scripting;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
 using Celbridge.Settings;
+using Celbridge.Foundation;
 
 namespace Celbridge.Workspace.Services;
 

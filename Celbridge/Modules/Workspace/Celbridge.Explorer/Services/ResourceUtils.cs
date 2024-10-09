@@ -1,3 +1,4 @@
+using Celbridge.Foundation;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 

@@ -2,6 +2,7 @@ using Celbridge.Modules;
 using Celbridge.Inspector.Services;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
+using Celbridge.Foundation;
 
 namespace Celbridge.Inspector;
 

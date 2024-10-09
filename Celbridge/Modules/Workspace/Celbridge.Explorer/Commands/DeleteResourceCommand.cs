@@ -3,6 +3,7 @@ using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Celbridge.Explorer.Services;
+using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Commands
 {
