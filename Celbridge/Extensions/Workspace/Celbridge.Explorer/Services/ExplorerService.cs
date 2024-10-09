@@ -273,6 +273,8 @@ public class ExplorerService : IExplorerService, IDisposable
         // Expand the destination folder so the user can see the newly transfered resources immediately.
         ResourceRegistry.SetFolderIsExpanded(destFolderResource, true);
 
+        await Task.CompletedTask;
+
         return Result.Ok();
     }
 
