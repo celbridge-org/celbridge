@@ -24,8 +24,10 @@ public static class ServiceConfiguration
         config.AddTransient<IDocumentsPanel, DocumentsPanel>();
         config.AddTransient<TextBoxDocumentView>();
         config.AddTransient<WebPageDocumentView>();
-        config.AddTransient<TextEditorDocumentView>();
+        config.AddTransient<MonacoEditorView>();
         config.AddTransient<FileViewerDocumentView>();
+        config.AddTransient<EditorPreviewView>();
+        config.AddTransient<TextEditorDocumentView>();
 
         //
         // Register view models
@@ -35,8 +37,10 @@ public static class ServiceConfiguration
         config.AddTransient<DocumentTabViewModel>();
         config.AddTransient<DefaultDocumentViewModel>();
         config.AddTransient<WebPageDocumentViewModel>();
-        config.AddTransient<TextEditorDocumentViewModel>();
+        config.AddTransient<MonacoEditorViewModel>();
         config.AddTransient<FileViewerDocumentViewModel>();
+        config.AddTransient<EditorPreviewViewModel>();
+        config.AddTransient<TextEditorDocumentViewModel>();
 
         //
         // Register commands

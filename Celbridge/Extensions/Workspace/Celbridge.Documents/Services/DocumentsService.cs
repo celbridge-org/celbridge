@@ -97,46 +97,18 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
     {
-        // Create the document view
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
-        var fileExtension = Path.GetExtension(filePath);
-
-        var viewType = _fileTypeHelper.GetDocumentViewType(fileExtension);
-
         //
-        // Create the apporpriate document view control for this document type
+        // Create the appropriate document view control for this document type
         //
 
-        IDocumentView? documentView = null;
-        switch (viewType)
+        var createResult = CreateDocumentViewInternal(fileResource);
+        if (createResult.IsFailure)
         {
-            case DocumentViewType.UnsupportedFormat:
-                return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
-
-            case DocumentViewType.TextDocument:
-#if WINDOWS
-                documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
-                break;
-#else
-                documentView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-                break;
-#endif
-
-            case DocumentViewType.WebPageDocument:
-                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
-                break;
-
-            case DocumentViewType.FileViewer:
-                documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
-                break;
+            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'");
+            failure.MergeErrors(createResult);
+            return failure;
         }
-
-        if (documentView is null)
-        {
-            return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
-        }
+        var documentView = createResult.Value;
 
         //
         // Load the content from the document file
@@ -345,6 +317,48 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
         }
+    }
+
+    private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)
+    {
+        var viewType = GetDocumentViewType(fileResource);
+
+        IDocumentView? documentView = null;
+        switch (viewType)
+        {
+            case DocumentViewType.UnsupportedFormat:
+                return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
+
+#if WINDOWS
+            case DocumentViewType.TextDocument:
+                documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
+                break;
+
+            case DocumentViewType.WebPageDocument:
+                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
+                break;
+
+            case DocumentViewType.FileViewer:
+                documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
+                break;
+#else
+            case DocumentViewType.TextDocument:
+            case DocumentViewType.WebPageDocument:
+            case DocumentViewType.FileViewer:
+
+                // On non-Windows platforms, use the text editor document view for all document types
+                documentView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
+                break;
+#endif
+
+        }
+
+        if (documentView is null)
+        {
+            return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+        }
+
+        return Result<IDocumentView>.Ok(documentView);
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
