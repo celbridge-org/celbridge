@@ -38,11 +38,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
+    <PackageReference Include="Newtonsoft.Json"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
-
+  
 </Project>

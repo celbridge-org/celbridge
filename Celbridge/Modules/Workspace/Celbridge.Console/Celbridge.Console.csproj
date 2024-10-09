@@ -21,9 +21,14 @@
     </UnoFeatures>
 
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+    <PackageReference Include="Newtonsoft.Json"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 
 </Project>
