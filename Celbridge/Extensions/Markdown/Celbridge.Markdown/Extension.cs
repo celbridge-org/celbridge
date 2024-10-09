@@ -1,7 +1,7 @@
-using Celbridge.Core;
 using Celbridge.Modules;
 using Celbridge.Messaging;
 using Microsoft.Extensions.DependencyInjection;
+using Celbridge.Foundation;
 
 namespace Celbridge.Markdown;
 

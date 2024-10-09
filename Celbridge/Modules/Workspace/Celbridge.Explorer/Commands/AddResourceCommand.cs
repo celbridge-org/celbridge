@@ -3,6 +3,7 @@ using Celbridge.Projects;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Commands;
 

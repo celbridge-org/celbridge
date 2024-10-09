@@ -1,3 +1,4 @@
+using Celbridge.Foundation;
 using Celbridge.Workspace.Models;
 using CommunityToolkit.Diagnostics;
 using SQLite;

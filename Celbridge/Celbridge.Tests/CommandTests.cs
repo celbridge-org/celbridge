@@ -1,6 +1,5 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Logging;
 using Celbridge.Messaging.Services;
 using Celbridge.Messaging;
@@ -9,6 +8,7 @@ using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Celbridge.Logging.Services;
+using Celbridge.Foundation;
 
 namespace Celbridge.Tests;
 

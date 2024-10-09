@@ -2,6 +2,7 @@
 using Celbridge.Explorer;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
+using Celbridge.Foundation;
 
 namespace Celbridge.Commands.Services;
 

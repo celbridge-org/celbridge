@@ -4,6 +4,7 @@ using Celbridge.Navigation;
 using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
+using Celbridge.Foundation;
 
 namespace Celbridge.UserInterface;
 

@@ -1,4 +1,6 @@
-﻿namespace Celbridge.Documents;
+﻿using Celbridge.Foundation;
+
+namespace Celbridge.Documents;
 
 /// <summary>
 /// A message that indicates the current number of pending document saves.

@@ -1,6 +1,6 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
-using Celbridge.Core;
+using Celbridge.Foundation;
 using Celbridge.Modules.Services;
 using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
@@ -126,7 +126,8 @@ public partial class App : Application
         Host = builder.Build();
 
         // Setup the globally available helper for using the dependency injection framework.
-        Core.ServiceLocator.Initialize(Host.Services);
+
+        ServiceLocator.Initialize(Host.Services);
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
         var utilityService = Host.Services.GetRequiredService<IUtilityService>();
