@@ -1,13 +1,12 @@
 using Celbridge.Core;
-using Celbridge.Extensions;
 using CommunityToolkit.Diagnostics;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Celbridge.Services;
+namespace Celbridge.Extensions.Services;
 
 /// <summary>
-/// A helper class that to load the extension assemblies for the current session.
+/// A helper class that loads the extension assemblies for the application lifetime.
 /// Uses an AssemblyLoadContext to enabling dynamic loading and unloading of extension assemblies.
 /// </summary>
 public class ExtensionLoader : IDisposable
