@@ -111,7 +111,7 @@ public partial class App : Application
                     var extensions = new List<string>() 
                     { 
                         "Celbridge.Workspace", 
-                        "Celbridge.Markdown" 
+                        //"Celbridge.Markdown" 
                     };
                     ExtensionService.LoadExtensions(extensions, services);
                 })
