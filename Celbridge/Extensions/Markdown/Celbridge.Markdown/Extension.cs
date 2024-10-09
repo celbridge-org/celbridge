@@ -1,13 +1,13 @@
 using Celbridge.Core;
-using Celbridge.Extensions;
+using Celbridge.Modules;
 using Celbridge.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Markdown;
 
-public class Extension : IExtension
+public class Extension : IModule
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services

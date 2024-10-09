@@ -1,11 +1,11 @@
-using Celbridge.Extensions;
+using Celbridge.Modules;
 using Celbridge.Scripting.Services;
 
 namespace Celbridge.Scripting;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services
