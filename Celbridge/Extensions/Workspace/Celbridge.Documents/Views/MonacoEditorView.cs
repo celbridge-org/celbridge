@@ -7,27 +7,27 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class TextEditorDocumentView : DocumentView
+public sealed partial class MonacoEditorView : DocumentView
 {
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
 
-    public TextEditorDocumentViewModel ViewModel { get; }
+    public MonacoEditorViewModel ViewModel { get; }
 
     private WebView2? _webView;
 
-    public TextEditorDocumentView(
-        IServiceProvider serviceProvider,
-        IWorkspaceWrapper workspaceWrapper)
+    public MonacoEditorView()
     {
+        var serviceProvider = ServiceLocator.ServiceProvider;
+        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
-        ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<MonacoEditorViewModel>();
 
-        //
-        // Set the data context and control content
-        // 
+        // Set the data context
+        // The webview is not created until LoadContent is called, so we can pool webviews
 
         this.DataContext(ViewModel);
     }

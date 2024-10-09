@@ -38,6 +38,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Celbridge.WorkspaceDependencies\Celbridge.WorkspaceDependencies.csproj" />
   </ItemGroup>
 
