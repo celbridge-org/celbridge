@@ -1,7 +1,7 @@
-using Celbridge.Extensions.Services;
+using Celbridge.Modules.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Extensions;
+namespace Celbridge.Modules;
 
 public static class ServiceConfiguration
 {
@@ -10,7 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-        services.AddSingleton<IExtensionService, ExtensionService>();
+        services.AddSingleton<IModuleService, ModuleService>();
     }
 
     public static void Initialize()

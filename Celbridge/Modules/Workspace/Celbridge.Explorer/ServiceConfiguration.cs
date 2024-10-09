@@ -3,14 +3,14 @@ using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
-using Celbridge.Extensions;
+using Celbridge.Modules;
 using Celbridge.Validators;
 
 namespace Celbridge.Explorer;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services

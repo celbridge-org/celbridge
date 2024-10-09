@@ -24,7 +24,7 @@
 
   <!-- 
     Project reference to Celbridge.BaseLibrary.
-    This should be the ONLY directly referenced project in any extension project.
+    This should be the ONLY directly referenced project in any module project.
   -->
   <ItemGroup>
     <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />

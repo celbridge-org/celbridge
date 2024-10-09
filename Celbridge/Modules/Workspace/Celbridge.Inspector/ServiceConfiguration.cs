@@ -1,4 +1,4 @@
-using Celbridge.Extensions;
+using Celbridge.Modules;
 using Celbridge.Inspector.Services;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
@@ -7,7 +7,7 @@ namespace Celbridge.Inspector;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services

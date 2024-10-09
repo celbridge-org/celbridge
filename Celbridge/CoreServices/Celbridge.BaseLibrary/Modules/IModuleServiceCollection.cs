@@ -1,11 +1,11 @@
-﻿namespace Celbridge.Extensions;
+namespace Celbridge.Modules;
 
 /// <summary>
-/// Extensions use this interface to configure the dependency injection framework without using the 
+/// Modules use this interface to configure the dependency injection framework without using the 
 /// Microsoft.Extensions.DependencyInjection package. The methods here correspond to a subset of the
 /// Microsoft.Extensions.DependencyInjection.IServiceCollection interface.
 /// </summary>
-public interface IExtensionServiceCollection
+public interface IModuleServiceCollection
 {
     void AddTransient<T>()
         where T : class;

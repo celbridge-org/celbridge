@@ -1,8 +1,8 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
 using Celbridge.Core;
-using Celbridge.Extensions.Services;
-using Celbridge.Extensions;
+using Celbridge.Modules.Services;
+using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
@@ -107,13 +107,13 @@ public partial class App : Application
                     // Configure all core services
                     CoreServices.ServiceConfiguration.ConfigureServices(services);
 
-                    // Load extensions and configure extension services
-                    var extensions = new List<string>() 
+                    // Load modules and configure module services
+                    var modules = new List<string>() 
                     { 
                         "Celbridge.Workspace", 
                         //"Celbridge.Markdown" 
                     };
-                    ExtensionService.LoadExtensions(extensions, services);
+                    ModuleService.LoadModules(modules, services);
                 })
             );
         MainWindow = builder.Window;
@@ -164,13 +164,13 @@ public partial class App : Application
         // Initialize the Core Services
         CoreServices.ServiceConfiguration.Initialize();
 
-        // Initialize loaded extensions
-        var extensionService = Host.Services.GetRequiredService<IExtensionService>();
-        var initializeResult = extensionService.InitializeExtensions();
+        // Initialize loaded modules
+        var moduleService = Host.Services.GetRequiredService<IModuleService>();
+        var initializeResult = moduleService.InitializeModules();
         if (initializeResult.IsFailure)
         {
             // Log the error and attempt to continue
-            var failure = Result.Fail("Failed to initialize extensions");
+            var failure = Result.Fail("Failed to initialize modules");
             failure.MergeErrors(initializeResult);
             logger.LogError(failure.Error);
         }

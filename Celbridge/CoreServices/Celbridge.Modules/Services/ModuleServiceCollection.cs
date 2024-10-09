@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Extensions.Services;
+namespace Celbridge.Modules.Services;
 
 /// <summary>
 /// Helper class to allow Celbridge extensions to register types for use with dependency injection without
 /// using the Microsoft.Extensions.DependencyInjection package.
 /// </summary>
-public class ExtensionServiceCollection : IExtensionServiceCollection
+public class ModuleServiceCollection : IModuleServiceCollection
 {
     private List<Type> TransientServices { get; } = new();
     private Dictionary<Type, Type> TransientInterfaceServices { get; } = new();

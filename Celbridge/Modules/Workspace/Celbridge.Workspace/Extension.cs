@@ -1,5 +1,5 @@
 using Celbridge.DataTransfer;
-using Celbridge.Extensions;
+using Celbridge.Modules;
 using Celbridge.Navigation;
 using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
@@ -8,9 +8,9 @@ using Celbridge.Workspace.Views;
 
 namespace Celbridge.Workspace;
 
-public class Extension : IExtension
+public class Extension : IModule
 {
-    public void ConfigureServices(IExtensionServiceCollection config)
+    public void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register workspace sub-projects

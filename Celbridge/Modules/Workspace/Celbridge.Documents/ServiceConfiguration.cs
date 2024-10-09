@@ -2,13 +2,13 @@ using Celbridge.Documents.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
-using Celbridge.Extensions;
+using Celbridge.Modules;
 
 namespace Celbridge.Documents;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(IExtensionServiceCollection config)
+    public static void ConfigureServices(IModuleServiceCollection config)
     {
         //
         // Register services
