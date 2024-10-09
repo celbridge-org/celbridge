@@ -24,7 +24,12 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private void SetPreviewVisibility(bool isVisible)
     {
+#if WINDOWS
         RightColumn.Width = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+#else
+        // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
+        RightColumn.Width = isVisible ? new GridLength(400) : new GridLength(0);
+#endif
         PreviewSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
