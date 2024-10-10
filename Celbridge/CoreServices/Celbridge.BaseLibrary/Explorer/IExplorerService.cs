@@ -67,4 +67,9 @@ public interface IExplorerService
     /// Open the specified resource in the associated application.
     /// </summary>
     Task<Result> OpenApplication(ResourceKey resource);
+
+    /// <summary>
+    /// Open the specified URL in the system default browser.
+    /// </summary>
+    Task<Result> OpenBrowser(string uRL);
 }
