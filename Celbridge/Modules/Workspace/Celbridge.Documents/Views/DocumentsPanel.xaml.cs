@@ -174,9 +174,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             TabView.TabItems.RemoveAt(tabIndex);
 
-            var failure = Result.Fail($"Failed to create document view for file resource: '{fileResource}'");
-            failure.MergeErrors(createResult);
-            return failure;
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .AddErrors(createResult);
         }
         var documentView = createResult.Value;
 
@@ -203,9 +202,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
                 if (closeResult.IsFailure)
                 {
-                    var failure = Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'");
-                    failure.MergeErrors(closeResult);
-                    return failure;
+                    return Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'")
+                        .AddErrors(closeResult);
                 }
 
                 var didClose = closeResult.Value;
@@ -326,9 +324,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var setResult = await oldDocumentView.SetFileResource(newResource);
             if (setResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to set file resource for document: '{newResource}'");
-                failure.MergeErrors(setResult);
-                return failure;
+                return Result.Fail($"Failed to set file resource for document: '{newResource}'")
+                    .AddErrors(setResult);
             }
         }
         else
@@ -336,9 +333,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var createResult = await ViewModel.CreateDocumentView(newResource);
             if (createResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to create document view for resource: '{newResource}'");
-                failure.MergeErrors(createResult);
-                return failure;
+                return Result.Fail($"Failed to create document view for resource: '{newResource}'")
+                    .AddErrors(createResult);
             }
             var newDocumentView = createResult.Value;
 

@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
@@ -127,9 +127,8 @@ public partial class DocumentTabViewModel : ObservableObject
             var saveResult = await DocumentView.SaveDocument();
             if (saveResult.IsFailure)
             {
-                var failure = Result<bool>.Fail($"Saving document failed for file resource: '{FileResource}'");
-                failure.MergeErrors(saveResult);
-                return failure;
+                return Result<bool>.Fail($"Saving document failed for file resource: '{FileResource}'")
+                    .AddErrors(saveResult);
             }
         }
 

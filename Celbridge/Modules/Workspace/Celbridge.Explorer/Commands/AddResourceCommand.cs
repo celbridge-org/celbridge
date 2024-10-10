@@ -119,9 +119,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                         var unarchiveResult = await _archiver.UnarchiveResourceAsync();
                         if (unarchiveResult.IsFailure)
                         {
-                            var failure = Result.Fail($"Failed to unarchive resource: {DestResource}");
-                            failure.MergeErrors(unarchiveResult);
-                            return failure;
+                            return Result.Fail($"Failed to unarchive resource: {DestResource}")
+                                .AddErrors(unarchiveResult);
                         }
                     }
                     else
@@ -208,9 +207,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                 var archiveResult = await _archiver.ArchiveResourceAsync(DestResource);
                 if (archiveResult.IsFailure)
                 {
-                    var failure = Result.Fail($"Failed to archive file resource: {DestResource}");
-                    failure.MergeErrors(archiveResult);
-                    return failure;
+                    return Result.Fail($"Failed to archive file resource: {DestResource}")
+                        .AddErrors(archiveResult);
                 }
             }
             else if (ResourceType == ResourceType.Folder &&

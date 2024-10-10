@@ -88,9 +88,8 @@ public class ProjectService : IProjectService
             var loadResult = Project.LoadProject(projectFilePath);
             if (loadResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to load project: {projectFilePath}");
-                failure.MergeErrors(loadResult);
-                return failure;
+                return Result.Fail($"Failed to load project: {projectFilePath}")
+                    .AddErrors(loadResult);
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
