@@ -2,8 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Projects;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
-using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Commands;
 
@@ -121,9 +119,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                         var unarchiveResult = await _archiver.UnarchiveResourceAsync();
                         if (unarchiveResult.IsFailure)
                         {
-                            var failure = Result.Fail($"Failed to unarchive resource: {DestResource}");
-                            failure.MergeErrors(unarchiveResult);
-                            return failure;
+                            return Result.Fail($"Failed to unarchive resource: {DestResource}")
+                                .AddErrors(unarchiveResult);
                         }
                     }
                     else
@@ -173,7 +170,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to create resource. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when adding the resource.");
         }
 
         //
@@ -210,9 +207,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                 var archiveResult = await _archiver.ArchiveResourceAsync(DestResource);
                 if (archiveResult.IsFailure)
                 {
-                    var failure = Result.Fail($"Failed to archive file resource: {DestResource}");
-                    failure.MergeErrors(archiveResult);
-                    return failure;
+                    return Result.Fail($"Failed to archive file resource: {DestResource}")
+                        .AddErrors(archiveResult);
                 }
             }
             else if (ResourceType == ResourceType.Folder &&
@@ -224,7 +220,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to undo add resource. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when undoing adding the resource.");
         }
 
         await Task.CompletedTask;

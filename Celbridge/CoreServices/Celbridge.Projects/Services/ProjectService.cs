@@ -1,8 +1,6 @@
-using Celbridge.Foundation;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
-using Newtonsoft.Json.Linq;
 
 using Path = System.IO.Path;
 
@@ -90,9 +88,8 @@ public class ProjectService : IProjectService
             var loadResult = Project.LoadProject(projectFilePath);
             if (loadResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to load project: {projectFilePath}");
-                failure.MergeErrors(loadResult);
-                return failure;
+                return Result.Fail($"Failed to load project: {projectFilePath}")
+                    .AddErrors(loadResult);
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
@@ -112,7 +109,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load project database. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when loading the project database.");
         }
     }
 

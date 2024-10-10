@@ -1,5 +1,4 @@
-﻿using Celbridge.Foundation;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Documents.ViewModels;

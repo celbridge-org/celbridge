@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Foundation;
 using Celbridge.Navigation;
 using Celbridge.Workspace;
 
@@ -41,9 +40,8 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         var createResult = await _projectService.CreateProjectAsync(Config);
         if (createResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to create project.");
-            failure.MergeErrors(createResult);
-            return failure;
+            return Result.Fail($"Failed to create project.")
+                .AddErrors(createResult);
         }
 
         // Load the newly created project

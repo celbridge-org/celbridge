@@ -1,5 +1,4 @@
 using Celbridge.Explorer.ViewModels;
-using Celbridge.Foundation;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
@@ -86,7 +85,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to populate tree view. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when populating the tree view.");
         }
 
         // Attempt to re-select the previously selected resource
@@ -130,9 +129,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         var getResult = _resourceRegistry.GetResource(resource);
         if (getResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to get resource from resource registry: {resource}");
-            failure.MergeErrors(getResult);
-            return failure;
+            return Result.Fail($"Failed to get resource from resource registry: {resource}")
+                .AddErrors(getResult);
         }
 
         var segments = resource.ToString().Split('/');

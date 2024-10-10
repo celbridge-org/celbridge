@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Celbridge.Inspector.ViewModels;
 using Microsoft.Extensions.Localization;
 
