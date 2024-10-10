@@ -1,27 +1,102 @@
-using Celbridge.Foundation;
+using Celbridge.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Celbridge.Extensions.Services;
 
 public class ExtensionService : IExtensionService
 {
-    public ExtensionService()
-    {}
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<ExtensionService> _logger;
 
-    public Result LoadExtensions(List<string> extensions)
+    public ExtensionService(
+        IServiceProvider serviceProvider,
+        ILogger<ExtensionService> logger)
     {
-        // Todo: Load the assemblies
-        // Todo: Find the extension classes
-        // Todo: Instantiate the extension classes
-        // Todo: Call the Initialize methods
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
 
-        return Result.Ok();
+    public Dictionary<string, IExtension> LoadedExtensions { get; } = new();
+
+    public Result LoadExtension(string extension)
+    {
+        try
+        {
+            if (LoadedExtensions.ContainsKey(extension))
+            {
+                return Result.Fail($"Extension '{extension}' is already loaded.");
+            }
+
+            // Load the assembly containing the extension
+            var assembly = Assembly.Load(extension);
+            if (assembly == null)
+            {
+                return Result.Fail($"Failed to load assembly '{extension}'.");
+            }
+
+            // Find the class that implements IExtension
+            var extensionType = assembly.GetTypes()
+                .FirstOrDefault(type => typeof(IExtension).IsAssignableFrom(type) && !type.IsAbstract);
+
+            if (extensionType == null)
+            {
+                return Result.Fail($"No valid IExtension implementation found in assembly '{extension}'.");
+            }
+
+            // Instantiate the extension class
+            var extensionInstance = (IExtension)Activator.CreateInstance(extensionType)!;
+            if (extensionInstance == null)
+            {
+                return Result.Fail($"Failed to instantiate extension class '{extension}'.");
+            }
+
+            // Initialize the extension with a new ExtensionContext.
+            // The extension uses the ExtensionContext to interact with the Celbridge host application.
+            var extensionContext = _serviceProvider.GetRequiredService<IExtensionContext>();
+            var initResult = extensionInstance.Initialize(extensionContext);
+            if (initResult.IsFailure)
+            {
+                return Result.Fail($"Failed to initialize extension: '{extension}'")
+                    .AddErrors(initResult);
+            }
+
+            LoadedExtensions.Add(extension, extensionInstance);
+
+            _logger.LogDebug($"Loaded extension: '{extension}'");
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result<IExtension>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
+        }
     }
 
     public Result UnloadExtensions()
     {
-        // Todo: Call dispose on all extension classes
-        // Note: I'm not going to bother using an assembly context, process isolation is the best way to handle this in future.
+        try
+        {
+            // Unload all extensions
+            foreach (var extension in LoadedExtensions.Values)
+            {
+                var unloadResult = extension.Unload();
+                if (unloadResult.IsFailure)
+                {
+                    var failure = Result.Fail($"Failed to unload extension: '{extension}'")
+                        .AddErrors(unloadResult);
+                    _logger.LogError(failure.Error);
+                }
+            }
 
-        return Result.Ok();
+            // Clear the list of loaded extensions
+            LoadedExtensions.Clear();
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"An exception occurred while unloading extensions");
+        }
     }
 }
