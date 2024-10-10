@@ -105,7 +105,7 @@ public partial class App : Application
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
 
                     // Configure all core services
-                    CoreServices.ServiceConfiguration.ConfigureServices(services);
+                    ConfigureCoreServices(services);
 
                     // Load modules and configure module services
                     var modules = new List<string>() 
@@ -163,7 +163,7 @@ public partial class App : Application
         // telemetryService.Initialize();
 
         // Initialize the Core Services
-        CoreServices.ServiceConfiguration.Initialize();
+        InitializeCoreServices();
 
         // Initialize loaded modules
         var moduleService = Host.Services.GetRequiredService<IModuleService>();
@@ -242,6 +242,24 @@ public partial class App : Application
 
         // Ensure the current window is active
         MainWindow.Activate();
+    }
+
+    public static void ConfigureCoreServices(IServiceCollection services)
+    {
+        Commands.ServiceConfiguration.ConfigureServices(services);
+        Modules.ServiceConfiguration.ConfigureServices(services);
+        Logging.ServiceConfiguration.ConfigureServices(services);
+        Messaging.ServiceConfiguration.ConfigureServices(services);
+        Projects.ServiceConfiguration.ConfigureServices(services);
+        Settings.ServiceConfiguration.ConfigureServices(services);
+        Telemetry.ServiceConfiguration.ConfigureServices(services);
+        UserInterface.ServiceConfiguration.ConfigureServices(services);
+        Utilities.ServiceConfiguration.ConfigureServices(services);
+    }
+
+    private void InitializeCoreServices()
+    {
+        UserInterface.ServiceConfiguration.Initialize();
     }
 
     private void OnUnhandledException(object sender, System.UnhandledExceptionEventArgs e)

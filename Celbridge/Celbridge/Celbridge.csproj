@@ -49,7 +49,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Projects\Celbridge.Projects.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Settings\Celbridge.Settings.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Telemetry\Celbridge.Telemetry.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
