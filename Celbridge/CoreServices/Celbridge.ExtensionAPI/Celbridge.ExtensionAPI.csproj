@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
+    <ProjectReference Include="..\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
 
 </Project>
