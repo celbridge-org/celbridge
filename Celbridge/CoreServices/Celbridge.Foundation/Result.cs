@@ -20,6 +20,10 @@ public abstract class Result
     }
 
     private List<ErrorInfo> _errors = new List<ErrorInfo>();
+
+    /// <summary>
+    /// Gets a concatenated string of all error messages, including file names and line numbers.
+    /// </summary>
     public string Error
     {
         get
@@ -41,6 +45,22 @@ public abstract class Result
             }
 
             return string.Join(Environment.NewLine, errorMessages);
+        }
+    }
+
+    /// <summary>
+    /// Gets the first error message in the errors list.
+    /// </summary>
+    public string FirstErrorMessage
+    {
+        get
+        {
+            if (_errors.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return _errors[0].Message;
         }
     }
 
