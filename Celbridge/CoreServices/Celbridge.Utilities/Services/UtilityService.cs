@@ -119,7 +119,7 @@ public class UtilityService : IUtilityService
         }
         catch (Exception ex)
         {
-            Result.Fail($"An error occurred: {ex.Message}");
+            Result.Fail(ex, $"An exception occurred when deleting old files.");
         }
 
         return Result.Ok(); 
