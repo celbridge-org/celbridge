@@ -247,9 +247,10 @@ public partial class App : Application
     public static void ConfigureCoreServices(IServiceCollection services)
     {
         Commands.ServiceConfiguration.ConfigureServices(services);
-        Modules.ServiceConfiguration.ConfigureServices(services);
+        Extensions.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
+        Modules.ServiceConfiguration.ConfigureServices(services);
         Projects.ServiceConfiguration.ConfigureServices(services);
         Settings.ServiceConfiguration.ConfigureServices(services);
         Telemetry.ServiceConfiguration.ConfigureServices(services);
