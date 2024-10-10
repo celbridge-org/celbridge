@@ -1,6 +1,4 @@
-﻿using Celbridge.Foundation;
-
-namespace Celbridge.Explorer;
+﻿namespace Celbridge.Explorer;
 
 /// <summary>
 /// A data structure representing the resources in the project folder.
