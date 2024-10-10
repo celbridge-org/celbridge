@@ -51,6 +51,7 @@
   <!-- Core Services -->
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Extensions\Celbridge.Extensions.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
