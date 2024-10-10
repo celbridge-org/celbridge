@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Extensions;
 using Celbridge.Inspector;
 using Celbridge.Projects;
 using Celbridge.Scripting;
@@ -16,6 +17,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
     private readonly IEditorSettings _editorSettings;
+    private readonly IExtensionService _extensionService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
@@ -34,9 +36,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public WorkspaceService(
         IServiceProvider serviceProvider,
         IEditorSettings editorSettings,
+        IExtensionService extensionService,
         IProjectService projectService)
     {
-        _editorSettings = editorSettings;
+        _editorSettings = editorSettings; 
+        _extensionService = extensionService;
 
         // Create instances of the required sub-services
 
@@ -153,6 +157,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             {
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+
+                _extensionService.UnloadExtensions();
 
                 (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (ScriptingService as IDisposable)!.Dispose();
