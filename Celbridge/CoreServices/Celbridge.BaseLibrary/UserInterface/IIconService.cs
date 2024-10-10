@@ -1,6 +1,4 @@
-﻿using Celbridge.Foundation;
-
-namespace Celbridge.UserInterface;
+﻿namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Manages the loading and retrieval of icon definitions.

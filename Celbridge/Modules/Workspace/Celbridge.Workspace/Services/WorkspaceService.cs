@@ -1,14 +1,13 @@
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Inspector;
 using Celbridge.Projects;
-using Celbridge.Explorer;
 using Celbridge.Scripting;
+using Celbridge.Settings;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
-using Celbridge.Settings;
-using Celbridge.Foundation;
 
 namespace Celbridge.Workspace.Services;
 

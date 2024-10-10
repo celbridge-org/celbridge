@@ -4,7 +4,6 @@ using Celbridge.Messaging;
 using Celbridge.Explorer;
 
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
-using Celbridge.Foundation;
 
 namespace Celbridge.Workspace.Services;
 

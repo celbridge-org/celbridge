@@ -1,6 +1,4 @@
-﻿using Celbridge.Foundation;
-
-namespace Celbridge.Scripting;
+﻿namespace Celbridge.Scripting;
 
 public enum ExecutionStatus
 {

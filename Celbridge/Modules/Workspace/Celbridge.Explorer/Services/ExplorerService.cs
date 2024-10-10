@@ -6,7 +6,6 @@ using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
-using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Services;
 
