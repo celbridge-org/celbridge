@@ -69,9 +69,8 @@ public class ModuleLoader : IDisposable
             var acquireResult = AcquireModuleInstance(assembly);
             if (acquireResult.IsFailure)
             {
-                var errorResult = Result<IModule>.Fail("Failed to acquire module instance from loaded assembly.") as Result;
-                errorResult.MergeErrors(acquireResult);
-                return (errorResult as Result<IModule>)!;
+                return Result<IModule>.Fail("Failed to acquire module instance from loaded assembly.")
+                    .AddErrors(acquireResult);
             }
             var module = acquireResult.Value;
 

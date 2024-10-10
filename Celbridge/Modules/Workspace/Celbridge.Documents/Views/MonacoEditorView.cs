@@ -75,9 +75,8 @@ public sealed partial class MonacoEditorView : DocumentView
         var loadResult = await ViewModel.LoadDocument();
         if (loadResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to load content for resource: {ViewModel.FileResource}");
-            failure.MergeErrors(loadResult);
-            return failure;
+            return Result.Fail($"Failed to load content for resource: {ViewModel.FileResource}")
+                .AddErrors(loadResult);
         }
         var text = loadResult.Value;
 
@@ -102,9 +101,8 @@ public sealed partial class MonacoEditorView : DocumentView
         var readResult = await ReadTextData();
         if (readResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to save document: '{ViewModel.FileResource}'");
-            failure.MergeErrors(readResult);
-            return failure;
+            return Result.Fail($"Failed to save document: '{ViewModel.FileResource}'")
+                .AddErrors(readResult);
         }
         var textData = readResult.Value;
 
