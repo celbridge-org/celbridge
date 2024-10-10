@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Diagnostics;
+using CommunityToolkit.Diagnostics;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.Events;
 
@@ -97,10 +97,26 @@ public class DotNetInteractiveExecutor : IScriptExecutor
                 var returnValue = result.Events.OfType<ReturnValueProduced>().First().Value;
                 if (returnValue is not null)
                 {
-                    var returnText = returnValue.ToString();
-                    if (!string.IsNullOrEmpty(returnText))
+                    if (returnValue is Result returnResult)
                     {
-                        WriteOutput(returnText);
+                       // Only print failure results - success results complete silently.
+                        if (returnResult.IsFailure)
+                        {
+                            var message = returnResult.FirstErrorMessage;
+                            if (string.IsNullOrEmpty(message))
+                            {
+                                message = "An error occured.";
+                            }
+                            WriteError(message);
+                        }
+                    }
+                    else
+                    {
+                        var returnText = returnValue.ToString();
+                        if (!string.IsNullOrEmpty(returnText))
+                        {
+                            WriteOutput(returnText);
+                        }
                     }
                 }
             }
