@@ -171,8 +171,8 @@ public partial class App : Application
         if (initializeResult.IsFailure)
         {
             // Log the error and attempt to continue
-            var failure = Result.Fail("Failed to initialize modules");
-            failure.MergeErrors(initializeResult);
+            var failure = Result.Fail("Failed to initialize modules")
+                .AddErrors(initializeResult);
             logger.LogError(failure.Error);
         }
 
