@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Celbridge.Projects;
 
 namespace Celbridge.Dialog;

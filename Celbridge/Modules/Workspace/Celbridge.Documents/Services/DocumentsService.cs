@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Foundation;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -105,9 +104,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var createResult = CreateDocumentViewInternal(fileResource);
         if (createResult.IsFailure)
         {
-            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'");
-            failure.MergeErrors(createResult);
-            return failure;
+            return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .AddErrors(createResult);
         }
         var documentView = createResult.Value;
 
@@ -118,17 +116,15 @@ public class DocumentsService : IDocumentsService, IDisposable
         var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
         {
-            var failure = Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'");
-            failure.MergeErrors(setFileResult);
-            return failure;
+            return Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'")
+                .AddErrors(setFileResult);
         }
 
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
-            var failure = Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'");
-            failure.MergeErrors(loadResult);
-            return failure;
+            return Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'")
+                .AddErrors(loadResult);
         }
 
         return Result<IDocumentView>.Ok(documentView);
@@ -173,9 +169,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open document for file resource '{fileResource}'");
-            failure.MergeErrors(openResult);
-            return failure;
+            return Result.Fail($"Failed to open document for file resource '{fileResource}'")
+                .AddErrors(openResult);
         }
 
         _logger.LogTrace($"Opened document for file resource '{fileResource}'");
@@ -188,9 +183,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var closeResult = await DocumentsPanel.CloseDocument(fileResource, forceClose);
         if (closeResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to close document for file resource '{fileResource}'");
-            failure.MergeErrors(closeResult);
-            return failure;
+            return Result.Fail($"Failed to close document for file resource '{fileResource}'")
+                .AddErrors(closeResult);
         }
 
         _logger.LogTrace($"Closed document for file resource '{fileResource}'");
@@ -203,9 +197,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var selectResult = DocumentsPanel.SelectDocument(fileResource);
         if (selectResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to select opened document for file resource '{fileResource}'");
-            failure.MergeErrors(selectResult);
-            return failure;
+            return Result.Fail($"Failed to select opened document for file resource '{fileResource}'")
+                .AddErrors(selectResult);
         }
 
         _logger.LogTrace($"Selected document for file resource '{fileResource}'");
@@ -218,9 +211,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var saveResult = await DocumentsPanel.SaveModifiedDocuments(deltaTime);
         if (saveResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to save modified documents");
-            failure.MergeErrors(saveResult);
-            return failure;
+            return Result.Fail("Failed to save modified documents")
+                .AddErrors(saveResult);
         }
 
         return Result.Ok();

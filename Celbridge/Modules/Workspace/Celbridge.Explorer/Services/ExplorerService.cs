@@ -6,7 +6,6 @@ using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
-using Celbridge.Foundation;
 
 namespace Celbridge.Explorer.Services;
 
@@ -127,9 +126,8 @@ public class ExplorerService : IExplorerService, IDisposable
         var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
         if (createItemsResult.IsFailure)
         {
-            var failure = Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.");
-            failure.MergeErrors(createItemsResult);
-            return failure;
+            return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.")
+                .AddErrors(createItemsResult);
         }
         var transferItems = createItemsResult.Value;
 
@@ -286,9 +284,8 @@ public class ExplorerService : IExplorerService, IDisposable
         var selectResult = await ExplorerPanel.SelectResource(resource);
         if (selectResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to select resource: {resource}");
-            failure.MergeErrors(selectResult);
-            return failure;
+            return Result.Fail($"Failed to select resource: {resource}")
+                .AddErrors(selectResult);
         }
 
         if (showExplorerPanel)
@@ -350,10 +347,9 @@ public class ExplorerService : IExplorerService, IDisposable
         var openResult = await ResourceUtils.OpenApplication(path);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open associated application for resource: {resource}");
-            failure.MergeErrors(openResult);
-            return failure;
-        }
+            return Result.Fail($"Failed to open associated application for resource: {resource}")
+                .AddErrors(openResult);
+}
 
         return Result.Ok();
     }
@@ -363,9 +359,8 @@ public class ExplorerService : IExplorerService, IDisposable
         var openResult = await ResourceUtils.OpenURL(url);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open url in system default browser: {url}");
-            failure.MergeErrors(openResult);
-            return failure;
+            return Result.Fail($"Failed to open url in system default browser: {url}");
+                .AddErrors(openResult);
         }
 
         return Result.Ok();

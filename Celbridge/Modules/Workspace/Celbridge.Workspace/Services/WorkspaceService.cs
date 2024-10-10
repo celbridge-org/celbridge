@@ -1,14 +1,13 @@
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Inspector;
 using Celbridge.Projects;
-using Celbridge.Explorer;
 using Celbridge.Scripting;
+using Celbridge.Settings;
 using Celbridge.Status;
 using CommunityToolkit.Diagnostics;
-using Celbridge.Settings;
-using Celbridge.Foundation;
 
 namespace Celbridge.Workspace.Services;
 
@@ -108,18 +107,16 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to save workspace state");
-                failure.MergeErrors(saveWorkspaceResult);
-                return failure;
+                return Result.Fail($"Failed to save workspace state")
+                    .AddErrors(saveWorkspaceResult);
             }
         }
 
         var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
         if (saveDocumentsResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to save modified documents");
-            failure.MergeErrors(saveDocumentsResult);
-            return failure;
+            return Result.Fail($"Failed to save modified documents")
+                .AddErrors(saveDocumentsResult);
         }
 
         // Todo: Clear save icon on the status bar if there are no pending saves

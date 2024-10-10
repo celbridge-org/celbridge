@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Celbridge.Workspace.Models;
 using CommunityToolkit.Diagnostics;
 using SQLite;
@@ -98,7 +97,7 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
         catch (Exception ex)
         {
-            return Result<IWorkspaceSettings>.Fail($"Failed to load workspace settings database. {ex.Message}");
+            return Result<IWorkspaceSettings>.Fail(ex, $"An exception occurred when loading the workspace settings database.");
         }
     }
 

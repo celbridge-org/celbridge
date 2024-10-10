@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Foundation;
+namespace Celbridge.Core;
 
 /// <summary>
 /// Provides general access to the dependency injection framework.

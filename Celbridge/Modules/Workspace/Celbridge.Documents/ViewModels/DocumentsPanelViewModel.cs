@@ -1,5 +1,4 @@
-﻿using Celbridge.Commands;
-using Celbridge.Foundation;
+using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace;
@@ -51,9 +50,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var createResult = await _documentsService.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
         {
-            var failure = Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'");
-            failure.MergeErrors(createResult);
-            return failure;
+            return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .AddErrors(createResult);
         }
         var documentView = createResult.Value;
 

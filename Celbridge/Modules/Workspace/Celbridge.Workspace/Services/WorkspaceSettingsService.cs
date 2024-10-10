@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
@@ -52,7 +51,7 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         }
         catch (Exception ex) 
         {
-            return Result.Fail($"Failed to create workspace settings database. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when creating the workspace settings database.");
         }
     }
 
@@ -72,7 +71,7 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when loading the workspace settings database. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when loading the workspace settings database.");
         }
     }
 

@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Foundation;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
@@ -37,9 +36,8 @@ public class RunCommand : CommandBase, IRunCommand
         var executeResult = await consoleService.ConsolePanel.ExecuteCommand(command, false);
         if (executeResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to run script resource: {ScriptResource}");
-            failure.MergeErrors(executeResult);
-            return failure;
+            return Result.Fail($"Failed to run script resource: {ScriptResource}")
+                .AddErrors(executeResult);
         }
 
         return Result.Ok();

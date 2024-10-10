@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Celbridge.Projects.Models;
 using SQLite;
 
@@ -86,9 +85,8 @@ public class Project : IDisposable, IProject
             var initResult = projectConfig.Initialize(configJson);
             if (initResult.IsFailure)
             {
-                var failure = Result<IProject>.Fail($"Failed to initialize project configuration");
-                failure.MergeErrors(initResult);
-                return failure;
+                return Result<IProject>.Fail($"Failed to initialize project configuration")
+                    .AddErrors(initResult);
             }
 
             project._projectConfig = projectConfig;
