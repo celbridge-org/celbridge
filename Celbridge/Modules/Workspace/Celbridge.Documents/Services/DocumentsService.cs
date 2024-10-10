@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Foundation;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;

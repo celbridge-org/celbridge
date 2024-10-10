@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;

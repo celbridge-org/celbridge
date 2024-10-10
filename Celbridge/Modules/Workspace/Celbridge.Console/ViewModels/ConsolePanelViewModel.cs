@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Console.Models;
-using Celbridge.Foundation;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Scripting;

@@ -1,4 +1,3 @@
-using Celbridge.Projects;
 using Celbridge.Projects.Services;
 
 namespace Celbridge.Tests;

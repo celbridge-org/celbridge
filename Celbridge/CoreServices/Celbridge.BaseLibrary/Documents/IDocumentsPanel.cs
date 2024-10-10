@@ -1,6 +1,4 @@
-﻿using Celbridge.Foundation;
-
-namespace Celbridge.Documents;
+﻿namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with the DocumentsPanel view.

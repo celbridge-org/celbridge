@@ -1,5 +1,4 @@
 using Celbridge.DataTransfer;
-using Celbridge.Foundation;
 using Celbridge.Modules;
 using Celbridge.Navigation;
 using Celbridge.Workspace.Commands;

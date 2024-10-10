@@ -1,5 +1,4 @@
-﻿using Celbridge.Foundation;
-using Microsoft.DotNet.Interactive;
+﻿using Microsoft.DotNet.Interactive;
 
 namespace Celbridge.Scripting.Services;
 
