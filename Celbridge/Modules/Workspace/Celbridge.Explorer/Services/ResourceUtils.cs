@@ -1,3 +1,6 @@
+using Celbridge.Foundation;
+using Microsoft.UI.Xaml.Controls;
+using Newtonsoft.Json.Linq;
 using Windows.System;
 
 namespace Celbridge.Explorer.Services;
@@ -127,5 +130,62 @@ public class ResourceUtils
 #else
         return Result.Fail("File manager is only supported on Windows");
 #endif
+    }
+
+    public static async Task<Result> OpenURL(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            await Launcher.LaunchUriAsync(uri);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"Failed to open URL: {url}");
+        }
+
+        return Result.Ok();
+    }
+
+    public static Result<string> ExtractUrlFromWebFile(string webFilePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(webFilePath))
+            {
+                return Result<string>.Fail($"Failed to get path for file resource: {webFilePath}");
+            }
+
+            if (!File.Exists(webFilePath))
+            {
+                return Result<string>.Fail($"File does not exist: {webFilePath}");
+            }
+
+            if (Path.GetExtension(webFilePath) != ".web")
+            {
+                return Result<string>.Fail($"File does not have the .web extension: {webFilePath}");
+            }
+
+            var json = File.ReadAllText(webFilePath);
+            var jsonObj = JObject.Parse(json);
+
+            var urlToken = jsonObj["url"];
+            if (urlToken is null)
+            {
+                return Result<string>.Fail($"Failed to find 'url' property in .web JSON data: {webFilePath}");
+            }
+
+            var url = urlToken.ToString();
+            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+            {
+                return Result<string>.Fail($"Url is not valid: {url}");
+            }
+
+            return Result<string>.Ok(url);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail(ex, $"An exception occurred when extracting the url from a .web file");
+        }
     }
 }

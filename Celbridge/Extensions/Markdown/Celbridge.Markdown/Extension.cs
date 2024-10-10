@@ -1,25 +1,21 @@
-using Celbridge.Core;
-using Celbridge.Foundation;
-using Celbridge.Messaging;
-using Celbridge.Modules;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Celbridge.Markdown;
 
-public class Extension : IModule
+public class Extension : IExtension
 {
-    public void ConfigureServices(IModuleServiceCollection config)
-    {
-        //
-        // Register services
-        //
-    }
+    private IExtensionContext? _context;
+    public IExtensionContext Context => _context!;
 
-    public Result Initialize()
+    public Result Initialize(IExtensionContext context)
     {
-        var messengerService = ServiceLocator.ServiceProvider.GetRequiredService<IMessengerService>();
+        _context = context;
+
+        // It's up to the extension author to pass the extension context to any code that needs it.
 
         return Result.Ok();
     }
-}
 
+    public Result Unload()
+    {
+        return Result.Ok();
+    }
+}

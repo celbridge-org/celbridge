@@ -11,7 +11,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
+    <ProjectReference Include="..\Celbridge.SharedTypes\Celbridge.SharedTypes.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+using Celbridge.Extensions;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
@@ -5,10 +6,14 @@ namespace Celbridge.Workspace.Services;
 public class WorkspaceLoader
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IExtensionService _extensionService;
 
-    public WorkspaceLoader(IWorkspaceWrapper workspaceWrapper)
+    public WorkspaceLoader(
+        IWorkspaceWrapper workspaceWrapper,
+        IExtensionService extensionService)
     {
         _workspaceWrapper = workspaceWrapper;
+        _extensionService = extensionService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -34,6 +39,34 @@ public class WorkspaceLoader
 
         var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
+
+        //
+        // Load the extensions for the workspace
+        //
+        try
+        {
+            // Todo: Get this extension list from the project config / scanning the project folder.
+            var extensions = new List<string>() { "Celbridge.Markdown" };
+            foreach (var extension in extensions)
+            {
+                var loadResult = _extensionService.LoadExtension(extension);
+                if (loadResult.IsFailure)
+                {
+                    var unloadResult = _extensionService.UnloadExtensions();
+                    if (unloadResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to unload extensions after loading extension failed: {extension}")
+                            .AddErrors(loadResult)
+                            .AddErrors(unloadResult);
+                    }
+                    return Result.Fail($"Failed to load extension: {extension}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex, $"An exception occurred when loading extensions.");
+        }
 
         //
         // Populate the resource registry.

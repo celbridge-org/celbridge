@@ -327,6 +327,19 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
+    public async Task<Result> OpenFileManager(ResourceKey resource)
+    {
+        var path = ResourceRegistry.GetResourcePath(resource);
+        var openResult = await ResourceUtils.OpenFileManager(path);
+        if (openResult.IsFailure)
+        {
+            return Result.Fail($"Failed to open file manager for resource: {resource}")
+                .AddErrors(openResult);
+        }
+
+        return Result.Ok();
+    }
+
     public async Task<Result> OpenApplication(ResourceKey resource)
     {
         var path = ResourceRegistry.GetResourcePath(resource);
@@ -340,17 +353,16 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> OpenFileManager(ResourceKey resource)
+    public async Task<Result> OpenBrowser(string url)
     {
-        var path = ResourceRegistry.GetResourcePath(resource);
-        var openResult = await ResourceUtils.OpenFileManager(path);
+        var openResult = await ResourceUtils.OpenURL(url);
         if (openResult.IsFailure)
         {
-            return Result.Fail($"Failed to open file manager for resource: {resource}")
+            return Result.Fail($"Failed to open url in system default browser: {url}")
                 .AddErrors(openResult);
         }
 
-        return Result.Ok(); 
+        return Result.Ok();
     }
 
     private bool PathContainsSubPath(string path, string subPath)

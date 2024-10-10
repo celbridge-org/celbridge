@@ -48,8 +48,10 @@
     <UnoImage Include="Assets\Images\title_icon.svg" />
   </ItemGroup>
 
+  <!-- Core Services -->
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Extensions\Celbridge.Extensions.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
@@ -60,8 +62,14 @@
     <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
   </ItemGroup>
 
+  <!-- Modules -->
   <ItemGroup>
     <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+  </ItemGroup>
+
+  <!-- Extensions -->
+  <ItemGroup>
+    <ProjectReference Include="..\Extensions\Markdown\Celbridge.Markdown\Celbridge.Markdown.csproj" />
   </ItemGroup>
 
 </Project>

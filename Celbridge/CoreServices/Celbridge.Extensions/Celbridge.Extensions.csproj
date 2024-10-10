@@ -8,10 +8,27 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <UnoFeatures>
+      CSharpMarkup;
+      Lottie;
+      Hosting;
+      Toolkit;
+      Logging;
+      Mvvm;
+      Configuration;
+      Localization;
+      ThemeService;
+    </UnoFeatures>
+
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 
 </Project>
