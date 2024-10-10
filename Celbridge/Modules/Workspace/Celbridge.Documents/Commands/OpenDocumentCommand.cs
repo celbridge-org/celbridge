@@ -23,9 +23,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         var openResult = await documentsService.OpenDocument(FileResource);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open document for file resource '{FileResource}'");
-            failure.MergeErrors(openResult);
-            return failure;
+            return Result.Fail($"Failed to open document for file resource '{FileResource}'")
+                .AddErrors(openResult);
         }
 
         return Result.Ok();

@@ -39,9 +39,8 @@ public class ModuleService : IModuleService
             var loadResult = _moduleLoader.LoadModules(module);
             if (loadResult.IsFailure)
             {
-                var failure = Result.Fail($"Failed to load module {module}");
-                failure.MergeErrors(loadResult);
-                return failure;
+                return Result.Fail($"Failed to load module {module}")
+                    .AddErrors(loadResult);
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace Celbridge.Foundation;
 
@@ -44,10 +44,12 @@ public abstract class Result
         }
     }
 
-
     public bool IsSuccess { get; protected set; }
     public bool IsFailure => !IsSuccess;
 
+    /// <summary>
+    /// Initializes a new instance of the Result class with a success or failure state and an error message.
+    /// </summary>
     protected Result(bool isSuccess, string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         IsSuccess = isSuccess;
@@ -72,6 +74,9 @@ public abstract class Result
         }
     }
 
+    /// <summary>
+    /// Initializes a new instance of the Result class with a success or failure state and an exception.
+    /// </summary>
     protected Result(bool isSuccess, Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         IsSuccess = isSuccess;
@@ -97,6 +102,9 @@ public abstract class Result
         }
     }
 
+    /// <summary>
+    /// Adds an error message to the result.
+    /// </summary>
     public void AddError(string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         if (!string.IsNullOrEmpty(error))
@@ -110,6 +118,9 @@ public abstract class Result
         }
     }
 
+    /// <summary>
+    /// Adds an exception to the result.
+    /// </summary>
     public void AddError(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         if (exception != null)
@@ -124,11 +135,18 @@ public abstract class Result
         }
     }
 
-    public void MergeErrors(Result otherResult)
+    /// <summary>
+    /// Adds errors from another result to this result.
+    /// </summary>
+    public Result AddErrors(Result otherResult)
     {
         _errors.InsertRange(0, otherResult._errors);
+        return this;
     }
 
+    /// <summary>
+    /// Creates a failure result with an error message.
+    /// </summary>
     public static Result Fail(string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         if (string.IsNullOrEmpty(error))
@@ -139,6 +157,9 @@ public abstract class Result
         return new Failure(error, fileName, lineNumber);
     }
 
+    /// <summary>
+    /// Creates a failure result with an exception.
+    /// </summary>
     public static Result Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         if (exception == null)
@@ -149,6 +170,9 @@ public abstract class Result
         return new Failure(exception, fileName, lineNumber);
     }
 
+    /// <summary>
+    /// Creates a success result.
+    /// </summary>
     public static Result Ok()
     {
         return new OkResult();
@@ -170,33 +194,60 @@ public class Result<T> : Result where T : notnull
 {
     public T Value { get; private set; }
 
+    /// <summary>
+    /// Initializes a new instance of the Result class with a success state and a value.
+    /// </summary>
     private Result(T value) : base(true, string.Empty)
     {
         Value = value;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the Result class with a failure state and an error message.
+    /// </summary>
     private Result(string error, string fileName, int lineNumber) : base(false, error, fileName, lineNumber)
     {
         Value = default!;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the Result class with a failure state and an exception.
+    /// </summary>
     private Result(Exception exception, string fileName, int lineNumber) : base(false, exception, fileName, lineNumber)
     {
         Value = default!;
     }
 
+    /// <summary>
+    /// Creates a success result with a value.
+    /// </summary>
     public static Result<T> Ok(T value)
     {
         return new Result<T>(value);
     }
 
+    /// <summary>
+    /// Creates a failure result with an error message.
+    /// </summary>
     public new static Result<T> Fail(string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         return new Result<T>(error, fileName, lineNumber);
     }
 
+    /// <summary>
+    /// Creates a failure result with an exception.
+    /// </summary>
     public new static Result<T> Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         return new Result<T>(exception, fileName, lineNumber);
+    }
+
+    /// <summary>
+    /// Adds errors from another result to this result.
+    /// </summary>
+    public new Result<T> AddErrors(Result otherResult)
+    {
+        base.AddErrors(otherResult);
+        return this;
     }
 }
