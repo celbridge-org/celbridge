@@ -23,11 +23,10 @@
   </PropertyGroup>
 
   <!-- 
-    Project reference to Celbridge.BaseLibrary.
-    This should be the ONLY directly referenced project in any module project.
+    Celbridge.ExtensionAPI should be the only directly referenced project in any extension project.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
   </ItemGroup>
 
 </Project>
