@@ -25,9 +25,8 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
         var closeResult = await documentsService.CloseDocument(FileResource, ForceClose);
         if (closeResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to close document for file resource '{FileResource}'");
-            failure.MergeErrors(closeResult);
-            return failure;
+            return Result.Fail($"Failed to close document for file resource '{FileResource}'")
+                .AddErrors(closeResult);
         }
 
         return Result.Ok();

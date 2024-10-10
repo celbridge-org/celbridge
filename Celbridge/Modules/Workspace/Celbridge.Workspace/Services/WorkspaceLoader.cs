@@ -28,9 +28,8 @@ public class WorkspaceLoader
         var acquireResult = await workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         if (acquireResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to acquire the workspace settings");
-            failure.MergeErrors(acquireResult);
-            return failure;
+            return Result.Fail("Failed to acquire the workspace settings")
+                .AddErrors(acquireResult);
         }
 
         var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
@@ -56,9 +55,8 @@ public class WorkspaceLoader
             var updateResult = await explorerService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
-                var failure = Result.Fail("Failed to update resources");
-                failure.MergeErrors(updateResult);
-                return failure;
+                return Result.Fail("Failed to update resources")
+                    .AddErrors(updateResult);
             }
         }
         catch (Exception ex)
@@ -92,9 +90,8 @@ public class WorkspaceLoader
         var initResult = await consoleService.ConsolePanel.InitializeScripting();
         if (initResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to initialize console scripting");
-            failure.MergeErrors(initResult);
-            return failure;
+            return Result.Fail("Failed to initialize console scripting")
+                .AddErrors(initResult);
         }
 
         return Result.Ok();
