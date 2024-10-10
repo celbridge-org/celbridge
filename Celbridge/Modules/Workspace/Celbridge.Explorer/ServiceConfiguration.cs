@@ -51,5 +51,6 @@ public static class ServiceConfiguration
         config.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
         config.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
         config.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
+        config.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
     }
 }
