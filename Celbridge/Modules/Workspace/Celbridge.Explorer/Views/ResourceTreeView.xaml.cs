@@ -374,6 +374,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     {
         // A null resource here indicates the root folder
         var resource = AcquireContextMenuResource(sender);
+
         ViewModel.OpenResourceInApplication(resource);
     }
 

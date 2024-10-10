@@ -2,15 +2,18 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
-using Celbridge.Foundation;
+using Celbridge.Logging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Explorer.ViewModels;
 
 public partial class ResourceTreeViewModel : ObservableObject
 {
+    private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IExplorerService _explorerService;
@@ -20,10 +23,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
     public ResourceTreeViewModel(
+        ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
@@ -242,11 +247,32 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
-        // Execute a command to open the resource with the associated application
-        _commandService.Execute<IOpenApplicationCommand>(command =>
+        if (Path.GetExtension(resourceKey) == ".web")
         {
-            command.Resource = resourceKey;
-        });
+            var webFilePath = resourceRegistry.GetResourcePath(resourceKey);
+
+            var extractResult = ResourceUtils.ExtractUrlFromWebFile(webFilePath);
+            if (extractResult.IsFailure)
+            {
+                _logger.LogError(extractResult.Error);
+                return;
+            }
+            var url = extractResult.Value;
+            
+            // Execute a command to open the resource with the associated application
+            _commandService.Execute<IOpenBrowserCommand>(command =>
+            {
+                command.URL = url;
+            });
+        }
+        else
+        {
+            // Execute a command to open the resource with the associated application
+            _commandService.Execute<IOpenApplicationCommand>(command =>
+            {
+                command.Resource = resourceKey;
+            });
+        }
     }
 
     public void MoveResourcesToFolder(List<IResource> resources, IFolderResource? destFolder)
