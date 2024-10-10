@@ -257,7 +257,7 @@ public partial class ResourceTreeViewModel : ObservableObject
             }
             var url = extractResult.Value;
             
-            // Execute a command to open the resource with the associated application
+            // Execute a command to open the resource with the system default browser
             _commandService.Execute<IOpenBrowserCommand>(command =>
             {
                 command.URL = url;

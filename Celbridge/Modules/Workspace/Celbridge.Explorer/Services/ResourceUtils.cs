@@ -172,7 +172,7 @@ public class ResourceUtils
             var urlToken = jsonObj["url"];
             if (urlToken is null)
             {
-                return Result<string>.Fail($"Failed to fine 'url' property in .web file: {webFilePath}");
+                return Result<string>.Fail($"Failed to find 'url' property in .web JSON data: {webFilePath}");
             }
 
             var url = urlToken.ToString();
