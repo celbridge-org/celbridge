@@ -1,4 +1,4 @@
-namespace Celbridge.BaseLibrary.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Provides a preview (in HTML format) of the contents of an editor document.
