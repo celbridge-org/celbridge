@@ -57,7 +57,7 @@ public class IconService : IIconService
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load icon definitions. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when loading the icon definitions.");
         }
 
         return Result.Ok();
@@ -248,17 +248,9 @@ public class IconService : IIconService
                 return Result<JObject>.Ok(jo);
             }
         }
-        catch (JsonReaderException jex)
-        {
-            return Result<JObject>.Fail($"JSON Parsing Error while loading icon data: {jex.Message}");
-        }
-        catch (IOException ioex)
-        {
-            return Result<JObject>.Fail($"IO Error while reading icon data: {ioex.Message}");
-        }
         catch (Exception ex)
         {
-            return Result<JObject>.Fail($"Unexpected error while loading icon data: {ex.Message}");
+            return Result<JObject>.Fail(ex, $"An exception occurred when loading the icon data.");
         }
     }
 
