@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Core;
+namespace Celbridge.Core;
 
 /// <summary>
 /// A unique numeric identifier for any type of entity.

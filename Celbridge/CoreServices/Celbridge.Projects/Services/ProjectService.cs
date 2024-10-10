@@ -1,7 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
-using Newtonsoft.Json.Linq;
 
 using Path = System.IO.Path;
 

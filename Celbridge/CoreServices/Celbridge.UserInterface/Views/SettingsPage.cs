@@ -1,4 +1,4 @@
-﻿namespace Celbridge.UserInterface.Views;
+namespace Celbridge.UserInterface.Views;
 
 public sealed partial class SettingsPage : Page
 {

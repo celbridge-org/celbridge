@@ -18,6 +18,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
-    <ProjectReference Include="..\Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 </Project>

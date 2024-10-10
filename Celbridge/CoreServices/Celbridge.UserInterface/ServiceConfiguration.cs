@@ -1,9 +1,9 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
-using Celbridge.Workspace;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface;
 
@@ -14,7 +14,6 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IIconService, IconService>();
