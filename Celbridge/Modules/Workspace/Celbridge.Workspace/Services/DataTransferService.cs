@@ -1,10 +1,9 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
 
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
-using Celbridge.Foundation;
 
 namespace Celbridge.Workspace.Services;
 
@@ -129,9 +128,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             var createTransferResult = explorerService.CreateResourceTransfer(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
             {
-                var failure = Result<IResourceTransfer>.Fail($"Failed to create resource transfer.");
-                failure.MergeErrors(createTransferResult);
-                return failure;
+                return Result<IResourceTransfer>.Fail($"Failed to create resource transfer.")
+                    .AddErrors(createTransferResult);
             }
             var resourceTransfer = createTransferResult.Value;
 
@@ -153,9 +151,8 @@ public class DataTransferService : IDataTransferService, IDisposable
         var getResult = await GetClipboardResourceTransfer(destFolderResource);
         if (getResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to get clipboard resource transfer");
-            failure.MergeErrors(getResult);
-            return failure;
+            return Result.Fail("Failed to get clipboard resource transfer")
+                .AddErrors(getResult);
         }
         var description = getResult.Value;
 

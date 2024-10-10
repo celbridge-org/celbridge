@@ -1,6 +1,4 @@
-﻿using Celbridge.Foundation;
-
-namespace Celbridge.Explorer;
+﻿namespace Celbridge.Explorer;
 
 /// <summary>
 /// A message sent when the resource registry has been updated.

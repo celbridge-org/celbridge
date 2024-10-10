@@ -1,5 +1,4 @@
-﻿using Celbridge.Commands;
-using Celbridge.Foundation;
+using Celbridge.Commands;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -24,9 +23,8 @@ public class SelectDocumentCommand : CommandBase, ISelectDocumentCommand
         var selectResult = documentsService.SelectDocument(FileResource);
         if (selectResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to select document for file resource '{FileResource}'");
-            failure.MergeErrors(selectResult);
-            return failure;
+            return Result.Fail($"Failed to select document for file resource '{FileResource}'")
+                .AddErrors(selectResult);
         }
 
         await Task.CompletedTask;

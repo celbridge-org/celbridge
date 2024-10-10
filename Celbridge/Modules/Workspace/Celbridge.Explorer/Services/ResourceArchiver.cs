@@ -1,4 +1,3 @@
-﻿using Celbridge.Foundation;
 using Celbridge.Utilities;
 using Celbridge.Utilities.Services;
 using Celbridge.Workspace;
@@ -47,9 +46,8 @@ public class ResourceArchiver
         var getResult = _resourceRegistry.GetResource(resource);
         if (getResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to archive resource: '{resource}'");
-            failure.MergeErrors(getResult);
-            return failure;
+            return Result.Fail($"Failed to archive resource: '{resource}'")
+                .AddErrors(getResult);
         }
 
         var r = getResult.Value;

@@ -1,5 +1,4 @@
-﻿using Celbridge.Foundation;
-using Celbridge.Projects;
+﻿using Celbridge.Projects;
 using Celbridge.Validators;
 
 namespace Celbridge.Dialog;

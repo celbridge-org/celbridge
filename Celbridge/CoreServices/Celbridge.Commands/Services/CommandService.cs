@@ -1,4 +1,3 @@
-using Celbridge.Foundation;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -235,9 +234,8 @@ public class CommandService : ICommandService
         var undoResult = Undo(undoStackName);
         if (undoResult.IsFailure)
         {
-            var failure = Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'");
-            failure.MergeErrors(undoResult);
-            return failure;
+            return Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'")
+                .AddErrors(undoResult);
         }
 
         return Result<bool>.Ok(true);
@@ -259,9 +257,8 @@ public class CommandService : ICommandService
         var redoResult = Redo(undoStackName);
         if (redoResult.IsFailure)
         {
-            var failure = Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'");
-            failure.MergeErrors(redoResult);
-            return failure;
+            return Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'")
+                .AddErrors(redoResult);
         }
 
         return Result<bool>.Ok(true);
@@ -425,9 +422,8 @@ public class CommandService : ICommandService
         var flushResult = await _workspaceWrapper.WorkspaceService.FlushPendingSaves(deltaTime);
         if (flushResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to flush pending saves");
-            failure.MergeErrors(flushResult);
-            return failure;
+            return Result.Fail($"Failed to flush pending saves")
+                .AddErrors(flushResult);
         }
 
         // Restart the timer to account for time spent saving
