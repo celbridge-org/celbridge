@@ -7,26 +7,12 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
-      Hosting;
-      Toolkit;
-      Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
-    </UnoFeatures>
-
   </PropertyGroup>
 
   <!-- 
     Celbridge.ExtensionAPI should be the only directly referenced project in any extension project.
   -->
   <ItemGroup>
-
     <ProjectReference Include="..\..\..\Shared\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
   </ItemGroup>
 
