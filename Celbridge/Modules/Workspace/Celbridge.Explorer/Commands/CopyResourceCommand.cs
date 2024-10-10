@@ -183,7 +183,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         catch (Exception ex)
         {
             await OnOperationFailed();
-            return Result.Fail($"Failed to delete copied resource. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when deleting the copied resource.");
         }
         finally
         {
@@ -259,7 +259,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to copy file. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when copying the file.");
         }
 
         return Result.Ok();
@@ -319,7 +319,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to copy folder. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when copying the folder.");
         }
 
         var newParentFolder = resourceB.GetParent();
