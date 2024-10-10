@@ -8,7 +8,7 @@ public interface IExtensionService
     /// <summary>
     /// Loads the specified extensions.
     /// </summary>
-    Result LoadExtensions(List<string> extensions);
+    Result LoadExtension(string extension);
 
     /// <summary>
     /// Unloads all currently loaded extensions.

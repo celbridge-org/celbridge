@@ -13,5 +13,9 @@ public class Extension : IExtension
 
         return Result.Ok();
     }
-}
 
+    public Result Unload()
+    {
+        return Result.Ok();
+    }
+}

@@ -11,6 +11,7 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddSingleton<IExtensionService, ExtensionService>();
+        services.AddTransient<IExtensionContext, ExtensionContext>();
     }
 
     public static void Initialize()
