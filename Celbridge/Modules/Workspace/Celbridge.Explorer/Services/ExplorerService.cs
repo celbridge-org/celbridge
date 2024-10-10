@@ -333,9 +333,8 @@ public class ExplorerService : IExplorerService, IDisposable
         var openResult = await ResourceUtils.OpenFileManager(path);
         if (openResult.IsFailure)
         {
-            var failure = Result.Fail($"Failed to open file manager for resource: {resource}");
-            failure.MergeErrors(openResult);
-            return failure;
+            return Result.Fail($"Failed to open file manager for resource: {resource}")
+                .AddErrors(openResult);
         }
 
         return Result.Ok();
@@ -359,7 +358,7 @@ public class ExplorerService : IExplorerService, IDisposable
         var openResult = await ResourceUtils.OpenURL(url);
         if (openResult.IsFailure)
         {
-            return Result.Fail($"Failed to open url in system default browser: {url}");
+            return Result.Fail($"Failed to open url in system default browser: {url}")
                 .AddErrors(openResult);
         }
 
