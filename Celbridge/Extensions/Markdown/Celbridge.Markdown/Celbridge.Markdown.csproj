@@ -26,7 +26,8 @@
     Celbridge.ExtensionAPI should be the only directly referenced project in any extension project.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\CoreServices\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
+
+    <ProjectReference Include="..\..\..\Shared\Celbridge.ExtensionAPI\Celbridge.ExtensionAPI.csproj" />
   </ItemGroup>
 
 </Project>
