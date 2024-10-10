@@ -1,5 +1,4 @@
 ﻿using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Messaging;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
@@ -7,6 +6,7 @@ using CountlySDK.Entities;
 using CountlySDK;
 using Newtonsoft.Json;
 using System.Text.Json.Nodes;
+using Celbridge.Foundation;
 
 namespace Celbridge.Telemetry.Services;
 

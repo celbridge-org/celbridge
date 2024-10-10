@@ -33,15 +33,15 @@
 
   <ItemGroup>
     <!-- To include content from a library project, you have to both copy it in the library project and link to it here in the executable project -->
-    <Content Include="..\Extensions\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
+    <Content Include="..\Modules\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- Excluding these files as they trigger localization warnings during the build process -->
-    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\basic-languages\st\st.js" />
-    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-    <Content Remove="..\Extensions\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,7 +50,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.CoreServices\Celbridge.CoreServices.csproj" />
-    <ProjectReference Include="..\Extensions\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
 </Project>

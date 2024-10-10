@@ -9,6 +9,7 @@ public static class ServiceConfiguration
         //
 
         Commands.ServiceConfiguration.ConfigureServices(services);
+        Modules.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
         Projects.ServiceConfiguration.ConfigureServices(services);

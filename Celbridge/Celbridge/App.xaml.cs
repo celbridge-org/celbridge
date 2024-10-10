@@ -1,9 +1,11 @@
-using Celbridge.Commands;
 using Celbridge.Commands.Services;
-using Celbridge.Services;
-using Celbridge.UserInterface;
+using Celbridge.Commands;
+using Celbridge.Foundation;
+using Celbridge.Modules.Services;
+using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
+using Celbridge.UserInterface;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Uno.Resizetizer;
@@ -27,17 +29,12 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
-    private ExtensionLoader _extensionLoader = new();
-
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Catch all types of unhandled exceptions
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         this.UnhandledException += OnAppUnhandledException;
-
-        // Load Extensions
-        _extensionLoader.LoadExtension("Celbridge.Workspace");
 
         // Load WinUI Resources
         Resources.Build(r => r.Merged(
@@ -107,10 +104,16 @@ public partial class App : Application
                     // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
 
-                    // Configure all services and loaded extensions
-                    Guard.IsNotNull(_extensionLoader);
-                    var extensions = _extensionLoader.LoadedExtensions.Values.ToList();
-                    ServiceConfiguration.ConfigureServices(services, extensions);
+                    // Configure all core services
+                    CoreServices.ServiceConfiguration.ConfigureServices(services);
+
+                    // Load modules and configure module services
+                    var modules = new List<string>() 
+                    { 
+                        "Celbridge.Workspace", 
+                        //"Celbridge.Markdown" 
+                    };
+                    ModuleService.LoadModules(modules, services);
                 })
             );
         MainWindow = builder.Window;
@@ -123,7 +126,8 @@ public partial class App : Application
         Host = builder.Build();
 
         // Setup the globally available helper for using the dependency injection framework.
-        Core.ServiceLocator.Initialize(Host.Services);
+
+        ServiceLocator.Initialize(Host.Services);
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
         var utilityService = Host.Services.GetRequiredService<IUtilityService>();
@@ -161,8 +165,16 @@ public partial class App : Application
         // Initialize the Core Services
         CoreServices.ServiceConfiguration.Initialize();
 
-        // Initialize any loaded extensions
-        _extensionLoader.InitializeExtensions();
+        // Initialize loaded modules
+        var moduleService = Host.Services.GetRequiredService<IModuleService>();
+        var initializeResult = moduleService.InitializeModules();
+        if (initializeResult.IsFailure)
+        {
+            // Log the error and attempt to continue
+            var failure = Result.Fail("Failed to initialize modules");
+            failure.MergeErrors(initializeResult);
+            logger.LogError(failure.Error);
+        }
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active

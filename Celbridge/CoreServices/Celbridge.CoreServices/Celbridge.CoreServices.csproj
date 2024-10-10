@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\Celbridge.Modules\Celbridge.Modules.csproj" />
     <ProjectReference Include="..\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\Celbridge.Messaging\Celbridge.Messaging.csproj" />
     <ProjectReference Include="..\Celbridge.Projects\Celbridge.Projects.csproj" />
