@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
+  
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\Celbridge.SharedTypes\Celbridge.SharedTypes.csproj" />
   </ItemGroup>
 
 </Project>
