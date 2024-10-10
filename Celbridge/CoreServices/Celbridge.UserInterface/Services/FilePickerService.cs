@@ -1,4 +1,4 @@
-﻿using Celbridge.FilePicker;
+using Celbridge.FilePicker;
 using Windows.Storage.Pickers;
 
 namespace Celbridge.UserInterface.Services;
