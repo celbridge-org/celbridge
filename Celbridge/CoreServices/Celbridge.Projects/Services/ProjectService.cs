@@ -110,7 +110,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load project database. {ex.Message}");
+            return Result.Fail(ex, $"An exception occurred when loading the project database.");
         }
     }
 
