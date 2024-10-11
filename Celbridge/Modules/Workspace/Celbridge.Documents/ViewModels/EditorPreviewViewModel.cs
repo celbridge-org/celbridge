@@ -8,7 +8,5 @@ public partial class EditorPreviewViewModel : ObservableObject
     private string _previewHTML = string.Empty;
 
     public EditorPreviewViewModel()
-    {
-        PreviewHTML = "<p>Preview</p>";
-    }
+    {}
 }

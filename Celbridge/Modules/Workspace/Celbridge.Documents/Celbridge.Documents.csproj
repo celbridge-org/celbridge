@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <Content Include="monaco\**" />
+    <Content Include="preview\**" />
     <!-- Excluding these files as they trigger localization warnings during the build process -->
     <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
     <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
