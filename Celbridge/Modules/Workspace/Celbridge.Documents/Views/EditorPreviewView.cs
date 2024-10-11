@@ -12,6 +12,12 @@ public sealed partial class EditorPreviewView : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<EditorPreviewViewModel>();
 
-        this.DataContext(ViewModel);
+        var textBlock = new TextBlock()
+            .Margin(4)
+            .Text(x => x.Binding(() => ViewModel.PreviewHTML)
+                .Mode(BindingMode.OneWay));
+            
+        this.DataContext(ViewModel)
+            .Content(textBlock);
     }
 }
