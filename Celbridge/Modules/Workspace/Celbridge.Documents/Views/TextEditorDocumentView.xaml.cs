@@ -35,6 +35,9 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     public Task<Result> SetFileResource(ResourceKey fileResource)
     {
+        // Todo: Check if there is a Preview Provider extension registered for this language
+        // If so, then enable the preview panel and connect up the preview provider as the text source.
+
         return MonacoEditor.SetFileResource(fileResource);
     }
 
