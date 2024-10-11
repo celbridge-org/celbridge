@@ -1,11 +1,16 @@
 namespace Celbridge.Markdown;
 
-public class MarkdownPreviewProvider : IPreviewProvider
+public class MarkdownPreviewProvider : PreviewProvider
 {
-    public async Task<Result<string>> GeneratePreviewHtml(string text)
+    public MarkdownPreviewProvider()
+    {
+        SupportedFileExtensions.Add(".md");
+    }
+
+    public override async Task<Result<string>> GeneratePreview(string text)
     {
         await Task.CompletedTask;
 
-        return Result<string>.Ok("This is a preview");
+        return Result<string>.Ok(text);
     }
 }
