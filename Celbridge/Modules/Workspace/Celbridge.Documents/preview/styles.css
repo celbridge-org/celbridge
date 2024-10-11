@@ -1,0 +1,59 @@
+
+/* Common styles for both light and dark mode */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+}
+
+h1, h2, h3 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3em;
+}
+
+pre, code {
+    background-color: #f5f5f5;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+blockquote {
+    border-left: 4px solid #ccc;
+    padding-left: 10px;
+    color: #666;
+    margin: 20px 0;
+    font-style: italic;
+}
+
+/* Light mode styles */
+body.light-mode {
+    background-color: white;
+    color: black;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+
+pre, code {
+    background-color: #2d2d2d;
+}
+
+/* Support for dark mode based on system settings */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+    }
+
+    pre, code {
+        background-color: #2d2d2d;
+    }
+
+    blockquote {
+        border-left-color: #555;
+        color: #aaa;
+    }
+}
