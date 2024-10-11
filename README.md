@@ -68,8 +68,6 @@ This project uses the following open source code:
 - [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
 - [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 
-Additional open source licenses are listed in THIRD_PARTY_LICENSES.md
-
 
 
 
