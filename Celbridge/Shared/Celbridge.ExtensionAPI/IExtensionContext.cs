@@ -6,7 +6,7 @@ namespace Celbridge.ExtensionAPI;
 public interface IExtensionContext
 {
     /// <summary>
-    /// Maps supported file extensions to text editor preview providers.
+    /// Adds a preview provider that generates a HTML preview for text editor documents.
     /// </summary>
-    Dictionary<string, IPreviewProvider> PreviewProviders { get; }
+    Result AddPreviewProvider(PreviewProvider previewProvider);
 }

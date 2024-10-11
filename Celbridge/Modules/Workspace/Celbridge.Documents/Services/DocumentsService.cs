@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
+using Celbridge.ExtensionAPI;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
@@ -312,6 +313,36 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
+    private List<PreviewProvider> _previewProviders = new();
+
+    public Result AddPreviewProvider(PreviewProvider previewProvider)
+    {
+        // Check for conflicts with previously registered providers
+        foreach (var fileExtension in previewProvider.SupportedFileExtensions)
+        {
+            var existingProvider = _previewProviders.FirstOrDefault(p => p.SupportsFileExtension(fileExtension));
+            if (existingProvider != null)
+            {
+                return Result.Fail($"A preview provider is already registered for extension: '{fileExtension}'");
+            }
+        }
+
+        _previewProviders.Add(previewProvider);
+
+        return Result.Ok();
+    }
+
+    public Result<PreviewProvider> GetPreviewProvider(string fileExtension)
+    {
+        var provider = _previewProviders.FirstOrDefault(p => p.SupportsFileExtension(fileExtension));
+        if (provider != null)
+        {
+            return Result<PreviewProvider>.Ok(provider);
+        }
+
+        return Result<PreviewProvider>.Fail();
+    }
+
     private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)
     {
         var viewType = GetDocumentViewType(fileResource);
@@ -403,6 +434,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 _messengerService.Unregister<OpenDocumentsChangedMessage>(this);
                 _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
                 _messengerService.Unregister<DocumentResourceChangedMessage>(this);
+
+                _previewProviders.Clear();
             }
 
             _disposed = true;

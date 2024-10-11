@@ -15,6 +15,10 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
+    // A cache of the editor text that was last saved to disk.
+    [ObservableProperty]
+    private string _cachedText = string.Empty;
+
     public MonacoEditorViewModel(
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
@@ -29,6 +33,9 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         {
             // Read the file contents to initialize the text editor
             var text = await File.ReadAllTextAsync(FilePath);
+
+            CachedText = text;
+
             return Result<string>.Ok(text);
         }
         catch (Exception ex)
@@ -42,6 +49,8 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;
         SaveTimer = 0;
+
+        CachedText = text;
 
         try
         {

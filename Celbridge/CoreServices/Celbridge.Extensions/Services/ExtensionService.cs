@@ -17,7 +17,7 @@ public class ExtensionService : IExtensionService
         _logger = logger;
     }
 
-    public Dictionary<string, ExtensionBase> LoadedExtensions { get; } = new();
+    public Dictionary<string, Extension> LoadedExtensions { get; } = new();
 
     public Result LoadExtension(string extension)
     {
@@ -37,7 +37,7 @@ public class ExtensionService : IExtensionService
 
             // Find the class that implements IExtension
             var extensionType = assembly.GetTypes()
-                .FirstOrDefault(type => typeof(ExtensionBase).IsAssignableFrom(type) && !type.IsAbstract);
+                .FirstOrDefault(type => typeof(Extension).IsAssignableFrom(type) && !type.IsAbstract);
 
             if (extensionType == null)
             {
@@ -45,7 +45,7 @@ public class ExtensionService : IExtensionService
             }
 
             // Instantiate the extension class
-            var extensionInstance = (ExtensionBase)Activator.CreateInstance(extensionType)!;
+            var extensionInstance = (Extension)Activator.CreateInstance(extensionType)!;
             if (extensionInstance == null)
             {
                 return Result.Fail($"Failed to instantiate extension class '{extension}'.");
@@ -69,7 +69,7 @@ public class ExtensionService : IExtensionService
         }
         catch (Exception ex)
         {
-            return Result<ExtensionBase>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
+            return Result<Extension>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
         }
     }
 
