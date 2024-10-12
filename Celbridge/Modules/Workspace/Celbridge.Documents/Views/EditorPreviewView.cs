@@ -80,6 +80,7 @@ public sealed partial class EditorPreviewView : UserControl
 
             // Any further navigation is caused by the user clicking on links in the preview pane.
             _webView.NavigationStarting += WebView_NavigationStarting;
+            _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
         };
 
         _webView.CoreWebView2.Navigate("http://Preview/index.html");
@@ -89,6 +90,19 @@ public sealed partial class EditorPreviewView : UserControl
     {
         // Prevent the WebView from navigating to the URL
         args.Cancel = true;
+
+        // Open the url in the default system browser
+        var url = args.Uri;
+        if (!string.IsNullOrEmpty(url))
+        {
+            ViewModel.NavigateToURL(url);
+        }
+    }
+
+    private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        // Prevent the new window from being created
+        args.Handled = true;
 
         // Open the url in the default system browser
         var url = args.Uri;
