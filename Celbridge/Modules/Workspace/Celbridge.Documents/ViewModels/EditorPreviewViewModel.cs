@@ -29,7 +29,7 @@ public partial class EditorPreviewViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(url))
         {
-            // Navigating an empty URL is a no-op
+            // Navigating to an empty URL is a no-op
             return;
         }
 
