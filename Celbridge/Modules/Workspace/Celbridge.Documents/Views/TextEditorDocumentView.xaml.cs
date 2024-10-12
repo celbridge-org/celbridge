@@ -36,19 +36,30 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         PreviewSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public Task<Result> SetFileResource(ResourceKey fileResource)
+    public async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         // This method can get called multiple types if the document is renamed, so we
-        // acquire the provider again each time.
-        _previewProvider = null;
+        // set the provider again each time.
         var getResult = ViewModel.GetPreviewProvider(fileResource);
         if (getResult.IsSuccess)
         {
             SetPreviewVisibility(true);
             _previewProvider = getResult.Value;
+
+            if (!MonacoEditor.ViewModel.CachedText.IsNullOrEmpty())
+            {
+                // If the editor has already been populated (i.e. a file rename from .txt to .md) then
+                // we need to update the new preview provider immediately to reflect the cached text.
+                await UpdatePreview();
+            }
+        }
+        else
+        {
+            SetPreviewVisibility(false);
+            _previewProvider = null;
         }
 
-        return MonacoEditor.SetFileResource(fileResource);
+        return await MonacoEditor.SetFileResource(fileResource);
     }
 
     public async Task<Result> LoadContent()
