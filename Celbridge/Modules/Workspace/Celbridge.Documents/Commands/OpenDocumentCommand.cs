@@ -24,7 +24,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{FileResource}'")
-                .AddErrors(openResult);
+                .WithErrors(openResult);
         }
 
         return Result.Ok();

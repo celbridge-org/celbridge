@@ -51,7 +51,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         if (createResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
-                .AddErrors(createResult);
+                .WithErrors(createResult);
         }
         var documentView = createResult.Value;
 

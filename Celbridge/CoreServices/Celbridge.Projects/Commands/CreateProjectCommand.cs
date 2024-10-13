@@ -41,7 +41,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create project.")
-                .AddErrors(createResult);
+                .WithErrors(createResult);
         }
 
         // Load the newly created project

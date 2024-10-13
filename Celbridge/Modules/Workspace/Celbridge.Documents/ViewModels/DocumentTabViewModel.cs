@@ -128,7 +128,7 @@ public partial class DocumentTabViewModel : ObservableObject
             if (saveResult.IsFailure)
             {
                 return Result<bool>.Fail($"Saving document failed for file resource: '{FileResource}'")
-                    .AddErrors(saveResult);
+                    .WithErrors(saveResult);
             }
         }
 

@@ -74,7 +74,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             _navigationService.NavigateToPage(HomePageName);
 
             return Result.Fail($"Failed to load project: '{ProjectFilePath}'")
-                .AddErrors(loadResult);
+                .WithErrors(loadResult);
         }
 
         _editorSettings.PreviousProject = ProjectFilePath;
@@ -88,7 +88,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to open project file '{projectFilePath}'")
-                .AddErrors(loadResult);
+                .WithErrors(loadResult);
         }
 
         var loadPageCancelationToken = new CancellationTokenSource();
