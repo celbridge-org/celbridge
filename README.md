@@ -63,8 +63,11 @@ You can try this prototype by checking out the `demo-dec-23` tag of this project
 
 ## Credits
 
-This project uses [file-icons](https://github.com/file-icons/vscode), which is licensed under the MIT License. 
-A copy of the license can be found at Celbridge.UserInterface/Assets/Fonts/FileIcons/LICENSE.md.
+This project uses the following open source code:
+
+- [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
+- [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
+
 
 
 
