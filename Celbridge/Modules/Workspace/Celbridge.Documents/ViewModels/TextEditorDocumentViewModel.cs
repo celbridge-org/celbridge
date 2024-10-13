@@ -2,6 +2,8 @@ using Celbridge.ExtensionAPI;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using Path = System.IO.Path;
+
 namespace Celbridge.Documents.ViewModels;
 
 public class TextEditorDocumentViewModel : ObservableObject
@@ -15,7 +17,7 @@ public class TextEditorDocumentViewModel : ObservableObject
 
     public Result<PreviewProvider> GetPreviewProvider(ResourceKey fileResource)
     {
-        var fileExtension = System.IO.Path.GetExtension(fileResource);
+        var fileExtension = Path.GetExtension(fileResource);
         if (string.IsNullOrEmpty(fileExtension))
         {
             return Result<PreviewProvider>.Fail();
