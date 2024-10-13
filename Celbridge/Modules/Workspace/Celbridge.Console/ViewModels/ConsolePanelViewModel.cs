@@ -97,7 +97,8 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, "An exception occurred when initializing scripting");
+            return Result.Fail("An exception occurred when initializing scripting")
+                .WithException(ex);
         }
     }
 
@@ -156,7 +157,8 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
         catch (Exception ex) 
         {
-            return Result<LogEntry>.Fail(ex, "An exception occurred when parsing a log entry");
+            return Result<LogEntry>.Fail("An exception occurred when parsing a log entry")
+                .WithException(ex);
         }
     }
 

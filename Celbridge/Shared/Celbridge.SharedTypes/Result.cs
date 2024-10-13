@@ -90,34 +90,6 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Initializes a new instance of the Result class with a success or failure state and an exception.
-    /// </summary>
-    protected Result(bool isSuccess, Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
-    {
-        IsSuccess = isSuccess;
-        if (isSuccess && exception != null)
-        {
-            throw new ArgumentException("Exception must be null if the result is a success.");
-        }
-
-        if (!isSuccess && exception == null)
-        {
-            throw new ArgumentException("Exception must be provided if the result is a failure.");
-        }
-
-        if (exception != null)
-        {
-            _errors.Add(new ErrorInfo
-            {
-                Message = exception.Message,
-                FileName = Path.GetFileName(fileName),
-                LineNumber = lineNumber,
-                Exception = exception
-            });
-        }
-    }
-
-    /// <summary>
     /// Adds an error message to the result.
     /// </summary>
     public void AddError(string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
@@ -136,7 +108,7 @@ public abstract class Result
     /// <summary>
     /// Adds an exception to the result.
     /// </summary>
-    public void AddError(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
+    public Result WithException(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
         if (exception != null)
         {
@@ -148,6 +120,8 @@ public abstract class Result
                 Exception = exception
             });
         }
+
+        return this;
     }
 
     /// <summary>
@@ -176,19 +150,6 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Creates a failure result with an exception.
-    /// </summary>
-    public static Result Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
-    {
-        if (exception == null)
-        {
-            throw new ArgumentException("Failure must have an exception.");
-        }
-
-        return new Failure(exception, fileName, lineNumber);
-    }
-
-    /// <summary>
     /// Creates a success result.
     /// </summary>
     public static Result Ok()
@@ -204,7 +165,6 @@ public abstract class Result
     private class Failure : Result
     {
         internal Failure(string error, string fileName, int lineNumber) : base(false, error, fileName, lineNumber) { }
-        internal Failure(Exception exception, string fileName, int lineNumber) : base(false, exception, fileName, lineNumber) { }
     }
 }
 
@@ -224,14 +184,6 @@ public class Result<T> : Result where T : notnull
     /// Initializes a new instance of the Result class with a failure state and an error message.
     /// </summary>
     private Result(string error, string fileName, int lineNumber) : base(false, error, fileName, lineNumber)
-    {
-        Value = default!;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the Result class with a failure state and an exception.
-    /// </summary>
-    private Result(Exception exception, string fileName, int lineNumber) : base(false, exception, fileName, lineNumber)
     {
         Value = default!;
     }
@@ -261,19 +213,20 @@ public class Result<T> : Result where T : notnull
     }
 
     /// <summary>
-    /// Creates a failure result with an exception.
-    /// </summary>
-    public new static Result<T> Fail(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
-    {
-        return new Result<T>(exception, fileName, lineNumber);
-    }
-
-    /// <summary>
     /// Adds errors from another result to this result.
     /// </summary>
     public new Result<T> WithErrors(Result otherResult)
     {
         base.WithErrors(otherResult);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds an exception to the result.
+    /// </summary>
+    public new Result<T> WithException(Exception exception, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
+    {
+        base.WithException(exception, fileName, lineNumber);
         return this;
     }
 }

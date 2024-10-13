@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Documents.ViewModels;
@@ -25,7 +25,8 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occured when loading document from file: {FilePath}");
+            return Result.Fail($"An exception occured when loading document from file: {FilePath}")
+                .WithException(ex);
         }
 
         return Result.Fail($"Failed to local content from .web file: {FileResource}");

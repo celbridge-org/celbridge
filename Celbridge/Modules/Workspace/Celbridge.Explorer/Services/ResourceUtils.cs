@@ -66,7 +66,8 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when opening the associated application: {path}");
+            return Result.Fail($"An exception occurred when opening the associated application: {path}")
+                .WithException(ex);
         }
 #else
         return Result.Fail("Launching associated application is only supported on Windows");
@@ -125,7 +126,8 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when opening the path in the file manager: {path}");
+            return Result.Fail($"An exception occurred when opening the path in the file manager: {path}")
+                .WithException(ex);
         }
 #else
         return Result.Fail("File manager is only supported on Windows");
@@ -141,7 +143,8 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to open URL: {url}");
+            return Result.Fail($"Failed to open URL: {url}")
+                .WithException(ex);
         }
 
         return Result.Ok();
@@ -185,7 +188,8 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail(ex, $"An exception occurred when extracting the url from a .web file");
+            return Result<string>.Fail($"An exception occurred when extracting the url from a .web file")
+                .WithException(ex); ;
         }
     }
 }
