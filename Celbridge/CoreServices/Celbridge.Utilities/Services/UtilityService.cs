@@ -58,7 +58,8 @@ public class UtilityService : IUtilityService
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail(ex, $"An exception occurred when generating a unique path: {path}");
+            return Result<string>.Fail($"An exception occurred when generating a unique path: {path}")
+                .WithException(ex);
         }
     }
 
@@ -119,7 +120,8 @@ public class UtilityService : IUtilityService
         }
         catch (Exception ex)
         {
-            Result.Fail(ex, $"An exception occurred when deleting old files.");
+            Result.Fail($"An exception occurred when deleting old files.")
+                .WithException(ex);
         }
 
         return Result.Ok(); 

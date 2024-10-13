@@ -77,7 +77,8 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occured when creating project: '{config.ProjectFilePath}'");
+            return Result.Fail($"An exception occured when creating project: '{config.ProjectFilePath}'")
+                .WithException(ex);
         }
     }
 
@@ -109,7 +110,8 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when loading the project database.");
+            return Result.Fail($"An exception occurred when loading the project database.")
+                .WithException(ex);
         }
     }
 

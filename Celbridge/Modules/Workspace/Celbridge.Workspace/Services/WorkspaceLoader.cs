@@ -65,7 +65,8 @@ public class WorkspaceLoader
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when loading extensions.");
+            return Result.Fail($"An exception occurred when loading extensions.")
+                .WithException(ex);
         }
 
         //
@@ -94,7 +95,8 @@ public class WorkspaceLoader
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred while populating the resource registry");
+            return Result.Fail($"An exception occurred while populating the resource registry")
+                .WithException(ex);
         }
 
         //

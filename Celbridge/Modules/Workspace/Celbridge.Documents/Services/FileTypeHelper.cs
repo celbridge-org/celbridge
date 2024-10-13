@@ -90,7 +90,8 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {TextEditorTypesResourceName}");
+            return Result.Fail($"An exception occurred when reading content of embedded resource: {TextEditorTypesResourceName}")
+                .WithException(ex);
         }
 
         try
@@ -106,7 +107,8 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {TextEditorTypesResourceName}");
+            return Result.Fail($"An exception occurred when deserializing embedded resource: {TextEditorTypesResourceName}")
+                .WithException(ex);
         }
 
         return Result.Ok();
@@ -133,7 +135,8 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when reading content of embedded resource: {FileViewerTypesResourceName}");
+            return Result.Fail($"An exception occurred when reading content of embedded resource: {FileViewerTypesResourceName}")
+                .WithException(ex);
         }
 
         try
@@ -145,7 +148,8 @@ public class FileTypeHelper
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when deserializing embedded resource: {FileViewerTypesResourceName}");
+            return Result.Fail($"An exception occurred when deserializing embedded resource: {FileViewerTypesResourceName}")
+                .WithException(ex);
         }
 
         return Result.Ok();
