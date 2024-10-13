@@ -130,7 +130,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         if (getResult.IsFailure)
         {
             return Result.Fail($"Failed to get resource from resource registry: {resource}")
-                .AddErrors(getResult);
+                .WithErrors(getResult);
         }
 
         var segments = resource.ToString().Split('/');

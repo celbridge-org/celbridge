@@ -34,7 +34,7 @@ public class WorkspaceLoader
         if (acquireResult.IsFailure)
         {
             return Result.Fail("Failed to acquire the workspace settings")
-                .AddErrors(acquireResult);
+                .WithErrors(acquireResult);
         }
 
         var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
@@ -56,8 +56,8 @@ public class WorkspaceLoader
                     if (unloadResult.IsFailure)
                     {
                         return Result.Fail($"Failed to unload extensions after loading extension failed: {extension}")
-                            .AddErrors(loadResult)
-                            .AddErrors(unloadResult);
+                            .WithErrors(loadResult)
+                            .WithErrors(unloadResult);
                     }
                     return Result.Fail($"Failed to load extension: {extension}");
                 }
@@ -89,7 +89,7 @@ public class WorkspaceLoader
             if (updateResult.IsFailure)
             {
                 return Result.Fail("Failed to update resources")
-                    .AddErrors(updateResult);
+                    .WithErrors(updateResult);
             }
         }
         catch (Exception ex)
@@ -124,7 +124,7 @@ public class WorkspaceLoader
         if (initResult.IsFailure)
         {
             return Result.Fail("Failed to initialize console scripting")
-                .AddErrors(initResult);
+                .WithErrors(initResult);
         }
 
         return Result.Ok();

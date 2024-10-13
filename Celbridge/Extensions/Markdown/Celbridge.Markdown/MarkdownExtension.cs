@@ -9,7 +9,7 @@ public class MarkdownExtension : Extension
         if (addResult.IsFailure)
         {
             return Result.Fail("Failed to add Markdown preview provider.")
-                .AddErrors(addResult);
+                .WithErrors(addResult);
         }
 
         return Result.Ok();

@@ -39,7 +39,7 @@ public class ModuleService : IModuleService
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load module {module}")
-                    .AddErrors(loadResult);
+                    .WithErrors(loadResult);
             }
         }
 

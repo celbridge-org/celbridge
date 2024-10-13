@@ -47,7 +47,7 @@ public class ResourceArchiver
         if (getResult.IsFailure)
         {
             return Result.Fail($"Failed to archive resource: '{resource}'")
-                .AddErrors(getResult);
+                .WithErrors(getResult);
         }
 
         var r = getResult.Value;

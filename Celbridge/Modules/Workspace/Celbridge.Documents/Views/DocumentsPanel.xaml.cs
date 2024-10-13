@@ -175,7 +175,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             TabView.TabItems.RemoveAt(tabIndex);
 
             return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
-                .AddErrors(createResult);
+                .WithErrors(createResult);
         }
         var documentView = createResult.Value;
 
@@ -203,7 +203,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 if (closeResult.IsFailure)
                 {
                     return Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'")
-                        .AddErrors(closeResult);
+                        .WithErrors(closeResult);
                 }
 
                 var didClose = closeResult.Value;
@@ -325,7 +325,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             if (setResult.IsFailure)
             {
                 return Result.Fail($"Failed to set file resource for document: '{newResource}'")
-                    .AddErrors(setResult);
+                    .WithErrors(setResult);
             }
         }
         else
@@ -334,7 +334,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create document view for resource: '{newResource}'")
-                    .AddErrors(createResult);
+                    .WithErrors(createResult);
             }
             var newDocumentView = createResult.Value;
 

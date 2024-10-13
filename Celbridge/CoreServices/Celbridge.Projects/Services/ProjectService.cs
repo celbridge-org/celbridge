@@ -89,7 +89,7 @@ public class ProjectService : IProjectService
             if (loadResult.IsFailure)
             {
                 return Result.Fail($"Failed to load project: {projectFilePath}")
-                    .AddErrors(loadResult);
+                    .WithErrors(loadResult);
             }
 
             // Both data files have successfully loaded, so we can now populate the member variables
