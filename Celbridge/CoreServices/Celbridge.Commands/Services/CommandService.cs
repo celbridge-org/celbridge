@@ -235,7 +235,7 @@ public class CommandService : ICommandService
         if (undoResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'")
-                .AddErrors(undoResult);
+                .WithErrors(undoResult);
         }
 
         return Result<bool>.Ok(true);
@@ -258,7 +258,7 @@ public class CommandService : ICommandService
         if (redoResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'")
-                .AddErrors(redoResult);
+                .WithErrors(redoResult);
         }
 
         return Result<bool>.Ok(true);
@@ -423,7 +423,7 @@ public class CommandService : ICommandService
         if (flushResult.IsFailure)
         {
             return Result.Fail($"Failed to flush pending saves")
-                .AddErrors(flushResult);
+                .WithErrors(flushResult);
         }
 
         // Restart the timer to account for time spent saving

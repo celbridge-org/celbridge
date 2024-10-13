@@ -120,7 +120,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                         if (unarchiveResult.IsFailure)
                         {
                             return Result.Fail($"Failed to unarchive resource: {DestResource}")
-                                .AddErrors(unarchiveResult);
+                                .WithErrors(unarchiveResult);
                         }
                     }
                     else
@@ -208,7 +208,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                 if (archiveResult.IsFailure)
                 {
                     return Result.Fail($"Failed to archive file resource: {DestResource}")
-                        .AddErrors(archiveResult);
+                        .WithErrors(archiveResult);
                 }
             }
             else if (ResourceType == ResourceType.Folder &&

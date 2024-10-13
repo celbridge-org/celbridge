@@ -153,7 +153,7 @@ public abstract class Result
     /// <summary>
     /// Adds errors from another result to this result.
     /// </summary>
-    public Result AddErrors(Result otherResult)
+    public Result WithErrors(Result otherResult)
     {
         _errors.InsertRange(0, otherResult._errors);
         return this;
@@ -271,9 +271,9 @@ public class Result<T> : Result where T : notnull
     /// <summary>
     /// Adds errors from another result to this result.
     /// </summary>
-    public new Result<T> AddErrors(Result otherResult)
+    public new Result<T> WithErrors(Result otherResult)
     {
-        base.AddErrors(otherResult);
+        base.WithErrors(otherResult);
         return this;
     }
 }
