@@ -86,7 +86,7 @@ public class Project : IDisposable, IProject
             if (initResult.IsFailure)
             {
                 return Result<IProject>.Fail($"Failed to initialize project configuration")
-                    .AddErrors(initResult);
+                    .WithErrors(initResult);
             }
 
             project._projectConfig = projectConfig;

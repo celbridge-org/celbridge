@@ -127,7 +127,7 @@ public class ExplorerService : IExplorerService, IDisposable
         if (createItemsResult.IsFailure)
         {
             return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.")
-                .AddErrors(createItemsResult);
+                .WithErrors(createItemsResult);
         }
         var transferItems = createItemsResult.Value;
 
@@ -285,7 +285,7 @@ public class ExplorerService : IExplorerService, IDisposable
         if (selectResult.IsFailure)
         {
             return Result.Fail($"Failed to select resource: {resource}")
-                .AddErrors(selectResult);
+                .WithErrors(selectResult);
         }
 
         if (showExplorerPanel)
@@ -334,7 +334,7 @@ public class ExplorerService : IExplorerService, IDisposable
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open file manager for resource: {resource}")
-                .AddErrors(openResult);
+                .WithErrors(openResult);
         }
 
         return Result.Ok();
@@ -347,7 +347,7 @@ public class ExplorerService : IExplorerService, IDisposable
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")
-                .AddErrors(openResult);
+                .WithErrors(openResult);
 }
 
         return Result.Ok();
@@ -359,7 +359,7 @@ public class ExplorerService : IExplorerService, IDisposable
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open url in system default browser: {url}")
-                .AddErrors(openResult);
+                .WithErrors(openResult);
         }
 
         return Result.Ok();

@@ -70,7 +70,7 @@ public class ModuleLoader : IDisposable
             if (acquireResult.IsFailure)
             {
                 return Result<IModule>.Fail("Failed to acquire module instance from loaded assembly.")
-                    .AddErrors(acquireResult);
+                    .WithErrors(acquireResult);
             }
             var module = acquireResult.Value;
 

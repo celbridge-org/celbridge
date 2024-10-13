@@ -26,7 +26,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
         if (closeResult.IsFailure)
         {
             return Result.Fail($"Failed to close document for file resource '{FileResource}'")
-                .AddErrors(closeResult);
+                .WithErrors(closeResult);
         }
 
         return Result.Ok();
