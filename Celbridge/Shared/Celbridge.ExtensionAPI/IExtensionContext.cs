@@ -1,7 +1,12 @@
 namespace Celbridge.ExtensionAPI;
 
 /// <summary>  
-/// Interface representing the application context in which an extension operates.  
+/// Manages all communication between the application and an extension instance.
 /// </summary>  
 public interface IExtensionContext
-{}
+{
+    /// <summary>
+    /// Adds a preview provider that generates a HTML preview for text editor documents.
+    /// </summary>
+    Result AddPreviewProvider(PreviewProvider previewProvider);
+}
