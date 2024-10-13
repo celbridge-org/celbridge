@@ -78,11 +78,6 @@ public abstract class Result
             throw new ArgumentException("Error must be null if the result is a success.");
         }
 
-        if (!isSuccess && string.IsNullOrEmpty(error))
-        {
-            throw new ArgumentException("Error message must be provided if the result is a failure.");
-        }
-
         if (!string.IsNullOrEmpty(error))
         {
             _errors.Add(new ErrorInfo
@@ -165,15 +160,18 @@ public abstract class Result
     }
 
     /// <summary>
+    /// Creates a failure result with no error message.
+    /// </summary>
+    public static Result Fail()
+    {
+        return new Failure(string.Empty, string.Empty, 0);
+    }
+
+    /// <summary>
     /// Creates a failure result with an error message.
     /// </summary>
     public static Result Fail(string error, [CallerFilePath] string fileName = "", [CallerLineNumber] int lineNumber = 0)
     {
-        if (string.IsNullOrEmpty(error))
-        {
-            throw new ArgumentException("Failure must have an error message.");
-        }
-
         return new Failure(error, fileName, lineNumber);
     }
 
@@ -244,6 +242,14 @@ public class Result<T> : Result where T : notnull
     public static Result<T> Ok(T value)
     {
         return new Result<T>(value);
+    }
+
+    /// <summary>
+    /// Creates a failure result with no error message.
+    /// </summary>
+    public new static Result<T> Fail()
+    {
+        return new Result<T>(string.Empty, string.Empty, 0);
     }
 
     /// <summary>

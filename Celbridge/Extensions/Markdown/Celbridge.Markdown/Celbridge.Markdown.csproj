@@ -8,6 +8,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
 
   <!-- 
     Celbridge.ExtensionAPI should be the only directly referenced project in any extension project.

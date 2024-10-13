@@ -17,7 +17,7 @@ public class ExtensionService : IExtensionService
         _logger = logger;
     }
 
-    public Dictionary<string, IExtension> LoadedExtensions { get; } = new();
+    public Dictionary<string, Extension> LoadedExtensions { get; } = new();
 
     public Result LoadExtension(string extension)
     {
@@ -37,7 +37,7 @@ public class ExtensionService : IExtensionService
 
             // Find the class that implements IExtension
             var extensionType = assembly.GetTypes()
-                .FirstOrDefault(type => typeof(IExtension).IsAssignableFrom(type) && !type.IsAbstract);
+                .FirstOrDefault(type => typeof(Extension).IsAssignableFrom(type) && !type.IsAbstract);
 
             if (extensionType == null)
             {
@@ -45,7 +45,7 @@ public class ExtensionService : IExtensionService
             }
 
             // Instantiate the extension class
-            var extensionInstance = (IExtension)Activator.CreateInstance(extensionType)!;
+            var extensionInstance = (Extension)Activator.CreateInstance(extensionType)!;
             if (extensionInstance == null)
             {
                 return Result.Fail($"Failed to instantiate extension class '{extension}'.");
@@ -54,7 +54,7 @@ public class ExtensionService : IExtensionService
             // Initialize the extension with a new ExtensionContext.
             // The extension uses the ExtensionContext to interact with the Celbridge host application.
             var extensionContext = _serviceProvider.GetRequiredService<IExtensionContext>();
-            var initResult = extensionInstance.Initialize(extensionContext);
+            var initResult = extensionInstance.Load(extensionContext);
             if (initResult.IsFailure)
             {
                 return Result.Fail($"Failed to initialize extension: '{extension}'")
@@ -69,7 +69,7 @@ public class ExtensionService : IExtensionService
         }
         catch (Exception ex)
         {
-            return Result<IExtension>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
+            return Result<Extension>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
         }
     }
 

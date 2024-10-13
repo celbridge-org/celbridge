@@ -1,3 +1,5 @@
+using Celbridge.ExtensionAPI;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -76,7 +78,18 @@ public interface IDocumentsService
     Task StoreSelectedDocument();
 
     /// <summary>
-    /// Restores the state of the panel from the previous session.
+    /// Restores the state of the documents panel from the previous session.
     /// </summary>
     Task RestorePanelState();
+
+    /// <summary>
+    /// Adds a preview provider that generates a HTML preview for a specific file extension.
+    /// </summary>
+    Result AddPreviewProvider(PreviewProvider previewProvider);
+
+    /// <summary>
+    /// Returns a previously registered preview provider for the specified file extension.
+    /// Fails if no matching preview provider is found.
+    /// </summary>
+    Result<PreviewProvider> GetPreviewProvider(string fileExtension);
 }
