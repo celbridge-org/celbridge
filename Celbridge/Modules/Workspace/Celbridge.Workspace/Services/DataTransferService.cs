@@ -129,7 +129,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             if (createTransferResult.IsFailure)
             {
                 return Result<IResourceTransfer>.Fail($"Failed to create resource transfer.")
-                    .AddErrors(createTransferResult);
+                    .WithErrors(createTransferResult);
             }
             var resourceTransfer = createTransferResult.Value;
 
@@ -152,7 +152,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         if (getResult.IsFailure)
         {
             return Result.Fail("Failed to get clipboard resource transfer")
-                .AddErrors(getResult);
+                .WithErrors(getResult);
         }
         var description = getResult.Value;
 

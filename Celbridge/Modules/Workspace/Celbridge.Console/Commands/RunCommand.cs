@@ -37,7 +37,7 @@ public class RunCommand : CommandBase, IRunCommand
         if (executeResult.IsFailure)
         {
             return Result.Fail($"Failed to run script resource: {ScriptResource}")
-                .AddErrors(executeResult);
+                .WithErrors(executeResult);
         }
 
         return Result.Ok();

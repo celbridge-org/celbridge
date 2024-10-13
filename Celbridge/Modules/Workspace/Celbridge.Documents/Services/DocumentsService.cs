@@ -106,7 +106,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (createResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
-                .AddErrors(createResult);
+                .WithErrors(createResult);
         }
         var documentView = createResult.Value;
 
@@ -118,14 +118,14 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (setFileResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'")
-                .AddErrors(setFileResult);
+                .WithErrors(setFileResult);
         }
 
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'")
-                .AddErrors(loadResult);
+                .WithErrors(loadResult);
         }
 
         return Result<IDocumentView>.Ok(documentView);
@@ -171,7 +171,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
-                .AddErrors(openResult);
+                .WithErrors(openResult);
         }
 
         _logger.LogTrace($"Opened document for file resource '{fileResource}'");
@@ -185,7 +185,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (closeResult.IsFailure)
         {
             return Result.Fail($"Failed to close document for file resource '{fileResource}'")
-                .AddErrors(closeResult);
+                .WithErrors(closeResult);
         }
 
         _logger.LogTrace($"Closed document for file resource '{fileResource}'");
@@ -199,7 +199,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (selectResult.IsFailure)
         {
             return Result.Fail($"Failed to select opened document for file resource '{fileResource}'")
-                .AddErrors(selectResult);
+                .WithErrors(selectResult);
         }
 
         _logger.LogTrace($"Selected document for file resource '{fileResource}'");
@@ -213,7 +213,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (saveResult.IsFailure)
         {
             return Result.Fail("Failed to save modified documents")
-                .AddErrors(saveResult);
+                .WithErrors(saveResult);
         }
 
         return Result.Ok();

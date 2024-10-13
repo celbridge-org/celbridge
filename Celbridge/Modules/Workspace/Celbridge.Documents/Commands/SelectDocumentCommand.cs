@@ -24,7 +24,7 @@ public class SelectDocumentCommand : CommandBase, ISelectDocumentCommand
         if (selectResult.IsFailure)
         {
             return Result.Fail($"Failed to select document for file resource '{FileResource}'")
-                .AddErrors(selectResult);
+                .WithErrors(selectResult);
         }
 
         await Task.CompletedTask;

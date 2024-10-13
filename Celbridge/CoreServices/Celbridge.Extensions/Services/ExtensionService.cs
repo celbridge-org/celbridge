@@ -58,7 +58,7 @@ public class ExtensionService : IExtensionService
             if (initResult.IsFailure)
             {
                 return Result.Fail($"Failed to initialize extension: '{extension}'")
-                    .AddErrors(initResult);
+                    .WithErrors(initResult);
             }
 
             LoadedExtensions.Add(extension, extensionInstance);
@@ -84,7 +84,7 @@ public class ExtensionService : IExtensionService
                 if (unloadResult.IsFailure)
                 {
                     var failure = Result.Fail($"Failed to unload extension: '{extension}'")
-                        .AddErrors(unloadResult);
+                        .WithErrors(unloadResult);
                     _logger.LogError(failure.Error);
                 }
             }

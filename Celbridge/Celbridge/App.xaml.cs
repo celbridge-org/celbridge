@@ -172,7 +172,7 @@ public partial class App : Application
         {
             // Log the error and attempt to continue
             var failure = Result.Fail("Failed to initialize modules")
-                .AddErrors(initializeResult);
+                .WithErrors(initializeResult);
             logger.LogError(failure.Error);
         }
 
