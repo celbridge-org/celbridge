@@ -169,7 +169,8 @@ public sealed partial class MonacoEditorView : DocumentView
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail(ex, "An exception occured while reading the text data");
+            return Result<string>.Fail("An exception occured while reading the text data")
+                .WithException(ex);
         }
 
         return Result<string>.Fail("Failed to read text data");

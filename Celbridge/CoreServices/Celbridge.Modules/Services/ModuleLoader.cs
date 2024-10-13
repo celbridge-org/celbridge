@@ -114,7 +114,8 @@ public class ModuleLoader : IDisposable
         }
         catch (Exception ex)
         {
-            return Result<IModule>.Fail(ex, $"An exception occurred when initializing module {moduleType.Name}");
+            return Result<IModule>.Fail($"An exception occurred when initializing module {moduleType.Name}")
+                .WithException(ex);
         }
     }
 

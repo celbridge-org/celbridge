@@ -69,7 +69,8 @@ public class ExtensionService : IExtensionService
         }
         catch (Exception ex)
         {
-            return Result<Extension>.Fail(ex, $"An exception occurred while loading the extension '{extension}'");
+            return Result<Extension>.Fail($"An exception occurred while loading the extension '{extension}'")
+                .WithException(ex);
         }
     }
 
@@ -96,7 +97,8 @@ public class ExtensionService : IExtensionService
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred while unloading extensions");
+            return Result.Fail($"An exception occurred while unloading extensions")
+                .WithException(ex);
         }
     }
 }
