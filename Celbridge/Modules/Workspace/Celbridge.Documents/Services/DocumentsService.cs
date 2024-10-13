@@ -317,6 +317,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Result AddPreviewProvider(PreviewProvider previewProvider)
     {
+        var extensions = previewProvider.SupportedFileExtensions;
+
+        // Check for duplicate file extension entries
+        bool hasDuplicates = extensions.Select(s => s.ToLower()).Distinct().Count() != extensions.Count();
+        if (hasDuplicates)
+        {
+            return Result.Fail("SupportedFileExtensions list contains duplicate entries");
+        }
+
         // Check for conflicts with previously registered providers
         foreach (var fileExtension in previewProvider.SupportedFileExtensions)
         {
