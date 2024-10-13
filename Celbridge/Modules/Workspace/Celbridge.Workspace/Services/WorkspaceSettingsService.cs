@@ -51,7 +51,8 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         }
         catch (Exception ex) 
         {
-            return Result.Fail(ex, $"An exception occurred when creating the workspace settings database.");
+            return Result.Fail($"An exception occurred when creating the workspace settings database.")
+                .WithException(ex); ;
         }
     }
 
@@ -65,13 +66,16 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
                 return Result.Fail($"Failed to load workspace settings database: {databasePath}");
             }
 
+            throw new InvalidOperationException("oh no!");
+
             WorkspaceSettings = loadResult.Value;
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when loading the workspace settings database.");
+            return Result.Fail($"An exception occurred when loading the workspace settings database.")
+                .WithException(ex); ;
         }
     }
 

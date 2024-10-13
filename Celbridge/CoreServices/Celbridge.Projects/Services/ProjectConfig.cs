@@ -35,7 +35,8 @@ public class ProjectConfig : IProjectConfig
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when populating the project properties");
+            return Result.Fail($"An exception occurred when populating the project properties")
+                .WithException(ex);
         }
     }
 
