@@ -112,7 +112,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             if (saveWorkspaceResult.IsFailure)
             {
                 return Result.Fail($"Failed to save workspace state")
-                    .AddErrors(saveWorkspaceResult);
+                    .WithErrors(saveWorkspaceResult);
             }
         }
 
@@ -120,7 +120,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (saveDocumentsResult.IsFailure)
         {
             return Result.Fail($"Failed to save modified documents")
-                .AddErrors(saveDocumentsResult);
+                .WithErrors(saveDocumentsResult);
         }
 
         // Todo: Clear save icon on the status bar if there are no pending saves

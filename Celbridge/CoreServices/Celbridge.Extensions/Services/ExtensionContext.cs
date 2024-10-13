@@ -18,7 +18,7 @@ public class ExtensionContext : IExtensionContext
         if (addResult.IsFailure)
         {
             return Result.Fail($"Failed to add preview provider via extension context.")
-                .AddErrors(addResult);
+                .WithErrors(addResult);
         }
 
         return Result.Ok();

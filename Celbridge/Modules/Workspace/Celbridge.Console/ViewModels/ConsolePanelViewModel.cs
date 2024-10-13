@@ -90,7 +90,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             if (executeResult.IsFailure)
             {
                 return Result.Fail("Failed to print welcome message")
-                    .AddErrors(executeResult);
+                    .WithErrors(executeResult);
             }
 
             return Result.Ok();
