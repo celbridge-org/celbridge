@@ -85,7 +85,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when populating the tree view.");
+            return Result.Fail($"An exception occurred when populating the tree view.")
+                .WithException(ex); ;
         }
 
         // Attempt to re-select the previously selected resource

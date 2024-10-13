@@ -220,7 +220,8 @@ public class ExplorerService : IExplorerService, IDisposable
         }
         catch (Exception ex)
         {
-            return Result<List<ResourceTransferItem>>.Fail(ex, $"Failed to create resource transfer items.");
+            return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items.")
+                .WithException(ex);
         }
     }
 

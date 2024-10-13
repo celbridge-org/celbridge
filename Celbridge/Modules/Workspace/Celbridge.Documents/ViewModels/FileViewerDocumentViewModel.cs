@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -19,7 +19,8 @@ public partial class FileViewerDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occured when loading document from file: {FilePath}");
+            return Result.Fail($"An exception occured when loading document from file: {FilePath}")
+                .WithException(ex);
         }
     }
 }

@@ -170,7 +170,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when adding the resource.");
+            return Result.Fail($"An exception occurred when adding the resource.")
+                .WithException(ex);
         }
 
         //
@@ -220,7 +221,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when undoing adding the resource.");
+            return Result.Fail($"An exception occurred when undoing adding the resource.")
+                .WithException(ex);
         }
 
         await Task.CompletedTask;
