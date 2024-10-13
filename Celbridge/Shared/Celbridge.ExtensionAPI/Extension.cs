@@ -1,7 +1,7 @@
 namespace Celbridge.ExtensionAPI;
 
 /// <summary>
-/// Provides common implementation code for managing extensions.
+/// Base class for custom extensions.
 /// </summary>  
 public abstract class Extension
 {
