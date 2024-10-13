@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text editor preview</title>
+    <link rel="stylesheet" href="https://Preview/github-markdown.css">
+    <base href="https://Project/">
+    <style>
+        /* Override style to make the background transparent */
+        .markdown-body {
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="content" class="markdown-body" />
+
+    <script>
+        function setContent(htmlContent) {
+            document.getElementById('content').innerHTML = htmlContent;
+        }
+    </script>
+</body>
+</html>

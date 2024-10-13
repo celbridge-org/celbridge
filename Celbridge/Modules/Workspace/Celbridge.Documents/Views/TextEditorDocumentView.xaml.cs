@@ -1,4 +1,5 @@
 using Celbridge.Documents.ViewModels;
+using Celbridge.ExtensionAPI;
 
 namespace Celbridge.Documents.Views;
 
@@ -11,6 +12,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
     public TextEditorDocumentViewModel ViewModel { get; }
 
     public bool HasUnsavedChanges => MonacoEditor.HasUnsavedChanges;
+
+    private PreviewProvider? _previewProvider;
 
     public TextEditorDocumentView()
     {
@@ -33,14 +36,41 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         PreviewSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public Task<Result> SetFileResource(ResourceKey fileResource)
+    public async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        return MonacoEditor.SetFileResource(fileResource);
+        // This method can get called multiple types if the document is renamed, so we
+        // set the provider again each time.
+        var getResult = ViewModel.GetPreviewProvider(fileResource);
+        if (getResult.IsSuccess)
+        {
+            SetPreviewVisibility(true);
+            _previewProvider = getResult.Value;
+
+            if (!MonacoEditor.ViewModel.CachedText.IsNullOrEmpty())
+            {
+                // If the editor has already been populated (i.e. a file rename from .txt to .md) then
+                // we need to update the new preview provider immediately to reflect the cached text.
+                await UpdatePreview();
+            }
+        }
+        else
+        {
+            SetPreviewVisibility(false);
+            _previewProvider = null;
+        }
+
+        return await MonacoEditor.SetFileResource(fileResource);
     }
 
-    public Task<Result> LoadContent()
+    public async Task<Result> LoadContent()
     {
-        return MonacoEditor.LoadContent();
+        var loadResult = await MonacoEditor.LoadContent();
+        if (loadResult.IsSuccess)
+        {
+            _ = UpdatePreview();
+        }
+
+        return loadResult;
     }
 
     public Result<bool> UpdateSaveTimer(double deltaTime)
@@ -48,18 +78,40 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         return MonacoEditor.UpdateSaveTimer(deltaTime);
     }
 
-    public Task<Result> SaveDocument()
+    public async Task<Result> SaveDocument()
     {
-        return MonacoEditor.SaveDocument();
+        var saveResult = await MonacoEditor.SaveDocument();
+        if (saveResult.IsSuccess)
+        {
+            _ = UpdatePreview();
+        }
+
+        return saveResult;
     }
 
-    public Task<bool> CanClose()
+    public async Task<bool> CanClose()
     {
-        return MonacoEditor.CanClose();
+        return await MonacoEditor.CanClose();
     }
 
     public void PrepareToClose()
     {
         MonacoEditor.PrepareToClose();
+    }
+
+    private async Task UpdatePreview()
+    {
+        if (_previewProvider == null)
+        {
+            return;
+        }
+
+        var cachedText = MonacoEditor.ViewModel.CachedText;
+        var generateResult = await _previewProvider.GeneratePreview(cachedText);
+        if (generateResult.IsSuccess)
+        {
+            var generatedHtml = generateResult.Value;
+            EditorPreview.ViewModel.PreviewHTML = generatedHtml;
+        }
     }
 }
