@@ -16,6 +16,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     private double _saveTimer;
 
     // A cache of the editor text that was last saved to disk.
+    // This is the text that is displayed in the preview panel.
     [ObservableProperty]
     private string _cachedText = string.Empty;
 
