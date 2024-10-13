@@ -107,7 +107,8 @@ public class Project : IDisposable, IProject
         }
         catch (Exception ex)
         {
-            return Result<IProject>.Fail(ex, $"An exception occured when loading the project: {projectFilePath}");
+            return Result<IProject>.Fail($"An exception occured when loading the project: {projectFilePath}")
+                .WithException(ex);
         }
     }
 
@@ -160,7 +161,8 @@ public class Project : IDisposable, IProject
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when creating the project: {projectFilePath}");
+            return Result.Fail($"An exception occurred when creating the project: {projectFilePath}")
+                .WithException(ex);
         }
 
         return Result.Ok();

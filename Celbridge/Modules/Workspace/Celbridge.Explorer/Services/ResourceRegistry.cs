@@ -78,7 +78,8 @@ public class ResourceRegistry : IResourceRegistry
         }
         catch (Exception ex)
         {
-            return Result<ResourceKey>.Fail(ex, $"An exception occurred when getting the resource key.");
+            return Result<ResourceKey>.Fail($"An exception occurred when getting the resource key.")
+                .WithException(ex);
         }
     }
 
@@ -265,7 +266,8 @@ public class ResourceRegistry : IResourceRegistry
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when updating the resource registry.");
+            return Result.Fail($"An exception occurred when updating the resource registry.")
+                .WithException(ex);
         }
     }
 

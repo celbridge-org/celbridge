@@ -57,7 +57,8 @@ public class IconService : IIconService
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred when loading the icon definitions.");
+            return Result.Fail($"An exception occurred when loading the icon definitions.")
+                .WithException(ex);
         }
 
         return Result.Ok();
@@ -250,7 +251,8 @@ public class IconService : IIconService
         }
         catch (Exception ex)
         {
-            return Result<JObject>.Fail(ex, $"An exception occurred when loading the icon data.");
+            return Result<JObject>.Fail($"An exception occurred when loading the icon data.")
+                .WithException(ex);
         }
     }
 

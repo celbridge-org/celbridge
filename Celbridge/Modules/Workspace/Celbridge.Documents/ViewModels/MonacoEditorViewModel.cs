@@ -41,7 +41,8 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail(ex, $"Failed to load document file: '{FilePath}'");
+            return Result<string>.Fail($"Failed to load document file: '{FilePath}'")
+                .WithException(ex);
         }
     }
 
@@ -59,7 +60,8 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to save document file: '{FilePath}'");
+            return Result.Fail($"Failed to save document file: '{FilePath}'")
+                .WithException(ex);
         }
 
         return Result.Ok();

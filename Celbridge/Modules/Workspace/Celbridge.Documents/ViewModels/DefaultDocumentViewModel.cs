@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -27,7 +27,8 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to load document file: '{FilePath}'");
+            return Result.Fail($"Failed to load document file: '{FilePath}'")
+                .WithException(ex);
         }
 
         return Result.Ok();
@@ -45,7 +46,8 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"Failed to save document file: '{FilePath}'");
+            return Result.Fail($"Failed to save document file: '{FilePath}'")
+                .WithException(ex);
         }
 
         return Result.Ok();

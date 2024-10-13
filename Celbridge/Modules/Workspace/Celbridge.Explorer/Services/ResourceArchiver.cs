@@ -106,7 +106,8 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occured while archiving file: '{resource}'");
+            return Result.Fail($"An exception occured while archiving file: '{resource}'")
+                .WithException(ex);
         }
 
         // Record that the file resource was archived so we can unarchive it later
@@ -140,7 +141,8 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred while unarchiving file: '{_resource}'");
+            return Result.Fail($"An exception occurred while unarchiving file: '{_resource}'")
+                .WithException(ex);
         }
 
         ArchivedResourceType = ResourceType.Invalid;
@@ -211,7 +213,8 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred while archiving folder: '{resource}'");
+            return Result.Fail($"An exception occurred while archiving folder: '{resource}'")
+                .WithException(ex);
         }
 
         await Task.CompletedTask;
@@ -253,7 +256,8 @@ public class ResourceArchiver
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, $"An exception occurred while unarchiving folder: {_resource}");
+            return Result.Fail($"An exception occurred while unarchiving folder: {_resource}")
+                .WithException(ex);
         }
 
         _resourceRegistry.SetFolderIsExpanded(_resource, _folderWasExpanded);

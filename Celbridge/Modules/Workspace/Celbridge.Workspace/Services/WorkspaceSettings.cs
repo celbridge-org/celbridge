@@ -97,7 +97,8 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
         catch (Exception ex)
         {
-            return Result<IWorkspaceSettings>.Fail(ex, $"An exception occurred when loading the workspace settings database.");
+            return Result<IWorkspaceSettings>.Fail($"An exception occurred when loading the workspace settings database.")
+                .WithException(ex); ;
         }
     }
 
@@ -135,7 +136,8 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
         catch (Exception ex)
         {
-            return Result.Fail(ex, "An exception occurred when creating the workspace settings database");
+            return Result.Fail("An exception occurred when creating the workspace settings database")
+                .WithException(ex); ;
         }
     }
 
