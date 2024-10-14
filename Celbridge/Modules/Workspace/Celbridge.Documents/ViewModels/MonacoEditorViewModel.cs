@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -101,5 +102,19 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     public void ToggleFocusMode()
     {
         _commandService.Execute<IToggleFocusModeCommand>();
+    }
+
+    public void NavigateToURL(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            // Navigating to an empty URL is a no-op
+            return;
+        }
+
+        _commandService.Execute<IOpenBrowserCommand>(command =>
+        {
+            command.URL = url;
+        });
     }
 }

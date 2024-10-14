@@ -7,17 +7,36 @@
     <link rel="stylesheet" href="https://Preview/github-markdown.css">
     <base href="https://Project/">
     <style>
-        /* Override style to make the background transparent */
-        .markdown-body {
-            background-color: transparent;
+        @media (prefers-color-scheme: dark) {
+            .markdown-body, [data-theme="dark"] {
+                --bgColor-default: transparent
+            }
         }
     </style>
 </head>
 <body>
 
-    <div id="content" class="markdown-body" />
+    <div id="content" class="markdown-body" style="padding: 20px;"/>
+
+    <script src="https://Preview/asciidoctor.js"></script>
 
     <script>
+        function convertAsciiDoc(asciiDocContent) {
+            var asciidoctor = Asciidoctor();
+
+            var options = {
+                attributes: {
+                    'toc': 'true',          // Enable TOC
+                    'toc-position': 'left', // Optional: Position the TOC
+                },
+                doctype: 'book'            // Treat the document as a 'book' to enable top-level headings
+            };
+
+            var htmlContent = asciidoctor.convert(asciiDocContent, options);
+
+            return htmlContent.toString();
+        }
+
         function setContent(htmlContent) {
             document.getElementById('content').innerHTML = htmlContent;
         }
