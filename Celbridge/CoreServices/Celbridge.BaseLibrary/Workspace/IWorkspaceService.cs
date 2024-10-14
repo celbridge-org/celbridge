@@ -3,6 +3,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Extensions;
+using Celbridge.Inspector;
 using Celbridge.Scripting;
 using Celbridge.Status;
 
@@ -42,6 +43,11 @@ public interface IWorkspaceService
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }
+
+    /// <summary>
+    /// Returns the Inspector Service associated with the workspace.
+    /// </summary>
+    IInspectorService InspectorService { get; }
 
     /// <summary>
     /// Returns the Status Service associated with the workspace.

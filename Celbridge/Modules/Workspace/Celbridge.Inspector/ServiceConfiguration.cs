@@ -14,6 +14,7 @@ public static class ServiceConfiguration
         //
 
         config.AddTransient<IInspectorService, InspectorService>();
+        config.AddTransient<IInspectorFactory, InspectorFactory>();
 
         //
         // Register views
@@ -21,13 +22,12 @@ public static class ServiceConfiguration
 
         config.AddTransient<IInspectorPanel, InspectorPanel>();
 
-
         //
         // Register view models
         //
 
         config.AddTransient<InspectorPanelViewModel>();
-
+        config.AddTransient<ComponentListViewModel>();
     }
 
     public static Result Initialize()
