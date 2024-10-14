@@ -1,4 +1,5 @@
 using Markdig;
+using Windows.Web.UI;
 
 namespace Celbridge.Markdown;
 
@@ -9,7 +10,7 @@ public class MarkdownPreviewProvider : PreviewProvider
         SupportedFileExtensions.Add(".md");
     }
 
-    public override async Task<Result<string>> GeneratePreview(string text)
+    public override async Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview)
     {
         await Task.CompletedTask;
 

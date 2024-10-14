@@ -106,8 +106,12 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             return;
         }
 
+        // Ensure the EditorPreview has the same file path as the Monaco editor
+        // This is used to set the virtual hose name for resolving relative links.
+        EditorPreview.ViewModel.FilePath = MonacoEditor.ViewModel.FilePath;
+
         var cachedText = MonacoEditor.ViewModel.CachedText;
-        var generateResult = await _previewProvider.GeneratePreview(cachedText);
+        var generateResult = await _previewProvider.GeneratePreview(cachedText, EditorPreview);
         if (generateResult.IsSuccess)
         {
             var generatedHtml = generateResult.Value;
