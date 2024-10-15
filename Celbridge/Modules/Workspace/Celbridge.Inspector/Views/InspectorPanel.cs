@@ -1,5 +1,6 @@
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Inspector.Views;
@@ -13,7 +14,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private IStringLocalizer _stringLocalizer;
 
-    private Grid _inspectorContainer;
+    private StackPanel _inspectorContainer;
 
     public InspectorPanel()
     {
@@ -39,8 +40,9 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
                     .VerticalAlignment(VerticalAlignment.Center)
             );
 
-        _inspectorContainer = new Grid()
-            .Grid(row: 1);
+        _inspectorContainer = new StackPanel()
+            .Grid(row: 1)
+            .Orientation(Orientation.Vertical);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
@@ -65,10 +67,19 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private void UpdateSelectedResource(ResourceKey resource)
     {
-        var factory = _inspectorService.InspectorFactory;
-        var inspector = factory.CreateInspector(resource) as UserControl;
-
         _inspectorContainer.Children.Clear();
-        _inspectorContainer.Children.Add(inspector);
+
+        var factory = _inspectorService.InspectorFactory;
+
+        // Create the generic resource inspector displayed at the top of the inspector panel
+        var createGenericResult = factory.CreateGenericInspector(resource);
+        if (createGenericResult.IsFailure)
+        {
+            return;
+        }
+        var genericInspector = createGenericResult.Value as UserControl;
+        Guard.IsNotNull(genericInspector);
+
+        _inspectorContainer.Children.Add(genericInspector);
     }
 }
