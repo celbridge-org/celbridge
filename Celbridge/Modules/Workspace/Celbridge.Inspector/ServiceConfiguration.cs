@@ -27,6 +27,7 @@ public static class ServiceConfiguration
         //
 
         config.AddTransient<InspectorPanelViewModel>();
+        config.AddTransient<ResourceInspectorViewModel>();
     }
 
     public static Result Initialize()

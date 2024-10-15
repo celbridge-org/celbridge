@@ -69,17 +69,22 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     {
         _inspectorContainer.Children.Clear();
 
-        var factory = _inspectorService.InspectorFactory;
-
-        // Create the generic resource inspector displayed at the top of the inspector panel
-        var createGenericResult = factory.CreateGenericInspector(resource);
-        if (createGenericResult.IsFailure)
+        if (resource.IsEmpty)
         {
             return;
         }
-        var genericInspector = createGenericResult.Value as UserControl;
-        Guard.IsNotNull(genericInspector);
 
-        _inspectorContainer.Children.Add(genericInspector);
+        var factory = _inspectorService.InspectorFactory;
+
+        // Create the generic resource inspector displayed at the top of the inspector panel
+        var createResult = factory.CreateResourceInspector(resource);
+        if (createResult.IsFailure)
+        {
+            return;
+        }
+        var resourceInspector = createResult.Value as UserControl;
+        Guard.IsNotNull(resourceInspector);
+
+        _inspectorContainer.Children.Add(resourceInspector);
     }
 }
