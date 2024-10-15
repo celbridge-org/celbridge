@@ -1,23 +1,23 @@
-using Path = System.IO.Path;
+using Celbridge.Inspector.ViewModels;
 
 namespace Celbridge.Inspector.Services;
 
 public class InspectorFactory : IInspectorFactory
 {
-    public InspectorFactory()
-    {}
+    private readonly IServiceProvider _serviceProvider;
 
-    public Result<IInspector> CreateGenericInspector(ResourceKey resource)
+    public InspectorFactory(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+
+    public Result<IInspector> CreateResourceInspector(ResourceKey resource)
     {
         try
         {
-            var inspector = new Views.Inspector()
-            {
-                DataContext = new ViewModels.InspectorViewModel()
-                {
-                    Resource = resource
-                }
-            };
+            var viewModel = _serviceProvider.GetRequiredService<ResourceInspectorViewModel>();
+            viewModel.Resource = resource;
+            var inspector = new Views.ResourceInspector(viewModel);
 
             return Result<IInspector>.Ok(inspector);
         }
@@ -25,38 +25,6 @@ public class InspectorFactory : IInspectorFactory
         {
             return Result<IInspector>.Fail($"An exception occurred when creating a generic inspector for resource: {resource}")
                 .WithException(ex);        
-        }
-    }
-
-    public Result<IInspector> CreateSpecializedInspector(ResourceKey resource)
-    {
-        try
-        {
-            var fileExtension = Path.GetExtension(resource);
-
-            IInspector? inspector = null;
-            //if (fileExtension == ".web")
-            //{
-            //    inspector = new Views.WebInspector()
-            //    {
-            //        DataContext = new ViewModels.WebInspectorViewModel()
-            //        {
-            //            Resource = resource
-            //        }
-            //    };
-            //}
-
-            if (inspector is null)
-            {
-                return Result<IInspector>.Fail($"There is no specialized inspector available for resource: {resource}");
-            }
-
-            return Result<IInspector>.Ok(inspector);
-        }
-        catch (Exception ex)
-        {
-            return Result<IInspector>.Fail($"An exception occurred when creating a generic inspector for resource: {resource}")
-                .WithException(ex);
         }
     }
 }
