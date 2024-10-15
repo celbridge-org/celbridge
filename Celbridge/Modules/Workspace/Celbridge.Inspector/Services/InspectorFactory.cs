@@ -23,7 +23,8 @@ public class InspectorFactory : IInspectorFactory
         }
         catch (Exception ex) 
         {
-            return Result<IInspector>.Fail($"An exception occurred when creating a generic inspector for resource: {resource}");        
+            return Result<IInspector>.Fail($"An exception occurred when creating a generic inspector for resource: {resource}")
+                .WithException(ex);        
         }
     }
 

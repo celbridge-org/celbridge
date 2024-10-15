@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -82,6 +81,12 @@ public class IconService : IIconService
 
     public Result<IconDefinition> GetIconForFileExtension(string fileExtension)
     {
+        if (fileExtension.StartsWith('.'))
+        {
+            // Remove leading dot before performing lookup
+            fileExtension = fileExtension.Substring(1);
+        }
+
         if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
         {
             if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
