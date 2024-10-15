@@ -5,7 +5,7 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 
-public partial class InspectorViewModel : ObservableObject
+public partial class ResourceInspectorViewModel : ObservableObject
 {
     private readonly IIconService _iconService;
 
@@ -15,17 +15,17 @@ public partial class InspectorViewModel : ObservableObject
     [ObservableProperty]
     private IconDefinition _icon;
 
-    public InspectorViewModel()
+    public ResourceInspectorViewModel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
         _iconService = serviceProvider.GetRequiredService<IIconService>();
 
         _icon = _iconService.DefaultFileIcon;
 
-        PropertyChanged += InspectorViewModel_PropertyChanged;
+        PropertyChanged += ViewModel_PropertyChanged;
     }
 
-    private void InspectorViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Resource))
         {
