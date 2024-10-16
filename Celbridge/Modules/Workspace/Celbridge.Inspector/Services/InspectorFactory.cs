@@ -11,13 +11,13 @@ public class InspectorFactory : IInspectorFactory
         _serviceProvider = serviceProvider;
     }
 
-    public Result<IInspector> CreateResourceInspector(ResourceKey resource)
+    public Result<IInspector> CreateResourceNameInspector(ResourceKey resource)
     {
         try
         {
-            var viewModel = _serviceProvider.GetRequiredService<ResourceInspectorViewModel>();
+            var viewModel = _serviceProvider.GetRequiredService<ResourceNameInspectorViewModel>();
             viewModel.Resource = resource;
-            var inspector = new Views.ResourceInspector(viewModel);
+            var inspector = new Views.ResourceNameInspector(viewModel);
 
             return Result<IInspector>.Ok(inspector);
         }

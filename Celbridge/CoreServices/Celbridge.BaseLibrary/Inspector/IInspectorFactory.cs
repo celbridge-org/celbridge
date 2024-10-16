@@ -9,5 +9,5 @@ public interface IInspectorFactory
     /// Creates an inspector that can inspect a resource.
     /// This is the inspector displayed at the top of the inspector panel for any selected resource.
     /// </summary>
-    Result<IInspector> CreateResourceInspector(ResourceKey key);
+    Result<IInspector> CreateResourceNameInspector(ResourceKey key);
 }

@@ -80,10 +80,10 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         var factory = _inspectorService.InspectorFactory;
 
         // Create the generic resource inspector displayed at the top of the inspector panel
-        var createResult = factory.CreateResourceInspector(resource);
+        var createResult = factory.CreateResourceNameInspector(resource);
         if (createResult.IsFailure)
         {
-            _logger.LogError(createResult, $"Failed to create resource inspector for resource: {resource}");
+            _logger.LogError(createResult, $"Failed to create resource name inspector for resource: {resource}");
             return;
         }
         var resourceInspector = createResult.Value as UserControl;
