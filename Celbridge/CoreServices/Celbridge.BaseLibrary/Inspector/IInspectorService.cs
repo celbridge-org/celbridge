@@ -9,4 +9,9 @@ public interface IInspectorService
     /// Returns the inspector panel view.
     /// </summary>
     public IInspectorPanel InspectorPanel { get; }
+
+    /// <summary>
+    /// Returns the factory used to create inspector UI elements. 
+    /// </summary>
+    public IInspectorFactory InspectorFactory { get; }
 }
