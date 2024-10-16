@@ -1,5 +1,6 @@
 {
   ".abap": "abap",
+  ".adoc": "markdown",
   ".aes": "aes",
   ".ascx": "xml",
   ".asp": "html",
