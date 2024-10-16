@@ -134,7 +134,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return openDocuments;
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
     {
         // Check if the file is already opened
         foreach (var tabItem in TabView.TabItems)
@@ -146,6 +146,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             {
                 //  Activate the existing tab instead of opening a new one
                 TabView.SelectedItem = tab;
+
+                if (forceReload)
+                {
+                    var reloadResult = await tab.ViewModel.ReloadDocument();
+                    if (reloadResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to reload document: {fileResource}")
+                            .WithErrors(reloadResult);
+                    }
+                }
+
                 return Result.Ok();
             }
         }

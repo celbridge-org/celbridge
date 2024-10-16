@@ -40,7 +40,7 @@ public partial class ResourceNameInspector : UserControl, IInspector
                             .FontSize(20)
                             .FontFamily(StaticResource.Get<FontFamily>(ViewModel.Icon.FontFamily))                                
                             .MinWidth(20)
-                            .Margin(4)
+                            .Margin(0, 4, 4, 4)
                             .VerticalAlignment(VerticalAlignment.Center),
                         new TextBlock()
                             .Name(out _resourceNameText)
