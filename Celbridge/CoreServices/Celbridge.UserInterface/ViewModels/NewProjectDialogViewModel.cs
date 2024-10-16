@@ -120,7 +120,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand SelectFolderCommand => new AsyncRelayCommand(SelectFolderCommand_ExecuteAsync);
+    public IAsyncRelayCommand SelectFolderCommand => new AsyncRelayCommand(SelectFolderCommand_ExecuteAsync);
     private async Task SelectFolderCommand_ExecuteAsync()
     {
         var pickResult = await _filePickerService.PickSingleFolderAsync();

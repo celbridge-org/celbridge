@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 
 namespace Celbridge.Documents;
 
@@ -11,4 +11,9 @@ public interface IOpenDocumentCommand : IExecutableCommand
     /// The resource key of the file to open.
     /// </summary>
     ResourceKey FileResource { get; set; }
+
+    /// <summary>
+    /// Reload the document from the file, if the document is already open.
+    /// </summary>
+    bool ForceReload { get; set; }
 }

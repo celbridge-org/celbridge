@@ -44,7 +44,7 @@ public interface IDocumentsService
     /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource);
+    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload);
 
     /// <summary>
     /// Closes an opened document in the documents panel.

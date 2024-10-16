@@ -156,7 +156,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
@@ -167,7 +167,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
 
-        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath);
+        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
