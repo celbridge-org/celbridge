@@ -16,7 +16,7 @@ public partial class ResourceInspector : UserControl, IInspector
     private FontIcon? _fontIcon;
     private TextBlock? _resourceNameText;
 
-    // XAML compiler requires a parameterless constructor
+    // Code gen requires a parameterless constructor
     public ResourceInspector()
     {
         throw new NotImplementedException();
@@ -26,7 +26,7 @@ public partial class ResourceInspector : UserControl, IInspector
     {
         DataContext = viewModel;
 
-        this.DataContext<ResourceInspectorViewModel>((page, vm) => page
+        this.DataContext<ResourceInspectorViewModel>((inspector, vm) => inspector
             .Content(
                 new StackPanel()
                     .Orientation(Orientation.Horizontal)
