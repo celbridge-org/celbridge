@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -36,12 +37,13 @@ public sealed partial class WebPageDocumentView : DocumentView
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        _webView = new WebView2()
-            .Source(x => x.Binding(() => ViewModel.Source));
+        _webView = new WebView2();
 
         // Fixes a visual bug where the WebView2 control would show a white background briefly when
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
         _webView.DefaultBackgroundColor = Colors.Transparent;
+
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         //
         // Set the data context and control content
@@ -51,15 +53,14 @@ public sealed partial class WebPageDocumentView : DocumentView
             .Content(_webView));
     }
 
-    private async Task InitializeWebView()
+    private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        await _webView.EnsureCoreWebView2Async();
-
-        // Ensure we only register once for this event
-        _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-        _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+        if (e.PropertyName == nameof(ViewModel.SourceURL))
+        {
+            await _webView.EnsureCoreWebView2Async();
+            _webView.CoreWebView2.Navigate(ViewModel.SourceURL);
+        }
     }
-
 
     private void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
     {
@@ -144,8 +145,31 @@ public sealed partial class WebPageDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        await InitializeWebView();
+        // Be aware that this method can be called multiple times if the document is reloaded as a result of
+        // the user changing the URL in the inspector.
+
+        await _webView.EnsureCoreWebView2Async();
+
+        // Ensure we only register once for these events
+        _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+        _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+
+        _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+        _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
 
         return await ViewModel.LoadContent();
+    }
+
+    private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        // Prevent the new window from being created
+        args.Handled = true;
+
+        // Open the url in the default system browser
+        var url = args.Uri;
+        if (!string.IsNullOrEmpty(url))
+        {
+            ViewModel.OpenBrowser(url);
+        }
     }
 }

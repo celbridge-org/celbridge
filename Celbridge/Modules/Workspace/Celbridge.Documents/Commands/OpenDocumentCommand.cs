@@ -11,6 +11,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public ResourceKey FileResource { get; set; }
 
+    public bool ForceReload { get; set; }
+
     public OpenDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -20,7 +22,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var openResult = await documentsService.OpenDocument(FileResource);
+        var openResult = await documentsService.OpenDocument(FileResource, ForceReload);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{FileResource}'")
@@ -39,6 +41,16 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
+        });
+    }
+
+    public static void OpenDocument(ResourceKey fileResource, bool forceReload)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.ForceReload = forceReload;
         });
     }
 }

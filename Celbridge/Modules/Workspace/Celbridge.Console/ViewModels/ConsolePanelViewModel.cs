@@ -183,7 +183,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _commandService.Execute<IClearCommand>();
     }
 
-    public ICommand ExecuteCommand => new AsyncRelayCommand(ExecuteCommand_Executed);
+    public IAsyncRelayCommand ExecuteCommand => new AsyncRelayCommand(ExecuteCommand_Executed);
     private async Task ExecuteCommand_Executed()
     {
         if (_scriptContext is null)
