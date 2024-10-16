@@ -1,4 +1,5 @@
 using Celbridge.Inspector.ViewModels;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -12,6 +13,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     public LocalizedString TitleString => _stringLocalizer.GetString($"InspectorPanel_Title");
 
+    private ILogger<InspectorPanel> _logger;
     private IStringLocalizer _stringLocalizer;
 
     private StackPanel _inspectorContainer;
@@ -19,6 +21,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     public InspectorPanel()
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
+        _logger = serviceProvider.GetRequiredService<ILogger<InspectorPanel>>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
@@ -80,6 +83,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         var createResult = factory.CreateResourceInspector(resource);
         if (createResult.IsFailure)
         {
+            _logger.LogError(createResult, $"Failed to create resource inspector for resource: {resource}");
             return;
         }
         var resourceInspector = createResult.Value as UserControl;
