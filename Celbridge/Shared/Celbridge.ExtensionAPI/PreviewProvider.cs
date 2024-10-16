@@ -21,5 +21,5 @@ public abstract class PreviewProvider
     /// <summary>
     /// Generates a HTML preview of the specified text.
     /// </summary>
-    public abstract Task<Result<string>> GeneratePreview(string text);
+    public abstract Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview);
 }

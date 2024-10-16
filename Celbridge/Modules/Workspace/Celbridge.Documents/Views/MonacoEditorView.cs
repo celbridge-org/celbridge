@@ -83,8 +83,13 @@ public sealed partial class MonacoEditorView : DocumentView
         // Send the loaded text content to Monaco editor
         _webView.CoreWebView2.PostWebMessageAsString(text);
 
+        // Ensure we only register the event handlers once
+        _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+        _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+
         // Start listening for text updates from the web view
         _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
+        _webView.CoreWebView2.NewWindowRequested += TextDocumentView_NewWindowRequested;
 
         return Result.Ok();
     }
@@ -114,6 +119,7 @@ public sealed partial class MonacoEditorView : DocumentView
         Guard.IsNotNull(_webView);
 
         _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
+        _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
 
         // Release the webvuew back to the pool.
         // TextEditorWebViewPool is not exposed via the public interface
@@ -136,6 +142,19 @@ public sealed partial class MonacoEditorView : DocumentView
         else if (message == "toggle_focus_mode")
         {
             ViewModel.ToggleFocusMode();
+        }
+    }
+
+    private void TextDocumentView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        // Prevent the new window from being created
+        args.Handled = true;
+
+        // Open the url in the default system browser
+        var url = args.Uri;
+        if (!string.IsNullOrEmpty(url))
+        {
+            ViewModel.NavigateToURL(url);
         }
     }
 
