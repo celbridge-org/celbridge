@@ -66,8 +66,6 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
                 return Result.Fail($"Failed to load workspace settings database: {databasePath}");
             }
 
-            throw new InvalidOperationException("oh no!");
-
             WorkspaceSettings = loadResult.Value;
 
             return Result.Ok();
