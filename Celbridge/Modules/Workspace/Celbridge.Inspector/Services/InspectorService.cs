@@ -11,6 +11,8 @@ public class InspectorService : IInspectorService, IDisposable
     private IInspectorPanel? _inspectorPanel;
     public IInspectorPanel InspectorPanel => _inspectorPanel!;
 
+    public IInspectorFactory InspectorFactory { get; }
+
     public InspectorService(
         IServiceProvider serviceProvider,
         IMessengerService messengerService)
@@ -19,6 +21,8 @@ public class InspectorService : IInspectorService, IDisposable
         _messengerService = messengerService;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
+
+        InspectorFactory = _serviceProvider.GetRequiredService<IInspectorFactory>();
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
