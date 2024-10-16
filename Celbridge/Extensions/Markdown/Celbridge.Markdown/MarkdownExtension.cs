@@ -4,12 +4,22 @@ public class MarkdownExtension : Extension
 {
     public override Result OnLoadExtension()
     {
+        // Add Markdown preview provider
         var markdownPreviewProvider = new MarkdownPreviewProvider();
-        var addResult = Context.AddPreviewProvider(markdownPreviewProvider);
-        if (addResult.IsFailure)
+        var addMarkdownResult = Context.AddPreviewProvider(markdownPreviewProvider);
+        if (addMarkdownResult.IsFailure)
         {
             return Result.Fail("Failed to add Markdown preview provider.")
-                .WithErrors(addResult);
+                .WithErrors(addMarkdownResult);
+        }
+
+        // Add AsciiDoc preview provider
+        var asciiDocPreviewProvider = new AsciiDocPreviewProvider();
+        var addAsciiDocResult = Context.AddPreviewProvider(asciiDocPreviewProvider);
+        if (addAsciiDocResult.IsFailure)
+        {
+            return Result.Fail("Failed to add AsciiDoc preview provider.")
+                .WithErrors(addAsciiDocResult);
         }
 
         return Result.Ok();
