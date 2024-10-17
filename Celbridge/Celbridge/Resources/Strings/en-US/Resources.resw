@@ -373,7 +373,7 @@
     <value>Start URL</value>
   </data>
   <data name="WebInspector_OpenURLTooltip" xml:space="preserve">
-    <value>Open URL in web page document</value>
+    <value>Open web page document</value>
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>

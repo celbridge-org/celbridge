@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,7 +19,7 @@ public partial class WebInspectorViewModel : ObservableObject
     private ResourceKey _resource;
 
     [ObservableProperty]
-    private string _url = string.Empty;
+    private string _sourceUrl = string.Empty;
 
     private bool _supressSaving;
 
@@ -60,19 +59,19 @@ public partial class WebInspectorViewModel : ObservableObject
             var webFilePath = _resourceRegistry.GetResourcePath(Resource);
             var loadResult = LoadURL(webFilePath);
             if (loadResult.IsFailure)
-            {
+            { 
                 _logger.LogError(loadResult, $"Failed to load URL from file: {webFilePath}");
                 return;
             }
 
             _supressSaving = true;
-            Url = loadResult.Value;
+            SourceUrl = loadResult.Value;
             _supressSaving = false;
         }
-        else if (e.PropertyName == nameof(Url) && !_supressSaving)
+        else if (e.PropertyName == nameof(SourceUrl) && !_supressSaving)
         {
             var webFilePath = _resourceRegistry.GetResourcePath(Resource);
-            var saveResult = SaveURL(webFilePath, Url);
+            var saveResult = SaveURL(webFilePath, SourceUrl);
             if (saveResult.IsFailure)
             {
                 _logger.LogError(saveResult, $"Failed to save URL to file: {webFilePath}");
@@ -92,11 +91,17 @@ public partial class WebInspectorViewModel : ObservableObject
         {
             var json = File.ReadAllText(webFilePath);
 
+            if (string.IsNullOrEmpty(json))
+            {
+                // No data populated yet in the .web file, default to empty url
+                return Result<string>.Ok(string.Empty);
+            }
+
             var jsonObject = JObject.Parse(json);
-            var urlToken = jsonObject["url"];
+            var urlToken = jsonObject["sourceUrl"];
             if (urlToken is null)
             {
-                return Result<string>.Fail($"'url' property not found in JSON file: {webFilePath}");
+                return Result<string>.Fail($"'sourceUrl' property not found in JSON file: {webFilePath}");
             }
 
             string url = urlToken.ToString();
@@ -117,7 +122,7 @@ public partial class WebInspectorViewModel : ObservableObject
             // Create a new JSON object with just the 'url' property
             var jsonObject = new JObject
             {
-                ["url"] = url
+                ["sourceUrl"] = url
             };
 
             // Write the new JSON object to the file, overwriting any existing content
