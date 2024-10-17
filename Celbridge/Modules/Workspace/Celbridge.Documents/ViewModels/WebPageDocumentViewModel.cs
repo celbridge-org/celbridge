@@ -34,8 +34,14 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
             string url = string.Empty;
             if (jo.TryGetValue("url", out var urlToken))
             {
-               SourceURL = urlToken.ToString();
-               return Result.Ok();
+                string targetUrl = urlToken.ToString().Trim();
+                if (!targetUrl.StartsWith("http") && !targetUrl.StartsWith("file"))
+                {
+                    targetUrl = $"https://{targetUrl}";
+                }
+
+                SourceURL = targetUrl;
+                return Result.Ok();
             }
         }
         catch (Exception ex)
