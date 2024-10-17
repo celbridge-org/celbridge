@@ -95,6 +95,5 @@ public partial class WebInspector : UserControl, IInspector
             ViewModel.OpenDocumentCommand.Execute(this);
             e.Handled = true;
         }
-
     }
 }
