@@ -228,7 +228,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
         }
 
-        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+        // We failed to find any open document for this fileResource, but this is the
+        // state we were trying to get into anyway, so we consider this a success.
+
+        return Result.Ok();
     }
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
