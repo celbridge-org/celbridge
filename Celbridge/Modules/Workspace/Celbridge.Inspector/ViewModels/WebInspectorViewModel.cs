@@ -41,8 +41,8 @@ public partial class WebInspectorViewModel : ObservableObject
         PropertyChanged += ViewModel_PropertyChanged;
     }
 
-    public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);
-    private void Refresh_Executed()
+    public IRelayCommand OpenDocumentCommand => new RelayCommand(OpenDocument_Executed);
+    private void OpenDocument_Executed()
     {
         // Execute a command to open the web document. Force the document to reload if it is already open.
         _commandService.Execute<IOpenDocumentCommand>(command =>
