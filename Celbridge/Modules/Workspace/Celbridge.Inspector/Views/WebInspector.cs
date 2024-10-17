@@ -53,7 +53,8 @@ public partial class WebInspector : UserControl, IInspector
                                     // In this case you seem to have to reference the string directly?
                                     .PlaceholderText(inspector.AddressPlaceholderString)
                                     .HorizontalAlignment(HorizontalAlignment.Stretch)
-                                    .Text(x => x.Binding(() => vm.Url)
+                                    .IsSpellCheckEnabled(false)
+                                    .Text(x => x.Binding(() => vm.SourceUrl)
                                         .Mode(BindingMode.TwoWay)),
                                 new Button()
                                     .Grid(column: 1)
@@ -61,6 +62,9 @@ public partial class WebInspector : UserControl, IInspector
                                     .VerticalAlignment(VerticalAlignment.Bottom)
                                     .Command(ViewModel.RefreshCommand)
                                     .ToolTipService(null, null, inspector.OpenURLTooltipString)
+                                    .IsEnabled(x => x.Binding(() => vm.SourceUrl)
+                                        .Mode(BindingMode.OneWay)
+                                        .Convert((url) => !string.IsNullOrWhiteSpace(url)))
                                     .Content
                                     (
                                         new SymbolIcon()

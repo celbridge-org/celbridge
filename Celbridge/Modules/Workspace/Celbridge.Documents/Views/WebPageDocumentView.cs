@@ -55,10 +55,17 @@ public sealed partial class WebPageDocumentView : DocumentView
 
     private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.SourceURL))
+        if (e.PropertyName == nameof(ViewModel.SourceUrl))
         {
-            await _webView.EnsureCoreWebView2Async();
-            _webView.CoreWebView2.Navigate(ViewModel.SourceURL);
+            try
+            {
+                await _webView.EnsureCoreWebView2Async();
+                _webView.CoreWebView2.Navigate(ViewModel.SourceUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to open URL: {ViewModel.SourceUrl}");
+            }
         }
     }
 
