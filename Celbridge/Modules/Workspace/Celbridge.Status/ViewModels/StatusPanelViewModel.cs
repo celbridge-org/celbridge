@@ -73,7 +73,7 @@ public partial class StatusPanelViewModel : ObservableObject
         }
     }
 
-    public ICommand SelectDocumentResourceCommand => new RelayCommand(SelectDocumentResource_Executed);
+    public IRelayCommand SelectDocumentResourceCommand => new RelayCommand(SelectDocumentResource_Executed);
     private void SelectDocumentResource_Executed()
     {
         if (string.IsNullOrEmpty(SelectedDocument))
@@ -88,7 +88,7 @@ public partial class StatusPanelViewModel : ObservableObject
         });
     }
 
-    public ICommand CopyDocumentResourceCommand => new RelayCommand(CopyDocumentResource_Executed);
+    public IRelayCommand CopyDocumentResourceCommand => new RelayCommand(CopyDocumentResource_Executed);
     private void CopyDocumentResource_Executed()
     {
         if (string.IsNullOrEmpty(SelectedDocument))

@@ -139,7 +139,9 @@ public class ResourceUtils
         try
         {
             string targetUrl = url.Trim();
-            if (!targetUrl.StartsWith("http") && !targetUrl.StartsWith("file"))
+            if (!string.IsNullOrWhiteSpace(targetUrl) &&
+                !targetUrl.StartsWith("http") &&
+                !targetUrl.StartsWith("file"))
             {
                 targetUrl = $"https://{targetUrl}";
             }
@@ -185,19 +187,20 @@ public class ResourceUtils
             }
 
             // Todo: This logic is repeated in multiple places, move it to the utility service
-            string sourceUrl = urlToken.ToString().Trim();
-            if (!string.IsNullOrWhiteSpace(sourceUrl) &&
-                !sourceUrl.StartsWith("http") && !sourceUrl.StartsWith("file"))
+            string targetUrl = urlToken.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(targetUrl) &&
+                !targetUrl.StartsWith("http") && 
+                !targetUrl.StartsWith("file"))
             {
-                sourceUrl = $"https://{sourceUrl}";
+                targetUrl = $"https://{targetUrl}";
             }
 
-            if (!Uri.IsWellFormedUriString(sourceUrl, UriKind.Absolute))
+            if (!Uri.IsWellFormedUriString(targetUrl, UriKind.Absolute))
             {
-                return Result<string>.Fail($"Url is not valid: {sourceUrl}");
+                return Result<string>.Fail($"Url is not valid: {targetUrl}");
             }
 
-            return Result<string>.Ok(sourceUrl);
+            return Result<string>.Ok(targetUrl);
         }
         catch (Exception ex)
         {
