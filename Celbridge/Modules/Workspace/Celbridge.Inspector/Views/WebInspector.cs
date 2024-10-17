@@ -1,5 +1,7 @@
 using Celbridge.Inspector.ViewModels;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
+using Windows.System;
 
 namespace Celbridge.Inspector.Views;
 
@@ -11,6 +13,8 @@ public partial class WebInspector : UserControl, IInspector
     private LocalizedString StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
     private LocalizedString AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
     private LocalizedString OpenURLTooltipString => _stringLocalizer.GetString("WebInspector_OpenURLTooltip");
+
+    private TextBox? _urlTextBox;
 
     public ResourceKey Resource 
     {
@@ -45,6 +49,7 @@ public partial class WebInspector : UserControl, IInspector
                             (
                                 new TextBox()
                                     .Grid(column: 0)
+                                    .Name(out _urlTextBox)
                                     // This appears to be the right way to bind to a localized string.
                                     // Just doing .Header(StartURLString) throws a cryptic XAML exception.
                                     // https://platform.uno/docs/articles/external/uno.extensions/doc/Learn/Markup/Binding101.html
@@ -60,7 +65,7 @@ public partial class WebInspector : UserControl, IInspector
                                     .Grid(column: 1)
                                     .Margin(2, 0, 2, 0)
                                     .VerticalAlignment(VerticalAlignment.Bottom)
-                                    .Command(ViewModel.RefreshCommand)
+                                    .Command(ViewModel.OpenDocumentCommand)
                                     .ToolTipService(null, null, inspector.OpenURLTooltipString)
                                     .IsEnabled(x => x.Binding(() => vm.SourceUrl)
                                         .Mode(BindingMode.OneWay)
@@ -73,5 +78,18 @@ public partial class WebInspector : UserControl, IInspector
                             )
                     )
             ));
+
+        Guard.IsNotNull(_urlTextBox);
+        _urlTextBox.KeyDown += CommandTextBox_KeyDown;
+    }
+
+    private void CommandTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            ViewModel.OpenDocumentCommand.Execute(this);
+            e.Handled = true;
+        }
+
     }
 }
