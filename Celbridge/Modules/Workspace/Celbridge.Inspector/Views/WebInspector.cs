@@ -9,6 +9,7 @@ public partial class WebInspector : UserControl, IInspector
 
     public WebInspectorViewModel ViewModel => (DataContext as WebInspectorViewModel)!;
     private LocalizedString StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
+    private LocalizedString AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
     private LocalizedString OpenURLTooltipString => _stringLocalizer.GetString("WebInspector_OpenURLTooltip");
 
     public ResourceKey Resource 
@@ -48,6 +49,9 @@ public partial class WebInspector : UserControl, IInspector
                                     // Just doing .Header(StartURLString) throws a cryptic XAML exception.
                                     // https://platform.uno/docs/articles/external/uno.extensions/doc/Learn/Markup/Binding101.html
                                     .Header(() => inspector.StartURLString)
+                                    // The binding technique above doesn't work for PlaceholderText though.
+                                    // In this case you seem to have to reference the string directly?
+                                    .PlaceholderText(inspector.AddressPlaceholderString)
                                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                                     .Text(x => x.Binding(() => vm.Url)
                                         .Mode(BindingMode.TwoWay)),
@@ -56,8 +60,6 @@ public partial class WebInspector : UserControl, IInspector
                                     .Margin(2, 0, 2, 0)
                                     .VerticalAlignment(VerticalAlignment.Bottom)
                                     .Command(ViewModel.RefreshCommand)
-                                    // The binding technique above doesn't work for tooltips though.
-                                    // In this case you seem to have to reference the string directly.
                                     .ToolTipService(null, null, inspector.OpenURLTooltipString)
                                     .Content
                                     (
