@@ -134,11 +134,17 @@ public class ResourceUtils
 #endif
     }
 
-    public static async Task<Result> OpenURL(string url)
+    public static async Task<Result> OpenBrowser(string url)
     {
         try
         {
-            var uri = new Uri(url);
+            string targetUrl = url.Trim();
+            if (!targetUrl.StartsWith("http") && !targetUrl.StartsWith("file"))
+            {
+                targetUrl = $"https://{targetUrl}";
+            }
+
+            var uri = new Uri(targetUrl);
             await Launcher.LaunchUriAsync(uri);
         }
         catch (Exception ex)
