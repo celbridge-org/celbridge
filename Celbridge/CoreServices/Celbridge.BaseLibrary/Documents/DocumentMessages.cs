@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// A message that indicates the current number of pending document saves.
@@ -19,4 +19,3 @@ public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 /// A message sent when an open document's resource has been renamed or moved.
 /// </summary>
 public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKey NewResource);
-

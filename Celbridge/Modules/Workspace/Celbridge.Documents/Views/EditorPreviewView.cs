@@ -107,6 +107,8 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 
     private async void WebView_NavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
+        Guard.IsNotNull(_webView);
+
         // Prevent the WebView from navigating to the URL
         args.Cancel = true;
 

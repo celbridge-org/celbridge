@@ -45,6 +45,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
         _inspectorContainer = new StackPanel()
             .Grid(row: 1)
+            .Margin(8, 4, 4, 4)
             .Orientation(Orientation.Vertical);
 
         var panelGrid = new Grid()
@@ -79,16 +80,26 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
         var factory = _inspectorService.InspectorFactory;
 
-        // Create the generic resource inspector displayed at the top of the inspector panel
-        var createResult = factory.CreateResourceInspector(resource);
-        if (createResult.IsFailure)
+        // Create the resource name inspector displayed at the top of the inspector panel
+        var nameInspectorResult = factory.CreateResourceNameInspector(resource);
+        if (nameInspectorResult.IsFailure)
         {
-            _logger.LogError(createResult, $"Failed to create resource inspector for resource: {resource}");
+            _logger.LogError(nameInspectorResult, $"Failed to create resource name inspector for resource: {resource}");
             return;
         }
-        var resourceInspector = createResult.Value as UserControl;
-        Guard.IsNotNull(resourceInspector);
+        var nameInspector = nameInspectorResult.Value as UserControl;
+        Guard.IsNotNull(nameInspector);
 
-        _inspectorContainer.Children.Add(resourceInspector);
+        _inspectorContainer.Children.Add(nameInspector);
+
+        // Create the resource inspector (if one is implemented) for the selected resource
+        var resourceInspectorResult = factory.CreateResourceInspector(resource);
+        if (resourceInspectorResult.IsSuccess)
+        {
+            var resourceInspector = resourceInspectorResult.Value as UserControl;
+            Guard.IsNotNull(resourceInspector);
+
+            _inspectorContainer.Children.Add(resourceInspector);
+        }
     }
 }

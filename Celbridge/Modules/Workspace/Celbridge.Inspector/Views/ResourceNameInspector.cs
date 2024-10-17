@@ -3,9 +3,9 @@ using Microsoft.UI.Text;
 
 namespace Celbridge.Inspector.Views;
 
-public partial class ResourceInspector : UserControl, IInspector
+public partial class ResourceNameInspector : UserControl, IInspector
 {
-    public ResourceInspectorViewModel ViewModel => (DataContext as ResourceInspectorViewModel)!;
+    public ResourceNameInspectorViewModel ViewModel => (DataContext as ResourceNameInspectorViewModel)!;
 
     public ResourceKey Resource 
     {
@@ -17,16 +17,16 @@ public partial class ResourceInspector : UserControl, IInspector
     private TextBlock? _resourceNameText;
 
     // Code gen requires a parameterless constructor
-    public ResourceInspector()
+    public ResourceNameInspector()
     {
         throw new NotImplementedException();
     }
 
-    public ResourceInspector(ResourceInspectorViewModel viewModel)
+    public ResourceNameInspector(ResourceNameInspectorViewModel viewModel)
     {
         DataContext = viewModel;
 
-        this.DataContext<ResourceInspectorViewModel>((inspector, vm) => inspector
+        this.DataContext<ResourceNameInspectorViewModel>((inspector, vm) => inspector
             .Content(
                 new StackPanel()
                     .Orientation(Orientation.Horizontal)
@@ -40,7 +40,7 @@ public partial class ResourceInspector : UserControl, IInspector
                             .FontSize(20)
                             .FontFamily(StaticResource.Get<FontFamily>(ViewModel.Icon.FontFamily))                                
                             .MinWidth(20)
-                            .Margin(4)
+                            .Margin(0, 4, 4, 4)
                             .VerticalAlignment(VerticalAlignment.Center),
                         new TextBlock()
                             .Name(out _resourceNameText)

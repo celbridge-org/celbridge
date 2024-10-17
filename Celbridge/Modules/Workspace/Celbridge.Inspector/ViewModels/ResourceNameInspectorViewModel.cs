@@ -8,7 +8,7 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 
-public partial class ResourceInspectorViewModel : ObservableObject
+public partial class ResourceNameInspectorViewModel : ObservableObject
 {
     private readonly IIconService _iconService;
     private readonly IResourceRegistry _resourceRegistry;
@@ -20,13 +20,14 @@ public partial class ResourceInspectorViewModel : ObservableObject
     private IconDefinition _icon;
 
     // Code gen requires a parameterless constructor
-    public ResourceInspectorViewModel()
+    public ResourceNameInspectorViewModel()
     {
         throw new NotImplementedException();
     }
 
-    public ResourceInspectorViewModel(IIconService iconService,
-                                      IWorkspaceWrapper workspaceWrapper)
+    public ResourceNameInspectorViewModel(
+        IIconService iconService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         // workspaceWrapper.IsWorkspaceLoaded could be false here if this is called while loading workspace.
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);

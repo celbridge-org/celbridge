@@ -134,11 +134,19 @@ public class ResourceUtils
 #endif
     }
 
-    public static async Task<Result> OpenURL(string url)
+    public static async Task<Result> OpenBrowser(string url)
     {
         try
         {
-            var uri = new Uri(url);
+            string targetUrl = url.Trim();
+            if (!string.IsNullOrWhiteSpace(targetUrl) &&
+                !targetUrl.StartsWith("http") &&
+                !targetUrl.StartsWith("file"))
+            {
+                targetUrl = $"https://{targetUrl}";
+            }
+
+            var uri = new Uri(targetUrl);
             await Launcher.LaunchUriAsync(uri);
         }
         catch (Exception ex)
@@ -172,19 +180,27 @@ public class ResourceUtils
             var json = File.ReadAllText(webFilePath);
             var jsonObj = JObject.Parse(json);
 
-            var urlToken = jsonObj["url"];
+            var urlToken = jsonObj["sourceUrl"];
             if (urlToken is null)
             {
-                return Result<string>.Fail($"Failed to find 'url' property in .web JSON data: {webFilePath}");
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .web JSON data: {webFilePath}");
             }
 
-            var url = urlToken.ToString();
-            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+            // Todo: This logic is repeated in multiple places, move it to the utility service
+            string targetUrl = urlToken.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(targetUrl) &&
+                !targetUrl.StartsWith("http") && 
+                !targetUrl.StartsWith("file"))
             {
-                return Result<string>.Fail($"Url is not valid: {url}");
+                targetUrl = $"https://{targetUrl}";
             }
 
-            return Result<string>.Ok(url);
+            if (!Uri.IsWellFormedUriString(targetUrl, UriKind.Absolute))
+            {
+                return Result<string>.Fail($"Url is not valid: {targetUrl}");
+            }
+
+            return Result<string>.Ok(targetUrl);
         }
         catch (Exception ex)
         {

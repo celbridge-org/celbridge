@@ -369,4 +369,13 @@
   <data name="ResourceTree_OpenInApplication" xml:space="preserve">
     <value>Associated application</value>
   </data>
+  <data name="WebInspector_StartURL" xml:space="preserve">
+    <value>Start URL</value>
+  </data>
+  <data name="WebInspector_OpenURLTooltip" xml:space="preserve">
+    <value>Open web page document</value>
+  </data>
+  <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
+    <value>Enter web address</value>
+  </data>
 </root>
