@@ -5,7 +5,10 @@ namespace Celbridge.Inspector.Views;
 
 public partial class WebInspector : UserControl, IInspector
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     public WebInspectorViewModel ViewModel => (DataContext as WebInspectorViewModel)!;
+    private LocalizedString StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
 
     public ResourceKey Resource 
     {
@@ -22,9 +25,7 @@ public partial class WebInspector : UserControl, IInspector
     public WebInspector(WebInspectorViewModel viewModel)
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
-        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-
-        var startURLString = stringLocalizer.GetString("WebInspector_StartURL");
+        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         DataContext = viewModel;
 
@@ -36,7 +37,10 @@ public partial class WebInspector : UserControl, IInspector
                     .Children(
                         new TextBox()
                             .Grid(column: 0)
-                            .Header(startURLString)
+                            // This appears to be the right way to bind to a localized string.
+                            // Just doing .Header(StartURLString) throws a cryptic XAML exception.
+                            // https://platform.uno/docs/articles/external/uno.extensions/doc/Learn/Markup/Binding101.html
+                            .Header(() => inspector.StartURLString)
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
                             .Text(x => x.Binding(() => vm.Url)
                                 .Mode(BindingMode.TwoWay)),
