@@ -87,6 +87,11 @@ public partial class WebInspector : UserControl, IInspector
     {
         if (e.Key == VirtualKey.Enter)
         {
+            // Force the currently entered text to be submitted
+            var textBox = sender as TextBox;
+            var bindingExpression = textBox?.GetBindingExpression(TextBox.TextProperty);
+            bindingExpression?.UpdateSource();
+
             ViewModel.OpenDocumentCommand.Execute(this);
             e.Handled = true;
         }
