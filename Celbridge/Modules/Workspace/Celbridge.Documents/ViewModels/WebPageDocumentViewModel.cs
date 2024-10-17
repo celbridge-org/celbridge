@@ -10,7 +10,7 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
     private readonly ICommandService _commandService;
 
     [ObservableProperty]
-    private string _sourceURL = string.Empty;
+    private string _sourceUrl = string.Empty;
 
     // Code gen requires a parameterless constructor
     public WebPageDocumentViewModel()
@@ -29,10 +29,17 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
         {
             var text = await File.ReadAllTextAsync(FilePath);
 
+            if (string.IsNullOrEmpty(text))
+            {
+                // No data populated yet in the .web file, default to empty url
+                SourceUrl = string.Empty;
+                return Result.Ok();
+            }
+
             var jo = JObject.Parse(text);
 
             string url = string.Empty;
-            if (jo.TryGetValue("url", out var urlToken))
+            if (jo.TryGetValue("sourceUrl", out var urlToken))
             {
                 string targetUrl = urlToken.ToString().Trim();
                 if (!targetUrl.StartsWith("http") && !targetUrl.StartsWith("file"))
@@ -40,7 +47,7 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
                     targetUrl = $"https://{targetUrl}";
                 }
 
-                SourceURL = targetUrl;
+                SourceUrl = targetUrl;
                 return Result.Ok();
             }
         }

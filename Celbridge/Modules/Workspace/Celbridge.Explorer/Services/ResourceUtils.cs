@@ -178,19 +178,26 @@ public class ResourceUtils
             var json = File.ReadAllText(webFilePath);
             var jsonObj = JObject.Parse(json);
 
-            var urlToken = jsonObj["url"];
+            var urlToken = jsonObj["sourceUrl"];
             if (urlToken is null)
             {
-                return Result<string>.Fail($"Failed to find 'url' property in .web JSON data: {webFilePath}");
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .web JSON data: {webFilePath}");
             }
 
-            var url = urlToken.ToString();
-            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+            // Todo: This logic is repeated in multiple places, move it to the utility service
+            string sourceUrl = urlToken.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(sourceUrl) &&
+                !sourceUrl.StartsWith("http") && !sourceUrl.StartsWith("file"))
             {
-                return Result<string>.Fail($"Url is not valid: {url}");
+                sourceUrl = $"https://{sourceUrl}";
             }
 
-            return Result<string>.Ok(url);
+            if (!Uri.IsWellFormedUriString(sourceUrl, UriKind.Absolute))
+            {
+                return Result<string>.Fail($"Url is not valid: {sourceUrl}");
+            }
+
+            return Result<string>.Ok(sourceUrl);
         }
         catch (Exception ex)
         {
