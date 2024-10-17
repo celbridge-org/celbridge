@@ -139,6 +139,13 @@ public partial class DocumentTabViewModel : ObservableObject
         return Result<bool>.Ok(true);
     }
 
+    public async Task<Result> ReloadDocument()
+    {
+        Guard.IsNotNull(DocumentView);
+
+        return await DocumentView.LoadContent();
+    }
+
     private void UnregisterMessageHandlers()
     {
         _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);

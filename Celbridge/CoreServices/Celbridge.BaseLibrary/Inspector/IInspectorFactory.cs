@@ -1,13 +1,17 @@
 namespace Celbridge.Inspector;
 
 /// <summary>
-/// A factory class for instantiating inspector instances.
+/// A factory class for instantiating inspector instances to display in the inspector panel.
 /// </summary>
 public interface IInspectorFactory
 {
     /// <summary>
-    /// Creates an inspector that can inspect a resource.
-    /// This is the inspector displayed at the top of the inspector panel for any selected resource.
+    /// Creates an inspector to display the resource name in the inspector panel.
     /// </summary>
-    Result<IInspector> CreateResourceInspector(ResourceKey key);
+    Result<IInspector> CreateResourceNameInspector(ResourceKey key);
+
+    /// <summary>
+    /// Creates an inspector based on the resource type.
+    /// </summary>
+    Result<IInspector> CreateResourceInspector(ResourceKey resource);
 }

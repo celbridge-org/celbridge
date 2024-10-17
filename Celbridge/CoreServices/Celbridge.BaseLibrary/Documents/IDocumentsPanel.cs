@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with the DocumentsPanel view.
@@ -14,7 +14,7 @@ public interface IDocumentsPanel
     /// <summary>
     /// Open a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, string filePath);
+    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload);
 
     /// <summary>
     /// Close an opened document in the documents panel.

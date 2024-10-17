@@ -356,7 +356,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenBrowser(string url)
     {
-        var openResult = await ResourceUtils.OpenURL(url);
+        var openResult = await ResourceUtils.OpenBrowser(url);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open url in system default browser: {url}")
