@@ -8,13 +8,10 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 
-public partial class ResourceNameInspectorViewModel : ObservableObject
+public partial class ResourceNameInspectorViewModel : InspectorViewModel
 {
     private readonly IIconService _iconService;
     private readonly IResourceRegistry _resourceRegistry;
-
-    [ObservableProperty]
-    private ResourceKey _resource;
 
     [ObservableProperty]
     private IconDefinition _icon;
