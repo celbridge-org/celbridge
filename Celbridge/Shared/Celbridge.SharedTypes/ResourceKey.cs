@@ -97,6 +97,25 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
+    /// Returns the resource name without the file extension.
+    /// </summary>
+    public string ResourceNameNoExtension
+    {
+        get
+        {
+            var resourceName = ResourceName;
+
+            int lastIndex = resourceName.LastIndexOf('.');
+            if (lastIndex == -1)
+            {
+                return resourceName;
+            }
+
+            return resourceName.Substring(0, lastIndex);
+        }
+    }
+
+    /// <summary>
     /// Returns the parent resource key for the specified resource key.
     /// </summary>
     public ResourceKey GetParent()
