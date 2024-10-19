@@ -9,14 +9,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Inspector.ViewModels;
 
-public partial class WebInspectorViewModel : ObservableObject
+public partial class WebInspectorViewModel : InspectorViewModel
 {
     private readonly ILogger<WebInspectorViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
-
-    [ObservableProperty]
-    private ResourceKey _resource;
 
     [ObservableProperty]
     private string _sourceUrl = string.Empty;
