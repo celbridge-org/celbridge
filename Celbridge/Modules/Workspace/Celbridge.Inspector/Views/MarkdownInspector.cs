@@ -41,6 +41,7 @@ public partial class MarkdownInspector : UserControl, IInspector
                             .Grid(column: 1)
                             .Margin(2, 0, 2, 0)
                             .VerticalAlignment(VerticalAlignment.Bottom)
+                            .HorizontalAlignment(HorizontalAlignment.Center)
                             .Command(ViewModel.OpenDocumentCommand)
                             .ToolTipService(null, null, inspector.StartURLString)
                             .IsEnabled(x => x.Binding(() => vm.SourceUrl)
@@ -48,8 +49,16 @@ public partial class MarkdownInspector : UserControl, IInspector
                                 .Convert((url) => !string.IsNullOrWhiteSpace(url)))
                             .Content
                             (
-                                new SymbolIcon()
-                                    .Symbol(Symbol.OpenFile)
+                                new StackPanel()
+                                    .Orientation(Orientation.Horizontal)
+                                    .ToolTipService(null, null, "Open document")
+                                    .Children(
+                                        new TextBlock()
+                                            .Text("Open"),
+                                        new SymbolIcon()
+                                            .Symbol(Symbol.OpenFile)
+                                            .Margin(8, 0, 0, 0)
+                                    )
                             )
                     )
             ));
