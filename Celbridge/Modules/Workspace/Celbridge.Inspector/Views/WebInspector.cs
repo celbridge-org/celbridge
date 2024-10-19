@@ -50,12 +50,12 @@ public partial class WebInspector : UserControl, IInspector
                                 new TextBox()
                                     .Grid(column: 0)
                                     .Name(out _urlTextBox)
-                                    // This appears to be the right way to bind to a localized string.
-                                    // Just doing .Header(StartURLString) throws a cryptic XAML exception.
+                                    // Todo: Localize this header
+                                    // I've tried everything I can think of here, but I can't get the binding to
+                                    // display the localized string in StartURLString to work. I just get a cryptic
+                                    // com exception with no extra information.
                                     // https://platform.uno/docs/articles/external/uno.extensions/doc/Learn/Markup/Binding101.html
-                                    .Header(() => inspector.StartURLString)
-                                    // The binding technique above doesn't work for PlaceholderText though.
-                                    // In this case you seem to have to reference the string directly?
+                                    .Header("Start URL")
                                     .PlaceholderText(inspector.AddressPlaceholderString)
                                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                                     .IsSpellCheckEnabled(false)
@@ -73,7 +73,7 @@ public partial class WebInspector : UserControl, IInspector
                                     .Content
                                     (
                                         new SymbolIcon()
-                                            .Symbol(Symbol.Forward)
+                                            .Symbol(Symbol.OpenFile)
                                     )
                             )
                     )

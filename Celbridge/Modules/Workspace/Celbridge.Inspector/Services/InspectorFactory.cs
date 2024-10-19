@@ -1,5 +1,6 @@
 using Celbridge.Explorer;
 using Celbridge.Inspector.ViewModels;
+using Celbridge.Inspector.Views;
 using Celbridge.Workspace;
 
 using Path = System.IO.Path;
@@ -23,15 +24,12 @@ public class InspectorFactory : IInspectorFactory
     {
         try
         {
-            var viewModel = _serviceProvider.GetRequiredService<ResourceNameInspectorViewModel>();
-            viewModel.Resource = resource;
-            var inspector = new Views.ResourceNameInspector(viewModel);
-
+            var inspector = CreateInspector<ResourceNameInspector, ResourceNameInspectorViewModel>(resource);
             return Result<IInspector>.Ok(inspector);
         }
         catch (Exception ex) 
         {
-            return Result<IInspector>.Fail($"An exception occurred when creating a generic inspector for resource: {resource}")
+            return Result<IInspector>.Fail($"An exception occurred when creating the name inspector for resource: {resource}")
                 .WithException(ex);        
         }
     }
@@ -74,9 +72,11 @@ public class InspectorFactory : IInspectorFactory
         IInspector? inspector = null;
         if (extension == ".web")
         {
-            var viewModel = _serviceProvider.GetRequiredService<WebInspectorViewModel>();
-            viewModel.Resource = resource;
-            inspector = new Views.WebInspector(viewModel);
+            inspector = CreateInspector<WebInspector, WebInspectorViewModel>(resource);
+        }
+        else if (extension == ".md")
+        {
+            inspector = CreateInspector<MarkdownInspector, MarkdownInspectorViewModel>(resource);
         }
 
         if (inspector is not null)
@@ -85,6 +85,16 @@ public class InspectorFactory : IInspectorFactory
         }
 
         return Result<IInspector>.Fail($"There is no inspector available for this resource: {resource}");
+    }
+
+    private IInspector CreateInspector<TView, TViewModel>(ResourceKey resource)
+        where TView : IInspector
+        where TViewModel : InspectorViewModel
+    {
+        var viewModel = _serviceProvider.GetRequiredService<TViewModel>();
+        viewModel.Resource = resource;
+        var inspector = (IInspector)Activator.CreateInstance(typeof(TView), viewModel)!;
+        return inspector;
     }
 }
 
