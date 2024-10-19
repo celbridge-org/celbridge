@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -22,6 +23,7 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IIconService _iconService;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
@@ -53,7 +55,8 @@ public class ExplorerService : IExplorerService, IDisposable
         ICommandService commandService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        IIconService iconService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -62,6 +65,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _commandService = commandService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
+        _iconService = iconService;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.
@@ -364,6 +368,36 @@ public class ExplorerService : IExplorerService, IDisposable
         }
 
         return Result.Ok();
+    }
+
+    public IconDefinition GetIconForResource(ResourceKey resource)
+    {
+        // If the resource is a folder, use the folder icon
+        var getResourceResult = ResourceRegistry.GetResource(resource);
+        if (getResourceResult.IsSuccess)
+        {
+            var r = getResourceResult.Value;
+            if (r is IFolderResource)
+            {
+                var icon = _iconService.DefaultFolderIcon with
+                {
+                    // Todo: Define this color in resources
+                    FontColor = "#FFCC40"
+                };
+                return icon;
+            }
+        }
+
+        // If the resource is a file, use the icon matching the file extension
+        var fileExtension = Path.GetExtension(resource);
+        var getIconResult = _iconService.GetIconForFileExtension(fileExtension);
+        if (getIconResult.IsSuccess)
+        {
+            return getIconResult.Value;
+        }
+
+        // Return the default file icon if we couldn't find a better match
+        return _iconService.DefaultFileIcon;
     }
 
     private bool PathContainsSubPath(string path, string subPath)

@@ -3,14 +3,13 @@ using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
-
 using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 
 public partial class ResourceNameInspectorViewModel : InspectorViewModel
 {
-    private readonly IIconService _iconService;
+    private readonly IExplorerService _explorerService;
     private readonly IResourceRegistry _resourceRegistry;
 
     [ObservableProperty]
@@ -23,16 +22,18 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
     }
 
     public ResourceNameInspectorViewModel(
-        IIconService iconService,
+        IExplorerService explorerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // workspaceWrapper.IsWorkspaceLoaded could be false here if this is called while loading workspace.
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);
 
-        _iconService = iconService;
+        _explorerService = explorerService;
+
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        _icon = _iconService.DefaultFileIcon;
+        // Use the default file icon until we can resolve the proper icon when the resource is populated.
+        _icon = _explorerService.GetIconForResource(ResourceKey.Empty);
 
         PropertyChanged += ViewModel_PropertyChanged;
     }
@@ -41,29 +42,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
     {
         if (e.PropertyName == nameof(Resource))
         {
-            // If the resource is a folder, use the folder icon
-            var getResourceResult = _resourceRegistry.GetResource(Resource);
-            if (getResourceResult.IsSuccess)
-            {
-                var resource = getResourceResult.Value;
-                if (resource is IFolderResource) 
-                {
-                    Icon = _iconService.DefaultFolderIcon with
-                    {
-                        // Todo: Define this color in resources
-                        FontColor = "#FFCC40"
-                    };
-                    return;
-                }
-            }
-
-            // If the resource is a file, use the icon matching the file extension
-            var fileExtension = Path.GetExtension(Resource);
-            var getIconResult = _iconService.GetIconForFileExtension(fileExtension);            
-            if (getIconResult.IsSuccess)
-            {
-                Icon = getIconResult.Value;
-            }
+            Icon = _explorerService.GetIconForResource(Resource);            
         }
     }
 }
