@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Explorer;
 
@@ -72,4 +73,9 @@ public interface IExplorerService
     /// Open the specified URL in the system default browser.
     /// </summary>
     Task<Result> OpenBrowser(string uRL);
+
+    /// <summary>
+    /// Get an icon definition for the specified resource.
+    /// </summary>
+    IconDefinition GetIconForResource(ResourceKey resource);
 }
