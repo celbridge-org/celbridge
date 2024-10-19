@@ -1,5 +1,6 @@
 using Celbridge.Inspector.ViewModels;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Inspector.Views;
 
@@ -33,31 +34,59 @@ public partial class MarkdownInspector : UserControl, IInspector
         this.DataContext<WebInspectorViewModel>((inspector, vm) => inspector
             .Content
             (
-                new StackPanel()
-                    .Orientation(Orientation.Vertical)
+                new Grid()
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+                    .BorderThickness(0, 1, 0, 1)
                     .Children
                     (
-                        new Button()
-                            .Grid(column: 1)
-                            .Margin(2, 0, 2, 0)
-                            .VerticalAlignment(VerticalAlignment.Bottom)
+                        new StackPanel()
+                            .Orientation(Orientation.Horizontal)
                             .HorizontalAlignment(HorizontalAlignment.Center)
-                            .Command(ViewModel.OpenDocumentCommand)
-                            .ToolTipService(null, null, inspector.StartURLString)
-                            .IsEnabled(x => x.Binding(() => vm.SourceUrl)
-                                .Mode(BindingMode.OneWay)
-                                .Convert((url) => !string.IsNullOrWhiteSpace(url)))
-                            .Content
+                            .Spacing(2)
+                            .Children
                             (
-                                new StackPanel()
-                                    .Orientation(Orientation.Horizontal)
+                                new Button()
+                                    .Grid(column: 1)
+                                    .Margin(2, 0, 2, 0)
+                                    .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .Command(ViewModel.OpenDocumentCommand)
                                     .ToolTipService(null, null, "Open document")
-                                    .Children(
-                                        new TextBlock()
-                                            .Text("Open"),
-                                        new SymbolIcon()
-                                            .Symbol(Symbol.OpenFile)
-                                            .Margin(8, 0, 0, 0)
+                                    .Content
+                                    (
+                                        new StackPanel()
+                                            .Orientation(Orientation.Horizontal)
+                                            .Children(
+                                                new SymbolIcon()
+                                                    .Symbol(Symbol.OpenFile)
+                                                    .Margin(8, 0, 0, 0)
+                                            )
+                                    ),
+                                new Button()
+                                    .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .ToolTipService(null, null, "Show editor panel")
+                                    .Content
+                                    (
+                                        new StackPanel()
+                                            .Orientation(Orientation.Horizontal)
+                                            .Children(
+                                                new SymbolIcon()
+                                                    .Symbol(Symbol.Document)
+                                                    .Margin(8, 0, 0, 0)
+                                            )
+                                    ),
+                                new Button()
+                                    .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .ToolTipService(null, null, "Show preview panel")
+                                    .Content
+                                    (
+                                        new StackPanel()
+                                            .Orientation(Orientation.Horizontal)
+                                            .Children(
+                                                new SymbolIcon()
+                                                    .Symbol(Symbol.PreviewLink)
+                                                    .Margin(8, 0, 0, 0)
+                                            )
                                     )
                             )
                     )
