@@ -101,7 +101,7 @@ public class ResourceData
     /// <summary>
     /// Gets the value of a property from the "Properties" object in the root.
     /// </summary>
-    public Result<T> GetProperty<T>(string propertyName, T defaultValue = default(T)!) where T : notnull
+    public Result<T> GetProperty<T>(string propertyName) where T : notnull
     {
         try
         {
@@ -113,14 +113,19 @@ public class ResourceData
             if (properties.ContainsKey(propertyName))
             {
                 var value = properties[propertyName]!.ToObject<T>();
-                return value is null ? Result<T>.Ok(defaultValue) : Result<T>.Ok(value);
+                if (value is not null)
+                {
+                    return Result<T>.Ok(value);
+                }
             }
 
-            return Result<T>.Ok(defaultValue);
+            // Property value not found
+            return Result<T>.Fail();
         }
         catch (Exception ex)
         {
-            return Result<T>.Fail($"Failed to get property '{propertyName}' from resource '{Resource}'").WithException(ex);
+            return Result<T>.Fail($"An exception occurred when getting property '{propertyName}' from resource '{Resource}'")
+                .WithException(ex);
         }
     }
 

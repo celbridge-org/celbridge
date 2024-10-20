@@ -22,37 +22,54 @@ public class ResourceDataService : IResourceDataService
     /// <summary>
     /// Gets the value of a property from the "Properties" object in the root of the resource data.
     /// </summary>
-    public Result<T> GetProperty<T>(ResourceKey resource, string propertyName, T defaultValue = default(T)!) where T : notnull
+    public T? GetProperty<T>(ResourceKey resource, string propertyName, T? defaultValue) 
+        where T : notnull
     {
-        var loadResult = AcquireResourceData(resource);
-        if (loadResult.IsFailure)
+        var acquireResult = AcquireResourceData(resource);
+        if (acquireResult.IsFailure)
         {
-            return Result<T>.Fail($"Failed to acquire resource data for '{resource}'")
-                .WithErrors(loadResult);
+            var failure = Result<T>.Fail($"Failed to acquire resource data for '{resource}'")
+                .WithErrors(acquireResult);
+
+            throw new InvalidOperationException(failure.Error);
         }
 
-        return _resourceDataCache[resource].GetProperty(propertyName, defaultValue);
+        var getResult = _resourceDataCache[resource].GetProperty<T>(propertyName);
+        if (getResult.IsFailure)
+        {
+            return defaultValue;
+        }
+
+        return getResult.Value;
     }
 
-    /// <summary>
-    /// Sets the value of a property in the "Properties" object in the root of the resource data.
-    /// </summary>
-    public Result SetProperty<T>(ResourceKey resource, string propertyName, T newValue) where T : notnull
+    public T? GetProperty<T>(ResourceKey resource, string propertyName) 
+        where T : notnull
     {
-        var loadResult = AcquireResourceData(resource);
-        if (loadResult.IsFailure)
+        return GetProperty<T>(resource, propertyName, default(T));
+    }
+
+    public void SetProperty<T>(ResourceKey resource, string propertyName, T newValue) where T : notnull
+    {
+        var acquireResult = AcquireResourceData(resource);
+        if (acquireResult.IsFailure)
         {
-            return Result.Fail($"Failed to acquire resource data for '{resource}'")
-                .WithErrors(loadResult);
+            var failure = Result<T>.Fail($"Failed to acquire resource data for '{resource}'")
+                .WithErrors(acquireResult);
+
+            throw new InvalidOperationException(failure.Error);
         }
 
         var setResult = _resourceDataCache[resource].SetProperty(propertyName, newValue);
-        if (setResult.IsSuccess)
+        if (setResult.IsFailure)
         {
-            _modifiedResources.Add(resource); // Mark resource as modified
+            var failure = Result<T>.Fail($"Failed to set property '{propertyName}' for '{resource}'")
+                .WithErrors(setResult);
+
+            throw new InvalidOperationException(failure.Error);
         }
 
-        return setResult;
+        _modifiedResources.Add(resource); // Mark resource as modified
     }
 
     /// <summary>
