@@ -10,7 +10,7 @@ namespace Celbridge.ResourceData.Services;
 public class ResourceData
 {
     private readonly JObject _jsonData;
-    private readonly ConcurrentDictionary<WeakReference<object>, Action<ResourceKey, string>> _notifiers;
+    private readonly ConcurrentDictionary<WeakReference<object>, ResourcePropertyChangedNotifier> _notifiers;
     private bool _isModified;
 
     public ResourceKey Resource { get; private set; }
@@ -19,7 +19,7 @@ public class ResourceData
     public ResourceData()
     {
         _jsonData = new JObject();
-        _notifiers = new ConcurrentDictionary<WeakReference<object>, Action<ResourceKey, string>>();
+        _notifiers = new ConcurrentDictionary<WeakReference<object>, ResourcePropertyChangedNotifier>();
         _isModified = false;
 
         EnsurePropertiesExists();
@@ -155,10 +155,10 @@ public class ResourceData
     /// Registers a callback to be triggered when a property is modified.
     /// Uses WeakReference to allow automatic cleanup when the recipient goes out of scope.
     /// </summary>
-    public void RegisterNotifier(object recipient, Action<ResourceKey, string> callback)
+    public void RegisterNotifier(object recipient, ResourcePropertyChangedNotifier notifier)
     {
         var weakRecipient = new WeakReference<object>(recipient);
-        _notifiers[weakRecipient] = callback;
+        _notifiers[weakRecipient] = notifier;
     }
 
     /// <summary>
