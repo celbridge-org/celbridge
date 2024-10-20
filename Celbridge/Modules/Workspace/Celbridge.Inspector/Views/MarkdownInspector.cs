@@ -64,6 +64,7 @@ public partial class MarkdownInspector : UserControl, IInspector
                                     ),
                                 new Button()
                                     .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .Command(ViewModel.ToggleEditorCommand)
                                     .ToolTipService(null, null, "Show editor panel")
                                     .Content
                                     (
@@ -77,6 +78,7 @@ public partial class MarkdownInspector : UserControl, IInspector
                                     ),
                                 new Button()
                                     .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .Command(ViewModel.TogglePreviewCommand)
                                     .ToolTipService(null, null, "Show preview panel")
                                     .Content
                                     (

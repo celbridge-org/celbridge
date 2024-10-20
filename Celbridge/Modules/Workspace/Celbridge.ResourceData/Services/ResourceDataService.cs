@@ -1,175 +1,115 @@
-using CommunityToolkit.Diagnostics;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using Celbridge.Projects;
+using Celbridge.Workspace;
 using System.Collections.Concurrent;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.ResourceData.Services;
 
 public class ResourceDataService : IResourceDataService
 {
-    private readonly ConcurrentDictionary<ResourceKey, JObject> _loadedResources = new();
-    private readonly ConcurrentDictionary<ResourceKey, ConcurrentDictionary<object, Action<ResourceKey, string>>> _notifiers = new(); 
+    private readonly IProjectService _projectService;
+    private readonly ConcurrentDictionary<ResourceKey, ResourceData> _resourceDataCache = new(); // Cache for ResourceData objects
     private readonly ConcurrentBag<ResourceKey> _modifiedResources = new(); // Track modified resources
 
-    public Result AcquireResourceData(ResourceKey resource)
+    public ResourceDataService(
+        IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper)
     {
-        if (_loadedResources.ContainsKey(resource))
-        {
-            return Result.Ok();
-        }
-
-        try
-        {
-            string fullPath = GetFullPath(resource);
-            if (File.Exists(fullPath))
-            {
-                string jsonContent = File.ReadAllText(fullPath);
-                JObject jsonObject = JObject.Parse(jsonContent);
-                _loadedResources[resource] = jsonObject;
-            }
-            else
-            {
-                _loadedResources[resource] = new JObject(); // Create a new empty JObject if the file doesn't exist
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when loading resource data: '{resource}'")
-                .WithException(ex);
-        }
+        _projectService = projectService;
     }
 
-    public Result<T> GetValue<T>(ResourceKey resource, string jsonPath)
-        where T : notnull
-    {
-        var obj = default(T);
-        Guard.IsNotNull(obj);
-
-        return GetValue(resource, jsonPath, obj);
-    }
-
-    public Result<T> GetValue<T>(ResourceKey resource, string jsonPath, T defaultValue)
-        where T : notnull
+    /// <summary>
+    /// Gets the value of a property from the "Properties" object in the root of the resource data.
+    /// </summary>
+    public Result<T> GetProperty<T>(ResourceKey resource, string propertyName, T defaultValue = default(T)!) where T : notnull
     {
         var loadResult = AcquireResourceData(resource);
         if (loadResult.IsFailure)
         {
-            return Result<T>.Fail("Failed to load resource data")
+            return Result<T>.Fail($"Failed to acquire resource data for '{resource}'")
                 .WithErrors(loadResult);
         }
 
-        try
-        {
-            JObject loadedResource = _loadedResources[resource];
-
-            JToken? token = loadedResource.SelectToken(jsonPath);
-            if (token == null)
-            {
-                return Result<T>.Ok(defaultValue);
-            }
-
-            var obj = token.ToObject<T>();
-            return obj is null ? Result<T>.Ok(defaultValue) : Result<T>.Ok(obj);
-        }
-        catch (Exception ex)
-        {
-            return Result<T>.Fail("An exception occurred when loading resource data")
-                .WithException(ex);
-        }
+        return _resourceDataCache[resource].GetProperty(propertyName, defaultValue);
     }
 
-    public Result SetValue<T>(ResourceKey resource, string jsonPath, T newValue)
-        where T : notnull
+    /// <summary>
+    /// Sets the value of a property in the "Properties" object in the root of the resource data.
+    /// </summary>
+    public Result SetProperty<T>(ResourceKey resource, string propertyName, T newValue) where T : notnull
     {
         var loadResult = AcquireResourceData(resource);
         if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to load resource data: {resource}")
+            return Result.Fail($"Failed to acquire resource data for '{resource}'")
                 .WithErrors(loadResult);
         }
 
-        try
+        var setResult = _resourceDataCache[resource].SetProperty(propertyName, newValue);
+        if (setResult.IsSuccess)
         {
-            JObject loadedResource = _loadedResources[resource];
-
-            JToken? token = loadedResource.SelectToken(jsonPath);
-            if (token != null)
-            {
-                token.Replace(JToken.FromObject(newValue));
-            }
-            else
-            {
-                // Add new property if path does not exist
-                loadedResource.SelectToken(jsonPath)?.Parent?.Add(newValue);
-            }
-
-            // Mark the resource as modified
-            _modifiedResources.Add(resource);
-
-            NotifyChanges(resource, jsonPath);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to set value: '{resource}', '{jsonPath}'")
-                .WithException(ex);
+            _modifiedResources.Add(resource); // Mark resource as modified
         }
 
-        return Result.Ok();
+        return setResult;
     }
 
+    /// <summary>
+    /// Registers a callback that gets triggered when a property in the resource is modified.
+    /// </summary>
     public void RegisterNotifier(ResourceKey resourceKey, object recipient, Action<ResourceKey, string> callback)
     {
-        var recipientCallbacks = _notifiers.GetOrAdd(resourceKey, new ConcurrentDictionary<object, Action<ResourceKey, string>>());
-        recipientCallbacks[recipient] = callback;
-    }
-
-    public void UnregisterNotifier(ResourceKey resourceKey, object recipient)
-    {
-        if (_notifiers.TryGetValue(resourceKey, out var recipientCallbacks))
+        var loadResult = AcquireResourceData(resourceKey);
+        if (loadResult.IsSuccess)
         {
-            recipientCallbacks.TryRemove(recipient, out _);
-
-            // Clean up if no more recipients are listening for this resource key
-            if (recipientCallbacks.IsEmpty)
-            {
-                _notifiers.TryRemove(resourceKey, out _);
-            }
+            _resourceDataCache[resourceKey].RegisterNotifier(recipient, callback);
         }
     }
 
+    /// <summary>
+    /// Unregisters a callback for the given resource key and recipient.
+    /// </summary>
+    public void UnregisterNotifier(ResourceKey resourceKey, object recipient)
+    {
+        var loadResult = AcquireResourceData(resourceKey);
+        if (loadResult.IsSuccess)
+        {
+            _resourceDataCache[resourceKey].UnregisterNotifier(recipient);
+        }
+    }
+
+    /// <summary>
+    /// Remaps the old resource key to a new resource key.
+    /// </summary>
     public Result RemapResourceKey(ResourceKey oldResource, ResourceKey newResource)
     {
         try
         {
-            // Update the loaded resources
-            if (_loadedResources.ContainsKey(oldResource))
+            if (_resourceDataCache.ContainsKey(oldResource))
             {
-                _loadedResources[newResource] = _loadedResources[oldResource];
-                _loadedResources.TryRemove(oldResource, out _);
-            }
+                var resourceData = _resourceDataCache[oldResource];
 
-            // Update the modified resources list
-            if (_modifiedResources.Contains(oldResource))
-            {
-                _modifiedResources.Add(newResource);
-                _modifiedResources.TryTake(out oldResource);
-            }
+                var newResourceDataPath = GetResourceDataPath(newResource);
+                resourceData.SetResourceKey(newResource, newResourceDataPath);
 
-            // Update the notifiers
-            if (_notifiers.ContainsKey(oldResource))
-            {
-                _notifiers[newResource] = _notifiers[oldResource];
-                _notifiers.TryRemove(oldResource, out _);
-            }
+                _resourceDataCache[newResource] = resourceData;
+                _resourceDataCache.TryRemove(oldResource, out _);
 
-            // Rename the backing JSON file
-            string oldFilePath = GetFullPath(oldResource);
-            string newFilePath = GetFullPath(newResource);
-            if (File.Exists(oldFilePath))
-            {
-                File.Move(oldFilePath, newFilePath);
+                // Update the modified resources list
+                if (_modifiedResources.Contains(oldResource))
+                {
+                    _modifiedResources.Add(newResource);
+                    _modifiedResources.TryTake(out oldResource);
+                }
+
+                // Rename the backing JSON file
+                string oldResourcePath = GetResourceDataPath(oldResource);
+                string newResourcePath = GetResourceDataPath(newResource);
+                if (File.Exists(oldResourcePath))
+                {
+                    File.Move(oldResourcePath, newResourcePath);
+                }
             }
 
             return Result.Ok();
@@ -181,26 +121,22 @@ public class ResourceDataService : IResourceDataService
         }
     }
 
+    /// <summary>
+    /// Saves all modified resources to disk asynchronously.
+    /// </summary>
     public async Task<Result> SavePendingAsync()
     {
         foreach (var resourceKey in _modifiedResources)
         {
-            if (_loadedResources.ContainsKey(resourceKey))
+            if (_resourceDataCache.ContainsKey(resourceKey))
             {
-                try
-                {
-                    string fullPath = GetFullPath(resourceKey);
-                    string jsonContent = _loadedResources[resourceKey].ToString(Formatting.Indented);
+                var resourceData = _resourceDataCache[resourceKey];
 
-                    using (var writer = new StreamWriter(fullPath))
-                    {
-                        await writer.WriteAsync(jsonContent);
-                    }
-                }
-                catch (Exception ex)
+                var saveResult = await resourceData.SaveAsync();
+                if (saveResult.IsFailure)
                 {
-                    return Result.Fail($"An exception occurred when saving resource '{resourceKey}'")
-                        .WithException(ex);
+                    return Result.Fail($"Failed to save resource data: '{resourceKey}'")
+                        .WithErrors(saveResult);
                 }
             }
         }
@@ -211,20 +147,44 @@ public class ResourceDataService : IResourceDataService
         return Result.Ok();
     }
 
-    private void NotifyChanges(ResourceKey resource, string jsonPath)
+    /// <summary>
+    /// Acquires a ResourceData object for the given resource key.
+    /// If it doesn't exist in the cache, it will load it from disk or create a new one.
+    /// </summary>
+    private Result AcquireResourceData(ResourceKey resource)
     {
-        if (_notifiers.ContainsKey(resource))
+        if (_resourceDataCache.ContainsKey(resource))
         {
-            foreach (var recipientCallback in _notifiers[resource])
+            return Result.Ok();
+        }
+
+        try
+        {
+            // Create and load the ResourceData object
+            var resourceData = new ResourceData();
+            string resourcePath = GetResourceDataPath(resource);
+
+            var loadResult = resourceData.Load(resource, resourcePath);
+            if (loadResult.IsFailure)
             {
-                recipientCallback.Value.Invoke(resource, jsonPath);
+                return loadResult;
             }
+
+            _resourceDataCache[resource] = resourceData;
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"An exception occurred when loading resource data: '{resource}'")
+                .WithException(ex);
         }
     }
 
-    private string GetFullPath(ResourceKey resource)
+    private string GetResourceDataPath(ResourceKey resourceKey)
     {
-        // Todo: Map this to the file path in the CelData folder
-        return resource;
+        var projectDataFolderPath = _projectService.CurrentProject!.ProjectDataFolderPath;
+        var path = Path.Combine(projectDataFolderPath, "ResourceData", $"{resourceKey}.json");
+
+        return Path.GetFullPath(path);
     }
 }

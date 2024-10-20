@@ -15,6 +15,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private PreviewProvider? _previewProvider;
 
+    private bool _supportsPreview;
+
     public TextEditorDocumentView()
     {
         this.InitializeComponent();
@@ -22,28 +24,20 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         var serviceProvider = ServiceLocator.ServiceProvider;
         ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
 
-        SetPreviewVisibility(false);
-    }
-
-    private void SetPreviewVisibility(bool isVisible)
-    {
-#if WINDOWS
-        RightColumn.Width = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-#else
-        // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
-        RightColumn.Width = isVisible ? new GridLength(400) : new GridLength(0);
-#endif
-        PreviewSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         // This method can get called multiple types if the document is renamed, so we
-        // set the provider again each time.
-        var getResult = ViewModel.GetPreviewProvider(fileResource);
+        // need to acquire the provider again each time.
+
+        ViewModel.SetFileResource(fileResource);
+
+        var getResult = ViewModel.GetPreviewProvider();
         if (getResult.IsSuccess)
         {
-            SetPreviewVisibility(true);
+            _supportsPreview = true;
             _previewProvider = getResult.Value;
 
             if (!MonacoEditor.ViewModel.CachedText.IsNullOrEmpty())
@@ -55,9 +49,11 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         }
         else
         {
-            SetPreviewVisibility(false);
+            _supportsPreview = false;
             _previewProvider = null;
         }
+
+        UpdatePanelVisibility();
 
         return await MonacoEditor.SetFileResource(fileResource);
     }
@@ -99,6 +95,15 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         MonacoEditor.PrepareToClose();
     }
 
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.ShowPreview) ||
+            e.PropertyName == nameof(ViewModel.ShowEditor))
+        {
+            UpdatePanelVisibility();
+        }
+    }
+
     private async Task UpdatePreview()
     {
         if (_previewProvider == null)
@@ -117,5 +122,27 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             var generatedHtml = generateResult.Value;
             EditorPreview.ViewModel.PreviewHTML = generatedHtml;
         }
+    }
+
+    private void UpdatePanelVisibility()
+    {
+        bool isEditorVisible = _supportsPreview && ViewModel.ShowEditor; 
+        bool isPreviewVisible = _supportsPreview && ViewModel.ShowPreview;
+
+#if WINDOWS
+        LeftColumn.Width = isEditorVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+#else
+        // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
+        LeftColumn.Width = isEditorVisible ? new GridLength(400) : new GridLength(0);
+#endif
+        PreviewSplitter.Visibility = isEditorVisible ? Visibility.Visible : Visibility.Collapsed;
+
+#if WINDOWS
+        RightColumn.Width = isPreviewVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+#else
+        // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
+        RightColumn.Width = isPreviewVisible ? new GridLength(400) : new GridLength(0);
+#endif
+        PreviewSplitter.Visibility = isPreviewVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 }

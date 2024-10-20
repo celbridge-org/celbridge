@@ -3,48 +3,33 @@ namespace Celbridge.ResourceData;
 public interface IResourceDataService
 {
     /// <summary>
-    /// Acquires the resource data for the given resource.
-    /// If a resource data file already exists, it is loaded into memory, otherwise a new
-    /// resource data instance is allocated.
+    /// Gets the value of a property from the "Properties" object in the root of the resource data.
     /// </summary>
-    Result AcquireResourceData(ResourceKey resource);
+    Result<T> GetProperty<T>(ResourceKey resource, string propertyName, T defaultValue = default(T)!) where T : notnull;
 
     /// <summary>
-    /// Gets the value at the specified JSON path for the given resource.
+    /// Sets the value of a property in the "Properties" object in the root of the resource data.
     /// </summary>
-    Result<T> GetValue<T>(ResourceKey resource, string jsonPath) where T : notnull;
+    Result SetProperty<T>(ResourceKey resource, string propertyName, T newValue) where T : notnull;
 
     /// <summary>
-    /// Gets the value at the specified JSON path for the given resource.
-    /// If the path is not found, then defaultValue is returned.
+    /// Registers a callback that gets triggered when a property in the resource is modified.
     /// </summary>
-    Result<T> GetValue<T>(ResourceKey resource, string jsonPath, T defaultValue) where T : notnull;
+    void RegisterNotifier(ResourceKey resource, object recipient, Action<ResourceKey, string> callback);
 
     /// <summary>
-    /// Sets the value at the specified JSON path for the given resource key.
-    /// Automatically creates a new JSON file if it doesn't exist.
+    /// Unregisters a callback for the given resource key and recipient.
     /// </summary>
-    public Result SetValue<T>(ResourceKey resource, string jsonPath, T newValue) where T : notnull;
+    void UnregisterNotifier(ResourceKey resource, object recipient);
 
     /// <summary>
-    /// Updates all internal references from the old resource key to the new resource key.
-    /// Also renames the backing JSON file.
+    /// Remaps the old resource key to a new resource key.
     /// </summary>
     Result RemapResourceKey(ResourceKey oldResource, ResourceKey newResource);
 
     /// <summary>
-    /// Saves all modified resources to disk asynchronously and clears the modified list.
+    /// Saves all modified resources to disk asynchronously.
     /// </summary>
     Task<Result> SavePendingAsync();
-
-    /// <summary>
-    /// Registers a callback that gets triggered when the resource data for the specified key is modified.
-    /// Multiple listeners can register for the same resource, and each must pass an object.
-    /// </summary>
-    void RegisterNotifier(ResourceKey resourceKey, object recipient, Action<ResourceKey, string> callback);
-
-    /// <summary>
-    /// Unregisters a notifier callback for the given resource key based on the recipient object.
-    /// </summary>
-    void UnregisterNotifier(ResourceKey resourceKey, object recipient);
 }
+
