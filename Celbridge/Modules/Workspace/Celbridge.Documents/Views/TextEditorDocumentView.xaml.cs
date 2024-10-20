@@ -126,8 +126,15 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private void UpdatePanelVisibility()
     {
-        bool isEditorVisible = _supportsPreview && ViewModel.ShowEditor; 
-        bool isPreviewVisible = _supportsPreview && ViewModel.ShowPreview;
+        // Default to no preview available
+        bool isEditorVisible = true;
+        bool isPreviewVisible = false;
+
+        if (_supportsPreview)
+        {
+            isEditorVisible = ViewModel.ShowEditor;
+            isPreviewVisible = ViewModel.ShowPreview;
+        }
 
 #if WINDOWS
         LeftColumn.Width = isEditorVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
