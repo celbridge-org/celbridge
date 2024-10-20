@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.ResourceData;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.Input;
 
@@ -9,9 +10,13 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class MarkdownInspectorViewModel : InspectorViewModel
 {
+    private const string ShowPreviewKey = "ShowPreview";
+    private const string ShowEditorKey = "ShowEditor";
+
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IResourceDataService _resourceDataService;
 
     // Code gen requires a parameterless constructor
     public MarkdownInspectorViewModel()
@@ -27,6 +32,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
         _logger = logger;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceDataService = workspaceWrapper.WorkspaceService.ResourceDataService;
     }
 
     public IRelayCommand OpenDocumentCommand => new RelayCommand(OpenDocument_Executed);
@@ -38,5 +44,53 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
             command.FileResource = Resource;
             command.ForceReload = false;
         });
+    }
+
+    public IRelayCommand ToggleEditorCommand => new RelayCommand(ToggleEditor_Executed);
+    private void ToggleEditor_Executed()
+    {
+        var getResult = _resourceDataService.GetProperty(Resource, ShowEditorKey, false);
+        if (getResult.IsFailure)
+        {
+            _logger.LogError(getResult.Error);
+            return;
+        }
+        bool showEditor = getResult.Value;
+
+        showEditor = !showEditor;
+
+        var setResult = _resourceDataService.SetProperty(Resource, ShowEditorKey, showEditor);
+        if (setResult.IsFailure)
+        {
+            _logger.LogError(getResult.Error);
+            return;
+        }
+
+        // Todo: Save the resource data on a timer
+        _resourceDataService.SavePendingAsync();
+    }
+
+    public IRelayCommand TogglePreviewCommand => new RelayCommand(TogglePreview_Executed);
+    private void TogglePreview_Executed()
+    {
+        var getResult = _resourceDataService.GetProperty(Resource, ShowPreviewKey, false);
+        if (getResult.IsFailure)
+        {
+            _logger.LogError(getResult.Error);
+            return;
+        }
+        bool showPreview = getResult.Value;
+
+        showPreview = !showPreview;
+
+        var setResult = _resourceDataService.SetProperty(Resource, ShowPreviewKey, showPreview);
+        if (setResult.IsFailure)
+        {
+            _logger.LogError(getResult.Error);
+            return;
+        }
+
+        // Todo: Save the resource data on a timer
+        _resourceDataService.SavePendingAsync();
     }
 }
