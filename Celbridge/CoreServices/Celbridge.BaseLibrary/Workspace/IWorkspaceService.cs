@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.ResourceData;
 using Celbridge.Scripting;
@@ -63,6 +64,11 @@ public interface IWorkspaceService
     /// Returns the Resource Data Service associated with the workspace.
     /// </summary>
     IResourceDataService ResourceDataService { get; }
+
+    /// <summary>
+    /// Returns the Generative AI Service associated with the workspace.
+    /// </summary>
+    IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
     /// Toggle focus mode on/off by hiding and showing the workspace panels.

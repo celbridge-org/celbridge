@@ -23,6 +23,7 @@ public class Extension : IModule
         ResourceData.ServiceConfiguration.ConfigureServices(config);
         Scripting.ServiceConfiguration.ConfigureServices(config);
         Status.ServiceConfiguration.ConfigureServices(config);
+        GenerativeAI.ServiceConfiguration.ConfigureServices(config);
 
         //
         // Register services
