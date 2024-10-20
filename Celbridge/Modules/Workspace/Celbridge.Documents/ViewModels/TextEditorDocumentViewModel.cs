@@ -10,9 +10,6 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class TextEditorDocumentViewModel : ObservableObject
 {
-    private const string ShowEditorKey = "ShowEditor";
-    private const string ShowPreviewKey = "ShowPreview";
-
     private readonly ILogger<TextEditorDocumentViewModel> _logger;
     private readonly IDocumentsService _documentsService;
     private readonly IResourceDataService _resourceDataService;
@@ -66,8 +63,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     private void FileResource_PropertyChanged(ResourceKey resource, string propertyName)
     {
-        if (propertyName == ShowEditorKey ||
-            propertyName == ShowPreviewKey)
+        if (propertyName == ResourceDataConstants.TextEditor_ShowEditor ||
+            propertyName == ResourceDataConstants.TextEditor_ShowPreview)
         {
             UpdatePanelVisibility();
         }
@@ -77,8 +74,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            ShowEditor = _resourceDataService.GetProperty(_fileResource, ShowEditorKey, true);
-            ShowPreview = _resourceDataService.GetProperty(_fileResource, ShowPreviewKey, true);
+            ShowEditor = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowEditor, true);
+            ShowPreview = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowPreview, true);
         }
         catch (Exception ex)
         {
