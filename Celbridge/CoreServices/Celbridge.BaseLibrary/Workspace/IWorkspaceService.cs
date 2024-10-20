@@ -2,8 +2,8 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
-using Celbridge.Extensions;
 using Celbridge.Inspector;
+using Celbridge.ResourceData;
 using Celbridge.Scripting;
 using Celbridge.Status;
 
@@ -58,6 +58,11 @@ public interface IWorkspaceService
     /// Returns the Data Transfer Service associated with the workspace.
     /// </summary>
     IDataTransferService DataTransferService { get; }
+
+    /// <summary>
+    /// Returns the Resource Data Service associated with the workspace.
+    /// </summary>
+    IResourceDataService ResourceDataService { get; }
 
     /// <summary>
     /// Toggle focus mode on/off by hiding and showing the workspace panels.
