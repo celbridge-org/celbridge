@@ -12,7 +12,7 @@
 
   <Grid HorizontalAlignment="Stretch">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="LeftColumn" Width="*"/>
+      <ColumnDefinition x:Name="LeftColumn" Width="*" />
       <ColumnDefinition x:Name="RightColumn" Width="*" />
     </Grid.ColumnDefinitions>
 
