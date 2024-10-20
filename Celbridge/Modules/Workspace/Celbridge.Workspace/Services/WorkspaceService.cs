@@ -5,6 +5,7 @@ using Celbridge.Explorer;
 using Celbridge.Extensions;
 using Celbridge.Inspector;
 using Celbridge.Projects;
+using Celbridge.ResourceData;
 using Celbridge.Scripting;
 using Celbridge.Settings;
 using Celbridge.Status;
@@ -28,6 +29,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IExplorerService ExplorerService { get; }
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
+    public IResourceDataService ResourceDataService { get; }
 
     private bool _workspaceStateIsDirty;
 
@@ -52,6 +54,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
+        ResourceDataService = serviceProvider.GetRequiredService<IResourceDataService>();
 
         //
         // Let the workspace settings service know where to find the workspace settings database

@@ -1,4 +1,6 @@
 using Celbridge.ExtensionAPI;
+using Celbridge.Logging;
+using Celbridge.ResourceData;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -6,18 +8,43 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Documents.ViewModels;
 
-public class TextEditorDocumentViewModel : ObservableObject
+public partial class TextEditorDocumentViewModel : ObservableObject
 {
+    private readonly ILogger<TextEditorDocumentViewModel> _logger;
     private readonly IDocumentsService _documentsService;
+    private readonly IResourceDataService _resourceDataService;
 
-    public TextEditorDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    private ResourceKey _fileResource;
+
+    [ObservableProperty]
+    private bool _showEditor = true;
+
+    [ObservableProperty]
+    private bool _showPreview = true;
+
+    public TextEditorDocumentViewModel(
+        ILogger<TextEditorDocumentViewModel> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _resourceDataService = workspaceWrapper.WorkspaceService.ResourceDataService;
     }
 
-    public Result<PreviewProvider> GetPreviewProvider(ResourceKey fileResource)
+    public void SetFileResource(ResourceKey fileResource)
     {
-        var fileExtension = Path.GetExtension(fileResource);
+        // Todo: Unregister when the document closes
+        _resourceDataService.UnregisterNotifier(fileResource, this);
+        _resourceDataService.RegisterNotifier(fileResource, this, FileResource_PropertyChanged);
+
+        _fileResource = fileResource;
+
+        UpdatePanelVisibility();
+    }
+
+    public Result<PreviewProvider> GetPreviewProvider()
+    {
+        var fileExtension = Path.GetExtension(_fileResource);
         if (string.IsNullOrEmpty(fileExtension))
         {
             return Result<PreviewProvider>.Fail();
@@ -32,5 +59,27 @@ public class TextEditorDocumentViewModel : ObservableObject
         var provider = getResult.Value;
 
         return Result<PreviewProvider>.Ok(provider);
+    }
+
+    private void FileResource_PropertyChanged(ResourceKey resource, string propertyName)
+    {
+        if (propertyName == ResourceDataConstants.TextEditor_ShowEditor ||
+            propertyName == ResourceDataConstants.TextEditor_ShowPreview)
+        {
+            UpdatePanelVisibility();
+        }
+    }
+
+    private void UpdatePanelVisibility()
+    {
+        try
+        {
+            ShowEditor = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowEditor, true);
+            ShowPreview = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowPreview, true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+        }
     }
 }
