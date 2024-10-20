@@ -31,7 +31,7 @@ public partial class MarkdownInspector : UserControl, IInspector
 
         DataContext = viewModel;
 
-        this.DataContext<WebInspectorViewModel>((inspector, vm) => inspector
+        this.DataContext<MarkdownInspectorViewModel>((inspector, vm) => inspector
             .Content
             (
                 new Grid()
@@ -43,51 +43,55 @@ public partial class MarkdownInspector : UserControl, IInspector
                         new StackPanel()
                             .Orientation(Orientation.Horizontal)
                             .HorizontalAlignment(HorizontalAlignment.Center)
-                            .Spacing(2)
                             .Children
                             (
                                 new Button()
-                                    .Grid(column: 1)
-                                    .Margin(2, 0, 2, 0)
+                                    .Margin(2, 2, 8, 0)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
-                                    .Command(ViewModel.OpenDocumentCommand)
+                                    .Command(() => vm.OpenDocumentCommand)
                                     .ToolTipService(null, null, "Open document")
                                     .Content
                                     (
-                                        new StackPanel()
-                                            .Orientation(Orientation.Horizontal)
-                                            .Children(
-                                                new SymbolIcon()
-                                                    .Symbol(Symbol.OpenFile)
-                                                    .Margin(8, 0, 0, 0)
-                                            )
+                                        new SymbolIcon()
+                                            .Symbol(Symbol.OpenFile)
                                     ),
-                                new Button()
+                                new StackPanel()
+                                    .Orientation(Orientation.Horizontal)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
-                                    .Command(ViewModel.ToggleEditorCommand)
-                                    .ToolTipService(null, null, "Show editor panel")
-                                    .Content
-                                    (
-                                        new StackPanel()
-                                            .Orientation(Orientation.Horizontal)
-                                            .Children(
+                                    .VerticalAlignment(VerticalAlignment.Center)
+                                    .Children(
+                                        new Button()
+                                            .Margin(2)
+                                            .Command(() => vm.ShowEditorCommand)
+                                            .IsEnabled(x => x.Binding(() => vm.ShowEditorEnabled)
+                                                .Mode(BindingMode.OneWay))
+                                            .ToolTipService(null, null, "Show editor panel only")
+                                            .Content
+                                            (
                                                 new SymbolIcon()
-                                                    .Symbol(Symbol.Document)
-                                                    .Margin(8, 0, 0, 0)
-                                            )
-                                    ),
-                                new Button()
-                                    .HorizontalAlignment(HorizontalAlignment.Center)
-                                    .Command(ViewModel.TogglePreviewCommand)
-                                    .ToolTipService(null, null, "Show preview panel")
-                                    .Content
-                                    (
-                                        new StackPanel()
-                                            .Orientation(Orientation.Horizontal)
-                                            .Children(
+                                                    .Symbol(Symbol.DockRight)
+                                            ),
+                                        new Button()
+                                            .Margin(2)
+                                            .Command(() => vm.ShowBothCommand)
+                                            .IsEnabled(x => x.Binding(() => vm.ShowBothEnabled)
+                                                .Mode(BindingMode.OneWay))
+                                            .ToolTipService(null, null, "Show both editor and preview panels")
+                                            .Content
+                                            (
                                                 new SymbolIcon()
-                                                    .Symbol(Symbol.PreviewLink)
-                                                    .Margin(8, 0, 0, 0)
+                                                    .Symbol(Symbol.DockBottom)
+                                            ),
+                                        new Button()
+                                            .Margin(2)
+                                            .Command(() => vm.ShowPreviewCommand)
+                                            .IsEnabled(x => x.Binding(() => vm.ShowPreviewEnabled)
+                                                .Mode(BindingMode.OneWay))
+                                            .ToolTipService(null, null, "Show preview panel only")
+                                            .Content
+                                            (
+                                                new SymbolIcon()
+                                                    .Symbol(Symbol.DockLeft)
                                             )
                                     )
                             )
