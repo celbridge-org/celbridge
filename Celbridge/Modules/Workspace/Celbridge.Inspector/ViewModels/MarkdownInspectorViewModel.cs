@@ -49,48 +49,36 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     public IRelayCommand ToggleEditorCommand => new RelayCommand(ToggleEditor_Executed);
     private void ToggleEditor_Executed()
     {
-        var getResult = _resourceDataService.GetProperty(Resource, ShowEditorKey, false);
-        if (getResult.IsFailure)
+        try
         {
-            _logger.LogError(getResult.Error);
-            return;
+            bool showEditor = _resourceDataService.GetProperty(Resource, ShowEditorKey, false);
+            showEditor = !showEditor;
+            _resourceDataService.SetProperty(Resource, ShowEditorKey, showEditor);
+
+            // Todo: Save the resource data on a timer
+            _resourceDataService.SavePendingAsync();
         }
-        bool showEditor = getResult.Value;
-
-        showEditor = !showEditor;
-
-        var setResult = _resourceDataService.SetProperty(Resource, ShowEditorKey, showEditor);
-        if (setResult.IsFailure)
+        catch (Exception ex)
         {
-            _logger.LogError(getResult.Error);
-            return;
+            _logger.LogError(ex.Message);
         }
-
-        // Todo: Save the resource data on a timer
-        _resourceDataService.SavePendingAsync();
     }
 
     public IRelayCommand TogglePreviewCommand => new RelayCommand(TogglePreview_Executed);
     private void TogglePreview_Executed()
     {
-        var getResult = _resourceDataService.GetProperty(Resource, ShowPreviewKey, false);
-        if (getResult.IsFailure)
+        try
         {
-            _logger.LogError(getResult.Error);
-            return;
+            bool showPreview = _resourceDataService.GetProperty(Resource, ShowPreviewKey, false);
+            showPreview = !showPreview;
+            _resourceDataService.SetProperty(Resource, ShowPreviewKey, showPreview);
+
+            // Todo: Save the resource data on a timer
+            _resourceDataService.SavePendingAsync();
         }
-        bool showPreview = getResult.Value;
-
-        showPreview = !showPreview;
-
-        var setResult = _resourceDataService.SetProperty(Resource, ShowPreviewKey, showPreview);
-        if (setResult.IsFailure)
+        catch (Exception ex)
         {
-            _logger.LogError(getResult.Error);
-            return;
+            _logger.LogError(ex.Message);
         }
-
-        // Todo: Save the resource data on a timer
-        _resourceDataService.SavePendingAsync();
     }
 }

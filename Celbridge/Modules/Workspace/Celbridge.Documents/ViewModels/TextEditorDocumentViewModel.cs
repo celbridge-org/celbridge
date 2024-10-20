@@ -1,4 +1,5 @@
 using Celbridge.ExtensionAPI;
+using Celbridge.Logging;
 using Celbridge.ResourceData;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,6 +13,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     private const string ShowEditorKey = "ShowEditor";
     private const string ShowPreviewKey = "ShowPreview";
 
+    private readonly ILogger<TextEditorDocumentViewModel> _logger;
     private readonly IDocumentsService _documentsService;
     private readonly IResourceDataService _resourceDataService;
 
@@ -23,8 +25,11 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     [ObservableProperty]
     private bool _showPreview = true;
 
-    public TextEditorDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public TextEditorDocumentViewModel(
+        ILogger<TextEditorDocumentViewModel> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _resourceDataService = workspaceWrapper.WorkspaceService.ResourceDataService;
     }
@@ -70,16 +75,14 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     private void UpdatePanelVisibility()
     {
-        var getEditorResult = _resourceDataService.GetProperty(_fileResource, ShowEditorKey, true);
-        if (getEditorResult.IsSuccess)
+        try
         {
-            ShowEditor = getEditorResult.Value;
+            ShowEditor = _resourceDataService.GetProperty(_fileResource, ShowEditorKey, true);
+            ShowPreview = _resourceDataService.GetProperty(_fileResource, ShowPreviewKey, true);
         }
-
-        var getPreviewResult = _resourceDataService.GetProperty(_fileResource, ShowPreviewKey, true);
-        if (getPreviewResult.IsSuccess)
+        catch (Exception ex)
         {
-            ShowPreview = getPreviewResult.Value;
+            _logger.LogError(ex.Message);
         }
     }
 }
