@@ -1,5 +1,13 @@
 namespace Celbridge.ResourceData;
 
+/// <summary>
+/// Represents a callback method that is triggered when a property in a resource is modified.
+/// The callback provides the <see cref="ResourceKey"/> of the modified resource and the name of the modified property.
+/// </summary>
+/// <param name="resource">The resource that was modified.</param>
+/// <param name="propertyName">The name of the property that was modified.</param>
+public delegate void ResourcePropertyChangedNotifier(ResourceKey resource, string propertyName);
+
 public interface IResourceDataService
 {
     /// <summary>
@@ -25,7 +33,7 @@ public interface IResourceDataService
     /// <summary>
     /// Registers a callback that gets triggered when a property in the resource is modified.
     /// </summary>
-    void RegisterNotifier(ResourceKey resource, object recipient, Action<ResourceKey, string> callback);
+    void RegisterNotifier(ResourceKey resource, object recipient, ResourcePropertyChangedNotifier notifier);
 
     /// <summary>
     /// Unregisters a callback for the given resource key and recipient.

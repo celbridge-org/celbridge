@@ -73,14 +73,14 @@ public class ResourceDataService : IResourceDataService
     }
 
     /// <summary>
-    /// Registers a callback that gets triggered when a property in the resource is modified.
+    /// Registers a notifier that gets triggered when a property in the resource is modified.
     /// </summary>
-    public void RegisterNotifier(ResourceKey resourceKey, object recipient, Action<ResourceKey, string> callback)
+    public void RegisterNotifier(ResourceKey resourceKey, object recipient, ResourcePropertyChangedNotifier notifier)
     {
         var loadResult = AcquireResourceData(resourceKey);
         if (loadResult.IsSuccess)
         {
-            _resourceDataCache[resourceKey].RegisterNotifier(recipient, callback);
+            _resourceDataCache[resourceKey].RegisterNotifier(recipient, notifier);
         }
     }
 
