@@ -6,7 +6,7 @@ using Path = System.IO.Path;
 
 namespace Celbridge.ResourceData.Services;
 
-public class ResourceDataService : IResourceDataService
+public class ResourceDataService : IResourceDataService, IDisposable
 {
     private readonly IProjectService _projectService;
     private readonly ConcurrentDictionary<ResourceKey, ResourceData> _resourceDataCache = new(); // Cache for ResourceData objects
@@ -203,5 +203,31 @@ public class ResourceDataService : IResourceDataService
         var path = Path.Combine(projectDataFolderPath, "ResourceData", $"{resourceKey}.json");
 
         return Path.GetFullPath(path);
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~ResourceDataService()
+    {
+        Dispose(false);
     }
 }

@@ -25,7 +25,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
 	  <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
-    <PackageReference Include="Newtonsoft.Json"/>
+    <PackageReference Include="Newtonsoft.Json" />
 	  <PackageReference Include="sqlite-net-pcl" />
   </ItemGroup>
   
@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
+    <ProjectReference Include="..\Celbridge.GenerativeAI\Celbridge.GenerativeAI.csproj" />
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
     <ProjectReference Include="..\Celbridge.ResourceData\Celbridge.ResourceData.csproj" />
     <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />

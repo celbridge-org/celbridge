@@ -74,6 +74,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Extensions", "Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.ResourceData", "Modules\Workspace\Celbridge.ResourceData\Celbridge.ResourceData.csproj", "{1A9C6DC7-8411-4F48-9473-F6160E207783}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.GenerativeAI", "Modules\Workspace\Celbridge.GenerativeAI\Celbridge.GenerativeAI.csproj", "{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -180,6 +182,10 @@ Global
 		{1A9C6DC7-8411-4F48-9473-F6160E207783}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A9C6DC7-8411-4F48-9473-F6160E207783}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A9C6DC7-8411-4F48-9473-F6160E207783}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -210,6 +216,7 @@ Global
 		{53BB762B-1EE5-4EAE-9E01-103A989FD96B} = {ACFAE14E-C62C-4B0E-BE10-1221C8E90492}
 		{C02F2C06-42B9-40FF-A4B7-2295DC62171D} = {CBDD78F8-9AF9-4805-8B33-6CDA18F7E94B}
 		{1A9C6DC7-8411-4F48-9473-F6160E207783} = {00D6636E-63D7-4B7C-AEB0-9A433AA10316}
+		{A3BDD600-F0DA-4738-9BD6-83A69DDED7B2} = {00D6636E-63D7-4B7C-AEB0-9A433AA10316}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {695F2378-3B43-4460-9FB8-6D27C121D85D}
