@@ -1,6 +1,8 @@
+using CommunityToolkit.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.ResourceData.Services;
@@ -8,7 +10,7 @@ namespace Celbridge.ResourceData.Services;
 public class ResourceData
 {
     private readonly JObject _jsonData;
-    private readonly ConcurrentDictionary<object, Action<ResourceKey, string>> _notifiers;
+    private readonly ConcurrentDictionary<WeakReference<object>, Action<ResourceKey, string>> _notifiers;
     private bool _isModified;
 
     public ResourceKey Resource { get; private set; }
@@ -17,7 +19,7 @@ public class ResourceData
     public ResourceData()
     {
         _jsonData = new JObject();
-        _notifiers = new ConcurrentDictionary<object, Action<ResourceKey, string>>();
+        _notifiers = new ConcurrentDictionary<WeakReference<object>, Action<ResourceKey, string>>();
         _isModified = false;
 
         EnsurePropertiesExists();
@@ -75,6 +77,8 @@ public class ResourceData
             string jsonContent = _jsonData.ToString(Formatting.Indented);
 
             var folder = Path.GetDirectoryName(ResourceDataPath);
+            Guard.IsNotNull(folder);
+
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
@@ -104,9 +108,11 @@ public class ResourceData
             EnsurePropertiesExists();
 
             var properties = (JObject)_jsonData["Properties"]!;
+            Guard.IsNotNull(properties);
+
             if (properties.ContainsKey(propertyName))
             {
-                var value = properties[propertyName].ToObject<T>();
+                var value = properties[propertyName]!.ToObject<T>();
                 return value is null ? Result<T>.Ok(defaultValue) : Result<T>.Ok(value);
             }
 
@@ -142,25 +148,59 @@ public class ResourceData
 
     /// <summary>
     /// Registers a callback to be triggered when a property is modified.
+    /// Uses WeakReference to allow automatic cleanup when the recipient goes out of scope.
     /// </summary>
     public void RegisterNotifier(object recipient, Action<ResourceKey, string> callback)
     {
-        _notifiers[recipient] = callback;
+        var weakRecipient = new WeakReference<object>(recipient);
+        _notifiers[weakRecipient] = callback;
     }
 
     /// <summary>
-    /// Unregisters a callback for the given recipient.
+    /// Manually unregisters a callback for the given recipient.
+    /// This is optional and allows explicit control over unsubscription.
     /// </summary>
     public void UnregisterNotifier(object recipient)
     {
-        _notifiers.TryRemove(recipient, out _);
+        foreach (var entry in _notifiers)
+        {
+            if (entry.Key.TryGetTarget(out var target) && ReferenceEquals(target, recipient))
+            {
+                _notifiers.TryRemove(entry.Key, out _);
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Unregisters callbacks whose recipients are no longer alive.
+    /// This can be run periodically or at specific points in your workflow.
+    /// </summary>
+    public void CleanupNotifiers()
+    {
+        foreach (var entry in _notifiers)
+        {
+            if (!entry.Key.TryGetTarget(out _))
+            {
+                // Recipient is no longer alive, so remove the callback
+                _notifiers.TryRemove(entry.Key, out _);
+            }
+        }
     }
 
     private void NotifyChanges(string propertyName)
     {
         foreach (var notifier in _notifiers)
         {
-            notifier.Value.Invoke(Resource, propertyName);
+            if (notifier.Key.TryGetTarget(out var recipient))
+            {
+                notifier.Value.Invoke(Resource, propertyName);
+            }
+            else
+            {
+                // Recipient has been garbage collected, so cleanup
+                _notifiers.TryRemove(notifier.Key, out _);
+            }
         }
     }
 
@@ -173,4 +213,3 @@ public class ResourceData
         }
     }
 }
-
