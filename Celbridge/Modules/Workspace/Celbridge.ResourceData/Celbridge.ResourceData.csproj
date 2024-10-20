@@ -21,22 +21,14 @@
     </UnoFeatures>
 
   </PropertyGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
-	  <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
-    <PackageReference Include="Newtonsoft.Json"/>
-	  <PackageReference Include="sqlite-net-pcl" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
-  
+
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
-    <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
-    <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
-    <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
-    <ProjectReference Include="..\Celbridge.ResourceData\Celbridge.ResourceData.csproj" />
-    <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />
-    <ProjectReference Include="..\Celbridge.Status\Celbridge.Status.csproj" />
+    <ProjectReference Include="..\..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
-  
+
 </Project>
