@@ -27,7 +27,7 @@
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="1,0,1,0">
+          BorderThickness="2,0,2,0">
 
       <Button x:Name="HideExplorerPanelButton"
               Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
@@ -72,7 +72,7 @@
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="1,0,1,0">
+          BorderThickness="2,0,2,0">
 
       <Button x:Name="HideInspectorPanelButton"
               Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
@@ -93,7 +93,7 @@
           MinHeight="100"
           Background="{ThemeResource PanelBackgroundBBrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,1,0,0">
+          BorderThickness="0,2,0,0">
 
       <Grid Grid.Row="0"
             Background="{ThemeResource PanelBackgroundABrush}"
