@@ -4,16 +4,17 @@ namespace Celbridge.GenerativeAI;
 
 public class OpenAIProvider : IGenerativeAIProvider
 {
-    private readonly ChatClient _chatClient;
-
-    public OpenAIProvider()
-    {
-        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        _chatClient = new ChatClient("gpt-4o", apiKey);
-    }
+    private const string OpenAIKeyEnvironmentVariable = "OPENAI_API_KEY";
 
     public async Task<Result<string>> GenerateTextAsync(string input)
     {
+        var apiKey = Environment.GetEnvironmentVariable(OpenAIKeyEnvironmentVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            return Result<string>.Fail($"Envirnonment variable not found: '{OpenAIKeyEnvironmentVariable}'");
+        }
+
+        var _chatClient = new ChatClient("gpt-4o", apiKey);
         var result = await _chatClient.CompleteChatAsync(input);
 
         var chatCompletion = result.Value;

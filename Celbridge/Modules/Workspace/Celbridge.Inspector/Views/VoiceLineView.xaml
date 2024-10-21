@@ -14,7 +14,7 @@
       </Grid.RowDefinitions>
 
       <Grid Grid.Row="0"
-            Background="LightGoldenrodYellow"
+            Background="{ThemeResource SystemAccentColor}"
             BorderBrush="{ThemeResource PanelBorderBrush}"
             BorderThickness="0,0,0,2">
         <TextBlock Text="Voice Line"
