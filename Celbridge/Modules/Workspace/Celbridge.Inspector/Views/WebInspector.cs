@@ -59,6 +59,7 @@ public partial class WebInspector : UserControl, IInspector
                                     .PlaceholderText(inspector.AddressPlaceholderString)
                                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                                     .IsSpellCheckEnabled(false)
+                                    .TextWrapping(TextWrapping.Wrap)
                                     .Text(x => x.Binding(() => vm.SourceUrl)
                                         .Mode(BindingMode.TwoWay)),
                                 new Button()
