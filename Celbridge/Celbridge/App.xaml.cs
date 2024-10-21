@@ -9,6 +9,7 @@ using Celbridge.UserInterface;
 using Celbridge.Utilities;
 using CommunityToolkit.Diagnostics;
 using Uno.Resizetizer;
+using Microsoft.Extensions.Localization;
 
 #if WINDOWS
 using Celbridge.Settings;
@@ -186,9 +187,10 @@ public partial class App : Application
             // Place the frame in the current Window
             MainWindow.Content = rootFrame;
 
-            // Todo: Is this required in latest Uno?
-            //var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
-            // MainWindow.Title = localizer["ApplicationName"];
+            // Set the title (visible in light mode)
+            var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
+            var applicationNameString = localizer.GetString("ApplicationName");
+            MainWindow.Title = localizer[applicationNameString];
         }
 
         MainWindow.Closed += (s, e) =>
