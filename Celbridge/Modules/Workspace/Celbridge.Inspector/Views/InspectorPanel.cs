@@ -16,7 +16,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     private ILogger<InspectorPanel> _logger;
     private IStringLocalizer _stringLocalizer;
 
-    private StackPanel _inspectorContainer;
+    private InspectorItemView _inspectorItemView;
 
     public InspectorPanel()
     {
@@ -43,14 +43,13 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
                     .VerticalAlignment(VerticalAlignment.Center)
             );
 
-        _inspectorContainer = new StackPanel()
-            .Grid(row: 1)
-            .Margin(8, 4, 4, 4)
-            .Orientation(Orientation.Vertical);
+        _inspectorItemView = new InspectorItemView()
+            .Margin(4)
+            .Grid(row: 1);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
-            .Children(titleBar, _inspectorContainer);
+            .Children(titleBar, _inspectorItemView);
            
         //
         // Set the data context and page content
@@ -71,7 +70,8 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private void UpdateSelectedResource(ResourceKey resource)
     {
-        _inspectorContainer.Children.Clear();
+        _inspectorItemView.ClearInspectorElements();
+        _inspectorItemView.ClearDetailElements();
 
         if (resource.IsEmpty)
         {
@@ -79,6 +79,8 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         }
 
         var factory = _inspectorService.InspectorFactory;
+
+        List<UIElement> inspectorElements = new();
 
         // Create the resource name inspector displayed at the top of the inspector panel
         var nameInspectorResult = factory.CreateResourceNameInspector(resource);
@@ -90,7 +92,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         var nameInspector = nameInspectorResult.Value as UserControl;
         Guard.IsNotNull(nameInspector);
 
-        _inspectorContainer.Children.Add(nameInspector);
+        inspectorElements.Add(nameInspector);
 
         // Create the resource inspector (if one is implemented) for the selected resource
         var resourceInspectorResult = factory.CreateResourceInspector(resource);
@@ -99,7 +101,19 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
             var resourceInspector = resourceInspectorResult.Value as UserControl;
             Guard.IsNotNull(resourceInspector);
 
-            _inspectorContainer.Children.Add(resourceInspector);
+            inspectorElements.Add(resourceInspector);
+        }
+
+        _inspectorItemView.SetInspectorElements(inspectorElements);
+
+        if (resource.ToString().Contains("screenplay", StringComparison.InvariantCultureIgnoreCase))
+        {
+            var voiceLineView = new VoiceLineView();
+
+            List<UIElement> detailElements = new();
+            detailElements.Add(voiceLineView);
+
+            _inspectorItemView.SetDetailElements(detailElements);
         }
     }
 }
