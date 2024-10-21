@@ -7,7 +7,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <ListView x:Name="ComponentList"
-            Background="LightGoldenrodYellow"
             SelectionMode="Single"
             CanReorderItems="True"
             AllowDrop="True"/>
