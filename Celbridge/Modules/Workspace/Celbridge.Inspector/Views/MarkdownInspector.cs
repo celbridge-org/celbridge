@@ -1,6 +1,6 @@
 using Celbridge.Inspector.ViewModels;
+using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
-using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.Inspector.Views;
 
@@ -18,6 +18,8 @@ public partial class MarkdownInspector : UserControl, IInspector
         get => ViewModel.Resource; 
     }
 
+    private ComponentListView? _componentListView;
+
     // Code gen requires a parameterless constructor
     public MarkdownInspector()
     {
@@ -31,71 +33,119 @@ public partial class MarkdownInspector : UserControl, IInspector
 
         DataContext = viewModel;
 
+        Button? showComponentMockupButton = null;
+
         this.DataContext<MarkdownInspectorViewModel>((inspector, vm) => inspector
             .Content
             (
-                new Grid()
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
-                    .BorderThickness(0, 1, 0, 1)
+                new StackPanel()
+                    .Orientation(Orientation.Vertical)
                     .Children
                     (
-                        new StackPanel()
-                            .Orientation(Orientation.Horizontal)
-                            .HorizontalAlignment(HorizontalAlignment.Center)
+                        new Grid()
+                            .HorizontalAlignment(HorizontalAlignment.Stretch)
+                            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
+                            .BorderThickness(0, 1, 0, 1)
                             .Children
                             (
-                                new Button()
-                                    .Margin(2, 2, 8, 0)
-                                    .HorizontalAlignment(HorizontalAlignment.Center)
-                                    .Command(() => vm.OpenDocumentCommand)
-                                    .ToolTipService(null, null, "Open document")
-                                    .Content
-                                    (
-                                        new SymbolIcon()
-                                            .Symbol(Symbol.OpenFile)
-                                    ),
                                 new StackPanel()
                                     .Orientation(Orientation.Horizontal)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
-                                    .VerticalAlignment(VerticalAlignment.Center)
-                                    .Children(
+                                    .Children
+                                    (
                                         new Button()
-                                            .Margin(2)
-                                            .Command(() => vm.ShowEditorCommand)
-                                            .IsEnabled(x => x.Binding(() => vm.ShowEditorEnabled)
-                                                .Mode(BindingMode.OneWay))
-                                            .ToolTipService(null, null, "Show editor panel only")
+                                            .Margin(2, 2, 8, 0)
+                                            .HorizontalAlignment(HorizontalAlignment.Center)
+                                            .Command(() => vm.OpenDocumentCommand)
+                                            .ToolTipService(null, null, "Open document")
                                             .Content
                                             (
                                                 new SymbolIcon()
-                                                    .Symbol(Symbol.DockRight)
+                                                    .Symbol(Symbol.OpenFile)
                                             ),
-                                        new Button()
-                                            .Margin(2)
-                                            .Command(() => vm.ShowBothCommand)
-                                            .IsEnabled(x => x.Binding(() => vm.ShowBothEnabled)
-                                                .Mode(BindingMode.OneWay))
-                                            .ToolTipService(null, null, "Show both editor and preview panels")
-                                            .Content
-                                            (
-                                                new SymbolIcon()
-                                                    .Symbol(Symbol.DockBottom)
-                                            ),
-                                        new Button()
-                                            .Margin(2)
-                                            .Command(() => vm.ShowPreviewCommand)
-                                            .IsEnabled(x => x.Binding(() => vm.ShowPreviewEnabled)
-                                                .Mode(BindingMode.OneWay))
-                                            .ToolTipService(null, null, "Show preview panel only")
-                                            .Content
-                                            (
-                                                new SymbolIcon()
-                                                    .Symbol(Symbol.DockLeft)
+                                        new StackPanel()
+                                            .Orientation(Orientation.Horizontal)
+                                            .HorizontalAlignment(HorizontalAlignment.Center)
+                                            .VerticalAlignment(VerticalAlignment.Center)
+                                            .Children(
+                                                new Button()
+                                                    .Margin(2)
+                                                    .Command(() => vm.ShowEditorCommand)
+                                                    .IsEnabled(x => x.Binding(() => vm.ShowEditorEnabled)
+                                                        .Mode(BindingMode.OneWay))
+                                                    .ToolTipService(null, null, "Show editor panel only")
+                                                    .Content
+                                                    (
+                                                        new SymbolIcon()
+                                                            .Symbol(Symbol.DockRight)
+                                                    ),
+                                                new Button()
+                                                    .Margin(2)
+                                                    .Command(() => vm.ShowBothCommand)
+                                                    .IsEnabled(x => x.Binding(() => vm.ShowBothEnabled)
+                                                        .Mode(BindingMode.OneWay))
+                                                    .ToolTipService(null, null, "Show both editor and preview panels")
+                                                    .Content
+                                                    (
+                                                        new SymbolIcon()
+                                                            .Symbol(Symbol.DockBottom)
+                                                    ),
+                                                new Button()
+                                                    .Margin(2)
+                                                    .Command(() => vm.ShowPreviewCommand)
+                                                    .IsEnabled(x => x.Binding(() => vm.ShowPreviewEnabled)
+                                                        .Mode(BindingMode.OneWay))
+                                                    .ToolTipService(null, null, "Show preview panel only")
+                                                    .Content
+                                                    (
+                                                        new SymbolIcon()
+                                                            .Symbol(Symbol.DockLeft)
+                                                    ),
+                                                new Button()
+                                                    .Name(out showComponentMockupButton)
+                                                    .Margin(8, 2, 2, 2)
+                                                    .ToolTipService(null, null, "Add component")
+                                                    .Content
+                                                    (
+                                                        new SymbolIcon()
+                                                            .Symbol(Symbol.Add)
+                                                    )
                                             )
                                     )
-                            )
+                            ),
+                        new ComponentListView()
+                            .Name(out _componentListView)
                     )
             ));
+
+        if (showComponentMockupButton is not null)
+        {
+            showComponentMockupButton.Click += ShowComponentMockupButton_Click;
+        }
+    }
+
+    private void ShowComponentMockupButton_Click(object sender, RoutedEventArgs e)
+    {
+        var listViewItem = new ListViewItem()
+            .Content
+            (
+                new Grid()
+                    .ColumnDefinitions("*, 2*")
+                    .Children
+                    (
+                        new TextBox()
+                            .Grid(column: 0)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                            .Text("VoiceLine"),
+                        new TextBlock()
+                            .Grid(column: 1)
+                            .Margin(8, 0, 0, 0)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                            .Text("Darth Vader: No, I am your father!")
+                    )
+            );
+
+        Guard.IsNotNull(_componentListView);
+        _componentListView.AddItem(listViewItem);
     }
 }
