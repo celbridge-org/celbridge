@@ -60,7 +60,7 @@ I also created the [Fungus](https://github.com/snozbot/fungus) visual scripting 
 - [ ] Global find and replace
 - [ ] Cel Script programming language
 - [ ] Cel Script debugger
-- [ ] No idea really
+- [ ] No idea yet honestly
 
 # Credits
 
