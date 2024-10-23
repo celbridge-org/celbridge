@@ -1,6 +1,4 @@
-Celbridge is a tool for creative people who want to make cool stuff. The current version runs on Windows 11, other platforms are planned.
-
-# Project Overview
+Celbridge is a tool for creative people who want to make cool stuff. 
 
 Celbridge aims to:
 
@@ -8,11 +6,17 @@ Celbridge aims to:
 - Act as a bridge between systems (e.g. apps, programming languages, libraries, runtime environments).
 - Support a wide range of functionality via extensions, with a simple core application.
 
+![Celbridge screenshot](/Docs/Images/CelbridgeScreenshot.png)
+
+The current version runs on Windows 11, other platforms are planned.
+
+# Project Overview
+
+My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a nice friendly community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and narrative tools.
+
 > [!NOTE]
 > This research was made possible by the Sabbatical Policy at Romero Games. Huge thanks to Brenda, John and all of the of the amazing 
 team at Romero Games for their support.❤️❤️❤️
-
-My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a nice friendly community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and narrative tools.
 
 Celbridge is in **early development** which means there will be project breaking changes with (almost) every release. Do please do try it out though, all feedback and contributions are very welcome!
 
