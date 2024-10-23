@@ -1,74 +1,70 @@
-Celbridge is a visual coding tool based on C# & .NET, with an emphasis on:
+Celbridge is a tool for creative people who want to make cool stuff. The current version runs on Windows 11, other platforms are planned.
 
-- Reducing the cognitive load of coding
-- Compatibility between programming languages, libraries and runtime environments
-- Extendable functionality via a plugin architecture
+# Project Overview
 
-The current version supports text-based scripting only. The goal is to add a visual scripting
-layer on top of this foundation later in development.
+Celbridge aims to:
 
-# Project Status
+- Make common tasks easier and more accessible for makers.
+- Act as a bridge between systems (e.g. apps, programming languages, libraries, runtime environments).
+- Support a wide range of functionality via extensions, with a simple core application.
 
-Celbridge is in early development so there will be many breaking changes with every release. 
-I wouldn't recommend using it in a production environment until we reach v1.0. 
+> [!NOTE]
+> This research was made possible by the Sabbatical Policy at Romero Games. Huge thanks to Brenda, John and all of the of the amazing 
+team at Romero Games for their support.❤️❤️❤️
 
-In the meantime, please do try it out and all feedback is very welcome!
+My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a nice friendly community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and narrative tools.
 
-When the project reaches v1.0 there will be a much stronger emphasis on maintaining backwards compatibility 
-with each release.
+Celbridge is in **early development** which means there will be project breaking changes with (almost) every release. Do please do try it out though, all feedback and contributions are very welcome!
 
-## Who am I
+There's also little (i.e. no) user documentation available yet, this will be coming soon!
 
-I'm Chief Architect at Romero Games, a games studio based in Galway, Ireland. 
+> [!NOTE]
+> I would advise against using Celbridge in a production environment until we reach v1.0. From then on there will be a strong emphasis on maintaining compatibility with existing user projects. Until then, be aware that updating Celbridge could break your project!
 
-I've worked in games development for 20+ years and have a lot experience with many programming languages
-and technologies, particularly C# and .NET. I created the Fungus visual scripting tool for the Unity game engine.
+# Build Instructions
 
-## Research Project
+1. Install the latest version of Visual Studio (Community Edition works fine)
+1. Install the latest version of Visual Studio (the free [Community Edition]() works fine)
+2. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development
+3. Open `Celbridge.sln` in Visual Studio
 
-I am developing this tool as part of my Research Masters with Technical University Dublin. 
+Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the configuration toolbar.
 
-My goal is to develop Celbridge from a research project into a robust tool suitable for use 
-in production environments. As my own background is in game development, I'm focussing on typical game
-development use cases initially.
+> [!NOTE]
+> Uno Platform does some initial setup work behind the scenes when you first open the solution. It's a bit quirky at the start. Just let it idle for a minute after the solution opens, then close and reopen Visual Studio. You may need to repeat this a couple of time before it will compile and run.
 
-This research was made possible because of the sabbatical program at Romero Games, so many thanks Brenda and John Romero 
-for their support.
+# Who am I?
 
-## Roadmap
+I'm [Chris Gregan](https://github.com/chrisgregan) and I work at [Romero Games](https://romerogames.com/), a games studio based in Galway, Ireland. I've worked in games development for 20+ years and have a lot of experience with many programming languages
+and technologies, my favourites being C#, .NET and Python.
 
-The tool will initially support scripting workflows via C#, Python, Markdown, etc. Once these workflows are
-robust, I will add support for Cel Script, a novel visual scripting language.
+I am currently doing a Research Masters with [Technical University Dublin](https://www.tudublin.ie/), and I am using Celbridge to help conduct this research.
+
+I also created the [Fungus](https://github.com/snozbot/fungus) visual scripting tool for the Unity game engine (now maintained by the community).
+
+# Roadmap
 
 - [x] Proof-of-concept prototype
-- [x] Text document editing via Monaco Editor
-- [ ] Application framework (GUI framework, plugin architecture, public API)
-- [ ] Basic IDE workflows (robust project & file management)
-- [ ] Advanced document editing (syntax highlighting, spelling correction, web views)
-- [ ] Scripting support via C# Interactive
-- [ ] Interactive console window
-- [ ] Cel Script programming language (using Json text files transpiled to C#)
-- [ ] Cel Script runtime environment
-- [ ] Cel Script visual programming language (built on top of the Json implementation)
-- [ ] Integrated debugger (via C# / .NET debugger)
+- [x] Application framework (DI, MVVM, extension architecture, public API, etc.)
+- [x] File management via Explorer window
+- [x] Scripting support (C# Interactive)
+- [x] Console window
+- [x] Web page documents and file viewer using WebView2
+- [x] Advanced text editing via [Monaco Editor]( https://microsoft.github.io/monaco-editor/)
+- [ ] Initial pass on documentation
+- [ ] Change scripting to use Python
+- [ ] Global find and replace
+- [ ] Cel Script programming language
+- [ ] Cel Script debugger
+- [ ] No idea really
 
-## Visual Scripting Prototype
+# Credits
 
-During 2023 I developed a proof of concept prototype of Celbridge. This helped me validate the concept and to figure out the requirements 
-for the full implementation.
-
-This video covers the main features of the prototype. This is a good way to learn about the planned features of Celbridge.
-
-You can try this prototype by checking out the `demo-dec-23` tag of this project on Github. Warning: It's quite unstable and undocumented!
-
-## Credits
-
-This project uses the following open source code:
+This project uses code from these asweome open source projects:
 
 - [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
 - [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
+- [Monaco Editor](https://microsoft.github.io/monaco-editor)
+- [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
 
-
-
-
-
+We also use a range of open source nuget packages, details of which can be found in the solution files.
