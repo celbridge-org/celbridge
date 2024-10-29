@@ -1,41 +1,38 @@
-Celbridge is a tool for creative people who want to make cool stuff. 
+Celbridge is a user friendly tool that helps creative people make cool stuff. 
 
 Celbridge aims to:
 
-- Make common tasks easier and more accessible for makers.
-- Act as a bridge between systems (e.g. apps, programming languages, libraries, runtime environments).
-- Support a wide range of functionality via extensions, with a simple core application.
+- make common development tasks easier and more accessible for makers.
+- act as a bridge between systems (e.g. apps, programming languages, libraries, runtime environments).
+- support a wide range of functionality via extensions, with a simple core application.
 
 ![Celbridge screenshot](/Docs/Images/CelbridgeScreenshot.png)
 
-The current version runs on Windows 11, other platforms are planned.
+## Installation
+
+Celbridge is distributed as an .msix installer for Windows PCs.
+
+- Download the latest .msix installer from the [releases section](https://github.com/AnTulcha/Celbridge/releases).
+- Run the .msix installer
+
+You can now run Celbridge from the start menu, or by opening a `.celbridge` project file via Windows Explorer.
+
+> [!NOTE]
+> Celbridge currently supports Windows 11. A Mac version is planned, and a Linux version could be possible in future.
+
 
 # Project Overview
 
-My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a nice friendly community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and narrative tools.
+My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a friendly and helpful user community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and game narrative.
+
+Celbridge is in **early development** which means that there may be breaking changes with every release. Once the project reaches v1.0 there will be a strong emphasis on maintaining compatibility for existing user projects. Until then, please be aware that updating to a newer version of Celbridge could break your project!
+
+There's very little user documentation available just yet, but I am working on it.
+
+All feedback and contributions are very welcome!
 
 > [!NOTE]
-> This research was made possible by the Sabbatical Policy at Romero Games. Huge thanks to Brenda, John and all of the of the amazing 
-team at Romero Games for their support.❤️❤️❤️
-
-Celbridge is in **early development** which means there will be project breaking changes with (almost) every release. Do please do try it out though, all feedback and contributions are very welcome!
-
-There's also little (i.e. no) user documentation available yet, this will be coming soon!
-
-> [!NOTE]
-> I would advise against using Celbridge in a production environment until we reach v1.0. From then on there will be a strong emphasis on maintaining compatibility with existing user projects. Until then, be aware that updating Celbridge could break your project!
-
-# Build Instructions
-
-1. Install the latest version of Visual Studio (Community Edition works fine)
-1. Install the latest version of Visual Studio (the free [Community Edition]() works fine)
-2. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development
-3. Open `Celbridge.sln` in Visual Studio
-
-Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the configuration toolbar.
-
-> [!NOTE]
-> Uno Platform does some initial setup work behind the scenes when you first open the solution. It's a bit quirky at the start. Just let it idle for a minute after the solution opens, then close and reopen Visual Studio. You may need to repeat this a couple of time before it will compile and run.
+> This project was made possible by the Sabbatical Policy at Romero Games. Huge thanks to Brenda, John and all of the of the amazing team at Romero Games for their support.❤️❤️❤️
 
 # Who am I?
 
@@ -66,9 +63,10 @@ I also created the [Fungus](https://github.com/snozbot/fungus) visual scripting 
 
 This project uses code from these asweome open source projects:
 
-- [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
-- [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
+- [Uno Platform](https://platform.uno) 
 - [Monaco Editor](https://microsoft.github.io/monaco-editor)
 - [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
+- [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
+- [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 
 We also use a range of open source nuget packages, details of which can be found in the solution files.
