@@ -2,7 +2,7 @@
 
 `Celbridge` is a user friendly tool that helps creative people make cool stuff. 
 
-The goals of Celbridge are to:
+The goals of `Celbridge` are to:
 
 - Make common development tasks easier and **more accessible** for makers.
 - Act as **a bridge** between systems (e.g. apps, programming languages, libraries, environments).
@@ -57,7 +57,7 @@ Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.2262
 
 My goal is to develop `Celbridge` from a personal research project into a robust tool suitable for use in production environments, with a friendly and helpful user community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and game narrative.
 
-Please be aware that `Celbridge` is in **early development**! Every release may contain breaking changes for existing project created using the tool. Once the project reaches `v1.0` there will be a strong emphasis on maintaining compatibility for existing user projects.
+Please be aware that `Celbridge` is still in **early development**. This means that every release may contain breaking changes for existing projects created using the tool. Once the project reaches `v1.0` there will be a strong emphasis on maintaining compatibility for existing user projects.
 
 There's very little user documentation available just yet, but I am working on it.
 
