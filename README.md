@@ -1,10 +1,12 @@
 # What is Celbridge?
 
-Celbridge is a user friendly tool that helps creative people make cool stuff. 
+`Celbridge` is a user friendly tool that helps creative people make cool stuff. 
 
-- Makes common development tasks easier and more accessible for makers.
-- Acts as a bridge between systems (e.g. apps, programming languages, libraries, environments).
-- Supports a wide range of functionality via extensions, with a simple core application.
+The goals of Celbridge are to:
+
+- Make common development tasks easier and **more accessible** for makers.
+- Act as **a bridge** between systems (e.g. apps, programming languages, libraries, environments).
+- Support a wide range of functionality via **extensions**, with a simple core application.
 
 <br>
 <a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/CelbridgeScreenshot.png" alt="Celbridge screenshot">
@@ -23,58 +25,69 @@ Celbridge is a user friendly tool that helps creative people make cool stuff.
 
 Planned features include:
 
-- An integrated Python scripting and sandboxed execution environment.
-- A simple visual scripting language that transpiles to Python script.
+- An integrated `Python` scripting and sandboxed execution environment.
+- A simple visual scripting language that transpiles to `Python` script.
 - An extension system and package manager to allow the user community to add custom functionality.
 
 # Installation
 
-Celbridge is distributed as a `.msix` installer for Windows PCs.
+`Celbridge` is distributed as a `.msix` installer for `Windows PCs`.
 
 - Download the latest `.msix` installer from the [releases section](https://github.com/AnTulcha/Celbridge/releases).
-- Run the .msix installer
+- Run the `.msix` installer
 
-You can now run Celbridge from the start menu, or by opening a `.celbridge` project file via Windows Explorer.
+You can now run `Celbridge` from the start menu, or by opening a `.celbridge` project file via `Windows Explorer`.
 
 > [!NOTE]
-> Celbridge currently runs on Windows. A Mac version is planned, and a Linux version may be possible in future.
+> `Celbridge` currently runs on `Windows`. A `MacOS` version is planned, and a `Linux` version may be possible in future.
+
+# Building From Source
+
+1. Clone the Celbridge git repo on your machine.
+2. Install the latest version of `Visual Studio` (the free [Community Edition]() works fine).
+3. Follow the `Visual Studio` setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
+4. Open `Celbridge.sln` in `Visual Studio`.
+
+Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the `Visual Studio` configuration toolbar, then build and run the aplication.
+
+> [!NOTE]
+> `Uno Platform` performs some initial setup work behind the scenes when you first open the solution. Allow `Visual Studio` to idle for a minute or so after the solution opens, then close and reopen `Visual Studio`. You may need to repeat this process a couple times before the project will compile and run successfully.
 
 # Roadmap
 
-My goal is to develop Celbridge from a personal research project into a robust tool suitable for use in production environments, with a friendly and helpful user community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and game narrative.
+My goal is to develop `Celbridge` from a personal research project into a robust tool suitable for use in production environments, with a friendly and helpful user community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and game narrative.
 
-Please be aware that Celbridge is in **early development**! Every release may contain breaking changes for existing project created using the tool. Once the project reaches v1.0 there will be a strong emphasis on maintaining compatibility for existing user projects.
+Please be aware that `Celbridge` is in **early development**! Every release may contain breaking changes for existing project created using the tool. Once the project reaches `v1.0` there will be a strong emphasis on maintaining compatibility for existing user projects.
 
 There's very little user documentation available just yet, but I am working on it.
 
-All feedback and contributions are very welcome!
-
-
 - [x] Proof-of-concept prototype
-- [x] Application framework (DI, MVVM, extension architecture, public API, etc.)
-- [x] File management via Explorer window
-- [x] Scripting support (C# Interactive)
-- [x] Console window
-- [x] Web page documents and file viewer using WebView2
+- [x] Application framework (`DI`, `MVVM`, extension architecture, public API, etc.)
+- [x] File management via `Explorer Panel`
+- [x] Scripting support (currently `.NET Interactive`)
+- [x] `Console Panel`
+- [x] Web page documents and file viewer using `WebView2`
 - [x] Advanced text editing via [Monaco Editor]( https://microsoft.github.io/monaco-editor/)
 - [ ] Initial pass on documentation
 - [ ] Use [Json](https://www.json.org/json-en.html) & [Json Schema](https://json-schema.org/) for all project data files.
-- [ ] Change scripting to use Python
+- [ ] Change scripting to use `Python` exclusively
 - [ ] Investigate using a sandboxed execution environment, e.g. [Pyodide](https://pyodide.org)
 - [ ] Global find and replace
-- [ ] Cel Script visual scripting language
-- [ ] Cel Script debugger
+- [ ] `Cel Script` visual scripting language
+- [ ] `Cel Script` debugger
 - [ ] Extension system and package manager
-
 
 # Who am I?
 
-I'm [Chris Gregan](https://github.com/chrisgregan) and I work at [Romero Games](https://romerogames.com/), a games studio based in Galway, Ireland. I've worked in games development for 20+ years and have a lot of experience with many programming languages
-and technologies, my favourites being C#, .NET and Python.
+I'm [Chris Gregan](https://github.com/chrisgregan) and I work at [Romero Games](https://romerogames.com/), a games studio based in Galway, Ireland. I've worked in games development for 20+ years and have a lot of experience with many programming languages and technologies, my favourites being C#, .NET and Python.
 
 I am currently doing a Research Masters with [Technical University Dublin](https://www.tudublin.ie/), and I am using this project to help conduct my research.
 
 I also created the [Fungus](https://github.com/snozbot/fungus) visual scripting tool for Unity Engine. That project is now maintained by the community.
+
+# Contributions
+
+All feedback and contributions are very welcome! I have a strong vision for the architecture of `Celbridge` that I hope will allow the project to scale successfully. If you would like to contribute a new feature, please open an issue first so we can discuss the best way to implement whatever you have in mind.
 
 # Credits
 
