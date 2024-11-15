@@ -21,11 +21,6 @@ public static class FileNameConstants
     public const string EntitiesFolder = "Entities";
 
     /// <summary>
-    /// File containing the project data.
-    /// </summary>
-    public const string ProjectDataFile = "CelData.db";
-
-    /// <summary>
     /// Folder containing the workspace settings data file.
     /// </summary>
     public const string WorkspaceSettingsFolder = ".celbridge";

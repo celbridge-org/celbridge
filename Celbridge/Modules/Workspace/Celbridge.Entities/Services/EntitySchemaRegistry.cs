@@ -83,7 +83,7 @@ public class EntitySchemaRegistry
         }
     }
 
-    private Result AddSchema(string schemaJson)
+    public Result AddSchema(string schemaJson)
     {
         try
         {
