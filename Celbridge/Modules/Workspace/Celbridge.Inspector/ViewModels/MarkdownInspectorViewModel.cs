@@ -1,8 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.ResourceData;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,7 +15,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IResourceDataService _resourceDataService;
+    private readonly IEntityService _entityService;
 
     [ObservableProperty]
     private bool _showEditorEnabled;
@@ -40,7 +40,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
         _logger = logger;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        _resourceDataService = workspaceWrapper.WorkspaceService.ResourceDataService;
+        _entityService = workspaceWrapper.WorkspaceService.EntityService;
 
         PropertyChanged += MarkdownInspectorViewModel_PropertyChanged;
     }
@@ -88,13 +88,10 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
         try
         {
-            _resourceDataService.SetProperty(Resource, ResourceDataConstants.TextEditor_ShowEditor, showEditor);
-            _resourceDataService.SetProperty(Resource, ResourceDataConstants.TextEditor_ShowPreview, showPreview);
+            _entityService.SetProperty(Resource, EntityConstants.TextEditor_ShowEditor, showEditor);
+            _entityService.SetProperty(Resource, EntityConstants.TextEditor_ShowPreview, showPreview);
 
             UpdateButtonState();
-
-            // Todo: Save the resource data on a timer
-            _resourceDataService.SavePendingAsync();
         }
         catch (Exception ex)
         {
@@ -106,8 +103,8 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            bool showingEditor = _resourceDataService.GetProperty(Resource, ResourceDataConstants.TextEditor_ShowEditor, true);
-            bool showingPreview = _resourceDataService.GetProperty(Resource, ResourceDataConstants.TextEditor_ShowPreview, true);
+            bool showingEditor = _entityService.GetProperty(Resource, EntityConstants.TextEditor_ShowEditor, true);
+            bool showingPreview = _entityService.GetProperty(Resource, EntityConstants.TextEditor_ShowPreview, true);
             bool showingBoth = showingEditor && showingPreview;
 
             ShowEditorEnabled = !showingEditor || (showingBoth);
@@ -119,5 +116,4 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
             _logger.LogError(ex.Message);
         }
     }
-
 }

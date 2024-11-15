@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "_entityType": {
+      "type": "string",
+      "const": "File"
+    },
+    "_entityVersion": {
+      "type": "integer",
+      "const": 1
+    }
+  },
+  "required": [
+    "_entityType",
+    "_entityVersion"
+  ]
+}

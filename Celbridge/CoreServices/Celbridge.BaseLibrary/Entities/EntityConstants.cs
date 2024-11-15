@@ -1,6 +1,6 @@
-namespace Celbridge.Core;
+namespace Celbridge.Entities;
 
-public static class ResourceDataConstants
+public static class EntityConstants
 {
     /// <summary>
     /// ShowEditor property for text file resources.

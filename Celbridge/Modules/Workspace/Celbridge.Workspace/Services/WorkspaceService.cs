@@ -1,12 +1,12 @@
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
+using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Extensions;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Projects;
-using Celbridge.ResourceData;
 using Celbridge.Scripting;
 using Celbridge.Settings;
 using Celbridge.Status;
@@ -30,7 +30,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IExplorerService ExplorerService { get; }
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
-    public IResourceDataService ResourceDataService { get; }
+    public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
 
     private bool _workspaceStateIsDirty;
@@ -56,7 +56,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         StatusService = serviceProvider.GetRequiredService<IStatusService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
-        ResourceDataService = serviceProvider.GetRequiredService<IResourceDataService>();
+        EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
 
         //
@@ -109,17 +109,24 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public async Task<Result> FlushPendingSaves(double deltaTime)
     {
-        // Todo: Save the workspace state after a delay to avoid saving too frequently
-
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
+            
+            // Todo: Save the workspace state after a delay to avoid saving too frequently
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
             {
                 return Result.Fail($"Failed to save workspace state")
                     .WithErrors(saveWorkspaceResult);
             }
+        }
+
+        var saveEntitiesResult = await EntityService.SaveModifiedEntities();
+        if (saveEntitiesResult.IsFailure)
+        {
+            return Result.Fail($"Failed to save modified entities")
+                .WithErrors(saveEntitiesResult);
         }
 
         var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
@@ -174,7 +181,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ExplorerService as IDisposable)!.Dispose();
                 (StatusService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
-                (ResourceDataService as IDisposable)!.Dispose();
+                (EntityService as IDisposable)!.Dispose();
                 (GenerativeAIService as IDisposable)!.Dispose();
             }
 

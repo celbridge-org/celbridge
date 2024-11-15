@@ -1,3 +1,4 @@
+using Celbridge.Entities;
 using Celbridge.Utilities;
 using Celbridge.Utilities.Services;
 using Celbridge.Workspace;
@@ -13,6 +14,7 @@ public class ResourceArchiver
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IEntityService _entityService;
     private readonly IUtilityService _utilityService;
 
     private ResourceKey _resource;
@@ -28,6 +30,7 @@ public class ResourceArchiver
     {
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _entityService = _workspaceWrapper.WorkspaceService.EntityService;
         _utilityService = utilityService;
     }
 
@@ -99,9 +102,22 @@ public class ResourceArchiver
 
             using (var archive = ZipFile.Open(_archivePath, ZipArchiveMode.Create))
             {
+                // Add the resource to the archive.
                 archive.CreateEntryFromFile(deleteFilePath, resource);
+
+                // Add the associated EntityData file, if one exists, to the archive.
+                var entityDataPath = _entityService.GetEntityDataPath(resource);
+                if (File.Exists(entityDataPath))
+                {
+                    // Add the EntityData file using the project relative path as the entry name,
+                    // so that it will be extracted to the correct location on undo.
+                    var entityDataRelativePath = _entityService.GetEntityDataRelativePath(resource);
+                    archive.CreateEntryFromFile(entityDataPath, entityDataRelativePath);
+                }
             }
 
+            // Delete the resource. The associated EntityData file, if one exists, will be deleted
+            // during the following resource registry update.
             File.Delete(deleteFilePath);
         }
         catch (Exception ex)
