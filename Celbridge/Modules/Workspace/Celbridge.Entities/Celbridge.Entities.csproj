@@ -23,8 +23,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="EntityConfig\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
-    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="JsonPatch.Net" />
+    <PackageReference Include="JsonPointer.Net" />
+    <PackageReference Include="JsonSchema.Net" />
   </ItemGroup>
 
   <ItemGroup>

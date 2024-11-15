@@ -32,10 +32,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\Modules\Workspace\Celbridge.Entities\EntityConfig\**" Link="EntityConfig\%(RecursiveDir)%(FileName)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- To include content from a library project, you have to both copy it in the library project and link to it here in the executable project -->
     <Content Include="..\Modules\Workspace\Celbridge.Documents\preview\**" Link="preview\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="..\Modules\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

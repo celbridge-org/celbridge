@@ -1,10 +1,10 @@
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
+using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
-using Celbridge.ResourceData;
 using Celbridge.Scripting;
 using Celbridge.Status;
 
@@ -61,9 +61,9 @@ public interface IWorkspaceService
     IDataTransferService DataTransferService { get; }
 
     /// <summary>
-    /// Returns the Resource Data Service associated with the workspace.
+    /// Returns the Entity Service associated with the workspace.
     /// </summary>
-    IResourceDataService ResourceDataService { get; }
+    IEntityService EntityService { get; }
 
     /// <summary>
     /// Returns the Generative AI Service associated with the workspace.
