@@ -29,14 +29,4 @@ public interface IProject
     /// Gets the project configuration.
     /// </summary>
     public IProjectConfig ProjectConfig { get; }
-
-    /// <summary>
-    /// Gets the data version for the project data.
-    /// </summary>
-    Task<Result<int>> GetDataVersionAsync();
-
-    /// <summary>
-    /// Sets the data version for the project data.
-    /// </summary>
-    Task<Result> SetDataVersionAsync(int version);
 }

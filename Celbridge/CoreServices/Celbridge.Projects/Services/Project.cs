@@ -1,5 +1,4 @@
-using Celbridge.Projects.Models;
-using SQLite;
+using Celbridge.Logging;
 
 using Path = System.IO.Path;
 
@@ -7,13 +6,10 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
-    private const int DataVersion = 1;
+    private readonly ILogger<Project> _logger;
 
     private ProjectConfig? _projectConfig;
     public IProjectConfig ProjectConfig => _projectConfig!;
-
-    private SQLiteAsyncConnection? _connection;
-    private SQLiteAsyncConnection Connection => _connection!;
 
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
@@ -27,30 +23,9 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-    public async Task<Result<int>> GetDataVersionAsync()
+    public Project(ILogger<Project> logger)
     {
-        var dataVersion = await Connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result<int>.Fail($"Failed to get data version for Project Data");
-        }
-
-        return Result<int>.Ok(dataVersion.Version);
-    }
-
-    public async Task<Result> SetDataVersionAsync(int version)
-    {
-        var dataVersion = await Connection.Table<ProjectDataVersion>().FirstOrDefaultAsync();
-        if (dataVersion == null)
-        {
-            return Result.Fail($"Failed to set data version for Project Data");
-        }
-
-        dataVersion.Version = version;
-
-        await Connection.UpdateAsync(dataVersion);
-        
-        return Result.Ok();
+        _logger = logger;
     }
 
     public static Result<IProject> LoadProject(string projectFilePath)
@@ -97,11 +72,9 @@ public class Project : IDisposable, IProject
 
             if (!Directory.Exists(project.ProjectDataFolderPath))
             {
-                return Result<IProject>.Fail($"Project data folder does not exist: '{project.ProjectDataFolderPath}'");
+                project._logger.LogWarning($"Project data folder does not exist: '{project.ProjectDataFolderPath}'. Creating an empty folder.");
+                Directory.CreateDirectory(project.ProjectDataFolderPath);
             }
-
-            var projectDataFilePath = Path.Combine(project.ProjectDataFolderPath, FileNameConstants.ProjectDataFile);
-            project._connection = new SQLiteAsyncConnection(projectDataFilePath);
 
             return Result<IProject>.Ok(project);
         }
@@ -116,48 +89,30 @@ public class Project : IDisposable, IProject
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
-        // Todo: Create the data files in a temp directory first and move them into place when all operations succeed
-
         try
         {
-            var serviceProvider = ServiceLocator.ServiceProvider;
-            using (var project = serviceProvider.GetRequiredService<IProject>() as Project)
+            if (string.IsNullOrEmpty(projectFilePath))
             {
-                Guard.IsNotNull(project);
-
-                if (string.IsNullOrEmpty(projectFilePath))
-                {
-                    return Result.Fail("Project file path is empty");
-                }
-
-                if (File.Exists(projectFilePath))
-                {
-                    return Result.Fail($"Project file already exists exist: {projectFilePath}");
-                }
-
-                project.PopulatePaths(projectFilePath);
-
-                if (!Directory.Exists(project.ProjectDataFolderPath))
-                {
-                    // Create the project folder if it doesn't already exist
-                    Directory.CreateDirectory(project.ProjectDataFolderPath);
-                }
-
-                // Todo: Populate this with project configuration options
-                File.WriteAllText(projectFilePath, "{}");
-
-                var projectDataFilePath = Path.Combine(project.ProjectDataFolderPath, FileNameConstants.ProjectDataFile);
-                project._connection = new SQLiteAsyncConnection(projectDataFilePath);
-
-                var dataVersion = new ProjectDataVersion
-                {
-                    Version = DataVersion
-                };
-
-                // Initialize the project data
-                await project._connection.CreateTableAsync<ProjectDataVersion>();
-                await project._connection.InsertAsync(dataVersion);
+                return Result.Fail("Project file path is empty");
             }
+
+            if (File.Exists(projectFilePath))
+            {
+                return Result.Fail($"Project file already exists exist: {projectFilePath}");
+            }
+
+            var projectPath = Path.GetDirectoryName(projectFilePath);
+            Guard.IsNotNull(projectPath);
+
+            var projectDataFolderPath = Path.Combine(projectPath, FileNameConstants.ProjectDataFolder);
+
+            if (!Directory.Exists(projectDataFolderPath))
+            {
+                Directory.CreateDirectory(projectDataFolderPath);
+            }
+
+            // Todo: Populate this with project configuration options
+            await File.WriteAllTextAsync(projectFilePath, "{}");
         }
         catch (Exception ex)
         {
@@ -195,7 +150,7 @@ public class Project : IDisposable, IProject
         {
             if (disposing)
             {
-                _connection?.CloseAsync().Wait();
+                // Dispose managed objects here
             }
 
             _disposed = true;
