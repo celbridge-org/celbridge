@@ -161,6 +161,29 @@ public class EntityService : IEntityService, IDisposable
         }
     }
 
+    public Result ApplyPatch(ResourceKey resource, string patch)
+    {
+        var acquireResult = AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
+
+        var applyResult = entity.EntityData.ApplyPatch(patch);
+        if (applyResult.IsFailure)
+        {
+            return Result.Fail($"Failed to apply patch to entity for resource: {resource}")
+                .WithErrors(applyResult);
+        }
+
+        _modifiedEntities[resource] = true;
+
+        return Result.Ok();
+    }
+
     public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
     {
         try
