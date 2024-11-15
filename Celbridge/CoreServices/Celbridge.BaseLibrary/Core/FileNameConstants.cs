@@ -16,6 +16,11 @@ public static class FileNameConstants
     public const string ProjectDataFolder = "CelData";
 
     /// <summary>
+    /// Folder containing entity data files.
+    /// </summary>
+    public const string EntitiesFolder = "Entities";
+
+    /// <summary>
     /// File containing the project data.
     /// </summary>
     public const string ProjectDataFile = "CelData.db";

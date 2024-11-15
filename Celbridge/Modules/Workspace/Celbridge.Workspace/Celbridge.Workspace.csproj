@@ -32,10 +32,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
+    <ProjectReference Include="..\Celbridge.Entities\Celbridge.Entities.csproj" />
     <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
     <ProjectReference Include="..\Celbridge.GenerativeAI\Celbridge.GenerativeAI.csproj" />
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
-    <ProjectReference Include="..\Celbridge.ResourceData\Celbridge.ResourceData.csproj" />
     <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />
     <ProjectReference Include="..\Celbridge.Status\Celbridge.Status.csproj" />
   </ItemGroup>

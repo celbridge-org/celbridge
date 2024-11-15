@@ -206,7 +206,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         Guard.IsNotNull(project);
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        
+        var entityService = _workspaceWrapper.WorkspaceService.EntityService;
+
         if (resourceA.IsEmpty || resourceB.IsEmpty)
         {
             return Result.Fail("Resource key is empty.");
@@ -238,18 +239,32 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
             if (TransferMode == DataTransferMode.Copy)
             {
+                // Copy the entity data file for the resource (if one exists).
+                var copyEntityResult = entityService.CopyEntityDataFile(resourceA, resourceB);
+                if (copyEntityResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to copy entity data file for resource: {resourceA} to {resourceB}")
+                        .WithErrors(copyEntityResult);
+                }
+
                 File.Copy(filePathA, filePathB);
 
-                // Keep a note of the copied file so we can delete it in the undo
+                // Keep a note of the copied file so we can delete it if the command is undone.
+                // Note that there's no need to track the copied entity file because it will be deleted automatically
+                // when the resource registry is updated.
                 _copiedFilePaths.Add(filePathB);
             }
             else
             {
-                File.Move(filePathA, filePathB);
+                // Move the entity data file for the resource (if one exists).
+                var moveEntityResult = entityService.MoveEntityDataFile(resourceA, resourceB);
+                if (moveEntityResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to move entity data file for resource: {resourceA} to {resourceB}")
+                        .WithErrors(moveEntityResult);
+                }
 
-                // Notify opened documents that the resource key for this resource has changed
-                var message = new ResourceKeyChangedMessage(resourceA, resourceB, filePathB);
-                _messengerService.Send(message);
+                File.Move(filePathA, filePathB);
             }
 
             var newParentFolder = resourceB.GetParent();
@@ -403,7 +418,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             var destResource = sourceResource.ToString().Replace(folderResourceA, folderResourceB);
             var destPath = resourceRegistry.GetResourcePath(destResource);
 
-            var message = new ResourceKeyChangedMessage(sourceResource, destResource, destPath);
+            var message = new ResourceKeyChangedMessage(sourceResource, destResource);
             _messengerService.Send(message);
         }
     }

@@ -24,8 +24,6 @@ public class WorkspaceLoader
             return Result.Fail("Workspace service is not initialized");
         }
 
-        var explorerService = workspaceService.ExplorerService;
-
         //
         // Acquire the workspace settings
         //
@@ -70,8 +68,22 @@ public class WorkspaceLoader
         }
 
         //
+        // Initialize the entity service.
+        //
+        var entityService = workspaceService.EntityService;
+        var initEntitiesResult = await entityService.InitializeAsync();
+        if (initEntitiesResult.IsFailure)
+        {
+            return Result.Fail("Failed to initalize entity service")
+                .WithErrors(initEntitiesResult);
+        }
+
+        //
         // Populate the resource registry.
         //
+
+        var explorerService = workspaceService.ExplorerService;
+
         try
         {
             // Restore previous state of expanded folders before populating resources

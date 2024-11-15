@@ -1,6 +1,7 @@
+using Celbridge.Entities;
 using Celbridge.ExtensionAPI;
 using Celbridge.Logging;
-using Celbridge.ResourceData;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -11,8 +12,9 @@ namespace Celbridge.Documents.ViewModels;
 public partial class TextEditorDocumentViewModel : ObservableObject
 {
     private readonly ILogger<TextEditorDocumentViewModel> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
-    private readonly IResourceDataService _resourceDataService;
+    private readonly IEntityService _entityService;
 
     private ResourceKey _fileResource;
 
@@ -24,18 +26,19 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     public TextEditorDocumentViewModel(
         ILogger<TextEditorDocumentViewModel> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-        _resourceDataService = workspaceWrapper.WorkspaceService.ResourceDataService;
+        _entityService = workspaceWrapper.WorkspaceService.EntityService;
     }
 
     public void SetFileResource(ResourceKey fileResource)
     {
-        // Todo: Unregister when the document closes
-        _resourceDataService.UnregisterNotifier(fileResource, this);
-        _resourceDataService.RegisterNotifier(fileResource, this, FileResource_PropertyChanged);
+        _messengerService.Unregister<EntityPropertyChangedMessage>(this);
+        _messengerService.Register<EntityPropertyChangedMessage>(this, OnEntityPropertyChangedMessage);
 
         _fileResource = fileResource;
 
@@ -61,10 +64,17 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         return Result<PreviewProvider>.Ok(provider);
     }
 
-    private void FileResource_PropertyChanged(ResourceKey resource, string propertyName)
+    private void OnEntityPropertyChangedMessage(object recipient, EntityPropertyChangedMessage message)
     {
-        if (propertyName == ResourceDataConstants.TextEditor_ShowEditor ||
-            propertyName == ResourceDataConstants.TextEditor_ShowPreview)
+        var (resource, propertyPath, _) = message;
+
+        if (resource != _fileResource)
+        {
+            return;
+        }
+
+        if (propertyPath == EntityConstants.TextEditor_ShowEditor ||
+            propertyPath == EntityConstants.TextEditor_ShowPreview)
         {
             UpdatePanelVisibility();
         }
@@ -74,8 +84,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            ShowEditor = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowEditor, true);
-            ShowPreview = _resourceDataService.GetProperty(_fileResource, ResourceDataConstants.TextEditor_ShowPreview, true);
+            ShowEditor = _entityService.GetProperty(_fileResource, EntityConstants.TextEditor_ShowEditor, true);
+            ShowPreview = _entityService.GetProperty(_fileResource, EntityConstants.TextEditor_ShowPreview, true);
         }
         catch (Exception ex)
         {
