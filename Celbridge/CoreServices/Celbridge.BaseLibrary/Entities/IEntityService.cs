@@ -46,6 +46,11 @@ public interface IEntityService
     void SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull;
 
     /// <summary>
+    /// Apply a JSON Patch (RFC 6902) to the entity data for a resource.
+    /// </summary>
+    Result ApplyPatch(ResourceKey resource, string patch);
+
+    /// <summary>
     /// Saves all modified entities to disk asynchronously.
     /// </summary>
     Task<Result> SaveModifiedEntities();

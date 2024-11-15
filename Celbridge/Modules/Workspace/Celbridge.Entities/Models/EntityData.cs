@@ -1,12 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Json.Patch;
 using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Entities.Models;
 
 public class EntityData
 {
-    public JsonObject JsonObject { get; }
+    public JsonObject JsonObject { get; private set; }
     public EntitySchema EntitySchema { get; }
 
     private EntityData(JsonObject jsonObject, EntitySchema entitySchema)
@@ -112,6 +113,38 @@ public class EntityData
         catch (Exception ex)
         {
             return Result<bool>.Fail($"Failed to set entity property '{propertyName}'")
+                .WithException(ex);
+        }
+    }
+
+    public Result ApplyPatch(string patchJson)
+    {
+        try
+        {
+            var patch = JsonSerializer.Deserialize<JsonPatch>(patchJson);
+            if (patch is null)
+            {
+                return Result.Fail("Failed to deserialize JSON patch");
+            }
+
+            var patchResult = patch.Apply(JsonObject);
+            if (!patchResult.IsSuccess)
+            {
+                return Result.Fail($"Failed to apply JSON patch to entity data: {patchResult.Error}");
+            }
+
+            // Todo: Check if the patch is valid for the entity schema before really applying it
+            // Todo: Check if the json object has actually changed (return a bool)
+
+            var jsonObject = patchResult.Result as JsonObject;
+            Guard.IsNotNull(jsonObject);
+            JsonObject = jsonObject;
+
+            return Result.Ok(); 
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"An exception occurred when applying JSON patch to entity data.")
                 .WithException(ex);
         }
     }
