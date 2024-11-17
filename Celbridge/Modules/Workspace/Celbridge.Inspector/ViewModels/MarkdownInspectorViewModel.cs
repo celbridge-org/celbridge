@@ -3,6 +3,7 @@ using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,6 +14,7 @@ namespace Celbridge.Inspector.ViewModels;
 public partial class MarkdownInspectorViewModel : InspectorViewModel
 {
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IEntityService _entityService;
@@ -34,15 +36,31 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
     public MarkdownInspectorViewModel(
         ILogger<MarkdownInspectorViewModel> logger,
+        IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
 
+        _messengerService.Register<EntityChangedMessage>(this, OnEntityChangedMessage);
+
         PropertyChanged += MarkdownInspectorViewModel_PropertyChanged;
+    }
+
+    private void OnEntityChangedMessage(object recipient, EntityChangedMessage message)
+    {
+        if (message.Resource == Resource)            
+        {
+            if (message.PropertyPaths.Contains(TextEditorEntityConstants.ShowEditor) ||
+                message.PropertyPaths.Contains(TextEditorEntityConstants.ShowPreview))
+            {
+                UpdateButtonState();
+            }
+        }
     }
 
     private void MarkdownInspectorViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -88,8 +106,8 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
         try
         {
-            _entityService.SetProperty(Resource, EntityConstants.TextEditor_ShowEditor, showEditor);
-            _entityService.SetProperty(Resource, EntityConstants.TextEditor_ShowPreview, showPreview);
+            _entityService.SetProperty(Resource, TextEditorEntityConstants.ShowEditor, showEditor);
+            _entityService.SetProperty(Resource, TextEditorEntityConstants.ShowPreview, showPreview);
 
             UpdateButtonState();
         }
@@ -103,8 +121,8 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            bool showingEditor = _entityService.GetProperty(Resource, EntityConstants.TextEditor_ShowEditor, true);
-            bool showingPreview = _entityService.GetProperty(Resource, EntityConstants.TextEditor_ShowPreview, true);
+            bool showingEditor = _entityService.GetProperty(Resource, TextEditorEntityConstants.ShowEditor, true);
+            bool showingPreview = _entityService.GetProperty(Resource, TextEditorEntityConstants.ShowPreview, true);
             bool showingBoth = showingEditor && showingPreview;
 
             ShowEditorEnabled = !showingEditor || (showingBoth);

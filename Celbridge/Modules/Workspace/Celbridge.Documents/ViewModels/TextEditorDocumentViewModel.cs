@@ -37,8 +37,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     public void SetFileResource(ResourceKey fileResource)
     {
-        _messengerService.Unregister<EntityPropertyChangedMessage>(this);
-        _messengerService.Register<EntityPropertyChangedMessage>(this, OnEntityPropertyChangedMessage);
+        _messengerService.Unregister<EntityChangedMessage>(this);
+        _messengerService.Register<EntityChangedMessage>(this, OnEntityChangedMessage);
 
         _fileResource = fileResource;
 
@@ -64,17 +64,17 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         return Result<PreviewProvider>.Ok(provider);
     }
 
-    private void OnEntityPropertyChangedMessage(object recipient, EntityPropertyChangedMessage message)
+    private void OnEntityChangedMessage(object recipient, EntityChangedMessage message)
     {
-        var (resource, propertyPath, _) = message;
+        var (resource, paths) = message;
 
         if (resource != _fileResource)
         {
             return;
         }
 
-        if (propertyPath == EntityConstants.TextEditor_ShowEditor ||
-            propertyPath == EntityConstants.TextEditor_ShowPreview)
+        if (paths.Contains(TextEditorEntityConstants.ShowEditor) ||
+            paths.Contains(TextEditorEntityConstants.ShowPreview))
         {
             UpdatePanelVisibility();
         }
@@ -84,8 +84,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            ShowEditor = _entityService.GetProperty(_fileResource, EntityConstants.TextEditor_ShowEditor, true);
-            ShowPreview = _entityService.GetProperty(_fileResource, EntityConstants.TextEditor_ShowPreview, true);
+            ShowEditor = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.ShowEditor, true);
+            ShowPreview = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.ShowPreview, true);
         }
         catch (Exception ex)
         {
