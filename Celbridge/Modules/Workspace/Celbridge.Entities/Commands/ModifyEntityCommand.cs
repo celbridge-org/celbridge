@@ -33,8 +33,8 @@ public class ModifyEntityCommand : CommandBase, IModifyEntityCommand
     // Static methods for scripting support.
     //
 
-    private record AddOperation(string op, string path, string value);
-    public static void AddProperty(ResourceKey resource, string path, string value)
+    private record AddOperation(string op, string path, object value);
+    public static void AddProperty(ResourceKey resource, string path, object value)
     {
         var operation = new AddOperation("add", path, value);
         string patch = JsonSerializer.Serialize(operation);
@@ -51,8 +51,8 @@ public class ModifyEntityCommand : CommandBase, IModifyEntityCommand
         ApplyPatch(resource, patch);
     }
 
-    private record ReplaceOperation(string op, string path, string value);
-    public static void ReplaceProperty(ResourceKey resource, string path, string value)
+    private record ReplaceOperation(string op, string path, object value);
+    public static void ReplaceProperty(ResourceKey resource, string path, object value)
     {
         var operation = new ReplaceOperation("replace", path, value);
         string patch = JsonSerializer.Serialize(operation);

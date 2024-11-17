@@ -87,9 +87,9 @@ public class EntityService : IEntityService, IDisposable
 
     public string GetEntityDataPath(ResourceKey resource)
     {
-        var resourcePath = Path.Combine(GetEntitiesFolderPath(), resource) + ".json";
-        resourcePath = Path.GetFullPath(resourcePath);
-        return resourcePath;
+        var entityDataPath = Path.Combine(GetEntitiesFolderPath(), resource) + ".json";
+        entityDataPath = Path.GetFullPath(entityDataPath);
+        return entityDataPath;
     }
 
     public string GetEntityDataRelativePath(ResourceKey resource)
@@ -123,50 +123,61 @@ public class EntityService : IEntityService, IDisposable
 
     public T? GetProperty<T>(ResourceKey resource, string propertyPath, T? defaultValue) where T : notnull
     {
-        var acquireResult = AcquireEntity(resource);
-        if (acquireResult.IsFailure)
+        var getResult = GetProperty<T>(resource, propertyPath);
+        if (getResult.IsFailure)
         {
-            _logger.LogError(acquireResult.Error);
-            return defaultValue;
+            return default;
         }
-        var entity = acquireResult.Value;
-        Guard.IsNotNull(entity);
 
-        return entity.EntityData.GetProperty(propertyPath, defaultValue);
+        return getResult.Value;
     }
 
-    public T? GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull
-    {
-        return GetProperty(resource, propertyPath, default(T));
-    }
-
-    public void SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull
+    public Result<T> GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull
     {
         var acquireResult = AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
             _logger.LogError(acquireResult.Error);
-            return;
+            return Result<T>.Fail($"Failed to acquire entity for resource '{resource}'")
+                .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        // SetProperty returns true if the newValue is different from the existing value
-        if (entity.EntityData.SetProperty(propertyPath, newValue))
+        var getResult = entity.EntityData.GetProperty<T>(propertyPath);
+        if (getResult.IsFailure)
         {
-            _modifiedEntities[resource] = true;
-
-            var message = new EntityPropertyChangedMessage(resource, propertyPath, EntityPropertyChangeType.Update);
-            _messengerService.Send(message);
+            return Result<T>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
+                .WithErrors(getResult);
         }
+
+        return getResult;
     }
 
-    public Result ApplyPatch(ResourceKey resource, string patch)
+    private record SetPropertyOperation(string op, string path, object value);
+    public Result<EntityPatchSummary> SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull
+    {
+        // Set the property by applying a JSON patch
+        var operation = new SetPropertyOperation("add", propertyPath, newValue);
+        var jsonPatch = JsonSerializer.Serialize(operation);
+        jsonPatch = $"[{jsonPatch}]";
+
+        var applyResult = ApplyPatch(resource, jsonPatch);
+        if (applyResult.IsFailure)
+        {
+            return Result<EntityPatchSummary>.Fail($"Failed to apply enitty patch for resource: {resource}");
+        }
+        var patchSummary = applyResult.Value;
+
+        return Result<EntityPatchSummary>.Ok(patchSummary);
+    }
+
+    public Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch)
     {
         var acquireResult = AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result.Fail($"Failed to acquire entity: {resource}")
+            return Result<EntityPatchSummary>.Fail($"Failed to acquire entity: {resource}")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
@@ -175,13 +186,21 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = entity.EntityData.ApplyPatch(patch);
         if (applyResult.IsFailure)
         {
-            return Result.Fail($"Failed to apply patch to entity for resource: {resource}")
+            return Result<EntityPatchSummary>.Fail($"Failed to apply patch to entity for resource: {resource}")
                 .WithErrors(applyResult);
         }
+        var patchSummary = applyResult.Value;
 
-        _modifiedEntities[resource] = true;
+        if (patchSummary.ModifiedPaths.Count > 0)
+        {
+            _modifiedEntities[resource] = true;
 
-        return Result.Ok();
+            var pathsCopy = patchSummary.ModifiedPaths.ToList();
+            var message = new EntityChangedMessage(resource, pathsCopy);
+            _messengerService.Send(message);
+        }
+
+        return Result<EntityPatchSummary>.Ok(patchSummary);
     }
 
     public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
@@ -281,6 +300,16 @@ public class EntityService : IEntityService, IDisposable
 
     private Result<Entity> AcquireEntity(ResourceKey resource)
     {
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        
+        var getResourceResult = resourceRegistry.GetResource(resource);
+        if (getResourceResult.IsFailure)
+        {
+            // Fail if the resource does not exist in the registry.
+            return Result<Entity>.Fail($"Resource does not exist: '{resource}'")
+                .WithErrors(getResourceResult);
+        }
+
         if (_entityCache.ContainsKey(resource))
         {
             var entity = _entityCache[resource];
