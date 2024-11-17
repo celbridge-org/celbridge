@@ -1,15 +1,5 @@
 namespace Celbridge.Entities;
 
-/// <summary>
-/// Enum representing the type of change made to an entity property.
-/// </summary>
-public enum EntityPropertyChangeType
-{
-    Add,
-    Update,
-    Remove
-}
-
 public interface IEntityService
 {
     Task<Result> InitializeAsync();
@@ -32,23 +22,28 @@ public interface IEntityService
 
     /// <summary>
     /// Gets the value of a property from a resource.
+    /// propertyPath is a JSON Pointer (RFC 6901).
+    /// Returns a default value if the property cannot be found.
     /// </summary>
     T? GetProperty<T>(ResourceKey resource, string propertyPath, T? defaultValue) where T : notnull;
 
     /// <summary>
     /// Gets the value of a property from a resource.
+    /// propertyPath is a JSON Pointer (RFC 6901).
+    /// Fails if the property cannot be found, or is of the wrong type.
     /// </summary>
-    T? GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull;
+    Result<T> GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull;
 
     /// <summary>
-    /// Sets the value of a property in a resource.
+    /// Sets the value of an entity property for a resource.
+    /// propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
-    void SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull;
+    Result<EntityPatchSummary> SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull;
 
     /// <summary>
     /// Apply a JSON Patch (RFC 6902) to the entity data for a resource.
     /// </summary>
-    Result ApplyPatch(ResourceKey resource, string patch);
+    Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch);
 
     /// <summary>
     /// Saves all modified entities to disk asynchronously.
