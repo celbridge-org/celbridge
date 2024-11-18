@@ -5,7 +5,6 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -20,13 +19,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     private readonly IEntityService _entityService;
 
     [ObservableProperty]
-    private bool _showEditorEnabled;
-
-    [ObservableProperty]
-    private bool _showBothEnabled;
-
-    [ObservableProperty]
-    private bool _showPreviewEnabled;
+    private EditorMode _editorMode;
 
     // Code gen requires a parameterless constructor
     public MarkdownInspectorViewModel()
@@ -55,8 +48,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         if (message.Resource == Resource)            
         {
-            if (message.PropertyPaths.Contains(TextEditorEntityConstants.ShowEditor) ||
-                message.PropertyPaths.Contains(TextEditorEntityConstants.ShowPreview))
+            if (message.PropertyPaths.Contains(TextEditorEntityConstants.EditorMode))
             {
                 UpdateButtonState();
             }
@@ -85,31 +77,26 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     public IRelayCommand ShowEditorCommand => new RelayCommand(ShowEditor_Executed);
     private void ShowEditor_Executed()
     {
-        SetPanelVisibility(true, false);
+        SetEditorMode(EditorMode.Editor);
     }
 
     public IRelayCommand ShowPreviewCommand => new RelayCommand(ShowPreview_Executed);
     private void ShowPreview_Executed()
     {
-        SetPanelVisibility(false, true);
+        SetEditorMode(EditorMode.Preview);
     }
 
     public IRelayCommand ShowBothCommand => new RelayCommand(ShowEditorAndPreview_Executed);
     private void ShowEditorAndPreview_Executed()
     {
-        SetPanelVisibility(true, true);
+        SetEditorMode(EditorMode.EditorAndPreview);
     }
 
-    private void SetPanelVisibility(bool showEditor, bool showPreview)
+    private void SetEditorMode(EditorMode editorMode)
     {
-        Guard.IsTrue(showEditor || showPreview);
-
         try
         {
-            _entityService.SetProperty(Resource, TextEditorEntityConstants.ShowEditor, showEditor);
-            _entityService.SetProperty(Resource, TextEditorEntityConstants.ShowPreview, showPreview);
-
-            UpdateButtonState();
+            _entityService.SetProperty(Resource, TextEditorEntityConstants.EditorMode, editorMode);
         }
         catch (Exception ex)
         {
@@ -121,13 +108,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            bool showingEditor = _entityService.GetProperty(Resource, TextEditorEntityConstants.ShowEditor, true);
-            bool showingPreview = _entityService.GetProperty(Resource, TextEditorEntityConstants.ShowPreview, true);
-            bool showingBoth = showingEditor && showingPreview;
-
-            ShowEditorEnabled = !showingEditor || (showingBoth);
-            ShowPreviewEnabled = !showingPreview || (showingBoth);
-            ShowBothEnabled = !showingBoth;
+            EditorMode = _entityService.GetProperty(Resource, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
         }
         catch (Exception ex)
         {

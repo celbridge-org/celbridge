@@ -7,12 +7,7 @@ namespace Celbridge.Entities;
 public static class TextEditorEntityConstants
 {
     /// <summary>
-    /// ShowEditor property path.
+    /// Editor mode property path.
     /// </summary>
-    public const string ShowEditor = "/ShowEditor";
-
-    /// <summary>
-    /// ShowPreview property path.
-    /// </summary>
-    public const string ShowPreview = "/ShowPreview";
+    public const string EditorMode = "/editorMode";
 }

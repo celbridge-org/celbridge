@@ -378,4 +378,16 @@
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>
   </data>
+  <data name="InspectorPanel_ShowEditorAndPreviewTooltip" xml:space="preserve">
+    <value>Show editor and preview </value>
+  </data>
+  <data name="InspectorPanel_ShowEditorTooltip" xml:space="preserve">
+    <value>Show editor only</value>
+  </data>
+  <data name="InspectorPanel_ShowPreviewTooltip" xml:space="preserve">
+    <value>Show preview only</value>
+  </data>
+  <data name="InspectorPanel_OpenDocumentTooltip" xml:space="preserve">
+    <value>Open document</value>
+  </data>
 </root>
