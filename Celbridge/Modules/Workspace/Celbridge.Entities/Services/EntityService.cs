@@ -9,7 +9,7 @@ using CommunityToolkit.Diagnostics;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-
+using System.Text.Json.Serialization;
 using Path = System.IO.Path;
 
 namespace Celbridge.Entities.Services;
@@ -28,9 +28,12 @@ public class EntityService : IEntityService, IDisposable
     private EntitySchemaRegistry _schemaRegistry;
     private EntityPrototypeRegistry _prototypeRegistry;
 
-    private static JsonSerializerOptions _serializationOptions = new()
+    public static JsonSerializerOptions SerializerOptions { get; } = new()
     {
-        WriteIndented = true
+        // Serialize enums as strings rather than numbers
+        Converters = { new JsonStringEnumConverter() },
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
     public EntityService(
@@ -159,13 +162,13 @@ public class EntityService : IEntityService, IDisposable
     {
         // Set the property by applying a JSON patch
         var operation = new SetPropertyOperation("add", propertyPath, newValue);
-        var jsonPatch = JsonSerializer.Serialize(operation);
+        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
         jsonPatch = $"[{jsonPatch}]";
 
         var applyResult = ApplyPatch(resource, jsonPatch);
         if (applyResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to apply enitty patch for resource: {resource}");
+            return Result<EntityPatchSummary>.Fail($"Failed to apply entity patch for resource: {resource}");
         }
         var patchSummary = applyResult.Value;
 
@@ -495,7 +498,7 @@ public class EntityService : IEntityService, IDisposable
         {
             Guard.IsNotNull(entity.EntityData);
 
-            var jsonContent = JsonSerializer.Serialize(entity.EntityData.JsonObject, _serializationOptions);
+            var jsonContent = JsonSerializer.Serialize(entity.EntityData.JsonObject, SerializerOptions);
 
             var folder = Path.GetDirectoryName(entity.EntityDataPath);
             Guard.IsNotNull(folder);

@@ -1,8 +1,10 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Json.Patch;
 using CommunityToolkit.Diagnostics;
+using Json.Patch;
 using Json.Pointer;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Text.Json;
+using Celbridge.Entities.Services;
 
 namespace Celbridge.Entities.Models;
 
@@ -53,7 +55,7 @@ public class EntityData
                 return Result<T>.Fail($"Property is a JSON null value: '{propertyPath}'");
             }
 
-            var value = valueNode.Deserialize<T>();
+            var value = valueNode.Deserialize<T>(EntityService.SerializerOptions);
             if (value is null)
             {
                 return Result<T>.Fail($"Failed to deserialize property at '{propertyPath}' to type '{nameof(T)}'");
