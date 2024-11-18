@@ -13,5 +13,6 @@
   "required": [
     "_entityType",
     "_entityVersion"
-  ]
+  ],
+  "additionalProperties": false
 }

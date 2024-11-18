@@ -42,7 +42,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
         _fileResource = fileResource;
 
-        UpdatePanelVisibility();
+        UpdateEditorMode();
     }
 
     public Result<PreviewProvider> GetPreviewProvider()
@@ -73,19 +73,20 @@ public partial class TextEditorDocumentViewModel : ObservableObject
             return;
         }
 
-        if (paths.Contains(TextEditorEntityConstants.ShowEditor) ||
-            paths.Contains(TextEditorEntityConstants.ShowPreview))
+        if (paths.Contains(TextEditorEntityConstants.EditorMode))
         {
-            UpdatePanelVisibility();
+            UpdateEditorMode();
         }
     }
 
-    private void UpdatePanelVisibility()
+    private void UpdateEditorMode()
     {
         try
         {
-            ShowEditor = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.ShowEditor, true);
-            ShowPreview = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.ShowPreview, true);
+            var editorMode = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
+
+            ShowEditor = (editorMode == EditorMode.Editor || editorMode == EditorMode.EditorAndPreview);
+            ShowPreview = (editorMode == EditorMode.Preview || editorMode == EditorMode.EditorAndPreview);
         }
         catch (Exception ex)
         {

@@ -8,10 +8,16 @@
     "_entityVersion": {
       "type": "integer",
       "const": 1
+    },
+    "editorMode": {
+      "type": "string",
+      "enum": [ "Editor", "Preview", "EditorAndPreview" ]
     }
   },
   "required": [
     "_entityType",
-    "_entityVersion"
-  ]
+    "_entityVersion",
+    "editorMode"
+  ],
+  "additionalProperties": false
 }

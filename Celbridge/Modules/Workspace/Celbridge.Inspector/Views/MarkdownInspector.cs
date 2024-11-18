@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Inspector.ViewModels;
 using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -12,6 +13,10 @@ public partial class MarkdownInspector : UserControl, IInspector
     public MarkdownInspectorViewModel ViewModel => (DataContext as MarkdownInspectorViewModel)!;
 
     private LocalizedString StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
+    private LocalizedString OpenDocumentTooltipString => _stringLocalizer.GetString("InspectorPanel_OpenDocumentTooltip");
+    private LocalizedString ShowEditorTooltipString => _stringLocalizer.GetString("InspectorPanel_ShowEditorTooltip");
+    private LocalizedString ShowPreviewTooltipString => _stringLocalizer.GetString("InspectorPanel_ShowPreviewTooltip");
+    private LocalizedString ShowEditorAndPreviewTooltipString => _stringLocalizer.GetString("InspectorPanel_ShowEditorAndPreviewTooltip");
 
     public ResourceKey Resource 
     {
@@ -58,7 +63,7 @@ public partial class MarkdownInspector : UserControl, IInspector
                                             .Margin(2, 2, 8, 0)
                                             .HorizontalAlignment(HorizontalAlignment.Center)
                                             .Command(() => vm.OpenDocumentCommand)
-                                            .ToolTipService(null, null, "Open document")
+                                            .ToolTipService(null, null, OpenDocumentTooltipString)
                                             .Content
                                             (
                                                 new SymbolIcon()
@@ -72,9 +77,10 @@ public partial class MarkdownInspector : UserControl, IInspector
                                                 new Button()
                                                     .Margin(2)
                                                     .Command(() => vm.ShowEditorCommand)
-                                                    .IsEnabled(x => x.Binding(() => vm.ShowEditorEnabled)
-                                                        .Mode(BindingMode.OneWay))
-                                                    .ToolTipService(null, null, "Show editor panel only")
+                                                    .IsEnabled(x => x.Binding(() => vm.EditorMode)
+                                                        .Mode(BindingMode.OneWay)
+                                                        .Convert(editMode => editMode != EditorMode.Editor))
+                                                    .ToolTipService(null, null, ShowEditorTooltipString)
                                                     .Content
                                                     (
                                                         new SymbolIcon()
@@ -83,9 +89,10 @@ public partial class MarkdownInspector : UserControl, IInspector
                                                 new Button()
                                                     .Margin(2)
                                                     .Command(() => vm.ShowBothCommand)
-                                                    .IsEnabled(x => x.Binding(() => vm.ShowBothEnabled)
-                                                        .Mode(BindingMode.OneWay))
-                                                    .ToolTipService(null, null, "Show both editor and preview panels")
+                                                    .IsEnabled(x => x.Binding(() => vm.EditorMode)
+                                                        .Mode(BindingMode.OneWay)
+                                                        .Convert(editMode => editMode != EditorMode.EditorAndPreview))
+                                                    .ToolTipService(null, null, ShowEditorAndPreviewTooltipString)
                                                     .Content
                                                     (
                                                         new SymbolIcon()
@@ -94,9 +101,10 @@ public partial class MarkdownInspector : UserControl, IInspector
                                                 new Button()
                                                     .Margin(2)
                                                     .Command(() => vm.ShowPreviewCommand)
-                                                    .IsEnabled(x => x.Binding(() => vm.ShowPreviewEnabled)
-                                                        .Mode(BindingMode.OneWay))
-                                                    .ToolTipService(null, null, "Show preview panel only")
+                                                    .IsEnabled(x => x.Binding(() => vm.EditorMode)
+                                                        .Mode(BindingMode.OneWay)
+                                                        .Convert(editMode => editMode != EditorMode.Preview))
+                                                    .ToolTipService(null, null, ShowPreviewTooltipString)
                                                     .Content
                                                     (
                                                         new SymbolIcon()
