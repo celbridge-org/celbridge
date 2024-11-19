@@ -157,6 +157,28 @@ public class EntityService : IEntityService, IDisposable
         return getResult;
     }
 
+    public Result<string> GetPropertyAsJSON(ResourceKey resource, string propertyPath)
+    {
+        var acquireResult = AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            _logger.LogError(acquireResult.Error);
+            return Result<string>.Fail($"Failed to acquire entity for resource '{resource}'")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
+
+        var getResult = entity.EntityData.GetPropertyAsJSON(propertyPath);
+        if (getResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
+                .WithErrors(getResult);
+        }
+
+        return getResult;
+    }
+
     private record SetPropertyOperation(string op, string path, object value);
     public Result<EntityPatchSummary> SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull
     {

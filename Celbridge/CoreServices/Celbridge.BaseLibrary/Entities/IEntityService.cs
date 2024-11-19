@@ -35,6 +35,13 @@ public interface IEntityService
     Result<T> GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull;
 
     /// <summary>
+    /// Gets the value of a property from a resource. The value is returned as a JSON encoded string.
+    /// propertyPath is a JSON Pointer (RFC 6901).
+    /// Fails if the property cannot be found.
+    /// </summary>
+    Result<string> GetPropertyAsJSON(ResourceKey resource, string propertyPath);
+
+    /// <summary>
     /// Sets the value of an entity property for a resource.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
