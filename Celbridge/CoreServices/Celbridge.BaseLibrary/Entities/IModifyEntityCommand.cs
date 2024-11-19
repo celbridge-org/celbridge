@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Entities;
 
 /// <summary>
-/// Command to modify an entity.
+/// Command to modify the JSON Entity Data of the entity associated with a resource.
 /// </summary>
 public interface IModifyEntityCommand : IExecutableCommand
 {
