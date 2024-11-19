@@ -70,6 +70,39 @@ public class EntityData
         }
     }
 
+    public Result<string> GetPropertyAsJSON(string propertyPath)
+    {
+        try
+        {
+            var jsonPointer = JsonPointer.Parse(propertyPath);
+            if (jsonPointer is null)
+            {
+                return Result<string>.Fail($"Invalid JSON pointer '{propertyPath}'");
+            }
+
+            if (!jsonPointer.TryEvaluate(JsonObject, out var valueNode))
+            {
+                return Result<string>.Fail($"Property was not found at: '{propertyPath}'");
+            }
+
+            if (valueNode is null)
+            {
+                // The property was found but it is a JSON null value.
+                // We treat this as an error for Entity Data.
+                return Result<string>.Fail($"Property is a JSON null value: '{propertyPath}'");
+            }
+
+            var valueJSON = valueNode.ToJsonString();
+
+            return Result<string>.Ok(valueJSON);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"An exception occurred when getting entity property '{propertyPath}'")
+                .WithException(ex);
+        }
+    }
+
     public Result<EntityPatchSummary> ApplyPatch(string patchJson)
     {
         try
