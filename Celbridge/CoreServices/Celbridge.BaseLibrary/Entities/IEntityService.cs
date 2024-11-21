@@ -1,5 +1,8 @@
 namespace Celbridge.Entities;
 
+/// <summary>
+/// Provides methods for initializing, retrieving, and manipulating entity data associated with resources.
+/// </summary>
 public interface IEntityService
 {
     Task<Result> InitializeAsync();
@@ -48,9 +51,19 @@ public interface IEntityService
     Result<EntityPatchSummary> SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull;
 
     /// <summary>
-    /// Apply a JSON Patch (RFC 6902) to the entity data for a resource.
+    /// Apply a JSON Patch (RFC 6902) to the Entity Data for a resource.
     /// </summary>
     Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch);
+
+    /// <summary>
+    /// Undo the most recently applied Entity Data patch for a resource.
+    /// </summary>
+    Result<bool> UndoPatch(ResourceKey resource);
+
+    /// <summary>
+    /// Redo the most recently applied Entity Data patch for a resource.
+    /// </summary>
+    Result<bool> RedoPatch(ResourceKey resource);
 
     /// <summary>
     /// Saves all modified entities to disk asynchronously.
