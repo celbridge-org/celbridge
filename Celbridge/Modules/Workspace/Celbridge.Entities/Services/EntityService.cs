@@ -10,9 +10,31 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.Entities.Services;
+
+/// <summary>
+/// Describes the context in which a patch is applied.
+/// </summary>
+public enum ApplyPatchContext
+{
+    /// <summary>
+    /// Modifying an entity.
+    /// </summary>
+    Modify,
+
+    /// <summary>
+    /// Undoing a previously applied modification.
+    /// </summary>
+    Undo,
+
+    /// <summary>
+    /// Redoing a previously undone modification.
+    /// </summary>
+    Redo
+}
 
 public class EntityService : IEntityService, IDisposable
 {
@@ -199,33 +221,71 @@ public class EntityService : IEntityService, IDisposable
 
     public Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch)
     {
+        return ApplyPatch(resource, patch, ApplyPatchContext.Modify);
+    }
+
+    public Result<bool> UndoPatch(ResourceKey resource)
+    {
         var acquireResult = AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to acquire entity: {resource}")
+            return Result<bool>.Fail($"Failed to acquire entity: {resource}")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var applyResult = entity.EntityData.ApplyPatch(patch);
+        if (entity.UndoStack.Count == 0)
+        {
+            // Undo stack is empty. Succeed but return false to indicate that no changes were undone.
+            return Result<bool>.Ok(false);
+        }
+
+        // Pop the next patch summary from the Undo stack and apply it to the entity
+        var patchSummary = entity.UndoStack.Pop();
+        var reversePatch = patchSummary.ReversePatch;
+        Guard.IsNotNull(reversePatch);
+
+        var applyResult = ApplyPatch(resource, reversePatch, ApplyPatchContext.Undo);
         if (applyResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to apply patch to entity for resource: {resource}")
-                .WithErrors(applyResult);
+            return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}");
         }
-        var patchSummary = applyResult.Value;
 
-        if (patchSummary.ModifiedPaths.Count > 0)
+        // Succeed and return true to indicate that a patch was undone.
+        return Result<bool>.Ok(true);
+    }
+
+    public Result<bool> RedoPatch(ResourceKey resource)
+    {
+        var acquireResult = AcquireEntity(resource);
+        if (acquireResult.IsFailure)
         {
-            _modifiedEntities[resource] = true;
+            return Result<bool>.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
 
-            var pathsCopy = patchSummary.ModifiedPaths.ToList();
-            var message = new EntityChangedMessage(resource, pathsCopy);
-            _messengerService.Send(message);
+        if (entity.RedoStack.Count == 0)
+        {
+            // Redo stack is empty. Succeed but return false to indicate no changes were redone.
+            return Result<bool>.Ok(false);
         }
 
-        return Result<EntityPatchSummary>.Ok(patchSummary);
+        // Pop the next patch summary from the Redo stack and apply it to the entity
+        var patchSummary = entity.RedoStack.Pop();
+        var reversePatch = patchSummary.ReversePatch;
+        Guard.IsNotNull(reversePatch);
+
+        var applyResult = ApplyPatch(resource, reversePatch, ApplyPatchContext.Redo);
+        if (applyResult.IsFailure)
+        {
+            return Result<bool>.Fail($"Failed to apply redo patch to resource: {resource}");
+        }
+
+        // Succeed and return true to indicate that a patch was undone.
+        return Result<bool>.Ok(true);
     }
 
     public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
@@ -611,6 +671,55 @@ public class EntityService : IEntityService, IDisposable
             return Result.Fail("An exception occurred when cleaning up entities")
                 .WithException(ex);
         }
+    }
+
+    private Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch, ApplyPatchContext context)
+    {
+        var acquireResult = AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result<EntityPatchSummary>.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
+
+        var applyResult = entity.EntityData.ApplyPatch(patch);
+        if (applyResult.IsFailure)
+        {
+            return Result<EntityPatchSummary>.Fail($"Failed to apply patch to entity for resource: {resource}")
+                .WithErrors(applyResult);
+        }
+        var patchSummary = applyResult.Value;
+
+        if (patchSummary.ModifiedPaths.Count > 0)
+        {
+            _modifiedEntities[resource] = true;
+
+            // Add the patch summary to the requested stack to support undo/redo
+            switch (context)
+            {
+                case ApplyPatchContext.Modify:
+                    // Execute: Add patch summary to the Undo stack and clear the Redo stack.
+                    entity.UndoStack.Push(patchSummary);
+                    entity.RedoStack.Clear();
+                    break;
+                case ApplyPatchContext.Undo:
+                    // Undo: Add patch summary to the Redo stack.
+                    entity.RedoStack.Push(patchSummary);
+                    break;
+                case ApplyPatchContext.Redo:
+                    // Undo: Add patch summary to the Undo stack.
+                    entity.UndoStack.Push(patchSummary);
+                    break;
+            }
+
+            var pathsCopy = patchSummary.ModifiedPaths.ToList();
+            var message = new EntityChangedMessage(resource, pathsCopy);
+            _messengerService.Send(message);
+        }
+
+        return Result<EntityPatchSummary>.Ok(patchSummary);
     }
 
     private bool _disposed;
