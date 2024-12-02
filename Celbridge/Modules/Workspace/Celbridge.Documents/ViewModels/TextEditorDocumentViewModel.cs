@@ -44,8 +44,6 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
         _fileResource = fileResource;
 
-        // Todo: Check that component 0 is a Markdown component.
-
         UpdateEditorMode();
     }
 
@@ -72,7 +70,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         if (message.Resource == _fileResource &&
             message.ComponentType == "Markdown" &&
-            message.PropertyPath == TextEditorEntityConstants.EditorMode)
+            message.PropertyPath == MarkdownComponentConstants.EditorMode)
         {
             UpdateEditorMode();
         }
@@ -82,7 +80,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            var editorMode = _entityService.GetProperty(_fileResource, 0, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
+            // Get the editor mode from the markdown component.
+            var editorMode = _entityService.GetProperty(_fileResource, "Markdown", MarkdownComponentConstants.EditorMode, EditorMode.Editor);
 
             ShowEditor = (editorMode == EditorMode.Editor || editorMode == EditorMode.EditorAndPreview);
             ShowPreview = (editorMode == EditorMode.Preview || editorMode == EditorMode.EditorAndPreview);

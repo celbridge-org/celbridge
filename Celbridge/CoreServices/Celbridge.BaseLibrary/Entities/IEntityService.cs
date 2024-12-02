@@ -47,11 +47,23 @@ public interface IEntityService
     Result RemoveComponent(ResourceKey resource, int componentIndex);
 
     /// <summary>
+    /// Returns the indices of the entity components of the specified type.
+    /// </summary>
+    Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType);
+
+    /// <summary>
     /// Gets the value of a property from a component.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// Returns a default value if the property cannot be found.
     /// </summary>
     T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull;
+
+    /// <summary>
+    /// Gets the value of a property from the first component of the specified type.
+    /// propertyPath is a JSON Pointer (RFC 6901).
+    /// Returns a default value if the component or property cannot be found.
+    /// </summary>
+    T? GetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T? defaultValue) where T : notnull;
 
     /// <summary>
     /// Gets the value of a property from a component.
@@ -72,6 +84,12 @@ public interface IEntityService
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
     Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue) where T : notnull;
+
+    /// <summary>
+    /// Sets the value of a property from the first component of the specified type.
+    /// propertyPath is a JSON Pointer (RFC 6901).
+    /// </summary>
+    Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue) where T : notnull;
 
     /// <summary>
     /// Undo the most recent property change for a resource.
