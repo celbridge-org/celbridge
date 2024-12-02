@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\Modules\Workspace\Celbridge.Entities\EntityConfig\**" Link="EntityConfig\%(RecursiveDir)%(FileName)%(Extension)">
+    <Content Include="..\Modules\Workspace\Celbridge.Entities\ComponentConfig\**" Link="ComponentConfig\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
