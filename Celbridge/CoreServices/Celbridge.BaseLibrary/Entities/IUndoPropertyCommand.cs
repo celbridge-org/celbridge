@@ -3,9 +3,9 @@ using Celbridge.Commands;
 namespace Celbridge.Entities;
 
 /// <summary>
-/// Command to undo the most recent modification to the Entity Data associated with a resource.
+/// Command to undo the most recent property change for a resource.
 /// </summary>
-public interface IUndoEntityCommand : IExecutableCommand
+public interface IUndoPropertyCommand : IExecutableCommand
 {
     /// <summary>
     /// The resource associated with the Entity Data to be modified.

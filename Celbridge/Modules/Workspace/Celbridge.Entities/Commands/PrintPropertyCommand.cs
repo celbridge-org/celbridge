@@ -11,7 +11,8 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey Resource { get; set; }
-    public string Path { get; set; } = string.Empty;
+    public int ComponentIndex { get; set; }
+    public string PropertyPath { get; set; } = string.Empty;
 
     public PrintPropertyCommand(
         ILogger<PrintPropertyCommand> logger,
@@ -25,7 +26,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var getResult = entityService.GetPropertyAsJSON(Resource, Path);
+        var getResult = entityService.GetPropertyAsJSON(Resource, ComponentIndex, PropertyPath);
         if (getResult.IsFailure)
         {
             return Result.Fail().WithErrors(getResult);
@@ -43,14 +44,15 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     // Static methods for scripting support.
     //
 
-    public static void PrintProperty(ResourceKey resource, string path)
+    public static void PrintProperty(ResourceKey resource, int componentIndex, string propertyPath)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
 
         commandService.Execute<IPrintPropertyCommand>(command =>
         {
             command.Resource = resource;
-            command.Path = path;
+            command.ComponentIndex = componentIndex;
+            command.PropertyPath = propertyPath;
         });
     }
 }
