@@ -231,6 +231,11 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
+    public Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType)
+    {
+        return _entityRegistry.GetComponentsOfType(resourceKey, componentType);
+    }
+
     public T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull
     {
         var getResult = GetProperty<T>(resource, componentIndex, propertyPath);
@@ -240,6 +245,30 @@ public class EntityService : IEntityService, IDisposable
         }
 
         return getResult.Value;
+    }
+
+    public T? GetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T? defaultValue) where T : notnull
+    {
+        var getComponentsResult = GetComponentsOfType(resource, componentType);
+        if (getComponentsResult.IsFailure)
+        {
+            return default;
+        }
+        var componentIndices = getComponentsResult.Value;
+
+        if (componentIndices.Count < 1)
+        {
+            return default;
+        }
+        var componentIndex = componentIndices[0];
+
+        var getPropertyResult = GetProperty<T>(resource, componentIndex, propertyPath);
+        if (getPropertyResult.IsFailure)
+        {
+            return default;
+        }
+
+        return getPropertyResult.Value;
     }
 
     public Result<T> GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath) where T : notnull
@@ -307,6 +336,24 @@ public class EntityService : IEntityService, IDisposable
         }
 
         return Result.Ok();
+    }
+
+    public Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue) where T : notnull
+    {
+        var geComponentsResult = GetComponentsOfType(resource, componentType);
+        if (geComponentsResult.IsFailure)
+        {
+            return geComponentsResult;
+        }
+        var componentIndices = geComponentsResult.Value;
+
+        if (componentIndices.Count < 1)
+        {
+            return Result.Fail($"No components of type '{componentType}' were found");
+        }
+        var componentIndex = componentIndices[0];
+
+        return SetProperty(resource, componentIndex, propertyPath, newValue);
     }
 
     public Result<bool> UndoProperty(ResourceKey resource)

@@ -12,6 +12,8 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class MarkdownInspectorViewModel : InspectorViewModel
 {
+    private const string MarkdownComponent = "Markdown";
+
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -47,8 +49,8 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
         if (message.Resource == Resource &&
-            message.ComponentType == "Markdown" &&
-            message.PropertyPath == TextEditorEntityConstants.EditorMode)
+            message.ComponentType == MarkdownComponent &&
+            message.PropertyPath == MarkdownComponentConstants.EditorMode)
         {
             UpdateButtonState();
         }
@@ -95,7 +97,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            _entityService.SetProperty(Resource, 0, TextEditorEntityConstants.EditorMode, editorMode);
+            _entityService.SetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, editorMode);
         }
         catch (Exception ex)
         {
@@ -107,7 +109,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            EditorMode = _entityService.GetProperty(Resource, 0, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
+            EditorMode = _entityService.GetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, EditorMode.Editor);
         }
         catch (Exception ex)
         {
