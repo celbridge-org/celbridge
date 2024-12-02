@@ -3,9 +3,9 @@ using Celbridge.Commands;
 namespace Celbridge.Entities;
 
 /// <summary>
-/// Command to modify the JSON Entity Data of the entity associated with a resource.
+/// Command to remove an entity component associated with a resource.
 /// </summary>
-public interface IModifyEntityCommand : IExecutableCommand
+public interface IRemoveComponentCommand : IExecutableCommand
 {
     /// <summary>
     /// The resource associated with the entity data to be modified.
@@ -13,7 +13,7 @@ public interface IModifyEntityCommand : IExecutableCommand
     ResourceKey Resource { get; set; }
 
     /// <summary>
-    /// A JSON Patch (RFC 6902) string representing the changes to be made to the entity data.
+    /// The index of the component to remove.
     /// </summary>
-    string Patch { get; set; }
+    int ComponentIndex { get; set; }
 }

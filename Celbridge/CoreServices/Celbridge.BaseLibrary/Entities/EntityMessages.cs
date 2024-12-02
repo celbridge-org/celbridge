@@ -1,7 +1,7 @@
 namespace Celbridge.Entities;
 
 /// <summary>
-/// A message describing a change made to one or more entity properties.
-/// Includes a JSON Patch that can be used to reverse the changes.
+/// A message sent when a change is made to an entity component.
 /// </summary>
-public record EntityChangedMessage(ResourceKey Resource, List<string> PropertyPaths);
+public record ComponentChangedMessage(ResourceKey Resource, string ComponentType, int ComponentIndex, string PropertyPath);
+

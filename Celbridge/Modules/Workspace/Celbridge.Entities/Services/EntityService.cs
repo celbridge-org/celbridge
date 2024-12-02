@@ -1,24 +1,21 @@
 using Celbridge.Core;
-using Celbridge.Entities.Models;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
-using System.Collections.Concurrent;
+using Json.Schema;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-
-using Path = System.IO.Path;
 
 namespace Celbridge.Entities.Services;
 
 /// <summary>
 /// Describes the context in which a patch is applied.
 /// </summary>
-public enum ApplyPatchContext
+public enum PatchContext
 {
     /// <summary>
     /// Modifying an entity.
@@ -38,17 +35,19 @@ public enum ApplyPatchContext
 
 public class EntityService : IEntityService, IDisposable
 {
+    public const string EntityConfigFolder = "EntityConfig";
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EntityService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private readonly ConcurrentDictionary<ResourceKey, Entity> _entityCache = new(); // Cache for entity objects
-    private readonly ConcurrentDictionary<ResourceKey, bool> _modifiedEntities = new(); // Track modified entities
+    private ComponentSchemaRegistry _schemaRegistry;
+    private ComponentPrototypeRegistry _prototypeRegistry;
+    private EntityRegistry _entityRegistry;
 
-    private EntitySchemaRegistry _schemaRegistry;
-    private EntityPrototypeRegistry _prototypeRegistry;
+    private readonly Dictionary<string, List<string>> _defaultComponents = new();
+    private JsonSchema? _entitySchema;
 
     public static JsonSerializerOptions SerializerOptions { get; } = new()
     {
@@ -68,53 +67,69 @@ public class EntityService : IEntityService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
-        _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
 
-        _schemaRegistry = serviceProvider.GetRequiredService<EntitySchemaRegistry>();
-        _prototypeRegistry = serviceProvider.GetRequiredService<EntityPrototypeRegistry>();
+        _schemaRegistry = serviceProvider.GetRequiredService<ComponentSchemaRegistry>();
+        _prototypeRegistry = serviceProvider.GetRequiredService<ComponentPrototypeRegistry>();
+        _entityRegistry = serviceProvider.GetRequiredService<EntityRegistry>();
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     public async Task<Result> InitializeAsync()
     {
-        var loadSchemasResult = await _schemaRegistry.LoadSchemasAsync();
-        if (loadSchemasResult.IsFailure)
+        try 
         {
-            return Result.Fail("Failed to load schemas")
-                .WithErrors(loadSchemasResult);
-        }
+            // Build and cache the entity schema
+            var builder = new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .Properties(
+                    ("_entityVersion", new JsonSchemaBuilder()
+                        .Type(SchemaValueType.Integer)
+                        .Const(1)
+                    ),
+                    ("_components", new JsonSchemaBuilder()
+                        .Type(SchemaValueType.Array)
+                    )
+                )
+                .Required("_entityVersion", "_components");
 
-        var loadPrototypesResult = await _prototypeRegistry.LoadPrototypesAsync(_schemaRegistry);
-        if (loadPrototypesResult.IsFailure)
+            _entitySchema = builder.Build();
+            Guard.IsNotNull(_entitySchema);
+
+            var loadSchemasResult = await _schemaRegistry.LoadComponentSchemasAsync();
+            if (loadSchemasResult.IsFailure)
+            {
+                return Result.Fail("Failed to load component schemas")
+                    .WithErrors(loadSchemasResult);
+            }
+
+            var loadPrototypesResult = await _prototypeRegistry.LoadComponentPrototypesAsync(_schemaRegistry);
+            if (loadPrototypesResult.IsFailure)
+            {
+                return Result.Fail("Failed to load component prototypes")
+                    .WithErrors(loadPrototypesResult);
+            }
+
+            var loadDefaultsResult = await _entityRegistry.Initialize(_entitySchema, _prototypeRegistry, _schemaRegistry);
+            if (loadDefaultsResult.IsFailure)
+            {
+                return Result.Fail("Failed to load file default components")
+                    .WithErrors(loadDefaultsResult);
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
         {
-            return Result.Fail("Failed to load prototypes")
-                .WithErrors(loadPrototypesResult);
+            return Result.Fail($"An exception occurred when initializing the entity service")
+                .WithException(ex);
         }
-
-        var loadDefaultsResult = await _prototypeRegistry.LoadFileEntityTypesAsync();
-        if (loadDefaultsResult.IsFailure)
-        {
-            return Result.Fail("Failed to load file entity types")
-                .WithErrors(loadDefaultsResult);
-        }
-
-        return Result.Ok();
-    }
-
-    public string GetEntitiesFolderPath()
-    {
-        var projectDataFolderPath = _projectService.CurrentProject!.ProjectDataFolderPath;
-        var path = Path.Combine(projectDataFolderPath, FileNameConstants.EntitiesFolder);
-        return path;
     }
 
     public string GetEntityDataPath(ResourceKey resource)
     {
-        var entityDataPath = Path.Combine(GetEntitiesFolderPath(), resource) + ".json";
-        entityDataPath = Path.GetFullPath(entityDataPath);
-        return entityDataPath;
+        return _entityRegistry.GetEntityDataPath(resource);
     }
 
     public string GetEntityDataRelativePath(ResourceKey resource)
@@ -125,30 +140,100 @@ public class EntityService : IEntityService, IDisposable
 
     public async Task<Result> SaveModifiedEntities()
     {
-        foreach (var resourceKey in _modifiedEntities.Keys)
+        return await _entityRegistry.SaveModifiedEntities();
+    }
+
+    public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
+    {
+        return _entityRegistry.MoveEntityDataFile(oldResource, newResource);
+    }
+
+    public Result CopyEntityDataFile(ResourceKey sourceResource, ResourceKey destResource)
+    {
+        return _entityRegistry.CopyEntityDataFile(sourceResource, destResource);
+    }
+
+    private record AddComponentOperation(string op, string path, JsonObject value);
+    public Result AddComponent(ResourceKey resource, string componentType, int componentIndex)
+    {
+        // Acquire the entity for the specified resource
+
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
         {
-            if (_entityCache.ContainsKey(resourceKey))
-            {
-                var entity = _entityCache[resourceKey];
-
-                var saveResult = await SaveEntityDataFileAsync(entity);
-                if (saveResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to save entity data for resource: '{resourceKey}'")
-                        .WithErrors(saveResult);
-                }
-            }
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
         }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
 
-        // Clear the modified entities list
-        _modifiedEntities.Clear();
+        // Acquire the schema for the specified componentType
+
+        var componentSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
+        if (componentSchemaResult.IsFailure)
+        {
+            return Result.Fail($"Failed to get schema for component type: {componentType}")
+                .WithErrors(componentSchemaResult);
+        }
+        var componentSchema = componentSchemaResult.Value;
+
+        // Create an instance of the prototype in the Entity Data
+
+        var getPrototypeResult = _prototypeRegistry.GetPrototype(componentType);
+        if (getPrototypeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire component prototype for component type: {componentType}")
+                .WithErrors(getPrototypeResult);
+        }
+        var prototype = getPrototypeResult.Value;
+
+        var operation = new AddComponentOperation("add", $"/_components/{componentIndex}", prototype.JsonObject);
+        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
+        jsonPatch = $"[{jsonPatch}]";
+
+        var applyResult = ApplyPatch(resource, jsonPatch);
+        if (applyResult.IsFailure)
+        {
+            return Result.Fail($"Failed to apply patch to add component to entity: {resource}")
+                .WithErrors(applyResult);
+        }
 
         return Result.Ok();
     }
 
-    public T? GetProperty<T>(ResourceKey resource, string propertyPath, T? defaultValue) where T : notnull
+    private record RemoveComponentOperation(string op, string path);
+    public Result RemoveComponent(ResourceKey resource, int componentIndex)
     {
-        var getResult = GetProperty<T>(resource, propertyPath);
+        // Acquire the entity for the specified resource
+
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
+
+        // Apply a patch to remove the component at the specified index
+
+        var operation = new RemoveComponentOperation("remove", $"/_components/{componentIndex}");
+        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
+        jsonPatch = $"[{jsonPatch}]";
+
+        var applyResult = ApplyPatch(resource, jsonPatch);
+        if (applyResult.IsFailure)
+        {
+            return Result.Fail($"Failed to apply patch to remove entity component at index '{componentIndex}' for resource: {resource}")
+                .WithErrors(applyResult);
+        }
+
+        return Result.Ok();
+    }
+
+    public T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull
+    {
+        var getResult = GetProperty<T>(resource, componentIndex, propertyPath);
         if (getResult.IsFailure)
         {
             return default;
@@ -157,9 +242,9 @@ public class EntityService : IEntityService, IDisposable
         return getResult.Value;
     }
 
-    public Result<T> GetProperty<T>(ResourceKey resource, string propertyPath) where T : notnull
+    public Result<T> GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath) where T : notnull
     {
-        var acquireResult = AcquireEntity(resource);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
             _logger.LogError(acquireResult.Error);
@@ -169,7 +254,9 @@ public class EntityService : IEntityService, IDisposable
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var getResult = entity.EntityData.GetProperty<T>(propertyPath);
+        var componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+
+        var getResult = entity.EntityData.GetProperty<T>(componentPropertyPath);
         if (getResult.IsFailure)
         {
             return Result<T>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
@@ -179,9 +266,9 @@ public class EntityService : IEntityService, IDisposable
         return getResult;
     }
 
-    public Result<string> GetPropertyAsJSON(ResourceKey resource, string propertyPath)
+    public Result<string> GetPropertyAsJSON(ResourceKey resource, int componentIndex, string propertyPath)
     {
-        var acquireResult = AcquireEntity(resource);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
             _logger.LogError(acquireResult.Error);
@@ -191,7 +278,9 @@ public class EntityService : IEntityService, IDisposable
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var getResult = entity.EntityData.GetPropertyAsJSON(propertyPath);
+        var componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+
+        var getResult = entity.EntityData.GetPropertyAsJSON(componentPropertyPath);
         if (getResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
@@ -202,31 +291,27 @@ public class EntityService : IEntityService, IDisposable
     }
 
     private record SetPropertyOperation(string op, string path, object value);
-    public Result<EntityPatchSummary> SetProperty<T>(ResourceKey resource, string propertyPath, T newValue) where T : notnull
+    public Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue) where T : notnull
     {
+        string componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+
         // Set the property by applying a JSON patch
-        var operation = new SetPropertyOperation("add", propertyPath, newValue);
+        var operation = new SetPropertyOperation("add", componentPropertyPath, newValue);
         var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
         jsonPatch = $"[{jsonPatch}]";
 
         var applyResult = ApplyPatch(resource, jsonPatch);
         if (applyResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to apply entity patch for resource: {resource}");
+            return Result.Fail($"Failed to apply entity patch for resource: {resource}");
         }
-        var patchSummary = applyResult.Value;
 
-        return Result<EntityPatchSummary>.Ok(patchSummary);
+        return Result.Ok();
     }
 
-    public Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch)
+    public Result<bool> UndoProperty(ResourceKey resource)
     {
-        return ApplyPatch(resource, patch, ApplyPatchContext.Modify);
-    }
-
-    public Result<bool> UndoPatch(ResourceKey resource)
-    {
-        var acquireResult = AcquireEntity(resource);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to acquire entity: {resource}")
@@ -246,7 +331,7 @@ public class EntityService : IEntityService, IDisposable
         var reversePatch = patchSummary.ReversePatch;
         Guard.IsNotNull(reversePatch);
 
-        var applyResult = ApplyPatch(resource, reversePatch, ApplyPatchContext.Undo);
+        var applyResult = ApplyPatch(resource, reversePatch, PatchContext.Undo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}");
@@ -256,9 +341,9 @@ public class EntityService : IEntityService, IDisposable
         return Result<bool>.Ok(true);
     }
 
-    public Result<bool> RedoPatch(ResourceKey resource)
+    public Result<bool> RedoProperty(ResourceKey resource)
     {
-        var acquireResult = AcquireEntity(resource);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to acquire entity: {resource}")
@@ -278,7 +363,7 @@ public class EntityService : IEntityService, IDisposable
         var reversePatch = patchSummary.ReversePatch;
         Guard.IsNotNull(reversePatch);
 
-        var applyResult = ApplyPatch(resource, reversePatch, ApplyPatchContext.Redo);
+        var applyResult = ApplyPatch(resource, reversePatch, PatchContext.Redo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply redo patch to resource: {resource}");
@@ -288,438 +373,65 @@ public class EntityService : IEntityService, IDisposable
         return Result<bool>.Ok(true);
     }
 
-    public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
+    private static string GetComponentPropertyPath(int componentIndex, string propertyPath)
     {
-        try
-        {
-            if (_entityCache.ContainsKey(oldResource))
-            {
-                var entity = _entityCache[oldResource];
-
-                var newEntityPath = GetEntityDataPath(newResource);
-                entity.SetResourceKey(newResource, newEntityPath);
-
-                _entityCache[newResource] = entity;
-                _entityCache.TryRemove(oldResource, out _);
-
-                // Update the modified resources list
-                if (_modifiedEntities.ContainsKey(oldResource))
-                {
-                    _modifiedEntities[newResource] = true;
-                    _modifiedEntities.TryRemove(oldResource, out _);
-                }
-
-                // Rename the backing JSON file
-                string oldEntityPath = GetEntityDataPath(oldResource);
-                string newResourcePath = GetEntityDataPath(newResource);
-                if (File.Exists(oldEntityPath))
-                {
-                    var parentFolder = Path.GetDirectoryName(newResourcePath);
-                    if (!string.IsNullOrEmpty(parentFolder) &&
-                        !Directory.Exists(parentFolder))
-                    {
-                        Directory.CreateDirectory(parentFolder);
-                    }
-                    File.Move(oldEntityPath, newResourcePath);
-                }
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to remap entities for resource: '{oldResource}' to '{newResource}'")
-                .WithException(ex);
-        }
-    }
-
-    public Result CopyEntityDataFile(ResourceKey sourceResource, ResourceKey destResource)
-    {
-        try
-        {
-            if (_entityCache.ContainsKey(destResource))
-            {
-                // An entity for the destination resource is already cached.
-                // This shouldn't be possible, so fail to prevent the operation from proceeding.
-                return Result.Fail($"An entity for the destination resource already exists: '{destResource}'");
-            }
-
-            var sourceEntityPath = GetEntityDataPath(sourceResource);
-            var destEntityPath = GetEntityDataPath(destResource);
-
-            if (!File.Exists(sourceEntityPath))
-            {
-                // The source entity file does not exist yet, so there's no need to copy it.
-                return Result.Ok();
-            }
-
-            if (File.Exists(destEntityPath))
-            {
-                // There is already an entity file for the destination resource.
-                // This shouldn't be possible, so we'll log an error and return a failure.
-                return Result.Fail($"Destination entity file already exists: '{destEntityPath}'");
-            }
-
-            var parentFolder = Path.GetDirectoryName(destEntityPath);
-            if (!string.IsNullOrEmpty(parentFolder) &&
-                !Directory.Exists(parentFolder))
-            {
-                Directory.CreateDirectory(parentFolder);
-            }
-
-            File.Copy(sourceEntityPath, destEntityPath);
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when copying the entity data fom '{sourceResource}' to '{destResource}'")
-                .WithException(ex);
-        }
+        return $"/_components/{componentIndex}{propertyPath}";
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        CleanupEntities();
+        _entityRegistry.CleanupEntities();
     }
 
-    private Result<Entity> AcquireEntity(ResourceKey resource)
+    private Result ApplyPatch(ResourceKey resource, string patch, PatchContext context = PatchContext.Modify)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        
-        var getResourceResult = resourceRegistry.GetResource(resource);
-        if (getResourceResult.IsFailure)
-        {
-            // Fail if the resource does not exist in the registry.
-            return Result<Entity>.Fail($"Resource does not exist: '{resource}'")
-                .WithErrors(getResourceResult);
-        }
-
-        if (_entityCache.ContainsKey(resource))
-        {
-            var entity = _entityCache[resource];
-            return Result<Entity>.Ok(entity);
-        }
-
-        try
-        {
-            // Try to load existing entity data from disk
-            string entityDataPath = GetEntityDataPath(resource);
-
-            EntityData? entityData = null;
-            if (File.Exists(entityDataPath))
-            {
-                var getDataResult = LoadEntityDataFile(entityDataPath);
-                if (getDataResult.IsSuccess)
-                {
-                    entityData = getDataResult.Value;
-                }
-                else
-                {
-                    _logger.LogError(getDataResult.Error);
-                }
-            }
-
-            if (entityData is null)
-            {
-                // We were unable to load an existing entity data, so we need to create a new one
-                var acquireResult = AcquireEntityData(resource);
-                if (acquireResult.IsSuccess)
-                {
-                    entityData = acquireResult.Value;
-                }
-                else
-                {
-                    // At this point we should always have an EntityData.
-                    // This is probably a configuration issue in the application.
-                    _logger.LogError(acquireResult.Error);
-                    return Result<Entity>.Fail($"Failed to acquire entity data for resource: {resource}");
-                }
-            }
-
-            // Create the entity and add it to the cache
-            var entity = Entity.CreateEntity(resource, entityDataPath, entityData);
-
-            _entityCache[resource] = entity;
-
-            // This line will always create the entity data file, instead of only when the entity is modified.
-            // _modifiedEntities.Add(resource);
-
-            return Result<Entity>.Ok(entity);
-        }
-        catch (Exception ex)
-        {
-            return Result<Entity>.Fail($"An exception occurred when loading entity data for resource: '{resource}'")
-                .WithException(ex);
-        }
-    }
-
-    private Result<EntityData> AcquireEntityData(ResourceKey resource)
-    {
-        EntityData? entityPrototype = null;
-
-        // Attempt to find an entity type for the resource's file extension
-        var fileExtension = Path.GetExtension(resource.ToString());
-        if (!string.IsNullOrEmpty(fileExtension))
-        {
-            var entityTypes = _prototypeRegistry.GetFileEntityTypes(fileExtension);
-            if (entityTypes.Count > 0)
-            {
-                // Default entity type is the first in the list
-                var entityTypeFromConfig = entityTypes[0];
-
-                // Get the prototype for the entity type
-                var getPrototypeResult = _prototypeRegistry.GetPrototype(entityTypeFromConfig);
-                if (getPrototypeResult.IsFailure)
-                {
-                    // No prototype was found for the entity type.
-                    // This means the prototype is missing from the configuration.
-                    return Result<EntityData>.Fail($"Failed to get prototype for entity type: {entityTypeFromConfig}");
-                }
-
-                entityPrototype = getPrototypeResult.Value;
-            }
-        }
-
-        if (entityPrototype == null)
-        {
-            // This resource does not have a registered entity type, so we need to assign a default entity
-            // type based on the resource type (file or folder).
-
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-            var path = resourceRegistry.GetResourcePath(resource);
-
-            if (Directory.Exists(path))
-            {
-                // Folder resource
-                var getPrototypeResult = _prototypeRegistry.GetPrototype("Folder");
-                if (getPrototypeResult.IsFailure)
-                {
-                    // No Folder prototype was found.
-                    // This means the prototype is missing from the configuration.
-                    return Result<EntityData>.Fail($"Failed to get prototype for Folder entity type");
-                }
-
-                entityPrototype = getPrototypeResult.Value;
-            }
-            else if (File.Exists(path))
-            {
-                // File resource
-                var getPrototypeResult = _prototypeRegistry.GetPrototype("File");
-                if (getPrototypeResult.IsFailure)
-                {
-                    // No File prototype was found.
-                    // This means the prototype is missing from the configuration.
-                    return Result<EntityData>.Fail($"Failed to get prototype for File entity type");
-                }
-
-                entityPrototype = getPrototypeResult.Value;
-            }
-        }
-
-        if (entityPrototype is null)
-        {
-            // We should always have a prototype at this point
-            return Result<EntityData>.Fail($"Failed to get entity prototype for resource: {resource}");
-        }
-
-        var entityData = entityPrototype.DeepClone();
-
-        return Result<EntityData>.Ok(entityData);
-    }
-
-    private Result<EntityData> LoadEntityDataFile(string entityDataPath)
-    {
-        // Load the EntityData json
-        var jsonObject = JsonNode.Parse(File.ReadAllText(entityDataPath)) as JsonObject;
-        if (jsonObject is null)
-        {
-            return Result<EntityData>.Fail($"Failed to parse entity data from file: '{entityDataPath}'");
-        }
-
-        // Get the entity type from the JSON object
-        if (!jsonObject.TryGetPropertyValue("_entityType", out var entityTypeValue) ||
-            entityTypeValue is null ||
-            entityTypeValue?.GetValueKind() != System.Text.Json.JsonValueKind.String)
-        {
-            return Result<EntityData>.Fail($"Entity data does not contain an '_entityType' property: '{entityDataPath}'");
-        }
-
-        // Check if this is a valid entity type
-        var entityType = entityTypeValue!.ToString();
-        if (string.IsNullOrEmpty(entityType))
-        {
-            return Result<EntityData>.Fail($"'_entityType' property is empty: '{entityDataPath}'");
-        }
-
-        // Get the schema for the entity type
-        var getSchemaResult = _schemaRegistry.GetSchemaForEntityType(entityType);
-        if (getSchemaResult.IsFailure)
-        {
-            return Result<EntityData>.Fail($"No schema found for entity type: '{entityType}'");
-        }
-
-        var entitySchema = getSchemaResult.Value;
-
-        // Validate the data against the schema
-        var validateResult = entitySchema.ValidateJsonObject(jsonObject);
-        if (validateResult.IsFailure)
-        {
-            return Result<EntityData>.Fail($"Entity data failed schema validation: '{entityDataPath}'");
-        }
-
-        // We've passed validation so now we can create the EntityData object
-        var entityData = EntityData.Create(jsonObject, entitySchema);
-
-        return Result<EntityData>.Ok(entityData);
-    }
-
-    private async Task<Result> SaveEntityDataFileAsync(Entity entity)
-    {
-        try
-        {
-            Guard.IsNotNull(entity.EntityData);
-
-            var jsonContent = JsonSerializer.Serialize(entity.EntityData.JsonObject, SerializerOptions);
-
-            var folder = Path.GetDirectoryName(entity.EntityDataPath);
-            Guard.IsNotNull(folder);
-
-            if (!Directory.Exists(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
-
-            using (var writer = new StreamWriter(entity.EntityDataPath))
-            {
-                await writer.WriteAsync(jsonContent);
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save entity data for '{entity.Resource}'")
-                .WithException(ex);
-        }
-    }
-
-    private Result CleanupEntities()
-    {
-        try
-        {
-            var projectDataFolderPath = _projectService.CurrentProject!.ProjectDataFolderPath;
-            var entitiesFolderPath = Path.Combine(projectDataFolderPath, "Entities");
-
-            if (!Directory.Exists(entitiesFolderPath))
-            {
-                return Result.Fail("The entities folder does not exist.");
-            }
-
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-
-            // Remove any cached entities whose resources no longer exist on disk
-            foreach (var resourceKey in _entityCache.Keys.ToArray())
-            {
-                var getResult = resourceRegistry.GetResource(resourceKey);
-                if (getResult.IsFailure)
-                {
-                    _entityCache.TryRemove(resourceKey, out _);
-                    _modifiedEntities.TryRemove(resourceKey, out _);
-
-                    // Todo: Send a message to let listeners know that this entity is now invalid.
-                }
-            }
-
-            // Find all the entity files in the Entities folder.
-            // Note that an entity .json file may correspond to either a file or folder resource. 
-            var entityFiles = Directory.EnumerateFiles(entitiesFolderPath, "*.json", SearchOption.AllDirectories);
-            foreach (var entityFile in entityFiles)
-            {
-                // Get the resource key from the entity file path
-                var relativeResourcePath = Path.GetRelativePath(entitiesFolderPath, entityFile);
-                relativeResourcePath = Path.ChangeExtension(relativeResourcePath, null);
-                var resourceKey = new ResourceKey(relativeResourcePath);
-
-                // Get the resource path (may be a file or a folder)
-                var resourcePath = resourceRegistry.GetResourcePath(resourceKey);
-                if (Path.Exists(resourcePath))
-                {
-                    continue;
-                }
-
-                _entityCache.TryRemove(resourceKey, out _);
-                _modifiedEntities.TryRemove(resourceKey, out _);
-
-                File.Delete(entityFile);
-            }
-
-            // Delete any empty folders in the Entities folder
-            var folders = Directory.EnumerateDirectories(entitiesFolderPath, "*", SearchOption.AllDirectories);
-            foreach (var folder in folders)
-            {
-                if (!Directory.EnumerateFileSystemEntries(folder).Any())
-                {
-                    Directory.Delete(folder);
-                }
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail("An exception occurred when cleaning up entities")
-                .WithException(ex);
-        }
-    }
-
-    private Result<EntityPatchSummary> ApplyPatch(ResourceKey resource, string patch, ApplyPatchContext context)
-    {
-        var acquireResult = AcquireEntity(resource);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to acquire entity: {resource}")
+            return Result.Fail($"Failed to acquire entity: {resource}")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var applyResult = entity.EntityData.ApplyPatch(patch);
+        var applyResult = entity.EntityData.ApplyPatch(resource, patch, _schemaRegistry);
         if (applyResult.IsFailure)
         {
-            return Result<EntityPatchSummary>.Fail($"Failed to apply patch to entity for resource: {resource}")
+            return Result.Fail($"Failed to apply patch to entity for resource: {resource}")
                 .WithErrors(applyResult);
         }
         var patchSummary = applyResult.Value;
 
-        if (patchSummary.ModifiedPaths.Count > 0)
+        if (patchSummary.ComponentChangeMessages.Count > 0)
         {
-            _modifiedEntities[resource] = true;
+            _entityRegistry.MarkModifiedEntity(resource);
 
             // Add the patch summary to the requested stack to support undo/redo
             switch (context)
             {
-                case ApplyPatchContext.Modify:
+                case PatchContext.Modify:
                     // Execute: Add patch summary to the Undo stack and clear the Redo stack.
                     entity.UndoStack.Push(patchSummary);
                     entity.RedoStack.Clear();
                     break;
-                case ApplyPatchContext.Undo:
+                case PatchContext.Undo:
                     // Undo: Add patch summary to the Redo stack.
                     entity.RedoStack.Push(patchSummary);
                     break;
-                case ApplyPatchContext.Redo:
+                case PatchContext.Redo:
                     // Undo: Add patch summary to the Undo stack.
                     entity.UndoStack.Push(patchSummary);
                     break;
             }
 
-            var pathsCopy = patchSummary.ModifiedPaths.ToList();
-            var message = new EntityChangedMessage(resource, pathsCopy);
-            _messengerService.Send(message);
+            // Notify listeners of the component changes resulting from applying the patch
+            foreach (var message in patchSummary.ComponentChangeMessages)
+            {
+                _messengerService.Send(message);
+            }
         }
 
-        return Result<EntityPatchSummary>.Ok(patchSummary);
+        return Result.Ok();
     }
 
     private bool _disposed;

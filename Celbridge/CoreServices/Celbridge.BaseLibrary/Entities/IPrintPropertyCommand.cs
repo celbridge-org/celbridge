@@ -13,7 +13,12 @@ public interface IPrintPropertyCommand : IExecutableCommand
     ResourceKey Resource { get; set; }
 
     /// <summary>
-    /// A JSON Pointer (RFC 6901) string representing the JSON property to get.
+    /// The index of the component that contains the property to be printed.
     /// </summary>
-    string Path { get; set; }
+    int ComponentIndex { get; set; }
+
+    /// <summary>
+    /// A JSON Pointer (RFC 6901) string representing the JSON property to be printed.
+    /// </summary>
+    string PropertyPath { get; set; }
 }

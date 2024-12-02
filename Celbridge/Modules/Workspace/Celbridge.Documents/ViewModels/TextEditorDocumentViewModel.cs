@@ -37,10 +37,14 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     public void SetFileResource(ResourceKey fileResource)
     {
-        _messengerService.Unregister<EntityChangedMessage>(this);
-        _messengerService.Register<EntityChangedMessage>(this, OnEntityChangedMessage);
+        // SetFileResource() may be called multiple times if the resource is renamed.
+        // Unregister the message handler first to avoid multiple registrations.
+        _messengerService.Unregister<ComponentChangedMessage>(this);
+        _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
 
         _fileResource = fileResource;
+
+        // Todo: Check that component 0 is a Markdown component.
 
         UpdateEditorMode();
     }
@@ -64,16 +68,11 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         return Result<PreviewProvider>.Ok(provider);
     }
 
-    private void OnEntityChangedMessage(object recipient, EntityChangedMessage message)
+    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        var (resource, paths) = message;
-
-        if (resource != _fileResource)
-        {
-            return;
-        }
-
-        if (paths.Contains(TextEditorEntityConstants.EditorMode))
+        if (message.Resource == _fileResource &&
+            message.ComponentType == "Markdown" &&
+            message.PropertyPath == TextEditorEntityConstants.EditorMode)
         {
             UpdateEditorMode();
         }
@@ -83,7 +82,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            var editorMode = _entityService.GetProperty(_fileResource, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
+            var editorMode = _entityService.GetProperty(_fileResource, 0, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
 
             ShowEditor = (editorMode == EditorMode.Editor || editorMode == EditorMode.EditorAndPreview);
             ShowPreview = (editorMode == EditorMode.Preview || editorMode == EditorMode.EditorAndPreview);

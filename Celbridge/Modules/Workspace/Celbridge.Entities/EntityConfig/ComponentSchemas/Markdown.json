@@ -1,11 +1,11 @@
 {
   "type": "object",
   "properties": {
-    "_entityType": {
+    "_componentType": {
       "type": "string",
       "const": "Markdown"
     },
-    "_entityVersion": {
+    "_componentVersion": {
       "type": "integer",
       "const": 1
     },
@@ -15,8 +15,8 @@
     }
   },
   "required": [
-    "_entityType",
-    "_entityVersion",
+    "_componentType",
+    "_componentVersion",
     "editorMode"
   ],
   "additionalProperties": false

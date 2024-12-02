@@ -2,24 +2,24 @@ using CommunityToolkit.Diagnostics;
 using Json.Patch;
 using Json.Pointer;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Text.Json;
 using Celbridge.Entities.Services;
+using Json.Schema;
 
 namespace Celbridge.Entities.Models;
 
 public class EntityData
 {
     public JsonObject JsonObject { get; private set; }
-    public EntitySchema EntitySchema { get; }
+    public JsonSchema EntitySchema { get; }
 
-    private EntityData(JsonObject jsonObject, EntitySchema entitySchema)
+    private EntityData(JsonObject jsonObject, JsonSchema entitySchema)
     {
         JsonObject = jsonObject;
         EntitySchema = entitySchema;
     }
 
-    public static EntityData Create(JsonObject jsonObject, EntitySchema entitySchema)
+    public static EntityData Create(JsonObject jsonObject, JsonSchema entitySchema)
     {
         return new EntityData(jsonObject, entitySchema);
     }
@@ -103,20 +103,20 @@ public class EntityData
         }
     }
 
-    public Result<EntityPatchSummary> ApplyPatch(string patchJson)
+    public Result<PatchSummary> ApplyPatch(ResourceKey resource, string patchJson, ComponentSchemaRegistry schemaRegistry)
     {
         try
         {
             var patch = JsonSerializer.Deserialize<JsonPatch>(patchJson);
             if (patch is null)
             {
-                return Result<EntityPatchSummary>.Fail("Failed to deserialize JSON patch");
+                return Result<PatchSummary>.Fail("Failed to deserialize JSON patch");
             }
 
             var patchResult = patch.Apply(JsonObject);
             if (!patchResult.IsSuccess)
             {
-                return Result<EntityPatchSummary>.Fail($"Failed to apply JSON patch to entity data: {patchResult.Error}");
+                return Result<PatchSummary>.Fail($"Failed to apply JSON patch to entity data: {patchResult.Error}");
             }
 
             var newJsonObject = patchResult.Result as JsonObject;
@@ -126,43 +126,146 @@ public class EntityData
             if (JsonNode.DeepEquals(JsonObject, newJsonObject))
             {
                 // The patch was valid, but did not result in any changes.
-                // This is indicated by returning an empty path list and reverse patch.
-                var emptyAppliedPatch = new EntityPatchSummary(new List<string>(), patchJson, string.Empty);
-                return Result<EntityPatchSummary>.Ok(emptyAppliedPatch);
+                // This is indicated by returning an empty reverse patch and change list.
+                var emptyAppliedPatch = new PatchSummary(
+                    patchJson,
+                    string.Empty,
+                    new List<ComponentChangedMessage>());
+                return Result<PatchSummary>.Ok(emptyAppliedPatch);
             }
 
             // Check if the patched JSON is still valid for the entity schema
-            var validationResult = EntitySchema.ValidateJsonObject(newJsonObject);
-            if (validationResult.IsFailure)
+
+            var evaluateResult = EntitySchema.Evaluate(newJsonObject);
+            if (!evaluateResult.IsValid)
             {
-                return Result<EntityPatchSummary>.Fail($"Failed to apply JSON patch to entity data")
-                    .WithErrors(validationResult);
+                return Result<PatchSummary>.Fail($"Failed to apply JSON patch to entity data. Schema validation error.");
             }
 
             // Generate the reverse patch so we can undo the change if needed.
             var reversePatch = newJsonObject.CreatePatch(JsonObject);
             var reversePatchJson = JsonSerializer.Serialize(reversePatch);
 
-            // Note each path that was actually changed by the patch.
-            // It is possible that not all operations in the original resulted in a change.
-            List<string> paths = new();
-            reversePatch.Operations.ForEach(op =>
+            // Note each component that was actually changed by the patch, filtering out any
+            // operations in the original patch that did not result in a change.
+
+            var getResult = GetComponentChangesForPatch(resource, reversePatch);
+            if (getResult.IsFailure)
             {
-                var jsonPointer = op.Path;
-                var path = jsonPointer.ToString();
-                paths.Add(path);
-            });
-            var patchSummary = new EntityPatchSummary(paths, patchJson, reversePatchJson);
+                return Result<PatchSummary>.Fail($"Failed to extract component changes from entity patch")
+                    .WithErrors(getResult);
+            }
+            var componentChanges = getResult.Value;
+
+            // Check that each modified component is still valid against its schema
+            var validatedComponents = new HashSet<int>();
+            foreach (var componentChange in componentChanges)
+            {
+                var componentIndex = componentChange.ComponentIndex;
+                var componentType = componentChange.ComponentType;
+
+                if (validatedComponents.Contains(componentIndex))
+                {
+                    // We've already validated this component
+                    continue;
+                }
+
+                var getSchemaResult = schemaRegistry.GetSchemaForComponentType(componentType);
+                if (getSchemaResult.IsFailure)
+                {
+                    return Result<PatchSummary>.Fail($"Failed to get schema for component type '{componentType}'")
+                        .WithErrors(getSchemaResult);
+                }
+                var componentSchema = getSchemaResult.Value;
+
+                var jsonPointer = JsonPointer.Parse($"/_components/{componentIndex}");
+                if (!jsonPointer.TryEvaluate(newJsonObject, out var componentNode))
+                {
+                    return Result<PatchSummary>.Fail($"Failed to get component at index: {componentIndex}");
+                }
+
+                if (componentNode is not JsonObject componentObject)
+                {
+                    return Result<PatchSummary>.Fail($"Component at index {componentIndex} is not a JSON object");
+                }
+
+                var validateResult = componentSchema.ValidateJsonObject(componentObject);
+                if (validateResult.IsFailure)
+                {
+                    return Result<PatchSummary>.Fail($"Component at index {componentIndex} is not valid against its schema")
+                        .WithErrors(validateResult);
+                }
+
+                validatedComponents.Add(componentIndex);
+            }
 
             // Use the patched JSON object
             JsonObject = newJsonObject;
 
-            return Result<EntityPatchSummary>.Ok(patchSummary); 
+            var patchSummary = new PatchSummary(patchJson, reversePatchJson, componentChanges);
+            return Result<PatchSummary>.Ok(patchSummary);
         }
         catch (Exception ex)
         {
-            return Result<EntityPatchSummary>.Fail($"An exception occurred when applying JSON patch to entity data.")
+            return Result<PatchSummary>.Fail($"An exception occurred when applying JSON patch to entity data.")
                 .WithException(ex);
         }
+    }
+
+    private Result<List<ComponentChangedMessage>> GetComponentChangesForPatch(ResourceKey resource, JsonPatch reversePatch)
+    {
+        List<ComponentChangedMessage> componentChanges = new();
+        reversePatch.Operations.ForEach(op =>
+        {
+            var jsonPointer = op.Path;
+            var path = jsonPointer.ToString();
+
+            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments is null ||
+                segments.Length <= 2 ||
+                segments[0] != "_components")
+            {
+                // Todo: Log an error
+                return;
+            }
+            var indexSegment = segments[1];
+            if (!int.TryParse(indexSegment, out var componentIndex))
+            {
+                // Todo: Log an error
+                return;
+            }
+
+            var components = JsonObject["_components"] as JsonArray;
+            if (components is null ||
+                componentIndex >= components.Count)
+            {
+                // Todo: Log an error
+                return;
+            }
+
+            var componentObject = components[componentIndex] as JsonObject;
+            if (componentObject is null)
+            {
+                // Todo: Log an error
+                return;
+            }
+
+            var componentTypeNode = componentObject["_componentType"];
+            if (componentTypeNode is null)
+            {
+                // Todo: Log an error
+                return;
+            }
+
+            var componentType = componentTypeNode.ToString();
+
+            // Construct the component relative property path 
+            string propertyPath = "/" + string.Join("/", segments.Skip(2));
+
+            var componentChange = new ComponentChangedMessage(resource, componentType, componentIndex, propertyPath);
+            componentChanges.Add(componentChange);
+        });
+
+        return Result<List<ComponentChangedMessage>>.Ok(componentChanges);
     }
 }
