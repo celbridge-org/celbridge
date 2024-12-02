@@ -39,19 +39,18 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
 
-        _messengerService.Register<EntityChangedMessage>(this, OnEntityChangedMessage);
+        _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
 
         PropertyChanged += MarkdownInspectorViewModel_PropertyChanged;
     }
 
-    private void OnEntityChangedMessage(object recipient, EntityChangedMessage message)
+    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        if (message.Resource == Resource)            
+        if (message.Resource == Resource &&
+            message.ComponentType == "Markdown" &&
+            message.PropertyPath == TextEditorEntityConstants.EditorMode)
         {
-            if (message.PropertyPaths.Contains(TextEditorEntityConstants.EditorMode))
-            {
-                UpdateButtonState();
-            }
+            UpdateButtonState();
         }
     }
 
@@ -96,7 +95,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            _entityService.SetProperty(Resource, TextEditorEntityConstants.EditorMode, editorMode);
+            _entityService.SetProperty(Resource, 0, TextEditorEntityConstants.EditorMode, editorMode);
         }
         catch (Exception ex)
         {
@@ -108,7 +107,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            EditorMode = _entityService.GetProperty(Resource, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
+            EditorMode = _entityService.GetProperty(Resource, 0, TextEditorEntityConstants.EditorMode, EditorMode.Editor);
         }
         catch (Exception ex)
         {

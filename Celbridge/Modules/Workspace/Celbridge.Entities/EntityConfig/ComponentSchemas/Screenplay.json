@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "_componentType": {
+      "type": "string",
+      "const": "Screenplay"
+    },
+    "_componentVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "_componentType",
+    "_componentVersion",
+    "title"
+  ],
+  "additionalProperties": false
+}

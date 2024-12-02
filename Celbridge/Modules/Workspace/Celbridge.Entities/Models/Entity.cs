@@ -8,8 +8,8 @@ public class Entity
     private EntityData? _entityData;
     public EntityData EntityData => _entityData!;
 
-    public Stack<EntityPatchSummary> UndoStack { get; private set; } = new();
-    public Stack<EntityPatchSummary> RedoStack { get; private set; } = new();
+    public Stack<PatchSummary> UndoStack { get; private set; } = new();
+    public Stack<PatchSummary> RedoStack { get; private set; } = new();
 
     public static Entity CreateEntity(ResourceKey resource, string entityDataPath, EntityData entityData)
     {

@@ -12,15 +12,18 @@ public static class ServiceConfiguration
         // Register services
         //
         config.AddTransient<IEntityService, EntityService>();
-        config.AddTransient<EntitySchemaRegistry>();
-        config.AddTransient<EntityPrototypeRegistry>();
+        config.AddTransient<ComponentSchemaRegistry>();
+        config.AddTransient<ComponentPrototypeRegistry>();
+        config.AddTransient<EntityRegistry>();
 
         //
         // Register commands
         //
-        config.AddTransient<IModifyEntityCommand, ModifyEntityCommand>();
-        config.AddTransient<IUndoEntityCommand, UndoEntityCommand>();
-        config.AddTransient<IRedoEntityCommand, RedoEntityCommand>();
+        config.AddTransient<ISetPropertyCommand, SetPropertyCommand>();
+        config.AddTransient<IUndoPropertyCommand, UndoPropertyCommand>();
+        config.AddTransient<IRedoPropertyCommand, RedoPropertyCommand>();
         config.AddTransient<IPrintPropertyCommand, PrintPropertyCommand>();
+        config.AddTransient<IAddComponentCommand, AddComponentCommand>();
+        config.AddTransient<IRemoveComponentCommand, RemoveComponentCommand>();
     }
 }
