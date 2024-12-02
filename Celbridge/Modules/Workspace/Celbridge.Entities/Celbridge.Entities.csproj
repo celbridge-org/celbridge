@@ -23,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="EntityConfig\**" />
+    <Content Include="ComponentConfig\**" />
   </ItemGroup>
 
   <ItemGroup>

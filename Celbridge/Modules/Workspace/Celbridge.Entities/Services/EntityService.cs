@@ -35,7 +35,9 @@ public enum PatchContext
 
 public class EntityService : IEntityService, IDisposable
 {
-    public const string EntityConfigFolder = "EntityConfig";
+    public const string ComponentConfigFolder = "ComponentConfig";
+    public const string SchemasFolder = "Schemas";
+    public const string PrototypesFolder = "Prototypes";
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EntityService> _logger;

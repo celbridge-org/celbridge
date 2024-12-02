@@ -5,9 +5,6 @@ namespace Celbridge.Entities.Services;
 
 public class ComponentPrototypeRegistry
 {
-    private const string EntityConfigFolder = "EntityConfig";
-    private const string ComponentPrototypesFolder = "ComponentPrototypes";
-
     private readonly Dictionary<string, ComponentPrototype> _componentPrototypes = new();
     private readonly Dictionary<string, List<string>> _entityComponentTypes = new();
 
@@ -17,8 +14,8 @@ public class ComponentPrototypeRegistry
         {
             List<string> jsonContents = new List<string>();
 
-            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConfigFolder);
-            var prototypesFolder = await configFolder.GetFolderAsync(ComponentPrototypesFolder);
+            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityService.ComponentConfigFolder);
+            var prototypesFolder = await configFolder.GetFolderAsync(EntityService.PrototypesFolder);
 
             var prototypeFiles = await prototypesFolder.GetFilesAsync();
             foreach (var prototypeFile in prototypeFiles)
