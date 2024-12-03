@@ -153,7 +153,7 @@ public class EntityRegistry
         {
             Guard.IsNotNull(entity.EntityData);
 
-            var jsonContent = JsonSerializer.Serialize(entity.EntityData.JsonObject, EntityService.SerializerOptions);
+            var jsonContent = JsonSerializer.Serialize(entity.EntityData.EntityJsonObject, EntityService.SerializerOptions);
 
             var folder = Path.GetDirectoryName(entity.EntityDataPath);
             Guard.IsNotNull(folder);
@@ -269,6 +269,9 @@ public class EntityRegistry
 
     public Result<Entity> AcquireEntity(ResourceKey resource)
     {
+        Guard.IsNotNull(_entitySchema);
+        Guard.IsNotNull(_schemaRegistry);
+
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var getResourceResult = resourceRegistry.GetResource(resource);
@@ -293,7 +296,7 @@ public class EntityRegistry
             EntityData? entityData = null;
             if (File.Exists(entityDataPath))
             {
-                var getDataResult = LoadEntityDataFile(entityDataPath);
+                var getDataResult = EntityUtils.LoadEntityDataFile(entityDataPath, _entitySchema, _schemaRegistry);
                 if (getDataResult.IsSuccess)
                 {
                     entityData = getDataResult.Value;
@@ -352,7 +355,7 @@ public class EntityRegistry
         }
         var entity = acquireResult.Value;
 
-        var getIndexResult = entity.EntityData.GetComponentsOfType(componentType);
+        var getIndexResult =  EntityUtils.GetComponentsOfType(entity.EntityData.EntityJsonObject, componentType);
         if (getIndexResult.IsFailure)
         {
             return Result<List<int>>.Fail($"Failed to get component indices for component type: {componentType}");
@@ -462,70 +465,6 @@ public class EntityRegistry
         }
 
         var entityData = EntityData.Create(entityJsonObject, _entitySchema);
-
-        return Result<EntityData>.Ok(entityData);
-    }
-
-    private Result<EntityData> LoadEntityDataFile(string entityDataPath)
-    {
-        Guard.IsNotNull(_entitySchema);
-        Guard.IsNotNull(_schemaRegistry);
-
-        // Load the EntityData json
-        var jsonObject = JsonNode.Parse(File.ReadAllText(entityDataPath)) as JsonObject;
-        if (jsonObject is null)
-        {
-            return Result<EntityData>.Fail($"Failed to parse entity data from file: '{entityDataPath}'");
-        }
-
-        // Validate the loaded data against the entity schema
-        var evaluateResult = _entitySchema.Evaluate(jsonObject);
-        if (!evaluateResult.IsValid)
-        {
-            // Todo: Attempt to repair/migrate the data instead of just failing
-            return Result<EntityData>.Fail($"Entity data failed schema validation: '{entityDataPath}'");
-        }
-
-        var componentsArray = jsonObject["_components"] as JsonArray;
-        Guard.IsNotNull(componentsArray);
-
-        // Validate each component in the entity against its corresponding schema
-
-        foreach (var componentNode in componentsArray)
-        {
-            // Check that the component is a JSON object
-            // Todo: Use the entity schema to enforce this constraint 
-            if (componentNode is not JsonObject componentObject)
-            {
-                return Result<EntityData>.Fail("Component is not a JSON object");
-            }
-
-            var componentTypeValue = componentObject["_componentType"] as JsonValue;
-            if (componentTypeValue is null ||
-                !componentTypeValue.TryGetValue(out string? componentType) ||
-                string.IsNullOrEmpty(componentType))
-            {
-                return Result<EntityData>.Fail("Component type is missing or empty");
-            }
-
-            var getSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
-            if (getSchemaResult.IsFailure)
-            {
-                return Result<EntityData>.Fail($"Failed to get schema for component type: '{componentType}'")
-                    .WithErrors(getSchemaResult);
-            }
-            var componentSchema = getSchemaResult.Value;
-
-            var validateResult = componentSchema.ValidateJsonObject(componentObject);
-            if (validateResult.IsFailure)
-            {
-                return Result<EntityData>.Fail($"Component failed schema validation: '{componentType}'")
-                    .WithErrors(validateResult);
-            }
-        }
-
-        // We've passed validation so now we can create and return the EntityData object
-        var entityData = EntityData.Create(jsonObject, _entitySchema);
 
         return Result<EntityData>.Ok(entityData);
     }
