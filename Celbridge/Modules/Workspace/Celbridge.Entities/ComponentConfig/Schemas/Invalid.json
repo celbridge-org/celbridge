@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "_componentType": {
+      "type": "string",
+      "const": "Invalid"
+    },
+    "_componentVersion": {
+      "type": "integer",
+      "const": 1
+    }
+  },
+  "required": [
+    "_componentType",
+    "_componentVersion"
+  ],
+  "additionalProperties": false,
+  "allowMultipleComponents": true
+}

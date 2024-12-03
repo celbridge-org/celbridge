@@ -25,5 +25,6 @@ public static class ServiceConfiguration
         config.AddTransient<IPrintPropertyCommand, PrintPropertyCommand>();
         config.AddTransient<IAddComponentCommand, AddComponentCommand>();
         config.AddTransient<IRemoveComponentCommand, RemoveComponentCommand>();
+        config.AddTransient<ICopyComponentCommand, CopyComponentCommand>();
     }
 }
