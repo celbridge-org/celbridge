@@ -32,6 +32,20 @@ public class EntityData
         return new EntityData(jsonClone, EntitySchema);
     }
 
+    public Result<string> GetComponentType(int componentIndex)
+    {
+        var propertyPath = $"/_components/{componentIndex}/_componentType";
+
+        var getPropertyResult = GetProperty<string>(propertyPath);
+        if (getPropertyResult.IsFailure)
+        {
+            return Result<string>.Fail("Failed to get component type")
+                .WithErrors(getPropertyResult);
+        }
+
+        return Result<string>.Ok(getPropertyResult.Value);
+    }
+
     public Result<List<int>> GetComponentsOfType(string componentType)
     {
         if (JsonObject["_components"] is not JsonArray components)
@@ -147,17 +161,20 @@ public class EntityData
                 return Result<PatchSummary>.Fail("Failed to deserialize JSON patch");
             }
 
+            // Generate the patched version of the entity.
+            // We perform a number of checks on this patched entity before we use it to replace the existing entity.
+
             var patchResult = patch.Apply(JsonObject);
             if (!patchResult.IsSuccess)
             {
                 return Result<PatchSummary>.Fail($"Failed to apply JSON patch to entity data: {patchResult.Error}");
             }
 
-            var newJsonObject = patchResult.Result as JsonObject;
-            Guard.IsNotNull(newJsonObject);
+            var patchedJsonObject = patchResult.Result as JsonObject;
+            Guard.IsNotNull(patchedJsonObject);
 
             // Check if the JSON object has actually changed as a result of applying the patch
-            if (JsonNode.DeepEquals(JsonObject, newJsonObject))
+            if (JsonNode.DeepEquals(JsonObject, patchedJsonObject))
             {
                 // The patch was valid, but did not result in any changes.
                 // This is indicated by returning an empty reverse patch and change list.
@@ -170,20 +187,19 @@ public class EntityData
 
             // Check if the patched JSON is still valid for the entity schema
 
-            var evaluateResult = EntitySchema.Evaluate(newJsonObject);
+            var evaluateResult = EntitySchema.Evaluate(patchedJsonObject);
             if (!evaluateResult.IsValid)
             {
                 return Result<PatchSummary>.Fail($"Failed to apply JSON patch to entity data. Schema validation error.");
             }
 
-            // Generate the reverse patch so we can undo the change if needed.
-            var reversePatch = newJsonObject.CreatePatch(JsonObject);
+            // Generate the reverse patch so we can undo the changes later if needed.
+            var reversePatch = patchedJsonObject.CreatePatch(JsonObject);
             var reversePatchJson = JsonSerializer.Serialize(reversePatch);
 
-            // Note each component that was actually changed by the patch, filtering out any
-            // operations in the original patch that did not result in a change.
+            // Make a note of each component change that the patch makes to the entity data.
 
-            var getResult = GetComponentChangesForPatch(resource, reversePatch);
+            var getResult = GetChangesForPatch(resource, patch);
             if (getResult.IsFailure)
             {
                 return Result<PatchSummary>.Fail($"Failed to extract component changes from entity patch")
@@ -191,16 +207,24 @@ public class EntityData
             }
             var componentChanges = getResult.Value;
 
-            // Check that each modified component is still valid against its schema
+            // Check that each component that was modified by the patch is still valid against its schema
+
             var validatedComponents = new HashSet<int>();
             foreach (var componentChange in componentChanges)
             {
+                if (componentChange.PropertyPath == "/" &&
+                    componentChange.Operation == "remove")
+                {
+                    // Removed components don't require validation
+                    continue;
+                }
+
                 var componentIndex = componentChange.ComponentIndex;
                 var componentType = componentChange.ComponentType;
 
                 if (validatedComponents.Contains(componentIndex))
                 {
-                    // We've already validated this component
+                    // This component has already been validated
                     continue;
                 }
 
@@ -213,7 +237,7 @@ public class EntityData
                 var componentSchema = getSchemaResult.Value;
 
                 var jsonPointer = JsonPointer.Parse($"/_components/{componentIndex}");
-                if (!jsonPointer.TryEvaluate(newJsonObject, out var componentNode))
+                if (!jsonPointer.TryEvaluate(patchedJsonObject, out var componentNode))
                 {
                     return Result<PatchSummary>.Fail($"Failed to get component at index: {componentIndex}");
                 }
@@ -233,8 +257,8 @@ public class EntityData
                 validatedComponents.Add(componentIndex);
             }
 
-            // Use the patched JSON object
-            JsonObject = newJsonObject;
+            // The patched entity has passed validation, so we can now update the entity.
+            JsonObject = patchedJsonObject;
 
             var patchSummary = new PatchSummary(patchJson, reversePatchJson, componentChanges);
             return Result<PatchSummary>.Ok(patchSummary);
@@ -246,60 +270,118 @@ public class EntityData
         }
     }
 
-    private Result<List<ComponentChangedMessage>> GetComponentChangesForPatch(ResourceKey resource, JsonPatch reversePatch)
+    private Result<List<ComponentChangedMessage>> GetChangesForPatch(ResourceKey resource, JsonPatch patch)
     {
-        List<ComponentChangedMessage> componentChanges = new();
-        reversePatch.Operations.ForEach(op =>
+        try
         {
-            var jsonPointer = op.Path;
-            var path = jsonPointer.ToString();
+            List<ComponentChangedMessage> componentChanges = new();
 
-            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments is null ||
-                segments.Length <= 2 ||
-                segments[0] != "_components")
+            foreach (var op in patch.Operations)
             {
-                // Todo: Log an error
-                return;
+                var jsonPointer = op.Path;
+                var path = jsonPointer.ToString();
+
+                // Check if the JSON pointer is a component property path
+                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments is null ||
+                    segments.Length < 2 ||
+                    segments[0] != "_components")
+                {
+                    throw new InvalidOperationException($"Component patch operation does not start with /_components");
+                }
+
+                // Extract the component index from the path
+                var indexSegment = segments[1];
+                if (!int.TryParse(indexSegment, out var componentIndex))
+                {
+                    throw new InvalidOperationException($"Component patch operation does not specify a component index");
+                }
+
+                var componentType = string.Empty;
+                if (op.Op == OperationType.Add &&
+                    segments.Length == 2)
+                {
+                    // This is an add component operation, so extract the type of the component that will be
+                    // added by the patch...
+
+                    var addedComponent = op.Value as JsonObject;
+                    if (addedComponent is null)
+                    {
+                        throw new InvalidOperationException($"Added component is not a JsonObject");
+                    }
+
+                    var addedComponentTypeNode = addedComponent["_componentType"];
+                    if (addedComponentTypeNode is null)
+                    {
+                        throw new InvalidOperationException($"Added component does not have a '_componentType' property");
+                    }
+
+                    componentType = addedComponentTypeNode.GetValue<string>();
+                }
+                else
+                {
+                    // ...in all other cases, use the component type of the existing component.
+
+                    var components = JsonObject["_components"] as JsonArray;
+                    if (components is null ||
+                        componentIndex >= components.Count)
+                    {
+                        throw new InvalidOperationException($"Entity data does not contain '_components' array");
+                    }
+
+                    var componentObject = components[componentIndex] as JsonObject;
+                    if (componentObject is null)
+                    {
+                        throw new InvalidOperationException($"'_components' array does not contain a JsonObject at index: {componentIndex}");
+                    }
+
+                    var componentTypeNode = componentObject["_componentType"];
+                    if (componentTypeNode is null)
+                    {
+                        throw new InvalidOperationException($"Component at index {componentIndex} does not contain a '_componentType' property");
+                    }
+
+                    componentType = componentTypeNode.ToString();
+                }
+
+                if (string.IsNullOrEmpty(componentType))
+                {
+                    throw new InvalidOperationException($"Added component's type is empty");
+                }
+
+                // Report the operation type as a string
+                var operation = op.Op.ToString().ToLower();
+
+                // Construct the component relative property path 
+                string propertyPath;
+                if (segments.Length == 2)
+                {
+                    // This is a component add, remove, etc. operation, so the property path is the root of the component
+                    propertyPath = "/";
+                }
+                else
+                {
+                    // This is a component property change operation, so the property path is the component relative path
+                    propertyPath = "/" + string.Join("/", segments.Skip(2));
+                
+                    if (operation == "add" || operation == "replace")
+                    {
+                        // We report 'add' and 'replace' property operations as a 'set' operation, because the distinction is not
+                        // important to clients listening for property changes.
+                        operation = "set";
+                    }
+                }
+
+                var componentChange = new ComponentChangedMessage(resource, componentType, componentIndex, propertyPath, operation);
+                componentChanges.Add(componentChange);
             }
-            var indexSegment = segments[1];
-            if (!int.TryParse(indexSegment, out var componentIndex))
-            {
-                // Todo: Log an error
-                return;
-            }
 
-            var components = JsonObject["_components"] as JsonArray;
-            if (components is null ||
-                componentIndex >= components.Count)
-            {
-                // Todo: Log an error
-                return;
-            }
-
-            var componentObject = components[componentIndex] as JsonObject;
-            if (componentObject is null)
-            {
-                // Todo: Log an error
-                return;
-            }
-
-            var componentTypeNode = componentObject["_componentType"];
-            if (componentTypeNode is null)
-            {
-                // Todo: Log an error
-                return;
-            }
-
-            var componentType = componentTypeNode.ToString();
-
-            // Construct the component relative property path 
-            string propertyPath = "/" + string.Join("/", segments.Skip(2));
-
-            var componentChange = new ComponentChangedMessage(resource, componentType, componentIndex, propertyPath);
-            componentChanges.Add(componentChange);
-        });
-
-        return Result<List<ComponentChangedMessage>>.Ok(componentChanges);
+            return Result<List<ComponentChangedMessage>>.Ok(componentChanges);
+        }
+        catch (Exception ex)
+        {
+            return Result<List<ComponentChangedMessage>>.Fail("An exception occurred when extracting component changes from patch")
+                .WithException(ex);
+        }
     }
 }
