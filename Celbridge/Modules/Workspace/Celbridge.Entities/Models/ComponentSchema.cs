@@ -9,13 +9,15 @@ public class ComponentSchema
 {
     public string ComponentType { get; }
     public int ComponentVersion { get; }
+    public bool AllowMultipleComponents { get; }
 
     private readonly JsonSchema _jsonSchema;
 
-    private ComponentSchema(string componentType, int componentVersion, JsonSchema jsonSchema)
+    private ComponentSchema(string componentType, int componentVersion, bool allowMultipleComponents, JsonSchema jsonSchema)
     {
         ComponentType = componentType;
         ComponentVersion = componentVersion;
+        AllowMultipleComponents = allowMultipleComponents;
         _jsonSchema = jsonSchema;
     }
 
@@ -32,6 +34,7 @@ public class ComponentSchema
             }
 
             // Get component type
+
             var componentTypePointer = JsonPointer.Parse("/properties/_componentType/const");
             var componentTypeElement = componentTypePointer.Evaluate(root);
 
@@ -48,6 +51,7 @@ public class ComponentSchema
             }
 
             // Get component version 
+            
             var componentVersionPointer = JsonPointer.Parse("/properties/_componentVersion/const");
             var componentVersionElement = componentVersionPointer.Evaluate(root);
 
@@ -56,17 +60,25 @@ public class ComponentSchema
             {
                 return Result<ComponentSchema>.Fail("Component version element is not valid");
             }
-
             var componentVersion = componentVersionElement.Value.GetInt32();
 
+            // Get allowMultipleComponents
+
+            bool allowMultipleComponents = false;
+            if (root.TryGetProperty("allowMultipleComponents", out JsonElement allowMultipleElement))
+            {
+                allowMultipleComponents = allowMultipleElement.GetBoolean();
+            }
+
             // Create the JsonSchema object
+
             var jsonSchema = JsonSchema.FromText(schemaJson);
             if (jsonSchema is null)
             {
                 return Result<ComponentSchema>.Fail($"Failed to parse schema for component type: '{componentType}'");
             }
 
-            var schema = new ComponentSchema(componentType, componentVersion, jsonSchema);
+            var schema = new ComponentSchema(componentType, componentVersion, allowMultipleComponents, jsonSchema);
 
             return Result<ComponentSchema>.Ok(schema);
         }
