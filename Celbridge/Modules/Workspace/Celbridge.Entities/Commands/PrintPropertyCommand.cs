@@ -26,7 +26,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var getResult = entityService.GetPropertyAsJSON(Resource, ComponentIndex, PropertyPath);
+        var getResult = entityService.GetPropertyAsJson(Resource, ComponentIndex, PropertyPath);
         if (getResult.IsFailure)
         {
             return Result.Fail().WithErrors(getResult);

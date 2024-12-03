@@ -27,11 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="ComponentConfig\Prototypes\VoiceLine.json" />
-    <None Remove="ComponentConfig\Schemas\VoiceLine.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="JsonPatch.Net" />
     <PackageReference Include="JsonPointer.Net" />

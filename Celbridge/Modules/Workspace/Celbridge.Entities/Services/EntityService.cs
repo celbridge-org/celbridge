@@ -196,7 +196,7 @@ public class EntityService : IEntityService, IDisposable
         var entity = acquireResult.Value;
 
         // Apply a patch to remove the component at the specified index
-        
+
         var componentPointer = JsonPointer.Create("_components", componentIndex);
         var patchOperation = PatchOperation.Remove(componentPointer);
 
@@ -204,6 +204,50 @@ public class EntityService : IEntityService, IDisposable
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to remove entity component at index '{componentIndex}' for resource: {resource}")
+                .WithErrors(applyResult);
+        }
+
+        return Result.Ok();
+    }
+
+    public Result CopyComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
+    {
+        if (sourceComponentIndex == destComponentIndex)
+        {
+            // No need to copy the component if the source and destination indices are the same
+            return Result.Ok();
+        }
+
+        // Acquire the entity for the specified resource
+
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+
+        // Get the component at the source index
+
+        var sourceComponentPointer = JsonPointer.Create("_components", sourceComponentIndex);
+        var getComponentResult = entity.EntityData.GetPropertyAsJsonNode(sourceComponentPointer);
+        if (getComponentResult.IsFailure)
+        {
+            return Result.Fail($"Failed to get component at index '{sourceComponentIndex}' for resource: {resource}")
+                .WithErrors(getComponentResult);
+        }
+        var sourceComponentNode = getComponentResult.Value;
+
+        // Apply a patch operation to add the component to the entity
+
+        var componentPointer = JsonPointer.Create("_components", destComponentIndex);
+        var patchOperation = PatchOperation.Add(componentPointer, sourceComponentNode);
+
+        var applyResult = ApplyPatchOperation(entity, patchOperation);
+        if (applyResult.IsFailure)
+        {
+            return Result.Fail($"Failed to apply patch to add component to entity: {resource}")
                 .WithErrors(applyResult);
         }
 
@@ -274,7 +318,7 @@ public class EntityService : IEntityService, IDisposable
         return getResult;
     }
 
-    public Result<string> GetPropertyAsJSON(ResourceKey resource, int componentIndex, string propertyPath)
+    public Result<string> GetPropertyAsJson(ResourceKey resource, int componentIndex, string propertyPath)
     {
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
@@ -288,14 +332,17 @@ public class EntityService : IEntityService, IDisposable
 
         var propertyPointer = GetPropertyPointer(componentIndex, propertyPath);
 
-        var getResult = entity.EntityData.GetPropertyAsJSON(propertyPointer);
+        var getResult = entity.EntityData.GetPropertyAsJsonNode(propertyPointer);
         if (getResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
                 .WithErrors(getResult);
         }
 
-        return getResult;
+        var jsonNode = getResult.Value;
+        var jsonString = jsonNode.ToJsonString();
+
+        return Result<string>.Ok(jsonString);
     }
 
     public Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue, bool insert) where T : notnull
@@ -376,7 +423,8 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = ApplyPatchOperation(entity, reversePatchOperation, PatchContext.Undo);
         if (applyResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}");
+            return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}")
+                .WithErrors(applyResult);
         }
 
         // Succeed and return true to indicate that a patch was undone.
@@ -429,6 +477,14 @@ public class EntityService : IEntityService, IDisposable
 
     private Result ApplyPatchOperation(Entity entity, PatchOperation patchOperation, PatchContext context = PatchContext.Modify)
     {
+        if (patchOperation.Op == OperationType.Unknown ||
+            patchOperation.Op == OperationType.Copy ||
+            patchOperation.Op == OperationType.Move ||
+            patchOperation.Op == OperationType.Test)
+        {
+            return Result.Fail($"Patch operation is not supported: {patchOperation.Op}");
+        }
+
         var applyResult = entity.ApplyPatchOperation(patchOperation, _schemaRegistry, context);
         if (applyResult.IsFailure)
         {

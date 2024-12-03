@@ -56,29 +56,27 @@ public class EntityData
         }
     }
 
-    public Result<string> GetPropertyAsJSON(JsonPointer propertyPointer)
+    public Result<JsonNode> GetPropertyAsJsonNode(JsonPointer propertyPointer)
     {
         try
         {
             if (!propertyPointer.TryEvaluate(EntityJsonObject, out var valueNode))
             {
-                return Result<string>.Fail($"Property was not found at: '{propertyPointer}'");
+                return Result<JsonNode>.Fail($"Property was not found at: '{propertyPointer}'");
             }
 
             if (valueNode is null)
             {
                 // The property was found but it is a JSON null value.
-                // We treat this as an error for Entity Data.
-                return Result<string>.Fail($"Property is a JSON null value: '{propertyPointer}'");
+                // Null property values are not supported for Entity Data.
+                return Result<JsonNode>.Fail($"Property is a JSON null value: '{propertyPointer}'");
             }
 
-            var valueJSON = valueNode.ToJsonString();
-
-            return Result<string>.Ok(valueJSON);
+            return Result<JsonNode>.Ok(valueNode);
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"An exception occurred when getting entity property '{propertyPointer}'")
+            return Result<JsonNode>.Fail($"An exception occurred when getting entity property '{propertyPointer}'")
                 .WithException(ex);
         }
     }
