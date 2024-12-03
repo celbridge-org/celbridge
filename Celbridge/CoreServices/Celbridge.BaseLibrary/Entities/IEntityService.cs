@@ -52,6 +52,11 @@ public interface IEntityService
     Result CopyComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex);
 
     /// <summary>
+    /// Move an entity component from a source index to a destination index.
+    /// </summary>
+    Result MoveComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex);
+
+    /// <summary>
     /// Returns the indices of the entity components of the specified type.
     /// </summary>
     Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType);
