@@ -1,37 +1,18 @@
 using Celbridge.Core;
+using Celbridge.Entities.Models;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Json.Patch;
+using Json.Pointer;
 using Json.Schema;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Celbridge.Entities.Services;
-
-/// <summary>
-/// Describes the context in which a patch is applied.
-/// </summary>
-public enum PatchContext
-{
-    /// <summary>
-    /// Modifying an entity.
-    /// </summary>
-    Modify,
-
-    /// <summary>
-    /// Undoing a previously applied modification.
-    /// </summary>
-    Undo,
-
-    /// <summary>
-    /// Redoing a previously undone modification.
-    /// </summary>
-    Redo
-}
 
 public class EntityService : IEntityService, IDisposable
 {
@@ -155,7 +136,6 @@ public class EntityService : IEntityService, IDisposable
         return _entityRegistry.CopyEntityDataFile(sourceResource, destResource);
     }
 
-    private record AddComponentOperation(string op, string path, JsonObject value);
     public Result AddComponent(ResourceKey resource, string componentType, int componentIndex)
     {
         // Acquire the entity for the specified resource
@@ -167,7 +147,6 @@ public class EntityService : IEntityService, IDisposable
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
-        Guard.IsNotNull(entity);
 
         // Acquire the schema for the specified componentType
 
@@ -179,7 +158,7 @@ public class EntityService : IEntityService, IDisposable
         }
         var componentSchema = componentSchemaResult.Value;
 
-        // Create an instance of the prototype in the Entity Data
+        // Acquire the prototype for the specified componentType
 
         var getPrototypeResult = _prototypeRegistry.GetPrototype(componentType);
         if (getPrototypeResult.IsFailure)
@@ -189,11 +168,12 @@ public class EntityService : IEntityService, IDisposable
         }
         var prototype = getPrototypeResult.Value;
 
-        var operation = new AddComponentOperation("add", $"/_components/{componentIndex}", prototype.JsonObject);
-        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
-        jsonPatch = $"[{jsonPatch}]";
+        // Apply a patch operation to add the component to the entity
 
-        var applyResult = ApplyPatch(resource, jsonPatch);
+        var componentPointer = JsonPointer.Create("_components", componentIndex);
+        var patchOperation = PatchOperation.Add(componentPointer, prototype.JsonObject);
+
+        var applyResult = ApplyPatchOperation(entity, patchOperation);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to add component to entity: {resource}")
@@ -203,7 +183,6 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
-    private record RemoveComponentOperation(string op, string path);
     public Result RemoveComponent(ResourceKey resource, int componentIndex)
     {
         // Acquire the entity for the specified resource
@@ -215,14 +194,13 @@ public class EntityService : IEntityService, IDisposable
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
-        Guard.IsNotNull(entity);
 
         // Apply a patch to remove the component at the specified index
-        var operation = new RemoveComponentOperation("remove", $"/_components/{componentIndex}");
-        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
-        jsonPatch = $"[{jsonPatch}]";
+        
+        var componentPointer = JsonPointer.Create("_components", componentIndex);
+        var patchOperation = PatchOperation.Remove(componentPointer);
 
-        var applyResult = ApplyPatch(resource, jsonPatch);
+        var applyResult = ApplyPatchOperation(entity, patchOperation);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to remove entity component at index '{componentIndex}' for resource: {resource}")
@@ -284,12 +262,12 @@ public class EntityService : IEntityService, IDisposable
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+        var propertyPointer = GetPropertyPointer(componentIndex, propertyPath);
 
-        var getResult = entity.EntityData.GetProperty<T>(componentPropertyPath);
+        var getResult = entity.EntityData.GetProperty<T>(propertyPointer);
         if (getResult.IsFailure)
         {
-            return Result<T>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
+            return Result<T>.Fail($"Failed to get component property '{propertyPath}' for resource '{resource}'")
                 .WithErrors(getResult);
         }
 
@@ -308,9 +286,9 @@ public class EntityService : IEntityService, IDisposable
         var entity = acquireResult.Value;
         Guard.IsNotNull(entity);
 
-        var componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+        var propertyPointer = GetPropertyPointer(componentIndex, propertyPath);
 
-        var getResult = entity.EntityData.GetPropertyAsJSON(componentPropertyPath);
+        var getResult = entity.EntityData.GetPropertyAsJSON(propertyPointer);
         if (getResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get entity property '{propertyPath}' for resource '{resource}'")
@@ -320,17 +298,33 @@ public class EntityService : IEntityService, IDisposable
         return getResult;
     }
 
-    private record SetPropertyOperation(string op, string path, object value);
-    public Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue) where T : notnull
+    public Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue, bool insert) where T : notnull
     {
-        string componentPropertyPath = GetComponentPropertyPath(componentIndex, propertyPath);
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+        Guard.IsNotNull(entity);
 
-        // Set the property by applying a JSON patch
-        var operation = new SetPropertyOperation("add", componentPropertyPath, newValue);
-        var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
-        jsonPatch = $"[{jsonPatch}]";
+        // Construct a patch operation to set the property
 
-        var applyResult = ApplyPatch(resource, jsonPatch);
+        var propertyPointer = GetPropertyPointer(componentIndex, propertyPath);
+        var jsonValue = JsonSerializer.SerializeToNode(newValue, SerializerOptions);
+
+        PatchOperation operation;
+        if (insert)
+        {
+            operation = PatchOperation.Add(propertyPointer, jsonValue);
+        }
+        else
+        {
+            operation = PatchOperation.Replace(propertyPointer, jsonValue);
+        }
+
+        var applyResult = ApplyPatchOperation(entity, operation);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply entity patch for resource: {resource}");
@@ -339,14 +333,14 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
-    public Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue) where T : notnull
+    public Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue, bool insert) where T : notnull
     {
-        var geComponentsResult = GetComponentsOfType(resource, componentType);
-        if (geComponentsResult.IsFailure)
+        var getComponentsResult = GetComponentsOfType(resource, componentType);
+        if (getComponentsResult.IsFailure)
         {
-            return geComponentsResult;
+            return getComponentsResult;
         }
-        var componentIndices = geComponentsResult.Value;
+        var componentIndices = getComponentsResult.Value;
 
         if (componentIndices.Count < 1)
         {
@@ -354,10 +348,10 @@ public class EntityService : IEntityService, IDisposable
         }
         var componentIndex = componentIndices[0];
 
-        return SetProperty(resource, componentIndex, propertyPath, newValue);
+        return SetProperty(resource, componentIndex, propertyPath, newValue, insert);
     }
 
-    public Result<bool> UndoProperty(ResourceKey resource)
+    public Result<bool> UndoEntity(ResourceKey resource)
     {
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
@@ -376,10 +370,10 @@ public class EntityService : IEntityService, IDisposable
 
         // Pop the next patch summary from the Undo stack and apply it to the entity
         var patchSummary = entity.UndoStack.Pop();
-        var reversePatch = patchSummary.ReversePatch;
-        Guard.IsNotNull(reversePatch);
+        var reversePatchOperation = patchSummary.ReverseOperation;
+        Guard.IsNotNull(reversePatchOperation);
 
-        var applyResult = ApplyPatch(resource, reversePatch, PatchContext.Undo);
+        var applyResult = ApplyPatchOperation(entity, reversePatchOperation, PatchContext.Undo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}");
@@ -389,7 +383,7 @@ public class EntityService : IEntityService, IDisposable
         return Result<bool>.Ok(true);
     }
 
-    public Result<bool> RedoProperty(ResourceKey resource)
+    public Result<bool> RedoEntity(ResourceKey resource)
     {
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
@@ -408,10 +402,10 @@ public class EntityService : IEntityService, IDisposable
 
         // Pop the next patch summary from the Redo stack and apply it to the entity
         var patchSummary = entity.RedoStack.Pop();
-        var reversePatch = patchSummary.ReversePatch;
-        Guard.IsNotNull(reversePatch);
+        var reverseOperation = patchSummary.ReverseOperation;
+        Guard.IsNotNull(reverseOperation);
 
-        var applyResult = ApplyPatch(resource, reversePatch, PatchContext.Redo);
+        var applyResult = ApplyPatchOperation(entity, reverseOperation, PatchContext.Redo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply redo patch to resource: {resource}");
@@ -421,9 +415,11 @@ public class EntityService : IEntityService, IDisposable
         return Result<bool>.Ok(true);
     }
 
-    private static string GetComponentPropertyPath(int componentIndex, string propertyPath)
+    private static JsonPointer GetPropertyPointer(int componentIndex, string propertyPath)
     {
-        return $"/_components/{componentIndex}{propertyPath}";
+        var trimmedPath = propertyPath.TrimStart('/');
+        var jsonPointer = JsonPointer.Create("_components", componentIndex, trimmedPath);
+        return jsonPointer;
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
@@ -431,53 +427,23 @@ public class EntityService : IEntityService, IDisposable
         _entityRegistry.CleanupEntities();
     }
 
-    private Result ApplyPatch(ResourceKey resource, string patch, PatchContext context = PatchContext.Modify)
+    private Result ApplyPatchOperation(Entity entity, PatchOperation patchOperation, PatchContext context = PatchContext.Modify)
     {
-        var acquireResult = _entityRegistry.AcquireEntity(resource);
-        if (acquireResult.IsFailure)
-        {
-            return Result.Fail($"Failed to acquire entity: {resource}")
-                .WithErrors(acquireResult);
-        }
-        var entity = acquireResult.Value;
-        Guard.IsNotNull(entity);
-
-        var applyResult = entity.EntityData.ApplyPatch(resource, patch, _schemaRegistry);
+        var applyResult = entity.ApplyPatchOperation(patchOperation, _schemaRegistry, context);
         if (applyResult.IsFailure)
         {
-            return Result.Fail($"Failed to apply patch to entity for resource: '{resource}'")
+            return Result.Fail($"Failed to apply entity patch for resource: '{entity.Resource}'")
                 .WithErrors(applyResult);
         }
         var patchSummary = applyResult.Value;
 
-        if (patchSummary.ComponentChangedMessages.Count > 0)
+        if (patchSummary.ComponentChangedMessage is not null)
         {
-            // Add the patch summary to the requested stack to support undo/redo
-            switch (context)
-            {
-                case PatchContext.Modify:
-                    // Execute: Add patch summary to the Undo stack and clear the Redo stack.
-                    entity.UndoStack.Push(patchSummary);
-                    entity.RedoStack.Clear();
-                    break;
-                case PatchContext.Undo:
-                    // Undo: Add patch summary to the Redo stack.
-                    entity.RedoStack.Push(patchSummary);
-                    break;
-                case PatchContext.Redo:
-                    // Undo: Add patch summary to the Undo stack.
-                    entity.UndoStack.Push(patchSummary);
-                    break;
-            }
-
             // Mark the entity as needing to be saved
-            _entityRegistry.MarkModifiedEntity(resource);
+            _entityRegistry.MarkModifiedEntity(entity.Resource);
 
-            // Notify listeners of the component changes resulting from applying the patch
-            foreach (var message in patchSummary.ComponentChangedMessages)
-            {
-                _messengerService.Send(message);
-            }
+            // Notify listeners about the component changes
+            _messengerService.Send(patchSummary.ComponentChangedMessage);
         }
 
         return Result.Ok();

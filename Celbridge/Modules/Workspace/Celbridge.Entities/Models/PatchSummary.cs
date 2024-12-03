@@ -1,7 +1,9 @@
+using Json.Patch;
+
 namespace Celbridge.Entities.Models;
 
 /// <summary>
-/// Describes the changes applied by an entity data patch.
-/// Includes the original JSON patch, a reverse JSON patch that undoes the changes, and a list of changes.
+/// Describes the changes applied by an entity patch operation.
+/// Includes the original patch operation, a reverse operation that undoes the changes, and a message object describing the change.
 /// </summary>
-public record PatchSummary(string Patch, string ReversePatch, List<ComponentChangedMessage> ComponentChangedMessages);
+public record PatchSummary(PatchOperation Operation, PatchOperation? ReverseOperation, ComponentChangedMessage? ComponentChangedMessage);

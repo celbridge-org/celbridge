@@ -12,6 +12,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     public int ComponentIndex { get; set; }
     public string PropertyPath { get; set; } = string.Empty;
     public string JsonValue { get; set; } = string.Empty;
+    public bool Insert { get; set; }
 
     public SetPropertyCommand(
         IWorkspaceWrapper workspaceWrapper)
@@ -23,7 +24,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var applyResult = entityService.SetProperty(Resource, ComponentIndex, PropertyPath, JsonValue);
+        var applyResult = entityService.SetProperty(Resource, ComponentIndex, PropertyPath, JsonValue, Insert);
 
         await Task.CompletedTask;
 
@@ -34,6 +35,10 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     // Static methods for scripting support.
     //
 
+    /// <summary>
+    /// Replaces an existing component property value at the specified path.
+    /// If the property value does not exist, the operation fails.
+    /// </summary>
     public static void SetProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
@@ -43,6 +48,24 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
             command.ComponentIndex = componentIndex;
             command.PropertyPath = propertyPath;
             command.JsonValue = jsonValue;
+            command.Insert = false;
+        });
+    }
+
+    /// <summary>
+    /// Inserts a new component property value at the specified path.
+    /// If the property value already exists, it is replaced.
+    /// </summary>
+    public static void InsertProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
+    {
+        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        commandService.Execute<ISetPropertyCommand>(command =>
+        {
+            command.Resource = resource;
+            command.ComponentIndex = componentIndex;
+            command.PropertyPath = propertyPath;
+            command.JsonValue = jsonValue;
+            command.Insert = true;
         });
     }
 }

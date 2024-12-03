@@ -1,3 +1,6 @@
+using Celbridge.Entities.Services;
+using Json.Patch;
+
 namespace Celbridge.Entities.Models;
 
 public class Entity
@@ -23,5 +26,42 @@ public class Entity
     {
         Resource = resource;
         EntityDataPath = entityDataPath;
+    }
+
+    public Result<PatchSummary> ApplyPatchOperation(PatchOperation patchOperation, ComponentSchemaRegistry schemaRegistry, PatchContext context = PatchContext.Modify)
+    {
+        var applyResult = EntityData.ApplyPatchOperation(Resource, patchOperation, schemaRegistry);
+        if (applyResult.IsFailure)
+        {
+            return Result<PatchSummary>.Fail($"Failed to apply component patch to for resource: '{Resource}'")
+                .WithErrors(applyResult);
+        }
+        var patchSummary = applyResult.Value;
+
+        if (patchSummary.ComponentChangedMessage is null)
+        {
+            // Patch applied successfully but no component changes were made.
+            return Result<PatchSummary>.Ok(patchSummary);
+        }
+
+        // Add the patch summary to the requested stack to support undo/redo
+        switch (context)
+        {
+            case PatchContext.Modify:
+                // Execute: Add patch summary to the Undo stack and clear the Redo stack.
+                UndoStack.Push(patchSummary);
+                RedoStack.Clear();
+                break;
+            case PatchContext.Undo:
+                // Undo: Add patch summary to the Redo stack.
+                RedoStack.Push(patchSummary);
+                break;
+            case PatchContext.Redo:
+                // Undo: Add patch summary to the Undo stack.
+                UndoStack.Push(patchSummary);
+                break;
+        }
+
+        return Result<PatchSummary>.Ok(patchSummary);
     }
 }
