@@ -47,6 +47,11 @@ public interface IEntityService
     Result RemoveComponent(ResourceKey resource, int componentIndex);
 
     /// <summary>
+    /// Copy an entity component from a source index to a destination index.
+    /// </summary>
+    Result CopyComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex);
+
+    /// <summary>
     /// Returns the indices of the entity components of the specified type.
     /// </summary>
     Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType);
@@ -77,7 +82,7 @@ public interface IEntityService
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// Fails if the property cannot be found.
     /// </summary>
-    Result<string> GetPropertyAsJSON(ResourceKey resource, int componentIndex, string propertyPath);
+    Result<string> GetPropertyAsJson(ResourceKey resource, int componentIndex, string propertyPath);
 
     /// <summary>
     /// Replaces the value of an existing entity property for a component.

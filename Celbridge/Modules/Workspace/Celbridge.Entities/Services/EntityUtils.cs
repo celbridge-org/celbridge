@@ -270,16 +270,8 @@ public static class EntityUtils
                     break;
                 }
 
-            case OperationType.Move:
-                reverseOperation = PatchOperation.Move(operation.Path, operation.From);
-                break;
-
-            case OperationType.Copy:
-                reverseOperation = PatchOperation.Remove(operation.Path);
-                break;
-
             default:
-                return Result<PatchOperation>.Fail("Unsupported patch operation");
+                return Result<PatchOperation>.Fail($"Patch operation is not supported: {operation.Op}");
         }
 
         return Result<PatchOperation>.Ok(reverseOperation);
