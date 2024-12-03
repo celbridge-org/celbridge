@@ -26,5 +26,6 @@ public static class ServiceConfiguration
         config.AddTransient<IAddComponentCommand, AddComponentCommand>();
         config.AddTransient<IRemoveComponentCommand, RemoveComponentCommand>();
         config.AddTransient<ICopyComponentCommand, CopyComponentCommand>();
+        config.AddTransient<IMoveComponentCommand, MoveComponentCommand>();
     }
 }

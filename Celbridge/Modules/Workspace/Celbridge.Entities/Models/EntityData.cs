@@ -81,7 +81,7 @@ public class EntityData
         }
     }
 
-    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentSchemaRegistry schemaRegistry)
+    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentSchemaRegistry schemaRegistry, long undoGroup)
     {
         try
         {
@@ -103,7 +103,7 @@ public class EntityData
             {
                 // The patch was valid, but did not result in any changes.
                 // This is indicated by returning null reverse patch and change message values.
-                var emptyPatchSummary = new PatchSummary(operation, null, null);
+                var emptyPatchSummary = new PatchSummary(operation, null, null, 0);
                 return Result<PatchSummary>.Ok(emptyPatchSummary);
             }
 
@@ -161,7 +161,7 @@ public class EntityData
             // The patched component has passed validation, so we can now update the entity.
             EntityJsonObject = patchedJsonObject;
 
-            var patchSummary = new PatchSummary(operation, reverseOperation, componentChange);
+            var patchSummary = new PatchSummary(operation, reverseOperation, componentChange, undoGroup);
             return Result<PatchSummary>.Ok(patchSummary);
         }
         catch (Exception ex)
