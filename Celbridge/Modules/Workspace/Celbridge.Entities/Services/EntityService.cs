@@ -218,7 +218,6 @@ public class EntityService : IEntityService, IDisposable
         Guard.IsNotNull(entity);
 
         // Apply a patch to remove the component at the specified index
-
         var operation = new RemoveComponentOperation("remove", $"/_components/{componentIndex}");
         var jsonPatch = JsonSerializer.Serialize(operation, SerializerOptions);
         jsonPatch = $"[{jsonPatch}]";
@@ -446,15 +445,13 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = entity.EntityData.ApplyPatch(resource, patch, _schemaRegistry);
         if (applyResult.IsFailure)
         {
-            return Result.Fail($"Failed to apply patch to entity for resource: {resource}")
+            return Result.Fail($"Failed to apply patch to entity for resource: '{resource}'")
                 .WithErrors(applyResult);
         }
         var patchSummary = applyResult.Value;
 
-        if (patchSummary.ComponentChangeMessages.Count > 0)
+        if (patchSummary.ComponentChangedMessages.Count > 0)
         {
-            _entityRegistry.MarkModifiedEntity(resource);
-
             // Add the patch summary to the requested stack to support undo/redo
             switch (context)
             {
@@ -473,8 +470,11 @@ public class EntityService : IEntityService, IDisposable
                     break;
             }
 
+            // Mark the entity as needing to be saved
+            _entityRegistry.MarkModifiedEntity(resource);
+
             // Notify listeners of the component changes resulting from applying the patch
-            foreach (var message in patchSummary.ComponentChangeMessages)
+            foreach (var message in patchSummary.ComponentChangedMessages)
             {
                 _messengerService.Send(message);
             }

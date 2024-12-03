@@ -3,24 +3,28 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Screenplay"
+      "const": "VoiceLine"
     },
     "_componentVersion": {
       "type": "integer",
       "const": 1
     },
-    "sceneTitle": {
+    "speaker": {
       "type": "string"
     },
-    "sceneDescription": {
+    "speakingTo": {
+      "type": "string"
+    },
+    "line": {
       "type": "string"
     }
   },
   "required": [
     "_componentType",
     "_componentVersion",
-    "sceneTitle",
-    "sceneDescription"
+    "speaker",
+    "speakingTo",
+    "line"
   ],
   "additionalProperties": false
 }
