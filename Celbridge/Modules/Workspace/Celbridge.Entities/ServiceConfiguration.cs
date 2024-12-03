@@ -20,8 +20,8 @@ public static class ServiceConfiguration
         // Register commands
         //
         config.AddTransient<ISetPropertyCommand, SetPropertyCommand>();
-        config.AddTransient<IUndoPropertyCommand, UndoPropertyCommand>();
-        config.AddTransient<IRedoPropertyCommand, RedoPropertyCommand>();
+        config.AddTransient<IUndoEntityCommand, UndoEntityCommand>();
+        config.AddTransient<IRedoEntityCommand, RedoEntityCommand>();
         config.AddTransient<IPrintPropertyCommand, PrintPropertyCommand>();
         config.AddTransient<IAddComponentCommand, AddComponentCommand>();
         config.AddTransient<IRemoveComponentCommand, RemoveComponentCommand>();

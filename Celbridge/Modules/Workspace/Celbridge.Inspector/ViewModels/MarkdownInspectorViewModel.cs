@@ -95,13 +95,10 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
     private void SetEditorMode(EditorMode editorMode)
     {
-        try
+        var setResult = _entityService.SetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, editorMode);
+        if (setResult.IsFailure)
         {
-            _entityService.SetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, editorMode);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.Message);
+            _logger.LogError(setResult.Error);
         }
     }
 
