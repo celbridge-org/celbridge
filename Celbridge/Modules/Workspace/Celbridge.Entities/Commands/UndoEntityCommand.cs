@@ -4,13 +4,13 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
 
-public class RedoPropertyCommand : CommandBase, IRedoPropertyCommand
+public class UndoEntityCommand : CommandBase, IUndoEntityCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey Resource { get; set; }
 
-    public RedoPropertyCommand(
+    public UndoEntityCommand(
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -20,7 +20,7 @@ public class RedoPropertyCommand : CommandBase, IRedoPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var applyResult = entityService.RedoProperty(Resource);
+        var applyResult = entityService.UndoEntity(Resource);
 
         await Task.CompletedTask;
 
@@ -31,10 +31,10 @@ public class RedoPropertyCommand : CommandBase, IRedoPropertyCommand
     // Static methods for scripting support.
     //
 
-    public static void RedoProperty(ResourceKey resource)
+    public static void UndoEntity(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IRedoPropertyCommand>(command =>
+        commandService.Execute<IUndoEntityCommand>(command =>
         {
             command.Resource = resource;
         });
