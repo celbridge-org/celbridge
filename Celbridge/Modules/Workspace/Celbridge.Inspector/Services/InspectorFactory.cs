@@ -34,6 +34,20 @@ public class InspectorFactory : IInspectorFactory
         }
     }
 
+    public Result<IInspector> CreateEntityInspector(ResourceKey resource)
+    {
+        try
+        {
+            var inspector = CreateInspector<EntityInspector, EntityInspectorViewModel>(resource);
+            return Result<IInspector>.Ok(inspector);
+        }
+        catch (Exception ex)
+        {
+            return Result<IInspector>.Fail($"An exception occurred when creating the entity inspector for resource: {resource}")
+                .WithException(ex);
+        }
+    }
+
     public Result<IInspector> CreateResourceInspector(ResourceKey resource)
     {
         try
@@ -97,4 +111,3 @@ public class InspectorFactory : IInspectorFactory
         return inspector;
     }
 }
-

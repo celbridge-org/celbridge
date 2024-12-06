@@ -17,27 +17,18 @@ public class UndoStack
 {
     private List<UndoStackItem> _operations = new();
 
-    public int GetUndoCount(UndoStackName undoStackName)
+    public int GetUndoCount()
     {
-        return _operations.Count(item =>
-            item.Operation == UndoStackOperation.Undo && 
-            item.Command.UndoStackName == undoStackName);
+        return _operations.Count(item => item.Operation == UndoStackOperation.Undo);
     }
 
-    public int GetRedoCount(UndoStackName undoStackName)
+    public int GetRedoCount()
     {
-        return _operations.Count(item =>
-            item.Operation == UndoStackOperation.Redo &&
-            item.Command.UndoStackName == undoStackName);
+        return _operations.Count(item => item.Operation == UndoStackOperation.Redo);
     }
 
     public Result PushUndoCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName == UndoStackName.None)
-        {
-            return Result.Fail($"Failed to push undo command. The 'None' undo stack may not contain commands.");
-        }
-
         if (_operations.Any(item => item.Command.CommandId == command.CommandId))
         {
             return Result.Fail($"Failed to push undo command because a command with id '{command.CommandId}' already exists.");
@@ -52,11 +43,6 @@ public class UndoStack
 
     public Result PushRedoCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName == UndoStackName.None)
-        {
-            return Result.Fail($"Failed to push redo command. The 'None' undo stack may not contain commands.");
-        }
-
         if (_operations.Any(item => item.Command.CommandId == command.CommandId))
         {
             return Result.Fail($"Failed to push undo command because a command with id '{command.CommandId}' already exists.");
@@ -69,13 +55,8 @@ public class UndoStack
         return Result.Ok();
     }
 
-    public Result<IEnumerable<IExecutableCommand>> PopCommands(UndoStackName undoStackName, UndoStackOperation operation)
+    public Result<IEnumerable<IExecutableCommand>> PopCommands(UndoStackOperation operation)
     {
-        if (undoStackName == UndoStackName.None)
-        {
-            return Result<IEnumerable<IExecutableCommand>>.Fail($"Failed to pop commands for '{operation}'. The 'None' undo stack may not contain commands.");
-        }
-
         var commands = new List<IExecutableCommand>();
 
         // Iterate in reverse to find and collect all commands with the same undo group id
@@ -83,8 +64,7 @@ public class UndoStack
         {
             var item = _operations[i];
 
-            if (item.Command.UndoStackName == undoStackName &&
-                item.Operation == operation)
+            if (item.Operation == operation)
             {
                 var undoGroupId = item.Command.UndoGroupId;
 
@@ -104,9 +84,6 @@ public class UndoStack
 
                     if (groupItem.Command.UndoGroupId == undoGroupId)
                     {
-                        // Something has gone badly wrong if commands with the same undo group id have ended up
-                        // in different undo stacks.
-                        Guard.IsTrue(groupItem.Command.UndoStackName == undoStackName);
                         Guard.IsTrue(groupItem.Operation == operation);
 
                         commands.Add(_operations[j].Command);
@@ -120,22 +97,15 @@ public class UndoStack
 
         if (commands.Count == 0)
         {
-            return Result<IEnumerable<IExecutableCommand>>.Fail($"No commands found in '{undoStackName}' undo stack.");
+            return Result<IEnumerable<IExecutableCommand>>.Fail($"No commands found in undo stack.");
         }
 
         return Result<IEnumerable<IExecutableCommand>>.Ok(commands);
     }
 
-    public Result ClearRedoCommands(UndoStackName undoStackName)
+    public Result ClearRedoCommands()
     {
-        if (undoStackName == UndoStackName.None)
-        {
-            return Result.Fail($"Failed to clear redo commands. The 'None' undo stack may not contain commands.");
-        }
-
-        _operations.RemoveAll(item => 
-            item.Operation == UndoStackOperation.Redo && 
-            item.Command.UndoStackName == undoStackName);
+        _operations.RemoveAll(item => item.Operation == UndoStackOperation.Redo);
 
         return Result.Ok();
     }

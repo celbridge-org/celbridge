@@ -16,10 +16,6 @@ namespace Celbridge.Entities.Services;
 
 public class EntityService : IEntityService, IDisposable
 {
-    public const string ComponentConfigFolder = "ComponentConfig";
-    public const string SchemasFolder = "Schemas";
-    public const string PrototypesFolder = "Prototypes";
-
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EntityService> _logger;
     private readonly IMessengerService _messengerService;
@@ -123,7 +119,7 @@ public class EntityService : IEntityService, IDisposable
         return relativePath;
     }
 
-    public async Task<Result> SaveModifiedEntities()
+    public async Task<Result> SaveEntitiesAsync()
     {
         return await _entityRegistry.SaveModifiedEntities();
     }
@@ -182,6 +178,8 @@ public class EntityService : IEntityService, IDisposable
                 .WithErrors(applyResult);
         }
 
+        _logger.LogDebug($"Added entity component at '{componentIndex}' for resource '{resource}'");
+
         return Result.Ok();
     }
 
@@ -208,6 +206,8 @@ public class EntityService : IEntityService, IDisposable
             return Result.Fail($"Failed to apply patch to remove entity component at index '{componentIndex}' for resource: {resource}")
                 .WithErrors(applyResult);
         }
+
+        _logger.LogDebug($"Removed entity component at '{componentIndex}' for resource '{resource}'");
 
         return Result.Ok();
     }
@@ -252,6 +252,8 @@ public class EntityService : IEntityService, IDisposable
             return Result.Fail($"Failed to apply patch to add component to entity: {resource}")
                 .WithErrors(applyResult);
         }
+
+        _logger.LogDebug($"Copied entity component from '{sourceComponentIndex}' to '{destComponentIndex}' for resource '{resource}'");
 
         return Result.Ok();
     }
@@ -310,12 +312,69 @@ public class EntityService : IEntityService, IDisposable
                 .WithErrors(applyResult);
         }
 
+        _logger.LogDebug($"Moved entity component from '{sourceComponentIndex}' to '{destComponentIndex}' for resource '{resource}'");
+
         return Result.Ok();
     }
 
     public Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType)
     {
         return _entityRegistry.GetComponentsOfType(resourceKey, componentType);
+    }
+
+    public Result<int> GetComponentCount(ResourceKey resource)
+    {
+        // Acquire the entity for the specified resource
+
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result<int>.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+
+        // Get the component count
+
+        return entity.EntityData.GetComponentCount();
+    }
+
+    public Result<ComponentInfo> GetComponentInfo(ResourceKey resource, int componentIndex)
+    {
+        // Acquire the entity for the specified resource
+
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result<ComponentInfo>.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+
+        // Get the component type
+
+        var componentTypePointer = JsonPointer.Create("_components", componentIndex, "_componentType");
+        var getTypeResult = entity.EntityData.GetProperty<string>(componentTypePointer);
+        if (getTypeResult.IsFailure)
+        {
+            return Result<ComponentInfo>.Fail($"Failed to get component type for component at index '{componentIndex}' for resource: {resource}")
+                .WithErrors(getTypeResult);
+        }
+        var componentType = getTypeResult.Value;
+
+        // Get the component schema
+
+        var getSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
+        if (getSchemaResult.IsFailure)
+        {
+            return Result<ComponentInfo>.Fail($"Failed to get schema for component type: {componentType}")
+                .WithErrors(getSchemaResult);
+        }
+        var componentSchema = getSchemaResult.Value;
+
+        // Return the component info
+
+        return Result<ComponentInfo>.Ok(componentSchema.ComponentInfo);
     }
 
     public T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull
@@ -433,8 +492,11 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = ApplyPatchOperation(entity, operation, 0);
         if (applyResult.IsFailure)
         {
-            return Result.Fail($"Failed to apply entity patch for resource: {resource}");
+            return Result.Fail($"Failed to apply entity patch for resource: {resource}")
+                .WithErrors(applyResult);
         }
+
+        _logger.LogDebug($"Set property '{propertyPath}' for resource '{resource}'");
 
         return Result.Ok();
     }
@@ -496,6 +558,8 @@ public class EntityService : IEntityService, IDisposable
             return UndoEntity(resource);
         }
 
+        _logger.LogDebug($"Undo entity: {resource}");
+
         // Succeed and return true to indicate that a patch was undone.
         return Result<bool>.Ok(true);
     }
@@ -537,6 +601,8 @@ public class EntityService : IEntityService, IDisposable
         {
             return RedoEntity(resource);
         }
+
+        _logger.LogDebug($"Redo entity: {resource}");
 
         // Succeed and return true to indicate that a patch was undone.
         return Result<bool>.Ok(true);
@@ -580,6 +646,8 @@ public class EntityService : IEntityService, IDisposable
             // Notify listeners about the component changes
             _messengerService.Send(patchSummary.ComponentChangedMessage);
         }
+
+        _logger.LogDebug($"Modified entity: {patchSummary.ComponentChangedMessage}");
 
         return Result.Ok();
     }

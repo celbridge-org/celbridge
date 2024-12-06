@@ -12,7 +12,7 @@ public interface IEntityService
 
     /// <summary>
     /// Returns the absolute path of the Entity Data file for a resource.
-    /// The path will be generated regardless of whether the resource or Entity Data file actually exist.
+    /// A path will be generated regardless of whether the resource or Entity Data file actually exist.
     /// </summary>
     string GetEntityDataPath(ResourceKey resource);
 
@@ -24,7 +24,7 @@ public interface IEntityService
     /// <summary>
     /// Saves all modified entities to disk asynchronously.
     /// </summary>
-    Task<Result> SaveModifiedEntities();
+    Task<Result> SaveEntitiesAsync();
 
     /// <summary>
     /// Move the entity data file for a resource, if one exists, to a new resource location.
@@ -32,7 +32,7 @@ public interface IEntityService
     Result MoveEntityDataFile(ResourceKey sourceResource, ResourceKey destResource);
 
     /// <summary>
-    /// Copy the entity data file for a resource, if one exists, to a new resource location.
+    /// Copy the Entity Data file for a resource, if one exists, to a new resource location.
     /// </summary>
     Result CopyEntityDataFile(ResourceKey sourceResource, ResourceKey destResource);
 
@@ -59,12 +59,22 @@ public interface IEntityService
     /// <summary>
     /// Returns the indices of the entity components of the specified type.
     /// </summary>
-    Result<List<int>> GetComponentsOfType(ResourceKey resourceKey, string componentType);
+    Result<List<int>> GetComponentsOfType(ResourceKey resource, string componentType);
+
+    /// <summary>
+    /// Returns the number of components in the entity for a resource.
+    /// </summary>
+    Result<int> GetComponentCount(ResourceKey resource);
+
+    /// <summary>
+    /// Returns a ComponentInfo object describing the component at the specified index.
+    /// </summary>
+    Result<ComponentInfo> GetComponentInfo(ResourceKey resource, int componentIndex);
 
     /// <summary>
     /// Gets the value of a property from a component.
     /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Returns a default value if the property cannot be found.
+    /// Returns a default value if the component or property cannot be found.
     /// </summary>
     T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull;
 
@@ -83,7 +93,7 @@ public interface IEntityService
     Result<T> GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath) where T : notnull;
 
     /// <summary>
-    /// Gets the value of a property from a component. The value is returned as a JSON encoded string.
+    /// Gets the value of a property from a component, returned as a JSON encoded string.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// Fails if the property cannot be found.
     /// </summary>
@@ -104,13 +114,14 @@ public interface IEntityService
     Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue, bool insert = false) where T : notnull;
 
     /// <summary>
-    /// Undo the most recent entity change for a resource.
+    /// Attempt to undo the most recent entity change for a resource.
+    /// Returns false if there was no operation on the undo stack to undo.
     /// </summary>
     Result<bool> UndoEntity(ResourceKey resource);
 
     /// <summary>
-    /// Redo the most recently undone entity change for a resource.
+    /// Attempt to redo the most recently undone entity change for a resource.
+    /// Returns false if there was no operation on the redo stack to redo.
     /// </summary>
     Result<bool> RedoEntity(ResourceKey resource);
 }
-

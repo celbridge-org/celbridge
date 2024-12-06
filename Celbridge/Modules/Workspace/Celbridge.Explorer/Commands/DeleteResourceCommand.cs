@@ -9,8 +9,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
-    public override UndoStackName UndoStackName => UndoStackName.Explorer;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }
 

@@ -228,4 +228,39 @@ public sealed partial class WorkspacePage : Page
             ExitFocusModeButton.Visibility = Visibility.Collapsed;
         }
     }
+
+    private void Panel_GotFocus(object sender, RoutedEventArgs e)
+    {
+        FrameworkElement? frameworkElement = sender as FrameworkElement;
+        if (frameworkElement is not null)
+        {
+            var panelName = frameworkElement?.Name;
+            if (!string.IsNullOrEmpty(panelName))
+            {
+                SetActivePanel(panelName);
+            }
+        }
+    }
+
+    private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        FrameworkElement? frameworkElement = sender as FrameworkElement;
+        if (frameworkElement is not null)
+        {
+            var panelName = frameworkElement?.Name;
+            if (!string.IsNullOrEmpty(panelName))
+            {
+                SetActivePanel(panelName);
+            }
+        }
+    }
+
+    private void SetActivePanel(string panelName)
+    {
+        string trimmed = panelName.Replace("Panel", string.Empty);
+        if (Enum.TryParse<WorkspacePanel>(trimmed, out var panel))
+        {
+            ViewModel.SetActivePanel(panel);
+        }
+    }
 }

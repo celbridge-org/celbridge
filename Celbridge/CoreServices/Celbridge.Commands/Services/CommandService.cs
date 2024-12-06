@@ -98,11 +98,8 @@ public class CommandService : ICommandService
 
     public Result EnqueueCommand(IExecutableCommand command)
     {
-        if (command.UndoStackName != UndoStackName.None)
-        {
-            // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
-            _undoStack.ClearRedoCommands(command.UndoStackName);
-        }
+        // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
+        _undoStack.ClearRedoCommands();
 
         return EnqueueCommandInternal(command, CommandExecutionMode.Execute);
     }
@@ -138,38 +135,37 @@ public class CommandService : ICommandService
         }
     }
 
-    public UndoStackName ActiveUndoStack { get; set; } = UndoStackName.None;
-
-    public bool IsUndoStackEmpty(UndoStackName undoStackName)
+    public bool IsUndoStackEmpty()
     {
         lock (_lock)
         {
-            return _undoStack.GetUndoCount(undoStackName) == 0;
+            return _undoStack.GetUndoCount() == 0;
         }
     }
 
-    public bool IsRedoStackEmpty(UndoStackName undoStackName)
+    public bool IsRedoStackEmpty()
     {
         lock (_lock)
         {
-            return _undoStack.GetRedoCount(undoStackName) == 0;
+            return _undoStack.GetRedoCount() == 0;
         }
     }
 
-    public Result Undo(UndoStackName undoStackName)
+    public Result<bool> Undo()
     {
         lock (_lock)
         {
-            if (IsUndoStackEmpty(undoStackName))
+            if (IsUndoStackEmpty())
             {
-                return Result.Fail($"Undo stack '{undoStackName}' is empty");
+                return Result<bool>.Ok(false);
             }
 
             // Pop next command(s) from the undo queue
-            var popResult = _undoStack.PopCommands(undoStackName, UndoStackOperation.Undo);
+            var popResult = _undoStack.PopCommands(UndoStackOperation.Undo);
             if (popResult.IsFailure)
             {
-                return popResult;
+                return Result<bool>.Fail("Failed to pop command from undo stack")
+                    .WithErrors(popResult);
             }
             var commandList = popResult.Value;
 
@@ -179,28 +175,30 @@ public class CommandService : ICommandService
                 var enqueueResult = EnqueueCommandInternal(command, CommandExecutionMode.Undo);
                 if (enqueueResult.IsFailure)
                 {
-                    return enqueueResult;
+                    return Result<bool>.Fail("Failed to enqueue popped undo command")
+                        .WithErrors(enqueueResult);
                 }
             }
         }
 
-        return Result.Ok();
+        return Result<bool>.Ok(true);
     }
 
-    public Result Redo(UndoStackName undoStackName)
+    public Result<bool> Redo()
     {
         lock (_lock)
         {
-            if (IsRedoStackEmpty(undoStackName))
+            if (IsRedoStackEmpty())
             {
-                return Result.Fail($"Redo stack '{undoStackName}' is empty");
+                return Result<bool>.Ok(false);
             }
 
             // Pop next command(s) from the redo queue
-            var popResult = _undoStack.PopCommands(undoStackName, UndoStackOperation.Redo);
+            var popResult = _undoStack.PopCommands(UndoStackOperation.Redo);
             if (popResult.IsFailure)
             {
-                return popResult;
+                return Result<bool>.Fail("Failed to pop command from redo stack")
+                    .WithErrors(popResult);
             }
             var commandList = popResult.Value;
 
@@ -210,55 +208,10 @@ public class CommandService : ICommandService
                 var enqueueResult = EnqueueCommandInternal(command, CommandExecutionMode.Redo);
                 if (enqueueResult.IsFailure)
                 {
-                    return enqueueResult;
+                    return Result<bool>.Fail("Failed to enqueue popped undo command")
+                        .WithErrors(enqueueResult);
                 }
             }
-        }
-
-        return Result.Ok();
-    }
-
-    public Result<bool> TryUndo()
-    {
-        UndoStackName undoStackName = ActiveUndoStack;
-        if (undoStackName == UndoStackName.None)
-        {
-            return Result<bool>.Ok(false);
-        }
-                
-        if (IsUndoStackEmpty(undoStackName))
-        {
-            return Result<bool>.Ok(false);
-        }
-
-        var undoResult = Undo(undoStackName);
-        if (undoResult.IsFailure)
-        {
-            return Result<bool>.Fail($"Failed to undo using undo stack '{ActiveUndoStack}'")
-                .WithErrors(undoResult);
-        }
-
-        return Result<bool>.Ok(true);
-    }
-
-    public Result<bool> TryRedo()
-    {
-        UndoStackName undoStackName = ActiveUndoStack;
-        if (undoStackName == UndoStackName.None)
-        {
-            return Result<bool>.Ok(false);
-        }
-
-        if (IsRedoStackEmpty(undoStackName))
-        {
-            return Result<bool>.Ok(false);
-        }
-
-        var redoResult = Redo(undoStackName);
-        if (redoResult.IsFailure)
-        {
-            return Result<bool>.Fail($"Failed to redo using undo stack '{ActiveUndoStack}'")
-                .WithErrors(redoResult);
         }
 
         return Result<bool>.Ok(true);
@@ -353,7 +306,7 @@ public class CommandService : ICommandService
 
                             if (executeResult.IsSuccess)
                             {
-                                if (command.UndoStackName != UndoStackName.None)
+                                if (command.CommandFlags.HasFlag(CommandFlags.Undoable))
                                 {
                                     _undoStack.PushUndoCommand(command);
                                 }

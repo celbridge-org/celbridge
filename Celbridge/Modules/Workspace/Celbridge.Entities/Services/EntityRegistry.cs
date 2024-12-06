@@ -376,7 +376,7 @@ public class EntityRegistry
     {
         try
         {
-            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityService.ComponentConfigFolder);
+            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConstants.ComponentConfigFolder);
             var jsonFile = await configFolder.GetFileAsync(DefaultComponentsFile);
 
             var content = await FileIO.ReadTextAsync(jsonFile);

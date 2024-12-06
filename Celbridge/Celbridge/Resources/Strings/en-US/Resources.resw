@@ -390,4 +390,16 @@
   <data name="InspectorPanel_OpenDocumentTooltip" xml:space="preserve">
     <value>Open document</value>
   </data>
+  <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
+    <value>Add a new component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Add" xml:space="preserve">
+    <value>Add a new component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Delete" xml:space="preserve">
+    <value>Delete the component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Duplicate" xml:space="preserve">
+    <value>Duplicate the component</value>
+  </data>
 </root>

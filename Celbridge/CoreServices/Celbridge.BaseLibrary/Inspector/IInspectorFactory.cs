@@ -14,4 +14,9 @@ public interface IInspectorFactory
     /// Creates an inspector based on the resource type.
     /// </summary>
     Result<IInspector> CreateResourceInspector(ResourceKey resource);
+
+    /// <summary>
+    /// Creates an enity inspector for a resource.
+    /// </summary>
+    Result<IInspector> CreateEntityInspector(ResourceKey resource);
 }

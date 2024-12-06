@@ -30,4 +30,9 @@ public interface IUtilityService
     /// Deletes old files in the specified folder that start with the specified prefix.
     /// </summary>
     Result DeleteOldFiles(string folderPath, string filePrefix, int maxFilesToKeep);
+
+    /// <summary>
+    /// Converts a hex color string to an ARGB tuple.
+    /// </summary>
+    public (byte a, byte r, byte g, byte b) ColorFromHex(string hex);
 }
