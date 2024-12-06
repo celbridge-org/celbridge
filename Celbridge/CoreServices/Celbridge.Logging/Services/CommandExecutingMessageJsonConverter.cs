@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -30,7 +30,6 @@ public class CommandExecutingMessageJsonConverter : JsonConverter<CommandExecuti
         }
 
         outputJO.Add("_CommandId", JToken.FromObject(command.CommandId, serializer));
-        outputJO.Add("_UndoStack", JToken.FromObject(command.UndoStackName, serializer));
         outputJO.Add("_UndoGroupId", JToken.FromObject(command.UndoGroupId, serializer));
         outputJO.Add("_CommandFlags", JToken.FromObject(command.CommandFlags, serializer));
         outputJO.Add("_Source", JToken.FromObject(command.ExecutionSource, serializer));

@@ -12,8 +12,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override UndoStackName UndoStackName => UndoStackName.Explorer;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
 
     public ResourceKey SourceResource { get; set; }
     public ResourceKey DestResource { get; set; }

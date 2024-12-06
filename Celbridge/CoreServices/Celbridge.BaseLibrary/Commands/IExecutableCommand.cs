@@ -17,11 +17,6 @@ public interface IExecutableCommand
     EntityId UndoGroupId { get; set; }
 
     /// <summary>
-    /// Name of the undo stack to add this command to after it executes.
-    /// </summary>
-    UndoStackName UndoStackName { get; }
-
-    /// <summary>
     /// Flags to configure behaviour when executing the command.
     /// </summary>
     CommandFlags CommandFlags { get; }

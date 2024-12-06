@@ -1,0 +1,128 @@
+﻿<UserControl
+    x:Class="Celbridge.Inspector.Views.EntityInspector"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Inspector.Views"
+    xmlns:models="using:Celbridge.Inspector.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    KeyDown="UserControl_KeyDown">
+
+  <UserControl.Resources>
+    <MenuFlyout x:Name="EntityContextMenu">
+
+      <MenuFlyoutItem Text="Add"
+                      Command="{x:Bind ViewModel.AddComponentCommand, Mode=OneWay}"
+                      CommandParameter="{Binding}"
+                      ToolTipService.ToolTip="{x:Bind ContextMenuAddTooltipString}">
+        <MenuFlyoutItem.Icon>
+          <SymbolIcon Symbol="Add"/>
+        </MenuFlyoutItem.Icon>
+      </MenuFlyoutItem>
+
+      <MenuFlyoutItem Text="Delete"
+                      Command="{x:Bind ViewModel.DeleteComponentCommand, Mode=OneWay}"
+                      CommandParameter="{Binding}"
+                      ToolTipService.ToolTip="{x:Bind ContextMenuDeleteTooltipString}">
+        <MenuFlyoutItem.Icon>
+          <FontIcon Glyph="&#xE107;"/>
+        </MenuFlyoutItem.Icon>
+      </MenuFlyoutItem>
+      <MenuFlyoutItem Text="Duplicate"
+                      Command="{x:Bind ViewModel.DuplicateComponentCommand, Mode=OneWay}"
+                      CommandParameter="{Binding}"
+                      ToolTipService.ToolTip="{x:Bind ContextMenuDuplicateTooltipString}">
+        <MenuFlyoutItem.Icon>
+          <SymbolIcon Symbol="Copy"/>
+        </MenuFlyoutItem.Icon>
+      </MenuFlyoutItem>
+    </MenuFlyout>
+    
+  </UserControl.Resources>
+
+  <StackPanel Orientation="Vertical">
+
+    <ListView x:Name="ComponentList"
+            SelectionMode="Single"
+            CanReorderItems="True"
+            ItemsSource="{x:Bind ViewModel.ComponentItems}"
+            SelectedIndex="{x:Bind ViewModel.SelectedComponentIndex, Mode=TwoWay}"
+            CanDragItems="True"
+            AllowDrop="True"
+            DragItemsStarting="ListView_DragItemsStarting"
+            DragItemsCompleted="ListView_DragItemsCompleted">
+
+      <ListView.ItemTemplate>
+        <DataTemplate x:DataType="models:ComponentItem">
+
+          <Grid HorizontalAlignment="Stretch"
+                Margin="0"
+                Padding="0"
+                Background="Transparent"
+                ContextFlyout="{StaticResource EntityContextMenu}">
+
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0"
+                  Margin="0 0 6 0">
+
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+
+              <!-- TextBlock is displayed when component name does not have focus -->
+              <TextBlock x:Name="DisplayTextBlock"
+                         Grid.Column="0"
+                         Text="{x:Bind ComponentType, Mode=TwoWay}"
+                         VerticalAlignment="Center"
+                         MinWidth="116"
+                         Tapped="ComponentItem_DisplayTextBlock_Tapped"
+                         Visibility="Visible"/>
+
+              <!-- TextBox is displayed when component name has focus -->
+              <TextBox x:Name="EditTextBox"
+                       Grid.Column="0"
+                       Text="{x:Bind ComponentType, Mode=TwoWay}"
+                       VerticalAlignment="Center"
+                       MinWidth="140"
+                       Visibility="Collapsed"
+                       LostFocus="ComponentItem_EditTextBox_LostFocus"
+                       KeyDown="ComponentItem_EditTextBox_KeyDown"/>
+
+              <!-- MenuButton is displayed when component name does not have focus -->
+              <Button x:Name="MenuButton"
+                      Grid.Column="1"
+                      Width="24"
+                      Height="24"
+                      Padding="0"
+                      BorderThickness="0"
+                      Opacity="0.5"
+                      Background="Transparent"
+                      Click="ComponentMenuButton_Click"
+                      Visibility="Visible">
+                <FontIcon FontFamily="Segoe MDL2 Assets"
+                          Glyph="&#xE70D;"
+                          FontSize="12"/>
+              </Button>
+            </Grid>
+
+          </Grid>
+        </DataTemplate>
+      </ListView.ItemTemplate>
+
+    </ListView>
+
+    <Button HorizontalAlignment="Center"
+            Margin="6"
+            Command="{x:Bind ViewModel.AddComponentCommand}"
+            ToolTipService.ToolTip="{x:Bind AddComponentTooltipString}">
+      <SymbolIcon Symbol="Add"/>
+    </Button>
+    
+  </StackPanel>
+
+</UserControl>

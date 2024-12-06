@@ -140,15 +140,15 @@ public sealed partial class MainPage : Page
         // All platforms redo shortcut
         if (control && shift && key == VirtualKey.Z)
         {
-            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            ViewModel.Redo();
             return true;
         }
 
 #if WINDOWS
-        // Windows only undo shortcut
+        // Windows only redo shortcut
         if (control && key == VirtualKey.Y)
         {
-            ViewModel.OnShortcutAction(ShortcutAction.Redo);
+            ViewModel.Redo();
             return true;
         }
 #endif
@@ -156,7 +156,7 @@ public sealed partial class MainPage : Page
         // All platforms undo shortcut
         if (control && key == VirtualKey.Z)
         {
-            ViewModel.OnShortcutAction(ShortcutAction.Undo);
+            ViewModel.Undo();
             return true;
         }
 

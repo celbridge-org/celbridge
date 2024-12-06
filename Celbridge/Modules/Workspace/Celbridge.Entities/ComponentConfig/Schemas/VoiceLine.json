@@ -26,6 +26,8 @@
     "speakingTo",
     "line"
   ],
-  "additionalProperties": false,
-  "allowMultipleComponents": true
+  "attributes": {
+    "allowMultipleComponents": true
+  },
+  "additionalProperties": false
 }

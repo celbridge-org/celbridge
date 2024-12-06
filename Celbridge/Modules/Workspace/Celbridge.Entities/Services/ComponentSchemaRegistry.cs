@@ -17,8 +17,8 @@ public class ComponentSchemaRegistry
             // to load files from the app package, but Package.Current.InstalledLocation appears
             // to work fine on both Windows and Skia+Gtk platforms.
             // https://platform.uno/docs/articles/features/file-management.html#support-for-storagefilegetfilefromapplicationuriasync
-            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityService.ComponentConfigFolder);
-            var schemasFolder = await configFolder.GetFolderAsync(EntityService.SchemasFolder);
+            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConstants.ComponentConfigFolder);
+            var schemasFolder = await configFolder.GetFolderAsync(EntityConstants.SchemasFolder);
 
             var jsonFiles = await schemasFolder.GetFilesAsync();
             foreach (var jsonFile in jsonFiles)

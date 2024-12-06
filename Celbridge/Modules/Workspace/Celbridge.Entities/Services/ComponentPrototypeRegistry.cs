@@ -14,8 +14,8 @@ public class ComponentPrototypeRegistry
         {
             List<string> jsonContents = new List<string>();
 
-            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityService.ComponentConfigFolder);
-            var prototypesFolder = await configFolder.GetFolderAsync(EntityService.PrototypesFolder);
+            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConstants.ComponentConfigFolder);
+            var prototypesFolder = await configFolder.GetFolderAsync(EntityConstants.PrototypesFolder);
 
             var prototypeFiles = await prototypesFolder.GetFilesAsync();
             foreach (var prototypeFile in prototypeFiles)

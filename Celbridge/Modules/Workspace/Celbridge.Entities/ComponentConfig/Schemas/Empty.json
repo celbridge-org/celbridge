@@ -3,7 +3,7 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Invalid"
+      "const": "Empty"
     },
     "_componentVersion": {
       "type": "integer",
@@ -14,6 +14,7 @@
     "_componentType",
     "_componentVersion"
   ],
-  "additionalProperties": false,
-  "allowMultipleComponents": true
+  "attributes": {
+    "allowMultipleComponents": true
+  }
 }

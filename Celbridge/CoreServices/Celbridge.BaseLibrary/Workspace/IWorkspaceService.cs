@@ -71,6 +71,11 @@ public interface IWorkspaceService
     IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
+    /// The most recently focussed workspace panel.
+    /// </summary>
+    WorkspacePanel ActivePanel { get; }
+
+    /// <summary>
     /// Toggle focus mode on/off by hiding and showing the workspace panels.
     /// </summary>
     void ToggleFocusMode();

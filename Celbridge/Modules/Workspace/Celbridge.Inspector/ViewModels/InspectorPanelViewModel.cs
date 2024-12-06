@@ -1,5 +1,6 @@
 using Celbridge.Explorer;
 using Celbridge.Messaging;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Inspector.ViewModels;
@@ -11,9 +12,11 @@ public partial class InspectorPanelViewModel : ObservableObject
 
     public InspectorPanelViewModel()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var messengerService = serviceProvider.GetRequiredService<IMessengerService>();
+        throw new NotImplementedException();
+    }
 
+    public InspectorPanelViewModel(IMessengerService messengerService)
+    {
         messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
     }
 

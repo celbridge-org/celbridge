@@ -20,11 +20,11 @@ public class UndoEntityCommand : CommandBase, IUndoEntityCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var applyResult = entityService.UndoEntity(Resource);
+        var undoResult = entityService.UndoEntity(Resource);
 
         await Task.CompletedTask;
 
-        return applyResult;
+        return undoResult;
     }
 
     //
