@@ -27,6 +27,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
+    private readonly IUndoService _undoService;
     private readonly MainMenuUtils _mainMenuUtils;
 
     public MainPageViewModel(
@@ -38,6 +39,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
         IEditorSettings editorSettings,
+        IUndoService undoService,
         MainMenuUtils mainMenuUtils)
     {
         _messengerService = messengerService;
@@ -48,6 +50,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
         _editorSettings = editorSettings;
+        _undoService = undoService;
         _mainMenuUtils = mainMenuUtils;
     }
 
@@ -98,10 +101,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             // No previous project to load, so navigate to the home page
             _ = NavigateToHomeAsync();
         }
-
-        // Todo: Support additional undo stacks when we add functionality to other panels
-        // Hard coding it to use the Project undo stack for now.
-        _commandService.ActiveUndoStack = UndoStackName.Explorer;
     }
 
     public void OnMainPage_Unloaded()
@@ -149,18 +148,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _navigationService.NavigateToPage(HomePageName);
     }
 
-    public void OnShortcutAction(ShortcutAction shortcutAction)
+    public void Undo()
     {
-        switch (shortcutAction)
-        {
-            case ShortcutAction.Undo:
-                _commandService.TryUndo();
-                break;
+        _undoService.Undo();
+    }
 
-            case ShortcutAction.Redo:
-                _commandService.TryRedo();
-                break;
-        }
+    public void Redo()
+    {
+        _undoService.Redo();
     }
 }
 

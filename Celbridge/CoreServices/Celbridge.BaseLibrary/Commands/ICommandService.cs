@@ -65,43 +65,26 @@ public interface ICommandService
     void RemoveCommandsOfType<T>() where T : notnull;
 
     /// <summary>
-    /// The undo stack associated with the most recently focussed UI element.
+    /// Returns true if the undo stack is empty.
     /// </summary>
-    UndoStackName ActiveUndoStack { get; set; }
+    bool IsUndoStackEmpty();
 
     /// <summary>
-    /// Returns true if the specified undo stack is empty.
+    /// Returns true if the redo stack is empty.
     /// </summary>
-    bool IsUndoStackEmpty(UndoStackName undoStackName);
+    bool IsRedoStackEmpty();
 
     /// <summary>
-    /// Returns true if the specified redo stack is empty.
-    /// </summary>
-    bool IsRedoStackEmpty(UndoStackName undoStackName);
-
-    /// <summary>
-    /// Pop the most recent command from the specified undo stack and execute it.
-    /// The call fails if no undo command was found in the redo stack.
-    /// </summary>
-    Result Undo(UndoStackName undoStackName);
-
-    /// <summary>
-    /// Attempt to pop the most recent undo command from the Active Undo Stack and execute it.
+    /// Attempt to pop the most recent undo command from the undo stack and execute it.
     /// The call will succeed whether an undo is performed or not (e.g. if the undo stack is empty).
-    /// The boolean return value indicates if an undo operation was actually performed.
+    /// The boolean return value indicates whether an undo operation was actually performed.
     /// </summary>
-    Result<bool> TryUndo();
+    Result<bool> Undo();
 
     /// <summary>
-    /// Pop the most recently undone command from the specified undo stack and execute it.
-    /// The call fails if no undone command was found in the undo stack.
-    /// </summary>
-    Result Redo(UndoStackName undoStackName);
-
-    /// <summary>
-    /// Attempt to pop the most recent redo command from the Active Undo Stack and execute it.
+    /// Attempts to pop the most recently undone command from the redo stack and execute it.
     /// The call will succeed whether a redo is performed or not (e.g. if the redo stack is empty).
-    /// The boolean return value indicates if a redo operation was actually performed.
+    /// The boolean return value indicates whether a redo operation was actually performed.
     /// </summary>
-    Result<bool> TryRedo();
+    Result<bool> Redo();
 }

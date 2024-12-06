@@ -1,6 +1,5 @@
 using Celbridge.Documents;
 using Celbridge.Inspector.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Windows.UI;
 
@@ -24,8 +23,6 @@ public partial class MarkdownInspector : UserControl, IInspector
         get => ViewModel.Resource; 
     }
 
-    private ComponentListView? _componentListView;
-
     // Code gen requires a parameterless constructor
     public MarkdownInspector()
     {
@@ -38,8 +35,6 @@ public partial class MarkdownInspector : UserControl, IInspector
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
         DataContext = viewModel;
-
-        Button? showComponentMockupButton = null;
 
         this.DataContext<MarkdownInspectorViewModel>((inspector, vm) => inspector
             .Content
@@ -109,74 +104,11 @@ public partial class MarkdownInspector : UserControl, IInspector
                                                     (
                                                         new SymbolIcon()
                                                             .Symbol(Symbol.DockLeft)
-                                                    ),
-                                                new Button()
-                                                    .Name(out showComponentMockupButton)
-                                                    .Margin(8, 2, 2, 2)
-                                                    .ToolTipService(null, null, "Add component")
-                                                    .Content
-                                                    (
-                                                        new SymbolIcon()
-                                                            .Symbol(Symbol.Add)
                                                     )
                                             )
                                     )
-                            ),
-                        new ComponentListView()
-                            .Name(out _componentListView)
+                            )
                     )
             ));
-
-        if (showComponentMockupButton is not null)
-        {
-            showComponentMockupButton.Click += ShowComponentMockupButton_Click;
-        }
     }
-
-    private void ShowComponentMockupButton_Click(object sender, RoutedEventArgs e)
-    {
-        var listViewItem = new ListViewItem()
-            .Content
-            (
-                new Grid()
-                    .ColumnDefinitions("*, 2*, auto")
-                    .Children
-                    (
-                        new TextBox()
-                            .Grid(column: 0)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                            .Text("VoiceLine"),
-                        new TextBlock()
-                            .Grid(column: 1)
-                            .Margin(8, 0, 0, 0)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                            .Text("Darth Vader: No, I am your father!"),
-                        new SymbolIcon()
-                            .Grid(column: 2)
-                            .Symbol(Symbol.Play)
-                            .ToolTipService(null, null, "Play using text to speech")
-                    )
-            );
-
-        Guard.IsNotNull(_componentListView);
-        _componentListView.AddItem(listViewItem);
-    }
-
-    private SolidColorBrush ColorFromHex(string hex)
-    {
-        hex = hex.TrimStart('#');
-
-        byte a = 255; // Default alpha value
-        byte r = byte.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
-        byte g = byte.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
-        byte b = byte.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
-
-        if (hex.Length == 8)
-        {
-            a = byte.Parse(hex.Substring(6, 2), System.Globalization.NumberStyles.HexNumber);
-        }
-
-        return new SolidColorBrush(Color.FromArgb(a, r, g, b));
-    }
-
 }

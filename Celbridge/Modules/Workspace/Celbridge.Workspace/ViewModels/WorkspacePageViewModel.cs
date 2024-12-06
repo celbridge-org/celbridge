@@ -200,5 +200,14 @@ public partial class WorkspacePageViewModel : ObservableObject
             _messengerService.Send(message);
         }
     }
+
+    public void SetActivePanel(WorkspacePanel panel)
+    {
+        if (_workspaceService.ActivePanel != panel)
+        {
+            // Setter is not exposed in public API
+            (_workspaceService as WorkspaceService)!.ActivePanel = panel;
+        }
+    }
 }
 

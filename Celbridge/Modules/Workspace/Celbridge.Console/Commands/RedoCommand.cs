@@ -4,12 +4,10 @@ namespace Celbridge.Console;
 
 public class RedoCommand : CommandBase, IRedoCommand
 {
-    public UndoStackName UndoStack { get; set; } = UndoStackName.Explorer;
-
     public override async Task<Result> ExecuteAsync()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Redo(UndoStack);
+        commandService.Redo();
 
         await Task.CompletedTask;
         return Result.Ok();
@@ -22,9 +20,6 @@ public class RedoCommand : CommandBase, IRedoCommand
     public static void Redo()
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IRedoCommand>(command =>
-        {
-            command.UndoStack = UndoStackName.Explorer;
-        });
+        commandService.Execute<IRedoCommand>();
     }
 }

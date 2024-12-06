@@ -104,6 +104,16 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
             inspectorElements.Add(resourceInspector);
         }
 
+        // Create the entity inspector for the selected resource
+        var entityInspectorResult = factory.CreateEntityInspector(resource);
+        if (entityInspectorResult.IsSuccess)
+        {
+            var entityInspector = entityInspectorResult.Value as UserControl;
+            Guard.IsNotNull(entityInspector);
+
+            inspectorElements.Add(entityInspector);
+        }
+
         _inspectorItemView.SetInspectorElements(inspectorElements);
 
         if (resource.ToString().Contains("screenplay", StringComparison.InvariantCultureIgnoreCase))

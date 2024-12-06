@@ -17,11 +17,6 @@ public abstract class CommandBase : IExecutableCommand
     public EntityId UndoGroupId { get; set; }
 
     /// <summary>
-    /// Name of the undo stack to add this command to after it executes.
-    /// </summary>
-    public virtual UndoStackName UndoStackName => Commands.UndoStackName.None;
-
-    /// <summary>
     /// Flags to configure behaviour when executing the command.
     /// </summary>
     public virtual CommandFlags CommandFlags => CommandFlags.None;

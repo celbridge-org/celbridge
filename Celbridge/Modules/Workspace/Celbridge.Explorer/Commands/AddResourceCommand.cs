@@ -7,8 +7,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
-    public override UndoStackName UndoStackName => UndoStackName.Explorer;
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;

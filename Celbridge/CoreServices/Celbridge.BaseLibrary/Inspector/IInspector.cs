@@ -8,5 +8,5 @@ public interface IInspector
     /// <summary>
     /// The resource to inspect.
     /// </summary>
-    public ResourceKey Resource { set; get; }
+    public ResourceKey Resource { get; set; }
 }
