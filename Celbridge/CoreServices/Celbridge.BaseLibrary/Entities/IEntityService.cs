@@ -11,6 +11,11 @@ public interface IEntityService
     Task<Result> InitializeAsync();
 
     /// <summary>
+    /// Returns the component type information for all registered component types.
+    /// </summary>
+    IReadOnlyDictionary<string, ComponentTypeInfo> ComponentTypes { get; }
+
+    /// <summary>
     /// Returns the absolute path of the Entity Data file for a resource.
     /// A path will be generated regardless of whether the resource or Entity Data file actually exist.
     /// </summary>
@@ -39,12 +44,17 @@ public interface IEntityService
     /// <summary>
     /// Add a component to the the entity for a resource at the specified index.
     /// </summary>
-    Result AddComponent(ResourceKey resource, string componentType, int componentIndex);
+    Result AddComponent(ResourceKey resource, int componentIndex, string componentType);
 
     /// <summary>
     /// Removes a component at the specified index from the entity for a resource.
     /// </summary>
     Result RemoveComponent(ResourceKey resource, int componentIndex);
+
+    /// <summary>
+    /// Replace the entity component for a resource at the specified index.
+    /// </summary>
+    Result ReplaceComponent(ResourceKey resource, int componentIndex, string componentType);
 
     /// <summary>
     /// Copy an entity component from a source index to a destination index.
@@ -67,9 +77,9 @@ public interface IEntityService
     Result<int> GetComponentCount(ResourceKey resource);
 
     /// <summary>
-    /// Returns a ComponentInfo object describing the component at the specified index.
+    /// Returns a ComponentTypeInfo object describing the component at the specified index.
     /// </summary>
-    Result<ComponentInfo> GetComponentInfo(ResourceKey resource, int componentIndex);
+    Result<ComponentTypeInfo> GetComponentTypeInfo(ResourceKey resource, int componentIndex);
 
     /// <summary>
     /// Gets the value of a property from a component.

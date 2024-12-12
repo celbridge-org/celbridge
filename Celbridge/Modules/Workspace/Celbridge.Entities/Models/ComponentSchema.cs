@@ -16,15 +16,15 @@ public class ComponentSchema
 
     public string ComponentType { get; }
     public int ComponentVersion { get; }
-    public ComponentInfo ComponentInfo { get; }
+    public ComponentTypeInfo ComponentTypeInfo { get; }
 
     private readonly JsonSchema _jsonSchema;
 
-    private ComponentSchema(string componentType, int componentVersion, ComponentInfo componentInfo, JsonSchema jsonSchema)
+    private ComponentSchema(string componentType, int componentVersion, ComponentTypeInfo componentTypeInfo, JsonSchema jsonSchema)
     {
         ComponentType = componentType;
         ComponentVersion = componentVersion;
-        ComponentInfo = componentInfo;
+        ComponentTypeInfo = componentTypeInfo;
         _jsonSchema = jsonSchema;
     }
 
@@ -107,7 +107,7 @@ public class ComponentSchema
                 }
             }
 
-            var componentInfo = new ComponentInfo(componentType, componentAttributes, componentProperties);
+            var componentTypeInfo = new ComponentTypeInfo(componentType, componentAttributes, componentProperties);
 
             // Create the JsonSchema object
 
@@ -117,7 +117,7 @@ public class ComponentSchema
                 return Result<ComponentSchema>.Fail($"Failed to parse schema for component type: '{componentType}'");
             }
 
-            var schema = new ComponentSchema(componentType, componentVersion, componentInfo, jsonSchema);
+            var schema = new ComponentSchema(componentType, componentVersion, componentTypeInfo, jsonSchema);
 
             return Result<ComponentSchema>.Ok(schema);
         }

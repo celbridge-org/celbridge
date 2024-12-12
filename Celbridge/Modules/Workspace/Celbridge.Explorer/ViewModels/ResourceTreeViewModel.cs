@@ -375,7 +375,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OnSelectedResourceChanged(ResourceKey resource)
     {
-        // Notify the ExplorerService that the selected resource has changed
+        // Notify listeners that the selected resource has changed
         var message = new SelectedResourceChangedMessage(resource);
         _messengerService.Send(message);
     }

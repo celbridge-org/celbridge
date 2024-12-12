@@ -353,7 +353,7 @@ public class ExplorerService : IExplorerService, IDisposable
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")
                 .WithErrors(openResult);
-}
+        }
 
         return Result.Ok();
     }
