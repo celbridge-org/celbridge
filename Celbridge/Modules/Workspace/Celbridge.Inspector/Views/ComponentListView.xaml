@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="Celbridge.Inspector.Views.EntityInspector"
+    x:Class="Celbridge.Inspector.Views.ComponentListView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Inspector.Views"
@@ -9,7 +9,7 @@
     KeyDown="UserControl_KeyDown">
 
   <UserControl.Resources>
-    <MenuFlyout x:Name="EntityContextMenu">
+    <MenuFlyout x:Name="ComponentContextMenu">
 
       <MenuFlyoutItem Text="Add"
                       Command="{x:Bind ViewModel.AddComponentCommand, Mode=OneWay}"
@@ -46,11 +46,12 @@
             SelectionMode="Single"
             CanReorderItems="True"
             ItemsSource="{x:Bind ViewModel.ComponentItems}"
-            SelectedIndex="{x:Bind ViewModel.SelectedComponentIndex, Mode=TwoWay}"
+            SelectedIndex="{x:Bind ViewModel.SelectedIndex, Mode=TwoWay}"
             CanDragItems="True"
             AllowDrop="True"
-            DragItemsStarting="ListView_DragItemsStarting"
-            DragItemsCompleted="ListView_DragItemsCompleted">
+            PreviewKeyDown="ComponentList_PreviewKeyDown"              
+            DragItemsStarting="ComponentList_DragItemsStarting"
+            DragItemsCompleted="ComponentList_DragItemsCompleted">
 
       <ListView.ItemTemplate>
         <DataTemplate x:DataType="models:ComponentItem">
@@ -59,7 +60,7 @@
                 Margin="0"
                 Padding="0"
                 Background="Transparent"
-                ContextFlyout="{StaticResource EntityContextMenu}">
+                ContextFlyout="{StaticResource ComponentContextMenu}">
 
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
@@ -77,7 +78,7 @@
               <!-- TextBlock is displayed when component name does not have focus -->
               <TextBlock x:Name="DisplayTextBlock"
                          Grid.Column="0"
-                         Text="{x:Bind ComponentType, Mode=TwoWay}"
+                         Text="{x:Bind ComponentType, Mode=OneWay}"
                          VerticalAlignment="Center"
                          MinWidth="116"
                          Tapped="ComponentItem_DisplayTextBlock_Tapped"
@@ -86,10 +87,12 @@
               <!-- TextBox is displayed when component name has focus -->
               <TextBox x:Name="EditTextBox"
                        Grid.Column="0"
-                       Text="{x:Bind ComponentType, Mode=TwoWay}"
+                       Text="{x:Bind ComponentType, Mode=OneWay}"
                        VerticalAlignment="Center"
                        MinWidth="140"
                        Visibility="Collapsed"
+                       TextChanged="EditTextBox_TextChanged"
+                       GotFocus="ComponentItem_EditTextBox_GotFocus"
                        LostFocus="ComponentItem_EditTextBox_LostFocus"
                        KeyDown="ComponentItem_EditTextBox_KeyDown"/>
 

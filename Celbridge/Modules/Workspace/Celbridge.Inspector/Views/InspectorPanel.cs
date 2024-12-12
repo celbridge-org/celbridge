@@ -16,7 +16,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     private ILogger<InspectorPanel> _logger;
     private IStringLocalizer _stringLocalizer;
 
-    private InspectorItemView _inspectorItemView;
+    private EntityEditor _entityEditor;
 
     public InspectorPanel()
     {
@@ -43,13 +43,13 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
                     .VerticalAlignment(VerticalAlignment.Center)
             );
 
-        _inspectorItemView = new InspectorItemView()
+        _entityEditor = new EntityEditor()
             .Margin(4)
             .Grid(row: 1);
 
         var panelGrid = new Grid()
             .RowDefinitions("40, *")
-            .Children(titleBar, _inspectorItemView);
+            .Children(titleBar, _entityEditor);
            
         //
         // Set the data context and page content
@@ -70,8 +70,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private void UpdateSelectedResource(ResourceKey resource)
     {
-        _inspectorItemView.ClearInspectorElements();
-        _inspectorItemView.ClearDetailElements();
+        _entityEditor.ClearComponentsPanel();
 
         if (resource.IsEmpty)
         {
@@ -104,26 +103,16 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
             inspectorElements.Add(resourceInspector);
         }
 
-        // Create the entity inspector for the selected resource
-        var entityInspectorResult = factory.CreateEntityInspector(resource);
-        if (entityInspectorResult.IsSuccess)
+        // Create the component list view for the selected resource
+        var componentListResult = factory.CreateComponentListView(resource);
+        if (componentListResult.IsSuccess)
         {
-            var entityInspector = entityInspectorResult.Value as UserControl;
+            var entityInspector = componentListResult.Value as UserControl;
             Guard.IsNotNull(entityInspector);
 
             inspectorElements.Add(entityInspector);
         }
 
-        _inspectorItemView.SetInspectorElements(inspectorElements);
-
-        if (resource.ToString().Contains("screenplay", StringComparison.InvariantCultureIgnoreCase))
-        {
-            var voiceLineView = new VoiceLineView();
-
-            List<UIElement> detailElements = new();
-            detailElements.Add(voiceLineView);
-
-            _inspectorItemView.SetDetailElements(detailElements);
-        }
+        _entityEditor.PopulateComponentsPanel(inspectorElements);
     }
 }

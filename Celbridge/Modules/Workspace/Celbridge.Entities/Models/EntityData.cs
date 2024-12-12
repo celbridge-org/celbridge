@@ -81,7 +81,7 @@ public class EntityData
         }
     }
 
-    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentSchemaRegistry schemaRegistry, long undoGroup)
+    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentSchemaRegistry schemaRegistry, long undoGroupId)
     {
         try
         {
@@ -161,7 +161,7 @@ public class EntityData
             // The patched component has passed validation, so we can now update the entity.
             EntityJsonObject = patchedJsonObject;
 
-            var patchSummary = new PatchSummary(operation, reverseOperation, componentChange, undoGroup);
+            var patchSummary = new PatchSummary(operation, reverseOperation, componentChange, undoGroupId);
             return Result<PatchSummary>.Ok(patchSummary);
         }
         catch (Exception ex)

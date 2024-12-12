@@ -16,7 +16,7 @@ public interface IInspectorFactory
     Result<IInspector> CreateResourceInspector(ResourceKey resource);
 
     /// <summary>
-    /// Creates an enity inspector for a resource.
+    /// Creates an entity component list view for a resource.
     /// </summary>
-    Result<IInspector> CreateEntityInspector(ResourceKey resource);
+    Result<IInspector> CreateComponentListView(ResourceKey resource);
 }

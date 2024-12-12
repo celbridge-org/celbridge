@@ -6,12 +6,15 @@ namespace Celbridge.Entities.Services;
 public class ComponentSchemaRegistry
 {
     private readonly Dictionary<string, ComponentSchema> _componentSchemas = new();
+    private readonly Dictionary<string, ComponentTypeInfo> _componentTypes = new();
+
+    public Dictionary<string, ComponentTypeInfo> ComponentTypes => _componentTypes;
 
     public async Task<Result> LoadComponentSchemasAsync()
     {
         try
         {
-            List<string> jsonContents = new List<string>();
+            // Load the component schemas from the app package
 
             // The Uno docs only discuss using StorageFile.GetFileFromApplicationUriAsync()
             // to load files from the app package, but Package.Current.InstalledLocation appears
@@ -19,13 +22,21 @@ public class ComponentSchemaRegistry
             // https://platform.uno/docs/articles/features/file-management.html#support-for-storagefilegetfilefromapplicationuriasync
             var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConstants.ComponentConfigFolder);
             var schemasFolder = await configFolder.GetFolderAsync(EntityConstants.SchemasFolder);
-
             var jsonFiles = await schemasFolder.GetFilesAsync();
+
             foreach (var jsonFile in jsonFiles)
             {
                 var content = await FileIO.ReadTextAsync(jsonFile);
 
                 AddComponentSchema(content);
+            }
+
+            // Populate the component types dictionary
+            foreach (var kv in _componentSchemas)
+            {
+                var componentType = kv.Key;
+                var componentSchema = kv.Value;
+                _componentTypes[componentType] = componentSchema.ComponentTypeInfo;
             }
 
             return Result.Ok();

@@ -11,24 +11,28 @@ using System.ComponentModel;
 
 namespace Celbridge.Inspector.ViewModels;
 
-public partial class EntityInspectorViewModel : InspectorViewModel
+public partial class ComponentListViewModel : InspectorViewModel
 {
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
+    private readonly IInspectorService _inspectorService;
 
     public ObservableCollection<ComponentItem> ComponentItems { get; } = new();
 
     [ObservableProperty]
-    private int _selectedComponentIndex;
+    private int _selectedIndex;
+
+    [ObservableProperty]
+    private bool _isEditingComponentType;
 
     // Code gen requires a parameterless constructor
-    public EntityInspectorViewModel()
+    public ComponentListViewModel()
     {
         throw new NotImplementedException();
     }
 
-    public EntityInspectorViewModel(
+    public ComponentListViewModel(
         ILogger<MarkdownInspectorViewModel> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
@@ -36,6 +40,7 @@ public partial class EntityInspectorViewModel : InspectorViewModel
         _logger = logger;
         _messengerService = messengerService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
+        _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
 
@@ -45,6 +50,9 @@ public partial class EntityInspectorViewModel : InspectorViewModel
     public void OnViewLoaded()
     {
         PopulateComponentList();
+
+        // Send a message to populate the component editor in the inspector
+        OnPropertyChanged(nameof(SelectedIndex)); 
     }
 
     public ICommand AddComponentCommand => new RelayCommand<object?>(AddComponent_Executed);
@@ -83,7 +91,7 @@ public partial class EntityInspectorViewModel : InspectorViewModel
         // Supress the refresh
         _supressRefreshCount = 1;
 
-        var addResult = _entityService.AddComponent(Resource, "Empty", addIndex);
+        var addResult = _entityService.AddComponent(Resource, addIndex, "Empty");
         if (addResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
@@ -178,16 +186,16 @@ public partial class EntityInspectorViewModel : InspectorViewModel
             return false;
         }
 
-        var getResults = _entityService.GetComponentInfo(Resource, duplicateIndex);
+        var getResults = _entityService.GetComponentTypeInfo(Resource, duplicateIndex);
         if (getResults.IsFailure)
         {
             _logger.LogError(getResults.Error);
             return false;
         }
 
-        var componentInfo = getResults.Value;
+        var componentTypeInfo = getResults.Value;
 
-        var allowMultipleComponents = componentInfo.GetBooleanAttribute("allowMultipleComponents");
+        var allowMultipleComponents = componentTypeInfo.GetBooleanAttribute("allowMultipleComponents");
 
         return allowMultipleComponents;
     }
@@ -219,6 +227,9 @@ public partial class EntityInspectorViewModel : InspectorViewModel
             PopulateComponentList();
             return;
         }
+
+        // Select the component in its new position
+        SelectedIndex = newIndex;
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
@@ -240,9 +251,16 @@ public partial class EntityInspectorViewModel : InspectorViewModel
 
     private void EntityInspectorViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(Resource))
+        if (e.PropertyName == nameof(SelectedIndex))
         {
-            // Todo: Update component list
+            var message = new SelectedComponentChangedMessage(SelectedIndex);
+            _messengerService.Send(message);
+
+            UpdateEditMode();
+        }
+        else if (e.PropertyName == nameof(IsEditingComponentType))
+        {
+            UpdateEditMode();
         }
     }
 
@@ -256,20 +274,20 @@ public partial class EntityInspectorViewModel : InspectorViewModel
         }
         var count = getCountResult.Value;
 
-        int previousIndex = SelectedComponentIndex;
+        int previousIndex = SelectedIndex;
 
         List<ComponentItem> componentItems = new();
         for (int i = 0; i < count; i++)
         {
-            var getComponentResult = _entityService.GetComponentInfo(Resource, i);
+            var getComponentResult = _entityService.GetComponentTypeInfo(Resource, i);
             if (getComponentResult.IsFailure)
             {
                 _logger.LogError(getComponentResult.Error);
                 return;
             }
-            var componentInfo = getComponentResult.Value;
+            var componentTypeInfo = getComponentResult.Value;
 
-            var componentType = componentInfo.ComponentType;
+            var componentType = componentTypeInfo.ComponentType;
             if (componentType == "Empty")
             {
                 componentType = string.Empty;
@@ -287,12 +305,59 @@ public partial class EntityInspectorViewModel : InspectorViewModel
 
         if (count == 0)
         {
-            SelectedComponentIndex = -1;
+            SelectedIndex = -1;
         }
         else
         {
-            SelectedComponentIndex = Math.Clamp(previousIndex, 0, count - 1);
-        
+            SelectedIndex = Math.Clamp(previousIndex, 0, count - 1);
         }
+    }
+
+    private void UpdateEditMode()
+    {
+        var mode = ComponentPanelMode.None;
+
+        if (SelectedIndex > -1)
+        {
+            if (IsEditingComponentType)
+            {
+                mode = ComponentPanelMode.ComponentType;
+            }
+            else
+            {
+                mode = ComponentPanelMode.ComponentValue;
+            }
+        }
+
+        _inspectorService.ComponentPanelMode = mode;
+
+        if (mode == ComponentPanelMode.ComponentType)
+        {
+            UpdateComponentTypeInput();
+        }
+    }
+
+    private void UpdateComponentTypeInput()
+    {
+        if (SelectedIndex < 0 || SelectedIndex >= ComponentItems.Count)
+        {
+            return;
+        }
+
+        var componentType = ComponentItems[SelectedIndex].ComponentType;
+
+        NotifyComponentTypeTextChanged(componentType);
+    }
+
+    public void NotifyComponentTypeTextChanged(string inputText)
+    {
+        var message = new ComponentTypeTextChangedMessage(inputText);
+        _messengerService.Send(message);
+    }
+
+    public void NotifyComponentTypeTextEntered()
+    {
+        var message = new ComponentTypeTextEnteredMessage();
+        _messengerService.Send(message);
     }
 }

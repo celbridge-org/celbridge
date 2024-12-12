@@ -30,7 +30,10 @@ public static class ServiceConfiguration
         config.AddTransient<ResourceNameInspectorViewModel>();
         config.AddTransient<WebInspectorViewModel>();
         config.AddTransient<MarkdownInspectorViewModel>();
-        config.AddTransient<EntityInspectorViewModel>();
+        config.AddTransient<ComponentListViewModel>();
+        config.AddTransient<EntityEditorViewModel>();
+        config.AddTransient<ComponentValueEditorViewModel>();
+        config.AddTransient<ComponentTypeEditorViewModel>();
     }
 
     public static Result Initialize()

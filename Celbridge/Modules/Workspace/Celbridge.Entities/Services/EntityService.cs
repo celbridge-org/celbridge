@@ -28,7 +28,7 @@ public class EntityService : IEntityService, IDisposable
     private readonly Dictionary<string, List<string>> _defaultComponents = new();
     private JsonSchema? _entitySchema;
 
-    private static long _undoGroup;
+    private static long _undoGroupId;
 
     public static JsonSerializerOptions SerializerOptions { get; } = new()
     {
@@ -37,6 +37,8 @@ public class EntityService : IEntityService, IDisposable
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+
+    public IReadOnlyDictionary<string, ComponentTypeInfo> ComponentTypes => _schemaRegistry.ComponentTypes;
 
     public EntityService(
         IServiceProvider serviceProvider,
@@ -92,11 +94,11 @@ public class EntityService : IEntityService, IDisposable
                     .WithErrors(loadPrototypesResult);
             }
 
-            var loadDefaultsResult = await _entityRegistry.Initialize(_entitySchema, _prototypeRegistry, _schemaRegistry);
-            if (loadDefaultsResult.IsFailure)
+            var initEntitiesResult = await _entityRegistry.Initialize(_entitySchema, _prototypeRegistry, _schemaRegistry);
+            if (initEntitiesResult.IsFailure)
             {
                 return Result.Fail("Failed to load file default components")
-                    .WithErrors(loadDefaultsResult);
+                    .WithErrors(initEntitiesResult);
             }
 
             return Result.Ok();
@@ -134,7 +136,12 @@ public class EntityService : IEntityService, IDisposable
         return _entityRegistry.CopyEntityDataFile(sourceResource, destResource);
     }
 
-    public Result AddComponent(ResourceKey resource, string componentType, int componentIndex)
+    public Result AddComponent(ResourceKey resource, int componentIndex, string componentType)
+    {
+        return AddComponent(resource, componentIndex, componentType, 0);
+    }
+
+    private Result AddComponent(ResourceKey resource, int componentIndex, string componentType, long undoGroupId)
     {
         // Acquire the entity for the specified resource
 
@@ -171,7 +178,7 @@ public class EntityService : IEntityService, IDisposable
         var componentPointer = JsonPointer.Create("_components", componentIndex);
         var patchOperation = PatchOperation.Add(componentPointer, prototype.JsonObject);
 
-        var applyResult = ApplyPatchOperation(entity, patchOperation, 0);
+        var applyResult = ApplyPatchOperation(entity, patchOperation, undoGroupId);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to add component to entity: {resource}")
@@ -184,6 +191,11 @@ public class EntityService : IEntityService, IDisposable
     }
 
     public Result RemoveComponent(ResourceKey resource, int componentIndex)
+    {
+        return RemoveComponent(resource, componentIndex, 0);
+    }
+
+    private Result RemoveComponent(ResourceKey resource, int componentIndex, long undoGroupId)
     {
         // Acquire the entity for the specified resource
 
@@ -200,7 +212,7 @@ public class EntityService : IEntityService, IDisposable
         var componentPointer = JsonPointer.Create("_components", componentIndex);
         var patchOperation = PatchOperation.Remove(componentPointer);
 
-        var applyResult = ApplyPatchOperation(entity, patchOperation, 0);
+        var applyResult = ApplyPatchOperation(entity, patchOperation, undoGroupId);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to remove entity component at index '{componentIndex}' for resource: {resource}")
@@ -208,6 +220,28 @@ public class EntityService : IEntityService, IDisposable
         }
 
         _logger.LogDebug($"Removed entity component at '{componentIndex}' for resource '{resource}'");
+
+        return Result.Ok();
+    }
+
+    public Result ReplaceComponent(ResourceKey resource, int componentIndex, string componentType)
+    {
+        // Assing a new undo group id so the operations are undone in a single step
+        _undoGroupId++;
+
+        // Insert a new component at the specified index
+        var addResult = AddComponent(resource, componentIndex, componentType, _undoGroupId);
+        if (addResult.IsFailure)
+        {
+            return Result.Fail($"Failed to add entity component '{componentType}' at index '{componentIndex}' for resource '{resource}'");
+        }
+
+        // Remove the component that was moved right in the list
+        var removeResult = RemoveComponent(resource, componentIndex + 1, _undoGroupId);
+        if (removeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to remove entity component at index '{componentIndex}' for resource '{resource}'");
+        }
 
         return Result.Ok();
     }
@@ -288,12 +322,12 @@ public class EntityService : IEntityService, IDisposable
         var sourceComponentNode = getComponentResult.Value;
 
         // Both operations have the same non-zero undo group, so they will be undone together
-        _undoGroup++;
+        _undoGroupId++;
 
         // Apply a patch operation to remove the source component
 
         var removeOperation = PatchOperation.Remove(sourceComponentPointer);
-        var removeResult = ApplyPatchOperation(entity, removeOperation, _undoGroup);
+        var removeResult = ApplyPatchOperation(entity, removeOperation, _undoGroupId);
         if (removeResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to remove source component from entity: {resource}")
@@ -305,7 +339,7 @@ public class EntityService : IEntityService, IDisposable
         var destComponentPointer = JsonPointer.Create("_components", destComponentIndex);
         var addOperation = PatchOperation.Add(destComponentPointer, sourceComponentNode);
 
-        var applyResult = ApplyPatchOperation(entity, addOperation, _undoGroup);
+        var applyResult = ApplyPatchOperation(entity, addOperation, _undoGroupId);
         if (removeResult.IsFailure)
         {
             return Result.Fail($"Failed to apply patch to add destination component to entity: {resource}")
@@ -339,14 +373,14 @@ public class EntityService : IEntityService, IDisposable
         return entity.EntityData.GetComponentCount();
     }
 
-    public Result<ComponentInfo> GetComponentInfo(ResourceKey resource, int componentIndex)
+    public Result<ComponentTypeInfo> GetComponentTypeInfo(ResourceKey resource, int componentIndex)
     {
         // Acquire the entity for the specified resource
 
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<ComponentInfo>.Fail($"Failed to acquire entity: {resource}")
+            return Result<ComponentTypeInfo>.Fail($"Failed to acquire entity: {resource}")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
@@ -357,7 +391,7 @@ public class EntityService : IEntityService, IDisposable
         var getTypeResult = entity.EntityData.GetProperty<string>(componentTypePointer);
         if (getTypeResult.IsFailure)
         {
-            return Result<ComponentInfo>.Fail($"Failed to get component type for component at index '{componentIndex}' for resource: {resource}")
+            return Result<ComponentTypeInfo>.Fail($"Failed to get component type for component at index '{componentIndex}' for resource: {resource}")
                 .WithErrors(getTypeResult);
         }
         var componentType = getTypeResult.Value;
@@ -367,14 +401,14 @@ public class EntityService : IEntityService, IDisposable
         var getSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
         if (getSchemaResult.IsFailure)
         {
-            return Result<ComponentInfo>.Fail($"Failed to get schema for component type: {componentType}")
+            return Result<ComponentTypeInfo>.Fail($"Failed to get schema for component type: {componentType}")
                 .WithErrors(getSchemaResult);
         }
         var componentSchema = getSchemaResult.Value;
 
         // Return the component info
 
-        return Result<ComponentInfo>.Ok(componentSchema.ComponentInfo);
+        return Result<ComponentTypeInfo>.Ok(componentSchema.ComponentTypeInfo);
     }
 
     public T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull
@@ -539,10 +573,10 @@ public class EntityService : IEntityService, IDisposable
         // Pop the next patch summary from the Undo stack and apply it to the entity
         var patchSummary = entity.UndoStack.Pop();
         var reversePatchOperation = patchSummary.ReverseOperation;
-        var undoGroup = patchSummary.UndoGroup;
+        var undoGroupId = patchSummary.UndoGroupId;
         Guard.IsNotNull(reversePatchOperation);
 
-        var applyResult = ApplyPatchOperation(entity, reversePatchOperation, undoGroup, PatchContext.Undo);
+        var applyResult = ApplyPatchOperation(entity, reversePatchOperation, undoGroupId, PatchContext.Undo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}")
@@ -551,9 +585,9 @@ public class EntityService : IEntityService, IDisposable
 
         // If the next patch summary in the Undo stack has the same UndoGroup, then undo it as well.
         // The easiest way to do this is to call UndoEntity recursively.
-        if (patchSummary.UndoGroup != 0 &&
+        if (patchSummary.UndoGroupId != 0 &&
             entity.UndoStack.Count != 0 &&
-            entity.UndoStack.Peek().UndoGroup == undoGroup)
+            entity.UndoStack.Peek().UndoGroupId == undoGroupId)
         {
             return UndoEntity(resource);
         }
@@ -584,10 +618,10 @@ public class EntityService : IEntityService, IDisposable
         // Pop the next patch summary from the Redo stack and apply it to the entity
         var patchSummary = entity.RedoStack.Pop();
         var reverseOperation = patchSummary.ReverseOperation;
-        var undoGroup = patchSummary.UndoGroup;
+        var undoGroupId = patchSummary.UndoGroupId;
         Guard.IsNotNull(reverseOperation);
 
-        var applyResult = ApplyPatchOperation(entity, reverseOperation, undoGroup, PatchContext.Redo);
+        var applyResult = ApplyPatchOperation(entity, reverseOperation, undoGroupId, PatchContext.Redo);
         if (applyResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to apply redo patch to resource: {resource}");
@@ -595,9 +629,9 @@ public class EntityService : IEntityService, IDisposable
 
         // If the next patch summary in the Redo stack has the same UndoGroup, then redo it as well.
         // The easiest way to do this is to call RedoEntity recursively.
-        if (patchSummary.UndoGroup != 0 &&
+        if (patchSummary.UndoGroupId != 0 &&
             entity.RedoStack.Count != 0 &&
-            entity.RedoStack.Peek().UndoGroup == undoGroup)
+            entity.RedoStack.Peek().UndoGroupId == undoGroupId)
         {
             return RedoEntity(resource);
         }
@@ -620,7 +654,7 @@ public class EntityService : IEntityService, IDisposable
         _entityRegistry.CleanupEntities();
     }
 
-    private Result ApplyPatchOperation(Entity entity, PatchOperation patchOperation, long undoGroup, PatchContext context = PatchContext.Modify)
+    private Result ApplyPatchOperation(Entity entity, PatchOperation patchOperation, long undoGroupId, PatchContext context = PatchContext.Modify)
     {
         if (patchOperation.Op == OperationType.Unknown ||
             patchOperation.Op == OperationType.Copy ||
@@ -630,7 +664,7 @@ public class EntityService : IEntityService, IDisposable
             return Result.Fail($"Patch operation is not supported: {patchOperation.Op}");
         }
 
-        var applyResult = entity.ApplyPatchOperation(patchOperation, _schemaRegistry, undoGroup, context);
+        var applyResult = entity.ApplyPatchOperation(patchOperation, _schemaRegistry, undoGroupId, context);
         if (applyResult.IsFailure)
         {
             return Result.Fail($"Failed to apply entity patch for resource: '{entity.Resource}'")

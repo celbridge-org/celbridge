@@ -3,7 +3,7 @@ namespace Celbridge.Entities;
 /// <summary>
 /// Describes the attributes and properties of a component type.
 /// </summary>
-public record ComponentInfo(string ComponentType, IReadOnlyDictionary<string, string> Attributes, IReadOnlyList<ComponentPropertyInfo> Properties)
+public record ComponentTypeInfo(string ComponentType, IReadOnlyDictionary<string, string> Attributes, IReadOnlyList<ComponentPropertyInfo> Properties)
 {
     /// <summary>
     /// Gets a boolean attribute value.
