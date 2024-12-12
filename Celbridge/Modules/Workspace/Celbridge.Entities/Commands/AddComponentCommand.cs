@@ -22,7 +22,7 @@ public class AddComponentCommand : CommandBase, IAddComponentCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var addResult = entityService.AddComponent(Resource, ComponentType, ComponentIndex);
+        var addResult = entityService.AddComponent(Resource, ComponentIndex, ComponentType);
         if (addResult.IsFailure)
         {
             return Result.Fail($"Failed to add component of type '{ComponentType}' to entity for resource '{Resource}' at index '{ComponentIndex}'.")

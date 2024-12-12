@@ -34,11 +34,11 @@ public class InspectorFactory : IInspectorFactory
         }
     }
 
-    public Result<IInspector> CreateEntityInspector(ResourceKey resource)
+    public Result<IInspector> CreateComponentListView(ResourceKey resource)
     {
         try
         {
-            var inspector = CreateInspector<EntityInspector, EntityInspectorViewModel>(resource);
+            var inspector = CreateInspector<ComponentListView, ComponentListViewModel>(resource);
             return Result<IInspector>.Ok(inspector);
         }
         catch (Exception ex)
