@@ -5,7 +5,6 @@ using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using System.Collections.ObjectModel;
-using Uno.Extensions.Specialized;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -85,7 +84,21 @@ public partial class ComponentListView : UserControl, IInspector
             return;
         }
 
-        if (e.Key == VirtualKey.Enter)
+        if (e.Key == VirtualKey.D)
+        {
+            // Duplicate selected component keyboard shortcut
+
+            var controlDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
+            if (controlDown)
+            {
+                var componentItem = ComponentList.SelectedItem as ComponentItem;
+                if (componentItem is not null)
+                {
+                    ViewModel.DuplicateComponentCommand.Execute(componentItem);
+                }
+            }
+        }
+        else if (e.Key == VirtualKey.Enter)
         {
             var shiftDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(CoreVirtualKeyStates.Down);
             if (shiftDown)

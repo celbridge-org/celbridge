@@ -80,7 +80,7 @@ public class ComponentSchema
                 }
             }
 
-            var componentProperties = new List<ComponentPropertyInfo>();
+            var componentProperties = new List<ComponentPropertyTypeInfo>();
             if (root.TryGetProperty(PropertiesKey, out JsonElement propertiesElement))
             {
                 foreach (var propertyElement in propertiesElement.EnumerateObject())
@@ -102,7 +102,7 @@ public class ComponentSchema
                         }
                     }
 
-                    var propertyInfo = new ComponentPropertyInfo(propertyName, propertyType, propertyAttributes);
+                    var propertyInfo = new ComponentPropertyTypeInfo(propertyName, propertyType, propertyAttributes);
                     componentProperties.Add(propertyInfo);
                 }
             }

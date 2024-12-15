@@ -3,7 +3,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Text;
 
 namespace Celbridge.Inspector.ViewModels;
 
@@ -16,8 +15,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _componentType = string.Empty;
 
-    [ObservableProperty]
-    private string _propertyList = string.Empty;
+    public event Action<List<IField>>? OnFormCreated;
 
     public ComponentValueEditorViewModel(
         ILogger<ComponentValueEditorViewModel> logger,
@@ -42,75 +40,87 @@ public partial class ComponentValueEditorViewModel : ObservableObject
     {
         var resource = message.Resource;
         var componentIndex = message.ComponentIndex;
+        var propertyPath = message.PropertyPath;
 
         if (_inspectorService.InspectedResource == resource &&
-            _inspectorService.InspectedComponentIndex == componentIndex)
+            propertyPath == "/")
         {
+            // We need to repopulate the property list on all structural changes to the entity,
+            // because we can't assume that we're inspecting the same component as before, even if 
+            // the resource, component index and component type are still the same.
             PopulatePropertyList(resource, componentIndex);
         }
     }
 
     private void PopulatePropertyList(ResourceKey resource, int componentIndex)
     {
-        PropertyList = string.Empty;
+        List<IField> propertyFields = new();
 
-        // Handle invalid resource / component index by clearing the displayed properties
-
-        if (resource.IsEmpty)
+        if (resource.IsEmpty || 
+            componentIndex < 0)
         {
+            // Setting the inpected item to an invalid resource or invalid component index
+            // is expected behaviour that indicates no component is currently being inspected.
+            // Clear the UI and return
+
             ComponentType = string.Empty;
+            OnFormCreated?.Invoke(propertyFields);
             return;
         }
 
-        if (componentIndex < 0)
-        {
-            ComponentType = string.Empty;
-            return;
-        }
+        // The resource and component index appear to be valid, so we can attempt to get information
+        // about the component. If these queries fail, log the error and clear the UI.
 
         var getCountResult = _entityService.GetComponentCount(resource);
         if (getCountResult.IsFailure)
         {
             _logger.LogError($"Failed to get component count for resource: '{resource}'");
+
+            ComponentType = string.Empty;
+            OnFormCreated?.Invoke(propertyFields);
             return;
         }
 
         int componentCount = getCountResult.Value;
         if (componentIndex >= componentCount)
         {
+            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{resource}'");
+
             ComponentType = string.Empty;
+            OnFormCreated?.Invoke(propertyFields);
             return;
         }
-
-        // Resource and component index are valid, so get the component info and display the properties
 
         var getResult = _entityService.GetComponentTypeInfo(resource, componentIndex);
         if (getResult.IsFailure)
         {
-            _logger.LogError($"Failed to get component info: {resource}, {componentIndex}");
+            _logger.LogError($"Failed to get component type info for resource '{resource}' at index '{componentIndex}'");
+
+            ComponentType = string.Empty;
+            OnFormCreated?.Invoke(propertyFields);
             return;
         }
 
-        var componentTypeInfo = getResult.Value;
+        // Populate the Component Type in the panel header
 
+        var componentTypeInfo = getResult.Value;
         ComponentType = componentTypeInfo.ComponentType;
 
-        var sb = new StringBuilder();
+        // Construct the form by adding property fields one by one.
 
-        // sb.AppendLine($"{resource}, {componentIndex}, {componentTypeInfo.ComponentType}");
         foreach (var property in componentTypeInfo.Properties)
         {
-            var getValueResult = _entityService.GetPropertyAsJson(resource, componentIndex, $"/{property.PropertyName}");
-            if (getValueResult.IsFailure)
+            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, componentIndex, property.PropertyName);
+            if (createResult.IsFailure)
             {
-                _logger.LogError($"Failed to get value: {property.PropertyName} ({property.PropertyType})");
+                _logger.LogError($"Failed to create field for property '{property.PropertyName}' in resource '{resource}' at component index '{componentIndex}'");
                 continue;
             }
-            var value = getValueResult.Value;
+            var field = createResult.Value;
 
-            sb.AppendLine($"{property.PropertyName} ({property.PropertyType}): {value}");
+            propertyFields.Add(field);
         }
 
-        PropertyList = sb.ToString();
+        OnFormCreated?.Invoke(propertyFields);
     }
 }

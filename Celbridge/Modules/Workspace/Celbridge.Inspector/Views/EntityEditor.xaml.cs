@@ -16,14 +16,14 @@ public sealed partial class EntityEditor : UserControl
         DataContext = ViewModel;
     }
 
-    public void ClearComponentsPanel()
+    public void ClearComponentListPanel()
     {
         ComponentListPanel.Children.Clear();
     }
 
     public void PopulateComponentsPanel(List<UIElement> elements)
     {
-        ClearComponentsPanel();
+        ClearComponentListPanel();
         foreach (UIElement element in elements)
         {
             ComponentListPanel.Children.Add(element);

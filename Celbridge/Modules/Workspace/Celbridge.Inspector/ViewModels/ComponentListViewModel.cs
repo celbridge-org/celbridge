@@ -137,6 +137,17 @@ public partial class ComponentListViewModel : InspectorViewModel
             PopulateComponentList();
             return;
         }
+
+        if (ComponentItems.Count == 0)
+        {
+            // No items available to select
+            SelectedIndex = -1;
+        }
+        else
+        {
+            // Select the next item at the same index, or the last item if the last item was deleted
+            SelectedIndex = Math.Clamp(deleteIndex, 0, ComponentItems.Count - 1);
+        }
     }
 
     public ICommand DuplicateComponentCommand => new RelayCommand<object?>(DuplicateComponent_Executed, CanDuplicateComponent);
@@ -148,20 +159,22 @@ public partial class ComponentListViewModel : InspectorViewModel
             return;
         }
 
-        int duplicateIndex = ComponentItems.IndexOf(componentItem);
-        if (duplicateIndex == -1)
+        int sourceIndex = ComponentItems.IndexOf(componentItem);
+        if (sourceIndex == -1)
         {
             return;
         }
 
+        int destIndex = sourceIndex + 1;
+
         // Update the list view
-        var item = ComponentItems[duplicateIndex];
-        ComponentItems.Insert(duplicateIndex + 1, item);
+        var item = ComponentItems[sourceIndex];
+        ComponentItems.Insert(destIndex, item);
 
         // Supress the refresh
         _supressRefreshCount = 1;
 
-        var copyResult = _entityService.CopyComponent(Resource, duplicateIndex, duplicateIndex + 1);
+        var copyResult = _entityService.CopyComponent(Resource, sourceIndex, destIndex);
         if (copyResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
@@ -170,6 +183,8 @@ public partial class ComponentListViewModel : InspectorViewModel
             PopulateComponentList();
             return;
         }
+
+        SelectedIndex = destIndex;
     }
 
     private bool CanDuplicateComponent(object? parameter)
