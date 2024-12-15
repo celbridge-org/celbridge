@@ -70,7 +70,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private void UpdateSelectedResource(ResourceKey resource)
     {
-        _entityEditor.ClearComponentsPanel();
+        _entityEditor.ClearComponentListPanel();
 
         if (resource.IsEmpty)
         {

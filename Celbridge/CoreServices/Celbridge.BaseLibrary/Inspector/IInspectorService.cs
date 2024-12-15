@@ -30,4 +30,9 @@ public interface IInspectorService
     /// Returns the factory used to create inspector UI elements. 
     /// </summary>
     IInspectorFactory InspectorFactory { get; }
+
+    /// <summary>
+    /// A service for creating field UI elements for editing component values.
+    /// </summary>
+    IFieldFactory FieldFactory { get; }
 }

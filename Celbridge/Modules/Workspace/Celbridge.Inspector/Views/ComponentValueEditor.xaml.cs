@@ -1,4 +1,5 @@
 using Celbridge.Inspector.ViewModels;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Inspector.Views;
 
@@ -14,5 +15,20 @@ public sealed partial class ComponentValueEditor : UserControl
         ViewModel = serviceProvider.GetRequiredService<ComponentValueEditorViewModel>();
 
         DataContext = ViewModel;
+
+        ViewModel.OnFormCreated += ViewModel_OnFormCreated;
+    }
+
+    private void ViewModel_OnFormCreated(List<IField> fields)
+    {
+        FormPanel.Children.Clear();
+
+        foreach (var field in fields)
+        {
+            var uiElement = field.UIElement as UIElement;
+            Guard.IsNotNull(uiElement);
+
+            FormPanel.Children.Add(uiElement);
+        }
     }
 }
