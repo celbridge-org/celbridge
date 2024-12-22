@@ -1,3 +1,4 @@
+using Celbridge.Documents.Services;
 using Celbridge.Entities;
 using Celbridge.ExtensionAPI;
 using Celbridge.Logging;
@@ -24,6 +25,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     [ObservableProperty]
     private bool _showPreview = true;
 
+    public Action<string>? OnSetContent;
+
     public TextEditorDocumentViewModel(
         ILogger<TextEditorDocumentViewModel> logger,
         IMessengerService messengerService,
@@ -33,6 +36,8 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         _messengerService = messengerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
+
+        _messengerService.Register<SetTextDocumentContentMessage>(this, OnSetTextDocumentContentMessage);
     }
 
     public void SetFileResource(ResourceKey fileResource)
@@ -64,6 +69,19 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         var provider = getResult.Value;
 
         return Result<PreviewProvider>.Ok(provider);
+    }
+
+    private void OnSetTextDocumentContentMessage(object recipient, SetTextDocumentContentMessage message)
+    {
+        if (message.Resource != _fileResource)
+        {
+            return;
+        }
+
+        var content = message.Content;
+
+        // Notify the view that the content should be updated
+        OnSetContent?.Invoke(content);
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)

@@ -12,4 +12,7 @@ public partial class ComponentItem : ObservableObject
     /// </summary>
     [ObservableProperty]
     private string _componentType = string.Empty;
+
+    [ObservableProperty]
+    private string _componentDescription = string.Empty;
 }

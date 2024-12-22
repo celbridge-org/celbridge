@@ -25,6 +25,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        ViewModel.OnSetContent += ViewModel_OnSetContent;
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -102,6 +104,18 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         {
             UpdatePanelVisibility();
         }
+    }
+
+    private void ViewModel_OnSetContent(string content)
+    {
+        if (MonacoEditor.ViewModel.CachedText == content)
+        {
+            // The current content already matches the new content, no need to update it.
+            return;
+        }
+
+        MonacoEditor.SetContent(content);
+        _ = UpdatePreview();
     }
 
     private async Task UpdatePreview()

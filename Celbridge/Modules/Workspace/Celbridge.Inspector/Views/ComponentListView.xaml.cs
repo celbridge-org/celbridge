@@ -39,17 +39,13 @@ public partial class ComponentListView : UserControl, IInspector
         _logger = serviceProvider.GetRequiredService<ILogger<ComponentListView>>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
 
-        Loaded += EntityInspector_Loaded;
+        Loaded += (s, e) => ViewModel.OnViewLoaded();
+        Unloaded += (s, e) => ViewModel.OnViewUnloaded();
 
 #if WINDOWS
         // Remove the distracting animations when items are added or removed from the list
         ComponentList.ItemContainerTransitions.Clear();
 #endif
-    }
-
-    private void EntityInspector_Loaded(object sender, RoutedEventArgs e)
-    {
-        ViewModel.OnViewLoaded();
     }
 
     public ResourceKey Resource
@@ -237,6 +233,13 @@ public partial class ComponentListView : UserControl, IInspector
         if (sender is TextBox textBox)
         {
             var parentGrid = (Grid)textBox.Parent;
+
+            if (parentGrid is null)
+            {
+                // Get a null parent here when the parent list view is destroyed while the text box has focus.
+                // This happens when switching the inspector to another resource while editing the component type text.
+                return;
+            }
 
             var textBlock = parentGrid.Children.OfType<TextBlock>().FirstOrDefault();
             if (textBlock != null)

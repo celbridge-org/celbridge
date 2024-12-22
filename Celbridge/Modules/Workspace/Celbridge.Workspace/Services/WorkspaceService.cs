@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
@@ -32,6 +33,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
+    public IActivityService ActivityService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
 
@@ -60,6 +62,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
+        ActivityService = serviceProvider.GetRequiredService<IActivityService>();
 
         //
         // Let the workspace settings service know where to find the workspace settings database
@@ -109,7 +112,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _workspaceStateIsDirty = true;
     }
 
-    public async Task<Result> FlushPendingSaves(double deltaTime)
+    public async Task<Result> UpdateWorkspaceAsync(double deltaTime)
     {
         if (_workspaceStateIsDirty)
         {
@@ -137,6 +140,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             return Result.Fail($"Failed to save modified documents")
                 .WithErrors(saveDocumentsResult);
         }
+
+        var updateActivities = await ActivityService.UpdateActivitiesAsync();
 
         // Todo: Clear save icon on the status bar if there are no pending saves
 
@@ -185,6 +190,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
                 (GenerativeAIService as IDisposable)!.Dispose();
+                (ActivityService as IDisposable)!.Dispose();
             }
 
             _disposed = true;

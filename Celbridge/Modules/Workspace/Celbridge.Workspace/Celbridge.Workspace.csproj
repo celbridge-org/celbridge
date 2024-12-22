@@ -30,6 +30,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\Celbridge.Activities\Celbridge.Activities.csproj" />
     <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Celbridge.Entities\Celbridge.Entities.csproj" />

@@ -11,11 +11,6 @@ using Path = System.IO.Path;
 
 public class CommandService : ICommandService
 {
-    /// <summary>
-    /// Time between flushing pending saves .
-    /// </summary>
-    private const double FlushPendingSaveInterval = 0.2; // seconds
-
     private readonly ICommandLogger _logger;
     private readonly ILogSerializer _logSerializer;
     private readonly IMessengerService _messengerService;
@@ -28,7 +23,7 @@ public class CommandService : ICommandService
     private object _lock = new object();
 
     private readonly Stopwatch _stopwatch = new();
-    private double _lastFlushTime = 0;
+    private double _lastWorkspaceUpdateTime = 0;
 
     private bool _stopped = false;
 
@@ -238,12 +233,12 @@ public class CommandService : ICommandService
                 break;
             }
 
-            // To avoid race conditions, saving the workspace state and documents is performed while
-            // there are no executing commands, and no commands are executed until saving completes.
-            var flushResult = await FlushPendingSavesAsync();
-            if (flushResult.IsFailure)
+            // To avoid race conditions, the workspace state is updated while there are no executing commands.
+            // This ensures that no commands are executed until resource and entity saving completes.
+            var updateWorkspaceResult = await UpdateWorkspaceAsync();
+            if (updateWorkspaceResult.IsFailure)
             {
-                _logger.LogError(flushResult, "Failed to flush pending saves");
+                _logger.LogError(updateWorkspaceResult, "Failed to update workspace");
             }
 
             // Find the first command that is ready to execute
@@ -356,31 +351,29 @@ public class CommandService : ICommandService
     /// <summary>
     /// Flush any pending save operations before the next command executes.
     /// </summary>
-    private async Task<Result> FlushPendingSavesAsync()
+    private async Task<Result> UpdateWorkspaceAsync()
     {
         var now = _stopwatch.Elapsed.TotalSeconds;
-        var deltaTime = now - _lastFlushTime;
-        if (deltaTime < FlushPendingSaveInterval)
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded ||
+            _lastWorkspaceUpdateTime == 0)
         {
-            // Not enough time has passed since the last flush.
+            // No workspace is loaded, or this is the first call so we can't calculate a delta time.
+            _lastWorkspaceUpdateTime = now;
             return Result.Ok();
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        var deltaTime = now - _lastWorkspaceUpdateTime;
+
+        var updateResult = await _workspaceWrapper.WorkspaceService.UpdateWorkspaceAsync(deltaTime);
+        if (updateResult.IsFailure)
         {
-            // No workspace is loaded, so there is nothing to save.
-            return Result.Ok();
+            return Result.Fail($"Failed to update workspace state")
+                .WithErrors(updateResult);
         }
 
-        var flushResult = await _workspaceWrapper.WorkspaceService.FlushPendingSaves(deltaTime);
-        if (flushResult.IsFailure)
-        {
-            return Result.Fail($"Failed to flush pending saves")
-                .WithErrors(flushResult);
-        }
-
-        // Restart the timer to account for time spent saving
-        _lastFlushTime = _stopwatch.Elapsed.TotalSeconds;
+        // Use the latest reported time to account for any time spent saving
+        _lastWorkspaceUpdateTime = _stopwatch.Elapsed.TotalSeconds;
 
         return Result.Ok();
     }
