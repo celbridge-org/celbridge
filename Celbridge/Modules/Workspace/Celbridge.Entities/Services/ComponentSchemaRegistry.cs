@@ -28,7 +28,12 @@ public class ComponentSchemaRegistry
             {
                 var content = await FileIO.ReadTextAsync(jsonFile);
 
-                AddComponentSchema(content);
+                var addResult = AddComponentSchema(content);
+                if (addResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to load component schema json file: '{jsonFile.Path}'")
+                        .WithErrors(addResult);
+                }
             }
 
             // Populate the component types dictionary

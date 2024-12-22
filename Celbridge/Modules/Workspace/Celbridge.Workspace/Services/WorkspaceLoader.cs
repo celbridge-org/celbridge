@@ -112,6 +112,18 @@ public class WorkspaceLoader
         }
 
         //
+        // Initialize the activities service
+        //
+
+        var activityService = workspaceService.ActivityService;
+        var initActivities = await activityService.Initialize();
+        if (initActivities.IsFailure)
+        {
+            return Result.Fail("Failed to initialize activity service")
+                .WithErrors(initActivities);
+        }
+
+        //
         // Restore the previous state of the workspace.
         // Any failures that occur here are logged as warnings and do not prevent the workspace from loading.
         //

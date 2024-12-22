@@ -35,4 +35,9 @@ public interface IInspectorService
     /// A service for creating field UI elements for editing component values.
     /// </summary>
     IFieldFactory FieldFactory { get; }
+
+    /// <summary>
+    /// Sets the annotation data for a component in the inspector.
+    /// </summary>
+    Result SetComponentAnnotation(ResourceKey inspectedResource, int componentIndex, ComponentAnnotation annotation);
 }

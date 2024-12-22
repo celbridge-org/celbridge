@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -54,5 +55,40 @@ public class ModuleService : IModuleService
         moduleServices.PopulateServices(services);
 
         return Result.Ok();
+    }
+
+    public bool IsActivitySupported(string activityName)
+    {
+        foreach (var module in _moduleLoader.LoadedModules.Values)
+        {
+            if (module.SupportsActivity(activityName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public Result<IActivity> CreateActivity(string activityName)
+    {
+        foreach (var module in _moduleLoader.LoadedModules.Values)
+        {
+            if (!module.SupportsActivity(activityName))
+            {
+                continue;
+            }
+
+            var createResult = module.CreateActivity(activityName);
+            if (createResult.IsFailure)
+            {
+                return Result<IActivity>.Fail($"Failed to create activity: '{activityName}'");
+            }
+            var activity = createResult.Value;
+
+            return Result<IActivity>.Ok(activity);
+        }
+
+        return Result<IActivity>.Fail($"Failed to create activity: '{activityName}'");
     }
 }

@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
@@ -71,6 +72,11 @@ public interface IWorkspaceService
     IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
+    /// Returns the Activity Service associated with the workspace.
+    /// </summary>
+    IActivityService ActivityService { get; }
+
+    /// <summary>
     /// The most recently focussed workspace panel.
     /// </summary>
     WorkspacePanel ActivePanel { get; }
@@ -86,7 +92,7 @@ public interface IWorkspaceService
     void SetWorkspaceStateIsDirty();
 
     /// <summary>
-    /// Save any pending workspace settings changes to disk.
+    /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
-    Task<Result> FlushPendingSaves(double deltaTime);
+    Task<Result> UpdateWorkspaceAsync(double deltaTime);
 }

@@ -11,6 +11,8 @@ namespace Celbridge.Documents.Services;
 
 using IDocumentsLogger = Logging.ILogger<DocumentsService>;
 
+public record SetTextDocumentContentMessage(ResourceKey Resource, string Content);
+
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private const string PreviousOpenDocumentsKey = "PreviousOpenDocuments";
@@ -203,6 +205,14 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         _logger.LogTrace($"Selected document for file resource '{fileResource}'");
+
+        return Result.Ok();
+    }
+
+    public Result SetTextDocumentContent(ResourceKey fileResource, string content)
+    {
+        var message = new SetTextDocumentContentMessage(fileResource, content);
+        _messengerService.Send(message);
 
         return Result.Ok();
     }

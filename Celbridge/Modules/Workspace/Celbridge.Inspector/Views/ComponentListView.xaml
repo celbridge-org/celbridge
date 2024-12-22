@@ -80,7 +80,7 @@
                          Grid.Column="0"
                          Text="{x:Bind ComponentType, Mode=OneWay}"
                          VerticalAlignment="Center"
-                         MinWidth="116"
+                         MinWidth="96"
                          Tapped="ComponentItem_DisplayTextBlock_Tapped"
                          Visibility="Visible"/>
 
@@ -89,7 +89,7 @@
                        Grid.Column="0"
                        Text="{x:Bind ComponentType, Mode=OneWay}"
                        VerticalAlignment="Center"
-                       MinWidth="140"
+                       MinWidth="120"
                        Visibility="Collapsed"
                        TextChanged="EditTextBox_TextChanged"
                        GotFocus="ComponentItem_EditTextBox_GotFocus"
@@ -113,6 +113,10 @@
               </Button>
             </Grid>
 
+            <Grid Grid.Column="1"
+                  Margin="6 0 0 0">
+              <TextBlock Text="{x:Bind ComponentDescription,Mode=OneWay}" />
+            </Grid>
           </Grid>
         </DataTemplate>
       </ListView.ItemTemplate>

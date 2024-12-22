@@ -3,7 +3,7 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Screenplay"
+      "const": "Scene"
     },
     "_componentVersion": {
       "type": "integer",
@@ -22,5 +22,8 @@
     "sceneTitle",
     "sceneDescription"
   ],
+  "attributes": {
+    "activityName": "Screenplay"
+  },
   "additionalProperties": false
 }

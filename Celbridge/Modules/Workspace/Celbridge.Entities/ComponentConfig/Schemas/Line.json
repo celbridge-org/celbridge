@@ -1,0 +1,66 @@
+{
+  "type": "object",
+  "properties": {
+    "_componentType": {
+      "type": "string",
+      "const": "Line"
+    },
+    "_componentVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "dialogueKey": {
+      "type": "string"
+    },
+    "character": {
+      "type": "string"
+    },
+    "sourceText": {
+      "type": "string"
+    },
+    "contextNotes": {
+      "type": "string"
+    },
+    "linePriority": {
+      "type": "string"
+    },
+    "speakingTo": {
+      "type": "string"
+    },
+    "gameArea": {
+      "type": "string"
+    },
+    "timeConstraint": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "productionStatus": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "_componentType",
+    "_componentVersion",
+    "dialogueKey",
+    "character",
+    "sourceText",
+    "contextNotes",
+    "linePriority",
+    "speakingTo",
+    "gameArea",
+    "timeConstraint",
+    "direction",
+    "platform",
+    "productionStatus"
+  ],
+  "attributes": {
+    "allowMultipleComponents": true,
+    "activityName": "Screenplay"
+  },
+  "additionalProperties": false
+}
