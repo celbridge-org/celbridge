@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.DataTransfer;
 using Celbridge.Modules;
 using Celbridge.Navigation;
@@ -8,7 +9,7 @@ using Celbridge.Workspace.Views;
 
 namespace Celbridge.Workspace;
 
-public class Extension : IModule
+public class Module : IModule
 {
     public void ConfigureServices(IModuleServiceCollection config)
     {
@@ -16,14 +17,15 @@ public class Extension : IModule
         // Register workspace sub-projects
         //
 
+        Activities.ServiceConfiguration.ConfigureServices(config);
         Console.ServiceConfiguration.ConfigureServices(config);
         Documents.ServiceConfiguration.ConfigureServices(config);
-        Explorer.ServiceConfiguration.ConfigureServices(config);
-        Inspector.ServiceConfiguration.ConfigureServices(config);
         Entities.ServiceConfiguration.ConfigureServices(config);
+        Explorer.ServiceConfiguration.ConfigureServices(config);
+        GenerativeAI.ServiceConfiguration.ConfigureServices(config);
+        Inspector.ServiceConfiguration.ConfigureServices(config);
         Scripting.ServiceConfiguration.ConfigureServices(config);
         Status.ServiceConfiguration.ConfigureServices(config);
-        GenerativeAI.ServiceConfiguration.ConfigureServices(config);
 
         //
         // Register services
@@ -58,5 +60,12 @@ public class Extension : IModule
         navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
 
         return Result.Ok();
+    }
+
+    public bool SupportsActivity(string activityName) => false;
+
+    public Result<IActivity> CreateActivity(string activityName)
+    {
+        return Result<IActivity>.Fail();
     }
 }

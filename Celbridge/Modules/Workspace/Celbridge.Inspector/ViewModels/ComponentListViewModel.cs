@@ -1,5 +1,7 @@
+using Celbridge.Activities;
 using Celbridge.Entities;
 using Celbridge.Inspector.Models;
+using Celbridge.Inspector.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -17,6 +19,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
+    private readonly IActivityService _activityService;
 
     public ObservableCollection<ComponentItem> ComponentItems { get; } = new();
 
@@ -41,18 +44,51 @@ public partial class ComponentListViewModel : InspectorViewModel
         _messengerService = messengerService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
-
-        _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
-
-        PropertyChanged += EntityInspectorViewModel_PropertyChanged;
+        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
     }
 
     public void OnViewLoaded()
     {
+        _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
+        _messengerService.Register<UpdateComponentAppearanceMessage>(this, OnUpdateComponentAppearanceMessage);
+
+        PropertyChanged += ViewModel_PropertyChanged;
+
         PopulateComponentList();
 
         // Send a message to populate the component editor in the inspector
         OnPropertyChanged(nameof(SelectedIndex)); 
+    }
+
+    public void OnViewUnloaded()
+    {
+        _messengerService.Unregister<ComponentChangedMessage>(this);
+        _messengerService.Unregister<UpdateComponentAppearanceMessage>(this);
+
+        PropertyChanged -= ViewModel_PropertyChanged;
+    }
+
+    private void OnUpdateComponentAppearanceMessage(object recipient, UpdateComponentAppearanceMessage message)
+    {
+        if (message.Resource != Resource)
+        {
+            // This message does not apply to the resource being presented by this ViewModel.
+            // This is probably because the user has just switched to inspecting a different resource and the ViewUnloaded
+            // callback has not yet been received to clean up this view model.
+            return;
+        }
+
+        var index = message.ComponentIndex;
+        if (index < 0 || index >= ComponentItems.Count)
+        {
+            // Component index is out of range
+            _logger.LogError($"Component index '{index}' is out of range for resource '{message.Resource}'");
+            return;
+        }
+
+        var description = message.Appearance.Description;
+
+        ComponentItems[index].ComponentDescription = description;
     }
 
     public ICommand AddComponentCommand => new RelayCommand<object?>(AddComponent_Executed);
@@ -264,7 +300,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    private void EntityInspectorViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SelectedIndex))
         {
@@ -291,6 +327,8 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         int previousIndex = SelectedIndex;
 
+        HashSet<string> activityNames = new();
+
         List<ComponentItem> componentItems = new();
         for (int i = 0; i < count; i++)
         {
@@ -306,6 +344,12 @@ public partial class ComponentListViewModel : InspectorViewModel
             if (componentType == "Empty")
             {
                 componentType = string.Empty;
+            }
+
+            var activityName = componentTypeInfo.GetStringAttribute("activityName");
+            if (!string.IsNullOrEmpty(activityName))
+            {
+                activityNames.Add(activityName);
             }
 
             var componentItem = new ComponentItem

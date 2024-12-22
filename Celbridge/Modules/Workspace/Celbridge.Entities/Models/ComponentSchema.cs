@@ -76,7 +76,7 @@ public class ComponentSchema
             {
                 foreach (var attribute in attributesElement.EnumerateObject())
                 {
-                    componentAttributes[attribute.Name] = attribute.Value.ToJsonString();
+                    componentAttributes[attribute.Name] = attribute.Value.ToString();
                 }
             }
 

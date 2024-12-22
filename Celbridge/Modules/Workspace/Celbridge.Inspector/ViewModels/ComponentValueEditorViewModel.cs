@@ -52,16 +52,16 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
     }
 
-    private void PopulatePropertyList(ResourceKey resource, int componentIndex)
+    private void PopulatePropertyList(ResourceKey resource, int inspectedComponentIndex)
     {
         List<IField> propertyFields = new();
 
         if (resource.IsEmpty || 
-            componentIndex < 0)
+            inspectedComponentIndex < 0)
         {
             // Setting the inpected item to an invalid resource or invalid component index
             // is expected behaviour that indicates no component is currently being inspected.
-            // Clear the UI and return
+            // Clear the UI and return.
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
@@ -82,19 +82,20 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
 
         int componentCount = getCountResult.Value;
-        if (componentIndex >= componentCount)
+        if (inspectedComponentIndex >= componentCount)
         {
-            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{resource}'");
+            // The inspected component index no longer exists, probably due to a structural change in the entity.
+            // Clear the UI and return.
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
             return;
         }
 
-        var getResult = _entityService.GetComponentTypeInfo(resource, componentIndex);
+        var getResult = _entityService.GetComponentTypeInfo(resource, inspectedComponentIndex);
         if (getResult.IsFailure)
         {
-            _logger.LogError($"Failed to get component type info for resource '{resource}' at index '{componentIndex}'");
+            _logger.LogError($"Failed to get component type info for resource '{resource}' at index '{inspectedComponentIndex}'");
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
@@ -110,10 +111,10 @@ public partial class ComponentValueEditorViewModel : ObservableObject
 
         foreach (var property in componentTypeInfo.Properties)
         {
-            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, componentIndex, property.PropertyName);
+            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, inspectedComponentIndex, property.PropertyName);
             if (createResult.IsFailure)
             {
-                _logger.LogError($"Failed to create field for property '{property.PropertyName}' in resource '{resource}' at component index '{componentIndex}'");
+                _logger.LogError($"Failed to create field for property '{property.PropertyName}' in resource '{resource}' at component index '{inspectedComponentIndex}'");
                 continue;
             }
             var field = createResult.Value;

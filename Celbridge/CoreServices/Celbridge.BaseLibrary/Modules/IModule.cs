@@ -1,3 +1,5 @@
+using Celbridge.Activities;
+
 namespace Celbridge.Modules;
 
 /// <summary>
@@ -15,4 +17,14 @@ public interface IModule
     /// Initializes the extension during application startup.
     /// </summary>
     Result Initialize();
+
+    /// <summary>
+    /// Returns true if the module supports the specified activity.
+    /// </summary>
+    bool SupportsActivity(string activityName);
+
+    /// <summary>
+    /// Creates an instance of a supported activity.
+    /// </summary>
+    Result<IActivity> CreateActivity(string activityName);
 }

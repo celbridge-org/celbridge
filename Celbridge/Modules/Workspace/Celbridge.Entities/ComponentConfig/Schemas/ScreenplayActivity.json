@@ -3,31 +3,20 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "VoiceLine"
+      "const": "ScreenplayActivity"
     },
     "_componentVersion": {
       "type": "integer",
       "const": 1
-    },
-    "speaker": {
-      "type": "string"
-    },
-    "speakingTo": {
-      "type": "string"
-    },
-    "line": {
-      "type": "string"
     }
   },
   "required": [
     "_componentType",
-    "_componentVersion",
-    "speaker",
-    "speakingTo",
-    "line"
+    "_componentVersion"
   ],
   "attributes": {
-    "allowMultipleComponents": true
+    "allowMultipleComponents": false,
+    "isActivityComponent": true
   },
   "additionalProperties": false
 }

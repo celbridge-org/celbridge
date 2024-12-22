@@ -32,6 +32,21 @@ public sealed partial class MonacoEditorView : DocumentView
         this.DataContext(ViewModel);
     }
 
+    public Result SetContent(string content)
+    {
+        if (_webView is null ||
+            _webView.CoreWebView2 is null)
+        {
+            return Result.Fail("WebView is not initialized");
+        }
+
+        // Send the updated text content to Monaco editor
+        _webView.CoreWebView2.PostWebMessageAsString(content);
+        ViewModel.CachedText = content;
+
+        return Result.Ok();
+    }
+
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
