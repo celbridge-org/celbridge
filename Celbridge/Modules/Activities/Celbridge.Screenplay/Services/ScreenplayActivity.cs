@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -18,6 +19,8 @@ public class ScreenplayActivity : IActivity
 
     public string ActivityName => ScreenplayConstants.ScreenplayActivityName;
 
+    private HashSet<ResourceKey> _pendingEntityUpdates = new();
+
     public ScreenplayActivity(
         ILogger<ScreenplayActivity> logger,
         IMessengerService messengerService,
@@ -29,7 +32,30 @@ public class ScreenplayActivity : IActivity
         _documentService = workspaceWrapper.WorkspaceService.DocumentsService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
+        messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
         messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
+    }
+
+    private void OnSelectedResourceChangedMessage(object recipient, SelectedResourceChangedMessage message)
+    {
+        var resource = message.Resource;
+
+        // Todo: Check for "Screenplay" entity tag instead
+        if (resource.ToString().EndsWith(".md"))
+        {
+            _pendingEntityUpdates.Add(resource);
+        }
+    }
+
+    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
+    {
+        // Todo: Check for "Screenplay" entity tag instead
+        if (message.ComponentType == ScreenplayConstants.SceneComponentType ||
+            message.ComponentType == ScreenplayConstants.LineComponentType)
+        {
+            // Regenerate the screenplay markdown on any property change to the inspected resource.
+            _pendingEntityUpdates.Add(message.Resource);
+        }
     }
 
     public async Task<Result> Start()
@@ -46,29 +72,32 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    private ResourceKey _cachedFileResource;
-
-    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
-    {
-        if (message.Resource == _cachedFileResource)
-        {
-            // Regenerate the screenplay markdown on any property change to the inspected resource.
-            _cachedFileResource = ResourceKey.Empty;
-        }
-    }
-
     public async Task<Result> UpdateAsync()
     {
         // Get the inspected entity's list of components
-
-        var resource = _inspectorService.InspectedResource;
-        if (resource.IsEmpty)
+        bool hasError = true;
+        foreach (var fileResource in _pendingEntityUpdates)
         {
-            // Inspected resource has been cleared since the update was requested
-            return Result.Ok();
+            var updateResult = await UpdateEntity(fileResource);
+            if (updateResult.IsFailure)
+            {
+                _logger.LogError(updateResult.Error);
+                continue;
+            }
+        }
+        _pendingEntityUpdates.Clear();
+
+        if (hasError)
+        {
+            return Result.Fail("Failed to update a modified entity");
         }
 
-        var getCountResult = _entityService.GetComponentCount(resource);
+        return Result.Ok();
+    }
+
+    public async Task<Result> UpdateEntity(ResourceKey fileResource)
+    {
+        var getCountResult = _entityService.GetComponentCount(fileResource);
         if (getCountResult.IsFailure)
         {
             // Inspected resource may have been deleted or moved since the update was requested
@@ -84,10 +113,10 @@ public class ScreenplayActivity : IActivity
         {
             // Check if the component's activityName property matches this activity's name
 
-            var getInfoResult = _entityService.GetComponentTypeInfo(resource, i);
+            var getInfoResult = _entityService.GetComponentTypeInfo(fileResource, i);
             if (getInfoResult.IsFailure)
             {
-                return Result.Fail(resource, $"Failed to get component info for component index '{i}' on inspected resource: '{resource}'")
+                return Result.Fail(fileResource, $"Failed to get component info for component index '{i}' on inspected resource: '{fileResource}'")
                     .WithErrors(getInfoResult);
             }
             var componentInfo = getInfoResult.Value;
@@ -104,8 +133,8 @@ public class ScreenplayActivity : IActivity
 
             Result<ComponentAnnotation> getAnnotationResult = componentInfo.ComponentType switch
             {
-                ScreenplayConstants.SceneComponentType => GetSceneAnnotation(resource, i, componentInfo),
-                ScreenplayConstants.LineComponentType => GetLineAnnotation(resource, i, componentInfo),
+                ScreenplayConstants.SceneComponentType => GetSceneAnnotation(fileResource, i, componentInfo),
+                ScreenplayConstants.LineComponentType => GetLineAnnotation(fileResource, i, componentInfo),
                 _ => Result<ComponentAnnotation>.Fail($"{nameof(ScreenplayActivity)} does not support component type '{componentInfo.ComponentType}'")
             };
 
@@ -117,24 +146,17 @@ public class ScreenplayActivity : IActivity
             }
             var annotation = getAnnotationResult.Value;
 
-            var setAnnotationResult = _inspectorService.SetComponentAnnotation(resource, i, annotation);
+            var setAnnotationResult = _inspectorService.SetComponentAnnotation(fileResource, i, annotation);
             if (setAnnotationResult.IsFailure)
             {
-                return Result.Fail($"Failed to set annotation for component index '{i}' on inspected resource: '{resource}'")
+                return Result.Fail($"Failed to set annotation for component index '{i}' on inspected resource: '{fileResource}'")
                     .WithErrors(setAnnotationResult);
             }
         }
 
         if (hasScreenplayComponents)
         {
-            // Early out if the screenplay markdown is already up to date.
-            if (_cachedFileResource == resource)
-            {
-                return Result.Ok();
-            }
-            _cachedFileResource = ResourceKey.Empty;
-
-            var generateResult = GenerateScreenplayMarkdown(resource);
+            var generateResult = GenerateScreenplayMarkdown(fileResource);
             if (generateResult.IsFailure)
             {
                 return Result.Fail($"Failed to generate screenplay markdown");
@@ -143,14 +165,12 @@ public class ScreenplayActivity : IActivity
             var markdown = generateResult.Value;
 
             // Set the contents of the document to the generated markdown
-            var setContentResult = _documentService.SetTextDocumentContent(resource, markdown);
+            var setContentResult = _documentService.SetTextDocumentContent(fileResource, markdown);
             if (setContentResult.IsFailure)
             {
                 return Result.Fail($"Failed to set document content")
                     .WithErrors(setContentResult);
             }
-
-            _cachedFileResource = resource;
         }
 
         await Task.CompletedTask;
