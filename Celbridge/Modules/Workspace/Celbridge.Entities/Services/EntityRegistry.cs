@@ -282,9 +282,9 @@ public class EntityRegistry
                 .WithErrors(getResourceResult);
         }
 
-        if (_entityCache.ContainsKey(resource))
+        if (_entityCache.TryGetValue(resource, out Entity? value))
         {
-            var entity = _entityCache[resource];
+            var entity = value;
             return Result<Entity>.Ok(entity);
         }
 
