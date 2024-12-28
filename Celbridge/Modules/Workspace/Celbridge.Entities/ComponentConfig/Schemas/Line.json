@@ -3,11 +3,7 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Line"
-    },
-    "_componentVersion": {
-      "type": "integer",
-      "const": 1
+      "const": "Line#1"
     },
     "dialogueKey": {
       "type": "string"
@@ -45,7 +41,6 @@
   },
   "required": [
     "_componentType",
-    "_componentVersion",
     "dialogueKey",
     "character",
     "sourceText",
@@ -58,6 +53,19 @@
     "platform",
     "productionStatus"
   ],
+  "prototype": {
+    "dialogueKey": "",
+    "character": "",
+    "sourceText": "",
+    "contextNotes": "",
+    "linePriority": "",
+    "speakingTo": "",
+    "gameArea": "",
+    "timeConstraint": "",
+    "direction": "",
+    "platform": "",
+    "productionStatus": ""
+  },
   "attributes": {
     "allowMultipleComponents": true,
     "activityName": "Screenplay"

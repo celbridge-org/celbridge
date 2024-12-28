@@ -159,7 +159,8 @@ public class ScreenplayActivity : IActivity
             var generateResult = GenerateScreenplayMarkdown(fileResource);
             if (generateResult.IsFailure)
             {
-                return Result.Fail($"Failed to generate screenplay markdown");
+                return Result.Fail($"Failed to generate screenplay markdown").
+                    WithErrors(generateResult);
             }
 
             var markdown = generateResult.Value;

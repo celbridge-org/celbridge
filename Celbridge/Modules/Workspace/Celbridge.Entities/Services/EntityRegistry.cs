@@ -3,6 +3,7 @@ using Celbridge.Entities.Models;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Json.More;
 using Json.Schema;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -26,7 +27,6 @@ public class EntityRegistry
     private readonly Dictionary<string, List<string>> _defaultComponents = new();
 
     private JsonSchema? _entitySchema;
-    private ComponentPrototypeRegistry? _prototypeRegistry;
     private ComponentSchemaRegistry? _schemaRegistry;
 
     public EntityRegistry(
@@ -39,10 +39,9 @@ public class EntityRegistry
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<Result> Initialize(JsonSchema entitySchema, ComponentPrototypeRegistry prototypeRegistry, ComponentSchemaRegistry schemaRegistry)
+    public async Task<Result> Initialize(JsonSchema entitySchema, ComponentSchemaRegistry schemaRegistry)
     {
         _entitySchema = entitySchema;
-        _prototypeRegistry = prototypeRegistry;
         _schemaRegistry = schemaRegistry;
 
         return await LoadDefaultComponentsAsync();
@@ -416,7 +415,7 @@ public class EntityRegistry
     private Result<EntityData> CreateEntityData(ResourceKey resource)
     {
         Guard.IsNotNull(_defaultComponents);
-        Guard.IsNotNull(_prototypeRegistry);
+        Guard.IsNotNull(_schemaRegistry);
         Guard.IsNotNull(_entitySchema);
 
         var entityJsonObject = new JsonObject
@@ -438,17 +437,18 @@ public class EntityRegistry
         {
             foreach (var componentType in defaultComponents)
             {
-                var getPrototypeResult = _prototypeRegistry.GetPrototype(componentType);
-                if (getPrototypeResult.IsFailure)
+                var getSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
+                if (getSchemaResult.IsFailure)
                 {
-                    return Result<EntityData>.Fail($"Failed to get prototype for default component type: '{componentType}'");
+                    return Result<EntityData>.Fail($"Failed to get component schema for component type: {componentType}")
+                        .WithErrors(getSchemaResult);
                 }
-                var prototype = getPrototypeResult.Value;
+                var schema = getSchemaResult.Value;
 
                 // The component prototype was validated against the component schemas at startup, so we can assume
                 // it's valid and add a clone of the prototype to the entity data.
 
-                var componentObject = prototype.JsonObject.DeepClone() as JsonObject;
+                var componentObject = schema.Prototype.AsNode();
                 Guard.IsNotNull(componentObject);
 
                 var componentsArray = entityJsonObject["_components"] as JsonArray;
