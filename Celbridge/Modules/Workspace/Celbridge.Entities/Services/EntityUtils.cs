@@ -71,8 +71,17 @@ public static class EntityUtils
                 continue;
             }
 
-            var componentTypeValue = componentTypeNode.GetValue<string>();
-            if (componentTypeValue == componentType)
+            var typeAndVersion = componentTypeNode.GetValue<string>();
+
+            var parseResult = ParseComponentTypeAndVersion(typeAndVersion);
+            if (parseResult.IsFailure)
+            {
+                return Result<List<int>>.Fail($"Failed to parse component type and version: {typeAndVersion}")
+                    .WithErrors(parseResult);
+            }
+            var (parsedType, _) = parseResult.Value;
+
+            if (parsedType == componentType)
             {
                 indices.Add(i);
             }
@@ -104,7 +113,15 @@ public static class EntityUtils
                 return Result.Fail($"Failed to get component type for component at index {i}.");
             }
 
-            var componentType = componentTypeNode.GetValue<string>();
+            var typeAndVersion = componentTypeNode.GetValue<string>();
+
+            var parseResult = ParseComponentTypeAndVersion(typeAndVersion);
+            if (parseResult.IsFailure)
+            {
+                return Result.Fail($"Failed to parse component type and version: {typeAndVersion}")
+                    .WithErrors(parseResult);
+            }
+            var (componentType, componentVersion) = parseResult.Value; 
 
             if (checkedComponentTypes.Contains(componentType))
             {
@@ -190,7 +207,14 @@ public static class EntityUtils
         {
             return Result.Fail($"Failed to get component type for component at index: {componentIndex}");
         }
-        var componentType = componentTypeNode.GetValue<string>();
+        var typeAndVersion = componentTypeNode.GetValue<string>();
+
+        var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
+        if (parseResult.IsFailure)
+        {
+            return Result<ComponentSchema>.Fail($"Failed to parse component type and version: {typeAndVersion}");
+        }
+        var (componentType, componentVersion) = parseResult.Value;
 
         // Get the schema for the component type
 
@@ -279,5 +303,22 @@ public static class EntityUtils
         }
 
         return Result<PatchOperation>.Ok(reverseOperation);
+    }
+
+    public static Result<(string componentType, int version)> ParseComponentTypeAndVersion(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return Result<(string, int)>.Fail($"Component type is empty");
+        }
+
+        var parts = input.Split('#');
+        if (parts.Length != 2 || !int.TryParse(parts[1], out int number))
+        {
+            return Result<(string, int)>.Fail($"Component type '{input}' is not in the format '<Component Type>#<Version>'");
+        }
+
+        var typeAndVersion = (parts[0], number);
+        return Result<(string, int)>.Ok(typeAndVersion);
     }
 }

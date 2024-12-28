@@ -6,6 +6,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
+using Json.More;
 using Json.Patch;
 using Json.Pointer;
 using Json.Schema;
@@ -22,7 +23,6 @@ public class EntityService : IEntityService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private ComponentSchemaRegistry _schemaRegistry;
-    private ComponentPrototypeRegistry _prototypeRegistry;
     private EntityRegistry _entityRegistry;
 
     private readonly Dictionary<string, List<string>> _defaultComponents = new();
@@ -53,7 +53,6 @@ public class EntityService : IEntityService, IDisposable
         _workspaceWrapper = workspaceWrapper;
 
         _schemaRegistry = serviceProvider.GetRequiredService<ComponentSchemaRegistry>();
-        _prototypeRegistry = serviceProvider.GetRequiredService<ComponentPrototypeRegistry>();
         _entityRegistry = serviceProvider.GetRequiredService<EntityRegistry>();
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
@@ -87,14 +86,7 @@ public class EntityService : IEntityService, IDisposable
                     .WithErrors(loadSchemasResult);
             }
 
-            var loadPrototypesResult = await _prototypeRegistry.LoadComponentPrototypesAsync(_schemaRegistry);
-            if (loadPrototypesResult.IsFailure)
-            {
-                return Result.Fail("Failed to load component prototypes")
-                    .WithErrors(loadPrototypesResult);
-            }
-
-            var initEntitiesResult = await _entityRegistry.Initialize(_entitySchema, _prototypeRegistry, _schemaRegistry);
+            var initEntitiesResult = await _entityRegistry.Initialize(_entitySchema, _schemaRegistry);
             if (initEntitiesResult.IsFailure)
             {
                 return Result.Fail("Failed to load file default components")
@@ -163,20 +155,14 @@ public class EntityService : IEntityService, IDisposable
         }
         var componentSchema = componentSchemaResult.Value;
 
-        // Acquire the prototype for the specified componentType
+        // Instantiate the prototype for the specified componentType
 
-        var getPrototypeResult = _prototypeRegistry.GetPrototype(componentType);
-        if (getPrototypeResult.IsFailure)
-        {
-            return Result.Fail($"Failed to acquire component prototype for component type: {componentType}")
-                .WithErrors(getPrototypeResult);
-        }
-        var prototype = getPrototypeResult.Value;
+        var prototypeInstance = componentSchema.Prototype.AsNode()!;
 
         // Apply a patch operation to add the component to the entity
 
         var componentPointer = JsonPointer.Create("_components", componentIndex);
-        var patchOperation = PatchOperation.Add(componentPointer, prototype.JsonObject);
+        var patchOperation = PatchOperation.Add(componentPointer, prototypeInstance);
 
         var applyResult = ApplyPatchOperation(entity, patchOperation, undoGroupId);
         if (applyResult.IsFailure)
@@ -394,7 +380,16 @@ public class EntityService : IEntityService, IDisposable
             return Result<ComponentTypeInfo>.Fail($"Failed to get component type for component at index '{componentIndex}' for resource: {resource}")
                 .WithErrors(getTypeResult);
         }
-        var componentType = getTypeResult.Value;
+        var typeAndVersion = getTypeResult.Value;
+
+        var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
+        if (parseResult.IsFailure)
+        {
+            return Result<ComponentTypeInfo>.Fail($"Failed to parse component type and version: {typeAndVersion}")
+                .WithErrors(parseResult);
+        }
+
+        var (componentType, _) = parseResult.Value;
 
         // Get the component schema
 

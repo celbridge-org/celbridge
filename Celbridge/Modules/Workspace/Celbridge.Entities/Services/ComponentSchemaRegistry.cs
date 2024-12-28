@@ -1,5 +1,4 @@
 using Celbridge.Entities.Models;
-using System.Text.Json;
 
 namespace Celbridge.Entities.Services;
 
@@ -61,39 +60,6 @@ public class ComponentSchemaRegistry
         }
 
         return Result<ComponentSchema>.Ok(entitySchema);
-    }
-
-    public Result<ComponentSchema> GetComponentSchemaFromJson(string json)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return Result<ComponentSchema>.Fail("Failed to parse JSON as an object");
-            }
-
-            if (!root.TryGetProperty("_componentType", out var componentTypeElement) 
-                || componentTypeElement.ValueKind != JsonValueKind.String)
-            {
-                return Result<ComponentSchema>.Fail("Component type not found");
-            }
-
-            var componentType = componentTypeElement.GetString();
-            if (string.IsNullOrEmpty(componentType))
-            {
-                return Result<ComponentSchema>.Fail("Component type is empty");
-            }
-
-            return GetSchemaForComponentType(componentType);
-        }
-        catch (Exception ex)
-        {
-            return Result<ComponentSchema>.Fail("An exception occurred when getting schema from JSON.")
-                .WithException(ex);
-        }
     }
 
     public Result AddComponentSchema(string schemaJson)

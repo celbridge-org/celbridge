@@ -1,3 +1,4 @@
+using Celbridge.Entities.Services;
 using Json.More;
 using Json.Pointer;
 using Json.Schema;
@@ -9,22 +10,24 @@ namespace Celbridge.Entities.Models;
 public class ComponentSchema
 {
     private const string ComponentTypeConstKey = "/properties/_componentType/const";
-    private const string ComponentVersionConstKey = "/properties/_componentVersion/const";
     private const string AttributesKey = "attributes";
     private const string PropertiesKey = "properties";
+    private const string PrototypeKey = "prototype";
     private const string TypeKey = "type";
 
     public string ComponentType { get; }
     public int ComponentVersion { get; }
     public ComponentTypeInfo ComponentTypeInfo { get; }
+    public JsonElement Prototype { get; }
 
     private readonly JsonSchema _jsonSchema;
 
-    private ComponentSchema(string componentType, int componentVersion, ComponentTypeInfo componentTypeInfo, JsonSchema jsonSchema)
+    private ComponentSchema(string componentType, int componentVersion, ComponentTypeInfo componentTypeInfo, JsonElement prototype, JsonSchema jsonSchema)
     {
         ComponentType = componentType;
         ComponentVersion = componentVersion;
         ComponentTypeInfo = componentTypeInfo;
+        Prototype = prototype;
         _jsonSchema = jsonSchema;
     }
 
@@ -40,7 +43,7 @@ public class ComponentSchema
                 return Result<ComponentSchema>.Fail("Failed to parse schema JSON as an object");
             }
 
-            // Get component type
+            // Get component type and version
 
             var componentTypePointer = JsonPointer.Parse(ComponentTypeConstKey);
             var componentTypeElement = componentTypePointer.Evaluate(root);
@@ -51,23 +54,19 @@ public class ComponentSchema
                 return Result<ComponentSchema>.Fail("Component type element is not valid");
             }
 
-            var componentType = componentTypeElement.Value.GetString();
-            if (string.IsNullOrEmpty(componentType))
+            var typeAndVersion = componentTypeElement.Value.GetString();
+            if (string.IsNullOrEmpty(typeAndVersion))
             {
                 return Result<ComponentSchema>.Fail("Component type is empty");
             }
 
-            // Get component version 
-            
-            var componentVersionPointer = JsonPointer.Parse(ComponentVersionConstKey);
-            var componentVersionElement = componentVersionPointer.Evaluate(root);
-
-            if (componentVersionElement is null ||
-                componentVersionElement.Value.ValueKind != JsonValueKind.Number)
+            var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
+            if (parseResult.IsFailure)
             {
-                return Result<ComponentSchema>.Fail("Component version element is not valid");
+                return Result<ComponentSchema>.Fail($"Failed to parse component type and version: {typeAndVersion}")
+                    .WithErrors(parseResult);
             }
-            var componentVersion = componentVersionElement.Value.GetInt32();
+            var (componentType, componentVersion) = parseResult.Value;
 
             // Populate the component info
 
@@ -107,7 +106,18 @@ public class ComponentSchema
                 }
             }
 
-            var componentTypeInfo = new ComponentTypeInfo(componentType, componentAttributes, componentProperties);
+            var componentTypeInfo = new ComponentTypeInfo(componentType, componentVersion, componentAttributes, componentProperties);
+
+            // Construct the prototype element
+
+            var prototypeNode = root.GetProperty(PrototypeKey).AsNode();
+            if (prototypeNode is null)
+            {
+                return Result<ComponentSchema>.Fail("Prototype node not found");
+            }
+            prototypeNode["_componentType"] = typeAndVersion; // Prototype type and version match the schema
+
+            var prototype = JsonSerializer.Deserialize<JsonElement>(prototypeNode.ToJsonString());
 
             // Create the JsonSchema object
 
@@ -117,7 +127,15 @@ public class ComponentSchema
                 return Result<ComponentSchema>.Fail($"Failed to parse schema for component type: '{componentType}'");
             }
 
-            var schema = new ComponentSchema(componentType, componentVersion, componentTypeInfo, jsonSchema);
+            // Validate the prototype
+
+            var evaluateResult = jsonSchema.Evaluate(prototype);
+            if (!evaluateResult.IsValid)
+            {
+                return Result<ComponentSchema>.Fail($"Prototype validation failed: {componentType}");
+            }
+
+            var schema = new ComponentSchema(componentType, componentVersion, componentTypeInfo, prototype, jsonSchema);
 
             return Result<ComponentSchema>.Ok(schema);
         }

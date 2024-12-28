@@ -204,7 +204,7 @@ public class EntityData
                 throw new InvalidOperationException($"Component patch operation does not specify a component index");
             }
 
-            var componentType = string.Empty;
+            string typeAndVersion = string.Empty;
             if (operation.Op == OperationType.Add &&
                 jsonPointer.Count == 2)
             {
@@ -223,7 +223,7 @@ public class EntityData
                     throw new InvalidOperationException($"Added component does not have a '{EntityConstants.ComponentTypeKey}' property");
                 }
 
-                componentType = addedComponentTypeNode.GetValue<string>();
+                typeAndVersion = addedComponentTypeNode.GetValue<string>();
             }
             else
             {
@@ -236,8 +236,15 @@ public class EntityData
                     throw new InvalidOperationException($"Component at index {componentIndex} does not contain a '{EntityConstants.ComponentTypeKey}' property");
                 }
 
-                componentType = componentTypeNode.GetValue<string>();
+                typeAndVersion = componentTypeNode.GetValue<string>();
             }
+
+            var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
+            if (parseResult.IsFailure)
+            {
+                throw new InvalidOperationException($"Failed to parse component type and version: {typeAndVersion}. {parseResult.Error}");
+            }
+            var (componentType, _) = parseResult.Value;
 
             if (string.IsNullOrEmpty(componentType))
             {
