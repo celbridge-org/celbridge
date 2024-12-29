@@ -21,8 +21,7 @@
     "sceneTitle": "",
     "sceneDescription": ""
   },
-  "attributes": {
-    "activityName": "Screenplay"
-  },
+  "tags": [ "Screenplay" ],
+  "attributes": {},
   "additionalProperties": false
 }

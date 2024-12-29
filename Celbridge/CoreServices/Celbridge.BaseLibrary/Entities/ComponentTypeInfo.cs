@@ -3,8 +3,19 @@ namespace Celbridge.Entities;
 /// <summary>
 /// Describes the attributes and properties of a component type.
 /// </summary>
-public record ComponentTypeInfo(string ComponentType, int ComponentVersion, IReadOnlyDictionary<string, string> Attributes, IReadOnlyList<ComponentPropertyTypeInfo> Properties)
+public record ComponentTypeInfo(
+    string ComponentType, 
+    int ComponentVersion, 
+    IReadOnlySet<string> Tags,
+    IReadOnlyDictionary<string, string> Attributes, 
+    IReadOnlyList<ComponentPropertyTypeInfo> Properties)
 {
+    /// <summary>
+    /// Returns true if the component type has the specified tag.
+    /// Tags are defined at design time and are used to categorize component types.
+    /// </summary>
+    public bool HasTag(string tag) => Tags.Contains(tag);
+
     /// <summary>
     /// Gets a boolean attribute value.
     /// Returns false if the attribute is not found or cannot be parsed.

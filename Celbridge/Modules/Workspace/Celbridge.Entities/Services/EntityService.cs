@@ -637,6 +637,18 @@ public class EntityService : IEntityService, IDisposable
         return Result<bool>.Ok(true);
     }
 
+    public bool HasTag(ResourceKey resource, string tag)
+    {
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return false;
+        }
+        var entity = acquireResult.Value;
+
+        return entity.EntityData.Tags.Contains(tag);
+    }
+
     private static JsonPointer GetPropertyPointer(int componentIndex, string propertyPath)
     {
         var trimmedPath = propertyPath.TrimStart('/');

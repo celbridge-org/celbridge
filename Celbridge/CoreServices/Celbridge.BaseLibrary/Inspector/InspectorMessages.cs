@@ -26,3 +26,7 @@ public record ComponentTypeTextChangedMessage(string ComponentType);
 /// </summary>
 public record ComponentTypeTextEnteredMessage();
 
+/// <summary>
+/// A message sent when the component list in the inspector has been populated.
+/// </summary>
+public record PopulatedComponentListMessage(ResourceKey Resource);
