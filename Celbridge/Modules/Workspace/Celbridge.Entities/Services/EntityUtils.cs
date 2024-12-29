@@ -30,22 +30,30 @@ public static class EntityUtils
             return Result<EntityData>.Fail($"Entity data failed schema validation: '{entityDataPath}'");
         }
 
-        var checkSchemasResult = CheckComponentSchemas(jsonObject, schemaRegistry);
-        if (checkSchemasResult.IsFailure)
+        var validateSchemasResult = ValidateComponentSchemas(jsonObject, schemaRegistry);
+        if (validateSchemasResult.IsFailure)
         {
             return Result<EntityData>.Fail($"Failed to validate component schemas for entity: '{entityDataPath}'")
-                .WithErrors(checkSchemasResult);
+                .WithErrors(validateSchemasResult);
         }
 
-        var checkMultipleResult = CheckMultipleComponents(jsonObject, schemaRegistry);
-        if (checkMultipleResult.IsFailure)
+        var validateMultipleResult = ValidateMultipleComponents(jsonObject, schemaRegistry);
+        if (validateMultipleResult.IsFailure)
         {
             return Result<EntityData>.Fail($"Entity data contains invalid multiple components: '{entityDataPath}'")
-                .WithErrors(checkMultipleResult);
+                .WithErrors(validateMultipleResult);
         }
 
+        var getTagsResult = GetAllComponentTags(jsonObject, schemaRegistry);
+        if (getTagsResult.IsFailure)
+        {
+            return Result<EntityData>.Fail($"Failed to get component tags for entity: '{entityDataPath}'")
+                .WithErrors(getTagsResult);
+        }
+        var tags = getTagsResult.Value;
+
         // We've passed validation so now we can create and return the EntityData object
-        var entityData = EntityData.Create(jsonObject, entitySchema);
+        var entityData = EntityData.Create(jsonObject, entitySchema, tags);
 
         return Result<EntityData>.Ok(entityData);
     }
@@ -93,7 +101,7 @@ public static class EntityUtils
     /// <summary>
     /// Checks if the entity data contains multiple components of the same type where the component schema does not allow it.
     /// </summary>
-    public static Result CheckMultipleComponents(JsonObject entityData, ComponentSchemaRegistry schemaRegistry)
+    public static Result ValidateMultipleComponents(JsonObject entityData, ComponentSchemaRegistry schemaRegistry)
     {
         if (entityData[EntityConstants.ComponentsKey] is not JsonArray components)
         {
@@ -129,7 +137,7 @@ public static class EntityUtils
                 continue;
             }
 
-            var checkResult = CheckMultipleComponents(entityData, componentType, schemaRegistry);
+            var checkResult = ValidateMultipleComponents(entityData, componentType, schemaRegistry);
             if (checkResult.IsFailure)
             {
                 return Result.Fail($"Duplicate component check failed for component type '{componentType}'.")
@@ -145,7 +153,7 @@ public static class EntityUtils
     /// <summary>
     /// Checks if the entity data contains multiple instance of any component type where the schema does not allow it.
     /// </summary>
-    public static Result CheckMultipleComponents(JsonObject entityData, string componentType, ComponentSchemaRegistry schemaRegistry)
+    public static Result ValidateMultipleComponents(JsonObject entityData, string componentType, ComponentSchemaRegistry schemaRegistry)
     {
         var getSchemaResult = schemaRegistry.GetSchemaForComponentType(componentType);
         if (getSchemaResult.IsFailure)
@@ -183,48 +191,14 @@ public static class EntityUtils
     /// <summary>
     /// Checks if a specific component in the entity data is valid against its respective schema.
     /// </summary>
-    public static Result CheckComponentSchema(JsonObject entityData, int componentIndex, ComponentSchemaRegistry schemaRegistry)
+    public static Result ValidateComponentSchema(JsonObject entityData, int componentIndex, ComponentSchemaRegistry schemaRegistry)
     {
-        // Get the component at specified index
-
-        var componentPointer = JsonPointer.Parse($"/{EntityConstants.ComponentsKey}/{componentIndex}");
-        if (!componentPointer.TryEvaluate(entityData, out var componentNode))
-        {
-            return Result.Fail($"Failed to get component at index: {componentIndex}");
-        }
-
-        if (componentNode is not JsonObject componentObject)
-        {
-            return Result.Fail($"Component at index {componentIndex} is not a JSON object");
-        }
-
-        // Get the component type
-
-        var componentTypePointer = JsonPointer.Parse($"/{EntityConstants.ComponentTypeKey}");
-        if (!componentTypePointer.TryEvaluate(componentObject, out var componentTypeNode) ||
-            componentTypeNode is null ||
-            componentTypeNode.GetValueKind() != JsonValueKind.String)
-        {
-            return Result.Fail($"Failed to get component type for component at index: {componentIndex}");
-        }
-        var typeAndVersion = componentTypeNode.GetValue<string>();
-
-        var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
-        if (parseResult.IsFailure)
-        {
-            return Result<ComponentSchema>.Fail($"Failed to parse component type and version: {typeAndVersion}");
-        }
-        var (componentType, componentVersion) = parseResult.Value;
-
-        // Get the schema for the component type
-
-        var getSchemaResult = schemaRegistry.GetSchemaForComponentType(componentType);
+        var getSchemaResult = GetComponentAndSchema(entityData, componentIndex, schemaRegistry);
         if (getSchemaResult.IsFailure)
         {
-            return Result.Fail($"Failed to get schema for component type '{componentType}'")
-                .WithErrors(getSchemaResult);
+            return Result.Fail($"Failed to get component schema");
         }
-        var componentSchema = getSchemaResult.Value;
+        var (componentObject, componentSchema) = getSchemaResult.Value;
 
         // Validate the component against its schema
 
@@ -239,9 +213,72 @@ public static class EntityUtils
     }
 
     /// <summary>
+    /// Returns the set of component tags associated with a component.
+    /// </summary>
+    public static Result<IReadOnlySet<string>> GetComponentTags(JsonObject entityData, int componentIndex, ComponentSchemaRegistry schemaRegistry)
+    {
+        var getSchemaResult = GetComponentAndSchema(entityData, componentIndex, schemaRegistry);
+        if (getSchemaResult.IsFailure)
+        {
+            return Result<IReadOnlySet<string>>.Fail($"Failed to get component schema");
+        }
+        var (componentObject, componentSchema) = getSchemaResult.Value;
+
+        return Result<IReadOnlySet<string>>.Ok(componentSchema.ComponentTypeInfo.Tags);
+    }
+
+    private static Result<(JsonObject, ComponentSchema)> GetComponentAndSchema(JsonObject entityData, int componentIndex, ComponentSchemaRegistry schemaRegistry)
+    {
+        // Get the component at specified index
+
+        var componentPointer = JsonPointer.Parse($"/{EntityConstants.ComponentsKey}/{componentIndex}");
+        if (!componentPointer.TryEvaluate(entityData, out var componentNode))
+        {
+            return Result<(JsonObject, ComponentSchema)>.Fail($"Failed to get component at index: {componentIndex}");
+        }
+
+        if (componentNode is not JsonObject componentObject)
+        {
+            return Result<(JsonObject, ComponentSchema)>.Fail($"Component at index {componentIndex} is not a JSON object");
+        }
+
+        // Get the component type
+
+        var componentTypePointer = JsonPointer.Parse($"/{EntityConstants.ComponentTypeKey}");
+        if (!componentTypePointer.TryEvaluate(componentObject, out var componentTypeNode) ||
+            componentTypeNode is null ||
+            componentTypeNode.GetValueKind() != JsonValueKind.String)
+        {
+            return Result<(JsonObject, ComponentSchema)>.Fail($"Failed to get component type for component at index: {componentIndex}");
+        }
+        var typeAndVersion = componentTypeNode.GetValue<string>();
+
+        var parseResult = ParseComponentTypeAndVersion(typeAndVersion);
+        if (parseResult.IsFailure)
+        {
+            return Result<(JsonObject, ComponentSchema)>.Fail($"Failed to parse component type and version: {typeAndVersion}");
+        }
+        var (componentType, componentVersion) = parseResult.Value;
+
+        // Get the schema for the component type
+
+        var getSchemaResult = schemaRegistry.GetSchemaForComponentType(componentType);
+        if (getSchemaResult.IsFailure)
+        {
+            return Result<(JsonObject, ComponentSchema)>.Fail($"Failed to get schema for component type '{componentType}'")
+                .WithErrors(getSchemaResult);
+        }
+        var componentSchema = getSchemaResult.Value;
+
+        var result = (componentObject, componentSchema);
+
+        return Result<(JsonObject, ComponentSchema)>.Ok(result);
+    }
+
+    /// <summary>
     /// Checks if all components in the entity data are valid against their respective schemas.
     /// </summary>
-    public static Result CheckComponentSchemas(JsonObject entityData, ComponentSchemaRegistry schemaRegistry)
+    public static Result ValidateComponentSchemas(JsonObject entityData, ComponentSchemaRegistry schemaRegistry)
     {
         var componentsPointer = JsonPointer.Parse($"/{EntityConstants.ComponentsKey}");
 
@@ -255,7 +292,7 @@ public static class EntityUtils
         // Validate each component in the entity against its corresponding schema
         for (int i = 0; i < componentsArray.Count; i++)
         {
-            var checkSchemaResult = CheckComponentSchema(entityData, i, schemaRegistry);
+            var checkSchemaResult = ValidateComponentSchema(entityData, i, schemaRegistry);
             if (checkSchemaResult.IsFailure)
             {
                 return Result.Fail($"Component at index {i} is not valid against its schema")
@@ -264,6 +301,40 @@ public static class EntityUtils
         }
 
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Returns the union of all the component tags for an entity.
+    /// </summary>
+    public static Result<HashSet<string>> GetAllComponentTags(JsonObject entityData, ComponentSchemaRegistry schemaRegistry)
+    {
+        var componentsPointer = JsonPointer.Parse($"/{EntityConstants.ComponentsKey}");
+
+        if (!componentsPointer.TryEvaluate(entityData, out var componentsNode) ||
+            componentsNode is not JsonArray componentsArray ||
+            componentsArray is null)
+        {
+            return Result<HashSet<string>>.Fail("Failed to get components array");
+        }
+
+        var allTags = new HashSet<string>();
+        for (int i = 0; i < componentsArray.Count; i++)
+        {
+            var getTagsResult = GetComponentTags(entityData, i, schemaRegistry);
+            if (getTagsResult.IsFailure)
+            {
+                return Result<HashSet<string>>.Fail($"Failed to get tags for Component at index {i}")
+                    .WithErrors(getTagsResult);
+            }
+            var componentTags = getTagsResult.Value;
+
+            if (componentTags.Count > 0)
+            {
+                allTags.AddRange(componentTags);
+            }
+        }
+
+        return Result<HashSet<string>>.Ok(allTags);
     }
 
     /// <summary>

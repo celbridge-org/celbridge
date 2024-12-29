@@ -327,8 +327,6 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         int previousIndex = SelectedIndex;
 
-        HashSet<string> activityNames = new();
-
         List<ComponentItem> componentItems = new();
         for (int i = 0; i < count; i++)
         {
@@ -344,12 +342,6 @@ public partial class ComponentListViewModel : InspectorViewModel
             if (componentType == "Empty")
             {
                 componentType = string.Empty;
-            }
-
-            var activityName = componentTypeInfo.GetStringAttribute("activityName");
-            if (!string.IsNullOrEmpty(activityName))
-            {
-                activityNames.Add(activityName);
             }
 
             var componentItem = new ComponentItem
@@ -370,6 +362,11 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             SelectedIndex = Math.Clamp(previousIndex, 0, count - 1);
         }
+
+        // Notify running activities that the component list has been populated, so that
+        // they may add annotations to present component information in the inspector. 
+        var message = new PopulatedComponentListMessage(Resource);
+        _messengerService.Send(message);
     }
 
     private void UpdateEditMode()

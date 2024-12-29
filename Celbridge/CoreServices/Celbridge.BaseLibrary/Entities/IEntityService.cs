@@ -134,4 +134,9 @@ public interface IEntityService
     /// Returns false if there was no operation on the redo stack to redo.
     /// </summary>
     Result<bool> RedoEntity(ResourceKey resource);
+
+    /// <summary>
+    /// Returns true if any component in the entity has the specified tag.
+    /// </summary>
+    bool HasTag(ResourceKey resource, string tag);
 }
