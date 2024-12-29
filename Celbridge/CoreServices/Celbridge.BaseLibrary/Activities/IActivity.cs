@@ -6,11 +6,6 @@ namespace Celbridge.Activities;
 public interface IActivity
 {
     /// <summary>
-    /// Returns the name of the activity.
-    /// </summary>
-    string ActivityName { get; }
-
-    /// <summary>
     /// Starts the activity.
     /// </summary>
     /// <returns></returns>

@@ -13,53 +13,42 @@ namespace Celbridge.Screenplay.Services;
 public class ScreenplayActivity : IActivity
 {
     private readonly ILogger<ScreenplayActivity> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
     private readonly IDocumentsService _documentService;
 
-    public string ActivityName => ScreenplayConstants.ScreenplayActivityName;
-
     private HashSet<ResourceKey> _pendingEntityUpdates = new();
 
     public ScreenplayActivity(
-        ILogger<ScreenplayActivity> logger,
+        ILogger<ScreenplayActivity> logger,        
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
 
+        _messengerService = messengerService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentService = workspaceWrapper.WorkspaceService.DocumentsService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
-
-        messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
-        messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
-    }
-
-    private void OnSelectedResourceChangedMessage(object recipient, SelectedResourceChangedMessage message)
-    {
-        var resource = message.Resource;
-
-        // Todo: Check for "Screenplay" entity tag instead
-        if (resource.ToString().EndsWith(".md"))
-        {
-            _pendingEntityUpdates.Add(resource);
-        }
-    }
-
-    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
-    {
-        // Todo: Check for "Screenplay" entity tag instead
-        if (message.ComponentType == ScreenplayConstants.SceneComponentType ||
-            message.ComponentType == ScreenplayConstants.LineComponentType)
-        {
-            // Regenerate the screenplay markdown on any property change to the inspected resource.
-            _pendingEntityUpdates.Add(message.Resource);
-        }
     }
 
     public async Task<Result> Start()
     {
+        _messengerService.Register<SelectedResourceChangedMessage>(this, (s,e) => HandleMessage(e.Resource));
+        _messengerService.Register<ComponentChangedMessage>(this, (s, e) => HandleMessage(e.Resource));
+        _messengerService.Register<PopulatedComponentListMessage>(this, (s, e) => HandleMessage(e.Resource));
+
+        void HandleMessage(ResourceKey resource)
+        {
+            bool hasScreenplayTag = _entityService.HasTag(resource, ScreenplayConstants.ScreenplayTag);
+
+            if (hasScreenplayTag)
+            {
+                _pendingEntityUpdates.Add(resource);
+            }
+        }
+
         await Task.CompletedTask;
 
         return Result.Ok();
@@ -67,6 +56,10 @@ public class ScreenplayActivity : IActivity
 
     public async Task<Result> Stop()
     {
+        _messengerService.Unregister<SelectedResourceChangedMessage>(this);
+        _messengerService.Unregister<ComponentChangedMessage>(this);
+        _messengerService.Unregister<PopulatedComponentListMessage>(this);
+
         await Task.CompletedTask;
 
         return Result.Ok();
@@ -74,10 +67,16 @@ public class ScreenplayActivity : IActivity
 
     public async Task<Result> UpdateAsync()
     {
-        // Get the inspected entity's list of components
         bool hasError = true;
         foreach (var fileResource in _pendingEntityUpdates)
         {
+            bool hasScreenplayTag = _entityService.HasTag(fileResource, ScreenplayConstants.ScreenplayTag);
+            if (!hasScreenplayTag)
+            {
+                // The Screenplay tag has been removed since the entity update was requested
+                continue;
+            }
+
             var updateResult = await UpdateEntity(fileResource);
             if (updateResult.IsFailure)
             {
@@ -121,11 +120,9 @@ public class ScreenplayActivity : IActivity
             }
             var componentInfo = getInfoResult.Value;
 
-            var activityName = componentInfo.GetStringAttribute("activityName");
-
-            if (activityName != ActivityName)
+            if (!componentInfo.HasTag(ScreenplayConstants.ScreenplayTag))
             {
-                // This component is not associated with this activity so we can ignore it
+                // Not a Screenplay component, so ignore it
                 continue;
             }
 

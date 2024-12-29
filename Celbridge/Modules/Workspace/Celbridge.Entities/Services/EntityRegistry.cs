@@ -464,7 +464,15 @@ public class EntityRegistry
             return Result<EntityData>.Fail($"Failed to create entity data. Schema validation error: {resource}");
         }
 
-        var entityData = EntityData.Create(entityJsonObject, _entitySchema);
+        var getTagsResult = EntityUtils.GetAllComponentTags(entityJsonObject, _schemaRegistry);
+        if (getTagsResult.IsFailure)
+        {
+            return Result<EntityData>.Fail($"Failed to get component tags for entity data: {resource}")
+                .WithErrors(getTagsResult);
+        }
+        var tags = getTagsResult.Value;
+
+        var entityData = EntityData.Create(entityJsonObject, _entitySchema, tags);
 
         return Result<EntityData>.Ok(entityData);
     }

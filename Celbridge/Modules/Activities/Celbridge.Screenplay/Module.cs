@@ -20,13 +20,13 @@ public class Module : IModule
         return Result.Ok();
     }
 
-    public bool SupportsActivity(string activityName) => activityName == ScreenplayConstants.ScreenplayActivityName;
+    public bool SupportsActivity(string activityName) => activityName == ScreenplayConstants.ScreenplayTag;
 
     public Result<IActivity> CreateActivity(string activityName)
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
-        if (activityName == ScreenplayConstants.ScreenplayActivityName)
+        if (activityName == ScreenplayConstants.ScreenplayTag)
         {
             var activity = serviceProvider.GetRequiredService<ScreenplayActivity>();
             return Result<IActivity>.Ok(activity);

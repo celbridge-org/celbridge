@@ -87,7 +87,7 @@ public class ActivityService : IActivityService, IDisposable
                 var updateResult = await activity.UpdateAsync();
                 if (updateResult.IsFailure)
                 {
-                    return Result.Fail($"Failed to update activity '{activity.ActivityName}'")
+                    return Result.Fail($"Failed to update activity '{activity.GetType()}'")
                         .WithErrors(updateResult);
                 }
             }

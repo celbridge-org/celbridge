@@ -10,6 +10,7 @@ namespace Celbridge.Entities.Models;
 public class ComponentSchema
 {
     private const string ComponentTypeConstKey = "/properties/_componentType/const";
+    private const string TagsKey = "tags";
     private const string AttributesKey = "attributes";
     private const string PropertiesKey = "properties";
     private const string PrototypeKey = "prototype";
@@ -68,7 +69,23 @@ public class ComponentSchema
             }
             var (componentType, componentVersion) = parseResult.Value;
 
-            // Populate the component info
+            // Get the component tags
+
+            var componentTags = new HashSet<string>();
+            if (root.TryGetProperty(TagsKey, out JsonElement tagsElement))
+            {
+                foreach (var tag in tagsElement.EnumerateArray())
+                {
+                    if (tag.ValueKind != JsonValueKind.String)
+                    {
+                        return Result<ComponentSchema>.Fail("Tag value is not a string");
+                    }
+
+                    componentTags.Add(tag.ToString());
+                }
+            }
+
+            // Get the component attributes
 
             var componentAttributes = new Dictionary<string, string>();
             if (root.TryGetProperty(AttributesKey, out JsonElement attributesElement))
@@ -78,6 +95,8 @@ public class ComponentSchema
                     componentAttributes[attribute.Name] = attribute.Value.ToString();
                 }
             }
+
+            // Get the component properties
 
             var componentProperties = new List<ComponentPropertyTypeInfo>();
             if (root.TryGetProperty(PropertiesKey, out JsonElement propertiesElement))
@@ -106,7 +125,7 @@ public class ComponentSchema
                 }
             }
 
-            var componentTypeInfo = new ComponentTypeInfo(componentType, componentVersion, componentAttributes, componentProperties);
+            var componentTypeInfo = new ComponentTypeInfo(componentType, componentVersion, componentTags, componentAttributes, componentProperties);
 
             // Construct the prototype element
 
