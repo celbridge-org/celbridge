@@ -14,6 +14,24 @@ public sealed partial class EntityEditor : UserControl
 
         ViewModel = serviceProvider.GetRequiredService<EntityEditorViewModel>();
         DataContext = ViewModel;
+
+        Loaded += EntityEditor_Loaded;
+        Unloaded += EntityEditor_Unloaded;
+    }
+
+    private void EntityEditor_Loaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.InspectedComponentChanged += ViewModel_InspectedComponentChanged;
+    }
+
+    private void EntityEditor_Unloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.InspectedComponentChanged -= ViewModel_InspectedComponentChanged;
+    }
+
+    private void ViewModel_InspectedComponentChanged()
+    {
+        DetailScrollViewer.ScrollToVerticalOffset(0);
     }
 
     public void ClearComponentListPanel()
