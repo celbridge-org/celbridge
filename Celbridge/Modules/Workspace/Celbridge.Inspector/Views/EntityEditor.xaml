@@ -21,19 +21,22 @@
     <StackPanel x:Name="ComponentListPanel"
                 Grid.Row="1"
                 Orientation="Vertical"/>
-    
-    <Grid Grid.Row="2"
-          Margin="4,0,0,0"
-          BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,2,0,0">
 
-      <local:ComponentValueEditor x:Name="ComponentValueEditor"
-                                  Visibility="{x:Bind ViewModel.ComponentValueEditorVisibility, Mode=OneWay}"/>
-      <local:ComponentTypeEditor x:Name="ComponentTypeEditor"
-                                 Visibility="{x:Bind ViewModel.ComponentTypeEditorVisibility, Mode=OneWay}"/>
+    <ScrollViewer x:Name="DetailScrollViewer"
+                  Grid.Row="2"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  Margin="4,0,0,0">
+      <Grid Margin="4,0,0,0"
+            BorderBrush="{ThemeResource PanelBorderBrush}"
+            BorderThickness="0,2,0,0">
+        <local:ComponentValueEditor x:Name="ComponentValueEditor"
+                                    Visibility="{x:Bind ViewModel.ComponentValueEditorVisibility, Mode=OneWay}"/>
+        <local:ComponentTypeEditor x:Name="ComponentTypeEditor"
+                                   Visibility="{x:Bind ViewModel.ComponentTypeEditorVisibility, Mode=OneWay}"/>
+      </Grid>
+    </ScrollViewer>
 
-    </Grid>
-    
     <controls:GridSplitter x:Name="DetailSplitter"
                            Grid.Row="2"
                            VerticalAlignment="Top"
