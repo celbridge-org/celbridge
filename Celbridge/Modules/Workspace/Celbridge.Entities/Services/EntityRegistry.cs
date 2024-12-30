@@ -426,14 +426,12 @@ public class EntityRegistry
 
         // Add default components based on the resource's file extension
 
+        // Todo: Add a Folder component to folder resources by default
         var fileExtension = Path.GetExtension(resource.ToString());
-        if (string.IsNullOrEmpty(fileExtension))
-        {
-            // Todo: Handle resources without file extensions and folder resources
-            return Result<EntityData>.Fail($"Resource does not have a file extension: '{resource}'");
-        }
+        var hasExtension = !string.IsNullOrEmpty(fileExtension);
 
-        if (_defaultComponents.TryGetValue(fileExtension, out var defaultComponents))
+        if (hasExtension &&
+            _defaultComponents.TryGetValue(fileExtension, out var defaultComponents))
         {
             foreach (var componentType in defaultComponents)
             {
