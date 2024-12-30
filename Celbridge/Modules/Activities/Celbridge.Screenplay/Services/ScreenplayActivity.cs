@@ -143,11 +143,11 @@ public class ScreenplayActivity : IActivity
             }
             var annotation = getAnnotationResult.Value;
 
-            var setAnnotationResult = _inspectorService.SetComponentAnnotation(fileResource, i, annotation);
-            if (setAnnotationResult.IsFailure)
+            var updateAnnotationResult = _entityService.UpdateComponentAnnotation(fileResource, i, annotation);
+            if (updateAnnotationResult.IsFailure)
             {
-                return Result.Fail($"Failed to set annotation for component index '{i}' on inspected resource: '{fileResource}'")
-                    .WithErrors(setAnnotationResult);
+                return Result.Fail($"Failed to update annotation for component index '{i}' on inspected resource: '{fileResource}'")
+                    .WithErrors(updateAnnotationResult);
             }
         }
 

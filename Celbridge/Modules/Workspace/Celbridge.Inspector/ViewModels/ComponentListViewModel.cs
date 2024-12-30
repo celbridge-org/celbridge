@@ -50,7 +50,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     public void OnViewLoaded()
     {
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
-        _messengerService.Register<UpdateComponentAppearanceMessage>(this, OnUpdateComponentAppearanceMessage);
+        _messengerService.Register<ComponentAnnotationUpdatedMessage>(this, OnUpdateComponentAppearanceMessage);
 
         PropertyChanged += ViewModel_PropertyChanged;
 
@@ -63,12 +63,12 @@ public partial class ComponentListViewModel : InspectorViewModel
     public void OnViewUnloaded()
     {
         _messengerService.Unregister<ComponentChangedMessage>(this);
-        _messengerService.Unregister<UpdateComponentAppearanceMessage>(this);
+        _messengerService.Unregister<ComponentAnnotationUpdatedMessage>(this);
 
         PropertyChanged -= ViewModel_PropertyChanged;
     }
 
-    private void OnUpdateComponentAppearanceMessage(object recipient, UpdateComponentAppearanceMessage message)
+    private void OnUpdateComponentAppearanceMessage(object recipient, ComponentAnnotationUpdatedMessage message)
     {
         if (message.Resource != Resource)
         {
