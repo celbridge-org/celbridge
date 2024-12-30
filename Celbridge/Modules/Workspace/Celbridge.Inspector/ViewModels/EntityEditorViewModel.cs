@@ -11,9 +11,12 @@ public partial class EntityEditorViewModel : ObservableObject
     [ObservableProperty]
     private Visibility _componentTypeEditorVisibility = Visibility.Collapsed;
 
+    public event Action? InspectedComponentChanged = null;
+
     public EntityEditorViewModel(IMessengerService messengerService)
     {
         messengerService.Register<ComponentPanelModeChangedMessage>(this, OnComponentPanelModeChangedMessage);
+        messengerService.Register<InspectedComponentChangedMessage>(this, OnInspectedComponentChangedMessage);
     }
 
     private void OnComponentPanelModeChangedMessage(object recipient, ComponentPanelModeChangedMessage message)
@@ -35,5 +38,10 @@ public partial class EntityEditorViewModel : ObservableObject
                 ComponentTypeEditorVisibility = Visibility.Visible;
                 break;
         }
+    }
+
+    private void OnInspectedComponentChangedMessage(object recipient, InspectedComponentChangedMessage message)
+    {
+        InspectedComponentChanged?.Invoke();
     }
 }
