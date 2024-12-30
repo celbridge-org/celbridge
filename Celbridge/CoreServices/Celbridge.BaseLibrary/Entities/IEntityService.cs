@@ -139,4 +139,9 @@ public interface IEntityService
     /// Returns true if any component in the entity has the specified tag.
     /// </summary>
     bool HasTag(ResourceKey resource, string tag);
+
+    /// <summary>
+    /// Updates the annotation data for a component in the inspector.
+    /// </summary>
+    Result UpdateComponentAnnotation(ResourceKey inspectedResource, int componentIndex, ComponentAnnotation annotation);
 }

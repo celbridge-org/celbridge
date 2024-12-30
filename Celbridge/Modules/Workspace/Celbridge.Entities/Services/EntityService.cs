@@ -649,6 +649,16 @@ public class EntityService : IEntityService, IDisposable
         return entity.EntityData.Tags.Contains(tag);
     }
 
+    public Result UpdateComponentAnnotation(ResourceKey inspectedResource, int componentIndex, ComponentAnnotation annotation)
+    {
+        // Updates the component appearance in the inspector
+
+        var message = new ComponentAnnotationUpdatedMessage(inspectedResource, componentIndex, annotation);
+        _messengerService.Send(message);
+
+        return Result.Ok();
+    }
+
     private static JsonPointer GetPropertyPointer(int componentIndex, string propertyPath)
     {
         var trimmedPath = propertyPath.TrimStart('/');
