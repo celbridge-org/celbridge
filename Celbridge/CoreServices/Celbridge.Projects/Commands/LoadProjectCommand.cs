@@ -56,7 +56,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await _commandService.ExecuteNow<IUnloadProjectCommand>();
+        await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
 
         // Load the project
         var loadResult = await LoadProjectAsync(ProjectFilePath);

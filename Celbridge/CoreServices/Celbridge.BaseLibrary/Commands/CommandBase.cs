@@ -27,6 +27,12 @@ public abstract class CommandBase : IExecutableCommand
     public string ExecutionSource { get; set; } = string.Empty;
 
     /// <summary>
+    /// Called when the command is executed.
+    /// This is used internally by the ExecuteAsync() method and should not be used directly.
+    /// </summary>
+    public Action<Result>? OnExecute { get; set; } = null;
+
+    /// <summary>
     /// Execute the command.
     /// </summary>
     public abstract Task<Result> ExecuteAsync();

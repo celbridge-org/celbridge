@@ -320,8 +320,8 @@ public class ExplorerService : IExplorerService, IDisposable
             return;
         }
 
-        // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
-        var selectResult = await _commandService.ExecuteNow<ISelectResourceCommand>(command =>
+        // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
+        var selectResult = await _commandService.ExecuteImmediate<ISelectResourceCommand>(command =>
         {
             command.Resource = resource;
         });

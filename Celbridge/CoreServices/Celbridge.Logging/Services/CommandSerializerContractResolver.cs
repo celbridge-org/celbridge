@@ -31,6 +31,7 @@ public class CommandSerializerContractResolver : DefaultContractResolver
                 case nameof(IExecutableCommand.UndoGroupId):
                 case nameof(IExecutableCommand.CommandFlags):
                 case nameof(IExecutableCommand.ExecutionSource):
+                case nameof(IExecutableCommand.OnExecute):
                     shouldSerialize = false;
                     break;
             }

@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -13,6 +14,7 @@ public partial class StringFieldViewModel : ObservableObject
 {
     private ILogger<StringFieldViewModel> _logger;
     private IMessengerService _messengerService;
+    private ICommandService _commandService;
     private IEntityService _entityService;
 
     public ResourceKey Resource { get; private set; }
@@ -33,10 +35,12 @@ public partial class StringFieldViewModel : ObservableObject
     public StringFieldViewModel(
         ILogger<StringFieldViewModel> logger,
         IMessengerService messengerService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
+        _commandService = commandService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
     }
 
@@ -114,7 +118,13 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void WriteProperty()
     {
-        _entityService.SetProperty(Resource, ComponentIndex, PropertyName, ValueText);
+        _commandService.Execute<ISetPropertyCommand>(command =>
+        {
+            command.Resource = Resource;
+            command.ComponentIndex = ComponentIndex;
+            command.PropertyPath = PropertyName;
+            command.JsonValue = ValueText;
+        });
     }
 
     public void OnViewUnloaded()

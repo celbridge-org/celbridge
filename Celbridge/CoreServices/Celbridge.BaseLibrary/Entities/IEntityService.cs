@@ -124,16 +124,24 @@ public interface IEntityService
     Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue, bool insert = false) where T : notnull;
 
     /// <summary>
-    /// Attempt to undo the most recent entity change for a resource.
-    /// Returns false if there was no operation on the undo stack to undo.
+    /// Returns the number of available undo operations for an entity.
     /// </summary>
-    Result<bool> UndoEntity(ResourceKey resource);
+    int GetUndoCount(ResourceKey resource);
 
     /// <summary>
-    /// Attempt to redo the most recently undone entity change for a resource.
-    /// Returns false if there was no operation on the redo stack to redo.
+    /// Undo the most recent entity change for a resource.
     /// </summary>
-    Result<bool> RedoEntity(ResourceKey resource);
+    Result UndoEntity(ResourceKey resource);
+
+    /// <summary>
+    /// Returns the number of available redo operations for an entity.
+    /// </summary>
+    int GetRedoCount(ResourceKey resource);
+
+    /// <summary>
+    /// Redo the most recently undone entity change for a resource.
+    /// </summary>
+    Result RedoEntity(ResourceKey resource);
 
     /// <summary>
     /// Returns true if any component in the entity has the specified tag.

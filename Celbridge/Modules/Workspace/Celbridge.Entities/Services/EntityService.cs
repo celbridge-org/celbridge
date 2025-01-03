@@ -548,7 +548,19 @@ public class EntityService : IEntityService, IDisposable
         return SetProperty(resource, componentIndex, propertyPath, newValue, insert);
     }
 
-    public Result<bool> UndoEntity(ResourceKey resource)
+    public int GetUndoCount(ResourceKey resource)
+    {
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return 0;
+        }
+        var entity = acquireResult.Value;
+
+        return entity.UndoStack.Count;
+    }
+
+    public Result UndoEntity(ResourceKey resource)
     {
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
@@ -561,8 +573,7 @@ public class EntityService : IEntityService, IDisposable
 
         if (entity.UndoStack.Count == 0)
         {
-            // Undo stack is empty. Succeed but return false to indicate that no changes were undone.
-            return Result<bool>.Ok(false);
+            return Result.Fail($"No undo operations available for resource: {resource}");
         }
 
         // Pop the next patch summary from the Undo stack and apply it to the entity
@@ -574,7 +585,7 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = ApplyPatchOperation(entity, reversePatchOperation, undoGroupId, PatchContext.Undo);
         if (applyResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to apply undo patch to resource: {resource}")
+            return Result.Fail($"Failed to apply undo patch to resource: {resource}")
                 .WithErrors(applyResult);
         }
 
@@ -587,18 +598,29 @@ public class EntityService : IEntityService, IDisposable
             return UndoEntity(resource);
         }
 
-        _logger.LogDebug($"Undo entity: {resource}");
+        // _logger.LogDebug($"Undo entity: {resource}");
 
-        // Succeed and return true to indicate that a patch was undone.
-        return Result<bool>.Ok(true);
+        return Result.Ok();
     }
 
-    public Result<bool> RedoEntity(ResourceKey resource)
+    public int GetRedoCount(ResourceKey resource)
     {
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to acquire entity: {resource}")
+            return 0;
+        }
+        var entity = acquireResult.Value;
+
+        return entity.RedoStack.Count;
+    }
+
+    public Result RedoEntity(ResourceKey resource)
+    {
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
@@ -606,8 +628,7 @@ public class EntityService : IEntityService, IDisposable
 
         if (entity.RedoStack.Count == 0)
         {
-            // Redo stack is empty. Succeed but return false to indicate no changes were redone.
-            return Result<bool>.Ok(false);
+            return Result.Fail($"No redo operations available for resource: {resource}");
         }
 
         // Pop the next patch summary from the Redo stack and apply it to the entity
@@ -619,7 +640,7 @@ public class EntityService : IEntityService, IDisposable
         var applyResult = ApplyPatchOperation(entity, reverseOperation, undoGroupId, PatchContext.Redo);
         if (applyResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to apply redo patch to resource: {resource}");
+            return Result.Fail($"Failed to apply redo patch to resource: {resource}");
         }
 
         // If the next patch summary in the Redo stack has the same UndoGroup, then redo it as well.
@@ -631,10 +652,9 @@ public class EntityService : IEntityService, IDisposable
             return RedoEntity(resource);
         }
 
-        _logger.LogDebug($"Redo entity: {resource}");
+        // _logger.LogDebug($"Redo entity: {resource}");
 
-        // Succeed and return true to indicate that a patch was undone.
-        return Result<bool>.Ok(true);
+        return Result.Ok();
     }
 
     public bool HasTag(ResourceKey resource, string tag)

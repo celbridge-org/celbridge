@@ -34,7 +34,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
         // Close any open project.
         // This will fail if there's no project currently open, but we can just ignore that.
-        await _commandService.ExecuteNow<IUnloadProjectCommand>();
+        await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
 
         // Create the new project
         var createResult = await _projectService.CreateProjectAsync(Config);

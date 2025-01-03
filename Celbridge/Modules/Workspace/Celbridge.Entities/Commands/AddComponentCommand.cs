@@ -34,15 +34,21 @@ public class AddComponentCommand : CommandBase, IAddComponentCommand
         return addResult;
     }
 
-    public static void AddComponent(ResourceKey resource, string componentType, int insertAtIndex)
+    //
+    // Static methods for scripting support.
+    //
+
+    public static async Task<Result> AddComponent(ResourceKey resource, string componentType, int insertAtIndex)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
 
-        commandService.Execute<IAddComponentCommand>(command =>
+        var result = await commandService.ExecuteAsync<IAddComponentCommand>(command =>
         {
             command.Resource = resource;
             command.ComponentType = componentType;
             command.ComponentIndex = insertAtIndex;
         });
+
+        return result;
     }
 }
