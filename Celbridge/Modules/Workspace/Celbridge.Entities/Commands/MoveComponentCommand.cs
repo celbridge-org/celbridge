@@ -34,11 +34,15 @@ public class MoveComponentCommand : CommandBase, IMoveComponentCommand
         return copyResult;
     }
 
-    public static void MoveComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
+    //
+    // Static methods for scripting support.
+    //
+
+    public static async Task<Result> MoveComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
 
-        commandService.Execute<IMoveComponentCommand>(command =>
+        return await commandService.ExecuteAsync<IMoveComponentCommand>(command =>
         {
             command.Resource = resource;
             command.SourceComponentIndex = sourceComponentIndex;

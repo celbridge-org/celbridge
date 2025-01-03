@@ -39,10 +39,10 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     /// Replaces an existing component property value at the specified path.
     /// If the property value does not exist, the operation fails.
     /// </summary>
-    public static void SetProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
+    public static async Task<Result> SetProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ISetPropertyCommand>(command =>
+        return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
             command.Resource = resource;
             command.ComponentIndex = componentIndex;
@@ -56,10 +56,10 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     /// Inserts a new component property value at the specified path.
     /// If the property value already exists, it is replaced.
     /// </summary>
-    public static void InsertProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
+    public static async Task<Result> InsertProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ISetPropertyCommand>(command =>
+        return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
             command.Resource = resource;
             command.ComponentIndex = componentIndex;

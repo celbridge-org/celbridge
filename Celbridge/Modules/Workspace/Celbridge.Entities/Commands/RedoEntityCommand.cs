@@ -31,10 +31,10 @@ public class RedoEntityCommand : CommandBase, IRedoEntityCommand
     // Static methods for scripting support.
     //
 
-    public static void RedoEntity(ResourceKey resource)
+    public static async Task<Result> RedoEntity(ResourceKey resource)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IRedoEntityCommand>(command =>
+        return await commandService.ExecuteAsync<IRedoEntityCommand>(command =>
         {
             command.Resource = resource;
         });
