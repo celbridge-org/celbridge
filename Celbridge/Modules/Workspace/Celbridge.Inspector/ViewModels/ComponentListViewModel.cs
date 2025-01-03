@@ -1,4 +1,5 @@
 using Celbridge.Activities;
+using Celbridge.Commands;
 using Celbridge.Entities;
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.Services;
@@ -17,6 +18,7 @@ public partial class ComponentListViewModel : InspectorViewModel
 {
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
     private readonly IActivityService _activityService;
@@ -38,10 +40,12 @@ public partial class ComponentListViewModel : InspectorViewModel
     public ComponentListViewModel(
         ILogger<MarkdownInspectorViewModel> logger,
         IMessengerService messengerService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
+        _commandService = commandService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
@@ -91,8 +95,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         ComponentItems[index].ComponentDescription = description;
     }
 
-    public ICommand AddComponentCommand => new RelayCommand<object?>(AddComponent_Executed);
-    private void AddComponent_Executed(object? parameter)
+    public ICommand AddComponentCommand => new AsyncRelayCommand<object?>(AddComponent_Executed);
+    private async Task AddComponent_Executed(object? parameter)
     {
         int addIndex = -1;
         switch (parameter)
@@ -127,19 +131,25 @@ public partial class ComponentListViewModel : InspectorViewModel
         // Supress the refresh
         _supressRefreshCount = 1;
 
-        var addResult = _entityService.AddComponent(Resource, addIndex, "Empty");
-        if (addResult.IsFailure)
+        var executeResult = await _commandService.ExecuteAsync<IAddComponentCommand>(command => 
+        {
+            command.Resource = Resource;
+            command.ComponentIndex = addIndex;
+            command.ComponentType = "Empty";
+        });
+
+        if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(addResult.Error);
+            _logger.LogError(executeResult.Error);
             _supressRefreshCount = 0;
             PopulateComponentList();
             return;
         }
     }
 
-    public ICommand DeleteComponentCommand => new RelayCommand<object?>(DeleteComponent_Executed);
-    private void DeleteComponent_Executed(object? parameter)
+    public ICommand DeleteComponentCommand => new AsyncRelayCommand<object?>(DeleteComponent_Executed);
+    private async Task DeleteComponent_Executed(object? parameter)
     {
         var deleteIndex = -1;
 
@@ -164,11 +174,17 @@ public partial class ComponentListViewModel : InspectorViewModel
         // Supress the refresh
         _supressRefreshCount = 1;
 
-        var deleteResult = _entityService.RemoveComponent(Resource, deleteIndex);
-        if (deleteResult.IsFailure)
+
+        var executeResult = await _commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
+        {
+            command.Resource = Resource;
+            command.ComponentIndex = deleteIndex;
+        });
+
+        if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(deleteResult.Error);
+            _logger.LogError(executeResult.Error);
             _supressRefreshCount = 0;
             PopulateComponentList();
             return;
@@ -186,8 +202,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    public ICommand DuplicateComponentCommand => new RelayCommand<object?>(DuplicateComponent_Executed, CanDuplicateComponent);
-    private void DuplicateComponent_Executed(object? parameter)
+    public ICommand DuplicateComponentCommand => new AsyncRelayCommand<object?>(DuplicateComponent_Executed, CanDuplicateComponent);
+    private async Task DuplicateComponent_Executed(object? parameter)
     {
         var componentItem = parameter as ComponentItem;
         if (componentItem is null)
@@ -210,11 +226,17 @@ public partial class ComponentListViewModel : InspectorViewModel
         // Supress the refresh
         _supressRefreshCount = 1;
 
-        var copyResult = _entityService.CopyComponent(Resource, sourceIndex, destIndex);
-        if (copyResult.IsFailure)
+        var executeResult = await _commandService.ExecuteAsync<ICopyComponentCommand>(command =>
+        {
+            command.Resource = Resource;
+            command.SourceComponentIndex = sourceIndex;
+            command.DestComponentIndex = destIndex;
+        });
+
+        if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(copyResult.Error);
+            _logger.LogError(executeResult.Error);
             _supressRefreshCount = 0;
             PopulateComponentList();
             return;
@@ -253,8 +275,8 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private int _supressRefreshCount;
 
-    public ICommand MoveComponentCommand => new RelayCommand<object?>(MoveComponent_Executed);
-    private void MoveComponent_Executed(object? parameter)
+    public ICommand MoveComponentCommand => new AsyncRelayCommand<object?>(MoveComponent_Executed);
+    private async Task MoveComponent_Executed(object? parameter)
     {
         if (parameter is not (int oldIndex, int newIndex))
         {
@@ -269,11 +291,17 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         // A move consists of both a remove and add operation, so we need to supress the refresh twice
         _supressRefreshCount = 2;
-        var moveResult = _entityService.MoveComponent(Resource, oldIndex, newIndex);
-        if (moveResult.IsFailure)
+
+        var executeResult = await _commandService.ExecuteAsync<IMoveComponentCommand>(command => { 
+            command.Resource = Resource;
+            command.SourceComponentIndex = oldIndex;
+            command.DestComponentIndex = newIndex;
+        });
+
+        if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(moveResult.Error);
+            _logger.LogError(executeResult.Error);
             _supressRefreshCount = 0;
             PopulateComponentList();
             return;

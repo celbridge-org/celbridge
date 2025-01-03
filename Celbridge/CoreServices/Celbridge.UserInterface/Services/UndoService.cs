@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Entities;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -16,9 +17,9 @@ public class UndoService : IUndoService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result<bool> Undo()
+    public Result Undo()
     {
-        // First try to undo the selected entity if the inspector panel is active
+        // If the inspector panel is active, try to undo the entity for the selected resource
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
             var activePanel = _workspaceWrapper.WorkspaceService.ActivePanel;
@@ -30,16 +31,26 @@ public class UndoService : IUndoService
                 if (!selectedResource.IsEmpty)
                 {
                     var entityService = _workspaceWrapper.WorkspaceService.EntityService;
-                    return entityService.UndoEntity(selectedResource);
+                    if (entityService.GetUndoCount(selectedResource) > 0)
+                    {
+                        // Executing as a command ensures that no other operations are performed at the same time.
+                        _commandService.Execute<IUndoEntityCommand>(command =>
+                        {
+                            command.Resource = selectedResource;
+                        });
+                    }
+
+                    return Result.Ok();
                 }
             }
         }
 
-        // If no entity was selected, try to undo the last command
+        // The undo is performed internally by executing a command.
+        // Again, this ensures that no other operations are performed at the same time.
         return _commandService.Undo();
     }
 
-    public Result<bool> Redo()
+    public Result Redo()
     {
         // First try to redo the selected entity if the inspector panel is active
         if (_workspaceWrapper.IsWorkspacePageLoaded)
@@ -53,12 +64,22 @@ public class UndoService : IUndoService
                 if (!selectedResource.IsEmpty)
                 {
                     var entityService = _workspaceWrapper.WorkspaceService.EntityService;
-                    return entityService.RedoEntity(selectedResource);
+                    if (entityService.GetRedoCount(selectedResource) > 0)
+                    {
+                        // Executing as a command ensures that no other operations are performed at the same time.
+                        _commandService.Execute<IRedoEntityCommand>(command =>
+                        {
+                            command.Resource = selectedResource;
+                        });
+                    }
+
+                    return Result.Ok();
                 }
             }
         }
 
-        // If no entity was selected, try to redo the last command
+        // The redo is performed internally by executing a command.
+        // Again, this ensures that no other operations are performed at the same time.
         return _commandService.Redo();
     }
 }

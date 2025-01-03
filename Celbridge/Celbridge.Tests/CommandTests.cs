@@ -61,6 +61,7 @@ public class CommandTests
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
+        services.AddTransient<TestCommand>();
 
         _serviceProvider = services.BuildServiceProvider();
         _commandService = _serviceProvider.GetRequiredService<ICommandService>();
@@ -88,8 +89,12 @@ public class CommandTests
     {
         Guard.IsNotNull(_commandService);
 
-        var testCommand = new TestCommand();
-        _commandService.EnqueueCommand(testCommand);
+        TestCommand? testCommand = null;
+        _commandService.Execute<TestCommand>(command =>
+        {
+            testCommand = command;
+        });
+        Guard.IsNotNull(testCommand);
 
         // Wait for command to execute
         for (int i = 0; i < 10; i++)
@@ -114,10 +119,14 @@ public class CommandTests
         //
 
         // The undo stack is currently empty
-        _commandService.IsUndoStackEmpty().Should().BeTrue();
+        _commandService.GetUndoCount().Should().Be(0);
 
-        var testCommand = new TestCommand();
-        _commandService.EnqueueCommand(testCommand);
+        TestCommand? testCommand = null;
+        _commandService.Execute<TestCommand>(command =>
+        {
+            testCommand = command;
+        });
+        Guard.IsNotNull(testCommand);
 
         // Wait for command to execute
         for (int i = 0; i < 10; i++)
@@ -132,7 +141,7 @@ public class CommandTests
         testCommand.ExecuteComplete.Should().BeTrue();
 
         // Undo stack should contain one item
-        _commandService.IsUndoStackEmpty().Should().BeFalse();
+        _commandService.GetUndoCount().Should().Be(1);
 
         //
         // Undo the command
@@ -142,9 +151,7 @@ public class CommandTests
         
         var undoResult = _commandService.Undo();
         undoResult.IsSuccess.Should().BeTrue();
-        undoResult.Value.Should().BeTrue();
-
-        _commandService.IsUndoStackEmpty().Should().BeTrue();
+        _commandService.GetUndoCount().Should().Be(0);
 
         // Wait for undo to complete
         for (int i = 0; i < 10; i++)
@@ -162,11 +169,10 @@ public class CommandTests
         // Redo the command
         //
 
-        _commandService.IsRedoStackEmpty().Should().BeFalse();
+        _commandService.GetRedoCount().Should().Be(1);
 
         var redoResult = _commandService.Redo();
         redoResult.IsSuccess.Should().BeTrue();
-        redoResult.Value.Should().BeTrue();
 
         // Wait for redo to complete
         for (int i = 0; i < 10; i++)
@@ -178,7 +184,7 @@ public class CommandTests
             await Task.Delay(50);
         }
 
-        _commandService.IsUndoStackEmpty().Should().BeFalse();
-        _commandService.IsRedoStackEmpty().Should().BeTrue();
+        _commandService.GetUndoCount().Should().Be(1);
+        _commandService.GetRedoCount().Should().Be(0);
     }
 }

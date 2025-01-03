@@ -286,8 +286,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
 
             // Execute a command to load the document
-            // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
-            var openResult = await _commandService.ExecuteNow<IOpenDocumentCommand>(command =>
+            // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
+            var openResult = await _commandService.ExecuteImmediate<IOpenDocumentCommand>(command =>
             {
                 command.FileResource = fileResource;
             });
@@ -311,8 +311,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         // Execute a command to select the previously selected document
-        // Use ExecuteNow() to ensure the command is executed while the workspace is still loading.
-        var selectResult = await _commandService.ExecuteNow<ISelectDocumentCommand>(command =>
+        // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
+        var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
         {
             command.FileResource = new ResourceKey(selectedDocument);
         });

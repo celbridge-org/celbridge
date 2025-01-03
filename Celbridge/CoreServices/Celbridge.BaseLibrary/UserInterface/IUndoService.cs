@@ -6,14 +6,12 @@ namespace Celbridge.UserInterface;
 public interface IUndoService
 {
     /// <summary>
-    /// Attempt to undo the last operation.
-    /// Returns false if there was no operation on the undo stack to undo.
+    /// Undo the last operation.
     /// </summary>
-    Result<bool> Undo();
+    Result Undo();
 
     /// <summary>
-    /// Attempt to redo the most recently undone operation.
-    /// Returns false if there was no operation on the redo stack to redo.
+    /// Redo the most recently undone operation.
     /// </summary>
-    Result<bool> Redo();
+    Result Redo();
 }

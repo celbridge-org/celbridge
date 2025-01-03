@@ -33,11 +33,15 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
         return removeResult;
     }
 
-    public static void RemoveComponent(ResourceKey resource, int componentIndex)
+    //
+    // Static methods for scripting support.
+    //
+
+    public static async Task<Result> RemoveComponent(ResourceKey resource, int componentIndex)
     {
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
 
-        commandService.Execute<IRemoveComponentCommand>(command =>
+        return await commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
         {
             command.Resource = resource;
             command.ComponentIndex = componentIndex;
