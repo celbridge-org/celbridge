@@ -221,7 +221,9 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         // Update the list view
         var item = ComponentItems[sourceIndex];
-        ComponentItems.Insert(destIndex, item);
+        var clone = item.DeepClone();
+
+        ComponentItems.Insert(destIndex, clone);
 
         // Supress the refresh
         _supressRefreshCount = 1;
