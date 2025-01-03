@@ -15,4 +15,13 @@ public partial class ComponentItem : ObservableObject
 
     [ObservableProperty]
     private string _componentDescription = string.Empty;
+
+    public ComponentItem DeepClone()
+    {
+        return new ComponentItem
+        {
+            ComponentType = ComponentType,
+            ComponentDescription = ComponentDescription
+        };
+    }
 }
