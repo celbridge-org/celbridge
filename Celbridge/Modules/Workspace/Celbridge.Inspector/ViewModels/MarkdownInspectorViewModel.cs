@@ -95,7 +95,17 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
     private void SetEditorMode(EditorMode editorMode)
     {
-        var setResult = _entityService.SetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, editorMode);
+        // Get the component
+        var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponent);
+        if (getComponentResult.IsFailure)
+        {
+            _logger.LogError(getComponentResult.Error);
+            return;
+        }
+        var component = getComponentResult.Value;
+
+        // Set the property
+        var setResult = component.SetProperty(MarkdownComponentConstants.EditorMode, editorMode);
         if (setResult.IsFailure)
         {
             _logger.LogError(setResult.Error);
@@ -106,7 +116,17 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     {
         try
         {
-            EditorMode = _entityService.GetProperty(Resource, MarkdownComponent, MarkdownComponentConstants.EditorMode, EditorMode.Editor);
+            // Get the component
+            var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponent);
+            if (getComponentResult.IsFailure)
+            {
+                _logger.LogError(getComponentResult.Error);
+                return;
+            }
+            var component = getComponentResult.Value;
+
+            // Get the property
+            EditorMode = component.GetProperty(MarkdownComponentConstants.EditorMode, EditorMode.Editor);
         }
         catch (Exception ex)
         {

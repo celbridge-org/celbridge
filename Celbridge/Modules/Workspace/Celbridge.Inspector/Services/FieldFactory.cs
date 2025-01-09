@@ -1,3 +1,4 @@
+using Celbridge.Entities;
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.Views;
 using Celbridge.Workspace;
@@ -17,33 +18,17 @@ public class FieldFactory : IFieldFactory
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result<IField> CreatePropertyField(ResourceKey resource, int componentIndex, string propertyName)
+    public Result<IField> CreatePropertyField(IComponentProxy component, string propertyName)
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        // Get the component type
-        var getTypeResult = entityService.GetComponentType(resource, componentIndex);
-        if (getTypeResult.IsFailure)
-        {
-            return Result<IField>.Fail($"Failed to get component type for entity '{resource}' at component index {componentIndex}")
-                .WithErrors(getTypeResult);
-        }
-        var componentType = getTypeResult.Value;
-
-        // Get the component schema
-        var getSchemaResult = entityService.GetComponentSchema(componentType);
-        if (getSchemaResult.IsFailure)
-        {
-            return Result<IField>.Fail($"Failed to get component schema for component type '{componentType}'")
-                .WithErrors(getSchemaResult);
-        }
-        var schema = getSchemaResult.Value;
+        var schema = component.Schema;
 
         // Get the property info
         var propertyInfos = schema.Properties.Where(p => p.PropertyName == propertyName).ToList();
         if (propertyInfos.Count != 1)
         {
-            return Result<IField>.Fail($"Failed to find component property '{propertyName}' for entity '{resource}' at component index {componentIndex}");
+            return Result<IField>.Fail($"Failed to find component property '{propertyName}' for entity '{component.Resource}' at component index {component.ComponentIndex}");
         }
         var propertyInfo = propertyInfos[0];
 
@@ -52,14 +37,14 @@ public class FieldFactory : IFieldFactory
 
         // Todo: Handle other property types
 
-        return CreateStringField(resource, componentIndex, propertyName);
+        return CreateStringField(component, propertyName);
     }
 
-    private Result<IField> CreateStringField(ResourceKey resource, int componentIndex, string propertyName)
+    private Result<IField> CreateStringField(IComponentProxy component, string propertyName)
     {
         var element = new StringField();
-        element.ViewModel.Initialize(resource, componentIndex, propertyName);
-        element.TabIndex = componentIndex;
+        element.ViewModel.Initialize(component, propertyName);
+        element.TabIndex = component.ComponentIndex;
 
         var field = new Field(element);
 

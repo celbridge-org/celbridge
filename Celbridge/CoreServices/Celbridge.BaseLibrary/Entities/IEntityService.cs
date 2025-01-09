@@ -62,11 +62,6 @@ public interface IEntityService
     Result MoveComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex);
 
     /// <summary>
-    /// Returns the indices of the entity components of the specified type.
-    /// </summary>
-    Result<List<int>> GetComponentsOfType(ResourceKey resource, string componentType);
-
-    /// <summary>
     /// Returns the number of components in the entity for a resource.
     /// </summary>
     Result<int> GetComponentCount(ResourceKey resource);
@@ -82,23 +77,31 @@ public interface IEntityService
     Result<ComponentSchema> GetComponentSchema(string componentType);
 
     /// <summary>
-    /// Returns a list containing the ComponentSchema of every component in the specified entity.
+    /// Returns the component at the specified index in the entity.
     /// </summary>
-    List<ComponentSchema> GetComponentSchemaList(ResourceKey resource);
+    Result<IComponentProxy> GetComponent(ResourceKey resource, int componentIndex);
+
+    /// <summary>
+    /// Returns the first component of the specified type in the entity.
+    /// </summary>
+    Result<IComponentProxy> GetComponentOfType(ResourceKey resource, string componentType);
+
+    /// <summary>
+    /// Returns all components in the entity.
+    /// </summary>
+    Result<IReadOnlyList<IComponentProxy>> GetComponents(ResourceKey resource);
+
+    /// <summary>
+    /// Returns all components of the specified type in the entity.
+    /// </summary>
+    Result<IReadOnlyList<IComponentProxy>> GetComponentsOfType(ResourceKey resource, string componentType);
 
     /// <summary>
     /// Gets the value of a property from a component.
     /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Returns a default value if the component or property cannot be found.
+    /// Returns the default value if the component or property cannot be found.
     /// </summary>
     T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull;
-
-    /// <summary>
-    /// Gets the value of a property from the first component of the specified type.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Returns a default value if the component or property cannot be found.
-    /// </summary>
-    T? GetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T? defaultValue) where T : notnull;
 
     /// <summary>
     /// Gets the value of a property from a component.
@@ -115,23 +118,11 @@ public interface IEntityService
     Result<string> GetPropertyAsJson(ResourceKey resource, int componentIndex, string propertyPath);
 
     /// <summary>
-    /// Convenience method to get a string property from a component with minimal boilerplate.
-    /// </summary>
-    string GetString(ResourceKey resource, int componentIndex, string propertyPath, string defaultValue = "");
-
-    /// <summary>
     /// Replaces the value of an existing entity property for a component.
     /// If insert is true then the value is inserted at the specified key/index, rather than replacing the existing entry.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
     Result SetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T newValue, bool insert = false) where T : notnull;
-
-    /// <summary>
-    /// Replaces the value of an existing property from the first component of the specified type.
-    /// If insert is true then the value is inserted at the specified key/index, rather than replacing the existing entry.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// </summary>
-    Result SetProperty<T>(ResourceKey resource, string componentType, string propertyPath, T newValue, bool insert = false) where T : notnull;
 
     /// <summary>
     /// Returns the number of available undo operations for an entity.
@@ -157,11 +148,6 @@ public interface IEntityService
     /// Returns true if any component in the entity has the specified tag.
     /// </summary>
     bool HasTag(ResourceKey resource, string tag);
-
-    /// <summary>
-    /// Updates the annotation data for a component in the inspector.
-    /// </summary>
-    Result UpdateComponentAnnotation(ResourceKey inspectedResource, int componentIndex, ComponentAnnotation annotation);
 
     /// <summary>
     /// Return the list of all available component types.

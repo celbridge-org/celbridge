@@ -17,9 +17,7 @@ public partial class StringFieldViewModel : ObservableObject
     private ICommandService _commandService;
     private IEntityService _entityService;
 
-    public ResourceKey Resource { get; private set; }
-
-    public int ComponentIndex { get; private set; }
+    private IComponentProxy? _component;
 
     public string PropertyName { get; private set; } = string.Empty;
 
@@ -44,13 +42,13 @@ public partial class StringFieldViewModel : ObservableObject
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
     }
 
-    public Result Initialize(ResourceKey resource, int componentIndex, string propertyName)
+    public Result Initialize(IComponentProxy component, string propertyName)
     {
         // Initialize should only be called once
-        Guard.IsTrue(Resource.IsEmpty);
+        Guard.IsNull(_component);
 
-        Resource = resource;
-        ComponentIndex = componentIndex;
+        _component = component;
+
         PropertyName = propertyName;
 
         // Format the property name header as "Title Case"
@@ -68,13 +66,15 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
+        Guard.IsNotNull(_component);
+
         if (_ignoreComponentChangeMessage)
         {
             return;
         }
 
-        if (message.Resource == Resource && 
-            message.ComponentIndex == ComponentIndex &&
+        if (message.Resource == _component.Resource && 
+            message.ComponentIndex == _component.ComponentIndex &&
             message.PropertyPath == $"/{PropertyName}")
         {
             // _logger.LogInformation("Component changed");
@@ -103,7 +103,10 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void ReadProperty()
     {
-        var getResult = _entityService.GetProperty<string>(Resource, ComponentIndex, PropertyName);
+        Guard.IsNotNull(_component);
+        Guard.IsTrue(_component.IsValid);
+
+        var getResult = _component.GetProperty<string>(PropertyName);
         if (getResult.IsFailure)
         {
             return;
@@ -118,10 +121,13 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void WriteProperty()
     {
+        Guard.IsNotNull(_component);
+        Guard.IsTrue(_component.IsValid);
+
         _commandService.Execute<ISetPropertyCommand>(command =>
         {
-            command.Resource = Resource;
-            command.ComponentIndex = ComponentIndex;
+            command.Resource = _component.Resource;
+            command.ComponentIndex = _component.ComponentIndex;
             command.PropertyPath = PropertyName;
             command.JsonValue = ValueText;
         });

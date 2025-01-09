@@ -93,23 +93,30 @@ public class ActivityDispatcher
 
         foreach (var fileResource in _pendingEntityUpdates)
         {
-            var componentSchemas = _entityService.GetComponentSchemaList(fileResource);
+            // Get the component list for this entity
+            var getComponentsResult = _entityService.GetComponents(fileResource);
+            if (getComponentsResult.IsFailure)
+            {
+                return Result.Fail($"Failed to get components for entity: '{fileResource}'")
+                    .WithErrors(getComponentsResult);
+            }
+            var components = getComponentsResult.Value;
 
             var unprocessedComponents = new List<int>();
 
             // Annotate empty components
 
-            for (int i = 0; i < componentSchemas.Count; i++)
+            for (int i = 0; i < components.Count; i++)
             {
-                var schema = componentSchemas[i];
+                var component = components[i];
 
-                if (schema.ComponentType != "Empty")
+                if (component.Schema.ComponentType != "Empty")
                 {
                     unprocessedComponents.Add(i);
                     continue;
                 }
 
-                AnnotateEmptyComponent(fileResource, i);
+                AnnotateEmptyComponent(component);
             }
 
             // Check that the entity has a Primary Component
@@ -138,23 +145,23 @@ public class ActivityDispatcher
 
             // Get the schema for the Primary Component
 
-            ComponentSchema? primaryComponentSchema = null;
+            IComponentProxy? primaryComponent = null;
 
             bool syntaxError = false;
 
             foreach (var componentIndex in unprocessedComponents)
             {
-                var schema = componentSchemas[componentIndex];
+                var component = components[componentIndex];
 
-                if (schema.ComponentType == "Empty")
+                if (component.Schema.ComponentType == "Empty")
                 {
                     // Ignore empty components at top of Entity
                     continue;
                 }
 
-                if (schema.HasTag("PrimaryComponent"))
+                if (component.Schema.HasTag("PrimaryComponent"))
                 {
-                    if (primaryComponentSchema is not null)
+                    if (primaryComponent is not null)
                     {
                         // Todo: Annotate the component with an error message
                         // Multiple Primary Components detected
@@ -162,19 +169,16 @@ public class ActivityDispatcher
                     }
 
                     // Found the Primary Component
-                    primaryComponentSchema = schema;
+                    primaryComponent = component;
                 }
                 else
                 {
-                    if (primaryComponentSchema is null)
+                    if (primaryComponent is null)
                     {
-                        var annotation = new ComponentAnnotation(
+                        component.SetAnnotation(
                             ComponentStatus.Error, 
                             "Invalid component position", 
                             "This component must be placed after the Primary Component");
-
-                        _entityService.UpdateComponentAnnotation(fileResource, componentIndex, annotation);
-
                         syntaxError = true;
 
                         continue;
@@ -182,7 +186,7 @@ public class ActivityDispatcher
                 }
             }
         
-            if (primaryComponentSchema is null)
+            if (primaryComponent is null)
             {
                 syntaxError = true;
                 continue;
@@ -199,7 +203,7 @@ public class ActivityDispatcher
 
             // Get the activity name for this Primary Component
 
-            var activityName = primaryComponentSchema.GetStringAttribute("activityName");
+            var activityName = primaryComponent.Schema.GetStringAttribute("activityName");
             if (string.IsNullOrEmpty(activityName))
             {
                 return Result.Fail($"Activity name is empty for Primary Component on resource: {fileResource}");
@@ -230,15 +234,13 @@ public class ActivityDispatcher
         return Result.Ok();
     }
 
-    private Result AnnotateEmptyComponent(ResourceKey resource, int componentIndex)
+    private void AnnotateEmptyComponent(IComponentProxy component)
     {
-        var comment = _entityService.GetString(resource, componentIndex, "/comment");
+        var comment = component.GetString("/comment");
 
-        var annotation = new ComponentAnnotation(
+        component.SetAnnotation(
             ComponentStatus.Valid,
             comment,
             comment);
-
-        return _entityService.UpdateComponentAnnotation(resource, componentIndex, annotation);
     }
 }

@@ -1,3 +1,5 @@
+using Celbridge.Entities;
+
 namespace Celbridge.Inspector;
 
 /// <summary>
@@ -8,5 +10,5 @@ public interface IFieldFactory
     /// <summary>
     /// Creates a field UI element for editing a property on an entity component.
     /// </summary>
-    public Result<IField> CreatePropertyField(ResourceKey resource, int componentIndex, string propertyName);
+    public Result<IField> CreatePropertyField(IComponentProxy component, string propertyName);
 }
