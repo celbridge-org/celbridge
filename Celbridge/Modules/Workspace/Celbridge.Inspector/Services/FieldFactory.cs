@@ -21,11 +21,20 @@ public class FieldFactory : IFieldFactory
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
+        // Get the component type
+        var getTypeResult = entityService.GetComponentType(resource, componentIndex);
+        if (getTypeResult.IsFailure)
+        {
+            return Result<IField>.Fail($"Failed to get component type for entity '{resource}' at component index {componentIndex}")
+                .WithErrors(getTypeResult);
+        }
+        var componentType = getTypeResult.Value;
+
         // Get the component schema
-        var getSchemaResult = entityService.GetComponentSchema(resource, componentIndex);
+        var getSchemaResult = entityService.GetComponentSchema(componentType);
         if (getSchemaResult.IsFailure)
         {
-            return Result<IField>.Fail($"Failed to get component schema for entity '{resource}' at component index {componentIndex}")
+            return Result<IField>.Fail($"Failed to get component schema for component type '{componentType}'")
                 .WithErrors(getSchemaResult);
         }
         var schema = getSchemaResult.Value;

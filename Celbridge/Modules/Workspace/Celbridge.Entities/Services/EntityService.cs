@@ -368,14 +368,14 @@ public class EntityService : IEntityService, IDisposable
         return entity.EntityData.GetComponentCount();
     }
 
-    public Result<ComponentSchema> GetComponentSchema(ResourceKey resource, int componentIndex)
+    public Result<string> GetComponentType(ResourceKey resource, int componentIndex)
     {
         // Acquire the entity for the specified resource
 
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<ComponentSchema>.Fail($"Failed to acquire entity: {resource}")
+            return Result<string>.Fail($"Failed to acquire entity: '{resource}'")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
@@ -386,7 +386,7 @@ public class EntityService : IEntityService, IDisposable
         var getTypeResult = entity.EntityData.GetProperty<string>(componentTypePointer);
         if (getTypeResult.IsFailure)
         {
-            return Result<ComponentSchema>.Fail($"Failed to get component type for entity '{resource}' at component index {componentIndex}")
+            return Result<string>.Fail($"Failed to get component type for entity '{resource}' at component index {componentIndex}")
                 .WithErrors(getTypeResult);
         }
         var typeAndVersion = getTypeResult.Value;
@@ -394,12 +394,17 @@ public class EntityService : IEntityService, IDisposable
         var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
         if (parseResult.IsFailure)
         {
-            return Result<ComponentSchema>.Fail($"Failed to parse component type and version: '{typeAndVersion}'")
+            return Result<string>.Fail($"Failed to parse component type and version: '{typeAndVersion}'")
                 .WithErrors(parseResult);
         }
 
         var (componentType, _) = parseResult.Value;
 
+        return Result<string>.Ok(componentType);
+    }
+
+    public Result<ComponentSchema> GetComponentSchema(string componentType)
+    {
         // Get the component config
 
         var getConfigResult = _configRegistry.GetComponentConfig(componentType);
@@ -428,7 +433,18 @@ public class EntityService : IEntityService, IDisposable
 
         for (int i = 0; i < count; i++)
         {
-            var getSchemaResult = GetComponentSchema(resource, i);
+            // Get the component type
+            var getTypeResult = GetComponentType(resource, i);
+            if (getTypeResult.IsFailure)
+            {
+                _logger.LogError($"Failed to get component type for resource '{resource}' at component index {i}. {getTypeResult.Error}");
+                schemaList.Clear();
+                return schemaList;
+            }
+            var componentType = getTypeResult.Value;
+
+            // Get the component schema
+            var getSchemaResult = GetComponentSchema(componentType);
             if (getSchemaResult.IsFailure)
             {
                 _logger.LogError($"Failed to get component schema for resource '{resource}' at component index {i}. {getSchemaResult.Error}");
@@ -436,6 +452,7 @@ public class EntityService : IEntityService, IDisposable
                 return schemaList;
             }
             var schema = getSchemaResult.Value;
+
             schemaList.Add(schema);
         }
 

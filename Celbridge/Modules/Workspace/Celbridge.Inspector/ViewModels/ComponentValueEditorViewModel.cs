@@ -92,10 +92,23 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             return;
         }
 
-        var getSchemaResult = _entityService.GetComponentSchema(resource, componentIndex);
+        // Get the component type
+        var getTypeResult = _entityService.GetComponentType(resource, componentIndex);
+        if (getTypeResult.IsFailure)
+        {
+            _logger.LogError($"Failed to get component type for entity '{resource}' at index '{componentIndex}'");
+
+            ComponentType = string.Empty;
+            OnFormCreated?.Invoke(propertyFields);
+            return;
+        }
+        var componentType = getTypeResult.Value;
+
+        // Get the component schema
+        var getSchemaResult = _entityService.GetComponentSchema(componentType);
         if (getSchemaResult.IsFailure)
         {
-            _logger.LogError($"Failed to get component schema for entity '{resource}' at index '{componentIndex}'");
+            _logger.LogError($"Failed to get component schema for component type: '{componentType}'");
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
@@ -105,7 +118,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
 
         // Populate the Component Type in the panel header
 
-        ComponentType = schema.ComponentType;
+        ComponentType = componentType;
 
         // Construct the form by adding property fields one by one.
 

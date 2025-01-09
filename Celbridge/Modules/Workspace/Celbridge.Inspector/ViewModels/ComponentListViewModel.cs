@@ -2,7 +2,6 @@ using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Entities;
 using Celbridge.Inspector.Models;
-using Celbridge.Inspector.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -266,7 +265,17 @@ public partial class ComponentListViewModel : InspectorViewModel
             return false;
         }
 
-        var getSchemaResult = _entityService.GetComponentSchema(Resource, duplicateIndex);
+        // Get the component type
+        var getTypeResult = _entityService.GetComponentType(Resource, duplicateIndex);
+        if (getTypeResult.IsFailure)
+        {
+            _logger.LogError(getTypeResult.Error);
+            return false;
+        }
+        var componentType = getTypeResult.Value;
+
+        // Get the component schema
+        var getSchemaResult = _entityService.GetComponentSchema(componentType);
         if (getSchemaResult.IsFailure)
         {
             _logger.LogError(getSchemaResult.Error);
@@ -364,15 +373,15 @@ public partial class ComponentListViewModel : InspectorViewModel
         List<ComponentItem> componentItems = new();
         for (int i = 0; i < count; i++)
         {
-            var getSchemaResult = _entityService.GetComponentSchema(Resource, i);
-            if (getSchemaResult.IsFailure)
+            // Get the component type
+            var getTypeResult = _entityService.GetComponentType(Resource, i);
+            if (getTypeResult.IsFailure)
             {
-                _logger.LogError(getSchemaResult.Error);
+                _logger.LogError(getTypeResult.Error);
                 return;
             }
-            var schema = getSchemaResult.Value;
+            var componentType = getTypeResult.Value;
 
-            var componentType = schema.ComponentType;
             if (componentType == "Empty")
             {
                 componentType = string.Empty;

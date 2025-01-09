@@ -72,9 +72,14 @@ public interface IEntityService
     Result<int> GetComponentCount(ResourceKey resource);
 
     /// <summary>
-    /// Returns a ComponentSchema object describing the component at the specified index.
+    /// Returns the component type for the entity component at the specified index.
     /// </summary>
-    Result<ComponentSchema> GetComponentSchema(ResourceKey resource, int componentIndex);
+    Result<string> GetComponentType(ResourceKey resource, int componentIndex);
+
+    /// <summary>
+    /// Returns the ComponentSchema for a component type.
+    /// </summary>
+    Result<ComponentSchema> GetComponentSchema(string componentType);
 
     /// <summary>
     /// Returns a list containing the ComponentSchema of every component in the specified entity.
