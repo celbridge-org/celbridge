@@ -73,7 +73,8 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void OnComponentAnnotationUpdatedMessage(object recipient, ComponentAnnotationUpdatedMessage message)
     {
-        if (message.Resource != Resource)
+        var resource = message.Resource;
+        if (resource != Resource)
         {
             // This message does not apply to the resource being presented by this ViewModel.
             // This is probably because the user has just switched to inspecting a different resource and the ViewUnloaded
@@ -81,20 +82,27 @@ public partial class ComponentListViewModel : InspectorViewModel
             return;
         }
 
-        var index = message.ComponentIndex;
-        if (index < 0 || index >= ComponentItems.Count)
+        var componentIndex = message.ComponentIndex;
+        if (componentIndex < 0 || componentIndex >= ComponentItems.Count)
         {
             // Component index is out of range
-            _logger.LogError($"Component index '{index}' is out of range for resource '{message.Resource}'");
+            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{message.Resource}'");
             return;
         }
 
-        var annotation = message.Annotation;
-        var componentItem = ComponentItems[index];
+        var componentItem = ComponentItems[componentIndex];
 
-        componentItem.Description = annotation.Description;
-        componentItem.Status = annotation.Status;
-        componentItem.Tooltip = annotation.Tooltip;
+        var getComponentResult = _entityService.GetComponent(resource, componentIndex);
+        if (getComponentResult.IsFailure)
+        {
+            _logger.LogError(getComponentResult.Error);
+            return;
+        }
+        var component = getComponentResult.Value;
+
+        componentItem.Description = component.Description;
+        componentItem.Status = component.Status;
+        componentItem.Tooltip = component.Tooltip;
     }
 
     public ICommand AddComponentCommand => new AsyncRelayCommand<object?>(AddComponent_Executed);
@@ -265,25 +273,16 @@ public partial class ComponentListViewModel : InspectorViewModel
             return false;
         }
 
-        // Get the component type
-        var getTypeResult = _entityService.GetComponentType(Resource, duplicateIndex);
-        if (getTypeResult.IsFailure)
+        // Get the component
+        var getComponentResult = _entityService.GetComponent(Resource, duplicateIndex);
+        if (getComponentResult.IsFailure)
         {
-            _logger.LogError(getTypeResult.Error);
+            _logger.LogError(getComponentResult.Error);
             return false;
         }
-        var componentType = getTypeResult.Value;
+        var component = getComponentResult.Value;
 
-        // Get the component schema
-        var getSchemaResult = _entityService.GetComponentSchema(componentType);
-        if (getSchemaResult.IsFailure)
-        {
-            _logger.LogError(getSchemaResult.Error);
-            return false;
-        }
-        var schema = getSchemaResult.Value;
-
-        var allowMultipleComponents = schema.GetBooleanAttribute("allowMultipleComponents");
+        var allowMultipleComponents = component.Schema.GetBooleanAttribute("allowMultipleComponents");
 
         return allowMultipleComponents;
     }

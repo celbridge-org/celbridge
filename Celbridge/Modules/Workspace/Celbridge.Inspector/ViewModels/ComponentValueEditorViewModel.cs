@@ -93,38 +93,27 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
 
         // Get the component type
-        var getTypeResult = _entityService.GetComponentType(resource, componentIndex);
-        if (getTypeResult.IsFailure)
+        var getComponentResult = _entityService.GetComponent(resource, componentIndex);
+        if (getComponentResult.IsFailure)
         {
-            _logger.LogError($"Failed to get component type for entity '{resource}' at index '{componentIndex}'");
+            _logger.LogError($"Failed to get component for entity '{resource}' at index '{componentIndex}'");
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
             return;
         }
-        var componentType = getTypeResult.Value;
+        var component = getComponentResult.Value;
 
-        // Get the component schema
-        var getSchemaResult = _entityService.GetComponentSchema(componentType);
-        if (getSchemaResult.IsFailure)
-        {
-            _logger.LogError($"Failed to get component schema for component type: '{componentType}'");
-
-            ComponentType = string.Empty;
-            OnFormCreated?.Invoke(propertyFields);
-            return;
-        }
-        var schema = getSchemaResult.Value;
 
         // Populate the Component Type in the panel header
 
-        ComponentType = componentType;
+        ComponentType = component.Schema.ComponentType;
 
         // Construct the form by adding property fields one by one.
 
-        foreach (var property in schema.Properties)
+        foreach (var property in component.Schema.Properties)
         {
-            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, componentIndex, property.PropertyName);
+            var createResult = _inspectorService.FieldFactory.CreatePropertyField(component, property.PropertyName);
             if (createResult.IsFailure)
             {
                 _logger.LogError($"Failed to create field for property '{property.PropertyName}' for entity '{resource}' at component index {componentIndex}");

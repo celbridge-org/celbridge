@@ -57,64 +57,49 @@ public class ScreenplayActivity : IActivity
 
         for (int i = 0; i < componentCount; i++)
         {
-            // Get the component type
-            var getTypeResult = _entityService.GetComponentType(fileResource, i);
-            if (getTypeResult.IsFailure)
+            // Get the component 
+            var getComponentResult = _entityService.GetComponent(fileResource, i);
+            if (getComponentResult.IsFailure)
             {
-                return Result.Fail(fileResource, $"Failed to get component type for resource '{fileResource}' at component index {i}")
-                    .WithErrors(getTypeResult);
+                return Result.Fail(fileResource, $"Failed to get component for resource '{fileResource}' at index {i}")
+                    .WithErrors(getComponentResult);
             }
-            var componentType = getTypeResult.Value;
+            var component = getComponentResult.Value;
 
-            // Get the component schema
-            var getSchemaResult = _entityService.GetComponentSchema(componentType);
-            if (getSchemaResult.IsFailure)
-            {
-                return Result.Fail(fileResource, $"Failed to get component schema for component type: '{componentType}'")
-                    .WithErrors(getSchemaResult);
-            }
-            var schema = getSchemaResult.Value;
+            var schema = component.Schema;
 
-            if (componentType == "Empty")
+            if (schema.ComponentType == "Empty")
             {
-                // Ignore comments
+                // Ignore empty components
                 continue;
             }
 
             if (!schema.HasTag(ScreenplayConstants.ScreenplayTag))
             {
-                // Not a Screenplay component
-
-                var errorAnnotation = new ComponentAnnotation(
+                component.SetAnnotation(
                     ComponentStatus.Error, 
-                    "Not a scene component", 
-                    "This component may not be used with the 'Scene' primary component");
+                    "Not a screenplay component", 
+                    "This component may not be used with the 'Screenplay' activity");
 
-                _entityService.UpdateComponentAnnotation(fileResource, i, errorAnnotation);
                 continue;
             }
 
-            Result<ComponentAnnotation> getAnnotationResult = schema.ComponentType switch
+            switch (schema.ComponentType)
             {
-                ScreenplayConstants.SceneComponentType => GetSceneAnnotation(fileResource, i),
-                ScreenplayConstants.LineComponentType => GetLineAnnotation(fileResource, i),
-                _ => Result<ComponentAnnotation>.Fail($"{nameof(ScreenplayActivity)} does not support component type '{schema.ComponentType}'")
+                case ScreenplayConstants.SceneComponentType:
+                    var sceneTitle = component.GetString(ScreenplayConstants.SceneComponent_SceneTitle);
+                    var sceneDescription = component.GetString(ScreenplayConstants.SceneComponent_SceneDescription);
+                    var componentDescription = $"{sceneTitle}: {sceneDescription}";
+                    component.SetAnnotation(ComponentStatus.Valid, componentDescription, componentDescription);
+                    break;
+
+                case ScreenplayConstants.LineComponentType:
+                    var character = component.GetString(ScreenplayConstants.LineComponent_Character);
+                    var sourceText = component.GetString(ScreenplayConstants.LineComponent_SourceText);
+                    var description = $"{character}: {sourceText}";
+                    component.SetAnnotation(ComponentStatus.Valid, description, description);
+                    break;
             };
-
-            if (getAnnotationResult.IsFailure)
-            {
-                // Todo: Display a user-facing error messsage via the annotation data instead of returning here
-                _logger.LogError(getAnnotationResult.Error);
-                continue;
-            }
-            var annotation = getAnnotationResult.Value;
-
-            var updateAnnotationResult = _entityService.UpdateComponentAnnotation(fileResource, i, annotation);
-            if (updateAnnotationResult.IsFailure)
-            {
-                return Result.Fail($"Failed to update annotation for component index '{i}' on inspected resource: '{fileResource}'")
-                    .WithErrors(updateAnnotationResult);
-            }
         }
 
         var generateResult = GenerateScreenplayMarkdown(fileResource);
@@ -155,51 +140,18 @@ public class ScreenplayActivity : IActivity
         return false;
     }
 
-    private Result<ComponentAnnotation> GetSceneAnnotation(ResourceKey resource, int componentIndex)
-    {
-        var sceneTitle = _entityService.GetString(resource, componentIndex, ScreenplayConstants.SceneComponent_SceneTitle);
-        var sceneDescription = _entityService.GetString(resource, componentIndex, ScreenplayConstants.SceneComponent_SceneDescription);
-
-        // Todo: Use a localized string to format this
-        var componentDescription = $"{sceneTitle}: {sceneDescription}";
-
-        var annotation = new ComponentAnnotation(ComponentStatus.Valid, componentDescription, componentDescription);
-
-        return Result<ComponentAnnotation>.Ok(annotation);
-    }
-
-    private Result<ComponentAnnotation> GetLineAnnotation(ResourceKey resource, int componentIndex)
-    {
-        var character = _entityService.GetString(resource, componentIndex, ScreenplayConstants.LineComponent_Character);
-        var sourceText = _entityService.GetString(resource, componentIndex, ScreenplayConstants.LineComponent_SourceText);
-
-        // Todo: Use a localized string to format this
-        var description = $"{character}: {sourceText}";
-
-        var annotation = new ComponentAnnotation(ComponentStatus.Valid, description, description);
-
-        return Result<ComponentAnnotation>.Ok(annotation);
-    }
-
     private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
     {
-        var getSceneResult = _entityService.GetComponentsOfType(resource, ScreenplayConstants.SceneComponentType);
-        if (getSceneResult.IsFailure)
+        var getComponentResult = _entityService.GetComponentOfType(resource, ScreenplayConstants.SceneComponentType);
+        if (getComponentResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get Scene component")
-                .WithErrors(getSceneResult);
+                .WithErrors(getComponentResult);
         }
-        var sceneIndices = getSceneResult.Value;
+        var sceneComponent = getComponentResult.Value;
 
-        if (sceneIndices.Count != 1)
-        {
-            return Result<string>.Fail($"Failed to get Scene component");
-        }
-
-        var sceneComponentIndex = sceneIndices[0];
-
-        var sceneTitle = _entityService.GetString(resource, sceneComponentIndex, ScreenplayConstants.SceneComponent_SceneTitle);
-        var sceneDescription = _entityService.GetString(resource, sceneComponentIndex, ScreenplayConstants.SceneComponent_SceneDescription);
+        var sceneTitle = sceneComponent.GetString(ScreenplayConstants.SceneComponent_SceneTitle);
+        var sceneDescription = sceneComponent.GetString(ScreenplayConstants.SceneComponent_SceneDescription);
 
         var sb = new StringBuilder();
 
@@ -214,12 +166,12 @@ public class ScreenplayActivity : IActivity
             return Result<string>.Fail($"Failed to get Line components")
                 .WithErrors(getLinesResult);
         }
-        var lineComponentIndices = getLinesResult.Value;
+        var lineComponents = getLinesResult.Value;
 
-        foreach (var lineComponentIndex in lineComponentIndices)
+        foreach (var lineComponent in lineComponents)
         {
-            var character = _entityService.GetString(resource, lineComponentIndex, ScreenplayConstants.LineComponent_Character);
-            var sourceText = _entityService.GetString(resource, lineComponentIndex, ScreenplayConstants.LineComponent_SourceText);
+            var character = lineComponent.GetString(ScreenplayConstants.LineComponent_Character);
+            var sourceText = lineComponent.GetString(ScreenplayConstants.LineComponent_SourceText);
 
             if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
             {
