@@ -28,9 +28,9 @@ public class Entity
         EntityDataPath = entityDataPath;
     }
 
-    public Result<PatchSummary> ApplyPatchOperation(PatchOperation patchOperation, ComponentSchemaRegistry schemaRegistry, long undoGroupId, PatchContext context = PatchContext.Modify)
+    public Result<PatchSummary> ApplyPatchOperation(PatchOperation patchOperation, ComponentConfigRegistry configRegistry, long undoGroupId, PatchContext context = PatchContext.Modify)
     {
-        var applyResult = EntityData.ApplyPatchOperation(Resource, patchOperation, schemaRegistry, undoGroupId);
+        var applyResult = EntityData.ApplyPatchOperation(Resource, patchOperation, configRegistry, undoGroupId);
         if (applyResult.IsFailure)
         {
             return Result<PatchSummary>.Fail($"Failed to apply component patch to for resource: '{Resource}'")

@@ -65,6 +65,7 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0"
@@ -95,7 +96,33 @@
                        GotFocus="ComponentItem_EditTextBox_GotFocus"
                        LostFocus="ComponentItem_EditTextBox_LostFocus"
                        KeyDown="ComponentItem_EditTextBox_KeyDown"/>
+            </Grid>
 
+            <Grid Grid.Column="1"
+                  Margin="6 0 0 0">
+              <StackPanel Orientation="Horizontal"
+                          ToolTipService.ToolTip="{x:Bind Tooltip, Mode=OneWay}">
+               
+                <FontIcon FontFamily="Segoe MDL2 Assets"
+                          Glyph="&#xE783;"
+                          FontSize="22"
+                          Foreground="{ThemeResource ErrorTextColor}"
+                          Visibility="{x:Bind ShowErrorIcon, Mode=OneWay}"/>
+                
+                <FontIcon FontFamily="Segoe MDL2 Assets"
+                          Glyph="&#xE7BA;"
+                          FontSize="22"
+                          Foreground="{ThemeResource WarningTextColor}"
+                          Visibility="{x:Bind ShowWarningIcon, Mode=OneWay}"/>
+                
+                <TextBlock Text="{x:Bind Description, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Margin="6 0 0 0"/>
+              </StackPanel>
+            </Grid>
+
+            <Grid Grid.Column="2"
+                  Margin="6 0 0 0">
               <!-- MenuButton is displayed when component name does not have focus -->
               <Button x:Name="MenuButton"
                       Grid.Column="1"
@@ -103,19 +130,12 @@
                       Height="24"
                       Padding="0"
                       BorderThickness="0"
-                      Opacity="0.5"
                       Background="Transparent"
                       Click="ComponentMenuButton_Click"
                       Visibility="Visible">
                 <FontIcon FontFamily="Segoe MDL2 Assets"
-                          Glyph="&#xE70D;"
-                          FontSize="12"/>
+                          Glyph="&#xE712;"/>
               </Button>
-            </Grid>
-
-            <Grid Grid.Column="1"
-                  Margin="6 0 0 0">
-              <TextBlock Text="{x:Bind ComponentDescription,Mode=OneWay}" />
             </Grid>
           </Grid>
         </DataTemplate>

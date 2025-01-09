@@ -40,18 +40,18 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var resource = _inspectorService.InspectedResource;
         var componentIndex = _inspectorService.InspectedComponentIndex;
 
-        var getComponentResult = _entityService.GetComponentTypeInfo(resource, componentIndex);
-        if (getComponentResult.IsFailure)
+        var getSchemaResult = _entityService.GetComponentSchema(resource, componentIndex);
+        if (getSchemaResult.IsFailure)
         {
-            _logger.LogError(getComponentResult.Error);
+            _logger.LogError(getSchemaResult.Error);
             return;
         }
-        var componentTypeInfo = getComponentResult.Value;
+        var schema = getSchemaResult.Value;
 
         // Ensure we are dealing with an empty string if componentType is null
         componentType ??= string.Empty;
 
-        if (componentTypeInfo.ComponentType == componentType)
+        if (schema.ComponentType == componentType)
         {
             // No change required
             return;
@@ -70,8 +70,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var inputText = message.ComponentType;
 
         // Get list of available component types
-        var componentTypes = _entityService.ComponentTypes.Keys.ToList();
-        componentTypes.Sort();
+        var componentTypes = _entityService.GetAllComponentTypes();
 
         var filteredList = new List<string>();
 
@@ -135,16 +134,15 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var resource = _inspectorService.InspectedResource;
         var componentIndex = _inspectorService.InspectedComponentIndex;
 
-        var getComponentResult = _entityService.GetComponentTypeInfo(resource, componentIndex);
-        if (getComponentResult.IsFailure)
+        var getSchemaResult = _entityService.GetComponentSchema(resource, componentIndex);
+        if (getSchemaResult.IsFailure)
         {
-            _logger.LogError(getComponentResult.Error);
+            _logger.LogError(getSchemaResult.Error);
             return;
         }
+        var schema = getSchemaResult.Value;
 
-        var componentTypeInfo = getComponentResult.Value;
-
-        if (componentTypeInfo.ComponentType == newComponentType)
+        if (schema.ComponentType == newComponentType)
         {
             // No change required
             return;

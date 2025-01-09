@@ -54,7 +54,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     public void OnViewLoaded()
     {
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
-        _messengerService.Register<ComponentAnnotationUpdatedMessage>(this, OnUpdateComponentAppearanceMessage);
+        _messengerService.Register<ComponentAnnotationUpdatedMessage>(this, OnComponentAnnotationUpdatedMessage);
 
         PropertyChanged += ViewModel_PropertyChanged;
 
@@ -72,7 +72,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         PropertyChanged -= ViewModel_PropertyChanged;
     }
 
-    private void OnUpdateComponentAppearanceMessage(object recipient, ComponentAnnotationUpdatedMessage message)
+    private void OnComponentAnnotationUpdatedMessage(object recipient, ComponentAnnotationUpdatedMessage message)
     {
         if (message.Resource != Resource)
         {
@@ -90,9 +90,12 @@ public partial class ComponentListViewModel : InspectorViewModel
             return;
         }
 
-        var description = message.Appearance.Description;
+        var annotation = message.Annotation;
+        var componentItem = ComponentItems[index];
 
-        ComponentItems[index].ComponentDescription = description;
+        componentItem.Description = annotation.Description;
+        componentItem.Status = annotation.Status;
+        componentItem.Tooltip = annotation.Tooltip;
     }
 
     public ICommand AddComponentCommand => new AsyncRelayCommand<object?>(AddComponent_Executed);
@@ -220,10 +223,12 @@ public partial class ComponentListViewModel : InspectorViewModel
         int destIndex = sourceIndex + 1;
 
         // Update the list view
-        var item = ComponentItems[sourceIndex];
-        var clone = item.DeepClone();
+        var newItem = new ComponentItem()
+        {
+            ComponentType = componentItem.ComponentType
+        };
 
-        ComponentItems.Insert(destIndex, clone);
+        ComponentItems.Insert(destIndex, newItem);
 
         // Supress the refresh
         _supressRefreshCount = 1;
@@ -261,16 +266,15 @@ public partial class ComponentListViewModel : InspectorViewModel
             return false;
         }
 
-        var getResults = _entityService.GetComponentTypeInfo(Resource, duplicateIndex);
-        if (getResults.IsFailure)
+        var getSchemaResult = _entityService.GetComponentSchema(Resource, duplicateIndex);
+        if (getSchemaResult.IsFailure)
         {
-            _logger.LogError(getResults.Error);
+            _logger.LogError(getSchemaResult.Error);
             return false;
         }
+        var schema = getSchemaResult.Value;
 
-        var componentTypeInfo = getResults.Value;
-
-        var allowMultipleComponents = componentTypeInfo.GetBooleanAttribute("allowMultipleComponents");
+        var allowMultipleComponents = schema.GetBooleanAttribute("allowMultipleComponents");
 
         return allowMultipleComponents;
     }
@@ -360,15 +364,15 @@ public partial class ComponentListViewModel : InspectorViewModel
         List<ComponentItem> componentItems = new();
         for (int i = 0; i < count; i++)
         {
-            var getComponentResult = _entityService.GetComponentTypeInfo(Resource, i);
-            if (getComponentResult.IsFailure)
+            var getSchemaResult = _entityService.GetComponentSchema(Resource, i);
+            if (getSchemaResult.IsFailure)
             {
-                _logger.LogError(getComponentResult.Error);
+                _logger.LogError(getSchemaResult.Error);
                 return;
             }
-            var componentTypeInfo = getComponentResult.Value;
+            var schema = getSchemaResult.Value;
 
-            var componentType = componentTypeInfo.ComponentType;
+            var componentType = schema.ComponentType;
             if (componentType == "Empty")
             {
                 componentType = string.Empty;
@@ -394,7 +398,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
 
         // Notify running activities that the component list has been populated, so that
-        // they may add annotations to present component information in the inspector. 
+        // they may now add annotations to present component information in the inspector.
+
         var message = new PopulatedComponentListMessage(Resource);
         _messengerService.Send(message);
     }

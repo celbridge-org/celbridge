@@ -7,10 +7,9 @@ using System.Text.Json.Nodes;
 
 namespace Celbridge.Entities.Models;
 
-public class ComponentSchema
+public class ComponentConfig
 {
     private const string ComponentTypeConstKey = "/properties/_componentType/const";
-    private const string TagsKey = "tags";
     private const string AttributesKey = "attributes";
     private const string PropertiesKey = "properties";
     private const string PrototypeKey = "prototype";
@@ -18,21 +17,29 @@ public class ComponentSchema
 
     public string ComponentType { get; }
     public int ComponentVersion { get; }
-    public ComponentTypeInfo ComponentTypeInfo { get; }
+    public ComponentSchema ComponentSchema { get; }
     public JsonElement Prototype { get; }
+    public IComponentDescriptor Descriptor { get; }
 
     private readonly JsonSchema _jsonSchema;
 
-    private ComponentSchema(string componentType, int componentVersion, ComponentTypeInfo componentTypeInfo, JsonElement prototype, JsonSchema jsonSchema)
+    private ComponentConfig(
+        string componentType, 
+        int componentVersion, 
+        ComponentSchema componentSchema, 
+        JsonElement prototype,
+        IComponentDescriptor descriptor,
+        JsonSchema jsonSchema)
     {
         ComponentType = componentType;
         ComponentVersion = componentVersion;
-        ComponentTypeInfo = componentTypeInfo;
+        ComponentSchema = componentSchema;
         Prototype = prototype;
+        Descriptor = descriptor;
         _jsonSchema = jsonSchema;
     }
 
-    public static Result<ComponentSchema> FromJson(string schemaJson)
+    public static Result<ComponentConfig> CreateConfig(IComponentDescriptor descriptor, string schemaJson)
     {
         try
         {
@@ -41,7 +48,7 @@ public class ComponentSchema
 
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return Result<ComponentSchema>.Fail("Failed to parse schema JSON as an object");
+                return Result<ComponentConfig>.Fail("Failed to parse schema JSON as an object");
             }
 
             // Get component type and version
@@ -52,53 +59,56 @@ public class ComponentSchema
             if (componentTypeElement is null ||
                 componentTypeElement.Value.ValueKind != JsonValueKind.String)
             {
-                return Result<ComponentSchema>.Fail("Component type element is not valid");
+                return Result<ComponentConfig>.Fail("Component type element is not valid");
             }
 
             var typeAndVersion = componentTypeElement.Value.GetString();
             if (string.IsNullOrEmpty(typeAndVersion))
             {
-                return Result<ComponentSchema>.Fail("Component type is empty");
+                return Result<ComponentConfig>.Fail("Component type is empty");
             }
 
             var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
             if (parseResult.IsFailure)
             {
-                return Result<ComponentSchema>.Fail($"Failed to parse component type and version: {typeAndVersion}")
+                return Result<ComponentConfig>.Fail($"Failed to parse component type and version: {typeAndVersion}")
                     .WithErrors(parseResult);
             }
             var (componentType, componentVersion) = parseResult.Value;
 
-            // Get the component tags
-
-            var componentTags = new HashSet<string>();
-            if (root.TryGetProperty(TagsKey, out JsonElement tagsElement))
-            {
-                foreach (var tag in tagsElement.EnumerateArray())
-                {
-                    if (tag.ValueKind != JsonValueKind.String)
-                    {
-                        return Result<ComponentSchema>.Fail("Tag value is not a string");
-                    }
-
-                    componentTags.Add(tag.ToString());
-                }
-            }
-
             // Get the component attributes
 
+            var componentTags = new HashSet<string>();
             var componentAttributes = new Dictionary<string, string>();
+
             if (root.TryGetProperty(AttributesKey, out JsonElement attributesElement))
             {
                 foreach (var attribute in attributesElement.EnumerateObject())
                 {
-                    componentAttributes[attribute.Name] = attribute.Value.ToString();
+                    if (attribute.Name == "tags")
+                    {
+                        // Tags are treated specially to support fast querying
+
+                        foreach (var tag in attribute.Value.EnumerateArray())
+                        {
+                            if (tag.ValueKind != JsonValueKind.String)
+                            {
+                                return Result<ComponentConfig>.Fail("Tag value is not a string");
+                            }
+
+                            componentTags.Add(tag.ToString());
+                        }
+                    }
+                    else
+                    {
+                        componentAttributes[attribute.Name] = attribute.Value.ToString();                    
+                    }
                 }
             }
 
             // Get the component properties
 
-            var componentProperties = new List<ComponentPropertyTypeInfo>();
+            var componentProperties = new List<ComponentPropertyInfo>();
             if (root.TryGetProperty(PropertiesKey, out JsonElement propertiesElement))
             {
                 foreach (var propertyElement in propertiesElement.EnumerateObject())
@@ -120,19 +130,19 @@ public class ComponentSchema
                         }
                     }
 
-                    var propertyInfo = new ComponentPropertyTypeInfo(propertyName, propertyType, propertyAttributes);
+                    var propertyInfo = new ComponentPropertyInfo(propertyName, propertyType, propertyAttributes);
                     componentProperties.Add(propertyInfo);
                 }
             }
 
-            var componentTypeInfo = new ComponentTypeInfo(componentType, componentVersion, componentTags, componentAttributes, componentProperties);
+            var componentSchema = new ComponentSchema(componentType, componentVersion, componentTags, componentAttributes, componentProperties);
 
             // Construct the prototype element
 
             var prototypeNode = root.GetProperty(PrototypeKey).AsNode();
             if (prototypeNode is null)
             {
-                return Result<ComponentSchema>.Fail("Prototype node not found");
+                return Result<ComponentConfig>.Fail("Prototype node not found");
             }
             prototypeNode["_componentType"] = typeAndVersion; // Prototype type and version match the schema
 
@@ -143,7 +153,7 @@ public class ComponentSchema
             var jsonSchema = JsonSchema.FromText(schemaJson);
             if (jsonSchema is null)
             {
-                return Result<ComponentSchema>.Fail($"Failed to parse schema for component type: '{componentType}'");
+                return Result<ComponentConfig>.Fail($"Failed to parse JSON schema for component type: '{componentType}'");
             }
 
             // Validate the prototype
@@ -151,16 +161,16 @@ public class ComponentSchema
             var evaluateResult = jsonSchema.Evaluate(prototype);
             if (!evaluateResult.IsValid)
             {
-                return Result<ComponentSchema>.Fail($"Prototype validation failed: {componentType}");
+                return Result<ComponentConfig>.Fail($"Prototype failed schema validation: '{componentType}'");
             }
 
-            var schema = new ComponentSchema(componentType, componentVersion, componentTypeInfo, prototype, jsonSchema);
+            var config = new ComponentConfig(componentType, componentVersion, componentSchema, prototype, descriptor, jsonSchema);
 
-            return Result<ComponentSchema>.Ok(schema);
+            return Result<ComponentConfig>.Ok(config);
         }
         catch (Exception ex)
         {
-            return Result<ComponentSchema>.Fail("An exception occurred when parsing schema JSON.")
+            return Result<ComponentConfig>.Fail("An exception occurred when creating component config.")
                 .WithException(ex);
         }
     }
@@ -170,25 +180,6 @@ public class ComponentSchema
         var validationResult = _jsonSchema.Evaluate(jsonObject);
         return validationResult.IsValid
             ? Result.Ok()
-            : Result.Fail($"Validation failed with schema '{ComponentType}'");
-    }
-
-    public Result ValidateJson(string json)
-    {
-        try
-        {
-            var jsonObject = JsonNode.Parse(json) as JsonObject;
-            if (jsonObject is null)
-            {
-                return Result.Fail("Failed to parse JSON data as a JSON object");
-            }
-
-            return ValidateJsonObject(jsonObject);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail("An exception occurred when validating JSON data.")
-                .WithException(ex);
-        }
+            : Result.Fail($"Schema validation failed for component type: '{ComponentType}'");
     }
 }

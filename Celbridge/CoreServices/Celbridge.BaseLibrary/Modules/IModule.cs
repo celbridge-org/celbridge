@@ -19,9 +19,9 @@ public interface IModule
     Result Initialize();
 
     /// <summary>
-    /// Returns true if the module supports the specified activity.
+    /// Returns the names of all activities supported by this module.
     /// </summary>
-    bool SupportsActivity(string activityName);
+    IReadOnlyList<string> SupportedActivities { get; }
 
     /// <summary>
     /// Creates an instance of a supported activity.

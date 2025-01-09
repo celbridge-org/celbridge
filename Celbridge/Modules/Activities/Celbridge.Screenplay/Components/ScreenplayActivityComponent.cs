@@ -1,0 +1,31 @@
+using Celbridge.Entities;
+
+namespace Celbridge.Screenplay.Components;
+
+public class ScreenplayActivityComponent : IComponentDescriptor
+{
+    public string SchemaJson => """
+    {
+      "type": "object",
+      "additionalProperties": false,
+
+      "attributes": {
+        "tags": [ "Screenplay" ],
+        "isActivityComponent": true
+      },
+
+      "properties": {
+        "_componentType": {
+          "type": "string",
+          "const": "ScreenplayActivity#1"
+        }
+      },
+
+      "required": [
+        "_componentType"
+      ],
+
+      "prototype": {}
+    }
+    """;
+}

@@ -13,5 +13,5 @@ public interface IActivityService
     /// <summary>
     /// Updates the activities in the workspace.
     /// </summary>
-    Task<Result> UpdateActivitiesAsync();
+    Task<Result> UpdateAsync();
 }

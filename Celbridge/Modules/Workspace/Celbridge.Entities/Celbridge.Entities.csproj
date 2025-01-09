@@ -23,10 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="ComponentConfig\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="JsonPatch.Net" />
     <PackageReference Include="JsonPointer.Net" />
