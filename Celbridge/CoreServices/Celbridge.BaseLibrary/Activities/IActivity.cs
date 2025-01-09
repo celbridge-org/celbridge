@@ -6,18 +6,24 @@ namespace Celbridge.Activities;
 public interface IActivity
 {
     /// <summary>
-    /// Starts the activity.
+    /// Activates the activity when the workspace loads.
     /// </summary>
     /// <returns></returns>
-    Task<Result> Start();
+    Task<Result> ActivateAsync();
 
     /// <summary>
-    /// Stops the activity.
+    /// Deactivate the activity when the workspace unloads.
     /// </summary>
-    Task<Result> Stop();
+    Task<Result> DeactivateAsync();
 
     /// <summary>
-    /// Updates the activity.
+    /// Updates an entity that is relevant to this activity.
     /// </summary>
-    Task<Result> UpdateAsync();
+    Task<Result> UpdateEntityAsync(ResourceKey resource);
+
+    /// <summary>
+    /// Initializes a newly created entity, if the resource is relevant to this activity.
+    /// Returns true if the entity was initialized, false otherwise.
+    /// </summary>
+    bool TryInitializeEntity(ResourceKey resource);
 }

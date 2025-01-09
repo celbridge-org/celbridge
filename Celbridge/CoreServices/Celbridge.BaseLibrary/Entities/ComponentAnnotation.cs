@@ -7,4 +7,4 @@ namespace Celbridge.Entities;
 /// information in the project. The annotation data is used to control the behaviour of the component, and its
 /// appearance in the editor UI.
 /// </summary>
-public record ComponentAnnotation(string Description);
+public record ComponentAnnotation(ComponentStatus Status, string Description, string Tooltip);

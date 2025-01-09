@@ -57,24 +57,29 @@ public class ModuleService : IModuleService
         return Result.Ok();
     }
 
-    public bool IsActivitySupported(string activityName)
+    public IReadOnlyList<string> SupportedActivities
     {
-        foreach (var module in _moduleLoader.LoadedModules.Values)
+        get
         {
-            if (module.SupportsActivity(activityName))
-            {
-                return true;
-            }
-        }
+            // Sort the keys to ensure stable activity name order
+            var sortedKeys = _moduleLoader.LoadedModules.Keys.ToList();
+            sortedKeys.Sort();
 
-        return false;
+            var supportedActivities = new List<string>();
+            foreach (var key in sortedKeys)
+            {
+                var module = _moduleLoader.LoadedModules[key];
+                supportedActivities.AddRange(module.SupportedActivities);
+            }
+            return supportedActivities;
+        }
     }
 
     public Result<IActivity> CreateActivity(string activityName)
     {
         foreach (var module in _moduleLoader.LoadedModules.Values)
         {
-            if (!module.SupportsActivity(activityName))
+            if (!module.SupportedActivities.Contains(activityName))
             {
                 continue;
             }

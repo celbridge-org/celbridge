@@ -11,11 +11,6 @@ public interface IEntityService
     Task<Result> InitializeAsync();
 
     /// <summary>
-    /// Returns the component type information for all registered component types.
-    /// </summary>
-    IReadOnlyDictionary<string, ComponentTypeInfo> ComponentTypes { get; }
-
-    /// <summary>
     /// Returns the absolute path of the Entity Data file for a resource.
     /// A path will be generated regardless of whether the resource or Entity Data file actually exist.
     /// </summary>
@@ -77,9 +72,14 @@ public interface IEntityService
     Result<int> GetComponentCount(ResourceKey resource);
 
     /// <summary>
-    /// Returns a ComponentTypeInfo object describing the component at the specified index.
+    /// Returns a ComponentSchema object describing the component at the specified index.
     /// </summary>
-    Result<ComponentTypeInfo> GetComponentTypeInfo(ResourceKey resource, int componentIndex);
+    Result<ComponentSchema> GetComponentSchema(ResourceKey resource, int componentIndex);
+
+    /// <summary>
+    /// Returns a list containing the ComponentSchema of every component in the specified entity.
+    /// </summary>
+    List<ComponentSchema> GetComponentSchemaList(ResourceKey resource);
 
     /// <summary>
     /// Gets the value of a property from a component.
@@ -108,6 +108,11 @@ public interface IEntityService
     /// Fails if the property cannot be found.
     /// </summary>
     Result<string> GetPropertyAsJson(ResourceKey resource, int componentIndex, string propertyPath);
+
+    /// <summary>
+    /// Convenience method to get a string property from a component with minimal boilerplate.
+    /// </summary>
+    string GetString(ResourceKey resource, int componentIndex, string propertyPath, string defaultValue = "");
 
     /// <summary>
     /// Replaces the value of an existing entity property for a component.
@@ -152,4 +157,9 @@ public interface IEntityService
     /// Updates the annotation data for a component in the inspector.
     /// </summary>
     Result UpdateComponentAnnotation(ResourceKey inspectedResource, int componentIndex, ComponentAnnotation annotation);
+
+    /// <summary>
+    /// Return the list of all available component types.
+    /// </summary>
+    List<string> GetAllComponentTypes();
 }

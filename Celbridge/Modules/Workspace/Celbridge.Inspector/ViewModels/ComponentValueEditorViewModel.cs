@@ -52,12 +52,12 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
     }
 
-    private void PopulatePropertyList(ResourceKey resource, int inspectedComponentIndex)
+    private void PopulatePropertyList(ResourceKey resource, int componentIndex)
     {
         List<IField> propertyFields = new();
 
         if (resource.IsEmpty || 
-            inspectedComponentIndex < 0)
+            componentIndex < 0)
         {
             // Setting the inpected item to an invalid resource or invalid component index
             // is expected behaviour that indicates no component is currently being inspected.
@@ -82,7 +82,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
 
         int componentCount = getCountResult.Value;
-        if (inspectedComponentIndex >= componentCount)
+        if (componentIndex >= componentCount)
         {
             // The inspected component index no longer exists, probably due to a structural change in the entity.
             // Clear the UI and return.
@@ -92,29 +92,29 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             return;
         }
 
-        var getResult = _entityService.GetComponentTypeInfo(resource, inspectedComponentIndex);
-        if (getResult.IsFailure)
+        var getSchemaResult = _entityService.GetComponentSchema(resource, componentIndex);
+        if (getSchemaResult.IsFailure)
         {
-            _logger.LogError($"Failed to get component type info for resource '{resource}' at index '{inspectedComponentIndex}'");
+            _logger.LogError($"Failed to get component schema for entity '{resource}' at index '{componentIndex}'");
 
             ComponentType = string.Empty;
             OnFormCreated?.Invoke(propertyFields);
             return;
         }
+        var schema = getSchemaResult.Value;
 
         // Populate the Component Type in the panel header
 
-        var componentTypeInfo = getResult.Value;
-        ComponentType = componentTypeInfo.ComponentType;
+        ComponentType = schema.ComponentType;
 
         // Construct the form by adding property fields one by one.
 
-        foreach (var property in componentTypeInfo.Properties)
+        foreach (var property in schema.Properties)
         {
-            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, inspectedComponentIndex, property.PropertyName);
+            var createResult = _inspectorService.FieldFactory.CreatePropertyField(resource, componentIndex, property.PropertyName);
             if (createResult.IsFailure)
             {
-                _logger.LogError($"Failed to create field for property '{property.PropertyName}' in resource '{resource}' at component index '{inspectedComponentIndex}'");
+                _logger.LogError($"Failed to create field for property '{property.PropertyName}' for entity '{resource}' at component index {componentIndex}");
                 continue;
             }
             var field = createResult.Value;

@@ -83,7 +83,7 @@ public class EntityData
         }
     }
 
-    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentSchemaRegistry schemaRegistry, long undoGroupId)
+    public Result<PatchSummary> ApplyPatchOperation(ResourceKey resource, PatchOperation operation, ComponentConfigRegistry configRegistry, long undoGroupId)
     {
         try
         {
@@ -130,7 +130,7 @@ public class EntityData
             bool isAddComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Add;
             if (isAddComponentOperation)
             {
-                var checkMultipleResult = EntityUtils.ValidateMultipleComponents(patchedJsonObject, componentChange.ComponentType, schemaRegistry);
+                var checkMultipleResult = EntityUtils.ValidateMultipleComponents(patchedJsonObject, componentChange.ComponentType, configRegistry);
                 if (checkMultipleResult.IsFailure)
                 {
                     return Result<PatchSummary>.Fail($"Component type does not allow multiple components: '{componentChange.ComponentType}'")
@@ -143,11 +143,11 @@ public class EntityData
             bool isRemoveComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Remove;
             if (!isRemoveComponentOperation)
             {
-                var checkSchemaResult = EntityUtils.ValidateComponentSchema(patchedJsonObject, componentChange.ComponentIndex, schemaRegistry);
-                if (checkSchemaResult.IsFailure)
+                var validateResult = EntityUtils.ValidateComponent(patchedJsonObject, componentChange.ComponentIndex, configRegistry);
+                if (validateResult.IsFailure)
                 {
                     return Result<PatchSummary>.Fail($"Failed to validate component at index '{componentChange.ComponentIndex}' against schema for component type '{componentChange.ComponentType}'")
-                        .WithErrors(checkSchemaResult);
+                        .WithErrors(validateResult);
                 }
             }
 
@@ -166,7 +166,7 @@ public class EntityData
             // Update the entity tags if the component structure has changed
             if (componentChange.PropertyPath == "/")
             {
-                var getTagsResult = EntityUtils.GetAllComponentTags(EntityJsonObject, schemaRegistry);
+                var getTagsResult = EntityUtils.GetAllComponentTags(EntityJsonObject, configRegistry);
                 if (getTagsResult.IsFailure)
                 {
                     return Result<PatchSummary>.Fail($"Failed to get component tags for entity: {resource}")

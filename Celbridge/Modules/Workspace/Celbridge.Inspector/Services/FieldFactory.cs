@@ -21,25 +21,25 @@ public class FieldFactory : IFieldFactory
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        // Get the component type info
-        var getInfoResult = entityService.GetComponentTypeInfo(resource, componentIndex);
-        if (getInfoResult.IsFailure)
+        // Get the component schema
+        var getSchemaResult = entityService.GetComponentSchema(resource, componentIndex);
+        if (getSchemaResult.IsFailure)
         {
-            return Result<IField>.Fail($"Failed to get component type info for resource '{resource}' at component index '{componentIndex}'")
-                .WithErrors(getInfoResult);
+            return Result<IField>.Fail($"Failed to get component schema for entity '{resource}' at component index {componentIndex}")
+                .WithErrors(getSchemaResult);
         }
-        var componentTypeInfo = getInfoResult.Value;
+        var schema = getSchemaResult.Value;
 
-        // Get the property type info
-        var propertyTypeInfos = componentTypeInfo.Properties.Where(p => p.PropertyName == propertyName).ToList();
-        if (propertyTypeInfos.Count != 1)
+        // Get the property info
+        var propertyInfos = schema.Properties.Where(p => p.PropertyName == propertyName).ToList();
+        if (propertyInfos.Count != 1)
         {
-            return Result<IField>.Fail($"Failed to find component property '{propertyName}' for resource '{resource}' at component index '{componentIndex}'");
+            return Result<IField>.Fail($"Failed to find component property '{propertyName}' for entity '{resource}' at component index {componentIndex}");
         }
-        var propertyTypeInfo = propertyTypeInfos[0];
+        var propertyInfo = propertyInfos[0];
 
-        var header = propertyTypeInfo.PropertyName;
-        var text = propertyTypeInfo.PropertyType;
+        var header = propertyInfo.PropertyName;
+        var text = propertyInfo.PropertyType;
 
         // Todo: Handle other property types
 
