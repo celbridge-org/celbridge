@@ -57,15 +57,25 @@ public class ScreenplayActivity : IActivity
 
         for (int i = 0; i < componentCount; i++)
         {
-            var getSchemaResult = _entityService.GetComponentSchema(fileResource, i);
+            // Get the component type
+            var getTypeResult = _entityService.GetComponentType(fileResource, i);
+            if (getTypeResult.IsFailure)
+            {
+                return Result.Fail(fileResource, $"Failed to get component type for resource '{fileResource}' at component index {i}")
+                    .WithErrors(getTypeResult);
+            }
+            var componentType = getTypeResult.Value;
+
+            // Get the component schema
+            var getSchemaResult = _entityService.GetComponentSchema(componentType);
             if (getSchemaResult.IsFailure)
             {
-                return Result.Fail(fileResource, $"Failed to get component schema for resource '{fileResource}' at component index {i}")
+                return Result.Fail(fileResource, $"Failed to get component schema for component type: '{componentType}'")
                     .WithErrors(getSchemaResult);
             }
             var schema = getSchemaResult.Value;
 
-            if (schema.ComponentType == "Empty")
+            if (componentType == "Empty")
             {
                 // Ignore comments
                 continue;
