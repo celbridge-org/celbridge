@@ -7,9 +7,9 @@ public static class ScreenplayConstants
     public const string SceneComponentType = "Scene";
     public const string LineComponentType = "Line";
 
-    public const string SceneComponentProperty_SceneTitle = "/sceneTitle";
-    public const string SceneComponentProperty_SceneDescription = "/sceneDescription";
+    public const string SceneComponent_SceneTitle = "/sceneTitle";
+    public const string SceneComponent_SceneDescription = "/sceneDescription";
 
-    public const string LineComponentProperty_Character = "/character";
-    public const string LineComponentProperty_SourceText = "/sourceText";
+    public const string LineComponent_Character = "/character";
+    public const string LineComponent_SourceText = "/sourceText";
 }

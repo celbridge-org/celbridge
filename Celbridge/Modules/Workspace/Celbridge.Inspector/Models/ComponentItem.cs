@@ -7,21 +7,50 @@ namespace Celbridge.Inspector.Models;
 /// </summary>
 public partial class ComponentItem : ObservableObject
 {
-    /// <summary>
-    /// Gets or sets the component type.
-    /// </summary>
     [ObservableProperty]
     private string _componentType = string.Empty;
 
     [ObservableProperty]
-    private string _componentDescription = string.Empty;
+    private string _description = string.Empty;
 
-    public ComponentItem DeepClone()
+    [ObservableProperty]
+    private string _tooltip = string.Empty;
+
+    [ObservableProperty]
+    private ComponentStatus _status;
+
+    [ObservableProperty]
+    private Visibility _showErrorIcon = Visibility.Collapsed;
+
+    [ObservableProperty]
+    private Visibility _showWarningIcon = Visibility.Collapsed;
+
+    public ComponentItem()
     {
-        return new ComponentItem
+        PropertyChanged += ComponentItem_PropertyChanged;
+    }
+
+    private void ComponentItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Status))
         {
-            ComponentType = ComponentType,
-            ComponentDescription = ComponentDescription
-        };
+            switch (this.Status)
+            {
+                case ComponentStatus.Valid:
+                    ShowErrorIcon = Visibility.Collapsed;
+                    ShowWarningIcon = Visibility.Collapsed;
+                    break;
+
+                case ComponentStatus.Error:
+                    ShowErrorIcon = Visibility.Visible;
+                    ShowWarningIcon = Visibility.Collapsed;
+                    break;
+
+                case ComponentStatus.Warning:
+                    ShowErrorIcon = Visibility.Collapsed;
+                    ShowWarningIcon = Visibility.Visible;
+                    break;
+            }
+        }
     }
 }

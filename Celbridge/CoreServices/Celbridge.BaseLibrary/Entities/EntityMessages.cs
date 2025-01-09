@@ -8,4 +8,9 @@ public record ComponentChangedMessage(ResourceKey Resource, string ComponentType
 /// <summary>
 /// A message sent when the component annotation data is updated.
 /// </summary>
-public record ComponentAnnotationUpdatedMessage(ResourceKey Resource, int ComponentIndex, ComponentAnnotation Appearance);
+public record ComponentAnnotationUpdatedMessage(ResourceKey Resource, int ComponentIndex, ComponentAnnotation Annotation);
+
+/// <summary>
+/// A message sent when a new entity is created.
+/// </summary>
+public record EntityCreatedMessage(ResourceKey Resource);

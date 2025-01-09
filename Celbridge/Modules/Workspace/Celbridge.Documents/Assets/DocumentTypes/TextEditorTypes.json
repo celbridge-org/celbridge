@@ -152,6 +152,7 @@
   ".sbt": "scala",
   ".sc": "scala",
   ".scala": "scala",
+  ".scene": "markdown",
   ".sch": "scheme",
   ".scm": "scheme",
   ".scss": "scss",

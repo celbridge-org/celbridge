@@ -1,9 +1,9 @@
 using Celbridge.Core;
 using Celbridge.Entities.Models;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
-using Json.More;
 using Json.Schema;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -16,35 +16,35 @@ namespace Celbridge.Entities.Services;
 
 public class EntityRegistry
 {
-    private const string DefaultComponentsFile = "DefaultComponents.json";
-
     private readonly ILogger<EntityRegistry> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private readonly ConcurrentDictionary<ResourceKey, Entity> _entityCache = new(); // Cache for entity objects
     private readonly ConcurrentDictionary<ResourceKey, bool> _modifiedEntities = new(); // Track modified entities
-    private readonly Dictionary<string, List<string>> _defaultComponents = new();
 
     private JsonSchema? _entitySchema;
-    private ComponentSchemaRegistry? _schemaRegistry;
+    private ComponentConfigRegistry? _configRegistry;
 
     public EntityRegistry(
         ILogger<EntityRegistry> logger,
+        IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<Result> Initialize(JsonSchema entitySchema, ComponentSchemaRegistry schemaRegistry)
+    public Result Initialize(JsonSchema entitySchema, ComponentConfigRegistry configRegistry)
     {
         _entitySchema = entitySchema;
-        _schemaRegistry = schemaRegistry;
+        _configRegistry = configRegistry;
 
-        return await LoadDefaultComponentsAsync();
+        return Result.Ok();
     }
 
     public string GetEntityDataPath(ResourceKey resource)
@@ -269,7 +269,7 @@ public class EntityRegistry
     public Result<Entity> AcquireEntity(ResourceKey resource)
     {
         Guard.IsNotNull(_entitySchema);
-        Guard.IsNotNull(_schemaRegistry);
+        Guard.IsNotNull(_configRegistry);
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
@@ -295,16 +295,18 @@ public class EntityRegistry
             EntityData? entityData = null;
             if (File.Exists(entityDataPath))
             {
-                var getDataResult = EntityUtils.LoadEntityDataFile(entityDataPath, _entitySchema, _schemaRegistry);
-                if (getDataResult.IsSuccess)
+                var loadDataResult = EntityUtils.LoadEntityDataFile(entityDataPath, _entitySchema, _configRegistry);
+                if (loadDataResult.IsSuccess)
                 {
-                    entityData = getDataResult.Value;
+                    entityData = loadDataResult.Value;
                 }
                 else
                 {
-                    _logger.LogError(getDataResult.Error);
+                    _logger.LogError(loadDataResult.Error);
                 }
             }
+
+            bool createdEntity = false;
 
             if (entityData is null)
             {
@@ -313,6 +315,7 @@ public class EntityRegistry
                 if (createResult.IsSuccess)
                 {
                     entityData = createResult.Value;
+                    createdEntity = true;
                 }
                 else
                 {
@@ -330,6 +333,13 @@ public class EntityRegistry
 
             // This line will always create the entity data file, instead of only when the entity is modified.
             // _modifiedEntities.Add(resource);
+
+            if (createdEntity)
+            {
+                // Notify activity service so it can attempt to initialize the new entity with default components.
+                var message = new EntityCreatedMessage(resource);
+                _messengerService.Send(message);               
+            }
 
             return Result<Entity>.Ok(entity);
         }
@@ -371,51 +381,9 @@ public class EntityRegistry
         return path;
     }
 
-    private async Task<Result> LoadDefaultComponentsAsync()
-    {
-        try
-        {
-            var configFolder = await Package.Current.InstalledLocation.GetFolderAsync(EntityConstants.ComponentConfigFolder);
-            var jsonFile = await configFolder.GetFileAsync(DefaultComponentsFile);
-
-            var content = await FileIO.ReadTextAsync(jsonFile);
-
-            using var jsonDoc = JsonDocument.Parse(content);
-
-            foreach (var property in jsonDoc.RootElement.EnumerateObject())
-            {
-                if (property.Value.ValueKind != JsonValueKind.Array)
-                {
-                    return Result.Fail($"Expected object value for property: {property.Name}");
-                }
-
-                var list = new List<string>();
-                foreach (var item in property.Value.EnumerateArray())
-                {
-                    if (item.ValueKind != JsonValueKind.String)
-                    {
-                        return Result.Fail($"Expected string value for property: {property.Name}");
-                    }
-
-                    list.Add(item.GetString()!);
-                }
-
-                _defaultComponents[property.Name] = list;
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when loading default components file")
-                .WithException(ex);
-        }
-    }
-
     private Result<EntityData> CreateEntityData(ResourceKey resource)
     {
-        Guard.IsNotNull(_defaultComponents);
-        Guard.IsNotNull(_schemaRegistry);
+        Guard.IsNotNull(_configRegistry);
         Guard.IsNotNull(_entitySchema);
 
         var entityJsonObject = new JsonObject
@@ -424,45 +392,13 @@ public class EntityRegistry
             ["_components"] = new JsonArray()
         };
 
-        // Add default components based on the resource's file extension
-
-        // Todo: Add a Folder component to folder resources by default
-        var fileExtension = Path.GetExtension(resource.ToString());
-        var hasExtension = !string.IsNullOrEmpty(fileExtension);
-
-        if (hasExtension &&
-            _defaultComponents.TryGetValue(fileExtension, out var defaultComponents))
-        {
-            foreach (var componentType in defaultComponents)
-            {
-                var getSchemaResult = _schemaRegistry.GetSchemaForComponentType(componentType);
-                if (getSchemaResult.IsFailure)
-                {
-                    return Result<EntityData>.Fail($"Failed to get component schema for component type: {componentType}")
-                        .WithErrors(getSchemaResult);
-                }
-                var schema = getSchemaResult.Value;
-
-                // The component prototype was validated against the component schemas at startup, so we can assume
-                // it's valid and add a clone of the prototype to the entity data.
-
-                var componentObject = schema.Prototype.AsNode();
-                Guard.IsNotNull(componentObject);
-
-                var componentsArray = entityJsonObject["_components"] as JsonArray;
-                Guard.IsNotNull(componentsArray);
-
-                componentsArray.Add(componentObject);
-            }
-        }
-
         var evaluateResult = _entitySchema.Evaluate(entityJsonObject);
         if (!evaluateResult.IsValid)
         {
             return Result<EntityData>.Fail($"Failed to create entity data. Schema validation error: {resource}");
         }
 
-        var getTagsResult = EntityUtils.GetAllComponentTags(entityJsonObject, _schemaRegistry);
+        var getTagsResult = EntityUtils.GetAllComponentTags(entityJsonObject, _configRegistry);
         if (getTagsResult.IsFailure)
         {
             return Result<EntityData>.Fail($"Failed to get component tags for entity data: {resource}")
