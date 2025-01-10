@@ -97,6 +97,12 @@ public interface IEntityService
     Result<IReadOnlyList<IComponentProxy>> GetComponentsOfType(ResourceKey resource, string componentType);
 
     /// <summary>
+    /// Returns the primary component in the entity.
+    /// This is the first non-Empty component with the "PrimaryComponent" tag.
+    /// </summary>
+    Result<IComponentProxy> GetPrimaryComponent(ResourceKey resource);
+
+    /// <summary>
     /// Gets the value of a property from a component.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// Returns the default value if the component or property cannot be found.

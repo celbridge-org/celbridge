@@ -144,6 +144,16 @@ public class ActivityDispatcher
 
             IComponentProxy? primaryComponent = null;
 
+            // Todo: Replace the search code below with the result of this call
+            var getPrimaryResult = _entityService.GetPrimaryComponent(fileResource);
+            if (getPrimaryResult.IsFailure)
+            {
+                // Todo: Display an error message at the entity level
+                // Tell the user that "The first component must be a 'Scene' component".
+                return Result.Fail($"Failed to get primary component for entity: '{fileResource}'")
+                    .WithErrors(getPrimaryResult);
+            }
+
             bool syntaxError = false;
 
             foreach (var componentIndex in unprocessedComponents)

@@ -10,6 +10,7 @@ using Json.More;
 using Json.Patch;
 using Json.Pointer;
 using Json.Schema;
+using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -434,6 +435,49 @@ public class EntityService : IEntityService, IDisposable
     {
         return _componentProxyService.GetComponents(resource, componentType);
     }
+
+    public Result<IComponentProxy> GetPrimaryComponent(ResourceKey resource)
+    {
+        // Get the component list for this entity
+        var getComponentsResult = GetComponents(resource);
+        if (getComponentsResult.IsFailure)
+        {
+            return Result<IComponentProxy>.Fail($"Failed to get components for entity: '{resource}'")
+                .WithErrors(getComponentsResult);
+        }
+        var components = getComponentsResult.Value;
+
+        // Check for the "PrimaryComponent" entity tag
+
+        bool hasPrimaryComponent = HasTag(resource, "PrimaryComponent");
+        if (!hasPrimaryComponent)
+        {
+            return Result<IComponentProxy>.Fail($"Entity does not contain a primary component: '{resource}'");
+        }
+
+        // Find first non-empty component
+        for (int i = 0; i < components.Count; i++)
+        {
+            var component = components[i];
+
+            if (component.Schema.ComponentType == "Empty")
+            {
+                continue;
+            }
+
+            if (component.Schema.HasTag("PrimaryComponent"))
+            {
+                return Result<IComponentProxy>.Ok(component);
+            }
+            else
+            {
+                return Result<IComponentProxy>.Fail($"First non-empty component is not a primary component: '{resource}'");
+            }
+        }
+
+        return Result<IComponentProxy>.Fail($"Entity does not contain a primary component: '{resource}'");
+    }
+
 
     public T? GetProperty<T>(ResourceKey resource, int componentIndex, string propertyPath, T? defaultValue) where T : notnull
     {
