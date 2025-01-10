@@ -53,7 +53,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OnUnloaded()
     {
-        _messengerService.Unregister<ClipboardContentChangedMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 
     private void OnClipboardContentChangedMessage(object recipient, ClipboardContentChangedMessage message)

@@ -95,7 +95,7 @@ public class InspectorService : IInspectorService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
+                _messengerService.UnregisterAll(this);
             }
 
             _disposed = true;

@@ -422,9 +422,7 @@ public class ExplorerService : IExplorerService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
-                _messengerService.Unregister<WorkspaceLoadedMessage>(this);
-                _messengerService.Unregister<SelectedResourceChangedMessage>(this);
+                _messengerService.UnregisterAll(this);
             }
 
             _disposed = true;
