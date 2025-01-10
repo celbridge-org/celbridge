@@ -148,7 +148,6 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private void UnregisterMessageHandlers()
     {
-        _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
-        _messengerService.Unregister<ResourceKeyChangedMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 }

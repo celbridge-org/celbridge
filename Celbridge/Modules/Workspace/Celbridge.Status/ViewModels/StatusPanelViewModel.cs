@@ -39,8 +39,7 @@ public partial class StatusPanelViewModel : ObservableObject
 
     public void OnUnloaded()
     {
-        _messengerService.Unregister<PendingDocumentSaveMessage>(this);
-        _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 
     private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)

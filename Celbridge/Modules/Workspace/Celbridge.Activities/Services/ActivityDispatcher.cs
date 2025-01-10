@@ -81,10 +81,7 @@ public class ActivityDispatcher
 
     public void Uninitialize()
     {
-        _messengerService.Unregister<EntityCreatedMessage>(this);
-        _messengerService.Unregister<SelectedResourceChangedMessage>(this);
-        _messengerService.Unregister<ComponentChangedMessage>(this);
-        _messengerService.Unregister<PopulatedComponentListMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 
     public async Task<Result> UpdateAsync()

@@ -32,8 +32,7 @@ public sealed partial class TitleBar : UserControl
         Loaded -= OnTitleBar_Loaded;
         Unloaded -= OnTitleBar_Unloaded;
 
-        _messengerService.Unregister<MainWindowActivatedMessage>(this);
-        _messengerService.Unregister<MainWindowDeactivatedMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 
     private void OnMainWindowActivated(object recipient, MainWindowActivatedMessage message)

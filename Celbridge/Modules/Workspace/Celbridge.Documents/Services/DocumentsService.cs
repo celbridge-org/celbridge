@@ -449,10 +449,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<WorkspaceLoadedMessage>(this);
-                _messengerService.Unregister<OpenDocumentsChangedMessage>(this);
-                _messengerService.Unregister<SelectedDocumentChangedMessage>(this);
-                _messengerService.Unregister<DocumentResourceChangedMessage>(this);
+                _messengerService.UnregisterAll(this);
 
                 _previewProviders.Clear();
             }

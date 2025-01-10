@@ -89,8 +89,7 @@ public class ActivityRegistry
 
     public async Task<Result> Uninitialize()
     {
-        _messengerService.Unregister<ResourceKeyChangedMessage>(this);
-        _messengerService.Unregister<ComponentChangedMessage>(this);
+        _messengerService.UnregisterAll(this);
 
         var activityNames = _moduleService.SupportedActivities.ToList();
         activityNames.Sort(); // Ensure stable deactivation order
