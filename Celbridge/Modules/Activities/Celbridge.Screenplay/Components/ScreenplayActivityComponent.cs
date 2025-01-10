@@ -4,6 +4,8 @@ namespace Celbridge.Screenplay.Components;
 
 public class ScreenplayActivityComponent : IComponentDescriptor
 {
+    public const string ActivityName = "Screenplay";
+
     public string SchemaJson => """
     {
       "type": "object",

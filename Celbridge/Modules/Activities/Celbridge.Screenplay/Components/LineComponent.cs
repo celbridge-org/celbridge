@@ -4,6 +4,10 @@ namespace Celbridge.Screenplay.Components;
 
 public class LineComponent : IComponentDescriptor
 {
+    public const string ComponentType = "Line";
+    public const string Character = "/character";
+    public const string SourceText = "/sourceText";
+
     public string SchemaJson => """
     {
       "type": "object",

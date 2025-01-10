@@ -9,7 +9,7 @@ public class Module : IModule
 {
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
-        ScreenplayConstants.ScreenplayTag
+        ScreenplayActivityComponent.ActivityName
     };
 
     public void ConfigureServices(IModuleServiceCollection config)
@@ -42,9 +42,9 @@ public class Module : IModule
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
-        if (activityName == ScreenplayConstants.ScreenplayTag)
+        if (activityName == ScreenplayActivityComponent.ActivityName)
         {
-            var activity = serviceProvider.GetRequiredService<Screenplay.Services.ScreenplayActivity>();
+            var activity = serviceProvider.GetRequiredService<ScreenplayActivity>();
             return Result<IActivity>.Ok(activity);
         }
 
