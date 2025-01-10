@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Logging;
+using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 using System.Text;
 
@@ -74,7 +75,7 @@ public class ScreenplayActivity : IActivity
                 continue;
             }
 
-            if (!schema.HasTag(ScreenplayConstants.ScreenplayTag))
+            if (!schema.HasTag(ScreenplayActivityComponent.ActivityName))
             {
                 component.SetAnnotation(
                     ComponentStatus.Error, 
@@ -86,16 +87,16 @@ public class ScreenplayActivity : IActivity
 
             switch (schema.ComponentType)
             {
-                case ScreenplayConstants.SceneComponentType:
-                    var sceneTitle = component.GetString(ScreenplayConstants.SceneComponent_SceneTitle);
-                    var sceneDescription = component.GetString(ScreenplayConstants.SceneComponent_SceneDescription);
+                case SceneComponent.ComponentType:
+                    var sceneTitle = component.GetString(SceneComponent.SceneTitle);
+                    var sceneDescription = component.GetString(SceneComponent.SceneDescription);
                     var componentDescription = $"{sceneTitle}: {sceneDescription}";
                     component.SetAnnotation(ComponentStatus.Valid, componentDescription, componentDescription);
                     break;
 
-                case ScreenplayConstants.LineComponentType:
-                    var character = component.GetString(ScreenplayConstants.LineComponent_Character);
-                    var sourceText = component.GetString(ScreenplayConstants.LineComponent_SourceText);
+                case LineComponent.ComponentType:
+                    var character = component.GetString(LineComponent.Character);
+                    var sourceText = component.GetString(LineComponent.SourceText);
                     var description = $"{character}: {sourceText}";
                     component.SetAnnotation(ComponentStatus.Valid, description, description);
                     break;
@@ -132,7 +133,7 @@ public class ScreenplayActivity : IActivity
             // Add a Scene component to newly created .scene entities
             _commandService.Execute<IAddComponentCommand>(command => {
                 command.Resource = resource;
-                command.ComponentType = ScreenplayConstants.SceneComponentType;
+                command.ComponentType = SceneComponent.ComponentType;
             });
             return true;
         }
@@ -142,7 +143,7 @@ public class ScreenplayActivity : IActivity
 
     private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
     {
-        var getComponentResult = _entityService.GetComponentOfType(resource, ScreenplayConstants.SceneComponentType);
+        var getComponentResult = _entityService.GetComponentOfType(resource, SceneComponent.ComponentType);
         if (getComponentResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get Scene component")
@@ -150,8 +151,8 @@ public class ScreenplayActivity : IActivity
         }
         var sceneComponent = getComponentResult.Value;
 
-        var sceneTitle = sceneComponent.GetString(ScreenplayConstants.SceneComponent_SceneTitle);
-        var sceneDescription = sceneComponent.GetString(ScreenplayConstants.SceneComponent_SceneDescription);
+        var sceneTitle = sceneComponent.GetString(SceneComponent.SceneTitle);
+        var sceneDescription = sceneComponent.GetString(SceneComponent.SceneDescription);
 
         var sb = new StringBuilder();
 
@@ -160,7 +161,7 @@ public class ScreenplayActivity : IActivity
         sb.AppendLine($"{sceneDescription}");
         sb.AppendLine();
 
-        var getLinesResult = _entityService.GetComponentsOfType(resource, ScreenplayConstants.LineComponentType);
+        var getLinesResult = _entityService.GetComponentsOfType(resource, LineComponent.ComponentType);
         if (getLinesResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get Line components")
@@ -170,8 +171,8 @@ public class ScreenplayActivity : IActivity
 
         foreach (var lineComponent in lineComponents)
         {
-            var character = lineComponent.GetString(ScreenplayConstants.LineComponent_Character);
-            var sourceText = lineComponent.GetString(ScreenplayConstants.LineComponent_SourceText);
+            var character = lineComponent.GetString(LineComponent.Character);
+            var sourceText = lineComponent.GetString(LineComponent.SourceText);
 
             if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
             {
