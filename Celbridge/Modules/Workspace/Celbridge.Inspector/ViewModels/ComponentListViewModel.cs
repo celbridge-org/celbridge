@@ -65,8 +65,7 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     public void OnViewUnloaded()
     {
-        _messengerService.Unregister<ComponentChangedMessage>(this);
-        _messengerService.Unregister<ComponentAnnotationUpdatedMessage>(this);
+        _messengerService.UnregisterAll(this);
 
         PropertyChanged -= ViewModel_PropertyChanged;
     }

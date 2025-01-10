@@ -136,7 +136,7 @@ public partial class StringFieldViewModel : ObservableObject
     public void OnViewUnloaded()
     {
         // Unregister event/message handlers
-        _messengerService.Unregister<ComponentChangedMessage>(this);
+        _messengerService.UnregisterAll(this);
         PropertyChanged -= OnPropertyChanged;
     }
 }

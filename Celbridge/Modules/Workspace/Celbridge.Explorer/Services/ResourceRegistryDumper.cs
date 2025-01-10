@@ -1,4 +1,4 @@
-﻿using Celbridge.Logging;
+using Celbridge.Logging;
 using Celbridge.Explorer;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -133,7 +133,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<ResourceRegistryUpdatedMessage>(this);
+                _messengerService.UnregisterAll(this);
             }
 
             _disposed = true;

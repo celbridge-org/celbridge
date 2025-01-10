@@ -41,7 +41,7 @@ public class StatusService : IStatusService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.Unregister<WorkspaceWillPopulatePanelsMessage>(this);
+                _messengerService.UnregisterAll(this);
             }
 
             _disposed = true;
