@@ -68,21 +68,10 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             return;
         }
 
-        // The resource and component index appear to be valid, so we can attempt to get information
-        // about the component. If these queries fail, log the error and clear the UI.
+        var componentCount = _entityService.GetComponentCount(resource);
 
-        var getCountResult = _entityService.GetComponentCount(resource);
-        if (getCountResult.IsFailure)
-        {
-            _logger.LogError($"Failed to get component count for resource: '{resource}'");
-
-            ComponentType = string.Empty;
-            OnFormCreated?.Invoke(propertyFields);
-            return;
-        }
-
-        int componentCount = getCountResult.Value;
-        if (componentIndex >= componentCount)
+        if (componentCount <= 0 ||
+            componentIndex >= componentCount)
         {
             // The inspected component index no longer exists, probably due to a structural change in the entity.
             // Clear the UI and return.

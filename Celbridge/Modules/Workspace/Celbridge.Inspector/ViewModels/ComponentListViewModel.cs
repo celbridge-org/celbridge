@@ -358,18 +358,12 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void PopulateComponentList()
     {
-        var getCountResult = _entityService.GetComponentCount(Resource);
-        if (getCountResult.IsFailure)
-        {
-            _logger.LogError(getCountResult.Error);
-            return;
-        }
-        var count = getCountResult.Value;
-
         int previousIndex = SelectedIndex;
-
         List<ComponentItem> componentItems = new();
-        for (int i = 0; i < count; i++)
+
+        var componentCount = _entityService.GetComponentCount(Resource);
+
+        for (int i = 0; i < componentCount; i++)
         {
             // Get the component type
             var getTypeResult = _entityService.GetComponentType(Resource, i);
@@ -395,13 +389,13 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         ComponentItems.ReplaceWith(componentItems);
 
-        if (count == 0)
+        if (componentCount == 0)
         {
             SelectedIndex = -1;
         }
         else
         {
-            SelectedIndex = Math.Clamp(previousIndex, 0, count - 1);
+            SelectedIndex = Math.Clamp(previousIndex, 0, componentCount - 1);
         }
 
         // Notify running activities that the component list has been populated, so that

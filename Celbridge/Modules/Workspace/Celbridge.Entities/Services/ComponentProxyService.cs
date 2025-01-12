@@ -135,21 +135,13 @@ public class ComponentProxyService
         {
             // List was not previously cached, populate the component list now
 
-            // Get the component count
-            var getCountResult = _entityService.GetComponentCount(resource);
-            if (getCountResult.IsFailure)
-            {
-                return Result<IReadOnlyList<IComponentProxy>>.Fail($"Failed to get component count for resource '{resource}'")
-                    .WithErrors(getCountResult);
-            }
-            var count = getCountResult.Value;
+            var componentCount = _entityService.GetComponentCount(resource);
+            var newList = new List<IComponentProxy>(componentCount);
 
-            // Populate the component list
-            var newList = new List<IComponentProxy>(count);
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < componentCount; i++)
             {
                 var getComponentResult = GetComponent(resource, i);
-                if (getCountResult.IsFailure)
+                if (getComponentResult.IsFailure)
                 {
                     return Result<IReadOnlyList<IComponentProxy>>.Fail($"Failed to get component for resource '{resource}' at index {i}")
                         .WithErrors(getComponentResult);
