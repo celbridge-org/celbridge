@@ -1,3 +1,5 @@
+using Celbridge.UserInterface.ViewModels.Pages;
+
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class SettingsPage : Page
