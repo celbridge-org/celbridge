@@ -63,8 +63,9 @@ public interface IEntityService
 
     /// <summary>
     /// Returns the number of components in the entity for a resource.
+    /// Returns 0 if the lookup fails for any reason (e.g. the resource does not exist).
     /// </summary>
-    Result<int> GetComponentCount(ResourceKey resource);
+    int GetComponentCount(ResourceKey resource);
 
     /// <summary>
     /// Returns the component type for the entity component at the specified index.

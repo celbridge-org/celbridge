@@ -57,14 +57,7 @@ public class ScreenplayActivity : IActivity
             return Result.Fail($"This activity does not support this resource: {resource}");
         }
 
-        var getCountResult = _entityService.GetComponentCount(resource);
-        if (getCountResult.IsFailure)
-        {
-            return Result.Fail($"Failed to get component count for resource: '{resource}'")
-                .WithErrors(getCountResult);
-        }
-        var count = getCountResult.Value;
-
+        var count = _entityService.GetComponentCount(resource);
         if (count > 0)
         {
             // Entity has already been initialized
@@ -80,16 +73,14 @@ public class ScreenplayActivity : IActivity
 
     public async Task<Result> UpdateResourceAsync(ResourceKey fileResource)
     {
-        var getCountResult = _entityService.GetComponentCount(fileResource);
-        if (getCountResult.IsFailure)
+        var componentCount = _entityService.GetComponentCount(fileResource);
+        if (componentCount == 0)
         {
             // Inspected resource may have been deleted or moved since the update was requested
             return Result.Ok();
         }
-        var componentCount = getCountResult.Value;
 
         // Populate the annotation data for each component associated with this activity
-
         for (int i = 0; i < componentCount; i++)
         {
             // Get the component 

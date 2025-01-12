@@ -326,21 +326,25 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
-    public Result<int> GetComponentCount(ResourceKey resource)
+    public int GetComponentCount(ResourceKey resource)
     {
         // Acquire the entity for the specified resource
-
         var acquireResult = _entityRegistry.AcquireEntity(resource);
         if (acquireResult.IsFailure)
         {
-            return Result<int>.Fail($"Failed to acquire entity: {resource}")
-                .WithErrors(acquireResult);
+            return 0;
         }
         var entity = acquireResult.Value;
 
         // Get the component count
+        var getCountResult = entity.EntityData.GetComponentCount();
+        if (getCountResult.IsFailure)
+        {
+            return 0;
+        }
+        var componentCount = getCountResult.Value;
 
-        return entity.EntityData.GetComponentCount();
+        return componentCount;
     }
 
     public Result<string> GetComponentType(ResourceKey resource, int componentIndex)
