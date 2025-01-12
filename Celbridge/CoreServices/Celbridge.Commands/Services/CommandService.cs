@@ -269,14 +269,14 @@ public class CommandService : ICommandService
                 try
                 {
                     // Notify listeners that the command is about to execute
-                    var message = new CommandExecutingMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
-                    _messengerService.Send(message);
+                    var startedMessage = new ExecuteCommandStartedMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                    _messengerService.Send(startedMessage);
 
                     var scopeName = $"{executionMode} {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
                         // Log the command execution at the debug level
-                        string logEntry = _logSerializer.SerializeObject(message, false);
+                        string logEntry = _logSerializer.SerializeObject(startedMessage, false);
                         _logger.LogDebug(logEntry);
 
                         if (executionMode == CommandExecutionMode.Undo)
@@ -339,6 +339,9 @@ public class CommandService : ICommandService
                         {
                             _workspaceWrapper.WorkspaceService.SetWorkspaceStateIsDirty();
                         }
+
+                        var endedMessage = new ExecuteCommandEndedMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                        _messengerService.Send(endedMessage);
                     }
                 }
                 catch (Exception ex)

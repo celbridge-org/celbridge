@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.Extensions;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Scripting;
 using Celbridge.Settings;
@@ -19,6 +20,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 {
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
+    private readonly ILogger<WorkspaceService> _logger;
     private readonly IEditorSettings _editorSettings;
     private readonly IExtensionService _extensionService;
 
@@ -43,10 +45,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspaceService(
         IServiceProvider serviceProvider,
+        ILogger<WorkspaceService> logger,
         IEditorSettings editorSettings,
         IExtensionService extensionService,
         IProjectService projectService)
     {
+        _logger = logger;
         _editorSettings = editorSettings; 
         _extensionService = extensionService;
 
@@ -114,6 +118,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public async Task<Result> UpdateWorkspaceAsync(double deltaTime)
     {
+        bool failed = false;
+
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
@@ -122,28 +128,45 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
             {
-                return Result.Fail($"Failed to save workspace state")
-                    .WithErrors(saveWorkspaceResult);
+                failed = true;
+                _logger.LogError($"Failed to save workspace state. {saveWorkspaceResult.Error}");
             }
         }
 
         var saveEntitiesResult = await EntityService.SaveEntitiesAsync();
         if (saveEntitiesResult.IsFailure)
         {
-            return Result.Fail($"Failed to save modified entities")
-                .WithErrors(saveEntitiesResult);
+            failed = true;
+            _logger.LogError($"Failed to save modified entities. {saveEntitiesResult.Error}");
         }
 
         var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
         if (saveDocumentsResult.IsFailure)
         {
-            return Result.Fail($"Failed to save modified documents")
-                .WithErrors(saveDocumentsResult);
+            failed = true;
+            _logger.LogError($"Failed to save modified documents. { saveDocumentsResult.Error}");
         }
 
-        var updateActivities = await ActivityService.UpdateAsync();
+        var activitiesResult = await ActivityService.UpdateAsync();
+        if (activitiesResult.IsFailure) 
+        {
+            failed = true;
+            _logger.LogError($"Failed to update activity service. {activitiesResult.Error}");
+        }
+
+        var inspectorResult = await InspectorService.UpdateAsync();
+        if (inspectorResult.IsFailure)
+        {
+            failed = true;
+            _logger.LogError($"Failed to update inspector service. {inspectorResult.Error}");
+        }
 
         // Todo: Clear save icon on the status bar if there are no pending saves
+
+        if (failed)
+        {
+            return Result.Fail("Failed to update workspace");
+        }
 
         return Result.Ok();
     }

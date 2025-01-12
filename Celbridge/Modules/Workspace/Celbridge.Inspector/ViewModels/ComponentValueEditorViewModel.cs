@@ -1,4 +1,5 @@
 using Celbridge.Entities;
+using Celbridge.Inspector.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -15,6 +16,8 @@ public partial class ComponentValueEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _componentType = string.Empty;
 
+    private bool _pendingRefresh;
+
     public event Action<List<IField>>? OnFormCreated;
 
     public ComponentValueEditorViewModel(
@@ -28,12 +31,14 @@ public partial class ComponentValueEditorViewModel : ObservableObject
 
         messengerService.Register<InspectedComponentChangedMessage>(this, OnInspectedComponentChangedMessage);
         messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
+        messengerService.Register<UpdateInspectorMessage>(this, OnUpdateInspectorMessage);
     }
 
     private void OnInspectedComponentChangedMessage(object recipient, InspectedComponentChangedMessage message)
     {
+        // Repopulate the property list when the selected resource or component changes
+        _pendingRefresh = true;
         ClearPropertyList();
-        PopulatePropertyList(message.ComponentKey);
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
@@ -44,11 +49,18 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         if (_inspectorService.InspectedResource == componentKey.Resource &&
             propertyPath == "/")
         {
-            // We need to repopulate the property list on all structural changes to the entity,
-            // because we can't assume that we're inspecting the same component as before, even if 
-            // the resource, component index and component type are still the same.
+            // Repopulate the property list on all structural changes to the entity
+            _pendingRefresh = true;
             ClearPropertyList();
-            PopulatePropertyList(componentKey);
+        }
+    }
+
+    private void OnUpdateInspectorMessage(object recipient, UpdateInspectorMessage message)
+    {
+        if (_pendingRefresh)
+        {
+            _pendingRefresh = false;
+            PopulatePropertyList();
         }
     }
 
@@ -58,8 +70,12 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         OnFormCreated?.Invoke(new List<IField>());
     }
 
-    private void PopulatePropertyList(ComponentKey componentKey)
+    private void PopulatePropertyList()
     {
+        var componentKey = new ComponentKey(
+            _inspectorService.InspectedResource, 
+            _inspectorService.InspectedComponentIndex);
+ 
         List<IField> propertyFields = new();
 
         if (componentKey.Resource.IsEmpty ||
@@ -67,6 +83,8 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         {
             // Setting the inpected item to an invalid resource or invalid component index
             // is expected behaviour that indicates no component is currently being inspected.
+            // The list should already be clear, but clear it again just in case.
+            ClearPropertyList();
             return;
         }
 
