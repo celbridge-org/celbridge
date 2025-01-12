@@ -13,14 +13,9 @@ public interface IComponentProxy
     bool IsValid { get; }
 
     /// <summary>
-    /// Returns the resource for the entity that contains the component.
+    /// Returns the component key used to identify the component.
     /// </summary>
-    ResourceKey Resource { get; }
-
-    /// <summary>
-    /// Returns the index of the component.
-    /// </summary>
-    int ComponentIndex { get; }
+    ComponentKey Key { get; }
 
     /// <summary>
     /// Returns the schema of the component.

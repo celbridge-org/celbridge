@@ -11,9 +11,7 @@ public class ComponentProxy : IComponentProxy
 
     public bool IsValid { get; set; } = true;
 
-    public ResourceKey Resource { get; }
-
-    public int ComponentIndex { get; }
+    public ComponentKey Key { get; }
 
     public ComponentSchema Schema { get; }
 
@@ -23,14 +21,13 @@ public class ComponentProxy : IComponentProxy
 
     public string Tooltip { get; private set; } = string.Empty;
 
-    public ComponentProxy(IServiceProvider serviceProvider, ResourceKey resource, int componentIndex, ComponentSchema schema)
+    public ComponentProxy(IServiceProvider serviceProvider, ComponentKey componentKey, ComponentSchema schema)
     {
         var workspaceWraper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
         _entityService = workspaceWraper.WorkspaceService.EntityService;
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
 
-        Resource = resource;
-        ComponentIndex = componentIndex;
+        Key = componentKey;
         Schema = schema;
     }
 
@@ -40,7 +37,7 @@ public class ComponentProxy : IComponentProxy
         Description = description;
         Tooltip = tooltip;
 
-        var message = new ComponentAnnotationUpdatedMessage(Resource, ComponentIndex);
+        var message = new ComponentAnnotationUpdatedMessage(Key);
         _messengerService.Send(message);
     }
 
@@ -48,19 +45,19 @@ public class ComponentProxy : IComponentProxy
 
     public Result<T> GetProperty<T>(string propertyPath) where T : notnull
     {
-        return _entityService.GetProperty<T>(Resource, ComponentIndex, propertyPath);
+        return _entityService.GetProperty<T>(Key, propertyPath);
     }
 
     public T? GetProperty<T>(string propertyPath, T? defaultValue) where T : notnull
     {
-        return _entityService.GetProperty<T>(Resource, ComponentIndex, propertyPath, defaultValue);
+        return _entityService.GetProperty(Key, propertyPath, defaultValue);
     }
 
     public string GetString(string propertyPath, string defaultValue = "")
     {
         Guard.IsNotNull(defaultValue);
 
-        var getResult = _entityService.GetProperty<string>(Resource, ComponentIndex, propertyPath);
+        var getResult = _entityService.GetProperty<string>(Key, propertyPath);
         if (getResult.IsFailure)
         {
             return defaultValue;
@@ -71,6 +68,6 @@ public class ComponentProxy : IComponentProxy
 
     public Result SetProperty<T>(string propertyPath, T newValue, bool insert) where T : notnull
     {
-        return _entityService.SetProperty<T>(Resource, ComponentIndex, propertyPath, newValue);
+        return _entityService.SetProperty(Key, propertyPath, newValue);
     }
 }

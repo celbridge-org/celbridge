@@ -8,8 +8,7 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ResourceKey Resource { get; set; }
-    public int ComponentIndex { get; set; }
+    public ComponentKey ComponentKey { get; set; } = ComponentKey.Empty;
 
     public RemoveComponentCommand(
         IWorkspaceWrapper workspaceWrapper)
@@ -21,10 +20,10 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var removeResult = entityService.RemoveComponent(Resource, ComponentIndex);
+        var removeResult = entityService.RemoveComponent(ComponentKey);
         if (removeResult.IsFailure)
         {
-            return Result.Fail($"Failed to remove entity component at index '{ComponentIndex}' from resource '{Resource}'.")
+            return Result.Fail($"Failed to remove entity component: '{ComponentKey}'")
                 .WithErrors(removeResult);
         }
 
@@ -43,8 +42,7 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
 
         return await commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
         {
-            command.Resource = resource;
-            command.ComponentIndex = componentIndex;
+            command.ComponentKey = new ComponentKey(resource, componentIndex);
         });
     }
 }

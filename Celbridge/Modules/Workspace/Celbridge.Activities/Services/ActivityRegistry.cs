@@ -131,7 +131,7 @@ public class ActivityRegistry
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        var resource = message.Resource;
+        var resource = message.ComponentKey.Resource;
         var propertyPath = message.PropertyPath;
 
         if (resource == _projectFileResource &&

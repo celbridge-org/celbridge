@@ -48,7 +48,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        if (message.Resource == Resource &&
+        if (message.ComponentKey.Resource == Resource &&
             message.ComponentType == MarkdownComponent &&
             message.PropertyPath == MarkdownComponentConstants.EditorMode)
         {

@@ -3,7 +3,6 @@ using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Humanizer;
 using System.ComponentModel;
@@ -17,7 +16,7 @@ public partial class StringFieldViewModel : ObservableObject
     private ICommandService _commandService;
     private IEntityService _entityService;
 
-    private IComponentProxy? _component;
+    private ComponentKey _componentKey;
 
     public string PropertyName { get; private set; } = string.Empty;
 
@@ -44,10 +43,7 @@ public partial class StringFieldViewModel : ObservableObject
 
     public Result Initialize(IComponentProxy component, string propertyName)
     {
-        // Initialize should only be called once
-        Guard.IsNull(_component);
-
-        _component = component;
+        _componentKey = component.Key;
 
         PropertyName = propertyName;
 
@@ -66,15 +62,12 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        Guard.IsNotNull(_component);
-
         if (_ignoreComponentChangeMessage)
         {
             return;
         }
 
-        if (message.Resource == _component.Resource && 
-            message.ComponentIndex == _component.ComponentIndex &&
+        if (message.ComponentKey == _componentKey &&
             message.PropertyPath == $"/{PropertyName}")
         {
             // _logger.LogInformation("Component changed");
@@ -103,16 +96,23 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void ReadProperty()
     {
-        Guard.IsNotNull(_component);
-        Guard.IsTrue(_component.IsValid);
-
-        var getResult = _component.GetProperty<string>(PropertyName);
-        if (getResult.IsFailure)
+        // Get the component
+        var getComponentResult = _entityService.GetComponent(_componentKey);
+        if (getComponentResult.IsFailure)
         {
+            _logger.LogError(getComponentResult.Error);
             return;
         }
+        var component = getComponentResult.Value;
 
-        var stringValue = getResult.Value;
+        // Get the property
+        var getPropertyResult = component.GetProperty<string>(PropertyName);
+        if (getPropertyResult.IsFailure)
+        {
+            _logger.LogError(getPropertyResult.Error);
+            return;
+        }
+        var stringValue = getPropertyResult.Value;
 
         _ignoreValueChange = true;
         ValueText = stringValue;
@@ -121,13 +121,18 @@ public partial class StringFieldViewModel : ObservableObject
 
     private void WriteProperty()
     {
-        Guard.IsNotNull(_component);
-        Guard.IsTrue(_component.IsValid);
+        // Get the component
+        var getComponentResult = _entityService.GetComponent(_componentKey);
+        if (getComponentResult.IsFailure)
+        {
+            _logger.LogError(getComponentResult.Error);
+            return;
+        }
+        var component = getComponentResult.Value;
 
         _commandService.Execute<ISetPropertyCommand>(command =>
         {
-            command.Resource = _component.Resource;
-            command.ComponentIndex = _component.ComponentIndex;
+            command.ComponentKey = _componentKey;
             command.PropertyPath = PropertyName;
             command.JsonValue = ValueText;
         });

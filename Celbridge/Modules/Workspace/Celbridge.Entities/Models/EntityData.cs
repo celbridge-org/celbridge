@@ -159,10 +159,10 @@ public class EntityData
             bool isRemoveComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Remove;
             if (!isRemoveComponentOperation)
             {
-                var validateResult = EntityUtils.ValidateComponent(patchedJsonObject, componentChange.ComponentIndex, configRegistry);
+                var validateResult = EntityUtils.ValidateComponent(patchedJsonObject, componentChange.ComponentKey.ComponentIndex, configRegistry);
                 if (validateResult.IsFailure)
                 {
-                    return Result<PatchSummary>.Fail($"Failed to validate component at index '{componentChange.ComponentIndex}' against schema for component type '{componentChange.ComponentType}'")
+                    return Result<PatchSummary>.Fail($"Failed to validate component '{componentChange.ComponentKey}' against schema for component type '{componentChange.ComponentType}'")
                         .WithErrors(validateResult);
                 }
             }
@@ -285,7 +285,8 @@ public class EntityData
             var operationName = operation.Op.ToString().ToLower();
 
             // Create a message for the component change
-            var message = new ComponentChangedMessage(resource, componentType, componentIndex, propertyPath, operationName);
+            var componentKey = new ComponentKey(resource, componentIndex);
+            var message = new ComponentChangedMessage(componentKey, componentType, propertyPath, operationName);
 
             return Result<ComponentChangedMessage>.Ok(message);
         }

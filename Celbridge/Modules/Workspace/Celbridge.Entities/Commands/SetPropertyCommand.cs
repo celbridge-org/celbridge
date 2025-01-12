@@ -8,8 +8,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ResourceKey Resource { get; set; }
-    public int ComponentIndex { get; set; }
+    public ComponentKey ComponentKey { get; set; } = ComponentKey.Empty;
     public string PropertyPath { get; set; } = string.Empty;
     public string JsonValue { get; set; } = string.Empty;
     public bool Insert { get; set; }
@@ -24,7 +23,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var applyResult = entityService.SetProperty(Resource, ComponentIndex, PropertyPath, JsonValue, Insert);
+        var applyResult = entityService.SetProperty(ComponentKey, PropertyPath, JsonValue, Insert);
 
         await Task.CompletedTask;
 
@@ -44,8 +43,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
-            command.Resource = resource;
-            command.ComponentIndex = componentIndex;
+            command.ComponentKey = new ComponentKey(resource, componentIndex);
             command.PropertyPath = propertyPath;
             command.JsonValue = jsonValue;
             command.Insert = false;
@@ -61,8 +59,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
         var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
         return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
-            command.Resource = resource;
-            command.ComponentIndex = componentIndex;
+            command.ComponentKey = new ComponentKey(resource, componentIndex);
             command.PropertyPath = propertyPath;
             command.JsonValue = jsonValue;
             command.Insert = true;

@@ -64,7 +64,7 @@ public class ScreenplayActivity : IActivity
             return Result.Ok();
         }
 
-        _entityService.AddComponent(resource, 0, SceneComponent.ComponentType);
+        _entityService.AddComponent(new ComponentKey(resource, 0), SceneComponent.ComponentType);
 
         await Task.CompletedTask;
 
@@ -84,7 +84,7 @@ public class ScreenplayActivity : IActivity
         for (int i = 0; i < componentCount; i++)
         {
             // Get the component 
-            var getComponentResult = _entityService.GetComponent(fileResource, i);
+            var getComponentResult = _entityService.GetComponent(new ComponentKey(fileResource, i));
             if (getComponentResult.IsFailure)
             {
                 return Result.Fail(fileResource, $"Failed to get component for resource '{fileResource}' at index {i}")

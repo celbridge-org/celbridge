@@ -72,8 +72,9 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void OnComponentAnnotationUpdatedMessage(object recipient, ComponentAnnotationUpdatedMessage message)
     {
-        var resource = message.Resource;
-        if (resource != Resource)
+        var componentKey = message.ComponentKey;
+
+        if (componentKey.Resource != Resource)
         {
             // This message does not apply to the resource being presented by this ViewModel.
             // This is probably because the user has just switched to inspecting a different resource and the ViewUnloaded
@@ -81,17 +82,17 @@ public partial class ComponentListViewModel : InspectorViewModel
             return;
         }
 
-        var componentIndex = message.ComponentIndex;
+        var componentIndex = componentKey.ComponentIndex;
         if (componentIndex < 0 || componentIndex >= ComponentItems.Count)
         {
             // Component index is out of range
-            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{message.Resource}'");
+            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{componentKey.Resource}'");
             return;
         }
 
         var componentItem = ComponentItems[componentIndex];
 
-        var getComponentResult = _entityService.GetComponent(resource, componentIndex);
+        var getComponentResult = _entityService.GetComponent(componentKey);
         if (getComponentResult.IsFailure)
         {
             _logger.LogError(getComponentResult.Error);
@@ -142,8 +143,7 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         var executeResult = await _commandService.ExecuteAsync<IAddComponentCommand>(command => 
         {
-            command.Resource = Resource;
-            command.ComponentIndex = addIndex;
+            command.ComponentKey = new ComponentKey(Resource, addIndex);
             command.ComponentType = "Empty";
         });
 
@@ -186,8 +186,7 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         var executeResult = await _commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
         {
-            command.Resource = Resource;
-            command.ComponentIndex = deleteIndex;
+            command.ComponentKey = new ComponentKey(Resource, deleteIndex);
         });
 
         if (executeResult.IsFailure)
@@ -273,7 +272,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
 
         // Get the component
-        var getComponentResult = _entityService.GetComponent(Resource, duplicateIndex);
+        var getComponentResult = _entityService.GetComponent(new ComponentKey(Resource, duplicateIndex));
         if (getComponentResult.IsFailure)
         {
             _logger.LogError(getComponentResult.Error);
@@ -326,7 +325,7 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        if (message.Resource == Resource &&
+        if (message.ComponentKey.Resource == Resource &&
             message.PropertyPath == "/")
         {
             // Ignore the requested number of component change messages
@@ -366,7 +365,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         for (int i = 0; i < componentCount; i++)
         {
             // Get the component type
-            var getTypeResult = _entityService.GetComponentType(Resource, i);
+            var getTypeResult = _entityService.GetComponentType(new ComponentKey(Resource, i));
             if (getTypeResult.IsFailure)
             {
                 _logger.LogError(getTypeResult.Error);
