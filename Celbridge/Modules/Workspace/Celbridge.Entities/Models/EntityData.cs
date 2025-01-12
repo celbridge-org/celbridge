@@ -26,6 +26,22 @@ public class EntityData
         return new EntityData(jsonObject, entitySchema, tags);
     }
 
+    public string GetActivity()
+    {
+        string activity = string.Empty;
+        if (EntityJsonObject.ContainsKey("_activity"))
+        {
+            activity = EntityJsonObject["_activity"]!.ToString();
+        }
+
+        return activity;
+    }
+
+    public void SetActivity(string activity)
+    {
+        EntityJsonObject["_activity"] = activity;
+    }
+
     public Result<T> GetProperty<T>(JsonPointer propertyPointer)
         where T : notnull
     {
