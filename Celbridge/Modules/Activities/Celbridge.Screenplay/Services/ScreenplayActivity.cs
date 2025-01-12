@@ -44,7 +44,41 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateEntityAsync(ResourceKey fileResource)
+    public bool SupportsResource(ResourceKey resource)
+    {
+        var extension = Path.GetExtension(resource);
+        return extension == ".scene";
+    }
+
+    public async Task<Result> InitializeResourceAsync(ResourceKey resource)
+    {
+        if (!SupportsResource(resource))
+        {
+            return Result.Fail($"This activity does not support this resource: {resource}");
+        }
+
+        var getCountResult = _entityService.GetComponentCount(resource);
+        if (getCountResult.IsFailure)
+        {
+            return Result.Fail($"Failed to get component count for resource: '{resource}'")
+                .WithErrors(getCountResult);
+        }
+        var count = getCountResult.Value;
+
+        if (count > 0)
+        {
+            // Entity has already been initialized
+            return Result.Ok();
+        }
+
+        _entityService.AddComponent(resource, 0, SceneComponent.ComponentType);
+
+        await Task.CompletedTask;
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> UpdateResourceAsync(ResourceKey fileResource)
     {
         var getCountResult = _entityService.GetComponentCount(fileResource);
         if (getCountResult.IsFailure)
@@ -78,8 +112,8 @@ public class ScreenplayActivity : IActivity
             if (!schema.HasTag(ScreenplayActivityComponent.ActivityName))
             {
                 component.SetAnnotation(
-                    ComponentStatus.Error, 
-                    "Not a screenplay component", 
+                    ComponentStatus.Error,
+                    "Not a screenplay component",
                     "This component may not be used with the 'Screenplay' activity");
 
                 continue;
@@ -123,22 +157,6 @@ public class ScreenplayActivity : IActivity
         await Task.CompletedTask;
 
         return Result.Ok();
-    }
-
-    public bool TryInitializeEntity(ResourceKey resource)
-    {
-        var extension = Path.GetExtension(resource);
-        if (extension == ".scene")
-        {
-            // Add a Scene component to newly created .scene entities
-            _commandService.Execute<IAddComponentCommand>(command => {
-                command.Resource = resource;
-                command.ComponentType = SceneComponent.ComponentType;
-            });
-            return true;
-        }
-
-        return false;
     }
 
     private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)

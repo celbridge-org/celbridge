@@ -68,6 +68,7 @@ public class ActivityService : IActivityService, IDisposable
                 // Dispose managed objects here
 
                 _activityRegistry?.Uninitialize();
+                _activityDispatcher?.Uninitialize();
             }
 
             _disposed = true;

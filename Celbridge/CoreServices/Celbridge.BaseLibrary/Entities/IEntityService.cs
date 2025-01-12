@@ -150,7 +150,18 @@ public interface IEntityService
     bool HasTag(ResourceKey resource, string tag);
 
     /// <summary>
-    /// Return the list of all available component types.
+    /// Returns the list of all available component types.
     /// </summary>
     List<string> GetAllComponentTypes();
+
+    /// <summary>
+    /// Returns the activity property for the entity.
+    /// </summary>
+    Result<string> GetActivity(ResourceKey resource);
+
+    /// <summary>
+    /// Sets the activity property for the entity.
+    /// This will trigger an entity save if the activity is different from the current value.
+    /// </summary>
+    Result SetActivity(ResourceKey resource, string activity);
 }

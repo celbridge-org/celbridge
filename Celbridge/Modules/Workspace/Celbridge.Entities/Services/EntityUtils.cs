@@ -9,6 +9,29 @@ namespace Celbridge.Entities.Services;
 
 public static class EntityUtils
 {
+    public static Result<EntityData> CreateEntityData(ResourceKey resource, ComponentConfigRegistry configRegistry, JsonSchema entitySchema)
+    {
+        var entityJsonObject = new JsonObject
+        {
+            ["_entityVersion"] = 1,
+            ["_components"] = new JsonArray(),
+            ["_activity"] = string.Empty
+        };
+
+        var evaluateResult = entitySchema.Evaluate(entityJsonObject);
+        if (!evaluateResult.IsValid)
+        {
+            return Result<EntityData>.Fail($"Failed to create entity data. Schema validation error: {resource}");
+        }
+
+        // This a new entity with no components, so it doesn't have any tags yet
+        var tags = new HashSet<string>();
+
+        var entityData = EntityData.Create(entityJsonObject, entitySchema, tags);
+
+        return Result<EntityData>.Ok(entityData);
+    }
+
     /// <summary>
     /// Loads and validates an EntityData object from a json file.
     /// </summary>
@@ -21,7 +44,13 @@ public static class EntityUtils
             return Result<EntityData>.Fail($"Failed to parse entity data from file: '{entityDataPath}'");
         }
 
-        // Todo: Attempt to repair/migrate the data instead of just failing
+        // Attempt to repair/migrate the data instead of just failing
+        var migrateResult = MigrateEntityData(jsonObject);
+        if (migrateResult.IsFailure)
+        {
+            return Result<EntityData>.Fail($"Failed to migrate entity data: '{entityDataPath}'")
+                .WithErrors(migrateResult);
+        }
 
         // Validate the loaded data against the entity schema
         var evaluateResult = entitySchema.Evaluate(jsonObject);
@@ -392,5 +421,18 @@ public static class EntityUtils
 
         var typeAndVersion = (parts[0], number);
         return Result<(string, int)>.Ok(typeAndVersion);
+    }
+
+    private static Result MigrateEntityData(JsonObject entityData)
+    {
+        // Todo: Replace this collection of random fixups with a robust migration system
+
+        // Add an _activity property if it doesn't exist
+        if (!entityData.ContainsKey("_activity"))
+        {
+            entityData["_activity"] = "";
+        }
+
+        return Result.Ok();
     }
 }
