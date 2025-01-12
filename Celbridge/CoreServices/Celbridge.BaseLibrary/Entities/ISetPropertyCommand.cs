@@ -9,14 +9,9 @@ namespace Celbridge.Entities;
 public interface ISetPropertyCommand : IExecutableCommand
 {
     /// <summary>
-    /// The resource associated with the entity data to be modified.
+    /// The component to query.
     /// </summary>
-    ResourceKey Resource { get; set; }
-
-    /// <summary>
-    /// The index of the component that contains the property to be set.
-    /// </summary>
-    int ComponentIndex { get; set; }
+    ComponentKey ComponentKey { get; set; }
 
     /// <summary>
     /// A JSON Pointer (RFC 6901) string representing the component property to set.

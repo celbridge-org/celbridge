@@ -43,7 +43,7 @@ public class ComponentProxyService
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        var resource = message.Resource;
+        var resource = message.ComponentKey.Resource;
         var propertyPath = message.PropertyPath;
 
         if (propertyPath == "/")
@@ -62,17 +62,17 @@ public class ComponentProxyService
         }
     }
 
-    public Result<IComponentProxy> GetComponent(ResourceKey resource, int componentIndex)
+    public Result<IComponentProxy> GetComponent(ComponentKey componentKey)
     {
         Guard.IsNotNull(_entityService);
 
         // Attempt to get the proxy from the cache
-        if (!_componentCache.TryGetValue(resource, out var indexCache))
+        if (!_componentCache.TryGetValue(componentKey.Resource, out var indexCache))
         {
             indexCache = new Dictionary<int, ComponentProxy>();
-            _componentCache[resource] = indexCache;
+            _componentCache[componentKey.Resource] = indexCache;
         }
-        if (indexCache.TryGetValue(componentIndex, out var cachedProxy))
+        if (indexCache.TryGetValue(componentKey.ComponentIndex, out var cachedProxy))
         {
             return Result<IComponentProxy>.Ok(cachedProxy);
         }
@@ -80,10 +80,10 @@ public class ComponentProxyService
         // No proxy found in the cache, create a new one
 
         // Get the component type
-        var getTypeResult = _entityService.GetComponentType(resource, componentIndex);
+        var getTypeResult = _entityService.GetComponentType(componentKey);
         if (getTypeResult.IsFailure)
         {
-            return Result<IComponentProxy>.Fail($"Failed to get component type for resource '{resource}' at component index {componentIndex}")
+            return Result<IComponentProxy>.Fail($"Failed to get component type: '{componentKey}'")
                 .WithErrors(getTypeResult);
         }
         var componentType = getTypeResult.Value;
@@ -97,8 +97,8 @@ public class ComponentProxyService
         }
         var schema = getSchemaResult.Value;
 
-        var proxy = new ComponentProxy(_serviceProvider, resource, componentIndex, schema);
-        indexCache[componentIndex] = proxy;
+        var proxy = new ComponentProxy(_serviceProvider, componentKey, schema);
+        indexCache[componentKey.ComponentIndex] = proxy;
 
         return Result<IComponentProxy>.Ok(proxy);
     }
@@ -140,7 +140,7 @@ public class ComponentProxyService
 
             for (int i = 0; i < componentCount; i++)
             {
-                var getComponentResult = GetComponent(resource, i);
+                var getComponentResult = GetComponent(new ComponentKey(resource, i));
                 if (getComponentResult.IsFailure)
                 {
                     return Result<IReadOnlyList<IComponentProxy>>.Fail($"Failed to get component for resource '{resource}' at index {i}")

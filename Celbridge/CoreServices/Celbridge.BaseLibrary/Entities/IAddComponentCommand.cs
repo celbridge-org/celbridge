@@ -8,17 +8,13 @@ namespace Celbridge.Entities;
 public interface IAddComponentCommand : IExecutableCommand
 {
     /// <summary>
-    /// The resource associated with the entity data to be modified.
+    /// The resource and component index to add the component to.
     /// </summary>
-    ResourceKey Resource { get; set; }
+    ComponentKey ComponentKey { get; set; }
 
     /// <summary>
     /// The type of component to add to the entity.
     /// </summary>
     string ComponentType { get; set; }
 
-    /// <summary>
-    /// The index to insert the component at.
-    /// </summary>
-    int ComponentIndex { get; set; }
 }

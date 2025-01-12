@@ -37,10 +37,9 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
     public IRelayCommand<string> ComponentTypeClickedCommand => new RelayCommand<string>(ComponentTypeClickedCommandExecuted);
     private void ComponentTypeClickedCommandExecuted(string? componentType)
     {
-        var resource = _inspectorService.InspectedResource;
-        var componentIndex = _inspectorService.InspectedComponentIndex;
+        var componentKey = new ComponentKey(_inspectorService.InspectedResource, _inspectorService.InspectedComponentIndex);
 
-        var getTypeResult = _entityService.GetComponentType(resource, componentIndex);
+        var getTypeResult = _entityService.GetComponentType(componentKey);
         if (getTypeResult.IsFailure)
         {
             _logger.LogError(getTypeResult.Error);
@@ -57,7 +56,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
             return;
         }
 
-        var replaceResult = _entityService.ReplaceComponent(resource, componentIndex, componentType);
+        var replaceResult = _entityService.ReplaceComponent(componentKey, componentType);
         if (replaceResult.IsFailure)
         {
             _logger.LogError(replaceResult.Error);
@@ -133,8 +132,9 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
 
         var resource = _inspectorService.InspectedResource;
         var componentIndex = _inspectorService.InspectedComponentIndex;
+        var componentKey = new ComponentKey(resource, componentIndex);
 
-        var getTypeResult = _entityService.GetComponentType(resource, componentIndex);
+        var getTypeResult = _entityService.GetComponentType(componentKey);
         if (getTypeResult.IsFailure)
         {
             _logger.LogError(getTypeResult.Error);
@@ -148,7 +148,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
             return;
         }
 
-        var replaceResult = _entityService.ReplaceComponent(resource, componentIndex, newComponentType);
+        var replaceResult = _entityService.ReplaceComponent(componentKey, newComponentType);
         if (replaceResult.IsFailure)
         {
             _logger.LogError(replaceResult.Error);
