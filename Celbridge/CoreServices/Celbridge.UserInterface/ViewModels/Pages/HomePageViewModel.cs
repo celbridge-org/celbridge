@@ -7,7 +7,7 @@ using Celbridge.Settings;
 using Celbridge.UserInterface.Models;
 using Celbridge.UserInterface.Services;
 
-namespace Celbridge.UserInterface.ViewModels;
+namespace Celbridge.UserInterface.ViewModels.Pages;
 
 public partial class HomePageViewModel : ObservableObject
 {
@@ -68,7 +68,7 @@ public partial class HomePageViewModel : ObservableObject
 
     public void OpenProject(string projectFilePath)
     {
-        if (!File.Exists(projectFilePath)) 
+        if (!File.Exists(projectFilePath))
         {
             _logger.LogError($"Project file does not exist: {projectFilePath}");
             return;

@@ -7,7 +7,7 @@ using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.UserInterface.ViewModels;
+namespace Celbridge.UserInterface.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
@@ -32,7 +32,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public MainPageViewModel(
         IMessengerService messengerService,
-        Logging.ILogger<MainPageViewModel> logger, 
+        Logging.ILogger<MainPageViewModel> logger,
         INavigationService navigationService,
         IDialogService dialogService,
         IFilePickerService filePickerService,
@@ -71,9 +71,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceLoadedMessage>(this, (r,m) => 
-        { 
-            OnPropertyChanged(nameof(IsWorkspaceLoaded)); 
+        _messengerService.Register<WorkspaceLoadedMessage>(this, (r, m) =>
+        {
+            OnPropertyChanged(nameof(IsWorkspaceLoaded));
         });
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
@@ -104,7 +104,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     }
 
     public void OnMainPage_Unloaded()
-    {}
+    { }
 
     public void SelectNavigationItem(string tag)
     {
