@@ -10,8 +10,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     private readonly ILogger<PrintPropertyCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ResourceKey Resource { get; set; }
-    public int ComponentIndex { get; set; }
+    public ComponentKey ComponentKey { get; set; } = ComponentKey.Empty;
     public string PropertyPath { get; set; } = string.Empty;
 
     public PrintPropertyCommand(
@@ -26,7 +25,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        var getResult = entityService.GetPropertyAsJson(Resource, ComponentIndex, PropertyPath);
+        var getResult = entityService.GetPropertyAsJson(ComponentKey, PropertyPath);
         if (getResult.IsFailure)
         {
             return Result.Fail().WithErrors(getResult);
@@ -50,8 +49,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
 
         commandService.Execute<IPrintPropertyCommand>(command =>
         {
-            command.Resource = resource;
-            command.ComponentIndex = componentIndex;
+            command.ComponentKey = new ComponentKey(resource, componentIndex);
             command.PropertyPath = propertyPath;
         });
     }

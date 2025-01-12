@@ -1,3 +1,5 @@
+using Celbridge.Entities;
+
 namespace Celbridge.Inspector;
 
 /// <summary>
@@ -8,7 +10,7 @@ public record SelectedComponentChangedMessage(int componentIndex);
 /// <summary>
 /// A message sent when the inspected component has changed.
 /// </summary>
-public record InspectedComponentChangedMessage(ResourceKey Resource, int ComponentIndex);
+public record InspectedComponentChangedMessage(ComponentKey ComponentKey);
 
 /// <summary>
 /// A message sent when the component panel edit mode changes.

@@ -8,12 +8,7 @@ namespace Celbridge.Entities;
 public interface IRemoveComponentCommand : IExecutableCommand
 {
     /// <summary>
-    /// The resource associated with the entity data to be modified.
+    /// The resource and component index to remove the component from.
     /// </summary>
-    ResourceKey Resource { get; set; }
-
-    /// <summary>
-    /// The index of the component to remove.
-    /// </summary>
-    int ComponentIndex { get; set; }
+    ComponentKey ComponentKey { get; set; }
 }

@@ -28,7 +28,7 @@ public class FieldFactory : IFieldFactory
         var propertyInfos = schema.Properties.Where(p => p.PropertyName == propertyName).ToList();
         if (propertyInfos.Count != 1)
         {
-            return Result<IField>.Fail($"Failed to find component property '{propertyName}' for entity '{component.Resource}' at component index {component.ComponentIndex}");
+            return Result<IField>.Fail($"Failed to find property '{propertyName}' for component '{component.Key}'");
         }
         var propertyInfo = propertyInfos[0];
 
@@ -44,7 +44,7 @@ public class FieldFactory : IFieldFactory
     {
         var element = new StringField();
         element.ViewModel.Initialize(component, propertyName);
-        element.TabIndex = component.ComponentIndex;
+        element.TabIndex = component.Key.ComponentIndex;
 
         var field = new Field(element);
 
