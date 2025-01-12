@@ -10,8 +10,7 @@ public class MarkdownComponent : IComponentDescriptor
       "additionalProperties": false,
 
       "attributes": {
-        "tags": [ "PrimaryComponent", "Markdown" ],
-        "activityName": "Markdown"
+        "tags": [ "Markdown" ]
       },
 
       "properties": {

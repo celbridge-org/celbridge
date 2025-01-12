@@ -14,8 +14,7 @@ public class SceneComponent : IComponentDescriptor
       "additionalProperties": false,
 
       "attributes": {
-        "tags": [ "PrimaryComponent", "Screenplay" ],
-        "activityName": "Screenplay"
+        "tags": [ "Screenplay" ]
       },
 
       "properties": {
