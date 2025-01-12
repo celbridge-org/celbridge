@@ -28,7 +28,7 @@ public class TelemetryService : ITelemetryService
     {
         try
         {
-            _messengerService.Register<CommandExecutingMessage>(this, OnExecutedCommandMessage);
+            _messengerService.Register<ExecuteCommandStartedMessage>(this, OnExecutedCommandMessage);
 
             //create the Countly init object
             CountlyConfig cc = new CountlyConfig();
@@ -81,7 +81,7 @@ public class TelemetryService : ITelemetryService
         await Countly.RecordEvent(eventName, 1, segmentation);
     }
 
-    private void OnExecutedCommandMessage(object recipient, CommandExecutingMessage message)
+    private void OnExecutedCommandMessage(object recipient, ExecuteCommandStartedMessage message)
     {
         var segmentation = new Segmentation();
         segmentation.Add("CommandName", message.Command.GetType().Name);
