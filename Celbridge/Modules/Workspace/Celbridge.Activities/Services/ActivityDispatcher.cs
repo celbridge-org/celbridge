@@ -6,8 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Diagnostics;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Activities.Services;
 
 public class ActivityDispatcher
@@ -18,7 +16,8 @@ public class ActivityDispatcher
 
     private ActivityRegistry? _activityRegistry;
 
-    private HashSet<ResourceKey> _pendingEntityUpdates = new();
+    private List<ResourceKey> _pendingInits = new();
+    private List<ResourceKey> _pendingUpdates = new();
 
     public ActivityDispatcher(
         ILogger<ActivityDispatcher> logger,
@@ -35,48 +34,33 @@ public class ActivityDispatcher
     {
         _activityRegistry = activityRegistry;
 
-        _messengerService.Register<EntityCreatedMessage>(this, OnEntityCreatedMessage);
+        _messengerService.Register<EntityCreatedMessage>(this, (s, e) => OnInitMessage(e.Resource));
 
-        _messengerService.Register<SelectedResourceChangedMessage>(this, (s, e) => HandleMessage(e.Resource));
-        _messengerService.Register<ComponentChangedMessage>(this, (s, e) => HandleMessage(e.Resource));
-        _messengerService.Register<PopulatedComponentListMessage>(this, (s, e) => HandleMessage(e.Resource));
-
-        void HandleMessage(ResourceKey resource)
+        void OnInitMessage(ResourceKey resource)
         {
-            _pendingEntityUpdates.Add(resource);
+            if (!resource.IsEmpty)
+            {
+                // Make a note of the new entity for initialization
+                _pendingInits.AddDistinct(resource);
+            }
+        }
+
+        _messengerService.Register<SelectedResourceChangedMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
+        _messengerService.Register<ComponentChangedMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
+        _messengerService.Register<PopulatedComponentListMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
+
+        void OnUpdateMessage(ResourceKey resource)
+        {
+            if (!resource.IsEmpty)
+            {
+                // Make a note of the entity for updating
+                _pendingUpdates.AddDistinct(resource);
+            }
         }
 
         await Task.CompletedTask;
 
         return Result.Ok();
-    }
-
-    private void OnEntityCreatedMessage(object recipient, EntityCreatedMessage message)
-    {
-        Guard.IsNotNull(_activityRegistry);
-
-        var resource = message.Resource;
-
-        var fileExtension = Path.GetExtension(resource.ToString());
-        var hasExtension = !string.IsNullOrEmpty(fileExtension);
-
-        if (hasExtension)
-        {
-            // Try each activity in alphabetic order for deterministic results
-            var keys = _activityRegistry.Activities.Keys.ToList();
-            keys.Sort();
-
-            foreach (var key in keys)
-            {
-                // Attempt to initialize the entity with this activity
-                var activity = _activityRegistry.Activities[key];
-                if (activity.TryInitializeEntity(resource))
-                {
-                    // First activity to initialize the entity wins
-                    break;
-                }
-            }
-        }
     }
 
     public void Uninitialize()
@@ -88,147 +72,193 @@ public class ActivityDispatcher
     {
         Guard.IsNotNull(_activityRegistry);
 
-        foreach (var fileResource in _pendingEntityUpdates)
+        var initsResult = await PerformPendingInits();
+        var updatesResult = await PerformPendingUpdates();
+
+        if (initsResult.IsFailure)
         {
-            // Get the component list for this entity
-            var getComponentsResult = _entityService.GetComponents(fileResource);
-            if (getComponentsResult.IsFailure)
+            return initsResult;
+        }
+
+        if (updatesResult.IsFailure)
+        {
+            return updatesResult;
+        }
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> PerformPendingInits()
+    {
+        // Perform pending inits
+        var pendingInits = _pendingInits.ToList();
+        _pendingInits.Clear();
+
+        bool failed = false;
+        foreach (var fileResource in pendingInits)
+        {
+            try
             {
-                return Result.Fail($"Failed to get components for entity: '{fileResource}'")
-                    .WithErrors(getComponentsResult);
-            }
-            var components = getComponentsResult.Value;
-
-            var unprocessedComponents = new List<int>();
-
-            // Annotate empty components
-
-            for (int i = 0; i < components.Count; i++)
-            {
-                var component = components[i];
-
-                if (component.Schema.ComponentType != "Empty")
+                var initResult = await InitializeResource(fileResource);
+                if (initResult.IsFailure)
                 {
-                    unprocessedComponents.Add(i);
+                    failed = true;
+                    _logger.LogError(initResult.Error);
                     continue;
                 }
-
-                AnnotateEmptyComponent(component);
             }
-
-            // Check that the entity has a Primary Component
-
-            bool hasPrimaryComponent = _entityService.HasTag(fileResource, "PrimaryComponent");
-            if (!hasPrimaryComponent)
+            catch (Exception ex)
             {
-                // Move onto next modified file resource
-                continue;
-            }
-
-            // Check that there is at least one component.
-            // There must be if the PrimaryComponent tag is present.
-
-            var getCountResult = _entityService.GetComponentCount(fileResource);
-            if (getCountResult.IsFailure)
-            {
-                return Result.Fail($"Failed to get component count for entity: '{fileResource}'");
-            }
-            var componentCount = getCountResult.Value;
-
-            if (componentCount == 0)
-            {
-                return Result.Fail($"Component count is zero for entity: '{fileResource}'");
-            }
-
-            // Get the schema for the Primary Component
-
-            IComponentProxy? primaryComponent = null;
-
-            bool syntaxError = false;
-
-            foreach (var componentIndex in unprocessedComponents)
-            {
-                var component = components[componentIndex];
-
-                if (component.Schema.ComponentType == "Empty")
-                {
-                    // Ignore empty components at top of Entity
-                    continue;
-                }
-
-                if (component.Schema.HasTag("PrimaryComponent"))
-                {
-                    if (primaryComponent is not null)
-                    {
-                        // Todo: Annotate the component with an error message
-                        // Multiple Primary Components detected
-                        continue;
-                    }
-
-                    // Found the Primary Component
-                    primaryComponent = component;
-                }
-                else
-                {
-                    if (primaryComponent is null)
-                    {
-                        component.SetAnnotation(
-                            ComponentStatus.Error, 
-                            "Invalid component position", 
-                            "This component must be placed after the Primary Component");
-                        syntaxError = true;
-
-                        continue;
-                    }
-                }
-            }
-        
-            if (primaryComponent is null)
-            {
-                syntaxError = true;
-                continue;
-            }
-
-            if (syntaxError) 
-            {
-                // Todo: Annotate all components with an error message
-                // Invalid component
-                // No Primary Component defined
-
-                continue;
-            }
-
-            // Get the activity name for this Primary Component
-
-            var activityName = primaryComponent.Schema.GetStringAttribute("activityName");
-            if (string.IsNullOrEmpty(activityName))
-            {
-                return Result.Fail($"Activity name is empty for Primary Component on resource: {fileResource}");
-            }
-
-            if (!_activityRegistry.Activities.TryGetValue(activityName, out var activity))
-            {
-                // Todo: Annotate the component with an error message
-                continue;
-            }
-
-            // Todo: Check that the Primary Component is allowed for this resource type
-
-            // Use the activity to annotate all components in the entity
-
-            var updateResult = await activity.UpdateEntityAsync(fileResource);
-            if (updateResult.IsFailure)
-            {
-                return Result.Fail($"Failed to update resource: '{fileResource}'")
-                    .WithErrors(updateResult);
+                failed = true;
+                _logger.LogError(ex.ToString());
             }
         }
 
-        _pendingEntityUpdates.Clear();
-
-        await Task.CompletedTask;
+        if (failed)
+        {
+            return Result.Fail($"Failed to perform pending inits");
+        }
 
         return Result.Ok();
+    }
+
+    private async Task<Result> PerformPendingUpdates()
+    {
+        Guard.IsNotNull(_activityRegistry);
+
+        bool failed = false;
+
+        var pendingUpdates = _pendingUpdates.ToList();
+        _pendingUpdates.Clear();
+
+        foreach (var fileResource in pendingUpdates)
+        {
+            try
+            {
+                // Get the component list for this entity
+                var getComponentsResult = _entityService.GetComponents(fileResource);
+                if (getComponentsResult.IsFailure)
+                {
+                    failed = true;
+                    _logger.LogError(getComponentsResult.Error);
+                    continue;
+                }
+                var components = getComponentsResult.Value;
+
+                // Update annotations for empty components
+                // Todo: Remove this once the Empty component handles displaying the comment property
+                foreach (var component in components)
+                {
+                    if (component.Schema.ComponentType == "Empty")
+                    {
+                        AnnotateEmptyComponent(component);
+                    }
+                }
+
+                // Ensure the resource is associated with the correct activity
+                string activityName = UpdateAssociatedActivity(fileResource);
+
+                if (string.IsNullOrEmpty(activityName))
+                {
+                    // No activity supports this resource, early out.
+                    continue;
+                }
+
+                // Use the associated activity to update the resource
+
+                var activity = _activityRegistry.Activities[activityName];
+
+                var updateResult = await activity.UpdateResourceAsync(fileResource);
+                if (updateResult.IsFailure)
+                {
+                    failed = true;
+                    _logger.LogError(updateResult.Error);
+                    continue;
+                }
+            }
+            catch (Exception ex)
+            {
+                failed = true;
+                _logger.LogError(ex.ToString());
+            }
+        }
+
+        if (failed)
+        {
+            return Result.Fail($"Failed to perform pending updates");
+        }
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> InitializeResource(ResourceKey resource)
+    {
+        Guard.IsNotNull(_activityRegistry);
+
+        // Search for an activity that supports this resource.
+        // Try each activity in alphabetic order for deterministic results.
+
+        var activityNames = _activityRegistry.ActivityNames;
+        foreach (var activityName in activityNames)
+        {
+            var activity = _activityRegistry.Activities[activityName];
+
+            if (activity.SupportsResource(resource))
+            {
+                // Initialize the resource with this activity
+                var initializeResult = await activity.InitializeResourceAsync(resource);
+                if (initializeResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to initialize resource '{resource}' with activity '{activityName}'");
+                }
+
+                // Associate this activity with the entity
+                _entityService.SetActivity(resource, activityName);
+                break;
+            }
+        }
+
+        // If no activity supports the resource then no initialization is necessary
+
+        return Result.Ok();
+    }
+
+    private string UpdateAssociatedActivity(ResourceKey resource)
+    {
+        Guard.IsNotNull(_activityRegistry);
+
+        // Check if the current associated  is still valid
+        var getActivityResult = _entityService.GetActivity(resource);
+        if (getActivityResult.IsSuccess)
+        {
+            var currentActivity = getActivityResult.Value;
+            if (!string.IsNullOrEmpty(currentActivity) ||
+                _activityRegistry.Activities.ContainsKey(currentActivity))
+            {
+                // Activity is valid, early out.
+                return currentActivity;
+            }
+        }
+
+        // Search for an activity that supports this resource.
+
+        string newActivityName = string.Empty; // Default to no activity
+        var activityNames = _activityRegistry.ActivityNames;
+        foreach (var activityName in activityNames)
+        {
+            var activity = _activityRegistry.Activities[activityName];
+
+            if (activity.SupportsResource(resource))
+            {
+                newActivityName = activityName;    
+                break;
+            }
+        }
+
+        // Associate the updated activity with the resource
+        _entityService.SetActivity(resource, newActivityName);
+
+        return newActivityName;
     }
 
     private void AnnotateEmptyComponent(IComponentProxy component)

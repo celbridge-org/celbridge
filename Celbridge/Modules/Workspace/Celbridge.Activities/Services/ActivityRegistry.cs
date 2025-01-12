@@ -21,6 +21,9 @@ public class ActivityRegistry
     private Dictionary<string, IActivity> _activities = new();
     public IReadOnlyDictionary<string, IActivity> Activities => _activities;
 
+    private List<string> _activityNames = new();
+    public IReadOnlyList<string> ActivityNames => _activityNames;
+
     public ActivityRegistry(
         ILogger<ActivityRegistry> logger,
         IMessengerService messengerService,
@@ -50,10 +53,11 @@ public class ActivityRegistry
 
         // Create all activities
 
-        var activityNames = _moduleService.SupportedActivities.ToList();
-        activityNames.Sort(); // Ensure stable creation and initialization order
+        var names = _moduleService.SupportedActivities.ToList();
+        names.Sort(); // Ensure stable creation and initialization order
+        _activityNames.AddRange(names);
 
-        foreach (var activityName in activityNames)
+        foreach (var activityName in ActivityNames)
         {
             var createResult = _moduleService.CreateActivity(activityName);
             if (createResult.IsFailure)
@@ -68,7 +72,7 @@ public class ActivityRegistry
 
         // Activate all activities
 
-        foreach (var activityName in activityNames)
+        foreach (var activityName in ActivityNames)
         {
             var activity = _activities[activityName];
             var activateResult = await activity.ActivateAsync();
@@ -108,6 +112,21 @@ public class ActivityRegistry
         }
 
         return Result.Ok();
+    }
+
+    public List<IActivity> GetSupportingActivities(ResourceKey resource)
+    {
+        var activities = new List<IActivity>();
+        foreach (var activityName in ActivityNames)
+        {
+            var activity = _activities[activityName];
+            if (activity.SupportsResource(resource))
+            {
+                activities.Add(activity);                
+            }
+        }
+
+        return activities;
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)

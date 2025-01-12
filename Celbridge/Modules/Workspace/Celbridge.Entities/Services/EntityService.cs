@@ -9,7 +9,6 @@ using CommunityToolkit.Diagnostics;
 using Json.More;
 using Json.Patch;
 using Json.Pointer;
-using Json.Schema;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -25,8 +24,6 @@ public class EntityService : IEntityService, IDisposable
     private ComponentConfigRegistry _configRegistry;
     private ComponentProxyService _componentProxyService;
     private EntityRegistry _entityRegistry;
-
-    private JsonSchema? _entitySchema;
 
     private static long _undoGroupId;
 
@@ -61,23 +58,6 @@ public class EntityService : IEntityService, IDisposable
     {
         try
         {
-            // Build and cache the entity schema
-            var builder = new JsonSchemaBuilder()
-                .Type(SchemaValueType.Object)
-                .Properties(
-                    ("_entityVersion", new JsonSchemaBuilder()
-                        .Type(SchemaValueType.Integer)
-                        .Const(1)
-                    ),
-                    ("_components", new JsonSchemaBuilder()
-                        .Type(SchemaValueType.Array)
-                    )
-                )
-                .Required("_entityVersion", "_components");
-
-            _entitySchema = builder.Build();
-            Guard.IsNotNull(_entitySchema);
-
             // Initialize the component proxy service
             var initProxyResult = _componentProxyService.Initialize();
             if (initProxyResult.IsFailure)
@@ -93,7 +73,7 @@ public class EntityService : IEntityService, IDisposable
                     .WithErrors(initConfigResult);
             }
 
-            var initEntitiesResult = _entityRegistry.Initialize(_entitySchema, _configRegistry);
+            var initEntitiesResult = _entityRegistry.Initialize(_configRegistry);
             if (initEntitiesResult.IsFailure)
             {
                 return Result.Fail("Failed to initialize entity registry")
@@ -661,6 +641,45 @@ public class EntityService : IEntityService, IDisposable
         var componentTypes = _configRegistry.ComponentConfigs.Keys.ToList();
         componentTypes.Sort();
         return componentTypes;
+    }
+
+    public Result<string> GetActivity(ResourceKey resource)
+    {
+        // Acquire the entity
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+
+        // Lookup and return the activity
+        var activity = entity.EntityData.GetActivity();
+        return Result<string>.Ok(activity);
+    }
+
+    public Result SetActivity(ResourceKey resource, string activity)
+    {
+        // Acquire the entity
+        var acquireResult = _entityRegistry.AcquireEntity(resource);
+        if (acquireResult.IsFailure)
+        {
+            return Result.Fail($"Failed to acquire entity: {resource}")
+                .WithErrors(acquireResult);
+        }
+        var entity = acquireResult.Value;
+
+        // Set the activity in the EntityData
+        var existingActivity = entity.EntityData.GetActivity();
+        if (existingActivity != activity)
+        {
+            // Set the activity and mark the entity as modified
+            entity.EntityData.SetActivity(activity);
+            _entityRegistry.MarkModifiedEntity(resource);
+        }
+
+        return Result.Ok();
     }
 
     private static JsonPointer GetPropertyPointer(int componentIndex, string propertyPath)

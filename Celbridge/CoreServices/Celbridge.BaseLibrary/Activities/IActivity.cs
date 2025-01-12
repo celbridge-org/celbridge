@@ -17,13 +17,17 @@ public interface IActivity
     Task<Result> DeactivateAsync();
 
     /// <summary>
-    /// Updates an entity that is relevant to this activity.
+    /// Returns true if the activity supports the resource.
     /// </summary>
-    Task<Result> UpdateEntityAsync(ResourceKey resource);
+    bool SupportsResource(ResourceKey resource);
 
     /// <summary>
-    /// Initializes a newly created entity, if the resource is relevant to this activity.
-    /// Returns true if the entity was initialized, false otherwise.
+    /// Initializes a newly created resource that is supported by this activity.
     /// </summary>
-    bool TryInitializeEntity(ResourceKey resource);
+    Task<Result> InitializeResourceAsync(ResourceKey resource);
+
+    /// <summary>
+    /// Updates a resource that is supported by this activity..
+    /// </summary>
+    Task<Result> UpdateResourceAsync(ResourceKey resource);
 }
