@@ -37,4 +37,9 @@ public interface IInspectorService
     /// A service for creating field UI elements for editing component values.
     /// </summary>
     IFieldFactory FieldFactory { get; }
+
+    /// <summary>
+    /// Updates the inspector service.
+    /// </summary>
+    Task<Result> UpdateAsync();
 }

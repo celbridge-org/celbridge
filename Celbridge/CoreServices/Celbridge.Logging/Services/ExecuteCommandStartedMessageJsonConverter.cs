@@ -4,16 +4,16 @@ using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Logging.Services;
 
-public class CommandExecutingMessageJsonConverter : JsonConverter<CommandExecutingMessage>
+public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCommandStartedMessage>
 {
     public bool _ignoreCommandProperties { get; set; } = false;
 
-    public CommandExecutingMessageJsonConverter(bool ignoreCommandProperties)
+    public ExecuteCommandStartedMessageJsonConverter(bool ignoreCommandProperties)
     {
         _ignoreCommandProperties = ignoreCommandProperties;
     }
 
-    public override void WriteJson(JsonWriter writer, CommandExecutingMessage? message, JsonSerializer serializer)
+    public override void WriteJson(JsonWriter writer, ExecuteCommandStartedMessage? message, JsonSerializer serializer)
     {
         Guard.IsNotNull(message);
 
@@ -37,7 +37,7 @@ public class CommandExecutingMessageJsonConverter : JsonConverter<CommandExecuti
         outputJO.WriteTo(writer);
     }
 
-    public override CommandExecutingMessage ReadJson(JsonReader reader, Type objectType, CommandExecutingMessage? existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override ExecuteCommandStartedMessage ReadJson(JsonReader reader, Type objectType, ExecuteCommandStartedMessage? existingValue, bool hasExistingValue, JsonSerializer serializer)
     {
         throw new NotImplementedException();
     }

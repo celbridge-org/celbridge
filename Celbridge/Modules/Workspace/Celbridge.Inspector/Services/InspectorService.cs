@@ -6,6 +6,11 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Inspector.Services;
 
+/// <summary>
+/// Message sent when the workspace requests the inspector to update.
+/// </summary>
+public record UpdateInspectorMessage();
+
 public class InspectorService : IInspectorService, IDisposable
 {
     private readonly ILogger<InspectorService> _logger;
@@ -56,6 +61,17 @@ public class InspectorService : IInspectorService, IDisposable
 
         InspectorFactory = _serviceProvider.GetRequiredService<IInspectorFactory>();
         FieldFactory = _serviceProvider.GetRequiredService<IFieldFactory>();
+    }
+
+    public async Task<Result> UpdateAsync()
+    {
+        await Task.CompletedTask;
+
+        // Notify the inspector panel elements to update
+        var message = new UpdateInspectorMessage();
+        _messengerService.Send(message);
+
+        return Result.Ok();
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
