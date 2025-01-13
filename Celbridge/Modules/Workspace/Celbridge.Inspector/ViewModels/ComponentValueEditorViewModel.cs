@@ -97,7 +97,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             return;
         }
 
-        // Get the component type
+        // Get the component and component type
         var getComponentResult = _entityService.GetComponent(componentKey);
         if (getComponentResult.IsFailure)
         {
@@ -109,6 +109,13 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         // Populate the Component Type in the panel header
 
         ComponentType = component.Schema.ComponentType;
+
+        // Populate the property fields using the component descriptor
+
+        var descriptor = component.Schema.Descriptor;
+
+        var form = descriptor.CreateDetailForm(component);
+
 
         // Construct the form by adding property fields one by one.
 

@@ -1,6 +1,8 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
+using Celbridge.Forms;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Models.Forms;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views;
@@ -37,6 +39,12 @@ public static class ServiceConfiguration
         services.AddTransient<ProgressDialogViewModel>();
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
+
+        //
+        // Register forms
+        //
+        services.AddTransient<IForm, Form>();
+        services.AddTransient<ITextBlockElement, TextBlockElement>();
     }
 
     public static void Initialize()

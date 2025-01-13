@@ -1,4 +1,5 @@
 using Celbridge.Entities;
+using Celbridge.Forms;
 
 namespace Celbridge.Screenplay.Components;
 
@@ -88,4 +89,9 @@ public class LineComponent : IComponentDescriptor
       }
     }
     """;
+
+    public IForm? CreateDetailForm(IComponentProxy component)
+    {
+        return null;
+    }
 }

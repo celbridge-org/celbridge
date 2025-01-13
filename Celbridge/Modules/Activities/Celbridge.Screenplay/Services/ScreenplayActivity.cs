@@ -2,6 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Entities;
+using Celbridge.Forms;
 using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
@@ -13,6 +14,7 @@ namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayActivity : IActivity
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScreenplayActivity> _logger;
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
@@ -21,12 +23,13 @@ public class ScreenplayActivity : IActivity
     private HashSet<ResourceKey> _pendingEntityUpdates = new();
 
     public ScreenplayActivity(
+        IServiceProvider serviceProvider,
         ILogger<ScreenplayActivity> logger,        
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
-
         _commandService = commandService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentService = workspaceWrapper.WorkspaceService.DocumentsService;
