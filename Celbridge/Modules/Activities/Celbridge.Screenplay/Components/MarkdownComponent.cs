@@ -1,4 +1,5 @@
 using Celbridge.Entities;
+using Celbridge.Forms;
 
 namespace Celbridge.Screenplay.Components;
 
@@ -33,5 +34,10 @@ public class MarkdownComponent : IComponentDescriptor
         "editorMode": "EditorAndPreview"
       }
     }
-    """;    
+    """;
+
+    public IForm? CreateDetailForm(IComponentProxy component)
+    {
+        return null;
+    }
 }
