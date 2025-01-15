@@ -1,9 +1,17 @@
 using Celbridge.Forms;
+using Celbridge.UserInterface.ViewModels.Forms;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
 public class FormBuilder : IFormBuilder
 {
+    private readonly IServiceProvider _serviceProvider;
+
+    public FormBuilder(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+
     public Result<FormInstance> Build(IForm form)
     {
         // Construct a famework panel based on the form description
@@ -83,7 +91,27 @@ public class FormBuilder : IFormBuilder
         if (formElement is ITextBlockElement formTextBlock)
         {
             var fameworkTextBlock = new TextBlock();
-            fameworkTextBlock.Text = formTextBlock.Text;
+
+            var viewModel = _serviceProvider.GetRequiredService<TextBlockViewModel>();
+
+            if (formTextBlock.ComponentKey.Resource.IsEmpty)
+            {
+                viewModel.DisplayText = formTextBlock.Text;
+            }
+            else
+            {
+                viewModel.SetBinding(formTextBlock.ComponentKey, formTextBlock.PropertyPath);
+            }
+
+            fameworkTextBlock.DataContext = viewModel;
+
+            var binding = new Binding()
+            {
+                Path = new PropertyPath("DisplayText"),
+                Mode = BindingMode.OneWay
+            };
+            fameworkTextBlock.SetBinding(TextBlock.TextProperty, binding);
+
             return fameworkTextBlock;
         }
 

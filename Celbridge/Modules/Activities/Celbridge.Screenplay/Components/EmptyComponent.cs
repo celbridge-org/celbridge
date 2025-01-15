@@ -44,27 +44,23 @@ public class EmptyComponent : IComponentDescriptor
 
     public Result<IForm> CreateDetailForm(IComponentProxy component)
     {
-        //var comment = component.GetString("/comment");
+        var textBlockA = _formFactory.CreateTextBlock()
+            .BindText(component.Key, "/comment");
 
-        //var textBlockA = _formFactory.CreateTextBlock()
-        //    .WithText(comment);
+        var textBlockB = _formFactory.CreateTextBlock()
+            .WithText("1");
 
-        //var textBlockB = _formFactory.CreateTextBlock()
-        //    .WithText("1");
+        var textBlockC = _formFactory.CreateTextBlock()
+            .WithText("2");
 
-        //var textBlockC = _formFactory.CreateTextBlock()
-        //    .WithText("2");
+        var childPanel = _formFactory.CreateStackPanel(FormOrientation.Horizontal)
+            .AddChildren(textBlockB, textBlockC);
 
-        //var childPanel = _formFactory.CreateStackPanel(FormOrientation.Horizontal)
-        //    .AddChildren(textBlockB, textBlockC);
+        var formPanel = _formFactory.CreateStackPanel(FormOrientation.Vertical)
+            .AddChildren(textBlockA, childPanel);
 
-        //var formPanel = _formFactory.CreateStackPanel(FormOrientation.Vertical)
-        //    .AddChildren(textBlockA, childPanel);
+        var form = _formFactory.CreateForm(formPanel);
 
-        //var form = _formFactory.CreateForm(formPanel);
-
-        // return Result<IForm>.Ok(form);
-
-        return Result<IForm>.Fail();
+        return Result<IForm>.Ok(form);
     }
 }
