@@ -2,7 +2,7 @@
 using Celbridge.Projects;
 using Celbridge.Validators;
 
-namespace Celbridge.UserInterface.Services;
+namespace Celbridge.UserInterface.Services.Dialogs;
 
 public class DialogService : IDialogService
 {

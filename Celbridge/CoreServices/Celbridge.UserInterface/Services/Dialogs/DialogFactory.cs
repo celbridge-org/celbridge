@@ -1,8 +1,8 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 using Celbridge.Validators;
 using Celbridge.UserInterface.Views;
 
-namespace Celbridge.UserInterface.Services;
+namespace Celbridge.UserInterface.Services.Dialogs;
 
 public class DialogFactory : IDialogFactory
 {
