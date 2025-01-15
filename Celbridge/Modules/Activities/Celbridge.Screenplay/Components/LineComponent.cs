@@ -90,8 +90,8 @@ public class LineComponent : IComponentDescriptor
     }
     """;
 
-    public IForm? CreateDetailForm(IComponentProxy component)
+    public Result<IForm> CreateDetailForm(IComponentProxy component)
     {
-        return null;
+        return Result<IForm>.Fail();
     }
 }

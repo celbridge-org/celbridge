@@ -1,6 +1,6 @@
 ﻿using Celbridge.Dialog;
 
-namespace Celbridge.UserInterface.Services;
+namespace Celbridge.UserInterface.Services.Dialogs;
 
 public record ProgressDialogToken : IProgressDialogToken
 {

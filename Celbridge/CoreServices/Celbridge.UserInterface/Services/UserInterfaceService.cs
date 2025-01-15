@@ -1,6 +1,3 @@
-using Celbridge.Dialog;
-using Celbridge.FilePicker;
-
 namespace Celbridge.UserInterface.Services;
 
 public class UserInterfaceService : IUserInterfaceService
@@ -12,20 +9,10 @@ public class UserInterfaceService : IUserInterfaceService
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
 
-    //
-    // These properties provide convenient access to various user interface related services
-    //
-    public IFilePickerService FilePickerService { get; private set; }
-    public IDialogService DialogService { get; private set; }
-
     public UserInterfaceService(
-        IMessengerService messengerService,
-        IFilePickerService filePickerService,
-        IDialogService dialogService)
+        IMessengerService messengerService)
     {
         _messengerService = messengerService;
-        FilePickerService = filePickerService;
-        DialogService = dialogService;
     }
 
     public void Initialize(Window mainWindow, XamlRoot xamlRoot)

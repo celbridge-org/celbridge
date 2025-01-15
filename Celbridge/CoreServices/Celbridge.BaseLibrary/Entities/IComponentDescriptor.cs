@@ -13,7 +13,7 @@ public interface IComponentDescriptor
     string SchemaJson { get; }
 
     /// <summary>
-    /// Create a form for editing the component details
+    /// Create the form for editing the component details
     /// </summary>
-    IForm? CreateDetailForm(IComponentProxy component);
+    Result<IForm> CreateDetailForm(IComponentProxy component);
 }
