@@ -124,7 +124,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         {
             var form = createFormResult.Value;
 
-            var buildResult = _formBuilder.Build(form);
+            var buildResult = _formBuilder.Build(form, component.Key);
             if (buildResult.IsFailure)
             {
                 _logger.LogError($"Failed to build form for component '{componentKey}'. {buildResult.Error}");

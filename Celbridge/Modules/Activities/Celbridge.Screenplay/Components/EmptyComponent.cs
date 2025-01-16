@@ -18,26 +18,26 @@ public class EmptyComponent : IComponentDescriptor
         "additionalProperties": false,
 
         "attributes": {
-        "allowMultipleComponents": true
+            "allowMultipleComponents": true
         },
 
         "properties": {
-        "_componentType": {
-            "type": "string",
-            "const": "Empty#1"
-        },
-        "comment": {
-            "type": "string"
-        }
+            "_componentType": {
+                "type": "string",
+                "const": "Empty#1"
+            },
+            "comment": {
+                "type": "string"
+            }
         },
 
         "required": [
-        "_componentType",
-        "comment"
+            "_componentType",
+            "comment"
         ],
 
         "prototype": {
-        "comment": ""
+            "comment": ""
         }
     }
     """;
@@ -45,13 +45,15 @@ public class EmptyComponent : IComponentDescriptor
     public Result<IForm> CreateDetailForm(IComponentProxy component)
     {
         var textBlockA = _formFactory.CreateTextBlock()
-            .BindText(component.Key, "/comment", PropertyBindingMode.OneWay);
+            .BindText("/comment");
 
         var textBlockB = _formFactory.CreateTextBlock()
-            .WithText("1");
+            .WithText("First")
+            .WithItalic();
 
         var textBlockC = _formFactory.CreateTextBlock()
-            .WithText("2");
+            .WithText("Second")
+            .WithBold();
 
         var childPanel = _formFactory.CreateStackPanel(FormOrientation.Horizontal)
             .AddChildren(textBlockB, textBlockC);

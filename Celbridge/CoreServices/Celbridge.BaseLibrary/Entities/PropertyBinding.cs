@@ -25,4 +25,4 @@ public enum PropertyBindingMode
 /// <summary>
 /// Describes a binding between a form element and a component property.
 /// </summary>
-public record PropertyBinding(ComponentKey ComponentKey, string PropertyPath, PropertyBindingMode BindingMode);
+public record PropertyBinding(string PropertyPath, PropertyBindingMode BindingMode);

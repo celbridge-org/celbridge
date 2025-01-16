@@ -1,3 +1,5 @@
+using Celbridge.Entities;
+
 namespace Celbridge.Forms;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Celbridge.Forms;
 public interface IFormBuilder
 {
     /// <summary>
-    /// Builds a form instance from a form definition.
+    /// Builds a form UI instance for editing a component using the specified form definition.
     /// </summary>
-    Result<FormInstance> Build(IForm form);
+    Result<FormInstance> Build(IForm form, ComponentKey component);
 }

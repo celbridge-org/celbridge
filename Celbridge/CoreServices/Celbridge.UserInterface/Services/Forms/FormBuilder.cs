@@ -1,6 +1,8 @@
 using Celbridge.Entities;
 using Celbridge.Forms;
 using Celbridge.UserInterface.ViewModels.Forms;
+using Microsoft.UI.Text;
+using Windows.UI.Text;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
@@ -13,10 +15,10 @@ public class FormBuilder : IFormBuilder
         _serviceProvider = serviceProvider;
     }
 
-    public Result<FormInstance> Build(IForm form)
+    public Result<FormInstance> Build(IForm form, ComponentKey component)
     {
         // Construct a famework panel based on the form description
-        var fameworkPanel = BuildFrameworkPanel(form.Panel);
+        var fameworkPanel = BuildFrameworkPanel(form.Panel, component);
         if (fameworkPanel is null)
         {
             return Result<FormInstance>.Fail($"Failed to build framework panel for form panel");
@@ -27,10 +29,10 @@ public class FormBuilder : IFormBuilder
         return Result<FormInstance>.Ok(formInstance);
     }
 
-    private Panel? BuildFrameworkPanel(IFormPanel formPanel)
+    private Panel? BuildFrameworkPanel(IFormPanel formPanel, ComponentKey component)
     {
         // Create the Framework panel
-        Panel? fameworkPanel = CreateFrameworkPanel(formPanel);
+        Panel? fameworkPanel = CreateFrameworkPanel(formPanel, component);
         if (fameworkPanel is null)
         {
             return null;
@@ -42,7 +44,7 @@ public class FormBuilder : IFormBuilder
             {
                 case IFormPanel childFormPanel:
                     {
-                        var childFrameworkPanel = BuildFrameworkPanel(childFormPanel);
+                        var childFrameworkPanel = BuildFrameworkPanel(childFormPanel, component);
                         if (childFrameworkPanel is not null)
                         {
                             fameworkPanel.Children.Add(childFrameworkPanel);
@@ -53,7 +55,7 @@ public class FormBuilder : IFormBuilder
 
                 case IFormElement childFormElement:
                     {
-                        var childFrameworkElement = CreateFrameworkElement(childFormElement);
+                        var childFrameworkElement = CreateFrameworkElement(childFormElement, component);
                         if (childFrameworkElement is not null)
                         {
                             fameworkPanel.Children.Add(childFrameworkElement);
@@ -67,7 +69,7 @@ public class FormBuilder : IFormBuilder
         return fameworkPanel;
     }
 
-    private Panel? CreateFrameworkPanel(IFormPanel formPanel)
+    private Panel? CreateFrameworkPanel(IFormPanel formPanel, ComponentKey component)
     {
         if (formPanel is IStackPanelElement stackPanelElement)
         {
@@ -87,48 +89,68 @@ public class FormBuilder : IFormBuilder
         return null;
     }
 
-    private UIElement? CreateFrameworkElement(IFormElement formElement)
+    private UIElement? CreateFrameworkElement(IFormElement formElement, ComponentKey component)
     {
         if (formElement is ITextBlockElement formTextBlock)
         {
             var frameworkTextBlock = new TextBlock();
 
-            if (formTextBlock.TextBinding is null)
+            if (formTextBlock.Italic)
             {
-                frameworkTextBlock.Text = formTextBlock.Text;
+                frameworkTextBlock.FontStyle = FontStyle.Italic;
             }
-            else
+
+            if (formTextBlock.Bold)
             {
-                var viewModel = _serviceProvider.GetRequiredService<TextBlockViewModel>() as IFormElementViewModel;
-                Guard.IsNotNull(viewModel);
+                frameworkTextBlock.FontWeight = FontWeights.Bold;
+            }
+
+            if (formTextBlock.TextBinding is not null)
+            {
+                var viewModel = _serviceProvider.GetRequiredService<TextBlockViewModel>();
+
+                viewModel.Component = component;
+                viewModel.TextBinding = formTextBlock.TextBinding;
 
                 frameworkTextBlock.DataContext = viewModel;
 
                 frameworkTextBlock.Loaded += (s, e) =>
                 {
-                    var bindingMode = formTextBlock.TextBinding.BindingMode switch
+                    if (formTextBlock.TextBinding is not null)
                     {
-                        PropertyBindingMode.OneWay => BindingMode.OneWay,
-                        PropertyBindingMode.TwoWay => BindingMode.TwoWay,
-                        _ => BindingMode.OneTime
-                    };
+                        var bindingMode = formTextBlock.TextBinding.BindingMode switch
+                        {
+                            PropertyBindingMode.OneWay => BindingMode.OneWay,
+                            PropertyBindingMode.TwoWay => BindingMode.TwoWay,
+                            _ => BindingMode.OneTime
+                        };
 
-                    // Bind to the component value
-                    var binding = new Binding()
-                    {
-                        Path = new PropertyPath("Text"),
-                        Mode = bindingMode
-                    };
-                    frameworkTextBlock.SetBinding(TextBlock.TextProperty, binding);
-                    viewModel.Bind(formTextBlock.TextBinding);
+                        // Bind the ViewModel property
+                        var binding = new Binding()
+                        {
+                            Path = new PropertyPath("Text"),
+                            Mode = bindingMode
+                        };
+                        frameworkTextBlock.SetBinding(TextBlock.TextProperty, binding);
+                    }
+
+                    viewModel.Bind();
                 };
 
                 frameworkTextBlock.Unloaded += (s, e) =>
                 {
-                    // Unbind from the component value
-                    frameworkTextBlock.ClearValue(TextBlock.TextProperty);
+                    if (formTextBlock.TextBinding is not null)
+                    {
+                        // Bind the ViewModel property
+                        frameworkTextBlock.ClearValue(TextBlock.TextProperty);
+                    }
+
                     viewModel.Unbind();
                 };
+            }
+            else
+            {
+                frameworkTextBlock.Text = formTextBlock.Text;
             }
 
             return frameworkTextBlock;

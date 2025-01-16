@@ -9,15 +9,31 @@ public class TextBlockElement : ITextBlockElement
 
     public PropertyBinding? TextBinding { get; set; }
 
+    public bool Italic { get; set; }
+
+    public bool Bold { get; set; }  
+
     public ITextBlockElement WithText(string text)
     {
         Text = text;
         return this;
     }
 
-    public ITextBlockElement BindText(ComponentKey componentKey, string propertyPath, PropertyBindingMode bindingMode)
+    public ITextBlockElement WithItalic()
     {
-        TextBinding = new PropertyBinding(componentKey, propertyPath, bindingMode);
+        Italic = true;
+        return this;
+    }
+
+    public ITextBlockElement WithBold()
+    {
+        Bold = true;
+        return this;
+    }
+
+    public ITextBlockElement BindText(string propertyPath, PropertyBindingMode bindingMode)
+    {
+        TextBinding = new PropertyBinding(propertyPath, bindingMode);
         return this;
     }
 }

@@ -1,10 +1,9 @@
 using Celbridge.Entities;
-using Celbridge.Forms;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Forms;
 
-public partial class TextBlockViewModel : ObservableObject, IFormElementViewModel
+public partial class TextBlockViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
@@ -12,7 +11,9 @@ public partial class TextBlockViewModel : ObservableObject, IFormElementViewMode
     [ObservableProperty]
     private string _text = string.Empty;
 
-    private PropertyBinding? _textBinding;
+    public ComponentKey Component { get; set; }
+
+    public PropertyBinding? TextBinding { get; set; }
 
     public TextBlockViewModel(
         IMessengerService messengerService,
@@ -22,33 +23,24 @@ public partial class TextBlockViewModel : ObservableObject, IFormElementViewMode
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
     }
 
-    public void Bind(PropertyBinding binding)
+    public void Bind()
     {
-        // Store the component key and property path
-        _textBinding = binding;
-
         // Listen for component changes and update the text
-        _messengerService.UnregisterAll(this);
+        Unbind();
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
 
         // Get the property when initializing the binding
         UpdateProperty();
-
-        // Todo: Log binding errors - display empty text in error state
     }
 
     public void Unbind()
     {
         _messengerService.UnregisterAll(this);
-        _textBinding = null;
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        Guard.IsNotNull(_textBinding);
-
-        if (message.ComponentKey == _textBinding.ComponentKey && 
-            message.PropertyPath == _textBinding.PropertyPath)
+        if (message.ComponentKey == Component)
         {
             UpdateProperty();
         }
@@ -56,9 +48,7 @@ public partial class TextBlockViewModel : ObservableObject, IFormElementViewMode
 
     private void UpdateProperty()
     {
-        Guard.IsNotNull(_textBinding);
-
-        var getComponentResult = _entityService.GetComponent(_textBinding.ComponentKey);
+        var getComponentResult = _entityService.GetComponent(Component);
         if (getComponentResult.IsFailure)
         {
             // Todo: Log error
@@ -66,6 +56,9 @@ public partial class TextBlockViewModel : ObservableObject, IFormElementViewMode
         }
         var component = getComponentResult.Value;
 
-        Text = component.GetString(_textBinding.PropertyPath);
+        if (TextBinding is not null)
+        {
+            Text = component.GetString(TextBinding.PropertyPath);
+        }
     }
 }
