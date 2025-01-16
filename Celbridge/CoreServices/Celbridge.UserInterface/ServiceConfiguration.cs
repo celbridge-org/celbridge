@@ -52,6 +52,7 @@ public static class ServiceConfiguration
         services.AddTransient<ITextBlockElement, TextBlockElement>();
         services.AddTransient<IStackPanelElement, StackPanelElement>();
         services.AddTransient<TextBlockViewModel>();
+        services.AddTransient<TextBlockBuilder>();
     }
 
     public static void Initialize()
