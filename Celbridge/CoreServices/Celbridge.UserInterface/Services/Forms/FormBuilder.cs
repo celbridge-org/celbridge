@@ -1,3 +1,4 @@
+using Celbridge.Entities;
 using Celbridge.Forms;
 using Celbridge.UserInterface.ViewModels.Forms;
 
@@ -90,29 +91,47 @@ public class FormBuilder : IFormBuilder
     {
         if (formElement is ITextBlockElement formTextBlock)
         {
-            var fameworkTextBlock = new TextBlock();
+            var frameworkTextBlock = new TextBlock();
 
-            var viewModel = _serviceProvider.GetRequiredService<TextBlockViewModel>();
-
-            if (formTextBlock.ComponentKey.Resource.IsEmpty)
+            if (formTextBlock.TextBinding is null)
             {
-                viewModel.DisplayText = formTextBlock.Text;
+                frameworkTextBlock.Text = formTextBlock.Text;
             }
             else
             {
-                viewModel.SetBinding(formTextBlock.ComponentKey, formTextBlock.PropertyPath);
+                var viewModel = _serviceProvider.GetRequiredService<TextBlockViewModel>() as IFormElementViewModel;
+                Guard.IsNotNull(viewModel);
+
+                frameworkTextBlock.DataContext = viewModel;
+
+                frameworkTextBlock.Loaded += (s, e) =>
+                {
+                    var bindingMode = formTextBlock.TextBinding.BindingMode switch
+                    {
+                        PropertyBindingMode.OneWay => BindingMode.OneWay,
+                        PropertyBindingMode.TwoWay => BindingMode.TwoWay,
+                        _ => BindingMode.OneTime
+                    };
+
+                    // Bind to the component value
+                    var binding = new Binding()
+                    {
+                        Path = new PropertyPath("Text"),
+                        Mode = bindingMode
+                    };
+                    frameworkTextBlock.SetBinding(TextBlock.TextProperty, binding);
+                    viewModel.Bind(formTextBlock.TextBinding);
+                };
+
+                frameworkTextBlock.Unloaded += (s, e) =>
+                {
+                    // Unbind from the component value
+                    frameworkTextBlock.ClearValue(TextBlock.TextProperty);
+                    viewModel.Unbind();
+                };
             }
 
-            fameworkTextBlock.DataContext = viewModel;
-
-            var binding = new Binding()
-            {
-                Path = new PropertyPath("DisplayText"),
-                Mode = BindingMode.OneWay
-            };
-            fameworkTextBlock.SetBinding(TextBlock.TextProperty, binding);
-
-            return fameworkTextBlock;
+            return frameworkTextBlock;
         }
 
         return null;

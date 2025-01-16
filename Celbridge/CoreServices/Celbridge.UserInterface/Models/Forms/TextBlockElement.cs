@@ -7,8 +7,7 @@ public class TextBlockElement : ITextBlockElement
 {
     public string Text { get; set; } = string.Empty;
 
-    public ComponentKey ComponentKey { get; set; }
-    public string PropertyPath { get; set; } = string.Empty;
+    public PropertyBinding? TextBinding { get; set; }
 
     public ITextBlockElement WithText(string text)
     {
@@ -16,11 +15,9 @@ public class TextBlockElement : ITextBlockElement
         return this;
     }
 
-    public ITextBlockElement BindText(ComponentKey componentKey, string propertyPath)
+    public ITextBlockElement BindText(ComponentKey componentKey, string propertyPath, PropertyBindingMode bindingMode)
     {
-        ComponentKey = componentKey;
-        PropertyPath = propertyPath;
-
+        TextBinding = new PropertyBinding(componentKey, propertyPath, bindingMode);
         return this;
     }
 }

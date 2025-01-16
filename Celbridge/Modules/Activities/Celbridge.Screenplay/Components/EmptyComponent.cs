@@ -45,7 +45,7 @@ public class EmptyComponent : IComponentDescriptor
     public Result<IForm> CreateDetailForm(IComponentProxy component)
     {
         var textBlockA = _formFactory.CreateTextBlock()
-            .BindText(component.Key, "/comment");
+            .BindText(component.Key, "/comment", PropertyBindingMode.OneWay);
 
         var textBlockB = _formFactory.CreateTextBlock()
             .WithText("1");
