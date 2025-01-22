@@ -165,4 +165,9 @@ public interface IEntityService
     /// This will trigger an entity save if the activity is different from the current value.
     /// </summary>
     Result SetActivity(ResourceKey resource, string activity);
+
+    /// <summary>
+    /// Creates a component editor for the specified component type.
+    /// </summary>
+    Result<IComponentEditor> CreateComponentEditor(IComponentProxy component);
 }

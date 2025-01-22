@@ -1,0 +1,52 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {
+    "allowMultipleComponents": true
+  },
+
+  "properties": {
+    "_componentType": {
+      "type": "string",
+      "const": "Empty#1"
+    },
+    "comment": {
+      "type": "string"
+    }
+  },
+
+  "required": [
+    "_componentType",
+    "comment"
+  ],
+
+  "prototype": {
+    "comment": ""
+  },
+
+  "form": [
+    {
+      "element": "StackPanel",
+      "orientation": "Horizontal",
+      "children": [
+        {
+          "element": "TextBox",
+          "header": "Comment",
+          "textBinding": "/comment",
+          "placeholder": "Enter a note",
+          "checkSpelling": false
+        },
+        {
+          "element": "TextBlock",
+          "textBinding": "/comment"
+        },
+        {
+          "element": "Button",
+          "text": "Clear",
+          "command": "Clear"
+        }
+      ]
+    }
+  ]
+}

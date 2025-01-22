@@ -1,12 +1,12 @@
 namespace Celbridge.Forms;
 
 /// <summary>
-/// A service that constructs form instances from form definitions.
+/// A service that constructs form UI elements based on a JSON definition.
 /// </summary>
 public interface IFormBuilder
 {
     /// <summary>
-    /// Builds a form instance from a form definition.
+    /// Constructs a form UI element based on a JSON configuration and a form data provider.
     /// </summary>
-    Result<FormInstance> Build(IForm form);
+    Result<object> BuildForm(string formName, string fromConfig, IFormDataProvider formDataProvider);
 }

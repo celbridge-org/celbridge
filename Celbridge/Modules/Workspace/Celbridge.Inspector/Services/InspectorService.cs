@@ -1,8 +1,10 @@
 using Celbridge.Entities;
 using Celbridge.Explorer;
+using Celbridge.Forms;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
+using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Inspector.Services;
 
@@ -72,6 +74,33 @@ public class InspectorService : IInspectorService, IDisposable
         _messengerService.Send(message);
 
         return Result.Ok();
+    }
+
+    public Result<object> CreateComponentEditorForm(IComponentEditor componentEditor)
+    {
+        Guard.IsNotNull(componentEditor.Component);
+
+        var formBuilder = _serviceProvider.GetRequiredService<IFormBuilder>();
+
+        var formJson = componentEditor.Component.Schema.FormJson;
+        if (!string.IsNullOrEmpty(formJson))
+        {
+            // The form name helps when debugging problems with the form configuration
+            var formName = componentEditor.Component.Schema.ComponentType;
+
+            var buildResult = formBuilder.BuildForm(formName, formJson, componentEditor);
+            if (buildResult.IsFailure)
+            {
+                return Result<object>.Fail($"Failed to build form for component type: '{formName}'")
+                    .WithErrors(buildResult);
+            }
+            var uiElement = buildResult.Value;
+
+            return Result<object>.Ok(uiElement);
+        }
+
+        // No component editor defined for this component
+        return Result<object>.Fail();
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
