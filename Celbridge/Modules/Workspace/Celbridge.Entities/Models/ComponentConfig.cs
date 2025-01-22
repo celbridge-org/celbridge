@@ -13,12 +13,14 @@ public class ComponentConfig
     private const string AttributesKey = "attributes";
     private const string PropertiesKey = "properties";
     private const string PrototypeKey = "prototype";
+    private const string FormKey = "form";
     private const string TypeKey = "type";
 
     public string ComponentType { get; }
     public int ComponentVersion { get; }
     public ComponentSchema ComponentSchema { get; }
     public JsonElement Prototype { get; }
+    public Type ComponentEditorType { get; }
 
     private readonly JsonSchema _jsonSchema;
 
@@ -27,16 +29,18 @@ public class ComponentConfig
         int componentVersion, 
         ComponentSchema componentSchema, 
         JsonElement prototype,
-        JsonSchema jsonSchema)
+        JsonSchema jsonSchema,
+        Type componentEditorType)
     {
         ComponentType = componentType;
         ComponentVersion = componentVersion;
         ComponentSchema = componentSchema;
         Prototype = prototype;
+        ComponentEditorType = componentEditorType;
         _jsonSchema = jsonSchema;
     }
 
-    public static Result<ComponentConfig> CreateConfig(IComponentDescriptor componentDescriptor, string schemaJson)
+    public static Result<ComponentConfig> CreateConfig(Type componentEditorType, string schemaJson)
     {
         try
         {
@@ -132,7 +136,17 @@ public class ComponentConfig
                 }
             }
 
-            var componentSchema = new ComponentSchema(componentType, componentVersion, componentTags, componentAttributes, componentProperties, componentDescriptor);
+            var formJson = string.Empty;
+            if (root.TryGetProperty(FormKey, out JsonElement formElement))
+            { 
+                if (formElement.ValueKind != JsonValueKind.Array)
+                {
+                    return Result<ComponentConfig>.Fail("Form json does not contain an array of form elements");
+                }
+                formJson = formElement.ToJsonString();
+            }            
+
+            var componentSchema = new ComponentSchema(componentType, componentVersion, componentTags, componentAttributes, componentProperties, formJson);
 
             // Construct the prototype element
 
@@ -161,7 +175,7 @@ public class ComponentConfig
                 return Result<ComponentConfig>.Fail($"Prototype failed schema validation: '{componentType}'");
             }
 
-            var config = new ComponentConfig(componentType, componentVersion, componentSchema, prototype, jsonSchema);
+            var config = new ComponentConfig(componentType, componentVersion, componentSchema, prototype, jsonSchema, componentEditorType);
 
             return Result<ComponentConfig>.Ok(config);
         }

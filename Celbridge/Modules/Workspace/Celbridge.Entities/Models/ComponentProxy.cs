@@ -9,11 +9,13 @@ public class ComponentProxy : IComponentProxy
     private IEntityService _entityService;
     private IMessengerService _messengerService;
 
-    public bool IsValid { get; set; } = true;
+    public bool IsValid { get; private set; } = true;
 
     public ComponentKey Key { get; }
 
     public ComponentSchema Schema { get; }
+
+    public event Action<string>? ComponentPropertyChanged;
 
     public ComponentStatus Status { get; private set; }
 
@@ -29,6 +31,8 @@ public class ComponentProxy : IComponentProxy
 
         Key = componentKey;
         Schema = schema;
+
+        _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
     }
 
     public void SetAnnotation(ComponentStatus status, string description, string tooltip)
@@ -69,5 +73,35 @@ public class ComponentProxy : IComponentProxy
     public Result SetProperty<T>(string propertyPath, T newValue, bool insert) where T : notnull
     {
         return _entityService.SetProperty(Key, propertyPath, newValue);
+    }
+
+    private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
+    {
+        var componentKey = message.ComponentKey;
+        var propertyPath = message.PropertyPath;
+
+        if (message.ComponentKey == Key)
+        {
+            if (propertyPath == "/")
+            {
+                // Invalidate the proxy
+                Invalidate();
+            }
+            else
+            {
+                // Notify listeners that a component property has changed
+                ComponentPropertyChanged?.Invoke(propertyPath);
+            }
+        }
+    }
+
+    public void Invalidate()
+    {
+        if (IsValid)
+        {
+            IsValid = false;
+            ComponentPropertyChanged = null;
+            _messengerService.UnregisterAll(this);
+        }
     }
 }

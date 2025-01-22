@@ -687,6 +687,37 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
+    public Result<IComponentEditor> CreateComponentEditor(IComponentProxy componentProxy)
+    {
+        // Acquire the config for this component
+        var componentType = componentProxy.Schema.ComponentType;
+        var getConfigResult = _configRegistry.GetComponentConfig(componentType);
+        if (getConfigResult.IsFailure)
+        {
+            return Result<IComponentEditor>.Fail($"Failed to get component config for component type: '{componentType}'")
+                .WithErrors(getConfigResult);
+        } 
+        var config = getConfigResult.Value;
+
+        // Instantiate the component editor
+
+        var editorType = config.ComponentEditorType;
+        var editor = _serviceProvider.GetService(editorType) as IComponentEditor;
+        if (editor is null)
+        {
+            return Result<IComponentEditor>.Fail($"Failed to created component editor for component type: {componentType}");
+        }
+
+        var initResult = editor.Initialize(componentProxy);
+        if (initResult.IsFailure)
+        {
+            return Result<IComponentEditor>.Fail($"Failed to initialize component editor")
+                .WithErrors(initResult);
+        }
+
+        return Result<IComponentEditor>.Ok(editor);
+    }
+
     private static JsonPointer GetPropertyPointer(int componentIndex, string propertyPath)
     {
         var trimmedPath = propertyPath.TrimStart('/');

@@ -9,7 +9,7 @@ public class Module : IModule
 {
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
-        ScreenplayActivityComponent.ActivityName
+        ScreenplayActivityEditor.ActivityName
     };
 
     public void ConfigureServices(IModuleServiceCollection config)
@@ -24,13 +24,13 @@ public class Module : IModule
         // Register compoments
         //
 
-        config.AddTransient<LineComponent>();
-        config.AddTransient<SceneComponent>();
-        config.AddTransient<ScreenplayActivityComponent>();
+        config.AddTransient<LineEditor>();
+        config.AddTransient<SceneEditor>();
+        config.AddTransient<ScreenplayActivityEditor>();
 
         // Todo: Move these to more appropriate modules
-        config.AddTransient<EmptyComponent>();
-        config.AddTransient<MarkdownComponent>();
+        config.AddTransient<EmptyEditor>();
+        config.AddTransient<MarkdownEditor>();
     }
 
     public Result Initialize()
@@ -42,7 +42,7 @@ public class Module : IModule
     {
         var serviceProvider = ServiceLocator.ServiceProvider;
 
-        if (activityName == ScreenplayActivityComponent.ActivityName)
+        if (activityName == ScreenplayActivityEditor.ActivityName)
         {
             var activity = serviceProvider.GetRequiredService<ScreenplayActivity>();
             return Result<IActivity>.Ok(activity);

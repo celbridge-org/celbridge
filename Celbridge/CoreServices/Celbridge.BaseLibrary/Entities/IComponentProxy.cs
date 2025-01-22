@@ -23,6 +23,11 @@ public interface IComponentProxy
     ComponentSchema Schema { get; }
 
     /// <summary>
+    /// Raised when a component property changes.
+    /// </summary>
+    event Action<string>? ComponentPropertyChanged;
+
+    /// <summary>
     /// The validation status of the component.
     /// </summary>
     ComponentStatus Status { get; }
@@ -68,5 +73,4 @@ public interface IComponentProxy
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
     Result SetProperty<T>(string propertyPath, T newValue, bool insert = false) where T : notnull;
-
 }

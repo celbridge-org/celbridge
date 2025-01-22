@@ -2,7 +2,6 @@ using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Forms;
 using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
@@ -67,7 +66,7 @@ public class ScreenplayActivity : IActivity
             return Result.Ok();
         }
 
-        _entityService.AddComponent(new ComponentKey(resource, 0), SceneComponent.ComponentType);
+        _entityService.AddComponent(new ComponentKey(resource, 0), SceneEditor.ComponentType);
 
         await Task.CompletedTask;
 
@@ -103,7 +102,7 @@ public class ScreenplayActivity : IActivity
                 continue;
             }
 
-            if (!schema.HasTag(ScreenplayActivityComponent.ActivityName))
+            if (!schema.HasTag(ScreenplayActivityEditor.ActivityName))
             {
                 component.SetAnnotation(
                     ComponentStatus.Error,
@@ -115,16 +114,16 @@ public class ScreenplayActivity : IActivity
 
             switch (schema.ComponentType)
             {
-                case SceneComponent.ComponentType:
-                    var sceneTitle = component.GetString(SceneComponent.SceneTitle);
-                    var sceneDescription = component.GetString(SceneComponent.SceneDescription);
+                case SceneEditor.ComponentType:
+                    var sceneTitle = component.GetString(SceneEditor.SceneTitle);
+                    var sceneDescription = component.GetString(SceneEditor.SceneDescription);
                     var componentDescription = $"{sceneTitle}: {sceneDescription}";
                     component.SetAnnotation(ComponentStatus.Valid, componentDescription, componentDescription);
                     break;
 
-                case LineComponent.ComponentType:
-                    var character = component.GetString(LineComponent.Character);
-                    var sourceText = component.GetString(LineComponent.SourceText);
+                case LineEditor.ComponentType:
+                    var character = component.GetString(LineEditor.Character);
+                    var sourceText = component.GetString(LineEditor.SourceText);
                     var description = $"{character}: {sourceText}";
                     component.SetAnnotation(ComponentStatus.Valid, description, description);
                     break;
@@ -155,7 +154,7 @@ public class ScreenplayActivity : IActivity
 
     private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
     {
-        var getComponentResult = _entityService.GetComponentOfType(resource, SceneComponent.ComponentType);
+        var getComponentResult = _entityService.GetComponentOfType(resource, SceneEditor.ComponentType);
         if (getComponentResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get Scene component")
@@ -163,8 +162,8 @@ public class ScreenplayActivity : IActivity
         }
         var sceneComponent = getComponentResult.Value;
 
-        var sceneTitle = sceneComponent.GetString(SceneComponent.SceneTitle);
-        var sceneDescription = sceneComponent.GetString(SceneComponent.SceneDescription);
+        var sceneTitle = sceneComponent.GetString(SceneEditor.SceneTitle);
+        var sceneDescription = sceneComponent.GetString(SceneEditor.SceneDescription);
 
         var sb = new StringBuilder();
 
@@ -173,7 +172,7 @@ public class ScreenplayActivity : IActivity
         sb.AppendLine($"{sceneDescription}");
         sb.AppendLine();
 
-        var getLinesResult = _entityService.GetComponentsOfType(resource, LineComponent.ComponentType);
+        var getLinesResult = _entityService.GetComponentsOfType(resource, LineEditor.ComponentType);
         if (getLinesResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get Line components")
@@ -183,8 +182,8 @@ public class ScreenplayActivity : IActivity
 
         foreach (var lineComponent in lineComponents)
         {
-            var character = lineComponent.GetString(LineComponent.Character);
-            var sourceText = lineComponent.GetString(LineComponent.SourceText);
+            var character = lineComponent.GetString(LineEditor.Character);
+            var sourceText = lineComponent.GetString(LineEditor.SourceText);
 
             if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
             {

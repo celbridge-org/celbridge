@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {
+    "tags": [ "Screenplay" ],
+    "isActivityComponent": true
+  },
+
+  "properties": {
+    "_componentType": {
+      "type": "string",
+      "const": "ScreenplayActivity#1"
+    }
+  },
+
+  "required": [
+    "_componentType"
+  ],
+
+  "prototype": {}
+}
