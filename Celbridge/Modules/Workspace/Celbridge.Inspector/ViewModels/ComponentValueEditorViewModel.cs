@@ -1,5 +1,4 @@
 using Celbridge.Entities;
-using Celbridge.Forms;
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.Services;
 using Celbridge.Logging;
@@ -12,7 +11,6 @@ namespace Celbridge.Inspector.ViewModels;
 public partial class ComponentValueEditorViewModel : ObservableObject
 {
     private readonly ILogger<ComponentValueEditorViewModel> _logger;
-    private readonly IFormBuilder _formBuilder;
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
 
@@ -25,12 +23,10 @@ public partial class ComponentValueEditorViewModel : ObservableObject
 
     public ComponentValueEditorViewModel(
         ILogger<ComponentValueEditorViewModel> logger,
-        IFormBuilder formBuilder,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _formBuilder = formBuilder;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
@@ -112,33 +108,36 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         var component = getComponentResult.Value;
 
         // Populate the Component Type in the panel header
-
         ComponentType = component.Schema.ComponentType;
 
-        // Populate the property fields using the component descriptor
-
-        var descriptor = component.Schema.Descriptor;
-
-        var createFormResult = descriptor.CreateDetailForm(component);
-        if (createFormResult.IsSuccess)
+        // Instantiate a ComponentEditor for this component
+        var createEditorResult = _entityService.CreateComponentEditor(component);
+        if (createEditorResult.IsFailure)
         {
-            var form = createFormResult.Value;
+            _logger.LogError($"Failed to create component editor for component type: '{ComponentType}'");
+            return;
+        }
+        var editor = createEditorResult.Value;
 
-            var buildResult = _formBuilder.Build(form);
-            if (buildResult.IsFailure)
-            {
-                _logger.LogError($"Failed to build form for component '{componentKey}'. {buildResult.Error}");
-                return;
-            }
-            var formUIElement = buildResult.Value;
+        // Instantiate the form UI for the ComponentEditor
+        // When the form UI unloads, it will uninitialize the ComponentEditor automatically.
+        var createViewResult = _inspectorService.CreateComponentEditorForm(editor);
+        if (createViewResult.IsFailure)
+        {
+            _logger.LogError($"Failed to create component editor view for component type: '{ComponentType}'");
+            return;
+        }
+        var editorView = createViewResult.Value as UIElement;
 
-            // Todo: Remove property field system, use forms instead
-            var field = new Field(formUIElement.UIElement);
-            propertyFields.Add(field);
+        if (editorView is not null)
+        {
+            // Todo: Display the XAML control in the Inspector panel properly, and remove the field system
+            var field = new Field(editorView)
+    ;       propertyFields.Add(field);
         }
 
-        // Construct the form by adding property fields one by one.
 
+        // Construct the form by adding property fields one by one.
         foreach (var property in component.Schema.Properties)
         {
             var createResult = _inspectorService.FieldFactory.CreatePropertyField(component, property.PropertyName);

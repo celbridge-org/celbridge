@@ -42,4 +42,9 @@ public interface IInspectorService
     /// Updates the inspector service.
     /// </summary>
     Task<Result> UpdateAsync();
+
+    /// <summary>
+    /// Creates a form UI element to edit a component via a component editor instance.
+    /// </summary>
+    Result<object> CreateComponentEditorForm(IComponentEditor componentEditor);
 }

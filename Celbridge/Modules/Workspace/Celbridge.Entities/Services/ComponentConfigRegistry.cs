@@ -18,43 +18,51 @@ public class ComponentConfigRegistry
     {
         try
         {
-            var descriptorTypes = GetDescriptorTypes();
-
-            foreach (var kv in descriptorTypes)
+            var getTypesResult = GetComponentEditorTypes();
+            if (getTypesResult.IsFailure)
             {
-                var descriptorKey = kv.Key;
-                var objectType = kv.Value;
+                return Result.Fail($"Failed to get component editor types")
+                    .WithErrors(getTypesResult);
+            }
+            var editorTypes = getTypesResult.Value;
 
-                var descriptor = _serviceProvider.GetRequiredService(objectType) as IComponentDescriptor;
-                if (descriptor is null)
-                {
-                    return Result.Fail($"Failed to instantiate component descriptor: '{descriptorKey}'");
-                }
+            foreach (var editorType in editorTypes)
+            {
+                var editorKey = editorType.Name;
 
                 // Create the component config
 
-                var schemaJson = descriptor.SchemaJson;
-                var createResult = ComponentConfig.CreateConfig(descriptor, schemaJson);
+                // Load the component config JSON from an embedded resource
+                var loadConfigResult = LoadComponentConfigFile(editorType);
+                if (loadConfigResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to load component config for component editor: '{editorKey}'")
+                        .WithErrors(loadConfigResult);
+                }
+                var configJson = loadConfigResult.Value;
+
+                // Create the component config
+                var createResult = ComponentConfig.CreateConfig(editorType, configJson);
                 if (!createResult.IsSuccess)
                 {
-                    return Result.Fail($"Failed to create component config from JSON for component descriptor: '{descriptorKey}'")
+                    return Result.Fail($"Failed to create component config from JSON for component editor: '{editorKey}'")
                         .WithErrors(createResult);
                 }
                 var config = createResult.Value;
 
                 // Perform checks
 
-                if (!descriptorKey.EndsWith("Component"))
+                if (!editorKey.EndsWith("Editor"))
                 {
-                    return Result.Fail($"Component descriptor name does not end with 'Component': '{descriptorKey}'");
+                    return Result.Fail($"Component editor name does not end with 'Editor': '{editorKey}'");
                 }
 
-                // Remove trailing "Component" from descriptor key to form the componentType
-                var componentType = descriptorKey[..^9];
+                // Remove trailing "Editor" from editor key to form the component type
+                var componentType = editorKey[..^6];
 
                 if (componentType != config.ComponentType)
                 {
-                    return Result.Fail($"Component type does not match type defined in schema: '{descriptorKey}'");
+                    return Result.Fail($"Component type does not match type defined in schema: '{editorKey}'");
                 }
 
                 if (_componentConfigs.ContainsKey(componentType))
@@ -86,22 +94,67 @@ public class ComponentConfigRegistry
         return Result<ComponentConfig>.Ok(config);
     }
 
-    private Dictionary<string, Type> GetDescriptorTypes()
+    private Result<List<Type>> GetComponentEditorTypes()
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-        var descriptorTypes = new Dictionary<string, Type>();
+        var editorTypes = new List<Type>();
         foreach (var assembly in assemblies)
         {
             foreach (var type in assembly.GetTypes())
             {
-                if (typeof(IComponentDescriptor).IsAssignableFrom(type) && !type.IsAbstract && type.IsClass)
+                if (!typeof(IComponentEditor).IsAssignableFrom(type) || 
+                    type.IsAbstract || 
+                    !type.IsClass)
                 {
-                    descriptorTypes[type.Name] = type;
+                    continue;
                 }
+
+                var editor = _serviceProvider.GetRequiredService(type) as IComponentEditor;
+                if (editor is null)
+                {
+                    return Result<List<Type>>.Fail($"Failed to instantiate component editor type: '{type}'");
+                }
+
+                editorTypes.Add(type);
             }
         }
 
-        return descriptorTypes;
+        return Result<List<Type>>.Ok(editorTypes);
+    }
+
+    private Result<string> LoadComponentConfigFile(Type componentEditorType)
+    {
+        var editor = _serviceProvider.GetRequiredService(componentEditorType) as IComponentEditor;
+        if (editor is null)
+        {
+            return Result<string>.Fail($"Failed to instantiate component editor type: '{componentEditorType}'");
+        }
+        string configPath = editor.ComponentConfigPath;
+
+        // Load the component config JSON from an embedded resource
+        var assembly = componentEditorType.Assembly;
+        var stream = assembly.GetManifestResourceStream(configPath);
+        if (stream is null)
+        {
+            return Result<string>.Fail($"Embedded resource not found: '{configPath}'");
+        }
+
+        var json = string.Empty;
+        try
+        {
+            using (stream)
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                json = reader.ReadToEnd();
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"An exception occurred when reading content of embedded resource: {configPath}")
+                .WithException(ex);
+        }
+
+        return Result<string>.Ok(json);
     }
 }

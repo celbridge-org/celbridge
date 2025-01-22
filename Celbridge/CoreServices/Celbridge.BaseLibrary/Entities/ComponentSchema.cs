@@ -9,7 +9,7 @@ public record ComponentSchema(
     IReadOnlySet<string> Tags,
     IReadOnlyDictionary<string, string> Attributes, 
     IReadOnlyList<ComponentPropertyInfo> Properties,
-    IComponentDescriptor Descriptor)
+    string FormJson) // Todo: Move this to FormRegistry
 {
     /// <summary>
     /// Returns true if the component type has the specified tag.

@@ -48,15 +48,17 @@ public class ComponentProxyService
 
         if (propertyPath == "/")
         {
+            // Remove the proxy from caches.
             if (_componentCache.TryGetValue(resource, out var indexCache))
             {
-                // Invalidate all proxies in the index cache before removing them.
-                // If a client is holding a reference to a proxy, they can check if it is valid before using it.
+                // Invalidate all proxies in the index cache before clearing the cache.
                 foreach (var proxy in indexCache.Values)
                 {
-                    proxy.IsValid = false;
+                    // Just to be safe, the proxy also listens for the same event and invalidates itself.
+                    proxy.Invalidate();
                 }
             }
+
             _componentCache.Remove(resource);
             _componentListCache.Remove(resource);
         }
