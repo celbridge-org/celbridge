@@ -15,6 +15,8 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class ComponentListViewModel : InspectorViewModel
 {
+    private const string EmptyComponentType = ".Empty";
+
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -144,7 +146,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         var executeResult = await _commandService.ExecuteAsync<IAddComponentCommand>(command => 
         {
             command.ComponentKey = new ComponentKey(Resource, addIndex);
-            command.ComponentType = "Empty";
+            command.ComponentType = EmptyComponentType;
         });
 
         if (executeResult.IsFailure)
@@ -373,9 +375,18 @@ public partial class ComponentListViewModel : InspectorViewModel
             }
             var componentType = getTypeResult.Value;
 
-            if (componentType == "Empty")
+            if (componentType == EmptyComponentType)
             {
                 componentType = string.Empty;
+            }
+            else
+            {
+                // Remove the namespace part of the component type
+                var dotIndex = componentType.LastIndexOf('.');
+                if (dotIndex >= 0)
+                {
+                    componentType = componentType.Substring(dotIndex + 1);
+                }
             }
 
             var componentItem = new ComponentItem
