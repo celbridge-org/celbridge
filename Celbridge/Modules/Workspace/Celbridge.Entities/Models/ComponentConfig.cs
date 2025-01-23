@@ -1,4 +1,6 @@
+using Celbridge.Core;
 using Celbridge.Entities.Services;
+using Celbridge.Forms;
 using Json.More;
 using Json.Pointer;
 using Json.Schema;
@@ -136,17 +138,29 @@ public class ComponentConfig
                 }
             }
 
-            var formJson = string.Empty;
+            // Register the form (if one is specified)
+
             if (root.TryGetProperty(FormKey, out JsonElement formElement))
             { 
                 if (formElement.ValueKind != JsonValueKind.Array)
                 {
                     return Result<ComponentConfig>.Fail("Form json does not contain an array of form elements");
                 }
-                formJson = formElement.ToJsonString();
-            }            
+                var formJson = formElement.ToJsonString();
 
-            var componentSchema = new ComponentSchema(componentType, componentVersion, componentTags, componentAttributes, componentProperties, formJson);
+                var serviceProvider = ServiceLocator.ServiceProvider;
+                var formService = serviceProvider.GetRequiredService<IFormService>();
+                var formResult = formService.RegisterForm(componentType, formJson, FormScope.Workspace);
+                if (formResult.IsFailure)
+                {
+                    return Result<ComponentConfig>.Fail($"Failed to register form for component type: {componentType}")
+                        .WithErrors(formResult);
+                }
+            }
+
+            // Build the component schema
+
+            var componentSchema = new ComponentSchema(componentType, componentVersion, componentTags, componentAttributes, componentProperties);
 
             // Construct the prototype element
 
