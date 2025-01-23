@@ -3,14 +3,13 @@
   "additionalProperties": false,
 
   "attributes": {
-    "tags": [ "Screenplay" ],
     "allowMultipleComponents": true
   },
 
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Line#1"
+      "const": "Screenplay.Line#1"
     },
     "dialogueKey": {
       "type": "string"

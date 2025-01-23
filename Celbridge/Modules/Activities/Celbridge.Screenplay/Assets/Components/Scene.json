@@ -2,14 +2,12 @@
   "type": "object",
   "additionalProperties": false,
 
-  "attributes": {
-    "tags": [ "Screenplay" ]
-  },
+  "attributes": {},
 
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Scene#1"
+      "const": "Screenplay.Scene#1"
     },
     "sceneTitle": {
       "type": "string"

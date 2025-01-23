@@ -2,14 +2,12 @@
   "type": "object",
   "additionalProperties": false,
 
-  "attributes": {
-    "tags": [ "Markdown" ]
-  },
+  "attributes": {},
 
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Markdown#1"
+      "const": "Markdown.Markdown#1"
     },
     "editorMode": {
       "type": "string",

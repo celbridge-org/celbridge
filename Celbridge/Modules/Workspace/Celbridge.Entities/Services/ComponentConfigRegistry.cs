@@ -57,22 +57,24 @@ public class ComponentConfigRegistry
                     return Result.Fail($"Component editor name does not end with 'Editor': '{editorKey}'");
                 }
 
-                // Remove trailing "Editor" from editor key to form the component type
-                var componentType = editorKey[..^6];
+                var configComponentType = config.ComponentType;
 
-                if (componentType != config.ComponentType)
+                // Sanity check that the component type matches the editor type
+                // This doesn't account for component namespaces, that would require an attribute on the editor class.
+                var editorComponentType = editorKey[..^6];
+                if (!configComponentType.EndsWith($".{editorComponentType}"))
                 {
                     return Result.Fail($"Component type does not match type defined in schema: '{editorKey}'");
                 }
 
-                if (_componentConfigs.ContainsKey(componentType))
+                if (_componentConfigs.ContainsKey(configComponentType))
                 {
-                    return Result.Fail($"Component config already exists: '{componentType}'");
+                    return Result.Fail($"Component config already exists: '{configComponentType}'");
                 }
 
                 // Register the config
 
-                _componentConfigs[componentType] = config;
+                _componentConfigs[configComponentType] = config;
             }
 
             return Result.Ok();

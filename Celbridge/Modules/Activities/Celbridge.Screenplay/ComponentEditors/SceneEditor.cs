@@ -4,7 +4,7 @@ namespace Celbridge.Screenplay.Components;
 
 public class SceneEditor : ComponentEditorBase
 {
-    public const string ComponentType = "Scene";
+    public const string ComponentType = "Screenplay.Scene";
     public const string SceneTitle = "/sceneTitle";
     public const string SceneDescription = "/sceneDescription";
 

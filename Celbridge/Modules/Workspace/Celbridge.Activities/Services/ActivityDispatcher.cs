@@ -10,6 +10,8 @@ namespace Celbridge.Activities.Services;
 
 public class ActivityDispatcher
 {
+    private const string EmptyComponentType = ".Empty";
+
     private readonly ILogger<ActivityDispatcher> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
@@ -149,7 +151,7 @@ public class ActivityDispatcher
                 // Todo: Remove this once the Empty component handles displaying the comment property
                 foreach (var component in components)
                 {
-                    if (component.Schema.ComponentType == "Empty")
+                    if (component.Schema.ComponentType == EmptyComponentType)
                     {
                         AnnotateEmptyComponent(component);
                     }

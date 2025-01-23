@@ -12,6 +12,8 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class TextEditorDocumentViewModel : ObservableObject
 {
+    private const string MarkdownComponentType = "Markdown.Markdown";
+
     private readonly ILogger<TextEditorDocumentViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
@@ -87,7 +89,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
         if (message.ComponentKey.Resource == _fileResource &&
-            message.ComponentType == "Markdown" &&
+            message.ComponentType == MarkdownComponentType &&
             message.PropertyPath == MarkdownComponentConstants.EditorMode)
         {
             UpdateEditorMode();
@@ -100,7 +102,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
         {
             EditorMode editorMode;
 
-            var getComponentResult = _entityService.GetComponentOfType(_fileResource, "Markdown");
+            var getComponentResult = _entityService.GetComponentOfType(_fileResource, MarkdownComponentType);
             if (getComponentResult.IsSuccess)
             {
                 // Get the editor mode from the markdown component.

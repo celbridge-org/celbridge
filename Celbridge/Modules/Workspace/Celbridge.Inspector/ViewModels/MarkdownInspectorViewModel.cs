@@ -12,7 +12,7 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class MarkdownInspectorViewModel : InspectorViewModel
 {
-    private const string MarkdownComponent = "Markdown";
+    private const string MarkdownComponentType = "Markdown.Markdown";
 
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
@@ -49,7 +49,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
         if (message.ComponentKey.Resource == Resource &&
-            message.ComponentType == MarkdownComponent &&
+            message.ComponentType == MarkdownComponentType &&
             message.PropertyPath == MarkdownComponentConstants.EditorMode)
         {
             UpdateButtonState();
@@ -96,7 +96,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
     private void SetEditorMode(EditorMode editorMode)
     {
         // Get the component
-        var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponent);
+        var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponentType);
         if (getComponentResult.IsFailure)
         {
             _logger.LogError(getComponentResult.Error);
@@ -117,7 +117,7 @@ public partial class MarkdownInspectorViewModel : InspectorViewModel
         try
         {
             // Get the component
-            var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponent);
+            var getComponentResult = _entityService.GetComponentOfType(Resource, MarkdownComponentType);
             if (getComponentResult.IsFailure)
             {
                 _logger.LogError(getComponentResult.Error);

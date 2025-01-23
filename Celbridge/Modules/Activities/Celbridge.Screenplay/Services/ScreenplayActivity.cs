@@ -13,6 +13,8 @@ namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayActivity : IActivity
 {
+    private const string EmptyComponentType = ".Empty";
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScreenplayActivity> _logger;
     private readonly ICommandService _commandService;
@@ -96,7 +98,7 @@ public class ScreenplayActivity : IActivity
 
             var schema = component.Schema;
 
-            if (schema.ComponentType == "Empty")
+            if (schema.ComponentType == EmptyComponentType)
             {
                 // Ignore empty components
                 continue;

@@ -9,7 +9,7 @@
   "properties": {
     "_componentType": {
       "type": "string",
-      "const": "Empty#1"
+      "const": ".Empty#1"
     },
     "comment": {
       "type": "string"

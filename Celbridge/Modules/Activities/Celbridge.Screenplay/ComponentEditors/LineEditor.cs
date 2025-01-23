@@ -4,7 +4,7 @@ namespace Celbridge.Screenplay.Components;
 
 public class LineEditor : ComponentEditorBase
 {
-    public const string ComponentType = "Line";
+    public const string ComponentType = "Screenplay.Line";
     public const string Character = "/character";
     public const string SourceText = "/sourceText";
 
