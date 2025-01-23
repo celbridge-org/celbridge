@@ -28,7 +28,9 @@ public static class ServiceConfiguration
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<MainMenuUtils>();
-        services.AddTransient<IFormBuilder, FormBuilder>();
+        services.AddSingleton<IFormService, FormService>();
+        services.AddTransient<FormRegistry>();
+        services.AddTransient<FormBuilder>();
 
         //
         // Register view models
