@@ -1,5 +1,4 @@
 using Celbridge.Entities;
-using Celbridge.Inspector.Models;
 using Celbridge.Inspector.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -19,7 +18,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
 
     private bool _pendingRefresh;
 
-    public event Action<List<IField>>? OnFormCreated;
+    public event Action<List<UIElement>>? OnFormCreated;
 
     public ComponentValueEditorViewModel(
         ILogger<ComponentValueEditorViewModel> logger,
@@ -68,7 +67,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
     private void ClearPropertyList()
     {
         ComponentType = string.Empty;
-        OnFormCreated?.Invoke(new List<IField>());
+        OnFormCreated?.Invoke(new List<UIElement>());
     }
 
     private void PopulatePropertyList()
@@ -77,8 +76,6 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             _inspectorService.InspectedResource, 
             _inspectorService.InspectedComponentIndex);
  
-        List<IField> propertyFields = new();
-
         if (componentKey.Resource.IsEmpty ||
             componentKey.ComponentIndex < 0)
         {
@@ -127,30 +124,18 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             _logger.LogError($"Failed to create component editor view for component type: '{ComponentType}'");
             return;
         }
-        var editorView = createViewResult.Value as UIElement;
+        var uiElement = createViewResult.Value as UIElement;
 
-        if (editorView is not null)
+        if (uiElement is not null)
         {
-            // Todo: Display the XAML control in the Inspector panel properly, and remove the field system
-            var field = new Field(editorView)
-    ;       propertyFields.Add(field);
-        }
-
-
-        // Construct the form by adding property fields one by one.
-        foreach (var property in component.Schema.Properties)
-        {
-            var createResult = _inspectorService.FieldFactory.CreatePropertyField(component, property.PropertyName);
-            if (createResult.IsFailure)
-            {
-                _logger.LogError($"Failed to create field for property '{property.PropertyName}' for component '{componentKey}'");
-                continue;
-            }
-            var field = createResult.Value;
-
-            propertyFields.Add(field);
-        }
-
-        OnFormCreated?.Invoke(propertyFields);
+            // Display the form UI in the inspector panel
+            // Using a list here avoids having to pass a nullable parameter to clear the list. Also handy if
+            // we want to insert additional UI elements in the future.
+            var uiElements = new List<UIElement>() 
+            { 
+                uiElement 
+            };
+            OnFormCreated?.Invoke(uiElements);
+        }    
     }
 }

@@ -3,12 +3,15 @@ using Celbridge.Logging;
 using Celbridge.UserInterface.ViewModels.Forms;
 using Microsoft.UI.Text;
 using System.Text.Json;
+using Windows.System;
 using Windows.UI.Text;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
 public class FormBuilder : IFormBuilder
 {
+    private const int DefaultStackPanelSpacing = 8;
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<FormBuilder> _logger;
 
@@ -33,7 +36,8 @@ public class FormBuilder : IFormBuilder
         var rootPanel = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            DataContext = formDataProvider
+            DataContext = formDataProvider,
+            Spacing = DefaultStackPanelSpacing
         };
 
         try
@@ -139,6 +143,16 @@ public class FormBuilder : IFormBuilder
     {
         var stackPanel = new StackPanel();
 
+        // Set the spacing between elements
+        if (jsonElement.TryGetProperty("spacing", out var spacing))
+        {
+            stackPanel.Spacing = spacing.GetInt32();
+        }
+        else
+        {
+            stackPanel.Spacing = DefaultStackPanelSpacing;
+        }
+
         // Set the orientation
         if (jsonElement.TryGetProperty("orientation", out var orientation))
         {
@@ -180,6 +194,8 @@ public class FormBuilder : IFormBuilder
     private TextBox? CreateTextBox(JsonElement jsonElement)
     {
         var textBox = new TextBox();
+
+        textBox.TextWrapping = TextWrapping.Wrap;
 
         if (!ApplyAlignmentConfig(textBox, jsonElement))
         {
@@ -226,6 +242,22 @@ public class FormBuilder : IFormBuilder
         {
             ApplyBinding<StringPropertyViewModel>(textBox, TextBox.TextProperty, BindingMode.TwoWay, propertyPath);
         }
+
+        textBox.KeyDown += (sender, e) =>
+        {
+            if (e.Key == VirtualKey.Enter)
+            {
+                // Pressing enter moves focus to next focusable element
+                var options = new FindNextElementOptions
+                {
+                    SearchRoot = ((UIElement)sender).XamlRoot!.Content
+                };
+
+                FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
+
+                e.Handled = true;
+            }
+        };
 
         return textBox;
     }
