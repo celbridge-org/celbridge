@@ -109,6 +109,17 @@ public class ComponentConfig
                 }
             }
 
+            // Add the component namespace as a tag for convenience
+            var dotIndex = componentType.LastIndexOf('.');
+            if (dotIndex > 0)
+            {
+                var componentNamespace = componentType.Substring(0, dotIndex);
+                if (!string.IsNullOrEmpty(componentNamespace))
+                {
+                    componentTags.Add(componentNamespace);
+                }
+            }
+
             // Get the component properties
 
             var componentProperties = new List<ComponentPropertyInfo>();

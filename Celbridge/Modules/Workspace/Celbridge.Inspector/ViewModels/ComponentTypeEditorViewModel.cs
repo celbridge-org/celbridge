@@ -85,11 +85,14 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         {
             // Add component types that start with the input text first.
             // These should appear at the top of the list.
-            foreach (var name in componentTypes)
+            foreach (var componentType in componentTypes)
             {
-                if (name.StartsWith(inputText, StringComparison.InvariantCultureIgnoreCase))
+                var dotIndex = componentType.IndexOf('.');
+                var unqualifiedComponentType = componentType.Substring(dotIndex);
+
+                if (unqualifiedComponentType.StartsWith(inputText, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    filteredList.Add(name);
+                    filteredList.Add(componentType);
                 }
             }
 
@@ -99,11 +102,14 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
             // Todo: Remove any component types that don't allow multiples of the same type (if there's already an instance)
 
             // Now add any remaining component types that contain the input text
-            foreach (var name in componentTypes)
+            foreach (var componentType in componentTypes)
             {
-                if (name.Contains(inputText, StringComparison.InvariantCultureIgnoreCase))
+                var dotIndex = componentType.IndexOf('.');
+                var unqualifiedComponentType = componentType.Substring(dotIndex);
+
+                if (unqualifiedComponentType.Contains(inputText, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    filteredList.Add(name);
+                    filteredList.Add(componentType);
                 }
             }
         }
