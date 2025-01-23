@@ -230,12 +230,10 @@ public static class EntityUtils
         var (componentObject, componentConfig) = getComponentResult.Value;
 
         // Validate the component against its schema
-
-        var validateResult = componentConfig.ValidateJsonObject(componentObject);
-        if (validateResult.IsFailure)
+        var validationResult = componentConfig.JsonSchema.Evaluate(componentObject);
+        if (!validationResult.IsValid)
         {
-            return Result.Fail($"Component is not valid against its schema at index {componentIndex}")
-                .WithErrors(validateResult);
+            return Result.Fail($"Component is not valid against its schema at index {componentIndex}");
         }
 
         return Result.Ok();
