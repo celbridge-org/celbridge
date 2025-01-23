@@ -8,7 +8,7 @@ using Windows.UI.Text;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
-public class FormBuilder : IFormBuilder
+public class FormBuilder
 {
     private const int DefaultStackPanelSpacing = 8;
 
@@ -28,12 +28,12 @@ public class FormBuilder : IFormBuilder
         _logger = logger;
     }
 
-    public Result<object> BuildForm(string formName, string formConfig, IFormDataProvider formDataProvider)
+    public Result<object> BuildForm(string formName, JsonElement formConfig, IFormDataProvider formDataProvider)
     {
         _formDataProvider = formDataProvider;
         _buildErrors.Clear();
 
-        var rootPanel = new StackPanel
+        var formPanel = new StackPanel
         {
             Orientation = Orientation.Vertical,
             DataContext = formDataProvider,
@@ -42,10 +42,7 @@ public class FormBuilder : IFormBuilder
 
         try
         {
-            using var document = JsonDocument.Parse(formConfig);
-            var rootArray = document.RootElement;
-
-            foreach (var jsonElement in rootArray.EnumerateArray())
+            foreach (var jsonElement in formConfig.EnumerateArray())
             {
                 var uiElement = CreateUIElementFromJsonElement(jsonElement);
                 if (uiElement is null)
@@ -54,7 +51,7 @@ public class FormBuilder : IFormBuilder
                     continue;
                 }
 
-                rootPanel.Children.Add(uiElement);
+                formPanel.Children.Add(uiElement);
             }
 
         }
@@ -83,16 +80,16 @@ public class FormBuilder : IFormBuilder
         }
         _formDataProvider = null;
 
-        rootPanel.Unloaded += (s, e) =>
+        formPanel.Unloaded += (s, e) =>
         {
-            var formDataProvider = rootPanel.DataContext as IFormDataProvider;
+            var formDataProvider = formPanel.DataContext as IFormDataProvider;
             if (formDataProvider is not null)
             {
                 formDataProvider.OnFormUnloaded();
             }
         };
 
-        return Result<object>.Ok(rootPanel);
+        return Result<object>.Ok(formPanel);
     }
 
     private UIElement? CreateUIElementFromJsonElement(JsonElement jsonElement)

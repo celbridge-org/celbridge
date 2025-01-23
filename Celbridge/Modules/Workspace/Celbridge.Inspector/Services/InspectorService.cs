@@ -18,6 +18,7 @@ public class InspectorService : IInspectorService, IDisposable
     private readonly ILogger<InspectorService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
+    private readonly IFormService _formService;
 
     private IInspectorPanel? _inspectorPanel;
     public IInspectorPanel InspectorPanel => _inspectorPanel!;
@@ -49,17 +50,20 @@ public class InspectorService : IInspectorService, IDisposable
     public InspectorService(
         IServiceProvider serviceProvider,
         ILogger<InspectorService> logger,
-        IMessengerService messengerService)
+        IMessengerService messengerService,
+        IFormService formService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
+        _formService = formService;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
         _messengerService.Register<SelectedComponentChangedMessage>(this, OnSelectedComponentChangedMessage);
 
         InspectorFactory = _serviceProvider.GetRequiredService<IInspectorFactory>();
+        _formService = formService;
     }
 
     public async Task<Result> UpdateAsync()
@@ -77,27 +81,18 @@ public class InspectorService : IInspectorService, IDisposable
     {
         Guard.IsNotNull(componentEditor.Component);
 
-        var formBuilder = _serviceProvider.GetRequiredService<IFormBuilder>();
+        // The registered form name is just the component type
+        var formName = componentEditor.Component.Schema.ComponentType;
 
-        var formJson = componentEditor.Component.Schema.FormJson;
-        if (!string.IsNullOrEmpty(formJson))
+        var buildResult = _formService.CreateForm(formName, componentEditor);
+        if (buildResult.IsFailure)
         {
-            // The form name helps when debugging problems with the form configuration
-            var formName = componentEditor.Component.Schema.ComponentType;
-
-            var buildResult = formBuilder.BuildForm(formName, formJson, componentEditor);
-            if (buildResult.IsFailure)
-            {
-                return Result<object>.Fail($"Failed to build form for component type: '{formName}'")
-                    .WithErrors(buildResult);
-            }
-            var uiElement = buildResult.Value;
-
-            return Result<object>.Ok(uiElement);
+            return Result<object>.Fail($"Failed to build form for component type: '{formName}'")
+                .WithErrors(buildResult);
         }
+        var uiElement = buildResult.Value;
 
-        // No component editor defined for this component
-        return Result<object>.Fail();
+        return Result<object>.Ok(uiElement);
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
