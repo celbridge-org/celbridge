@@ -27,26 +27,11 @@
 
   "form": [
     {
-      "element": "StackPanel",
-      "orientation": "Horizontal",
-      "children": [
-        {
-          "element": "TextBox",
-          "header": "Comment",
-          "textBinding": "/comment",
-          "placeholder": "Enter a note",
-          "checkSpelling": false
-        },
-        {
-          "element": "TextBlock",
-          "textBinding": "/comment"
-        },
-        {
-          "element": "Button",
-          "text": "Clear",
-          "command": "Clear"
-        }
-      ]
+      "element": "TextBox",
+      "header": "Comment",
+      "textBinding": "/comment",
+      "placeholder": "Enter a comment",
+      "checkSpelling": false
     }
   ]
 }

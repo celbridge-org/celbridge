@@ -15,7 +15,6 @@ public static class ServiceConfiguration
 
         config.AddTransient<IInspectorService, InspectorService>();
         config.AddTransient<IInspectorFactory, InspectorFactory>();
-        config.AddTransient<IFieldFactory, FieldFactory>();
 
         //
         // Register views
@@ -35,7 +34,6 @@ public static class ServiceConfiguration
         config.AddTransient<EntityEditorViewModel>();
         config.AddTransient<ComponentValueEditorViewModel>();
         config.AddTransient<ComponentTypeEditorViewModel>();
-        config.AddTransient<StringFieldViewModel>();
     }
 
     public static Result Initialize()

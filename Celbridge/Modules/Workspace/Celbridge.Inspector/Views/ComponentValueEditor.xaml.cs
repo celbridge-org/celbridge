@@ -19,15 +19,11 @@ public sealed partial class ComponentValueEditor : UserControl
         ViewModel.OnFormCreated += ViewModel_OnFormCreated;
     }
 
-    private void ViewModel_OnFormCreated(List<IField> fields)
+    private void ViewModel_OnFormCreated(List<UIElement> uiElements)
     {
         FormPanel.Children.Clear();
-
-        foreach (var field in fields)
+        foreach (var uiElement in uiElements)
         {
-            var uiElement = field.UIElement as UIElement;
-            Guard.IsNotNull(uiElement);
-
             FormPanel.Children.Add(uiElement);
         }
     }

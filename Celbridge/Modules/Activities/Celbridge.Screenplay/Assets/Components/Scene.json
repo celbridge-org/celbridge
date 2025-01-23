@@ -28,5 +28,18 @@
   "prototype": {
     "sceneTitle": "",
     "sceneDescription": ""
-  }
+  },
+
+  "form": [
+    {
+      "element": "TextBox",
+      "header": "Scene Title",
+      "textBinding": "/sceneTitle"
+    },
+    {
+      "element": "TextBox",
+      "header": "Scene Description",
+      "textBinding": "/sceneDescription"
+    }
+  ]
 }    
