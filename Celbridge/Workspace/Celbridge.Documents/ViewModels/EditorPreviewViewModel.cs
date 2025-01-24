@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 using Path = System.IO.Path;

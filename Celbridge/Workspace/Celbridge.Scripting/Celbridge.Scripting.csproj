@@ -24,7 +24,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
     <PackageReference Include="Newtonsoft.Json" />
     <!-- .Net Interactive-->
     <PackageReference Include="Microsoft.DotNet.Interactive" />

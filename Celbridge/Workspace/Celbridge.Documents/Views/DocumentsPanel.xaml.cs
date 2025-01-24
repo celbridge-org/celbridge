@@ -1,5 +1,4 @@
 using Celbridge.Documents.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;

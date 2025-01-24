@@ -11,7 +11,6 @@ using Celbridge.Projects;
 using Celbridge.Scripting;
 using Celbridge.Settings;
 using Celbridge.Status;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Workspace.Services;
 

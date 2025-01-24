@@ -7,15 +7,17 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
 
     <UnoFeatures>
       Hosting;
     </UnoFeatures>
 
   </PropertyGroup>
-  
+
+  <!-- Modules manage their own package dependency versions -->
   <ItemGroup>
-    <PackageReference Include="Markdig" />
+    <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>
 
   <ItemGroup>
