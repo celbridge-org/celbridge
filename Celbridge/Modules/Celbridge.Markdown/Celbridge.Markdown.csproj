@@ -8,11 +8,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-
-    <UnoFeatures>
-      Hosting;
-    </UnoFeatures>
-
   </PropertyGroup>
 
   <!-- Modules manage their own package dependency versions -->
