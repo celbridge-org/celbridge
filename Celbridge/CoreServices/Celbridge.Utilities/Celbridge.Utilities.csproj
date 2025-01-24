@@ -28,7 +28,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\CoreServices\Celbridge.BaseLibrary\Celbridge.BaseLibrary.csproj" />
+		<ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
 	</ItemGroup>
   
 </Project>

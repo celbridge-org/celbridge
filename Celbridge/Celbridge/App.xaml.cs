@@ -1,6 +1,5 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
-using Celbridge.Foundation;
 using Celbridge.Modules.Services;
 using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
@@ -105,13 +104,19 @@ public partial class App : Application
                     // Note: When we add multi-window support, this will need to change to support multiple dispatchers.
                     services.AddSingleton<IDispatcher>(new Dispatcher(MainWindow!));
 
-                    // Configure all core services
-                    ConfigureCoreServices(services);
+                    // Configure all application services
+                    ConfigureServices(services);
 
                     // Load modules and configure module services
+                    // Modules extend the application with additional functionality. The goal is to eventually allow users to create their
+                    // own modules and share them with others. There are security implications to this, so users will need to opt-in to use
+                    // modules from untrusted sources. The core set of modules shipped with the application will be trusted by default.
+                    // Modules must only depend on the Celbridge.BaseLibrary project, and may not depend on other modules.
+                    // Modules may use Nuget packages
                     var modules = new List<string>() 
-                    { 
-                        "Celbridge.Workspace",
+                    {
+                        "Celbridge.Core",
+                        "Celbridge.Markdown",
                         "Celbridge.Screenplay",
                     };
                     ModuleService.LoadModules(modules, services);
@@ -246,10 +251,9 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
-    public static void ConfigureCoreServices(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services)
     {
         Commands.ServiceConfiguration.ConfigureServices(services);
-        Extensions.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
         Modules.ServiceConfiguration.ConfigureServices(services);
@@ -258,11 +262,13 @@ public partial class App : Application
         Telemetry.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
+        Workspace.ServiceConfiguration.ConfigureServices(services);
     }
 
     private void InitializeCoreServices()
     {
         UserInterface.ServiceConfiguration.Initialize();
+        Workspace.ServiceConfiguration.Initialize();
     }
 
     private void OnUnhandledException(object sender, System.UnhandledExceptionEventArgs e)

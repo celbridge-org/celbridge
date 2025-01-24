@@ -1,5 +1,3 @@
-using Celbridge.Foundation;
-
 namespace Celbridge.Tests;
 
 [TestFixture]
