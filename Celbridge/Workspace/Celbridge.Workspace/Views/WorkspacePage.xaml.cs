@@ -1,7 +1,6 @@
 using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;

@@ -1,5 +1,4 @@
 using Celbridge.Inspector.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Windows.System;
 

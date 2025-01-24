@@ -1,7 +1,6 @@
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using System.Collections.ObjectModel;

@@ -1,6 +1,5 @@
-﻿using Celbridge.Settings;
+using Celbridge.Settings;
 using Celbridge.Settings.Services;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;

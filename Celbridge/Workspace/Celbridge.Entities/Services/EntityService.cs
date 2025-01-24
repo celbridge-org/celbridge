@@ -1,11 +1,9 @@
-using Celbridge.Core;
 using Celbridge.Entities.Models;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Json.More;
 using Json.Patch;
 using Json.Pointer;

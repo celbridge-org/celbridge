@@ -1,7 +1,6 @@
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Inspector.Views;

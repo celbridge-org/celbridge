@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Commands;
 

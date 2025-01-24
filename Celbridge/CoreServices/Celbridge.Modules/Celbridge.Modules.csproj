@@ -24,10 +24,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 

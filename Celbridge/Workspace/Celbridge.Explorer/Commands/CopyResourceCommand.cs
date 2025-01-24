@@ -5,7 +5,6 @@ using Celbridge.Projects;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Commands;
