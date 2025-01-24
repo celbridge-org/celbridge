@@ -5,7 +5,6 @@ using Celbridge.Messaging;
 using Celbridge.Scripting;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Newtonsoft.Json;

@@ -1,6 +1,5 @@
 using Celbridge.Workspace;
 using Celbridge.Workspace.Services;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Tests;
 

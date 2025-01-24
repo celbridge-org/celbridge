@@ -3,7 +3,6 @@ using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace.Services;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;

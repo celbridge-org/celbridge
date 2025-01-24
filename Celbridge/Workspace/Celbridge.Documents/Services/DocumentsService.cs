@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 using Path = System.IO.Path;
 

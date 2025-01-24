@@ -1,5 +1,4 @@
-﻿using Celbridge.Explorer.Models;
-using CommunityToolkit.Diagnostics;
+using Celbridge.Explorer.Models;
 
 namespace Celbridge.Explorer.Views;
 

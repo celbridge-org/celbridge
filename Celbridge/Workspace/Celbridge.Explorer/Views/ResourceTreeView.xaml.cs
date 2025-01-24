@@ -1,5 +1,4 @@
 using Celbridge.Explorer.ViewModels;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using Windows.ApplicationModel.DataTransfer;

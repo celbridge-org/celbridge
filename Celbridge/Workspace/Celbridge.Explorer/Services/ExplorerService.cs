@@ -6,7 +6,6 @@ using Celbridge.UserInterface;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Explorer.Services;
 
@@ -194,7 +193,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
                     // Sanity check that the generated sourceResource matches the original source path
                     var checkSourcePath = ResourceRegistry.GetResourcePath(sourceResource);
-                    Guard.IsEqualTo(sourcePath, checkSourcePath);
+                    Guard.IsTrue(sourcePath == checkSourcePath);
 
                     var destResource = ResourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
 

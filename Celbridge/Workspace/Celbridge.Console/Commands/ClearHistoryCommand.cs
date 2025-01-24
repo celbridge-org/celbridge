@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console.Views;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Console;
 

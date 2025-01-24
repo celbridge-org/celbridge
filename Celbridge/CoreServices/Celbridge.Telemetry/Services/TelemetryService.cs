@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Utilities;
-using CommunityToolkit.Diagnostics;
 using CountlySDK.Entities;
 using CountlySDK;
 using Newtonsoft.Json;

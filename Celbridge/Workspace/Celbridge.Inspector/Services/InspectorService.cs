@@ -4,7 +4,6 @@ using Celbridge.Forms;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 
 namespace Celbridge.Inspector.Services;
 

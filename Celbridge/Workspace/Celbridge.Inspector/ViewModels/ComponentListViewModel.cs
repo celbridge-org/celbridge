@@ -5,7 +5,6 @@ using Celbridge.Inspector.Models;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;

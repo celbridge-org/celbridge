@@ -4,7 +4,6 @@ using Celbridge.Logging.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging.Services;
 using Celbridge.Messaging;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;

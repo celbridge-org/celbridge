@@ -2,7 +2,6 @@ using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;

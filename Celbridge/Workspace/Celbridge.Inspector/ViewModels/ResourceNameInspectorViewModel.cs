@@ -1,9 +1,7 @@
 using Celbridge.Explorer;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 

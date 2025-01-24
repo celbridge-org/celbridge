@@ -1,9 +1,7 @@
-using Celbridge.Core;
 using Celbridge.Entities.Models;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using Json.Schema;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;

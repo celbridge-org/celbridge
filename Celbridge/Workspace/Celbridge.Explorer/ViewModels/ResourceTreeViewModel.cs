@@ -4,7 +4,6 @@ using Celbridge.Documents;
 using Celbridge.Explorer.Services;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using CommunityToolkit.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Explorer.ViewModels;
