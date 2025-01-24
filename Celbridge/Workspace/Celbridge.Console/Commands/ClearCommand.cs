@@ -37,7 +37,8 @@ public class ClearCommand : CommandBase, IClearCommand
 
     public static void Clear()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IClearCommand>();
     }
 }

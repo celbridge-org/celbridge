@@ -36,7 +36,8 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     //
     public static void SelectResource(ResourceKey resource, bool showExplorerPanel)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ISelectResourceCommand>(command =>
         {
             command.Resource = resource;

@@ -81,7 +81,8 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     public static void CopyResourceToClipboard(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;
@@ -91,7 +92,8 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     public static void CutResourceToClipboard(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResource = resource;

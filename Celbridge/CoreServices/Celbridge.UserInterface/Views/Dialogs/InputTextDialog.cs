@@ -29,14 +29,12 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
     public InputTextDialog()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-
-        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
-        ViewModel = serviceProvider.GetRequiredService<InputTextDialogViewModel>();
+        ViewModel = ServiceLocator.AcquireService<InputTextDialogViewModel>();
 
         _inputTextbox = new TextBox()
             .Header

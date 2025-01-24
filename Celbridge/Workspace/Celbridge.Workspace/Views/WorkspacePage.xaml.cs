@@ -18,11 +18,10 @@ public sealed partial class WorkspacePage : Page
     {
         InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<WorkspacePageViewModel>();
+        ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
-        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         ApplyPanelButtonTooltips();
 
@@ -96,8 +95,7 @@ public sealed partial class WorkspacePage : Page
         // Populate the workspace panels.
         //
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 

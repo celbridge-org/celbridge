@@ -63,7 +63,8 @@ public class PrintCommand : CommandBase, IPrintCommand
     private static void Print(MessageType messageType, object message)
     {
         var messageText = message.ToString() ?? string.Empty;
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IPrintCommand>(command =>
         {
             command.Message = messageText;

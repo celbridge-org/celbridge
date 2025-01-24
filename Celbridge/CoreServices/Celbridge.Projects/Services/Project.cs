@@ -42,8 +42,7 @@ public class Project : IDisposable, IProject
 
         try
         {
-            var serviceProvider = ServiceLocator.ServiceProvider;
-            var project = serviceProvider.GetRequiredService<IProject>() as Project;
+            var project = ServiceLocator.AcquireService<IProject>() as Project;
             Guard.IsNotNull(project);
 
             project.PopulatePaths(projectFilePath);
@@ -54,7 +53,7 @@ public class Project : IDisposable, IProject
 
             var configJson = File.ReadAllText(projectFilePath);
 
-            var projectConfig = serviceProvider.GetRequiredService<IProjectConfig>() as ProjectConfig;
+            var projectConfig = ServiceLocator.AcquireService<IProjectConfig>() as ProjectConfig;
             Guard.IsNotNull(projectConfig);
 
             var initResult = projectConfig.Initialize(configJson);
@@ -104,7 +103,7 @@ public class Project : IDisposable, IProject
             var projectPath = Path.GetDirectoryName(projectFilePath);
             Guard.IsNotNull(projectPath);
 
-            var projectDataFolderPath = Path.Combine(projectPath, FileNameConstants.ProjectDataFolder);
+            var projectDataFolderPath = Path.Combine(projectPath, ProjectConstants.ProjectDataFolder);
 
             if (!Directory.Exists(projectDataFolderPath))
             {
@@ -133,7 +132,7 @@ public class Project : IDisposable, IProject
         _projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
         Guard.IsNotNullOrWhiteSpace(ProjectFolderPath);
 
-        _projectDataFolderPath = Path.Combine(ProjectFolderPath, FileNameConstants.ProjectDataFolder);
+        _projectDataFolderPath = Path.Combine(ProjectFolderPath, ProjectConstants.ProjectDataFolder);
     }
 
     private bool _disposed = false;

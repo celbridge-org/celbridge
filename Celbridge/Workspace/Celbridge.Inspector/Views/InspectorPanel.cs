@@ -19,14 +19,13 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     public InspectorPanel()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _logger = serviceProvider.GetRequiredService<ILogger<InspectorPanel>>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _logger = ServiceLocator.AcquireService<ILogger<InspectorPanel>>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
-        ViewModel = serviceProvider.GetRequiredService<InspectorPanelViewModel>();
+        ViewModel = ServiceLocator.AcquireService<InspectorPanelViewModel>();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         var titleBar = new Grid()

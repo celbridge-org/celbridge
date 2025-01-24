@@ -1,3 +1,4 @@
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using Celbridge.Workspace.Services;
 
@@ -39,7 +40,7 @@ public class WorkspaceSettingsTests
         Guard.IsNotNull(_workspaceSettingsService);
         Guard.IsNotNullOrEmpty(_workspaceFolderPath);
 
-        var databaseFilePath = Path.Combine(_workspaceFolderPath, FileNameConstants.WorkspaceSettingsFile);
+        var databaseFilePath = Path.Combine(_workspaceFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
         var createResult = await _workspaceSettingsService.CreateWorkspaceSettingsAsync(databaseFilePath);
         createResult.IsSuccess.Should().BeTrue();

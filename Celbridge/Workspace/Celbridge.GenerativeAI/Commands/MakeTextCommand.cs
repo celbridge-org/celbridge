@@ -65,7 +65,8 @@ public class MakeTextCommand : CommandBase, IMakeTextCommand
 
     public static void MakeText(ResourceKey destFileResource, string prompt)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IMakeTextCommand>(command =>
         {
             command.DestFileResource = destFileResource;

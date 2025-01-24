@@ -115,7 +115,11 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
     public static void LoadProject(string projectFilePath)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<ILoadProjectCommand>(command => command.ProjectFilePath = projectFilePath);
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<ILoadProjectCommand>(command =>
+        {
+            command.ProjectFilePath = projectFilePath;
+        });
     }
 }

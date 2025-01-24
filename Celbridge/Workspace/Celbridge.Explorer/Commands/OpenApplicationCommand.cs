@@ -34,7 +34,8 @@ public class OpenApplicationCommand : CommandBase, IOpenApplicationCommand
 
     public static void OpenApplication(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IOpenApplicationCommand>(command =>
         {
             command.Resource = resource;

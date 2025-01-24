@@ -34,7 +34,8 @@ public class OpenBrowserCommand : CommandBase, IOpenBrowserCommand
 
     public static void OpenBrowser(string url)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IOpenBrowserCommand>(command =>
         {
             command.URL = url;

@@ -365,7 +365,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private static void CopyResourceInternal(ResourceKey sourceResource, ResourceKey destResource, DataTransferMode operation)
     {
         // Execute the copy resource command
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICopyResourceCommand>(command =>
         {
             command.SourceResource = sourceResource;

@@ -1,3 +1,4 @@
+using Celbridge.Projects;
 using Celbridge.UserInterface.Models;
 using Celbridge.UserInterface.ViewModels.Pages;
 
@@ -20,10 +21,9 @@ public sealed partial class HomePage : Page
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<HomePageViewModel>();
+        ViewModel = ServiceLocator.AcquireService<HomePageViewModel>();
 
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
     }
 
     private void RecentProjectButton_Click(object sender, RoutedEventArgs e)
@@ -37,7 +37,7 @@ public sealed partial class HomePage : Page
             return;
         }
 
-        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, $"{recentProject.ProjectName}{FileNameConstants.ProjectFileExtension}");
+        var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, $"{recentProject.ProjectName}{ProjectConstants.ProjectFileExtension}");
         ViewModel.OpenProject(projectFilePath);
     }
 }

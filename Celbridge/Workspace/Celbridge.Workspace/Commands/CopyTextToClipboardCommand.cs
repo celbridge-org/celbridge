@@ -41,7 +41,8 @@ public class CopyTextToClipboardCommand : CommandBase, ICopyTextToClipboardComma
 
     public static void CopyTextToClipboard(string text)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
             command.Text = text;

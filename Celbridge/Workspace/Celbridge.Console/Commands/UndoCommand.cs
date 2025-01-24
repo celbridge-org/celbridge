@@ -6,7 +6,8 @@ public class UndoCommand : CommandBase, IUndoCommand
 {
     public override async Task<Result> ExecuteAsync()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Undo();
 
         await Task.CompletedTask;
@@ -19,7 +20,8 @@ public class UndoCommand : CommandBase, IUndoCommand
 
     public static void Undo()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IUndoCommand>();
     }
 }

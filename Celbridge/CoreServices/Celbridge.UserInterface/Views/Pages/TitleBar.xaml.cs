@@ -11,9 +11,8 @@ public sealed partial class TitleBar : UserControl
     {
         InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         Loaded += OnTitleBar_Loaded;
         Unloaded += OnTitleBar_Unloaded;

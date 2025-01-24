@@ -1,4 +1,5 @@
 using Celbridge.Explorer.Models;
+using Celbridge.Projects;
 using Celbridge.UserInterface;
 using System.Text;
 
@@ -392,7 +393,7 @@ public class ResourceRegistry : IResourceRegistry
 #endif
 
             if (isRootFolder &&
-                path.EndsWith(FileNameConstants.ProjectDataFolder))
+                path.EndsWith(ProjectConstants.ProjectDataFolder))
             {
                 // Ignore the "CelData" project data folder
                 return true;

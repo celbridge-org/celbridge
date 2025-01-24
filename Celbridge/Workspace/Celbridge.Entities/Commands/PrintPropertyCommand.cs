@@ -45,7 +45,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
 
     public static void PrintProperty(ResourceKey resource, int componentIndex, string propertyPath)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         commandService.Execute<IPrintPropertyCommand>(command =>
         {

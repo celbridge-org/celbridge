@@ -33,7 +33,8 @@ public class UndoEntityCommand : CommandBase, IUndoEntityCommand
 
     public static async Task<Result> UndoEntity(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         return await commandService.ExecuteAsync<IUndoEntityCommand>(command =>
         {
             command.Resource = resource;

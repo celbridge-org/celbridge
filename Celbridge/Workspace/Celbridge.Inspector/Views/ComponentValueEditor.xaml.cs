@@ -10,8 +10,7 @@ public sealed partial class ComponentValueEditor : UserControl
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<ComponentValueEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<ComponentValueEditorViewModel>();
 
         DataContext = ViewModel;
 
