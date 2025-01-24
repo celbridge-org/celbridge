@@ -25,10 +25,7 @@
     <ProjectReference Include="..\CoreServices\Celbridge.Telemetry\Celbridge.Telemetry.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
   
 </Project>
