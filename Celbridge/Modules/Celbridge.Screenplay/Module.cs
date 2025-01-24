@@ -39,7 +39,7 @@ public class Module : IModule
         if (activityName == nameof(ScreenplayActivity))
         {
             var serviceProvider = ServiceLocator.ServiceProvider;
-            var activity = serviceProvider.GetRequiredService<ScreenplayActivity>();
+            var activity = serviceProvider.AcquireService<ScreenplayActivity>();
             return Result<IActivity>.Ok(activity);
         }
 
