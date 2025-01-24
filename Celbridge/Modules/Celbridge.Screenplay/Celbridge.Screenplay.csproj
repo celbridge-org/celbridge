@@ -7,11 +7,6 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <UnoFeatures>
-      Hosting;
-    </UnoFeatures>
-
   </PropertyGroup>
 
   <ItemGroup>

@@ -32,7 +32,7 @@ public class MarkdownActivity : IActivity
     public async Task<Result> ActivateAsync()
     {
         // Register the Markdown preview provider
-        var markdownProvider = _serviceProvider.GetRequiredService<MarkdownPreviewProvider>();
+        var markdownProvider = _serviceProvider.AcquireService<MarkdownPreviewProvider>();
         var addMarkdownResult = _documentsService.AddPreviewProvider(markdownProvider);
         if (addMarkdownResult.IsFailure)
         {
@@ -41,7 +41,7 @@ public class MarkdownActivity : IActivity
         }
 
         // Register the AsciiDoc preview provider
-        var asciiDocProvider = _serviceProvider.GetRequiredService<AsciiDocPreviewProvider>();
+        var asciiDocProvider = _serviceProvider.AcquireService<AsciiDocPreviewProvider>();
         var addAsciiDocResult = _documentsService.AddPreviewProvider(asciiDocProvider);
         if (addAsciiDocResult.IsFailure)
         {

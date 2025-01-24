@@ -39,7 +39,7 @@ public class Module : IModule
         if (activityName == nameof(MarkdownActivity))
         {
             var serviceProvider = ServiceLocator.ServiceProvider;   
-            var activity = serviceProvider.GetRequiredService<MarkdownActivity>();
+            var activity = serviceProvider.AcquireService<MarkdownActivity>();
             return Result<IActivity>.Ok(activity);
         }
 

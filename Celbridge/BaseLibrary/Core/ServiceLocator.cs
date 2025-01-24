@@ -19,4 +19,11 @@ public static class ServiceLocator
     }
 
     public static IServiceProvider ServiceProvider => _serviceProvider!;
+
+    public static T AcquireService<T>(this IServiceProvider provider) where T : class
+    {
+        var service = provider.GetService(typeof(T)) as T;
+        Guard.IsNotNull(service, $"Failed to acquire unknown service: '{typeof(T)}'");
+        return service;
+    }
 }
