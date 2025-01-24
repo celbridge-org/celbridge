@@ -1,0 +1,13 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net8.0-maccatalyst;net8.0-windows10.0.22621;net8.0-desktop</TargetFrameworks>
+    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    <UnoSingleProject>true</UnoSingleProject>
+    <OutputType>Library</OutputType>
+    <!-- Ensures the .xr.xml files are generated in a proper layout folder -->
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+</Project>

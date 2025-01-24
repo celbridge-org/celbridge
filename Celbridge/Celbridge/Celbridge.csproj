@@ -32,38 +32,37 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\Modules\Workspace\Celbridge.Entities\ComponentConfig\**" Link="ComponentConfig\%(RecursiveDir)%(FileName)%(Extension)">
+    <Content Include="..\Workspace\Celbridge.Entities\ComponentConfig\**" Link="ComponentConfig\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
     <!-- To include content from a library project, you have to both copy it in the library project and link to it here in the executable project -->
-    <Content Include="..\Modules\Workspace\Celbridge.Documents\preview\**" Link="preview\%(RecursiveDir)%(FileName)%(Extension)">
+    <Content Include="..\Workspace\Celbridge.Documents\preview\**" Link="preview\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\Modules\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
+    <Content Include="..\Workspace\Celbridge.Documents\monaco\**" Link="monaco\%(RecursiveDir)%(FileName)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- Excluding these files as they trigger localization warnings during the build process -->
-    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\basic-languages\st\st.js" />
-    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-    <Content Remove="..\Modules\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+    <Content Remove="..\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="..\Workspace\Celbridge.Documents\monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="..\Workspace\Celbridge.Documents\monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="..\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="..\Workspace\Celbridge.Documents\monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
   </ItemGroup>
 
   <ItemGroup>
     <UnoImage Include="Assets\Images\title_icon.svg" />
   </ItemGroup>
 
-  <!-- Core Services -->
+  <!-- Direct project dependencies -->
   <ItemGroup>
     <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Extensions\Celbridge.Extensions.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
@@ -72,17 +71,14 @@
     <ProjectReference Include="..\CoreServices\Celbridge.Telemetry\Celbridge.Telemetry.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
   <!-- Modules -->
   <ItemGroup>
-    <ProjectReference Include="..\Modules\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
-    <ProjectReference Include="..\Modules\Activities\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
-  </ItemGroup>
-
-  <!-- Extensions -->
-  <ItemGroup>
-    <ProjectReference Include="..\Extensions\Markdown\Celbridge.Markdown\Celbridge.Markdown.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
   </ItemGroup>
 
 </Project>

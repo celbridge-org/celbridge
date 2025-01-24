@@ -1,0 +1,53 @@
+using Celbridge.Documents.Commands;
+using Celbridge.Documents.Services;
+using Celbridge.Documents.ViewModels;
+using Celbridge.Documents.Views;
+using Celbridge.Modules;
+
+namespace Celbridge.Documents;
+
+public static class ServiceConfiguration
+{
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        //
+        // Register services
+        //
+
+        services.AddTransient<IDocumentsService, DocumentsService>();
+        services.AddTransient<FileTypeHelper>();
+
+        //
+        // Register views
+        //
+
+        services.AddTransient<IDocumentsPanel, DocumentsPanel>();
+        services.AddTransient<TextBoxDocumentView>();
+        services.AddTransient<WebPageDocumentView>();
+        services.AddTransient<MonacoEditorView>();
+        services.AddTransient<FileViewerDocumentView>();
+        services.AddTransient<EditorPreviewView>();
+        services.AddTransient<TextEditorDocumentView>();
+
+        //
+        // Register view models
+        //
+
+        services.AddTransient<DocumentsPanelViewModel>();
+        services.AddTransient<DocumentTabViewModel>();
+        services.AddTransient<DefaultDocumentViewModel>();
+        services.AddTransient<WebPageDocumentViewModel>();
+        services.AddTransient<MonacoEditorViewModel>();
+        services.AddTransient<FileViewerDocumentViewModel>();
+        services.AddTransient<EditorPreviewViewModel>();
+        services.AddTransient<TextEditorDocumentViewModel>();
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
+        services.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
+        services.AddTransient<ISelectDocumentCommand, SelectDocumentCommand>();
+    }
+}
