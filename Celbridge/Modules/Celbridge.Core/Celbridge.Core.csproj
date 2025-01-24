@@ -9,15 +9,7 @@
     <Nullable>enable</Nullable>
 
     <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
       Hosting;
-      Toolkit;
-      Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
     </UnoFeatures>
 
   </PropertyGroup>
