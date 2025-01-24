@@ -40,7 +40,7 @@ public class MoveComponentCommand : CommandBase, IMoveComponentCommand
 
     public static async Task<Result> MoveComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         return await commandService.ExecuteAsync<IMoveComponentCommand>(command =>
         {

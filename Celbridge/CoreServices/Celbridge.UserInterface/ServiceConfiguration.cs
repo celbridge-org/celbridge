@@ -49,7 +49,7 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
+        var navigationService = ServiceLocator.AcquireService<INavigationService>();
 
         navigationService.RegisterPage(nameof(EmptyPage), typeof(EmptyPage));
         navigationService.RegisterPage(nameof(HomePage), typeof(HomePage));

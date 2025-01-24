@@ -39,7 +39,7 @@ public class AddComponentCommand : CommandBase, IAddComponentCommand
 
     public static async Task<Result> AddComponent(ResourceKey resource, int insertAtIndex, string componentType)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         var result = await commandService.ExecuteAsync<IAddComponentCommand>(command =>
         {

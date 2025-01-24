@@ -10,8 +10,7 @@ public sealed partial class ComponentTypeEditor : UserControl
 	{
 		this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<ComponentTypeEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<ComponentTypeEditorViewModel>();
 
         DataContext = ViewModel;
     }

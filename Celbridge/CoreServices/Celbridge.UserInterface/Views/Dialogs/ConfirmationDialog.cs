@@ -25,13 +25,12 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 
     public ConfirmationDialog()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
-        ViewModel = serviceProvider.GetRequiredService<ConfirmationDialogViewModel>();
+        ViewModel = ServiceLocator.AcquireService<ConfirmationDialogViewModel>();
 
         this.DataContext(ViewModel, (dialog, vm) => dialog
             .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))

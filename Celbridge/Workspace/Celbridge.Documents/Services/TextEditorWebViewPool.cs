@@ -74,9 +74,8 @@ public class TextEditorWebViewPool
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-        // Set Monaco color theme to match the user interface theme
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        // Set Monaco color theme to match the user interface theme        
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var theme = userInterfaceService.UserInterfaceTheme;
         var vsTheme = theme == UserInterfaceTheme.Light ? "vs-light" : "vs-dark";
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"window.theme = '{vsTheme}';");

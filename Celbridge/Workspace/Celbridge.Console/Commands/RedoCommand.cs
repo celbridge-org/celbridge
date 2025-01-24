@@ -6,7 +6,7 @@ public class RedoCommand : CommandBase, IRedoCommand
 {
     public override async Task<Result> ExecuteAsync()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
         commandService.Redo();
 
         await Task.CompletedTask;
@@ -19,7 +19,8 @@ public class RedoCommand : CommandBase, IRedoCommand
 
     public static void Redo()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IRedoCommand>();
     }
 }

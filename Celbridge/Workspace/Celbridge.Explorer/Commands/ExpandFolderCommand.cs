@@ -54,7 +54,8 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
     //
     public static void ExpandFolder(ResourceKey folderResource, bool IsExpanded)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IExpandFolderCommand>(command =>
         {
             command.FolderResource = folderResource;

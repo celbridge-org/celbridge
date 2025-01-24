@@ -69,7 +69,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
-        var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, FileNameConstants.WorkspaceSettingsFolder);
+        var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, ProjectConstants.WorkspaceSettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }

@@ -32,9 +32,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<ResourceTreeViewModel>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         Loaded += ResourceTreeView_Loaded;
         Unloaded += ResourceTreeView_Unloaded;

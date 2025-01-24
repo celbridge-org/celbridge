@@ -11,7 +11,7 @@ public class AlertCommand : CommandBase, IAlertCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var dialogService = ServiceLocator.ServiceProvider.GetRequiredService<IDialogService>();
+        var dialogService = ServiceLocator.AcquireService<IDialogService>();
         await dialogService.ShowAlertDialogAsync(Title, Message);
 
         return Result.Ok();
@@ -23,7 +23,8 @@ public class AlertCommand : CommandBase, IAlertCommand
 
     public static void Alert(string title, string message)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IAlertCommand>(command =>
         {
             command.Title = title;
@@ -33,7 +34,7 @@ public class AlertCommand : CommandBase, IAlertCommand
 
     public static void Alert(string message)
     {
-        var stringLocalizer = ServiceLocator.ServiceProvider.GetRequiredService<IStringLocalizer>();
+        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         var titleString = stringLocalizer.GetString("WorkspacePage_AlertTitleDefault");
 
         Alert(titleString, message);

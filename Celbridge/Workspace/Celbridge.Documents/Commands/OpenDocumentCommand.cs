@@ -37,7 +37,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     //
     public static void OpenDocument(ResourceKey fileResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
@@ -46,7 +47,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public static void OpenDocument(ResourceKey fileResource, bool forceReload)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;

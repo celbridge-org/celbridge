@@ -37,7 +37,8 @@ public class ClearHistoryCommand : CommandBase, IClearHistoryCommand
 
     public static void ClearHistory()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IClearHistoryCommand>();
     }
 }

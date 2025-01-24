@@ -37,7 +37,8 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 
     public static void UnloadProject()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IUnloadProjectCommand>();
     }
 }

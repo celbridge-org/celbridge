@@ -12,10 +12,8 @@ public sealed partial class SettingsPage : Page
 
     public SettingsPage()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-
-        ViewModel = serviceProvider.GetRequiredService<SettingsPageViewModel>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        ViewModel = ServiceLocator.AcquireService<SettingsPageViewModel>();
 
         this.DataContext(ViewModel, (page, vm) => page
             .Content(new Grid()

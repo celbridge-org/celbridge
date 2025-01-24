@@ -19,7 +19,7 @@ public sealed class MessageTarget : TargetWithLayout
             return;
         }
 
-        IMessengerService messengerService = ServiceLocator.ServiceProvider.GetRequiredService<IMessengerService>();
+        IMessengerService messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         // Send the log event as a message to the console panel
         var message = new LogEventMessage(messageJson);

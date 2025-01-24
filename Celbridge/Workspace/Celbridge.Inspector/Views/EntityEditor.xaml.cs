@@ -10,9 +10,7 @@ public sealed partial class EntityEditor : UserControl
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
-        ViewModel = serviceProvider.GetRequiredService<EntityEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<EntityEditorViewModel>();
         DataContext = ViewModel;
 
         Loaded += EntityEditor_Loaded;

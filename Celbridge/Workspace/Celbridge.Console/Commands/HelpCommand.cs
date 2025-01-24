@@ -43,7 +43,8 @@ public class HelpCommand : CommandBase, IHelpCommand
 
     public static void Help(string searchTerm)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IHelpCommand>(command =>
         {
             command.SearchTerm = searchTerm;

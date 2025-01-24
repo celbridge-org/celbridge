@@ -20,8 +20,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<TextEditorDocumentViewModel>();
+        ViewModel = ServiceLocator.AcquireService<TextEditorDocumentViewModel>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 

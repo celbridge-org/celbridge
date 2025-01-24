@@ -29,8 +29,7 @@ public partial class WebInspector : UserControl, IInspector
 
     public WebInspector(WebInspectorViewModel viewModel)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         DataContext = viewModel;
 

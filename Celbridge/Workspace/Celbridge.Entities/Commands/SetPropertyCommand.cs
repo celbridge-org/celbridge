@@ -40,7 +40,8 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     /// </summary>
     public static async Task<Result> SetProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
             command.ComponentKey = new ComponentKey(resource, componentIndex);
@@ -56,7 +57,8 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     /// </summary>
     public static async Task<Result> InsertProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
         {
             command.ComponentKey = new ComponentKey(resource, componentIndex);

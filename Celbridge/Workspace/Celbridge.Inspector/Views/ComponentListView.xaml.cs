@@ -34,9 +34,8 @@ public partial class ComponentListView : UserControl, IInspector
         ViewModel = viewModel;
         DataContext = ViewModel;
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _logger = serviceProvider.GetRequiredService<ILogger<ComponentListView>>();
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _logger = ServiceLocator.AcquireService<ILogger<ComponentListView>>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         Loaded += (s, e) => ViewModel.OnViewLoaded();
         Unloaded += (s, e) => ViewModel.OnViewUnloaded();

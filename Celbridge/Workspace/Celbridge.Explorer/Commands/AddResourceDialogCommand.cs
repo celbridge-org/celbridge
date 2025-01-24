@@ -133,7 +133,8 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
     public static void AddFileDialog(ResourceKey parentFolderResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
@@ -143,7 +144,8 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
     public static void AddFolderDialog(ResourceKey parentFolderResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IAddResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;

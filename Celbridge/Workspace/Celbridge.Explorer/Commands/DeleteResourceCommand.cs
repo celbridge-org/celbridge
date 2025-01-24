@@ -129,7 +129,11 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
     public static void DeleteResource(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
-        commandService.Execute<IDeleteResourceCommand>(command => command.Resource = resource);
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<IDeleteResourceCommand>(command =>
+        {
+            command.Resource = resource;
+        });
     }
 }

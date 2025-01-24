@@ -36,7 +36,8 @@ public class SelectDocumentCommand : CommandBase, ISelectDocumentCommand
     //
     public static void SelectDocument(ResourceKey fileResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ISelectDocumentCommand>(command =>
         {
             command.FileResource = fileResource;

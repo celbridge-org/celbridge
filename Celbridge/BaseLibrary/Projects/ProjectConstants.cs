@@ -1,9 +1,9 @@
-namespace Celbridge.Core;
+namespace Celbridge.Projects;
 
 /// <summary>
-/// Strings constants for Celbridge file names.
+/// Strings constants for project files and folders.
 /// </summary>
-public static class FileNameConstants
+public static class ProjectConstants
 {
     /// <summary>
     /// File extension for Celbridge projects.
@@ -11,7 +11,7 @@ public static class FileNameConstants
     public const string ProjectFileExtension = ".celproject";
 
     /// <summary>
-    /// Folder containing the project data file.
+    /// Folder containing the project meta data.
     /// </summary>
     public const string ProjectDataFolder = "CelData";
 

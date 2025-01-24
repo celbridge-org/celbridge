@@ -54,7 +54,7 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = ServiceLocator.ServiceProvider.GetRequiredService<INavigationService>();
+        var navigationService = ServiceLocator.AcquireService<INavigationService>();
         navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
     }
 }
