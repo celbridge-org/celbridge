@@ -38,7 +38,7 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
 
     public static async Task<Result> RemoveComponent(ResourceKey resource, int componentIndex)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         return await commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
         {

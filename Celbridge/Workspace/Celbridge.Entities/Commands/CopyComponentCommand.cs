@@ -40,7 +40,7 @@ public class CopyComponentCommand : CommandBase, ICopyComponentCommand
 
     public static async Task<Result> CopyComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         return await commandService.ExecuteAsync<ICopyComponentCommand>(command =>
         {

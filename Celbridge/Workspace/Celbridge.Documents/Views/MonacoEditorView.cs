@@ -17,13 +17,12 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public MonacoEditorView()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        var workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
-        ViewModel = serviceProvider.GetRequiredService<MonacoEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
         // Set the data context
         // The webview is not created until LoadContent is called, so we can pool webviews

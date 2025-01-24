@@ -31,7 +31,8 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
     //
     public static void UpdateResourceRegistry()
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IUpdateResourcesCommand>();
     }
 }

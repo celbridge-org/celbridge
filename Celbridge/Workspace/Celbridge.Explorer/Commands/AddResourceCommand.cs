@@ -235,7 +235,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     public static void AddFile(string sourcePath, ResourceKey destResource)
     {
-        var workspaceWrapper = ServiceLocator.ServiceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
             throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
@@ -246,7 +246,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
@@ -262,7 +263,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     public static void AddFolder(string sourcePath, ResourceKey destResource)
     {
-        var workspaceWrapper = ServiceLocator.ServiceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
             throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
@@ -273,7 +274,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;

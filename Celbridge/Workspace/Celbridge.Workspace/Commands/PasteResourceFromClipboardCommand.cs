@@ -36,7 +36,8 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
 
     public static void PasteResourceFromClipboard(ResourceKey folderResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
             command.DestFolderResource = folderResource;

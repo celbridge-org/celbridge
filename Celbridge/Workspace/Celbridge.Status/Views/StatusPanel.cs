@@ -13,10 +13,8 @@ public partial class StatusPanel : UserControl, IStatusPanel
 
     public StatusPanel()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-
-        ViewModel = serviceProvider.GetRequiredService<StatusPanelViewModel>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        ViewModel = ServiceLocator.AcquireService<StatusPanelViewModel>();
 
         Loaded += (s, e) => ViewModel.OnLoaded();
         Unloaded += (s, e) => ViewModel.OnUnloaded();

@@ -1,3 +1,5 @@
+using Celbridge.Projects;
+
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
@@ -12,7 +14,7 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         {
             return Result.Fail("The workspace settings folder has not been set.");
         }
-        var databaseFilePath = Path.Combine(WorkspaceSettingsFolderPath, FileNameConstants.WorkspaceSettingsFile);
+        var databaseFilePath = Path.Combine(WorkspaceSettingsFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
         //
         // Create the workspace settings database if it doesn't exist yet

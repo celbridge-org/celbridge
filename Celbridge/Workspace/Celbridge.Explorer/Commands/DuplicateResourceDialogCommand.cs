@@ -126,7 +126,8 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
     public static void DuplicateResourceDialog(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IDuplicateResourceDialogCommand>(command =>
         {
             command.Resource = resource;

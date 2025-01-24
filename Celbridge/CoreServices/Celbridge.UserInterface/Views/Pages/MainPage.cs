@@ -23,11 +23,10 @@ public sealed partial class MainPage : Page
 
     public MainPage()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        _userInterfaceService = serviceProvider.GetRequiredService<IUserInterfaceService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
-        ViewModel = serviceProvider.GetRequiredService<MainPageViewModel>();
+        ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
 
         _contentFrame = new Frame()
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))

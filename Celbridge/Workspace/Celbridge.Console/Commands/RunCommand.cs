@@ -49,7 +49,8 @@ public class RunCommand : CommandBase, IRunCommand
 
     public static void Run(ResourceKey scriptResource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IRunCommand>(command =>
         {
             command.ScriptResource = scriptResource;

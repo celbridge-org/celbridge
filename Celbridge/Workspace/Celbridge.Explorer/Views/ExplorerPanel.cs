@@ -14,10 +14,8 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanel()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        ViewModel = serviceProvider.GetRequiredService<ExplorerPanelViewModel>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        ViewModel = ServiceLocator.AcquireService<ExplorerPanelViewModel>();
 
         var refreshProjectButton = new Button()
             .Grid(column: 2)

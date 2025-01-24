@@ -33,7 +33,8 @@ public class RedoEntityCommand : CommandBase, IRedoEntityCommand
 
     public static async Task<Result> RedoEntity(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         return await commandService.ExecuteAsync<IRedoEntityCommand>(command =>
         {
             command.Resource = resource;

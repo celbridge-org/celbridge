@@ -43,7 +43,8 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
     public static void CloseDocument(ResourceKey fileResource, bool forceClose)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;

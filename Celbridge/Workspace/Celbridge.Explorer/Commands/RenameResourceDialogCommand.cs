@@ -122,7 +122,8 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
     public static void RenameResourceDialog(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IRenameResourceDialogCommand>(command =>
         {
             command.Resource = resource;

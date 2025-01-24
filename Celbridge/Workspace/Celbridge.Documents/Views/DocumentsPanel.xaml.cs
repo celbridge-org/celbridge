@@ -15,11 +15,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
-        _logger = serviceProvider.GetRequiredService<IDocumentsLogger>();
-
-        ViewModel = serviceProvider.GetRequiredService<DocumentsPanelViewModel>();
+        _logger = ServiceLocator.AcquireService<IDocumentsLogger>();
+        ViewModel = ServiceLocator.AcquireService<DocumentsPanelViewModel>();
 
         //
         // Set the data context

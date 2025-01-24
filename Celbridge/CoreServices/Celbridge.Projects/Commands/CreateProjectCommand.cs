@@ -59,7 +59,8 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 
     public static void CreateProject(string projectFilePath)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<ICreateProjectCommand>(command =>
         {
             command.Config = new NewProjectConfig(projectFilePath);

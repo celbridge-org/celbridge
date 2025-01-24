@@ -91,7 +91,8 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
     public static void DeleteResourceDialog(ResourceKey resource)
     {
-        var commandService = ServiceLocator.ServiceProvider.GetRequiredService<ICommandService>();
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
         commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
             command.Resource = resource;

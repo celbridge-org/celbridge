@@ -39,7 +39,7 @@ public class MainMenuUtils
 
     public async Task ShowOpenProjectDialogAsync()
     {
-        var result = await _filePickerService.PickSingleFileAsync(new List<string> { FileNameConstants.ProjectFileExtension });
+        var result = await _filePickerService.PickSingleFileAsync(new List<string> { ProjectConstants.ProjectFileExtension });
         if (result.IsSuccess)
         {
             var projectFilePath = result.Value;

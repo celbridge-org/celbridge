@@ -15,9 +15,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 
     public EditorPreviewView()
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-
-        ViewModel = serviceProvider.GetRequiredService<EditorPreviewViewModel>();
+        ViewModel = ServiceLocator.AcquireService<EditorPreviewViewModel>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 

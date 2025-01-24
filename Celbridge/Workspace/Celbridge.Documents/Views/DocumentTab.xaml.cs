@@ -13,7 +13,6 @@ public partial class DocumentTab : TabViewItem
     {
         this.InitializeComponent();
 
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        ViewModel = serviceProvider.GetRequiredService<DocumentTabViewModel>();
+        ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
     }
 }

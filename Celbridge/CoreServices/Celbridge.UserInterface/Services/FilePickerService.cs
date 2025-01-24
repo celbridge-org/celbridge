@@ -19,7 +19,7 @@ public class FilePickerService : IFilePickerService
 
 #if WINDOWS
         // For Uno.WinUI-based apps
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var mainWindow = userInterfaceService.MainWindow;
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
         WinRT.Interop.InitializeWithWindow.Initialize(fileOpenPicker, hwnd);
@@ -51,7 +51,7 @@ public class FilePickerService : IFilePickerService
 
 #if WINDOWS
         // For Uno.WinUI-based apps
-        var userInterfaceService = ServiceLocator.ServiceProvider.GetRequiredService<IUserInterfaceService>();
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var mainWindow = userInterfaceService.MainWindow;
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
         WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);

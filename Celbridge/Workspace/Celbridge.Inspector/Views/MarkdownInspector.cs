@@ -31,8 +31,7 @@ public partial class MarkdownInspector : UserControl, IInspector
 
     public MarkdownInspector(MarkdownInspectorViewModel viewModel)
     {
-        var serviceProvider = ServiceLocator.ServiceProvider;
-        _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         DataContext = viewModel;
 
