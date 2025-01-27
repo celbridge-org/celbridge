@@ -1,7 +1,9 @@
 using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Entities;
+using Celbridge.Forms;
 using Celbridge.Inspector.Models;
+using Celbridge.Inspector.Services;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -22,6 +24,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
     private readonly IActivityService _activityService;
+    private readonly IFormService _formService;
 
     public ObservableCollection<ComponentItem> ComponentItems { get; } = new();
 
@@ -30,6 +33,8 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     [ObservableProperty]
     private bool _isEditingComponentType;
+
+    private bool _isUpdatePending;
 
     // Code gen requires a parameterless constructor
     public ComponentListViewModel()
@@ -41,11 +46,13 @@ public partial class ComponentListViewModel : InspectorViewModel
         ILogger<MarkdownInspectorViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
+        IFormService formService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
+        _formService = formService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
@@ -54,10 +61,11 @@ public partial class ComponentListViewModel : InspectorViewModel
     public void OnViewLoaded()
     {
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
-        _messengerService.Register<ComponentAnnotationUpdatedMessage>(this, OnComponentAnnotationUpdatedMessage);
+        _messengerService.Register<UpdateInspectorMessage>(this, OnUpdateInspectorMessage);
 
         PropertyChanged += ViewModel_PropertyChanged;
 
+        // Update the list immediately on startup
         PopulateComponentList();
 
         // Send a message to populate the component editor in the inspector
@@ -69,41 +77,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         _messengerService.UnregisterAll(this);
 
         PropertyChanged -= ViewModel_PropertyChanged;
-    }
-
-    private void OnComponentAnnotationUpdatedMessage(object recipient, ComponentAnnotationUpdatedMessage message)
-    {
-        var componentKey = message.ComponentKey;
-
-        if (componentKey.Resource != Resource)
-        {
-            // This message does not apply to the resource being presented by this ViewModel.
-            // This is probably because the user has just switched to inspecting a different resource and the ViewUnloaded
-            // callback has not yet been received to clean up this view model.
-            return;
-        }
-
-        var componentIndex = componentKey.ComponentIndex;
-        if (componentIndex < 0 || componentIndex >= ComponentItems.Count)
-        {
-            // Component index is out of range
-            _logger.LogError($"Component index '{componentIndex}' is out of range for resource '{componentKey.Resource}'");
-            return;
-        }
-
-        var componentItem = ComponentItems[componentIndex];
-
-        var getComponentResult = _entityService.GetComponent(componentKey);
-        if (getComponentResult.IsFailure)
-        {
-            _logger.LogError(getComponentResult.Error);
-            return;
-        }
-        var component = getComponentResult.Value;
-
-        componentItem.Description = component.Description;
-        componentItem.Status = component.Status;
-        componentItem.Tooltip = component.Tooltip;
     }
 
     public ICommand AddComponentCommand => new AsyncRelayCommand<object?>(AddComponent_Executed);
@@ -139,9 +112,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         var emptyComponentItem = new ComponentItem();
         ComponentItems.Insert(addIndex, emptyComponentItem);
 
-        // Supress the refresh
-        _supressRefreshCount = 1;
-
         var executeResult = await _commandService.ExecuteAsync<IAddComponentCommand>(command => 
         {
             command.ComponentKey = new ComponentKey(Resource, addIndex);
@@ -152,8 +122,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             // Log the error and refresh the list to attempt to recover
             _logger.LogError(executeResult.Error);
-            _supressRefreshCount = 0;
-            PopulateComponentList();
             return;
         }
     }
@@ -181,10 +149,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         // Update the list view
         ComponentItems.RemoveAt(deleteIndex);
 
-        // Supress the refresh
-        _supressRefreshCount = 1;
-
-
         var executeResult = await _commandService.ExecuteAsync<IRemoveComponentCommand>(command =>
         {
             command.ComponentKey = new ComponentKey(Resource, deleteIndex);
@@ -194,8 +158,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             // Log the error and refresh the list to attempt to recover
             _logger.LogError(executeResult.Error);
-            _supressRefreshCount = 0;
-            PopulateComponentList();
             return;
         }
 
@@ -236,9 +198,6 @@ public partial class ComponentListViewModel : InspectorViewModel
 
         ComponentItems.Insert(destIndex, newItem);
 
-        // Supress the refresh
-        _supressRefreshCount = 1;
-
         var executeResult = await _commandService.ExecuteAsync<ICopyComponentCommand>(command =>
         {
             command.Resource = Resource;
@@ -250,8 +209,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             // Log the error and refresh the list to attempt to recover
             _logger.LogError(executeResult.Error);
-            _supressRefreshCount = 0;
-            PopulateComponentList();
             return;
         }
 
@@ -286,9 +243,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         return allowMultipleComponents;
     }
 
-    private int _supressRefreshCount;
-
     public ICommand MoveComponentCommand => new AsyncRelayCommand<object?>(MoveComponent_Executed);
+
     private async Task MoveComponent_Executed(object? parameter)
     {
         if (parameter is not (int oldIndex, int newIndex))
@@ -302,9 +258,6 @@ public partial class ComponentListViewModel : InspectorViewModel
             return;
         }
 
-        // A move consists of both a remove and add operation, so we need to supress the refresh twice
-        _supressRefreshCount = 2;
-
         var executeResult = await _commandService.ExecuteAsync<IMoveComponentCommand>(command => { 
             command.Resource = Resource;
             command.SourceComponentIndex = oldIndex;
@@ -315,8 +268,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             // Log the error and refresh the list to attempt to recover
             _logger.LogError(executeResult.Error);
-            _supressRefreshCount = 0;
-            PopulateComponentList();
             return;
         }
 
@@ -326,18 +277,21 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
     {
-        if (message.ComponentKey.Resource == Resource &&
-            message.PropertyPath == "/")
+        var resource = message.ComponentKey.Resource;
+        var propertyPath = message.PropertyPath;
+
+        if (resource == Resource)
         {
-            // Ignore the requested number of component change messages
-            if (_supressRefreshCount > 0)
-            {
-                _supressRefreshCount--;
-            }
-            else
-            {            
-                PopulateComponentList();
-            }
+            _isUpdatePending = true;
+        }
+    }
+
+    private void OnUpdateInspectorMessage(object recipient, UpdateInspectorMessage message)
+    {
+        if (_isUpdatePending)
+        {
+            PopulateComponentList();
+            _isUpdatePending = false;
         }
     }
 
@@ -358,10 +312,21 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private void PopulateComponentList()
     {
+        // Note the previous selected index so we can try to set it again at the end
         int previousIndex = SelectedIndex;
         List<ComponentItem> componentItems = new();
 
         var componentCount = _entityService.GetComponentCount(Resource);
+
+        // Ensure the ComponentItems list is the correct size
+        while (ComponentItems.Count < componentCount)
+        {
+            ComponentItems.Add(new ComponentItem());
+        }
+        while (ComponentItems.Count > componentCount)
+        {
+            ComponentItems.RemoveAt(ComponentItems.Count - 1);
+        }
 
         for (int i = 0; i < componentCount; i++)
         {
@@ -388,16 +353,34 @@ public partial class ComponentListViewModel : InspectorViewModel
                 }
             }
 
-            var componentItem = new ComponentItem
-            {
-                ComponentType = componentType
-            };
+            var componentItem = ComponentItems[i];
+            componentItem.ComponentType = componentType;
 
-            componentItems.Add(componentItem);
+            // Acquire a component editor for the component
+            var componentKey = new ComponentKey(Resource, i);
+            var acquireEditorResult = _inspectorService.AcquireComponentEditor(componentKey);
+            if (acquireEditorResult.IsFailure)
+            {
+                _logger.LogError($"Failed to acquire component editor for component: '{componentKey}'");
+                continue;
+            }
+            var editor = acquireEditorResult.Value;
+
+            // Get the component summary from the component editor
+            var getSummaryResult = editor.GetComponentSummary();
+            if (getSummaryResult.IsFailure)
+            {
+                _logger.LogError($"Failed to get component summary for component: '{componentKey}'");
+                continue;
+            }
+            var summary = getSummaryResult.Value;
+
+            // Populate the component summary
+            componentItem.SummaryText = summary.SummaryText;
+            componentItem.Tooltip = summary.Tooltip;
         }
 
-        ComponentItems.ReplaceWith(componentItems);
-
+        // Select the previous index if it is still valid
         if (componentCount == 0)
         {
             SelectedIndex = -1;
@@ -406,12 +389,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         {
             SelectedIndex = Math.Clamp(previousIndex, 0, componentCount - 1);
         }
-
-        // Notify running activities that the component list has been populated, so that
-        // they may now add annotations to present component information in the inspector.
-
-        var message = new PopulatedComponentListMessage(Resource);
-        _messengerService.Send(message);
     }
 
     private void UpdateEditMode()

@@ -15,6 +15,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<IInspectorService, InspectorService>();
         services.AddTransient<IInspectorFactory, InspectorFactory>();
+        services.AddTransient<ComponentEditorCache>();
 
         //
         // Register views

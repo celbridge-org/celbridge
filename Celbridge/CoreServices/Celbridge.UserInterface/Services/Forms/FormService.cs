@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Forms;
 
 namespace Celbridge.UserInterface.Services.Forms;
@@ -22,7 +23,7 @@ public class FormService : IFormService
 
     public Result<object> CreateForm(string formName, IFormDataProvider formDataProvider)
     {
-        // Get the form config
+        // Get the previously registered form config
         var getConfigResult = _formRegistry.GetFormConfig(formName);
         if (getConfigResult.IsFailure)
         {
@@ -31,7 +32,7 @@ public class FormService : IFormService
         }
         var formConfig = getConfigResult.Value;
 
-        // Build an instance of the form
+        // Build an instance of the form, binding to the formDataProvider
         var buildResult = _formBuilder.BuildForm(formName, formConfig, formDataProvider);
         if (buildResult.IsFailure)
         {

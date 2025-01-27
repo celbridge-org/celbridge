@@ -16,7 +16,6 @@ public class FormBuilder
     private readonly ILogger<FormBuilder> _logger;
 
     private IFormDataProvider? _formDataProvider;
-    private IFormDataProvider FormDataProvider => _formDataProvider!;
 
     private List<string> _buildErrors = new();
 
@@ -374,6 +373,12 @@ public class FormBuilder
         BindingMode bindingMode,
         string propertyPath) where T : IPropertyViewModel
     {
+        if (_formDataProvider is null)
+        {
+            _buildErrors.Add($"Failed to apply property binding: '{propertyPath}'. Form data provider is null");
+            return;
+        }
+
         try
         {
             // Instantiate the property view model
@@ -385,7 +390,7 @@ public class FormBuilder
             }
 
             // Initialize the property view model
-            var initResult = viewModel.Initialize(FormDataProvider, propertyPath);
+            var initResult = viewModel.Initialize(_formDataProvider, propertyPath);
             if (initResult.IsFailure)
             {
                 _buildErrors.Add($"Failed to initialize property view model: '{typeof(T).Name}'");

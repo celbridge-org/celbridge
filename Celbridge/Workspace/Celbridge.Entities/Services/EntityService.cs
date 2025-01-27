@@ -685,6 +685,27 @@ public class EntityService : IEntityService, IDisposable
         return Result.Ok();
     }
 
+    public Result<IComponentEditor> CreateComponentEditor(ComponentKey componentKey)
+    {
+        var getComponentResult = GetComponent(componentKey);
+        if (getComponentResult.IsFailure)
+        {
+            return Result<IComponentEditor>.Fail($"Failed to get component: '{componentKey}'")
+                .WithErrors(getComponentResult);
+        }
+        var component = getComponentResult.Value;
+
+        var createEditorResult = CreateComponentEditor(component);
+        if (createEditorResult.IsFailure)
+        {
+            return Result<IComponentEditor>.Fail($"Failed to create component editor for component: '{componentKey}'")
+                .WithErrors(createEditorResult);
+        }
+        var componentEditor = createEditorResult.Value;
+
+        return Result<IComponentEditor>.Ok(componentEditor);
+    }
+
     public Result<IComponentEditor> CreateComponentEditor(IComponentProxy componentProxy)
     {
         // Acquire the config for this component

@@ -48,7 +48,6 @@ public class ActivityDispatcher
 
         _messengerService.Register<SelectedResourceChangedMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
         _messengerService.Register<ComponentChangedMessage>(this, (s, e) => OnUpdateMessage(e.ComponentKey.Resource));
-        _messengerService.Register<PopulatedComponentListMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
 
         void OnUpdateMessage(ResourceKey resource)
         {
@@ -145,16 +144,6 @@ public class ActivityDispatcher
                     continue;
                 }
                 var components = getComponentsResult.Value;
-
-                // Update annotations for empty components
-                // Todo: Remove this once the Empty component handles displaying the comment property
-                foreach (var component in components)
-                {
-                    if (component.Schema.ComponentType == EmptyComponentType)
-                    {
-                        AnnotateEmptyComponent(component);
-                    }
-                }
 
                 // Ensure the resource is associated with the correct activity
                 string activityName = UpdateAssociatedActivity(fileResource);
