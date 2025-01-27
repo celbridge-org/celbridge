@@ -107,14 +107,14 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         // Populate the Component Type in the panel header
         ComponentType = component.Schema.ComponentType;
 
-        // Instantiate a ComponentEditor for this component
-        var createEditorResult = _entityService.CreateComponentEditor(component);
-        if (createEditorResult.IsFailure)
+        // Acquire a ComponentEditor for this component
+        var acquireEditorResult = _inspectorService.AcquireComponentEditor(componentKey);
+        if (acquireEditorResult.IsFailure)
         {
-            _logger.LogError($"Failed to create component editor for component type: '{ComponentType}'");
+            _logger.LogError($"Failed to acquire component editor for component: '{componentKey}'");
             return;
         }
-        var editor = createEditorResult.Value;
+        var editor = acquireEditorResult.Value;
 
         // Instantiate the form UI for the ComponentEditor
         // When the form UI unloads, it will uninitialize the ComponentEditor automatically.

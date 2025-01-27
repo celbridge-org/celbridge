@@ -43,15 +43,15 @@
   <StackPanel Orientation="Vertical">
 
     <ListView x:Name="ComponentList"
-            SelectionMode="Single"
-            CanReorderItems="True"
-            ItemsSource="{x:Bind ViewModel.ComponentItems}"
-            SelectedIndex="{x:Bind ViewModel.SelectedIndex, Mode=TwoWay}"
-            CanDragItems="True"
-            AllowDrop="True"
-            PreviewKeyDown="ComponentList_PreviewKeyDown"              
-            DragItemsStarting="ComponentList_DragItemsStarting"
-            DragItemsCompleted="ComponentList_DragItemsCompleted">
+              SelectionMode="Single"
+              CanReorderItems="True"
+              ItemsSource="{x:Bind ViewModel.ComponentItems}"
+              SelectedIndex="{x:Bind ViewModel.SelectedIndex, Mode=TwoWay}"
+              CanDragItems="True"
+              AllowDrop="True"
+              PreviewKeyDown="ComponentList_PreviewKeyDown"              
+              DragItemsStarting="ComponentList_DragItemsStarting"
+              DragItemsCompleted="ComponentList_DragItemsCompleted">
 
       <ListView.ItemTemplate>
         <DataTemplate x:DataType="models:ComponentItem">
@@ -98,26 +98,27 @@
                        KeyDown="ComponentItem_EditTextBox_KeyDown"/>
             </Grid>
 
+            <!-- Background is needed for tooltip to work! -->
             <Grid Grid.Column="1"
-                  Margin="6 0 0 0">
-              <StackPanel Orientation="Horizontal"
-                          ToolTipService.ToolTip="{x:Bind Tooltip, Mode=OneWay}">
-               
+                  Margin="6 0 0 0"
+                  Background="Transparent" 
+                  ToolTipService.ToolTip="{x:Bind Tooltip, Mode=OneWay}">
+              <StackPanel Orientation="Horizontal">
+
                 <FontIcon FontFamily="Segoe MDL2 Assets"
                           Glyph="&#xE783;"
                           FontSize="22"
                           Foreground="{ThemeResource ErrorTextColor}"
                           Visibility="{x:Bind ShowErrorIcon, Mode=OneWay}"/>
-                
+
                 <FontIcon FontFamily="Segoe MDL2 Assets"
                           Glyph="&#xE7BA;"
                           FontSize="22"
                           Foreground="{ThemeResource WarningTextColor}"
                           Visibility="{x:Bind ShowWarningIcon, Mode=OneWay}"/>
-                
-                <TextBlock Text="{x:Bind Description, Mode=OneWay}"
-                           VerticalAlignment="Center"
-                           Margin="6 0 0 0"/>
+
+                <TextBlock Text="{x:Bind SummaryText, Mode=OneWay}" />
+
               </StackPanel>
             </Grid>
 
@@ -138,6 +139,7 @@
               </Button>
             </Grid>
           </Grid>
+
         </DataTemplate>
       </ListView.ItemTemplate>
 
