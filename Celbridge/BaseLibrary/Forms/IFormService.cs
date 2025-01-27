@@ -30,8 +30,8 @@ public interface IFormService
     Result RegisterForm(string formName, string formConfigJSON, FormScope scope);
 
     /// <summary>
-    /// Creates a UI Element instance of a form.
-    /// The form data provider is used to populate the form.
+    /// Creates an instance of a previously registered form.
+    /// The form data provider is used to populate the form and resolve bindings.
     /// </summary>
     Result<object> CreateForm(string formName, IFormDataProvider formDataProvider);
 }

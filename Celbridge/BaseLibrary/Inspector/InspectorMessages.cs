@@ -32,3 +32,9 @@ public record ComponentTypeTextEnteredMessage();
 /// A message sent when the component list in the inspector has been populated.
 /// </summary>
 public record PopulatedComponentListMessage(ResourceKey Resource);
+
+/// <summary>
+/// A message sent when the component editor cache has been invalidated, due to a change in the
+/// inspected resource.
+/// </summary>
+public record ComponentEditorCacheInvalidated();

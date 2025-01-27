@@ -22,6 +22,8 @@ public abstract class ComponentEditorBase : IComponentEditor
         return Result.Ok();
     }
 
+    public abstract Result<ComponentSummary> GetComponentSummary();
+
     public virtual void OnFormUnloaded()
     {
         if (_component is not null)

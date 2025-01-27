@@ -18,6 +18,7 @@ public class InspectorService : IInspectorService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessengerService _messengerService;
     private readonly IFormService _formService;
+    private readonly ComponentEditorCache _componentEditorCache;
 
     private IInspectorPanel? _inspectorPanel;
     public IInspectorPanel InspectorPanel => _inspectorPanel!;
@@ -50,12 +51,14 @@ public class InspectorService : IInspectorService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<InspectorService> logger,
         IMessengerService messengerService,
-        IFormService formService)
+        IFormService formService,
+        ComponentEditorCache componentEditorCache)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
         _formService = formService;
+        _componentEditorCache = componentEditorCache;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
@@ -92,6 +95,11 @@ public class InspectorService : IInspectorService, IDisposable
         var uiElement = buildResult.Value;
 
         return Result<object>.Ok(uiElement);
+    }
+
+    public Result<IComponentEditor> AcquireComponentEditor(ComponentKey componentKey)
+    {
+        return _componentEditorCache.AcquireComponentEditor(componentKey);
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)

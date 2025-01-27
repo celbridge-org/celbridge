@@ -22,4 +22,9 @@ public interface IComponentEditor : IFormDataProvider
     /// Initializes the component editor with the component to be edited.
     /// </summary>
     Result Initialize(IComponentProxy component);
+
+    /// <summary>
+    /// Gets summary information for the edited component.
+    /// </summary>
+    Result<ComponentSummary> GetComponentSummary();
 }

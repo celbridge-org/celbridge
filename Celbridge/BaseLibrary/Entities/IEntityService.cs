@@ -167,7 +167,12 @@ public interface IEntityService
     Result SetActivity(ResourceKey resource, string activity);
 
     /// <summary>
-    /// Creates a component editor for the specified component type.
+    /// Creates a component editor for the specified component key.
+    /// </summary>
+    Result<IComponentEditor> CreateComponentEditor(ComponentKey componentKey);
+
+    /// <summary>
+    /// Creates a component editor for the specified component proxy.
     /// </summary>
     Result<IComponentEditor> CreateComponentEditor(IComponentProxy component);
 }

@@ -11,7 +11,7 @@ public partial class ComponentItem : ObservableObject
     private string _componentType = string.Empty;
 
     [ObservableProperty]
-    private string _description = string.Empty;
+    private string _summaryText = string.Empty;
 
     [ObservableProperty]
     private string _tooltip = string.Empty;
