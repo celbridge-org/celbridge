@@ -62,6 +62,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     {
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
         _messengerService.Register<UpdateInspectorMessage>(this, OnUpdateInspectorMessage);
+        _messengerService.Register<AnnotatedEntityMessage>(this, OnAnnotatedEntityMessage);
 
         PropertyChanged += ViewModel_PropertyChanged;
 
@@ -295,6 +296,25 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
+    private void OnAnnotatedEntityMessage(object recipient, AnnotatedEntityMessage message)
+    {
+        var entityAnnotation = message.EntityAnnotation;
+
+        // Apply the annotation data to the corresponding component item
+        for (int i = 0; i < ComponentItems.Count; i++)
+        {
+            var componentItem = ComponentItems[i];
+            if (i < entityAnnotation.Count)
+            {
+                componentItem.Annotation = entityAnnotation.GetComponentAnnotation(i);
+            }
+            else
+            {
+                componentItem.Annotation = null;
+            }
+        }
+    }
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SelectedIndex))
@@ -376,8 +396,7 @@ public partial class ComponentListViewModel : InspectorViewModel
             var summary = getSummaryResult.Value;
 
             // Populate the component summary
-            componentItem.SummaryText = summary.SummaryText;
-            componentItem.Tooltip = summary.Tooltip;
+            componentItem.Summary = summary;
         }
 
         // Select the previous index if it is still valid

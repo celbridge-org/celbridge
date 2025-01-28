@@ -87,6 +87,11 @@ public class MarkdownActivity : IActivity
         return Result.Ok();
     }
 
+    public Result UpdateEntityAnnotation(ResourceKey resource, IEntityAnnotation entityAnnotation)
+    {
+        return Result.Ok();
+    }
+
     public async Task<Result> UpdateResourceAsync(ResourceKey fileResource)
     {
         await Task.CompletedTask;

@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Inspector.Views"
     xmlns:models="using:Celbridge.Inspector.Models"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     KeyDown="UserControl_KeyDown">
 
@@ -69,16 +68,10 @@
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0"
-                  Margin="0 0 6 0">
-
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-              </Grid.ColumnDefinitions>
+                  Margin="0 0 8 0">
 
               <!-- TextBlock is displayed when component name does not have focus -->
               <TextBlock x:Name="DisplayTextBlock"
-                         Grid.Column="0"
                          Text="{x:Bind ComponentType, Mode=OneWay}"
                          VerticalAlignment="Center"
                          MinWidth="96"
@@ -87,7 +80,6 @@
 
               <!-- TextBox is displayed when component name has focus -->
               <TextBox x:Name="EditTextBox"
-                       Grid.Column="0"
                        Text="{x:Bind ComponentType, Mode=OneWay}"
                        VerticalAlignment="Center"
                        MinWidth="120"
@@ -98,46 +90,52 @@
                        KeyDown="ComponentItem_EditTextBox_KeyDown"/>
             </Grid>
 
-            <!-- Background is needed for tooltip to work! -->
+            <!-- A grid with the background color set is needed for tooltip to work -->
             <Grid Grid.Column="1"
-                  Margin="6 0 0 0"
+                  Margin="8 0 0 0"
                   Background="Transparent" 
                   ToolTipService.ToolTip="{x:Bind Tooltip, Mode=OneWay}">
               <StackPanel Orientation="Horizontal">
 
-                <FontIcon FontFamily="Segoe MDL2 Assets"
+                <!-- Error icon -->
+                <FontIcon Margin="0 0 8 0"
+                          VerticalAlignment="Center"
+                          FontFamily="Segoe MDL2 Assets"
                           Glyph="&#xE783;"
                           FontSize="22"
                           Foreground="{ThemeResource ErrorTextColor}"
                           Visibility="{x:Bind ShowErrorIcon, Mode=OneWay}"/>
 
-                <FontIcon FontFamily="Segoe MDL2 Assets"
+                <!-- Warning icon -->
+                <FontIcon Margin="0 0 8 0"
+                          VerticalAlignment="Center"
+                          FontFamily="Segoe MDL2 Assets"
                           Glyph="&#xE7BA;"
                           FontSize="22"
                           Foreground="{ThemeResource WarningTextColor}"
                           Visibility="{x:Bind ShowWarningIcon, Mode=OneWay}"/>
 
-                <TextBlock Text="{x:Bind SummaryText, Mode=OneWay}" />
+                <!-- Component description text -->
+                <TextBlock VerticalAlignment="Center"
+                           Text="{x:Bind Description, Mode=OneWay}" />
 
               </StackPanel>
             </Grid>
 
-            <Grid Grid.Column="2"
-                  Margin="6 0 0 0">
-              <!-- MenuButton is displayed when component name does not have focus -->
-              <Button x:Name="MenuButton"
-                      Grid.Column="1"
-                      Width="24"
-                      Height="24"
-                      Padding="0"
-                      BorderThickness="0"
-                      Background="Transparent"
-                      Click="ComponentMenuButton_Click"
-                      Visibility="Visible">
-                <FontIcon FontFamily="Segoe MDL2 Assets"
-                          Glyph="&#xE712;"/>
-              </Button>
-            </Grid>
+            <!-- Component menu button -->
+            <Button Grid.Column="2"
+                    Margin="8 0 0 0"
+                    Width="24"
+                    Height="24"
+                    Padding="0"
+                    BorderThickness="0"
+                    Background="Transparent"
+                    Click="ComponentMenuButton_Click"
+                    Visibility="Visible">
+              <FontIcon FontFamily="Segoe MDL2 Assets"
+                        Glyph="&#xE712;"/>
+            </Button>
+
           </Grid>
 
         </DataTemplate>
@@ -146,7 +144,7 @@
     </ListView>
 
     <Button HorizontalAlignment="Center"
-            Margin="6"
+            Margin="8"
             Command="{x:Bind ViewModel.AddComponentCommand}"
             ToolTipService.ToolTip="{x:Bind AddComponentTooltipString}">
       <SymbolIcon Symbol="Add"/>

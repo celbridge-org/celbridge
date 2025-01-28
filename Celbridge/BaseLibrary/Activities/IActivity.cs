@@ -1,3 +1,5 @@
+using Celbridge.Entities;
+
 namespace Celbridge.Activities;
 
 /// <summary>
@@ -27,7 +29,14 @@ public interface IActivity
     Task<Result> InitializeResourceAsync(ResourceKey resource);
 
     /// <summary>
-    /// Updates a resource that is supported by this activity..
+    /// Updates the component annotations for the specified entity.
+    /// The entity must be of a resource type that is supported by this activity.
     /// </summary>
-    Task<Result> UpdateResourceAsync(ResourceKey resource);
+    Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation);
+
+    /// <summary>
+    /// Updates the specified resource, typically by generating document data.
+    /// The resource must be of a type that is supported by this activity.
+    /// </summary>
+    Task<Result> UpdateResourceAsync(ResourceKey resource);    
 }

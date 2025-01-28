@@ -2,7 +2,9 @@
   "type": "object",
   "additionalProperties": false,
 
-  "attributes": {},
+  "attributes": {
+    "rootActivity": "ScreenplayActivity"
+  },
 
   "properties": {
     "_componentType": {
