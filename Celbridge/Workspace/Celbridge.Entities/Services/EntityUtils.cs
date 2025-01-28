@@ -17,7 +17,7 @@ public static class EntityUtils
     /// <summary>
     /// JSON key for component type string.
     /// </summary>
-    public const string ComponentTypeKey = "_componentType";
+    public const string ComponentTypeKey = "_type";
 
     /// <summary>
     /// JSON key for allowMultipleComponents attribute.
@@ -107,7 +107,7 @@ public static class EntityUtils
     /// </summary>
     public static Result<List<int>> GetComponentsOfType(JsonObject entityData, string componentType)
     {
-        if (entityData[EntityUtils.ComponentsKey] is not JsonArray components)
+        if (entityData[ComponentsKey] is not JsonArray components)
         {
             return Result<List<int>>.Fail("Entity data does not contain any components");
         }

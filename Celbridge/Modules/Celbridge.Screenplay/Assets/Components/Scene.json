@@ -7,7 +7,7 @@
   },
 
   "properties": {
-    "_componentType": {
+    "_type": {
       "type": "string",
       "const": "Screenplay.Scene#1"
     },
@@ -20,7 +20,7 @@
   },
 
   "required": [
-    "_componentType",
+    "_type",
     "sceneTitle",
     "sceneDescription"
   ],

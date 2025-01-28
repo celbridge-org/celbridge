@@ -5,7 +5,7 @@
   "attributes": {},
 
   "properties": {
-    "_componentType": {
+    "_type": {
       "type": "string",
       "const": "Markdown.Markdown#1"
     },
@@ -16,7 +16,7 @@
   },
 
   "required": [
-    "_componentType",
+    "_type",
     "editorMode"
   ],
 
