@@ -1,5 +1,6 @@
 using Celbridge.Entities.Services;
 using Celbridge.Entities.Commands;
+using Celbridge.Activities.Services;
 
 namespace Celbridge.Entities;
 
@@ -15,6 +16,7 @@ public static class ServiceConfiguration
         services.AddTransient<ComponentConfigRegistry>();
         services.AddTransient<ComponentProxyService>();
         services.AddTransient<EntityRegistry>();
+        services.AddTransient<IEntityAnnotation, EntityAnnotation>();
 
         //
         // Register commands
