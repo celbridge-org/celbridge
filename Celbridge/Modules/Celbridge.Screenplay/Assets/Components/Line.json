@@ -7,7 +7,7 @@
   },
 
   "properties": {
-    "_componentType": {
+    "_type": {
       "type": "string",
       "const": "Screenplay.Line#1"
     },
@@ -47,7 +47,7 @@
   },
 
   "required": [
-    "_componentType",
+    "_type",
     "dialogueKey",
     "character",
     "sourceText",

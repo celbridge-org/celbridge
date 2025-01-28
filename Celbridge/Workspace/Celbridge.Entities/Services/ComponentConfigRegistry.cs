@@ -306,7 +306,7 @@ public class ComponentConfigRegistry
             {
                 return Result<ComponentConfig>.Fail("Prototype node not found");
             }
-            prototypeNode["_componentType"] = typeAndVersion; // Prototype type and version match the schema
+            prototypeNode[EntityUtils.ComponentTypeKey] = typeAndVersion; // Prototype type and version match the schema
 
             var prototype = JsonSerializer.Deserialize<JsonElement>(prototypeNode.ToJsonString());
 

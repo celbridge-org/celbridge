@@ -7,14 +7,14 @@
   },
 
   "properties": {
-    "_componentType": {
+    "_type": {
       "type": "string",
       "const": "Screenplay.ScreenplayActivity#1"
     }
   },
 
   "required": [
-    "_componentType"
+    "_type"
   ],
 
   "prototype": {},
