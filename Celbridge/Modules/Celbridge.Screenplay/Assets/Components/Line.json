@@ -2,9 +2,7 @@
   "type": "object",
   "additionalProperties": false,
 
-  "attributes": {
-    "allowMultipleComponents": true
-  },
+  "attributes": {},
 
   "properties": {
     "_type": {
