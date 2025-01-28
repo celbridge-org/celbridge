@@ -34,16 +34,6 @@ public class ComponentProxy : IComponentProxy
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
     }
 
-    public void SetAnnotation(ComponentStatus status, string description, string tooltip)
-    {
-        Status = status;
-        Description = description;
-        Tooltip = tooltip;
-
-        var message = new ComponentAnnotationUpdatedMessage(Key);
-        _messengerService.Send(message);
-    }
-
     // Property accessors
 
     public Result<T> GetProperty<T>(string propertyPath) where T : notnull

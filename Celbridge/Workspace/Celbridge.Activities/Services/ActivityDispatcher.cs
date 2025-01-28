@@ -11,6 +11,7 @@ public class ActivityDispatcher
 {
     private const string EmptyComponentType = ".Empty";
 
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ActivityDispatcher> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
@@ -21,10 +22,12 @@ public class ActivityDispatcher
     private List<ResourceKey> _pendingUpdates = new();
 
     public ActivityDispatcher(
+        IServiceProvider serviceProvider,
         ILogger<ActivityDispatcher> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
 
         _messengerService = messengerService;
@@ -131,6 +134,8 @@ public class ActivityDispatcher
         var pendingUpdates = _pendingUpdates.ToList();
         _pendingUpdates.Clear();
 
+        var entityAnnotations = new Dictionary<string, IEntityAnnotation>();
+
         foreach (var fileResource in pendingUpdates)
         {
             try
@@ -145,19 +150,72 @@ public class ActivityDispatcher
                 }
                 var components = getComponentsResult.Value;
 
-                // Ensure the resource is associated with the correct activity
-                string activityName = UpdateAssociatedActivity(fileResource);
-
-                if (string.IsNullOrEmpty(activityName))
+                if (components.Count == 0)
                 {
-                    // No activity supports this resource, early out.
+                    // No components to annotate, early out.
                     continue;
                 }
 
-                // Use the associated activity to update the resource
+                // Create a new entity annotation
+                var entityAnnotation = _serviceProvider.GetRequiredService<IEntityAnnotation>();
+                entityAnnotation.Initialize(components.Count);
+                entityAnnotations[fileResource] = entityAnnotation;
 
-                var activity = _activityRegistry.Activities[activityName];
+                // Empty components are always valid in any position.
+                for (int i = 0; i < components.Count; i++)
+                {
+                    var component = components[i];
+                    if (component.Schema.ComponentType == EmptyComponentType)
+                    {
+                        entityAnnotation.SetIsRecognized(i);
+                    }
+                }
 
+                // Get the root component and check that it has a "rootActivity" attribute
+                var rootComponent = components[0];
+                var activityName = rootComponent.Schema.GetStringAttribute("rootActivity");
+                if (string.IsNullOrEmpty(activityName))
+                {
+                    // This component is not valid at the root position.
+                    // We set it to "recognized" however, so that it will display the more informative
+                    // error message below, rather than the generic invalid component error message.
+                    entityAnnotation.SetIsRecognized(0);
+
+                    var error = new ComponentError(
+                        ComponentErrorSeverity.Critical,
+                        "Invalid root component",
+                        "This component is not a valid root component for this resource type.");
+
+                    entityAnnotation.AddError(0, error);
+
+                    continue;
+                }
+
+                if (activityName == "None")
+                {
+                    // The Empty root component uses the "None" activity to indicate that no activity should be
+                    // applied to the entity.
+                    continue;
+                }
+
+                // Lookup the activity by name
+                if (!_activityRegistry.Activities.TryGetValue(activityName, out var activity))
+                {
+                    failed = true;
+                    _logger.LogError($"Invalid activity name: '{activityName}'");
+                    continue;
+                }
+
+                // Use the activity to update the entity annotation
+                var updateAnnotations = activity.UpdateEntityAnnotation(fileResource, entityAnnotation);
+                if (updateAnnotations.IsFailure)
+                {
+                    failed = true;
+                    _logger.LogError(updateAnnotations.Error);
+                    continue;
+                }
+
+                // Use the activity to update the resource
                 var updateResult = await activity.UpdateResourceAsync(fileResource);
                 if (updateResult.IsFailure)
                 {
@@ -171,6 +229,16 @@ public class ActivityDispatcher
                 failed = true;
                 _logger.LogError(ex.ToString());
             }
+        }
+
+        // Send a message to the inspector to apply the annotations
+        foreach (var kv in entityAnnotations)
+        {
+            var entity = kv.Key;
+            var entityAnnotation = kv.Value;
+
+            var message = new AnnotatedEntityMessage(entity, entityAnnotation);
+            _messengerService.Send(message);
         }
 
         if (failed)
@@ -201,9 +269,6 @@ public class ActivityDispatcher
                 {
                     return Result.Fail($"Failed to initialize resource '{resource}' with activity '{activityName}'");
                 }
-
-                // Associate this activity with the entity
-                _entityService.SetActivity(resource, activityName);
                 break;
             }
         }
@@ -211,53 +276,5 @@ public class ActivityDispatcher
         // If no activity supports the resource then no initialization is necessary
 
         return Result.Ok();
-    }
-
-    private string UpdateAssociatedActivity(ResourceKey resource)
-    {
-        Guard.IsNotNull(_activityRegistry);
-
-        // Check if the current associated activity is still valid
-        var getActivityResult = _entityService.GetActivity(resource);
-        if (getActivityResult.IsSuccess)
-        {
-            var currentActivity = getActivityResult.Value;
-            if (!string.IsNullOrEmpty(currentActivity) ||
-                _activityRegistry.Activities.ContainsKey(currentActivity))
-            {
-                // Activity is valid, early out.
-                return currentActivity;
-            }
-        }
-
-        // Search for an activity that supports this resource.
-
-        string newActivityName = string.Empty; // Default to no activity
-        var activityNames = _activityRegistry.ActivityNames;
-        foreach (var activityName in activityNames)
-        {
-            var activity = _activityRegistry.Activities[activityName];
-
-            if (activity.SupportsResource(resource))
-            {
-                newActivityName = activityName;    
-                break;
-            }
-        }
-
-        // Associate the updated activity with the resource
-        _entityService.SetActivity(resource, newActivityName);
-
-        return newActivityName;
-    }
-
-    private void AnnotateEmptyComponent(IComponentProxy component)
-    {
-        var comment = component.GetString("/comment");
-
-        component.SetAnnotation(
-            ComponentStatus.Valid,
-            comment,
-            comment);
     }
 }

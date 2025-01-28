@@ -5,6 +5,7 @@ using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
+using System.ComponentModel;
 using System.Text;
 
 using Path = System.IO.Path;
@@ -77,64 +78,82 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateResourceAsync(ResourceKey fileResource)
+    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
-        var componentCount = _entityService.GetComponentCount(fileResource);
-        if (componentCount == 0)
+        var getComponents = _entityService.GetComponents(entity);
+        if (getComponents.IsFailure)
         {
-            // Inspected resource may have been deleted or moved since the update was requested
+            return Result.Fail(entity, $"Failed to get entity components: '{entity}'")
+                .WithErrors(getComponents);
+        }
+        var components = getComponents.Value;
+
+        if (components.Count != entityAnnotation.Count)
+        {
+            return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
+        }
+
+        //
+        // Root component must be "Scene"
+        //
+
+        var rootComponent = components[0];
+        if (rootComponent.Schema.ComponentType == SceneEditor.ComponentType)
+        {
+            entityAnnotation.SetIsRecognized(0);
+        }
+        else
+        {
+            var error = new ComponentError(
+                ComponentErrorSeverity.Critical,
+                "Invalid component position",
+                "This component must be the first component.");
+
+            entityAnnotation.AddError(0, error);
+        }
+
+        //
+        // Remaining components must be "Line"
+        //
+
+        for (int i = 1; i < components.Count; i++)
+        {
+            var component = components[i];
+
+            if (component.Schema.ComponentType == ".Empty")
+            {
+                // Skip empty components
+                continue;
+            }
+
+            if (component.Schema.ComponentType == LineEditor.ComponentType)
+            {
+                entityAnnotation.SetIsRecognized(i);
+            }
+            else
+            {
+                var error = new ComponentError(
+                    ComponentErrorSeverity.Critical,
+                    "Invalid component type",
+                    "This component must be a 'Line' component");
+
+                entityAnnotation.AddError(i, error);
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> UpdateResourceAsync(ResourceKey resource)
+    {
+        var count = _entityService.GetComponentCount(resource);
+        if (count == 0)
+        {
+            // Resource may have been deleted or moved since the update was requested
             return Result.Ok();
         }
 
-        // Populate the annotation data for each component associated with this activity
-        for (int i = 0; i < componentCount; i++)
-        {
-            // Get the component 
-            var getComponentResult = _entityService.GetComponent(new ComponentKey(fileResource, i));
-            if (getComponentResult.IsFailure)
-            {
-                return Result.Fail(fileResource, $"Failed to get component for resource '{fileResource}' at index {i}")
-                    .WithErrors(getComponentResult);
-            }
-            var component = getComponentResult.Value;
-
-            var schema = component.Schema;
-
-            if (schema.ComponentType == EmptyComponentType)
-            {
-                // Ignore empty components
-                continue;
-            }
-
-            if (!schema.HasTag(ActivityName))
-            {
-                component.SetAnnotation(
-                    ComponentStatus.Error,
-                    "Not a screenplay component",
-                    "This component may not be used with the 'Screenplay' activity");
-
-                continue;
-            }
-
-            switch (schema.ComponentType)
-            {
-                case SceneEditor.ComponentType:
-                    var sceneTitle = component.GetString(SceneEditor.SceneTitle);
-                    var sceneDescription = component.GetString(SceneEditor.SceneDescription);
-                    var componentDescription = $"{sceneTitle}: {sceneDescription}";
-                    component.SetAnnotation(ComponentStatus.Valid, componentDescription, componentDescription);
-                    break;
-
-                case LineEditor.ComponentType:
-                    var character = component.GetString(LineEditor.Character);
-                    var sourceText = component.GetString(LineEditor.SourceText);
-                    var description = $"{character}: {sourceText}";
-                    component.SetAnnotation(ComponentStatus.Valid, description, description);
-                    break;
-            };
-        }
-
-        var generateResult = GenerateScreenplayMarkdown(fileResource);
+        var generateResult = GenerateScreenplayMarkdown(resource);
         if (generateResult.IsFailure)
         {
             return Result.Fail($"Failed to generate screenplay markdown").
@@ -144,7 +163,7 @@ public class ScreenplayActivity : IActivity
         var markdown = generateResult.Value;
 
         // Set the contents of the document to the generated markdown
-        var setContentResult = _documentService.SetTextDocumentContent(fileResource, markdown);
+        var setContentResult = _documentService.SetTextDocumentContent(resource, markdown);
         if (setContentResult.IsFailure)
         {
             return Result.Fail($"Failed to set document content")

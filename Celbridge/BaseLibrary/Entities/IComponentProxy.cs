@@ -43,11 +43,6 @@ public interface IComponentProxy
     string Tooltip { get; }
 
     /// <summary>
-    /// Set all annotation properties.
-    /// </summary>
-    void SetAnnotation(ComponentStatus Status, string Description, string Tooltip);
-
-    /// <summary>
     /// Gets the value of a string property.
     /// propertyPath is a JSON Pointer (RFC 6901).
     /// Fails if the property cannot be found, or is of the wrong type.

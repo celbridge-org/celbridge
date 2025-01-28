@@ -646,45 +646,6 @@ public class EntityService : IEntityService, IDisposable
         return componentTypes;
     }
 
-    public Result<string> GetActivity(ResourceKey resource)
-    {
-        // Acquire the entity
-        var acquireResult = _entityRegistry.AcquireEntity(resource);
-        if (acquireResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to acquire entity: {resource}")
-                .WithErrors(acquireResult);
-        }
-        var entity = acquireResult.Value;
-
-        // Lookup and return the activity
-        var activity = entity.EntityData.GetActivity();
-        return Result<string>.Ok(activity);
-    }
-
-    public Result SetActivity(ResourceKey resource, string activity)
-    {
-        // Acquire the entity
-        var acquireResult = _entityRegistry.AcquireEntity(resource);
-        if (acquireResult.IsFailure)
-        {
-            return Result.Fail($"Failed to acquire entity: {resource}")
-                .WithErrors(acquireResult);
-        }
-        var entity = acquireResult.Value;
-
-        // Set the activity in the EntityData
-        var existingActivity = entity.EntityData.GetActivity();
-        if (existingActivity != activity)
-        {
-            // Set the activity and mark the entity as modified
-            entity.EntityData.SetActivity(activity);
-            _entityRegistry.MarkModifiedEntity(resource);
-        }
-
-        return Result.Ok();
-    }
-
     public Result<IComponentEditor> CreateComponentEditor(ComponentKey componentKey)
     {
         var getComponentResult = GetComponent(componentKey);
