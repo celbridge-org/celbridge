@@ -1,6 +1,5 @@
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -9,8 +8,6 @@ namespace Celbridge.Activities.Services;
 
 public class ActivityDispatcher
 {
-    private const string EmptyComponentType = ".Empty";
-
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ActivityDispatcher> _logger;
     private readonly IMessengerService _messengerService;
@@ -165,7 +162,7 @@ public class ActivityDispatcher
                 for (int i = 0; i < components.Count; i++)
                 {
                     var component = components[i];
-                    if (component.Schema.ComponentType == EmptyComponentType)
+                    if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
                     {
                         entityAnnotation.SetIsRecognized(i);
                     }

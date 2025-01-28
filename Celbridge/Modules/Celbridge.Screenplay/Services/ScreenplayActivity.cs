@@ -5,7 +5,6 @@ using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
-using System.ComponentModel;
 using System.Text;
 
 using Path = System.IO.Path;
@@ -15,8 +14,6 @@ namespace Celbridge.Screenplay.Services;
 public class ScreenplayActivity : IActivity
 {
     public const string ActivityName = "Screenplay";
-
-    private const string EmptyComponentType = ".Empty";
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScreenplayActivity> _logger;
@@ -120,7 +117,7 @@ public class ScreenplayActivity : IActivity
         {
             var component = components[i];
 
-            if (component.Schema.ComponentType == ".Empty")
+            if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
             {
                 // Skip empty components
                 continue;
