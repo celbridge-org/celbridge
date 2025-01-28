@@ -360,7 +360,7 @@ public class EntityService : IEntityService, IDisposable
 
         // Get the component type
 
-        var componentTypePointer = JsonPointer.Create("_components", componentKey.ComponentIndex, "_componentType");
+        var componentTypePointer = JsonPointer.Create(EntityUtils.ComponentsKey, componentKey.ComponentIndex, EntityUtils.ComponentTypeKey);
         var getTypeResult = entity.EntityData.GetProperty<string>(componentTypePointer);
         if (getTypeResult.IsFailure)
         {

@@ -1,3 +1,4 @@
+using Celbridge.Entities.Services;
 using Json.Schema;
 using System.Text.Json;
 
@@ -5,7 +6,7 @@ namespace Celbridge.Entities.Models;
 
 public class ComponentConfig
 {
-    public const string ComponentTypeConstKey = "/properties/_componentType/const";
+    public const string ComponentTypeConstKey = $"/properties/{EntityUtils.ComponentTypeKey}/const";
     public const string AttributesKey = "attributes";
     public const string PropertiesKey = "properties";
     public const string PrototypeKey = "prototype";

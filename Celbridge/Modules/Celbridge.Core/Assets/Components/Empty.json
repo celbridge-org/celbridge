@@ -8,7 +8,7 @@
   },
 
   "properties": {
-    "_componentType": {
+    "_type": {
       "type": "string",
       "const": ".Empty#1"
     },
@@ -18,7 +18,7 @@
   },
 
   "required": [
-    "_componentType",
+    "_type",
     "comment"
   ],
 
