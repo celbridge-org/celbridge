@@ -11,8 +11,6 @@ namespace Celbridge.Markdown.Services;
 
 public class MarkdownActivity : IActivity
 {
-    private const string EmptyComponentType = ".Empty";
-
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MarkdownActivity> _logger;
     private readonly IEntityService _entityService;

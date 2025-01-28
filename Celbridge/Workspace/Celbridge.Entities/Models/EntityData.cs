@@ -202,7 +202,7 @@ public class EntityData
 
     public Result<int> GetComponentCount()
     {
-        var componentsPointer = JsonPointer.Parse($"/{EntityConstants.ComponentsKey}");
+        var componentsPointer = JsonPointer.Parse($"/{EntityUtils.ComponentsKey}");
         if (componentsPointer.TryEvaluate(EntityJsonObject, out var componentsNode) &&
             componentsNode is JsonArray componentsArray &&
             componentsArray is not null)
@@ -221,9 +221,9 @@ public class EntityData
 
             // Check if the JSON pointer is a component property path
             if (jsonPointer.Count < 2 ||
-                jsonPointer[0] != EntityConstants.ComponentsKey)
+                jsonPointer[0] != EntityUtils.ComponentsKey)
             {
-                throw new InvalidOperationException($"Component patch operation does not start with /{EntityConstants.ComponentsKey}");
+                throw new InvalidOperationException($"Component patch operation does not start with /{EntityUtils.ComponentsKey}");
             }
 
             // Extract the component index from the path
@@ -246,10 +246,10 @@ public class EntityData
                     throw new InvalidOperationException($"Added component is not a JsonObject");
                 }
 
-                var addedComponentTypeNode = addedComponent[EntityConstants.ComponentTypeKey];
+                var addedComponentTypeNode = addedComponent[EntityUtils.ComponentTypeKey];
                 if (addedComponentTypeNode is null)
                 {
-                    throw new InvalidOperationException($"Added component does not have a '{EntityConstants.ComponentTypeKey}' property");
+                    throw new InvalidOperationException($"Added component does not have a '{EntityUtils.ComponentTypeKey}' property");
                 }
 
                 typeAndVersion = addedComponentTypeNode.GetValue<string>();
@@ -258,11 +258,11 @@ public class EntityData
             {
                 // ...in all other cases, use the component type of the existing entity component.
 
-                var componentTypePointer = jsonPointer[..2].Combine(EntityConstants.ComponentTypeKey);
+                var componentTypePointer = jsonPointer[..2].Combine(EntityUtils.ComponentTypeKey);
                 if (!componentTypePointer.TryEvaluate(EntityJsonObject, out var componentTypeNode) ||
                     componentTypeNode is null)
                 {
-                    throw new InvalidOperationException($"Component at index {componentIndex} does not contain a '{EntityConstants.ComponentTypeKey}' property");
+                    throw new InvalidOperationException($"Component at index {componentIndex} does not contain a '{EntityUtils.ComponentTypeKey}' property");
                 }
 
                 typeAndVersion = componentTypeNode.GetValue<string>();

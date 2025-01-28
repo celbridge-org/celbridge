@@ -16,8 +16,6 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class ComponentListViewModel : InspectorViewModel
 {
-    private const string EmptyComponentType = ".Empty";
-
     private readonly ILogger<MarkdownInspectorViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -116,7 +114,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         var executeResult = await _commandService.ExecuteAsync<IAddComponentCommand>(command => 
         {
             command.ComponentKey = new ComponentKey(Resource, addIndex);
-            command.ComponentType = EmptyComponentType;
+            command.ComponentType = EntityConstants.EmptyComponentType;
         });
 
         if (executeResult.IsFailure)
@@ -359,7 +357,7 @@ public partial class ComponentListViewModel : InspectorViewModel
             }
             var componentType = getTypeResult.Value;
 
-            if (componentType == EmptyComponentType)
+            if (componentType == EntityConstants.EmptyComponentType)
             {
                 componentType = string.Empty;
             }
