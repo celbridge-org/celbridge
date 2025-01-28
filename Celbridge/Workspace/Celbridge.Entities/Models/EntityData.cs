@@ -141,18 +141,6 @@ public class EntityData
             }
             var componentChange = getResult.Value;
 
-            // Check that the allowMultipleComponents property is respected for add component operations.
-            bool isAddComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Add;
-            if (isAddComponentOperation)
-            {
-                var checkMultipleResult = EntityUtils.ValidateMultipleComponents(patchedJsonObject, componentChange.ComponentType, configRegistry);
-                if (checkMultipleResult.IsFailure)
-                {
-                    return Result<PatchSummary>.Fail($"Component type does not allow multiple components: '{componentChange.ComponentType}'")
-                        .WithErrors(checkMultipleResult);
-                }
-            }
-
             // Check that the component that was modified by the operation is still valid against its schema.
             // The remove component operation doesn't require validation.
             bool isRemoveComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Remove;

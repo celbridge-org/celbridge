@@ -19,11 +19,6 @@ public static class EntityUtils
     /// </summary>
     public const string ComponentTypeKey = "_type";
 
-    /// <summary>
-    /// JSON key for allowMultipleComponents attribute.
-    /// </summary>
-    public const string AllowMultipleComponentsKey = "allowMultipleComponents";
-
     public static Result<EntityData> CreateEntityData(ResourceKey resource, ComponentConfigRegistry configRegistry, JsonSchema entitySchema)
     {
         var entityJsonObject = new JsonObject
@@ -81,13 +76,6 @@ public static class EntityUtils
                 .WithErrors(validateComponentsResult);
         }
 
-        var validateMultipleResult = ValidateMultipleComponents(jsonObject, configRegistry);
-        if (validateMultipleResult.IsFailure)
-        {
-            return Result<EntityData>.Fail($"Entity data contains invalid multiple components: '{entityDataPath}'")
-                .WithErrors(validateMultipleResult);
-        }
-
         var getTagsResult = GetAllComponentTags(jsonObject, configRegistry);
         if (getTagsResult.IsFailure)
         {
@@ -140,96 +128,6 @@ public static class EntityUtils
         }
 
         return Result<List<int>>.Ok(indices);
-    }
-
-    /// <summary>
-    /// Checks if the entity data contains multiple components of the same type where the component schema does not allow it.
-    /// </summary>
-    public static Result ValidateMultipleComponents(JsonObject entityData, ComponentConfigRegistry configRegistry)
-    {
-        if (entityData[ComponentsKey] is not JsonArray components)
-        {
-            return Result.Fail($"Entity data does not contain a '{ComponentsKey}' property.");
-        }
-
-        var checkedComponentTypes = new HashSet<string>();
-
-        for (int i = 0; i < components.Count; i++)
-        {
-            var componentTypePointer = JsonPointer.Parse($"/{ComponentsKey}/{i}/{ComponentTypeKey}");
-
-            if (!componentTypePointer.TryEvaluate(entityData, out var componentTypeNode) ||
-                componentTypeNode is null ||
-                componentTypeNode.GetValueKind() != JsonValueKind.String)
-            {
-                return Result.Fail($"Failed to get component type for component at index {i}.");
-            }
-
-            var typeAndVersion = componentTypeNode.GetValue<string>();
-
-            var parseResult = ParseComponentTypeAndVersion(typeAndVersion);
-            if (parseResult.IsFailure)
-            {
-                return Result.Fail($"Failed to parse component type and version: {typeAndVersion}")
-                    .WithErrors(parseResult);
-            }
-            var (componentType, componentVersion) = parseResult.Value; 
-
-            if (checkedComponentTypes.Contains(componentType))
-            {
-                // We've already checked this component type
-                continue;
-            }
-
-            var checkResult = ValidateMultipleComponents(entityData, componentType, configRegistry);
-            if (checkResult.IsFailure)
-            {
-                return Result.Fail($"Duplicate component check failed for component type '{componentType}'.")
-                    .WithErrors(checkResult);
-            }
-
-            checkedComponentTypes.Add(componentType);
-        }
-
-        return Result.Ok();
-    }
-
-    /// <summary>
-    /// Checks if the entity data contains multiple instance of any component type where the schema does not allow it.
-    /// </summary>
-    public static Result ValidateMultipleComponents(JsonObject entityData, string componentType, ComponentConfigRegistry configRegistry)
-    {
-        var getConfigResult = configRegistry.GetComponentConfig(componentType);
-        if (getConfigResult.IsFailure)
-        {
-            return Result.Fail($"Failed to get component config for component type '{componentType}'")
-                .WithErrors(getConfigResult);
-        }
-        var config = getConfigResult.Value;
-
-        var schema = config.ComponentSchema;
-
-        // Check if the component type allows multiple components
-
-        var allowMultiple = schema.GetBooleanAttribute(AllowMultipleComponentsKey); 
-        if (!allowMultiple)
-        {
-            // Check if the entity data already contains a component of the same type
-            var getComponentsResult = GetComponentsOfType(entityData, componentType);
-            if (getComponentsResult.IsFailure)
-            {
-                return Result.Fail($"Failed to get components of type '{componentType}'")
-                    .WithErrors(getComponentsResult);
-            }
-            var componentCount = getComponentsResult.Value.Count;
-
-            if (componentCount > 1)
-            {
-                return Result.Fail($"Component type '{componentType}' does not allow multiple components");
-            }
-        }
-
-        return Result.Ok();
     }
 
     /// <summary>

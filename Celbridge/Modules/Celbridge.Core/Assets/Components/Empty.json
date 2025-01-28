@@ -3,8 +3,7 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "None",
-    "allowMultipleComponents": true
+    "rootActivity": "None"
   },
 
   "properties": {

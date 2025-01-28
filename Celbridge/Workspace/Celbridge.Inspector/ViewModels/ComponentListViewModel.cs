@@ -172,7 +172,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    public ICommand DuplicateComponentCommand => new AsyncRelayCommand<object?>(DuplicateComponent_Executed, CanDuplicateComponent);
+    public ICommand DuplicateComponentCommand => new AsyncRelayCommand<object?>(DuplicateComponent_Executed);
     private async Task DuplicateComponent_Executed(object? parameter)
     {
         var componentItem = parameter as ComponentItem;
@@ -212,34 +212,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
 
         SelectedIndex = destIndex;
-    }
-
-    private bool CanDuplicateComponent(object? parameter)
-    {
-        var componentItem = parameter as ComponentItem;
-        if (componentItem is null)
-        {
-            return false;
-        }
-
-        int duplicateIndex = ComponentItems.IndexOf(componentItem);
-        if (duplicateIndex == -1)
-        {
-            return false;
-        }
-
-        // Get the component
-        var getComponentResult = _entityService.GetComponent(new ComponentKey(Resource, duplicateIndex));
-        if (getComponentResult.IsFailure)
-        {
-            _logger.LogError(getComponentResult.Error);
-            return false;
-        }
-        var component = getComponentResult.Value;
-
-        var allowMultipleComponents = component.Schema.GetBooleanAttribute("allowMultipleComponents");
-
-        return allowMultipleComponents;
     }
 
     public ICommand MoveComponentCommand => new AsyncRelayCommand<object?>(MoveComponent_Executed);
