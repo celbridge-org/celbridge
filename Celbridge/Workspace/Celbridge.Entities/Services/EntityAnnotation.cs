@@ -70,22 +70,19 @@ public class EntityAnnotation : IEntityAnnotation
             throw new IndexOutOfRangeException($"Component index is out of range: {componentIndex}");
         }
 
+        // Adding any error to an annotation automatically marks the component as recognized.
+        // This ensures that the error added here will be displayed instead of the general "Invalid component"
+        // error for unrecognized components. The error added here is more specific so probably more helpful. 
+        SetIsRecognized(componentIndex);
+
         var annotation = _annotations[componentIndex];
 
         var errorList = annotation.Errors;
         errorList.Add(error);
 
-        // Ensure the error list is always sorted in a stable order, with the 
-        // highest severity errors listed first.
+        // Sort errors so most severe errors are listed first
         errorList.Sort((a, b) =>
         {
-            if (a.Severity == b.Severity)
-            {
-                // Sort errors of the same severity alphabetically by their message.
-                return string.Compare(a.Message, b.Message, StringComparison.Ordinal);
-            }
-
-            // Sort errors by severity
             return (int)a.Severity - (int)b.Severity;
         });
     }
