@@ -19,6 +19,7 @@ public class InspectorService : IInspectorService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IFormService _formService;
     private readonly ComponentEditorCache _componentEditorCache;
+    private readonly EntityAnnotationCache _entityAnnotationCache;
 
     private IInspectorPanel? _inspectorPanel;
     public IInspectorPanel InspectorPanel => _inspectorPanel!;
@@ -51,14 +52,15 @@ public class InspectorService : IInspectorService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<InspectorService> logger,
         IMessengerService messengerService,
-        IFormService formService,
-        ComponentEditorCache componentEditorCache)
+        IFormService formService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
         _formService = formService;
-        _componentEditorCache = componentEditorCache;
+
+        _componentEditorCache = _serviceProvider.GetRequiredService<ComponentEditorCache>();
+        _entityAnnotationCache = _serviceProvider.GetRequiredService<EntityAnnotationCache>();
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
@@ -100,6 +102,11 @@ public class InspectorService : IInspectorService, IDisposable
     public Result<IComponentEditor> AcquireComponentEditor(ComponentKey componentKey)
     {
         return _componentEditorCache.AcquireComponentEditor(componentKey);
+    }
+
+    public Result<IEntityAnnotation> GetCachedEntityAnnotation(ResourceKey resource)
+    {
+        return _entityAnnotationCache.GetEntityAnnotation(resource);
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)

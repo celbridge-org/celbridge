@@ -49,4 +49,9 @@ public interface IInspectorService
     /// This method will cache the editor for subsequent requests.
     /// </summary>
     Result<IComponentEditor> AcquireComponentEditor(ComponentKey component);
+
+    /// <summary>
+    /// Returns the most recently generated entity annotation for the specified resource.
+    /// </summary>
+    Result<IEntityAnnotation> GetCachedEntityAnnotation(ResourceKey resource);
 }
