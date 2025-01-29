@@ -60,7 +60,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     {
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
         _messengerService.Register<UpdateInspectorMessage>(this, OnUpdateInspectorMessage);
-        _messengerService.Register<AnnotatedEntityMessage>(this, OnAnnotatedEntityMessage);
+        _messengerService.Register<UpdatedAnnotationCache>(this, OnUpdatedAnnotationCache);
 
         PropertyChanged += ViewModel_PropertyChanged;
 
@@ -266,15 +266,33 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    private void OnAnnotatedEntityMessage(object recipient, AnnotatedEntityMessage message)
+    private void OnUpdatedAnnotationCache(object recipient, UpdatedAnnotationCache message)
     {
-        var entityAnnotation = message.EntityAnnotation;
+        UpdateEntityAnnotation();
+    }
 
-        // Apply the annotation data to the corresponding component item
+    private void UpdateEntityAnnotation()
+    {
+        if (ComponentItems.Count == 0)
+        {
+            // No components to annotate
+            return;
+        }
+
+        IEntityAnnotation? entityAnnotation = null;
+
+        var getAnnotationResult = _inspectorService.GetCachedEntityAnnotation(Resource);
+        if (getAnnotationResult.IsSuccess)
+        {
+            entityAnnotation = getAnnotationResult.Value;
+        }
+
+        // Apply the most recent annotation data to the corresponding component item
         for (int i = 0; i < ComponentItems.Count; i++)
         {
             var componentItem = ComponentItems[i];
-            if (i < entityAnnotation.Count)
+            if (entityAnnotation is not null &&
+                i < entityAnnotation.Count)
             {
                 componentItem.Annotation = entityAnnotation.GetComponentAnnotation(i);
             }
@@ -368,6 +386,8 @@ public partial class ComponentListViewModel : InspectorViewModel
             // Populate the component summary
             componentItem.Summary = summary;
         }
+
+        UpdateEntityAnnotation();
 
         // Select the previous index if it is still valid
         if (componentCount == 0)

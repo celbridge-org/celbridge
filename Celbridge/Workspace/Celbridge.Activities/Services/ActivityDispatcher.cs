@@ -158,37 +158,50 @@ public class ActivityDispatcher
                 entityAnnotation.Initialize(components.Count);
                 entityAnnotations[fileResource] = entityAnnotation;
 
-                // Empty components are always valid in any position.
-                for (int i = 0; i < components.Count; i++)
-                {
-                    var component = components[i];
-                    if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
-                    {
-                        entityAnnotation.SetIsRecognized(i);
-                    }
-                }
+                bool hasValidActivity = true;
 
                 // Get the root component and check that it has a "rootActivity" attribute
                 var rootComponent = components[0];
                 var activityName = rootComponent.Schema.GetStringAttribute("rootActivity");
                 if (string.IsNullOrEmpty(activityName))
                 {
-                    // This component is not valid at the root position.
-                    // We set it to "recognized" however, so that it will display the more informative
-                    // error message below, rather than the generic invalid component error message.
-                    entityAnnotation.SetIsRecognized(0);
+                    hasValidActivity = false;
 
+                    // Invalid root component.
                     var error = new ComponentError(
                         ComponentErrorSeverity.Critical,
                         "Invalid root component",
                         "This component is not a valid root component for this resource type.");
-
                     entityAnnotation.AddError(0, error);
-
-                    continue;
                 }
 
-                if (activityName == "None")
+                // Perform some basic configuation checks for all components
+                for (int i = 0; i < components.Count; i++)
+                {
+                    // Empty components are always valid in any position.
+                    var component = components[i];
+                    if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+                    {
+                        entityAnnotation.SetIsRecognized(i);
+                    }
+                    else if (i > 0)
+                    {
+                        var rootActivity = component.Schema.GetStringAttribute("rootActivity");
+                        if (!string.IsNullOrEmpty(rootActivity))
+                        {
+                            hasValidActivity = false;
+
+                            var error = new ComponentError(
+                                ComponentErrorSeverity.Critical,
+                                "Invalid position",
+                                "The root component must be the first component in the list.");
+                            entityAnnotation.AddError(i, error);
+                        }
+                    }
+                }
+
+                if (!hasValidActivity ||
+                    activityName == "None")
                 {
                     // The Empty root component uses the "None" activity to indicate that no activity should be
                     // applied to the entity.
