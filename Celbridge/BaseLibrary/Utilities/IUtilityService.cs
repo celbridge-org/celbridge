@@ -24,7 +24,7 @@ public interface IUtilityService
     /// <summary>
     /// Returns the current UTC time in "yyyyMMdd_HHmmss" format.
     /// </summary>
-    public string GetTimestamp();
+    string GetTimestamp();
 
     /// <summary>
     /// Deletes old files in the specified folder that start with the specified prefix.
@@ -34,5 +34,10 @@ public interface IUtilityService
     /// <summary>
     /// Converts a hex color string to an ARGB tuple.
     /// </summary>
-    public (byte a, byte r, byte g, byte b) ColorFromHex(string hex);
+    (byte a, byte r, byte g, byte b) ColorFromHex(string hex);
+
+    /// <summary>
+    /// Load the content of an embedded resource from the assembly containing the specified type.
+    /// </summary>
+    Result<string> LoadEmbeddedResource(Type type, string resourcePath);
 }

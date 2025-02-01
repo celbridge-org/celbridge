@@ -1,5 +1,5 @@
-using Celbridge.Utilities;
 using System.Reflection;
+using Celbridge.Utilities;
 
 using Path = System.IO.Path;
 
@@ -142,5 +142,31 @@ public class UtilityService : IUtilityService
         }
 
         return (a, r, g, b);
+    }
+
+    public Result<string> LoadEmbeddedResource(Type type, string resourcePath)
+    {
+        // Load the component config JSON from an embedded resource
+        var assembly = type.Assembly;
+        var stream = assembly.GetManifestResourceStream(resourcePath);
+        if (stream is null)
+        {
+            return Result<string>.Fail($"Embedded resource '{resourcePath}' not found in assembly '{assembly}'");
+        }
+
+        try
+        {
+            using (stream)
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                var data = reader.ReadToEnd();
+                return Result<string>.Ok(data);
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"An exception occurred when reading content of embedded resource: {resourcePath}")
+                .WithException(ex);
+        }
     }
 }
