@@ -42,7 +42,7 @@ public class ComponentConfigRegistry
                 // Create the component config
 
                 // Load the component config JSON from an embedded resource
-                var loadConfigResult = LoadComponentConfigFile(editorType);
+                var loadConfigResult = LoadComponentConfig(editorType);
                 if (loadConfigResult.IsFailure)
                 {
                     return Result.Fail($"Failed to load component config for component editor: '{editorKey}'")
@@ -135,39 +135,21 @@ public class ComponentConfigRegistry
         return Result<List<Type>>.Ok(editorTypes);
     }
 
-    private Result<string> LoadComponentConfigFile(Type componentEditorType)
+    private Result<string> LoadComponentConfig(Type componentEditorType)
     {
         var editor = _serviceProvider.GetRequiredService(componentEditorType) as IComponentEditor;
         if (editor is null)
         {
             return Result<string>.Fail($"Failed to instantiate component editor type: '{componentEditorType}'");
         }
-        string configPath = editor.ComponentConfigPath;
 
-        // Load the component config JSON from an embedded resource
-        var assembly = componentEditorType.Assembly;
-        var stream = assembly.GetManifestResourceStream(configPath);
-        if (stream is null)
+        string config = editor.GetComponentConfig();
+        if (string.IsNullOrEmpty(config))
         {
-            return Result<string>.Fail($"Embedded resource not found: '{configPath}'");
+            return Result<string>.Fail($"Failed to get component config for component editor: '{componentEditorType}'");
         }
 
-        var json = string.Empty;
-        try
-        {
-            using (stream)
-            using (StreamReader reader = new StreamReader(stream))
-            {
-                json = reader.ReadToEnd();
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"An exception occurred when reading content of embedded resource: {configPath}")
-                .WithException(ex);
-        }
-
-        return Result<string>.Ok(json);
+        return Result<string>.Ok(config);
     }
 
     private Result<ComponentConfig> CreateComponentConfig(Type componentEditorType, string schemaJson)

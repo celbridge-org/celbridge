@@ -4,31 +4,23 @@ namespace Celbridge.Screenplay.Components;
 
 public class SceneEditor : ComponentEditorBase
 {
+    private const string _configPath = "Celbridge.Screenplay.Assets.Components.Scene.json";
+
     public const string ComponentType = "Screenplay.Scene";
     public const string SceneTitle = "/sceneTitle";
     public const string SceneDescription = "/sceneDescription";
 
-    public override string ComponentConfigPath => "Celbridge.Screenplay.Assets.Components.Scene.json";
-
-    public override Result<ComponentSummary> GetComponentSummary()
+    public override string GetComponentConfig()
     {
-        var getTitle = GetProperty("/sceneTitle");
-        if (getTitle.IsFailure)
-        {
-            return Result<ComponentSummary>.Fail(getTitle.Error);
-        }
-        var sceneTitle = getTitle.Value;
+        return LoadEmbeddedResource(_configPath);
+    }
 
-        var getDescriptionText = GetProperty("/sceneDescription");
-        if (getDescriptionText.IsFailure)
-        {
-            return Result<ComponentSummary>.Fail(getDescriptionText.Error);
-        }
-        var sceneDescription = getDescriptionText.Value;
+    public override ComponentSummary GetComponentSummary()
+    {
+        var sceneTitle = GetString(SceneTitle);
+        var sceneDescription = GetString(SceneDescription);
 
         var summaryText = $"{sceneTitle}: {sceneDescription}";
-        var summary = new ComponentSummary(summaryText, summaryText);
-
-        return Result<ComponentSummary>.Ok(summary);
+        return new ComponentSummary(summaryText, summaryText);
     }
 }

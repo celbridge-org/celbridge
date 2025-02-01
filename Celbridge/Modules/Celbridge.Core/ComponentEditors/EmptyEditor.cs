@@ -4,19 +4,18 @@ namespace Celbridge.Core.Components;
 
 public class EmptyEditor : ComponentEditorBase
 {
-    public override string ComponentConfigPath => "Celbridge.Core.Assets.Components.Empty.json";
+    private const string _configPath = "Celbridge.Core.Assets.Components.Empty.json";
 
-    public override Result<ComponentSummary> GetComponentSummary()
+    public const string Comment = "/comment";
+
+    public override string GetComponentConfig()
     {
-        var getComment = GetProperty("/comment");
-        if (getComment.IsFailure)
-        {
-            return Result<ComponentSummary>.Fail(getComment.Error);
-        }
-        var comment = getComment.Value;
+        return LoadEmbeddedResource(_configPath);
+    }
 
-        var summary = new ComponentSummary(comment, comment);
-
-        return Result<ComponentSummary>.Ok(summary);
+    public override ComponentSummary GetComponentSummary()
+    {
+        var comment = GetString("/comment");
+        return new ComponentSummary(comment, comment);
     }
 }

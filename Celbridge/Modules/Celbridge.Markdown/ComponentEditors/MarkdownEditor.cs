@@ -4,14 +4,17 @@ namespace Celbridge.Markdown.Components;
 
 public class MarkdownEditor : ComponentEditorBase
 {
+    private const string _configPath = "Celbridge.Markdown.Assets.Components.Markdown.json";
+
     public const string ComponentType = "Markdown.Markdown";
 
-    public override string ComponentConfigPath => "Celbridge.Markdown.Assets.Components.Markdown.json";
-
-    public override Result<ComponentSummary> GetComponentSummary()
+    public override string GetComponentConfig()
     {
-        var summary = new ComponentSummary(string.Empty, string.Empty);
+        return LoadEmbeddedResource(_configPath);
+    }
 
-        return Result<ComponentSummary>.Ok(summary);
+    public override ComponentSummary GetComponentSummary()
+    {
+        return new ComponentSummary(string.Empty, string.Empty);
     }
 }

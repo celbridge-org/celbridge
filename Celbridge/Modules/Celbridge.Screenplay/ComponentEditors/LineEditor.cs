@@ -4,32 +4,24 @@ namespace Celbridge.Screenplay.Components;
 
 public class LineEditor : ComponentEditorBase
 {
+    private const string _configPath = "Celbridge.Screenplay.Assets.Components.Line.json";
+
     public const string ComponentType = "Screenplay.Line";
     public const string Character = "/character";
     public const string SourceText = "/sourceText";
 
-    public override string ComponentConfigPath => "Celbridge.Screenplay.Assets.Components.Line.json";
-
-    public override Result<ComponentSummary> GetComponentSummary()
+    public override string GetComponentConfig()
     {
-        var getCharacter = GetProperty("/character");
-        if (getCharacter.IsFailure)
-        {
-            return Result<ComponentSummary>.Fail(getCharacter.Error);
-        }
-        var character = getCharacter.Value;
+        return LoadEmbeddedResource(_configPath);
+    }
 
-        var getSourceText = GetProperty("/sourceText");
-        if (getSourceText.IsFailure)
-        {
-            return Result<ComponentSummary>.Fail(getSourceText.Error);
-        }
-        var sourceText = getSourceText.Value;
+    public override ComponentSummary GetComponentSummary()
+    {
+        var character = GetString(Character);
+        var sourceText = GetString(SourceText);
 
         var summaryText = $"{character}: {sourceText}";
-        var summary = new ComponentSummary(summaryText, summaryText);
-
-        return Result<ComponentSummary>.Ok(summary);
+        return new ComponentSummary(summaryText, summaryText);
     }
 }
 

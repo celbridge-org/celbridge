@@ -375,13 +375,7 @@ public partial class ComponentListViewModel : InspectorViewModel
             var editor = acquireEditorResult.Value;
 
             // Get the component summary from the component editor
-            var getSummaryResult = editor.GetComponentSummary();
-            if (getSummaryResult.IsFailure)
-            {
-                _logger.LogError($"Failed to get component summary for component: '{componentKey}'");
-                continue;
-            }
-            var summary = getSummaryResult.Value;
+            var summary = editor.GetComponentSummary();
 
             // Populate the component summary
             componentItem.Summary = summary;
