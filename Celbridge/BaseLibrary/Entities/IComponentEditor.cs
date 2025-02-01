@@ -9,11 +9,6 @@ namespace Celbridge.Entities;
 public interface IComponentEditor : IFormDataProvider
 {
     /// <summary>
-    /// Path to the JSON confuration file for this component.
-    /// </summary>
-    string ComponentConfigPath { get; }
-
-    /// <summary>
     /// Returns the component that the editor instance edits.
     /// </summary>
     IComponentProxy Component { get; }
@@ -24,7 +19,12 @@ public interface IComponentEditor : IFormDataProvider
     Result Initialize(IComponentProxy component);
 
     /// <summary>
+    /// Gets the configuration data for the component.
+    /// </summary>
+    string GetComponentConfig();
+
+    /// <summary>
     /// Gets summary information for the edited component.
     /// </summary>
-    Result<ComponentSummary> GetComponentSummary();
+    ComponentSummary GetComponentSummary();
 }
