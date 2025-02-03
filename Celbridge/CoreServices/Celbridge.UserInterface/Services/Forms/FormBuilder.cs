@@ -79,6 +79,15 @@ public class FormBuilder
         }
         _formDataProvider = null;
 
+        formPanel.Loaded += (s, e) =>
+        {
+            var formDataProvider = formPanel.DataContext as IFormDataProvider;
+            if (formDataProvider is not null)
+            {
+                formDataProvider.OnFormLoaded();
+            }
+        };
+
         formPanel.Unloaded += (s, e) =>
         {
             var formDataProvider = formPanel.DataContext as IFormDataProvider;

@@ -8,6 +8,7 @@ using Json.More;
 using Json.Patch;
 using Json.Pointer;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Celbridge.Entities.Services;
@@ -241,13 +242,13 @@ public class EntityService : IEntityService, IDisposable
         // Get the component at the source index
 
         var sourceComponentPointer = JsonPointer.Create("_components", sourceComponentIndex);
-        var getComponentResult = entity.EntityData.GetPropertyAsJsonNode(sourceComponentPointer);
-        if (getComponentResult.IsFailure)
+        var evaluateResult = entity.EntityData.EvaluateJsonPointer(sourceComponentPointer);
+        if (evaluateResult.IsFailure)
         {
             return Result.Fail($"Failed to get component at index '{sourceComponentIndex}' for resource: {resource}")
-                .WithErrors(getComponentResult);
+                .WithErrors(evaluateResult);
         }
-        var sourceComponentNode = getComponentResult.Value;
+        var sourceComponentNode = evaluateResult.Value;
 
         // Apply a patch operation to add the component to the entity
 
@@ -287,13 +288,13 @@ public class EntityService : IEntityService, IDisposable
         // Get the component at the source index
 
         var sourceComponentPointer = JsonPointer.Create("_components", sourceComponentIndex);
-        var getComponentResult = entity.EntityData.GetPropertyAsJsonNode(sourceComponentPointer);
-        if (getComponentResult.IsFailure)
+        var evaluateResult = entity.EntityData.EvaluateJsonPointer(sourceComponentPointer);
+        if (evaluateResult.IsFailure)
         {
             return Result.Fail($"Failed to get component at index '{sourceComponentIndex}' for resource: {resource}")
-                .WithErrors(getComponentResult);
+                .WithErrors(evaluateResult);
         }
-        var sourceComponentNode = getComponentResult.Value;
+        var sourceComponentNode = evaluateResult.Value;
 
         // Both operations have the same non-zero undo group, so they will be undone together
         _undoGroupId++;
@@ -358,16 +359,18 @@ public class EntityService : IEntityService, IDisposable
         }
         var entity = acquireResult.Value;
 
-        // Get the component type
+        // Get the component type and version
 
         var componentTypePointer = JsonPointer.Create(EntityUtils.ComponentsKey, componentKey.ComponentIndex, EntityUtils.ComponentTypeKey);
-        var getTypeResult = entity.EntityData.GetProperty<string>(componentTypePointer);
-        if (getTypeResult.IsFailure)
+        var evaluateResult = entity.EntityData.EvaluateJsonPointer(componentTypePointer);
+        if (evaluateResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get component type: '{componentKey}'")
-                .WithErrors(getTypeResult);
+                .WithErrors(evaluateResult);
         }
-        var typeAndVersion = getTypeResult.Value;
+        var jsonNode = evaluateResult.Value;
+
+        var typeAndVersion = jsonNode.GetValue<string>();
 
         var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
         if (parseResult.IsFailure)
@@ -418,42 +421,7 @@ public class EntityService : IEntityService, IDisposable
         return _componentProxyService.GetComponents(resource, componentType);
     }
 
-    public T? GetProperty<T>(ComponentKey componentKey, string propertyPath, T? defaultValue) where T : notnull
-    {
-        var getResult = GetProperty<T>(componentKey, propertyPath);
-        if (getResult.IsFailure)
-        {
-            return default;
-        }
-
-        return getResult.Value;
-    }
-
-    public Result<T> GetProperty<T>(ComponentKey componentKey, string propertyPath) where T : notnull
-    {
-        var acquireResult = _entityRegistry.AcquireEntity(componentKey.Resource);
-        if (acquireResult.IsFailure)
-        {
-            _logger.LogError(acquireResult.Error);
-            return Result<T>.Fail($"Failed to acquire entity for component '{componentKey}'")
-                .WithErrors(acquireResult);
-        }
-        var entity = acquireResult.Value;
-        Guard.IsNotNull(entity);
-
-        var propertyPointer = GetPropertyPointer(componentKey.ComponentIndex, propertyPath);
-
-        var getResult = entity.EntityData.GetProperty<T>(propertyPointer);
-        if (getResult.IsFailure)
-        {
-            return Result<T>.Fail($"Failed to get property '{propertyPath}' for component '{componentKey}'")
-                .WithErrors(getResult);
-        }
-
-        return getResult;
-    }
-
-    public Result<string> GetPropertyAsJson(ComponentKey componentKey, string propertyPath)
+    public Result<string> GetProperty(ComponentKey componentKey, string propertyPath)
     {
         var acquireResult = _entityRegistry.AcquireEntity(componentKey.Resource);
         if (acquireResult.IsFailure)
@@ -467,25 +435,25 @@ public class EntityService : IEntityService, IDisposable
 
         var propertyPointer = GetPropertyPointer(componentKey.ComponentIndex, propertyPath);
 
-        var getResult = entity.EntityData.GetPropertyAsJsonNode(propertyPointer);
-        if (getResult.IsFailure)
+        var evaluateResult = entity.EntityData.EvaluateJsonPointer(propertyPointer);
+        if (evaluateResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to get property '{propertyPath}' for component '{componentKey}'")
-                .WithErrors(getResult);
+                .WithErrors(evaluateResult);
         }
 
-        var jsonNode = getResult.Value;
+        var jsonNode = evaluateResult.Value;
         var jsonString = jsonNode.ToJsonString();
 
         return Result<string>.Ok(jsonString);
     }
 
-    public Result SetProperty<T>(ComponentKey componentKey, string propertyPath, T newValue, bool insert) where T : notnull
+    public Result SetProperty(ComponentKey componentKey, string propertyPath, string jsonValue, bool insert)
     {
         var acquireResult = _entityRegistry.AcquireEntity(componentKey.Resource);
         if (acquireResult.IsFailure)
         {
-            return Result.Fail($"Failed to acquire entity: '{componentKey}'")
+            return Result<string>.Fail($"Failed to acquire entity: '{componentKey}'")
                 .WithErrors(acquireResult);
         }
         var entity = acquireResult.Value;
@@ -494,16 +462,16 @@ public class EntityService : IEntityService, IDisposable
         // Construct a patch operation to set the property
 
         var propertyPointer = GetPropertyPointer(componentKey.ComponentIndex, propertyPath);
-        var jsonValue = JsonSerializer.SerializeToNode(newValue, SerializerOptions);
+        var jsonNode = JsonNode.Parse(jsonValue);
 
         PatchOperation operation;
         if (insert)
         {
-            operation = PatchOperation.Add(propertyPointer, jsonValue);
+            operation = PatchOperation.Add(propertyPointer, jsonNode);
         }
         else
         {
-            operation = PatchOperation.Replace(propertyPointer, jsonValue);
+            operation = PatchOperation.Replace(propertyPointer, jsonNode);
         }
 
         var applyResult = ApplyPatchOperation(entity, operation, 0);

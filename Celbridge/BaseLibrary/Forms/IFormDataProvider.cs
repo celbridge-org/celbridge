@@ -6,6 +6,11 @@ namespace Celbridge.Forms;
 public interface IFormDataProvider
 {
     /// <summary>
+    /// Callback called when the form UI is loaded.
+    /// </summary>
+    void OnFormLoaded();
+
+    /// <summary>
     /// Callback called when the form UI is unloaded.
     /// </summary>
     void OnFormUnloaded();
@@ -17,12 +22,12 @@ public interface IFormDataProvider
     event Action<string>? FormPropertyChanged;
 
     /// <summary>
-    /// Gets the property at the specified path.
+    /// Gets the property at the specified path as JSON.
     /// </summary>
     Result<string> GetProperty(string propertyPath);
 
     /// <summary>
-    /// Sets the property at the specified path.
+    /// Sets the property at the specified path as JSON.
     /// </summary>
-    Result SetProperty(string propertyPath, string newValue, bool insert);
+    Result SetProperty(string propertyPath, string jsonValue, bool insert = false);
 }
