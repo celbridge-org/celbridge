@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
@@ -36,32 +37,36 @@ public class ComponentProxy : IComponentProxy
 
     // Property accessors
 
-    public Result<T> GetProperty<T>(string propertyPath) where T : notnull
+    public Result<string> GetProperty(string propertyPath)
     {
-        return _entityService.GetProperty<T>(Key, propertyPath);
+        return _entityService.GetProperty(Key, propertyPath);
     }
 
-    public T? GetProperty<T>(string propertyPath, T? defaultValue) where T : notnull
+    public Result SetProperty(string propertyPath, string jsonValue, bool insert = false)
     {
-        return _entityService.GetProperty(Key, propertyPath, defaultValue);
+        return _entityService.SetProperty(Key, propertyPath, jsonValue, insert);
     }
 
     public string GetString(string propertyPath, string defaultValue = "")
     {
         Guard.IsNotNull(defaultValue);
 
-        var getResult = _entityService.GetProperty<string>(Key, propertyPath);
+        var getResult = _entityService.GetProperty(Key, propertyPath);
         if (getResult.IsFailure)
         {
             return defaultValue;
         }
+        var jsonValue = getResult.Value;
 
-        return getResult.Value;
-    }
+        var jsonNode = JsonNode.Parse(jsonValue);
+        if (jsonNode == null)
+        {
+            return defaultValue;
+        }
 
-    public Result SetProperty<T>(string propertyPath, T newValue, bool insert) where T : notnull
-    {
-        return _entityService.SetProperty(Key, propertyPath, newValue);
+        var value = jsonNode.ToString();
+
+        return value;
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)

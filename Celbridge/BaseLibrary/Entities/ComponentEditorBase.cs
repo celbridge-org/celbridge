@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Entities;
 
 /// <summary>
@@ -11,14 +13,12 @@ public abstract class ComponentEditorBase : IComponentEditor
 
     public event Action<string>? FormPropertyChanged;
 
-    public IComponentProxy Component => _helper!.Component;
+    private IComponentProxy? _component;
+    public IComponentProxy Component => _component!;
 
     public virtual Result Initialize(IComponentProxy component)
     {
-        _helper = ServiceLocator.AcquireService<IComponentEditorHelper>();
-        _helper.Initialize(component);
-        _helper.ComponentPropertyChanged += OnComponentPropertyChanged;
-
+        _component = component;
         return Result.Ok();
     }
 
@@ -32,40 +32,55 @@ public abstract class ComponentEditorBase : IComponentEditor
 
     public abstract ComponentSummary GetComponentSummary();
 
+    public virtual void OnFormLoaded()
+    {
+        Guard.IsNull(_helper);
+
+        _helper = ServiceLocator.AcquireService<IComponentEditorHelper>();
+        _helper.Initialize(Component);
+        _helper.ComponentPropertyChanged += OnComponentPropertyChanged;
+    }
+
     public virtual void OnFormUnloaded()
     {
-        Guard.IsNotNull(_helper);
+        if (_helper is null)
+        {
+            // Unload can be called multiple times, noop if already unloaded
+            return;
+        }
 
         _helper.ComponentPropertyChanged -= OnComponentPropertyChanged;
         _helper.Uninitialize();
+        _helper = null;
     }
 
     public string LoadEmbeddedResource(string resourcePath)
-    {
-        var helper = _helper;
-
-        if (helper is null)
-        {
-            // This happens when the config registry is populated during startup.
-            // We can't initalize the helper because there's no component, but that's fine
-            // because we only need to access LoadEmbeddedResource()
-            helper = ServiceLocator.AcquireService<IComponentEditorHelper>();
-        }
-
+    {    
+        var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+     
         // Get the type of the component editor class.
         // The embedded resource must be in the same assembly as this type.
-        return helper.LoadEmbeddedResource(GetType(), resourcePath);
+        var loadResult = utilityService.LoadEmbeddedResource(GetType(), resourcePath);
+        if (loadResult.IsFailure)
+        {
+            return string.Empty;
+        }
+        var content = loadResult.Value;
+
+        return content;
     }
 
-    public string GetString(string propertyPath) => Component.GetString(propertyPath);
-
-    public virtual Result<string> GetProperty(string propertyPath)
+    public Result<string> GetProperty(string propertyPath)
     {
-        return Component.GetProperty<string>(propertyPath);
+        // Todo: Add property override mechanism
+
+        return Component.GetProperty(propertyPath);
     }
 
-    public virtual Result SetProperty(string propertyPath, string newValue, bool insert)
+    public Result SetProperty(string propertyPath, string jsonValue, bool insert = false)
     {
-        return Component.SetProperty<string>(propertyPath, newValue, insert);
+        // Todo: Add property override mechanism
+
+        return Component.SetProperty(propertyPath, jsonValue, insert);
     }
 }

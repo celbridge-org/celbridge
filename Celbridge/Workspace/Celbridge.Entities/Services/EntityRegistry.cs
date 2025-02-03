@@ -394,12 +394,9 @@ public class EntityRegistry
                     ),
                     ("_components", new JsonSchemaBuilder()
                         .Type(SchemaValueType.Array)
-                    ),
-                    ("_activity", new JsonSchemaBuilder()
-                        .Type(SchemaValueType.String)
                     )
                 )
-                .Required("_entityVersion", "_components", "_activity");
+                .Required("_entityVersion", "_components");
 
             var entitySchema = builder.Build();
 

@@ -17,8 +17,8 @@ public class LineEditor : ComponentEditorBase
 
     public override ComponentSummary GetComponentSummary()
     {
-        var character = GetString(Character);
-        var sourceText = GetString(SourceText);
+        var character = Component.GetString(Character);
+        var sourceText = Component.GetString(SourceText);
 
         var summaryText = $"{character}: {sourceText}";
         return new ComponentSummary(summaryText, summaryText);
