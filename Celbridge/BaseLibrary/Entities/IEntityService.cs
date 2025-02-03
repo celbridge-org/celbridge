@@ -98,32 +98,18 @@ public interface IEntityService
     Result<IReadOnlyList<IComponentProxy>> GetComponentsOfType(ResourceKey resource, string componentType);
 
     /// <summary>
-    /// Gets the value of a property from a component.
+    /// Gets the value of a component property as JSON.
     /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Returns the default value if the component or property cannot be found.
+    /// Fails if the property is not found.
     /// </summary>
-    T? GetProperty<T>(ComponentKey componentKey, string propertyPath, T? defaultValue) where T : notnull;
+    Result<string> GetProperty(ComponentKey componentKey, string propertyPath);
 
     /// <summary>
-    /// Gets the value of a property from a component.
+    /// Sets the value of a component property as JSON.
     /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Fails if the property cannot be found, or is of the wrong type.
+    /// Fails if the property path or value do not comply with the component schema.
     /// </summary>
-    Result<T> GetProperty<T>(ComponentKey componentKey, string propertyPath) where T : notnull;
-
-    /// <summary>
-    /// Gets the value of a property from a component, returned as a JSON encoded string.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Fails if the property cannot be found.
-    /// </summary>
-    Result<string> GetPropertyAsJson(ComponentKey componentKey, string propertyPath);
-
-    /// <summary>
-    /// Replaces the value of an existing entity property for a component.
-    /// If insert is true then the value is inserted at the specified key/index, rather than replacing the existing entry.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// </summary>
-    Result SetProperty<T>(ComponentKey componentKey, string propertyPath, T newValue, bool insert = false) where T : notnull;
+    Result SetProperty(ComponentKey componentKey, string propertyPath, string jsonValue, bool insert);
 
     /// <summary>
     /// Returns the number of available undo operations for an entity.

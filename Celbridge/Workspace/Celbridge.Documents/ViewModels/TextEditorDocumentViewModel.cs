@@ -99,19 +99,23 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
-            EditorMode editorMode;
+            var editorMode = EditorMode.Editor;
 
             var getComponentResult = _entityService.GetComponentOfType(_fileResource, MarkdownComponentType);
             if (getComponentResult.IsSuccess)
             {
                 // Get the editor mode from the markdown component.
                 var component = getComponentResult.Value;
-                editorMode = component.GetProperty(MarkdownComponentConstants.EditorMode, EditorMode.Editor);
-            }
-            else
-            {
-                // No Markdown component present, default to Editor mode.
-                editorMode = EditorMode.Editor;
+                
+                var getPropertyResult = component.GetProperty(MarkdownComponentConstants.EditorMode);
+                if (getPropertyResult.IsSuccess)
+                {
+                    var editorModeJson = getPropertyResult.Value;
+                    if (!Enum.TryParse(editorModeJson, out editorMode))
+                    {
+                        editorMode = EditorMode.Editor;
+                    }
+                }
             }
 
             ShowEditor = (editorMode == EditorMode.Editor || editorMode == EditorMode.EditorAndPreview);

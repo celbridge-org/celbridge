@@ -24,8 +24,7 @@ public static class EntityUtils
         var entityJsonObject = new JsonObject
         {
             ["_entityVersion"] = 1,
-            ["_components"] = new JsonArray(),
-            ["_activity"] = string.Empty
+            ["_components"] = new JsonArray()
         };
 
         var evaluateResult = entitySchema.Evaluate(entityJsonObject);
@@ -338,10 +337,10 @@ public static class EntityUtils
     {
         // Todo: Replace this collection of random fixups with a robust migration system
 
-        // Add an _activity property if it doesn't exist
+        // Remove the old "_activity" property if it exists
         if (!entityData.ContainsKey("_activity"))
         {
-            entityData["_activity"] = "";
+            entityData.Remove("_activity");
         }
 
         return Result.Ok();

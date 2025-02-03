@@ -37,20 +37,8 @@ public class ComponentEditorHelper : IComponentEditorHelper
         if (_component is not null)
         {
             _component.ComponentPropertyChanged -= OnComponentPropertyChanged;
+            _component = null;
         }
-    }
-
-    public string LoadEmbeddedResource(Type componentEditorType, string resourcePath)
-    {
-        var loadResult = _utilityService.LoadEmbeddedResource(componentEditorType, resourcePath);
-        if (loadResult.IsFailure)
-        {
-            _logger.LogError(loadResult.Error);
-            return string.Empty;
-        }
-        var content = loadResult.Value;
-
-        return content;
     }
 
     protected virtual void OnComponentPropertyChanged(string propertyPath)

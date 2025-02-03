@@ -20,11 +20,6 @@ public interface IComponentEditorHelper
     void Uninitialize();
 
     /// <summary>
-    /// Loads an embedded resource at resourcePath from the assembly containing the specified type.
-    /// </summary>
-    string LoadEmbeddedResource(Type type, string resourcePath);
-
-    /// <summary>
     /// The component being edited.
     /// </summary>
     IComponentProxy Component { get; }

@@ -43,29 +43,21 @@ public interface IComponentProxy
     string Tooltip { get; }
 
     /// <summary>
-    /// Gets the value of a string property.
+    /// Returns the value of a string property as a JSON string.
     /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Fails if the property cannot be found, or is of the wrong type.
     /// </summary>
-    Result<T> GetProperty<T>(string propertyPath) where T : notnull;
+    Result<string> GetProperty(string propertyPath);
 
     /// <summary>
-    /// Gets the value of a property from a component.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// Returns the default value if the component or property cannot be found.
+    /// Sets the value of an entity property for a component.
+    /// If insert is true then the value is inserted at the specified key/index, rather than replacing 
+    /// the existing entry. propertyPath is a JSON Pointer (RFC 6901).
     /// </summary>
-    T? GetProperty<T>(string propertyPath, T? defaultValue) where T : notnull;
+    Result SetProperty(string propertyPath, string jsonValue, bool insert = false);
 
     /// <summary>
-    /// Convenience method to get a string property with minimal boilerplate.
+    /// Convenience method to get a string comopnent property.
     /// Returns the default value if the property cannot be found.
     /// </summary>
     string GetString(string propertyPath, string defaultValue = "");
-
-    /// <summary>
-    /// Replaces the value of an existing entity property for a component.
-    /// If insert is true then the value is inserted at the specified key/index, rather than replacing the existing entry.
-    /// propertyPath is a JSON Pointer (RFC 6901).
-    /// </summary>
-    Result SetProperty<T>(string propertyPath, T newValue, bool insert = false) where T : notnull;
 }
