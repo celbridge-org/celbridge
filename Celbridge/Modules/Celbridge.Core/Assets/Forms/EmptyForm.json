@@ -1,0 +1,9 @@
+[
+  {
+    "element": "TextBox",
+    "header": "Comment",
+    "textBinding": "/comment",
+    "placeholder": "Enter a comment",
+    "checkSpelling": false
+  }
+]

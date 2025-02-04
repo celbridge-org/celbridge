@@ -29,7 +29,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<MainMenuUtils>();
         services.AddSingleton<IFormService, FormService>();
-        services.AddTransient<FormRegistry>();
         services.AddTransient<FormBuilder>();
 
         //

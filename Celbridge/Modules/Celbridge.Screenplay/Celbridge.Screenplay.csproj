@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\Components\**" />
+    <EmbeddedResource Include="Assets\**" />
   </ItemGroup>
 
   <ItemGroup>
