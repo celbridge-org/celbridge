@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Celbridge.Documents.Services;
 using Celbridge.Entities;
 using Celbridge.Logging;
@@ -110,8 +111,18 @@ public partial class TextEditorDocumentViewModel : ObservableObject
                 var getPropertyResult = component.GetProperty(MarkdownComponentConstants.EditorMode);
                 if (getPropertyResult.IsSuccess)
                 {
-                    var editorModeJson = getPropertyResult.Value;
-                    if (!Enum.TryParse(editorModeJson, out editorMode))
+                    var jsonValue = getPropertyResult.Value;
+
+                    var jsonNode = JsonNode.Parse(jsonValue);
+                    if (jsonNode is null)
+                    {
+                        _logger.LogError($"Failed to parse JSON property: '{MarkdownComponentConstants.EditorMode}'");
+                        return;
+                    }
+
+                    var modeString = jsonNode.ToString();
+
+                    if (!Enum.TryParse(modeString, out editorMode))
                     {
                         editorMode = EditorMode.Editor;
                     }
