@@ -39,9 +39,11 @@ public class ComponentConfigRegistry
             {
                 var editorKey = editorType.Name;
 
+                //
                 // Create the component config
+                //
 
-                // Load the component config JSON from an embedded resource
+                // Load the component config JSON from the config editor
                 var loadConfigResult = LoadComponentConfig(editorType);
                 if (loadConfigResult.IsFailure)
                 {
@@ -256,24 +258,6 @@ public class ComponentConfigRegistry
 
                     var propertyInfo = new ComponentPropertyInfo(propertyName, propertyType, propertyAttributes);
                     componentProperties.Add(propertyInfo);
-                }
-            }
-
-            // Register the form (if one is specified)
-
-            if (root.TryGetProperty(ComponentConfig.FormKey, out JsonElement formElement))
-            {
-                if (formElement.ValueKind != JsonValueKind.Array)
-                {
-                    return Result<ComponentConfig>.Fail("Form json does not contain an array of form elements");
-                }
-                var formJson = formElement.ToJsonString();
-
-                var formResult = _formService.RegisterForm(componentType, formJson, FormScope.Workspace);
-                if (formResult.IsFailure)
-                {
-                    return Result<ComponentConfig>.Fail($"Failed to register form for component type: {componentType}")
-                        .WithErrors(formResult);
                 }
             }
 

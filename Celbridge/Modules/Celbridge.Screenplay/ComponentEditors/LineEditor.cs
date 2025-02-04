@@ -4,7 +4,8 @@ namespace Celbridge.Screenplay.Components;
 
 public class LineEditor : ComponentEditorBase
 {
-    private const string _configPath = "Celbridge.Screenplay.Assets.Components.Line.json";
+    private const string _configPath = "Celbridge.Screenplay.Assets.Components.LineComponent.json";
+    private const string _formPath = "Celbridge.Screenplay.Assets.Forms.LineForm.json";
 
     public const string ComponentType = "Screenplay.Line";
     public const string Character = "/character";
@@ -13,6 +14,11 @@ public class LineEditor : ComponentEditorBase
     public override string GetComponentConfig()
     {
         return LoadEmbeddedResource(_configPath);
+    }
+
+    public override string GetComponentForm()
+    {
+        return LoadEmbeddedResource(_formPath);
     }
 
     public override ComponentSummary GetComponentSummary()
