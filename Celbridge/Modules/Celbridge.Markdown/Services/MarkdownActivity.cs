@@ -11,6 +11,8 @@ namespace Celbridge.Markdown.Services;
 
 public class MarkdownActivity : IActivity
 {
+    public const string ActivityName = "Markdown";
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MarkdownActivity> _logger;
     private readonly IEntityService _entityService;
@@ -85,8 +87,31 @@ public class MarkdownActivity : IActivity
         return Result.Ok();
     }
 
-    public Result UpdateEntityAnnotation(ResourceKey resource, IEntityAnnotation entityAnnotation)
+    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
+        var getComponents = _entityService.GetComponents(entity);
+        if (getComponents.IsFailure)
+        {
+            return Result.Fail(entity, $"Failed to get entity components: '{entity}'")
+                .WithErrors(getComponents);
+        }
+        var components = getComponents.Value;
+
+        if (components.Count != entityAnnotation.Count)
+        {
+            return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
+        }
+
+        //
+        // Root component must be "Markdown"
+        //
+
+        var rootComponent = components[0];
+        if (rootComponent.Schema.ComponentType == MarkdownEditor.ComponentType)
+        {
+            entityAnnotation.SetIsRecognized(0);
+        }
+
         return Result.Ok();
     }
 

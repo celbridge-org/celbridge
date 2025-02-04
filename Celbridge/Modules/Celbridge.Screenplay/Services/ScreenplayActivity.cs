@@ -13,8 +13,6 @@ namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayActivity : IActivity
 {
-    public const string ActivityName = "Screenplay";
-
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScreenplayActivity> _logger;
     private readonly ICommandService _commandService;
