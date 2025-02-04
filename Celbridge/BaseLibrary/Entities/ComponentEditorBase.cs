@@ -30,6 +30,8 @@ public abstract class ComponentEditorBase : IComponentEditor
 
     public abstract string GetComponentConfig();
 
+    public abstract string GetComponentForm();
+
     public abstract ComponentSummary GetComponentSummary();
 
     public virtual void OnFormLoaded()

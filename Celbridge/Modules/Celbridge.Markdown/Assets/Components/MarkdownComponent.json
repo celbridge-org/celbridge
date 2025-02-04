@@ -22,13 +22,5 @@
 
   "prototype": {
     "editorMode": "EditorAndPreview"
-  },
-
-  "form": [
-    {
-      "element": "TextBox",
-      "header": "Editor Mode",
-      "textBinding": "/editorMode"
-    }
-  ]
+  }
 }

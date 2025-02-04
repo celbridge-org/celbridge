@@ -19,6 +19,11 @@ public interface IComponentEditor : IFormDataProvider
     Result Initialize(IComponentProxy component);
 
     /// <summary>
+    /// Gets the form configuration data for the component.
+    /// </summary>
+    public abstract string GetComponentForm();
+
+    /// <summary>
     /// Gets the configuration data for the component.
     /// </summary>
     string GetComponentConfig();
