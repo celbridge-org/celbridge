@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
@@ -6,6 +8,7 @@ namespace Celbridge.Entities.Models;
 
 public class ComponentProxy : IComponentProxy
 {
+    private ILogger<ComponentProxy> _logger;
     private IEntityService _entityService;
     private IMessengerService _messengerService;
 
@@ -25,9 +28,10 @@ public class ComponentProxy : IComponentProxy
 
     public ComponentProxy(IServiceProvider serviceProvider, ComponentKey componentKey, ComponentSchema schema)
     {
+        _logger = serviceProvider.GetRequiredService<ILogger<ComponentProxy>>();
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         var workspaceWraper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
         _entityService = workspaceWraper.WorkspaceService.EntityService;
-        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
 
         Key = componentKey;
         Schema = schema;
@@ -67,6 +71,16 @@ public class ComponentProxy : IComponentProxy
         var value = jsonNode.ToString();
 
         return value;
+    }
+
+    public void SetString(string propertyPath, string value)
+    {
+        var jsonValue = JsonSerializer.Serialize(value);
+        var setResult = SetProperty(propertyPath, jsonValue);        
+        if (setResult.IsFailure)
+        {
+            _logger.LogError($"Failed to set property: '{propertyPath}'. {0}", setResult.Error);
+        }
     }
 
     private void OnComponentChangedMessage(object recipient, ComponentChangedMessage message)
