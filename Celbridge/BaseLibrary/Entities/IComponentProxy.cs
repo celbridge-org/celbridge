@@ -56,8 +56,13 @@ public interface IComponentProxy
     Result SetProperty(string propertyPath, string jsonValue, bool insert = false);
 
     /// <summary>
-    /// Convenience method to get a string comopnent property.
+    /// Convenience method to get a string component property.
     /// Returns the default value if the property cannot be found.
     /// </summary>
     string GetString(string propertyPath, string defaultValue = "");
+
+    /// <summary>
+    /// Convenience method to set a string component property.
+    /// </summary>
+    void SetString(string propertyPath, string defaultValue = "");
 }

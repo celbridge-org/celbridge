@@ -44,6 +44,7 @@ public static class ServiceConfiguration
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
         services.AddTransient<StringPropertyViewModel>();
+        services.AddTransient<ButtonViewModel>();
     }
 
     public static void Initialize()

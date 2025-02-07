@@ -85,4 +85,7 @@ public abstract class ComponentEditorBase : IComponentEditor
 
         return Component.SetProperty(propertyPath, jsonValue, insert);
     }
+
+    public virtual void OnButtonClicked(string buttonId)
+    {}
 }

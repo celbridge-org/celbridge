@@ -3,5 +3,36 @@
     "element": "TextBox",
     "header": "Editor Mode",
     "textBinding": "/editorMode"
+  },
+  {
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "horizontalAlignment": "Center",
+    "children": [
+      {
+        "element": "Button",
+        "tooltip": "Open document",
+        "icon": "OpenFile",
+        "buttonId": "OpenDocument"
+      },
+      {
+        "element": "Button",
+        "tooltip": "Editor view",
+        "icon": "DockLeft",
+        "buttonId": "Editor"
+      },
+      {
+        "element": "Button",
+        "tooltip": "Split view",
+        "icon": "DockBottom",
+        "buttonId": "EditorAndPreview"
+      },
+      {
+        "element": "Button",
+        "tooltip": "Preview view",
+        "icon": "DockRight",
+        "buttonId": "Preview"
+      }
+    ]
   }
 ]

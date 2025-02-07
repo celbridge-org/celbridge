@@ -30,4 +30,9 @@ public interface IFormDataProvider
     /// Sets the property at the specified path as JSON.
     /// </summary>
     Result SetProperty(string propertyPath, string jsonValue, bool insert = false);
+
+    /// <summary>
+    /// Called when a form button is clicked.
+    /// </summary>
+    void OnButtonClicked(string buttonId);
 }
