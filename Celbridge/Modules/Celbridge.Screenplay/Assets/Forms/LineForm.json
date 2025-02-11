@@ -2,57 +2,57 @@
   {
     "element": "TextBox",
     "header": "Dialogue Key",
-    "textBinding": "/dialogueKey"
+    "text": "/dialogueKey"
   },
   {
     "element": "TextBox",
     "header": "Character",
-    "textBinding": "/character"
+    "text": "/character"
   },
   {
     "element": "TextBox",
     "header": "Source Text",
-    "textBinding": "/sourceText",
+    "text": "/sourceText",
     "checkSpelling": true
   },
   {
     "element": "TextBox",
     "header": "Context Notes",
-    "textBinding": "/contextNotes"
+    "text": "/contextNotes"
   },
   {
     "element": "TextBox",
     "header": "Line Priority",
-    "textBinding": "/linePriority"
+    "text": "/linePriority"
   },
   {
     "element": "TextBox",
     "header": "Speaking To",
-    "textBinding": "/speakingTo"
+    "text": "/speakingTo"
   },
   {
     "element": "TextBox",
     "header": "Game Area",
-    "textBinding": "/gameArea"
+    "text": "/gameArea"
   },
   {
     "element": "TextBox",
     "header": "Time Constraint",
-    "textBinding": "/timeConstraint"
+    "text": "/timeConstraint"
   },
   {
     "element": "TextBox",
     "header": "Direction",
-    "textBinding": "/direction"
+    "text": "/direction"
   },
   {
     "element": "TextBox",
     "header": "Platform",
-    "textBinding": "/platform"
+    "text": "/platform"
   },
   {
     "element": "TextBox",
     "header": "Production Status",
-    "textBinding": "/productionStatus"
+    "text": "/productionStatus"
   }
 ]
