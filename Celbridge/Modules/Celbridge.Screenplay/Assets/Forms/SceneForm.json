@@ -2,11 +2,11 @@
   {
     "element": "TextBox",
     "header": "Scene Title",
-    "textBinding": "/sceneTitle"
+    "text": "/sceneTitle"
   },
   {
     "element": "TextBox",
     "header": "Scene Description",
-    "textBinding": "/sceneDescription"
+    "text": "/sceneDescription"
   }
 ]
