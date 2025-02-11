@@ -1,21 +1,17 @@
 using Celbridge.Forms;
 using Celbridge.Logging;
 using Celbridge.UserInterface.ViewModels.Forms;
-using Microsoft.UI.Text;
 using System.Text.Json;
-using Windows.System;
-using Windows.UI.Text;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
 public class FormBuilder
 {
-    private const int DefaultStackPanelSpacing = 8;
-
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<FormBuilder> _logger;
 
     private IFormDataProvider? _formDataProvider;
+    public IFormDataProvider FormDataProvider => _formDataProvider!;
 
     private List<string> _buildErrors = new();
 
@@ -36,14 +32,14 @@ public class FormBuilder
         {
             Orientation = Orientation.Vertical,
             DataContext = formDataProvider,
-            Spacing = DefaultStackPanelSpacing
+            Spacing = StackPanelElement.DefaultStackPanelSpacing
         };
 
         try
         {
-            foreach (var jsonElement in formConfig.EnumerateArray())
+            foreach (var config in formConfig.EnumerateArray())
             {
-                var uiElement = CreateUIElementFromJsonElement(jsonElement);
+                var uiElement = CreateFormElement(config);
                 if (uiElement is null)
                 {
                     // The build has failed, but continue to report all the errors we can find
@@ -100,17 +96,19 @@ public class FormBuilder
         return Result<object>.Ok(formPanel);
     }
 
-    private UIElement? CreateUIElementFromJsonElement(JsonElement jsonElement)
+    public UIElement? CreateFormElement(JsonElement config)
     {
-        if (jsonElement.ValueKind != JsonValueKind.Object)
+        Guard.IsNotNull(_formDataProvider);
+
+        if (config.ValueKind != JsonValueKind.Object)
         {
-            _buildErrors.Add("Form array element is not an object");
+            _buildErrors.Add("Form element config is not an object");
             return null;
         }
 
-        if (!jsonElement.TryGetProperty("element", out var element))
+        if (!config.TryGetProperty("element", out var element))
         {
-            _buildErrors.Add("Form object does not contain an 'elementType' property");
+            _buildErrors.Add("Form object does not contain an 'element' property");
             return null;
         }
         var elementName = element.GetString();
@@ -119,19 +117,51 @@ public class FormBuilder
         switch (elementName)
         {
             case "StackPanel":
-                uiElement = CreateStackPanel(jsonElement);
+                var stackPanelResult = StackPanelElement.CreateStackPanel(config, this);
+                if (stackPanelResult.IsFailure)
+                {
+                    _buildErrors.Add(stackPanelResult.Error);
+                }
+                else
+                {
+                    uiElement = stackPanelResult.Value;
+                }
                 break;
 
             case "TextBox":
-                uiElement = CreateTextBox(jsonElement);
+                var textBoxResult = TextBoxElement.CreateTextBox(config, this);
+                if (textBoxResult.IsFailure)
+                {
+                    _buildErrors.Add(textBoxResult.Error);
+                }
+                else
+                {
+                    uiElement = textBoxResult.Value;
+                }
                 break;
 
             case "TextBlock":
-                uiElement = CreateTextBlock(jsonElement);
+                var textBlockResult = TextBlockElement.CreateTextBlock(config, this);
+                if (textBlockResult.IsFailure)
+                {
+                    _buildErrors.Add(textBlockResult.Error);
+                }
+                else
+                {
+                    uiElement = textBlockResult.Value;
+                }
                 break;
 
             case "Button":
-                uiElement = CreateButton(jsonElement);
+                var buttonResult = ButtonElement.CreateButton(config, this);
+                if (buttonResult.IsFailure)
+                {
+                    _buildErrors.Add(buttonResult.Error);
+                }
+                else
+                {
+                    uiElement = buttonResult.Value;
+                }
                 break;
         }
 
@@ -142,473 +172,5 @@ public class FormBuilder
         }
 
         return uiElement;
-    }
-
-    private StackPanel? CreateStackPanel(JsonElement jsonElement)
-    {
-        var stackPanel = new StackPanel();
-
-        if (!ApplyAlignmentConfig(stackPanel, jsonElement))
-        {
-            _buildErrors.Add($"Failed to apply alignment configuration to StackPanel");
-            return null;
-        }
-
-        // Set the spacing between elements
-        if (jsonElement.TryGetProperty("spacing", out var spacing))
-        {
-            stackPanel.Spacing = spacing.GetInt32();
-        }
-        else
-        {
-            stackPanel.Spacing = DefaultStackPanelSpacing;
-        }
-
-        // Set the orientation
-        if (jsonElement.TryGetProperty("orientation", out var orientation))
-        {
-            var orientationString = orientation.GetString();
-            if (orientationString == "Horizontal")
-            {
-                stackPanel.Orientation = Orientation.Horizontal;
-            }
-            else if (orientationString == "Vertical")
-            {
-                stackPanel.Orientation = Orientation.Vertical;
-            }
-            else
-            {
-                // Log the error and default to vertical
-                _buildErrors.Add($"Invalid orientation value: '{orientationString}'");
-            }
-        }
-
-        // Add child controls
-        if (jsonElement.TryGetProperty("children", out var children))
-        {
-            foreach (var child in children.EnumerateArray())
-            {
-                var childControl = CreateUIElementFromJsonElement(child);
-                if (childControl is null)
-                {
-                    _buildErrors.Add("Failed to create child control");
-                    continue;
-                }
-
-                stackPanel.Children.Add(childControl);
-            }
-        }
-
-        return stackPanel;
-    }
-
-    private TextBox? CreateTextBox(JsonElement jsonElement)
-    {
-        var textBox = new TextBox();
-
-        textBox.TextWrapping = TextWrapping.Wrap;
-
-        if (!ApplyAlignmentConfig(textBox, jsonElement))
-        {
-            _buildErrors.Add($"Failed to apply alignment configuration to TextBox");
-            return null;
-        }
-
-        // Check for unsupported config properties
-
-        var validConfigKeys = new HashSet<string>()
-        {
-            "textBinding",
-            "header",
-            "placeholder",
-            "checkSpelling"
-        };
-        if (!ValidateConfigKeys(jsonElement, validConfigKeys))
-        {
-            _buildErrors.Add("Invalid TextBox configuration");
-            return null;
-        }
-
-        // Apply unbound properties
-
-        if (jsonElement.TryGetProperty("header", out var header))
-        {
-            // Todo: Support localization
-            textBox.Header = header.GetString();
-        }
-
-        if (jsonElement.TryGetProperty("placeholder", out var placeholder))
-        {
-            textBox.PlaceholderText = placeholder.GetString();
-        }
-
-        if (jsonElement.TryGetProperty("checkSpelling", out var checkSpelling))
-        {
-            textBox.IsSpellCheckEnabled = checkSpelling.GetBoolean();
-        }
-
-        // Apply property bindings
-
-        if (GetBindingPropertyPath(jsonElement, "textBinding", out var propertyPath))
-        {
-            ApplyBinding<StringPropertyViewModel>(textBox, TextBox.TextProperty, BindingMode.TwoWay, propertyPath);
-        }
-
-        textBox.KeyDown += (sender, e) =>
-        {
-            if (e.Key == VirtualKey.Enter)
-            {
-                // Pressing enter moves focus to next focusable element
-                var options = new FindNextElementOptions
-                {
-                    SearchRoot = ((UIElement)sender).XamlRoot!.Content
-                };
-
-                FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
-
-                e.Handled = true;
-            }
-        };
-
-        return textBox;
-    }
-
-    private TextBlock? CreateTextBlock(JsonElement jsonElement)
-    {
-        var textBlock = new TextBlock();
-
-        if (!ApplyAlignmentConfig(textBlock, jsonElement))
-        {
-            _buildErrors.Add($"Failed to apply alignment configuration to TextBox");
-            return null;
-        }
-
-        // Check all specified properties are supported
-
-        var validConfigKeys = new HashSet<string>()
-        {
-            "textBinding",
-            "text",
-            "italic",
-            "bold"
-        };
-        if (!ValidateConfigKeys(jsonElement, validConfigKeys))
-        {
-            _buildErrors.Add("Invalid TextBlock configuration");
-            return null;
-        }
-
-        // Apply property bindings
-
-        if (jsonElement.TryGetProperty("text", out var text))
-        {
-            // Todo: Support localization
-            textBlock.Text = text.GetString();
-        }
-
-        if (jsonElement.TryGetProperty("italic", out var italic))
-        {
-            if (italic.GetBoolean())
-            {
-                textBlock.FontStyle = FontStyle.Italic;
-            }
-        }
-
-        if (jsonElement.TryGetProperty("bold", out var bold))
-        {
-            if (bold.GetBoolean())
-            {
-                textBlock.FontWeight = FontWeights.Bold;
-            }
-        }
-
-        // Apply bound properties
-
-        if (GetBindingPropertyPath(jsonElement, "textBinding", out var propertyPath))
-        {
-            ApplyBinding<StringPropertyViewModel>(textBlock, TextBlock.TextProperty, BindingMode.OneWay, propertyPath);
-        }
-
-        return textBlock;
-    }
-
-    private Button? CreateButton(JsonElement jsonElement)
-    {
-        Guard.IsNotNull(_formDataProvider);
-
-        var button = new Button();
-
-        if (!ApplyAlignmentConfig(button, jsonElement))
-        {
-            _buildErrors.Add($"Failed to apply alignment configuration to Button");
-            return null;
-        }
-
-        ApplyTooltip(button, jsonElement);
-
-        // Check all specified properties are supported
-
-        var validConfigKeys = new HashSet<string>()
-        {
-            "icon",
-            "text",
-            "buttonId"
-        };
-        if (!ValidateConfigKeys(jsonElement, validConfigKeys))
-        {
-            _buildErrors.Add("Invalid Button configuration");
-            return null;
-        }
-
-        // Add a horizontal panel for the button content
-
-        var buttonPanel = new StackPanel();
-        buttonPanel.Orientation = Orientation.Horizontal;
-        button.Content = buttonPanel;
-
-        //
-        // Set the button icon (optional)
-        //
-
-        var buttonIcon = string.Empty;
-        if (jsonElement.TryGetProperty("icon", out var icon))
-        {
-            buttonIcon = icon.GetString();
-        }
-
-        if (!string.IsNullOrEmpty(buttonIcon))
-        {
-            string glyph = string.Empty;
-            if (Enum.TryParse(buttonIcon, out Symbol symbol))
-            {
-                // String is a valid Symbol enum value
-                glyph = ((char)symbol).ToString();
-            }
-            else
-            {
-                // Try the string as a unicode character
-                glyph = buttonIcon;
-            }
-
-            var fontIcon = new FontIcon()
-                .Glyph(glyph);
-
-            buttonPanel.Children.Add(fontIcon);
-        }
-
-        //
-        // Set the button text (optional)
-        //
-
-        var buttonText = string.Empty;
-        if (jsonElement.TryGetProperty("text", out var text))
-        {
-            buttonText = text.GetString();
-        }
-
-        if (!string.IsNullOrEmpty(buttonText))
-        {
-            var textBlock = new TextBlock()
-                .Text(buttonText);
-
-            if (buttonPanel.Children.Count > 0)
-            {
-                // Add a gap between the icon and the text
-                textBlock.Margin = new Thickness(8, 0, 0, 0);
-            }
-
-            buttonPanel.Children.Add(textBlock);
-        }
-
-        // Get the buttonId
-        string buttonId = string.Empty;
-        if (jsonElement.TryGetProperty("buttonId", out var buttonIdElement))
-        {
-            buttonId = buttonIdElement.GetString() ?? string.Empty;
-        }
-
-        // Create and assign a button view model to handle clicks
-        var viewModel = _serviceProvider.GetRequiredService<ButtonViewModel>();
-        viewModel.Initialize(_formDataProvider, buttonId);
-        button.DataContext = viewModel;
-
-        if (!string.IsNullOrEmpty(buttonId))
-        {
-            // Bind the button click handler to the button view model
-            button.Click += (sender, args) =>
-            {
-                viewModel.OnButtonClicked();
-            };
-        }
-
-        return button;
-    }
-
-    private bool GetBindingPropertyPath(JsonElement jsonElement, string configPropertyName, out string bindingPropertyPath)
-    {
-        bindingPropertyPath = string.Empty;
-
-        if (!jsonElement.TryGetProperty(configPropertyName, out var bindingConfig))
-        {
-            // Config does not contain the specified property.
-            // The client decides if this is an error or not.
-            return false;
-        }
-
-        var path = bindingConfig.GetString();
-        if (string.IsNullOrEmpty(path))
-        {
-            _buildErrors.Add($"Binding property '{configPropertyName}' is empty");
-            return false;
-        }
-
-        // Parsed the binding info successfully
-        bindingPropertyPath = path;
-        return true;
-    }
-
-    private void ApplyBinding<T>(
-        FrameworkElement frameworkElement,
-        DependencyProperty dependencyProperty,
-        BindingMode bindingMode,
-        string propertyPath) where T : IPropertyViewModel
-    {
-        if (_formDataProvider is null)
-        {
-            _buildErrors.Add($"Failed to apply property binding: '{propertyPath}'. Form data provider is null");
-            return;
-        }
-
-        try
-        {
-            // Instantiate the property view model
-            var viewModel = _serviceProvider.GetService<T>();
-            if (viewModel is null)
-            {
-                _buildErrors.Add($"Failed to instantiate property view model: '{typeof(T).Name}'");
-                return;
-            }
-
-            // Initialize the property view model
-            var initResult = viewModel.Initialize(_formDataProvider, propertyPath);
-            if (initResult.IsFailure)
-            {
-                _buildErrors.Add($"Failed to initialize property view model: '{typeof(T).Name}'");
-                return;
-            }
-
-            // The DataContext will be used automatically as the binding source
-            frameworkElement.DataContext = viewModel;
-
-            // Tell the view model to stop listening for property changes when the view is unloaded
-            frameworkElement.Unloaded += (s, e) =>
-            {
-                var vm = frameworkElement.DataContext as IPropertyViewModel;
-                if (vm is not null)
-                {
-                    vm.OnViewUnloaded();
-                    frameworkElement.DataContext = null;
-                }
-            };
-
-            // Bind the dependency property to the property view model
-            var binding = new Binding()
-            {
-                Path = new PropertyPath(viewModel.BoundPropertyName),
-                Mode = bindingMode
-            };
-            frameworkElement.SetBinding(dependencyProperty, binding);
-        }
-        catch (Exception ex)
-        {
-            _buildErrors.Add($"An exception occurred when applying property binding: '{propertyPath}'. {ex}");
-        }
-    }
-
-    private bool ValidateConfigKeys(JsonElement jsonElement, HashSet<string> validConfigKeys)
-    {
-        bool valid = true;
-        var keys = new List<string>();
-        if (jsonElement.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in jsonElement.EnumerateObject())
-            {
-                var configKey = property.Name;
-                if (configKey == "element" ||
-                    configKey == "horizontalAlignment" ||
-                    configKey == "verticalAlignment" ||
-                    configKey == "tooltip" ||
-                    configKey == "alignment")
-                {
-                    // Skip general config properties that apply to all elements
-                    continue;
-                }
-
-                if (!validConfigKeys.Contains(configKey))
-                {
-                    _buildErrors.Add($"Invalid form element property: '{configKey}'");
-                    valid = false;
-                }
-            }
-        }
-
-        return valid;
-    }
-
-    private bool ApplyAlignmentConfig(FrameworkElement frameworkElement, JsonElement config)
-    {
-        if (config.TryGetProperty("horizontalAlignment", out var horizontalAlignment))
-        {
-            switch (horizontalAlignment.GetString())
-            {
-                case "Left":
-                    frameworkElement.HorizontalAlignment = HorizontalAlignment.Left;
-                    break;
-                case "Center":
-                    frameworkElement.HorizontalAlignment = HorizontalAlignment.Center;
-                    break;
-                case "Right":
-                    frameworkElement.HorizontalAlignment = HorizontalAlignment.Right;
-                    break;
-                case "Stretch":
-                    frameworkElement.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    break;
-                default:
-                    _buildErrors.Add($"Invalid horizontal alignment value: '{horizontalAlignment.GetString()}'");
-                    return false;
-            }
-        }
-
-        if (config.TryGetProperty("verticalAlignment", out var verticalAlignment))
-        {
-            switch (verticalAlignment.GetString())
-            {
-                case "Top":
-                    frameworkElement.VerticalAlignment = VerticalAlignment.Top;
-                    break;
-                case "Center":
-                    frameworkElement.VerticalAlignment = VerticalAlignment.Center;
-                    break;
-                case "Bottom":
-                    frameworkElement.VerticalAlignment = VerticalAlignment.Bottom;
-                    break;
-                case "Stretch":
-                    frameworkElement.VerticalAlignment = VerticalAlignment.Stretch;
-                    break;
-                default:
-                    _buildErrors.Add($"Invalid vertical alignment value: '{horizontalAlignment.GetString()}'");
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
-    private void ApplyTooltip(FrameworkElement frameworkElement, JsonElement config)
-    {
-        if (config.TryGetProperty("tooltip", out var tooltipText))
-        {
-            ToolTipService.SetToolTip(frameworkElement, tooltipText);
-        }
     }
 }

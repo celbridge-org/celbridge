@@ -2,7 +2,7 @@
   {
     "element": "TextBox",
     "header": "Comment",
-    "textBinding": "/comment",
+    "text": "/comment",
     "placeholder": "Enter a comment",
     "checkSpelling": false
   }
