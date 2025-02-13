@@ -9,13 +9,17 @@
     "text": "/editorMode"
   },
   {
+    "element": "TextBlock",
+    "text": "Some text"
+  },
+  {
     "element": "StackPanel",
     "orientation": "Horizontal",
     "horizontalAlignment": "Center",
     "children": [
       {
         "element": "Button",
-        "tooltip": "Open document",
+        "tooltip": "/editorMode",
         "icon": "OpenFile",
         "buttonId": "OpenDocument"
       },

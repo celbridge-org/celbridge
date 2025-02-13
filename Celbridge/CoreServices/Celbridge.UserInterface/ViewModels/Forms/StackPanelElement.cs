@@ -5,7 +5,7 @@ namespace Celbridge.UserInterface.ViewModels.Forms;
 
 public class StackPanelElement : FormElement
 {
-    public const int DefaultStackPanelSpacing = 8;
+    private const int DefaultStackPanelSpacing = 8;
     private const Orientation DefaultOrientation = Orientation.Vertical;
 
     public static Result<FrameworkElement> CreateStackPanel(JsonElement config, FormBuilder formBuilder)

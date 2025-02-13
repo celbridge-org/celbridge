@@ -28,27 +28,21 @@ public class FormBuilder
         _formDataProvider = formDataProvider;
         _buildErrors.Clear();
 
-        var formPanel = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            DataContext = formDataProvider,
-            Spacing = StackPanelElement.DefaultStackPanelSpacing
-        };
+        Panel? formPanel = null;
 
         try
         {
-            foreach (var config in formConfig.EnumerateArray())
+            var uiElement = CreateFormElement(formConfig);
+            if (uiElement is Panel panel &&
+                panel is not null)
             {
-                var uiElement = CreateFormElement(config);
-                if (uiElement is null)
-                {
-                    // The build has failed, but continue to report all the errors we can find
-                    continue;
-                }
-
-                formPanel.Children.Add(uiElement);
+                formPanel = panel;
+                formPanel.DataContext = formDataProvider;
             }
-
+            else
+            {
+                _buildErrors.Add("Failed to create form panel");
+            }
         }
         catch (Exception ex)
         {
@@ -74,6 +68,8 @@ public class FormBuilder
             return Result<object>.Fail($"Failed to build form: {formName}");
         }
         _formDataProvider = null;
+
+        Guard.IsNotNull(formPanel);
 
         formPanel.Loaded += (s, e) =>
         {
