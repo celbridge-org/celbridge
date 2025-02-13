@@ -13,7 +13,11 @@ public abstract partial class FormElement : ObservableObject
     private IFormDataProvider? _formDataProvider;
     public IFormDataProvider FormDataProvider => _formDataProvider!;
 
-    public bool HasBindings { get; set; }
+    public bool RequiresChangeNotifications { get; set; }
+
+    private FrameworkElement? _frameworkElement;
+
+    private PropertyBinder? _tooltipBinder;
 
     public Result<FrameworkElement> Create(JsonElement config, FormBuilder formBuilder)
     {
@@ -28,7 +32,9 @@ public abstract partial class FormElement : ObservableObject
         }
         var uiElement = createUIResult.Value;
 
-        if (HasBindings)
+        _frameworkElement = uiElement;
+
+        if (RequiresChangeNotifications)
         {
             RegisterEvents(uiElement);
         }
@@ -139,9 +145,16 @@ public abstract partial class FormElement : ObservableObject
 
     private Result ApplyTooltipConfig(FrameworkElement frameworkElement, JsonElement config)
     {
-        if (config.TryGetProperty("tooltip", out var tooltipText))
+        if (config.TryGetProperty("tooltip", out var configValue))
         {
-            ToolTipService.SetToolTip(frameworkElement, tooltipText);
+            _tooltipBinder = PropertyBinder.Create(frameworkElement, this)
+                .Setter((jsonValue) =>
+                {
+                    var tooltipValue = JsonSerializer.Deserialize<string>(jsonValue.ToString())!;
+                    ToolTipService.SetToolTip(frameworkElement, tooltipValue);
+                });
+
+            return _tooltipBinder.Initialize(configValue);
         }
 
         return Result.Ok();
@@ -176,6 +189,9 @@ public abstract partial class FormElement : ObservableObject
     {
         Guard.IsNotNullOrEmpty(propertyPath);
 
+        // Tooltip binder only needs to respond to form property changes
+        _tooltipBinder?.OnFormDataChanged(propertyPath);
+
         // Forward the event to the derived class
         OnFormDataChanged(propertyPath);
     }
@@ -189,6 +205,7 @@ public abstract partial class FormElement : ObservableObject
 
         // Forward the event to the derived class
         var propertyName = e.PropertyName;
+
         OnMemberDataChanged(propertyName);
 
         // Resume listening for form data changes
