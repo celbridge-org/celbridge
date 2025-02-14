@@ -1,6 +1,7 @@
 using System.Text.Json;
+using Celbridge.UserInterface.ViewModels.Forms;
 
-namespace Celbridge.UserInterface.ViewModels.Forms;
+namespace Celbridge.UserInterface.Services.Forms;
 
 public class PropertyBinder
 {
@@ -24,7 +25,7 @@ public class PropertyBinder
     }
 
     public static PropertyBinder Create(
-        FrameworkElement frameworkElement, 
+        FrameworkElement frameworkElement,
         FormElement formElement)
     {
         var propertyBinder = new PropertyBinder(frameworkElement, formElement);

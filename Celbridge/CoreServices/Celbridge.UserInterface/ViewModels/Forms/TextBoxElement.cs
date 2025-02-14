@@ -12,6 +12,8 @@ public partial class TextBoxElement : FormElement
         return formElement.Create(config, formBuilder);
     }
 
+    private PropertyBinder? _isEnabledBinder;
+
     [ObservableProperty]
     private string _text = string.Empty;
     private PropertyBinder? _textBinder;
@@ -47,6 +49,7 @@ public partial class TextBoxElement : FormElement
 
         var validateResult = ValidateConfigKeys(config, new HashSet<string>()
         {
+            "isEnabled",
             "text",
             "header",
             "placeholder",
@@ -73,6 +76,13 @@ public partial class TextBoxElement : FormElement
         //
         // Apply element-specific config properties
         //
+
+        var isEnabledResult = ApplyIsEnabledConfig(config, textBox);
+        if (isEnabledResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'isEnabled' config")
+                .WithErrors(isEnabledResult);
+        }
 
         // Todo: Set this via a config property
         textBox.TextWrapping = TextWrapping.Wrap;
@@ -106,6 +116,27 @@ public partial class TextBoxElement : FormElement
         }
 
         return Result<FrameworkElement>.Ok(textBox);
+    }
+
+    private Result ApplyIsEnabledConfig(JsonElement config, TextBox textBox)
+    {
+        if (config.TryGetProperty("isEnabled", out var configValue))
+        {
+            _isEnabledBinder = PropertyBinder.Create(textBox, this)
+                .Setter((jsonValue) =>
+                {
+                    var isEnabled = false;
+                    if (bool.TryParse(JsonSerializer.Deserialize<string>(jsonValue), out bool result))
+                    {
+                        isEnabled = result;
+                    }
+                    textBox.IsEnabled = isEnabled;
+                });
+
+            return _isEnabledBinder.Initialize(configValue);
+        }
+
+        return Result.Ok();
     }
 
     private Result ApplyHeaderConfig(JsonElement config, TextBox textBox)
@@ -153,15 +184,21 @@ public partial class TextBoxElement : FormElement
         if (config.TryGetProperty("checkSpelling", out var jsonValue))
         {
             // Check the type
-            if (jsonValue.ValueKind != JsonValueKind.True &&
-                jsonValue.ValueKind != JsonValueKind.False)
+            if (jsonValue.ValueKind != JsonValueKind.String)
             {
-                return Result.Fail("'checkSpelling' property must be a boolean");
+                return Result.Fail("'checkSpelling' property must be a string");
             }
 
             // Apply the property
-            var checkSpelling = jsonValue.GetBoolean();
+            var jsonText = jsonValue.GetString();
+            if (!bool.TryParse(jsonText, out var checkSpelling))
+            {
+                return Result.Fail("Failed to parse 'checkSpelling' property as a boolean");
+            }
+
             textBox.IsSpellCheckEnabled = checkSpelling;
+
+            return Result.Ok();
         }
 
         return Result.Ok();
