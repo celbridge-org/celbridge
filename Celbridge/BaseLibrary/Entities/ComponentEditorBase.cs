@@ -11,6 +11,8 @@ public abstract class ComponentEditorBase : IComponentEditor
 {
     private IComponentEditorHelper? _helper;
 
+    public Guid EditorId { get; } = Guid.NewGuid();
+
     public event Action<string>? FormPropertyChanged;
 
     private IComponentProxy? _component;
@@ -26,11 +28,23 @@ public abstract class ComponentEditorBase : IComponentEditor
 
     public abstract string GetComponentForm();
 
+    public virtual string GetComponentRootForm()
+    {
+        return string.Empty;
+    }
+
     public abstract ComponentSummary GetComponentSummary();
 
     public virtual void OnFormLoaded()
     {
-        Guard.IsNull(_helper);
+        if (_helper is not null)
+        {
+            // If the _helper is already created then just return.
+            // OnFormLoaded() may be called multiple times. For example a root component
+            // may have botth a root form and a detail form, which will both call
+            // OnFormLoaded(). Both forms use the same component editor and helper instances. 
+            return;
+        }
 
         _helper = ServiceLocator.AcquireService<IComponentEditorHelper>();
         _helper.Initialize(Component);
@@ -41,7 +55,7 @@ public abstract class ComponentEditorBase : IComponentEditor
     {
         if (_helper is null)
         {
-            // Unload can be called multiple times, noop if already unloaded
+            // OnFormUnloaded() can be called multiple times. Noop if already unloaded.
             return;
         }
 

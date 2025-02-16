@@ -41,6 +41,8 @@
 
   <StackPanel Orientation="Vertical">
 
+    <Grid x:Name="RootComponentForm" />
+
     <ListView x:Name="ComponentList"
               SelectionMode="Single"
               CanReorderItems="True"

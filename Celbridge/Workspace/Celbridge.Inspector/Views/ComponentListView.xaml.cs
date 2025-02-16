@@ -40,10 +40,23 @@ public partial class ComponentListView : UserControl, IInspector
         Loaded += (s, e) => ViewModel.OnViewLoaded();
         Unloaded += (s, e) => ViewModel.OnViewUnloaded();
 
+        // Listen for root component form updates
+        ViewModel.OnUpdateRootComponentForm += ViewModel_OnUpdateRootComponentForm;
+
 #if WINDOWS
         // Remove the distracting animations when items are added or removed from the list
         ComponentList.ItemContainerTransitions.Clear();
 #endif
+    }
+
+    private void ViewModel_OnUpdateRootComponentForm(object? rootComponentForm)
+    {
+        RootComponentForm.Children.Clear();
+        if (rootComponentForm is UIElement uiElement &&
+            uiElement is not null)
+        {
+            RootComponentForm.Children.Add(uiElement);
+        }
     }
 
     public ResourceKey Resource

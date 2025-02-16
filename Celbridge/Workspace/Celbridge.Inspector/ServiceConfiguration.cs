@@ -1,4 +1,3 @@
-using Celbridge.Modules;
 using Celbridge.Inspector.Services;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
@@ -31,7 +30,6 @@ public static class ServiceConfiguration
         services.AddTransient<InspectorPanelViewModel>();
         services.AddTransient<ResourceNameInspectorViewModel>();
         services.AddTransient<WebInspectorViewModel>();
-        services.AddTransient<MarkdownInspectorViewModel>();
         services.AddTransient<ComponentListViewModel>();
         services.AddTransient<EntityEditorViewModel>();
         services.AddTransient<ComponentValueEditorViewModel>();

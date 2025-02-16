@@ -9,6 +9,11 @@ namespace Celbridge.Entities;
 public interface IComponentEditor : IFormDataProvider
 {
     /// <summary>
+    /// Unique identifier for a component editor instance.
+    /// </summary>
+    Guid EditorId { get; }
+
+    /// <summary>
     /// Returns the component that the editor instance edits.
     /// </summary>
     IComponentProxy Component { get; }
@@ -19,14 +24,19 @@ public interface IComponentEditor : IFormDataProvider
     Result Initialize(IComponentProxy component);
 
     /// <summary>
-    /// Gets the form configuration data for the component.
-    /// </summary>
-    public abstract string GetComponentForm();
-
-    /// <summary>
-    /// Gets the configuration data for the component.
+    /// Gets the component configuration JSON data.
     /// </summary>
     string GetComponentConfig();
+
+    /// <summary>
+    /// Gets the component form configuration JSON data.
+    /// </summary>
+    string GetComponentForm();
+
+    /// <summary>
+    /// Gets the component root form configuration JSON data.
+    /// </summary>
+    string GetComponentRootForm();
 
     /// <summary>
     /// Gets summary information for the edited component.

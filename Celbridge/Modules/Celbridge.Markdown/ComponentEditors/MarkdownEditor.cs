@@ -12,7 +12,8 @@ public class MarkdownEditor : ComponentEditorBase
     private readonly ICommandService _commandService;
 
     private const string _configPath = "Celbridge.Markdown.Assets.Components.MarkdownComponent.json";
-    private const string _formPath = "Celbridge.Markdown.Assets.Forms.MarkdownForm.json";
+    private const string _componentFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownForm.json";
+    private const string _componentRootFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownRootForm.json";
 
     private const string _openDocumentButtonId = "OpenDocument";
     private const string _editorButtonId = "Editor";
@@ -36,7 +37,12 @@ public class MarkdownEditor : ComponentEditorBase
 
     public override string GetComponentForm()
     {
-        return LoadEmbeddedResource(_formPath);
+        return LoadEmbeddedResource(_componentFormPath);
+    }
+
+    public override string GetComponentRootForm()
+    {
+        return LoadEmbeddedResource(_componentRootFormPath);
     }
 
     public override ComponentSummary GetComponentSummary()

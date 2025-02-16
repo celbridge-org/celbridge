@@ -88,10 +88,6 @@ public class InspectorFactory : IInspectorFactory
         {
             inspector = CreateInspector<WebInspector, WebInspectorViewModel>(resource);
         }
-        else if (extension == ".md")
-        {
-            inspector = CreateInspector<MarkdownInspector, MarkdownInspectorViewModel>(resource);
-        }
 
         if (inspector is not null)
         {

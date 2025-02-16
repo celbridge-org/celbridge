@@ -14,17 +14,20 @@ public class ComponentProxy : IComponentProxy
 
     public bool IsValid { get; private set; } = true;
 
+    public bool IsRootComponent
+    {
+        get
+        {
+            var rootActivity = Schema.GetStringAttribute("rootActivity");
+            return !string.IsNullOrEmpty(rootActivity);
+        }
+    }
+
     public ComponentKey Key { get; }
 
     public ComponentSchema Schema { get; }
 
     public event Action<string>? ComponentPropertyChanged;
-
-    public ComponentStatus Status { get; private set; }
-
-    public string Description { get; private set; } = string.Empty;
-
-    public string Tooltip { get; private set; } = string.Empty;
 
     public ComponentProxy(IServiceProvider serviceProvider, ComponentKey componentKey, ComponentSchema schema)
     {

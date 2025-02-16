@@ -194,19 +194,18 @@ public partial class TextBoxElement : FormElement
         if (config.TryGetProperty("checkSpelling", out var jsonValue))
         {
             // Check the type
-            if (jsonValue.ValueKind != JsonValueKind.String)
+            if (jsonValue.ValueKind == JsonValueKind.True)
             {
-                return Result.Fail("'checkSpelling' property must be a string");
+                textBox.IsSpellCheckEnabled = true;
             }
-
-            // Apply the property
-            var jsonText = jsonValue.GetString();
-            if (!bool.TryParse(jsonText, out var checkSpelling))
+            else if (jsonValue.ValueKind == JsonValueKind.False)
             {
-                return Result.Fail("Failed to parse 'checkSpelling' property as a boolean");
+                textBox.IsSpellCheckEnabled = false;
             }
-
-            textBox.IsSpellCheckEnabled = checkSpelling;
+            else
+            {
+                return Result.Fail($"'checkSpelling' config is not valid");
+            }
 
             return Result.Ok();
         }

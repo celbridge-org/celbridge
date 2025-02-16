@@ -13,7 +13,7 @@
     "element": "TextBox",
     "header": "Source Text",
     "text": "/sourceText",
-    "checkSpelling": "true"
+    "checkSpelling": true
   },
   {
     "element": "TextBox",
