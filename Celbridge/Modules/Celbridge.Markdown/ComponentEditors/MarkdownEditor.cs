@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Entities;
@@ -43,6 +44,17 @@ public class MarkdownEditor : ComponentEditorBase
         return new ComponentSummary(string.Empty, string.Empty);
     }
 
+    protected override void OnFormPropertyChanged(string propertyPath)
+    {
+        if (propertyPath == "/editorMode")
+        {
+            // Notify updates to "virtual" form properties
+            NotifyFormPropertyChanged("/editorEnabled");
+            NotifyFormPropertyChanged("/editorAndPreviewEnabled");
+            NotifyFormPropertyChanged("/previewEnabled");
+        }
+    }
+
     public override void OnButtonClicked(string buttonId)
     {
         switch (buttonId)
@@ -67,6 +79,40 @@ public class MarkdownEditor : ComponentEditorBase
                 break;
         }
     }
+
+    protected override Result<string> TryGetProperty(string propertyPath)
+    {
+        if (propertyPath == "/editorEnabled")
+        {
+            var editorMode = Component.GetString(MarkdownComponentConstants.EditorMode);
+
+            bool isEnabled = editorMode == "EditorAndPreview" || editorMode == "Preview";
+            var jsonValue = JsonSerializer.Serialize(isEnabled);
+
+            return Result<String>.Ok(jsonValue);
+        }
+        else if (propertyPath == "/editorAndPreviewEnabled")
+        {
+            var editorMode = Component.GetString(MarkdownComponentConstants.EditorMode);
+
+            bool isEnabled = editorMode == "Editor" || editorMode == "Preview";
+            var jsonValue = JsonSerializer.Serialize(isEnabled);
+
+            return Result<String>.Ok(jsonValue);
+        }
+        else if (propertyPath == "/previewEnabled")
+        {
+            var editorMode = Component.GetString(MarkdownComponentConstants.EditorMode);
+
+            bool isEnabled = editorMode == "Editor" || editorMode == "EditorAndPreview";
+            var jsonValue = JsonSerializer.Serialize(isEnabled);
+
+            return Result<String>.Ok(jsonValue);
+        }
+
+        return Result<string>.Fail();
+    }
+
 
     private void OpenDocument()
     {

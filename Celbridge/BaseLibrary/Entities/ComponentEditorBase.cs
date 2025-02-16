@@ -22,12 +22,6 @@ public abstract class ComponentEditorBase : IComponentEditor
         return Result.Ok();
     }
 
-    private void OnComponentPropertyChanged(string propertyPath)
-    {
-        // Forward component property changes to the form
-        FormPropertyChanged?.Invoke(propertyPath);
-    }
-
     public abstract string GetComponentConfig();
 
     public abstract string GetComponentForm();
@@ -56,12 +50,55 @@ public abstract class ComponentEditorBase : IComponentEditor
         _helper = null;
     }
 
-    public string LoadEmbeddedResource(string resourcePath)
-    {    
+    public Result<string> GetProperty(string propertyPath)
+    {
+        var getResult = TryGetProperty(propertyPath);
+        if (getResult.IsSuccess)
+        {
+            // Derived class has intercepted this property get
+            return getResult;
+        }
+
+        // Get the property from the component
+        return Component.GetProperty(propertyPath);
+    }
+
+    public Result SetProperty(string propertyPath, string jsonValue, bool insert = false)
+    {
+        var setResult = TrySetProperty(propertyPath, jsonValue);
+        if (setResult.IsSuccess)
+        {
+            // The derived class has intercepted this property get
+            return Result.Ok();
+        }
+
+        // Set the property on the component
+        return Component.SetProperty(propertyPath, jsonValue, insert);
+    }
+
+    protected virtual Result<string> TryGetProperty(string propertyPath)
+    {
+        return Result<string>.Fail();
+    }
+
+    protected virtual Result TrySetProperty(string propertyPath, string jsonValue)
+    {
+        return Result.Fail();
+    }
+
+    public virtual void OnButtonClicked(string buttonId)
+    {}
+
+    /// <summary>
+    /// Loads a text file from an embedded resource.
+    /// </summary>
+    protected string LoadEmbeddedResource(string resourcePath)
+    {
         var utilityService = ServiceLocator.AcquireService<IUtilityService>();
-     
+
         // Get the type of the component editor class.
-        // The embedded resource must be in the same assembly as this type.
+        // The embedded resource must be in the same assembly as the class that inherits
+        // from ComponentEditorBase.
         var loadResult = utilityService.LoadEmbeddedResource(GetType(), resourcePath);
         if (loadResult.IsFailure)
         {
@@ -72,20 +109,26 @@ public abstract class ComponentEditorBase : IComponentEditor
         return content;
     }
 
-    public Result<string> GetProperty(string propertyPath)
+    /// <summary>
+    /// Notify the form that a property has changed.
+    /// This is generally used for updating "virtual" properties that are not stored in 
+    /// the component.
+    /// </summary>
+    protected virtual void NotifyFormPropertyChanged(string propertyPath)
     {
-        // Todo: Add property override mechanism
-
-        return Component.GetProperty(propertyPath);
+        FormPropertyChanged?.Invoke(propertyPath);
+        OnFormPropertyChanged(propertyPath);
     }
 
-    public Result SetProperty(string propertyPath, string jsonValue, bool insert = false)
-    {
-        // Todo: Add property override mechanism
-
-        return Component.SetProperty(propertyPath, jsonValue, insert);
-    }
-
-    public virtual void OnButtonClicked(string buttonId)
+    /// <summary>
+    /// Event handler called when a form property has changed
+    /// </summary>
+    protected virtual void OnFormPropertyChanged(string propertyPath)
     {}
+
+    private void OnComponentPropertyChanged(string propertyPath)
+    {
+        // Forward component property changes to the form
+        NotifyFormPropertyChanged(propertyPath);
+    }
 }
