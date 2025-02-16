@@ -252,4 +252,10 @@ public partial class TextBoxElement : FormElement
     {
         _textBinder?.OnMemberDataChanged(propertyName);
     }
+
+    protected override void OnElementUnloaded()
+    {
+        _textBinder?.OnElementUnloaded();
+        _isEnabledBinder?.OnElementUnloaded();
+    }
 }
