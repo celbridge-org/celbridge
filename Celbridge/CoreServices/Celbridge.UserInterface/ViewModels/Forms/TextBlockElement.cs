@@ -15,7 +15,7 @@ public partial class TextBlockElement : FormElement
 
     [ObservableProperty]
     private string _text = string.Empty;
-    private PropertyBinder? _textBinder;
+    private PropertyBinder<string>? _textBinder;
 
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
     {
@@ -130,14 +130,25 @@ public partial class TextBlockElement : FormElement
     {
         if (config.TryGetProperty("text", out var configValue))
         {
-            _textBinder = PropertyBinder.Create(textBlock, this)
+            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            {
+                _textBinder = PropertyBinder<string>.Create(textBlock, this)
                 .Binding(TextBlock.TextProperty, BindingMode.OneWay, nameof(Text))
-                .Setter((jsonValue) =>
-                 {
-                     Text = JsonSerializer.Deserialize<string>(jsonValue.ToString())!;
-                 });
+                .Setter((value) =>
+                {
+                    Text = value;
+                });
 
-            return _textBinder.Initialize(configValue);
+                return _textBinder.Initialize(configValue);
+            }
+            else if (configValue.ValueKind == JsonValueKind.String)
+            {
+                textBlock.Text = configValue.GetString() ?? string.Empty;
+            }
+            else
+            {
+                return Result.Fail($"'text' config is not valid");
+            }
         }
 
         return Result.Ok();

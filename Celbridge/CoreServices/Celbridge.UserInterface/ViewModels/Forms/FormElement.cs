@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Celbridge.Forms;
 using Celbridge.UserInterface.Services.Forms;
 
@@ -18,8 +17,8 @@ public abstract partial class FormElement : ObservableObject
 
     private FrameworkElement? _frameworkElement;
 
-    private PropertyBinder? _visibilityBinder;
-    private PropertyBinder? _tooltipBinder;
+    private PropertyBinder<string>? _visibilityBinder;
+    private PropertyBinder<string>? _tooltipBinder;
 
     public Result<FrameworkElement> Create(JsonElement config, FormBuilder formBuilder)
     {
@@ -106,19 +105,31 @@ public abstract partial class FormElement : ObservableObject
     {
         if (config.TryGetProperty("visibility", out var configValue))
         {
-            _visibilityBinder = PropertyBinder.Create(frameworkElement, this)
-                .Setter((jsonValue) =>
-                {
-                    var options = new JsonSerializerOptions
+            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            {
+                _visibilityBinder = PropertyBinder<string>.Create(frameworkElement, this)
+                    .Setter((value) =>
                     {
-                        Converters = { new JsonStringEnumConverter() }
-                    };
+                        if (Enum.TryParse<Visibility>(value, out var visibility))
+                        {
+                            frameworkElement.Visibility = visibility;
+                        }
+                    });
 
-                    var visibility = JsonSerializer.Deserialize<Visibility>(jsonValue.ToString(), options);
+                return _visibilityBinder.Initialize(configValue);
+            }
+            else if (configValue.ValueKind == JsonValueKind.String)
+            {
+                var jsonValue = configValue.GetString() ?? string.Empty;
+                if (Enum.TryParse<Visibility>(jsonValue, out var visibility))
+                {
                     frameworkElement.Visibility = visibility;
-                });
-
-            return _visibilityBinder.Initialize(configValue);
+                }
+            }
+            else
+            {
+                return Result.Fail("'visibility' config is not valid");
+            }
         }
 
         return Result.Ok();
@@ -128,6 +139,11 @@ public abstract partial class FormElement : ObservableObject
     {
         if (config.TryGetProperty("horizontalAlignment", out var horizontalProperty))
         {
+            if (horizontalProperty.ValueKind != JsonValueKind.String)
+            {
+                return Result.Fail("'horizontalAlignment' property must be a string");
+            }
+
             var horizontalAlignment = horizontalProperty.GetString();
             switch (horizontalAlignment)
             {
@@ -154,6 +170,11 @@ public abstract partial class FormElement : ObservableObject
 
         if (config.TryGetProperty("verticalAlignment", out var verticalAlignmentProperty))
         {
+            if (verticalAlignmentProperty.ValueKind != JsonValueKind.String)
+            {
+                return Result.Fail("'verticalAlignment' property must be a string");
+            }
+
             var verticalAlignment = verticalAlignmentProperty.GetString();
             switch (verticalAlignment)
             {
@@ -181,21 +202,35 @@ public abstract partial class FormElement : ObservableObject
     {
         if (config.TryGetProperty("tooltip", out var configValue))
         {
-            _tooltipBinder = PropertyBinder.Create(frameworkElement, this)
-                .Setter((jsonValue) =>
-                {
-                    var tooltipValue = JsonSerializer.Deserialize<string>(jsonValue.ToString()) ?? string.Empty;
-                    if (string.IsNullOrEmpty(tooltipValue))
+            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            {
+                _tooltipBinder = PropertyBinder<string>.Create(frameworkElement, this)
+                    .Setter((value) =>
                     {
-                        ToolTipService.SetToolTip(frameworkElement, null);
-                    }
-                    else
-                    {
-                        ToolTipService.SetToolTip(frameworkElement, tooltipValue);
-                    }
-                });
+                        if (string.IsNullOrEmpty(value))
+                        {
+                            ToolTipService.SetToolTip(frameworkElement, null);
+                        }
+                        else
+                        {
+                            ToolTipService.SetToolTip(frameworkElement, value);
+                        }
+                    });
 
-            return _tooltipBinder.Initialize(configValue);
+                return _tooltipBinder.Initialize(configValue);
+            }
+            else if (configValue.ValueKind == JsonValueKind.String)
+            {
+                var value = configValue.GetString() ?? string.Empty;
+                if (!string.IsNullOrEmpty(value))
+                {
+                    ToolTipService.SetToolTip(frameworkElement, value);
+                }
+            }
+            else
+            {
+                return Result.Fail("'tooltip' config is not valid");
+            }
         }
 
         return Result.Ok();

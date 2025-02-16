@@ -6,7 +6,6 @@
   },
   {
     "element": "TextBox",
-    "isEnabled": "false",
     "header": "Character",
     "text": "/character"
   },

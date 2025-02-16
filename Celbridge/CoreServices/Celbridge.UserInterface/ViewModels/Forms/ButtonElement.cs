@@ -11,6 +11,8 @@ public partial class ButtonElement : FormElement
         return formElement.Create(config, formBuilder);
     }
 
+    private PropertyBinder<bool>? _isEnabledBinder;
+
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
     {
         //
@@ -31,6 +33,7 @@ public partial class ButtonElement : FormElement
 
         var validateResult = ValidateConfigKeys(config, new HashSet<string>()
         {
+            "isEnabled",
             "icon",
             "text",
             "buttonId"
@@ -57,6 +60,13 @@ public partial class ButtonElement : FormElement
         // Apply element-specific config properties
         //
 
+        var isEnabledResult = ApplyIsEnabledConfig(config, button);
+        if (isEnabledResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'isEnabled' config")
+                .WithErrors(isEnabledResult);
+        }
+
         var iconResult = ApplyIconConfig(config, buttonPanel);
         if (iconResult.IsFailure)
         {
@@ -79,6 +89,37 @@ public partial class ButtonElement : FormElement
         }
 
         return Result<FrameworkElement>.Ok(button);
+    }
+
+    private Result ApplyIsEnabledConfig(JsonElement config, Button button)
+    {
+        if (config.TryGetProperty("isEnabled", out var configValue))
+        {
+            if (PropertyBinder<bool>.IsBindingConfig(configValue))
+            {
+                _isEnabledBinder = PropertyBinder<bool>.Create(button, this)
+                    .Setter((value) =>
+                    {
+                        button.IsEnabled = value;
+                    });
+
+                return _isEnabledBinder.Initialize(configValue);
+            }
+            else if (configValue.ValueKind == JsonValueKind.True)
+            {
+                button.IsEnabled = true;
+            }
+            else if (configValue.ValueKind == JsonValueKind.False)
+            {
+                button.IsEnabled = false;
+            }
+            else
+            {
+                return Result<bool>.Fail("'isEnabled' config is not valid");
+            }
+        }
+
+        return Result.Ok();
     }
 
     private Result ApplyIconConfig(JsonElement config, StackPanel buttonPanel)
@@ -176,6 +217,14 @@ public partial class ButtonElement : FormElement
 
         return Result.Ok();
     }
+
+    protected override void OnFormDataChanged(string propertyPath)
+    {
+        _isEnabledBinder?.OnFormDataChanged(propertyPath);
+    }
+
+    protected override void OnMemberDataChanged(string propertyName)
+    {}
 
     private void OnButtonClicked(string buttonId)
     {
