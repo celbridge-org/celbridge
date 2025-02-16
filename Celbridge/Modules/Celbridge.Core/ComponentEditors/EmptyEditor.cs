@@ -5,7 +5,7 @@ namespace Celbridge.Core.Components;
 public class EmptyEditor : ComponentEditorBase
 {
     private const string _configPath = "Celbridge.Core.Assets.Components.EmptyComponent.json";
-    private const string _formPath = "Celbridge.Core.Assets.Forms.EmptyForm.json";
+    private const string _componentFormPath = "Celbridge.Core.Assets.Forms.EmptyForm.json";
 
     public const string Comment = "/comment";
 
@@ -16,7 +16,7 @@ public class EmptyEditor : ComponentEditorBase
 
     public override string GetComponentForm()
     {
-        return LoadEmbeddedResource(_formPath);
+        return LoadEmbeddedResource(_componentFormPath);
     }
 
     public override ComponentSummary GetComponentSummary()

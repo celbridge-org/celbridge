@@ -13,6 +13,13 @@ public interface IComponentProxy
     bool IsValid { get; }
 
     /// <summary>
+    /// Returns true if the component is a root component.
+    /// A root component is always the first component in an entity and is typically used to 
+    /// configure the entity's general behaviour.
+    /// </summary>
+    bool IsRootComponent { get; }
+
+    /// <summary>
     /// Returns the component key used to identify the component.
     /// </summary>
     ComponentKey Key { get; }
@@ -26,21 +33,6 @@ public interface IComponentProxy
     /// Raised when a component property changes.
     /// </summary>
     event Action<string>? ComponentPropertyChanged;
-
-    /// <summary>
-    /// The validation status of the component.
-    /// </summary>
-    ComponentStatus Status { get; }
-
-    /// <summary>
-    /// The description of the component displayed in the editor UI.
-    /// </summary>
-    string Description { get; }
-
-    /// <summary>
-    /// The tooltip displayed in the editor UI.
-    /// </summary>
-    string Tooltip { get; }
 
     /// <summary>
     /// Returns the value of a string property as a JSON string.

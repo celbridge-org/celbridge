@@ -16,7 +16,7 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class ComponentListViewModel : InspectorViewModel
 {
-    private readonly ILogger<MarkdownInspectorViewModel> _logger;
+    private readonly ILogger<ComponentListViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
@@ -34,6 +34,9 @@ public partial class ComponentListViewModel : InspectorViewModel
 
     private bool _isUpdatePending;
 
+    private Guid? _rootComponentEditorId;
+    public event Action<object?>? OnUpdateRootComponentForm;
+
     // Code gen requires a parameterless constructor
     public ComponentListViewModel()
     {
@@ -41,7 +44,7 @@ public partial class ComponentListViewModel : InspectorViewModel
     }
 
     public ComponentListViewModel(
-        ILogger<MarkdownInspectorViewModel> logger,
+        ILogger<ComponentListViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IFormService formService,
@@ -336,6 +339,9 @@ public partial class ComponentListViewModel : InspectorViewModel
             ComponentItems.RemoveAt(ComponentItems.Count - 1);
         }
 
+        Guid? newRootEditorId = null;
+        object? rootComponentForm = null;
+
         for (int i = 0; i < componentCount; i++)
         {
             // Get the component type
@@ -379,6 +385,51 @@ public partial class ComponentListViewModel : InspectorViewModel
 
             // Populate the component summary
             componentItem.Summary = summary;
+
+            if (i == 0)
+            {
+                if (editor.EditorId == _rootComponentEditorId)
+                {
+                    // The root editor instance hasn't changed, so reuse the existing root form.
+                    newRootEditorId = _rootComponentEditorId;
+                }
+                else
+                {
+                    // The root component editor instance has changed, so refresh the root
+                    // component form.
+
+                    // Check if the first component is a root component
+                    // Todo: Check that the root component supports this resource type
+                    if (editor.Component.IsRootComponent)
+                    {
+                        // Create a new root form
+                        var formConfig = editor.GetComponentRootForm();
+                        if (!string.IsNullOrEmpty(formConfig))
+                        {
+                            var formName = editor.Component.Schema.ComponentType;
+                            var createResult = _formService.CreateForm(formName, formConfig, editor);
+                            if (createResult.IsSuccess)
+                            {
+                                rootComponentForm = createResult.Value;
+                                newRootEditorId = editor.EditorId;
+                            }
+                            else
+                            {
+                                _logger.LogError($"Failed to create root form for root component. {createResult.Error}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if the root editor instance has changed
+        if (_rootComponentEditorId != newRootEditorId)
+        {
+            _rootComponentEditorId = newRootEditorId;
+
+            // Notify the view to display the updated root form
+            OnUpdateRootComponentForm?.Invoke(rootComponentForm);
         }
 
         UpdateEntityAnnotation();
