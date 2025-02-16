@@ -156,15 +156,16 @@ public partial class TextBlockElement : FormElement
 
     protected override void OnFormDataChanged(string propertyPath)
     {
-        Guard.IsNotNull(_textBinder);
-
-        _textBinder.OnFormDataChanged(propertyPath);
+        _textBinder?.OnFormDataChanged(propertyPath);
     }
 
     protected override void OnMemberDataChanged(string propertyName)
     {
-        Guard.IsNotNull(_textBinder);
+        _textBinder?.OnMemberDataChanged(propertyName);
+    }
 
-        _textBinder.OnMemberDataChanged(propertyName);
+    protected override void OnElementUnloaded()
+    {
+        _textBinder?.OnElementUnloaded();
     }
 }

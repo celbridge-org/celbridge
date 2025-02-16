@@ -249,6 +249,7 @@ public abstract partial class FormElement : ObservableObject
         var frameworkElement = sender as FrameworkElement;
         Guard.IsNotNull(frameworkElement);
         UnregisterEvents(frameworkElement);
+        OnElementUnloaded();
     }
 
     private void UnregisterEvents(FrameworkElement frameworkElement)
@@ -287,6 +288,9 @@ public abstract partial class FormElement : ObservableObject
         // Resume listening for form data changes
         FormDataProvider.FormPropertyChanged += OnFormDataChanged;
     }
+
+    protected virtual void OnElementUnloaded()
+    {}
 
     protected virtual void OnFormDataChanged(string propertyPath)
     {}
