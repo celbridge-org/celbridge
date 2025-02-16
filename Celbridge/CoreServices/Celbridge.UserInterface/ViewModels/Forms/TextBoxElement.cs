@@ -12,11 +12,11 @@ public partial class TextBoxElement : FormElement
         return formElement.Create(config, formBuilder);
     }
 
-    private PropertyBinder? _isEnabledBinder;
+    private PropertyBinder<bool>? _isEnabledBinder;
 
     [ObservableProperty]
     private string _text = string.Empty;
-    private PropertyBinder? _textBinder;
+    private PropertyBinder<string>? _textBinder;
 
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
     {
@@ -122,18 +122,28 @@ public partial class TextBoxElement : FormElement
     {
         if (config.TryGetProperty("isEnabled", out var configValue))
         {
-            _isEnabledBinder = PropertyBinder.Create(textBox, this)
-                .Setter((jsonValue) =>
-                {
-                    var isEnabled = false;
-                    if (bool.TryParse(JsonSerializer.Deserialize<string>(jsonValue), out bool result))
+            if (PropertyBinder<bool>.IsBindingConfig(configValue))
+            {
+                _isEnabledBinder = PropertyBinder<bool>.Create(textBox, this)
+                    .Setter((value) =>
                     {
-                        isEnabled = result;
-                    }
-                    textBox.IsEnabled = isEnabled;
-                });
+                        textBox.IsEnabled = value;
+                    });
 
-            return _isEnabledBinder.Initialize(configValue);
+                return _isEnabledBinder.Initialize(configValue);
+            }
+            else if (configValue.ValueKind == JsonValueKind.True)
+            {
+                textBox.IsEnabled = false;
+            }
+            else if (configValue.ValueKind == JsonValueKind.False)
+            {
+                textBox.IsEnabled = false;
+            }
+            else
+            {
+                return Result<bool>.Fail("'isEnabled' config is not valid");
+            }
         }
 
         return Result.Ok();
@@ -208,18 +218,25 @@ public partial class TextBoxElement : FormElement
     {
         if (config.TryGetProperty("text", out var configValue))
         {
-            _textBinder = PropertyBinder.Create(textBox, this)
-            .Binding(TextBox.TextProperty, BindingMode.TwoWay, nameof(Text))
-            .Setter((jsonValue) =>
+            if (PropertyBinder<string>.IsBindingConfig(configValue))
             {
-                Text = JsonSerializer.Deserialize<string>(jsonValue.ToString())!;
-            })
-            .Getter(() =>
-            {
-                return JsonSerializer.Serialize(Text);
-            });
+                _textBinder = PropertyBinder<string>.Create(textBox, this)
+                .Binding(TextBox.TextProperty, BindingMode.TwoWay, nameof(Text))
+                .Setter((value) =>
+                {
+                    Text = value;
+                })
+                .Getter(() =>
+                {
+                    return Text;
+                });
 
-            return _textBinder.Initialize(configValue);
+                return _textBinder.Initialize(configValue);
+            }
+            else
+            {
+                return Result.Fail($"'text' config is not valid");
+            }
         }
 
         return Result.Ok();
@@ -227,15 +244,12 @@ public partial class TextBoxElement : FormElement
 
     protected override void OnFormDataChanged(string propertyPath)
     {
-        Guard.IsNotNull(_textBinder);
-
-        _textBinder.OnFormDataChanged(propertyPath);
+        _isEnabledBinder?.OnFormDataChanged(propertyPath);
+        _textBinder?.OnFormDataChanged(propertyPath);
     }
 
     protected override void OnMemberDataChanged(string propertyName)
     {
-        Guard.IsNotNull(_textBinder);
-
-        _textBinder.OnMemberDataChanged(propertyName);
+        _textBinder?.OnMemberDataChanged(propertyName);
     }
 }

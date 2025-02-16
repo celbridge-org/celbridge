@@ -3,7 +3,7 @@ using Celbridge.UserInterface.ViewModels.Forms;
 
 namespace Celbridge.UserInterface.Services.Forms;
 
-public class PropertyBinder
+public class PropertyBinder<T> where T : notnull
 {
     private FrameworkElement _frameworkElement;
     private FormElement _formElement;
@@ -13,8 +13,8 @@ public class PropertyBinder
     private string _memberName = string.Empty;
     private bool HasBinding => _dependencyProperty is not null && !string.IsNullOrEmpty(_memberName);
 
-    private Action<string>? _setterAction;
-    private Func<string>? _getterAction;
+    private Action<T>? _setterAction;
+    private Func<T>? _getterAction;
 
     private string _formPropertyPath = string.Empty;
 
@@ -24,15 +24,32 @@ public class PropertyBinder
         _formElement = formElement;
     }
 
-    public static PropertyBinder Create(
+    public static bool IsBindingConfig(JsonElement config)
+    {
+        if (config.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var value = config.GetString();
+        if (!string.IsNullOrEmpty(value) &&
+            value.Length > 1 &&
+            value.StartsWith('/'))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static PropertyBinder<T> Create(
         FrameworkElement frameworkElement,
         FormElement formElement)
     {
-        var propertyBinder = new PropertyBinder(frameworkElement, formElement);
-        return propertyBinder;
+        return new PropertyBinder<T>(frameworkElement, formElement);
     }
 
-    public PropertyBinder Binding(
+    public PropertyBinder<T> Binding(
         DependencyProperty dependencyProperty,
         BindingMode bindingMode,
         string memberName)
@@ -43,13 +60,13 @@ public class PropertyBinder
         return this;
     }
 
-    public PropertyBinder Setter(Action<string> setterAction)
+    public PropertyBinder<T> Setter(Action<T> setterAction)
     {
         _setterAction = setterAction;
         return this;
     }
 
-    public PropertyBinder Getter(Func<string> getterAction)
+    public PropertyBinder<T> Getter(Func<T> getterAction)
     {
         _getterAction = getterAction;
         return this;
@@ -57,107 +74,79 @@ public class PropertyBinder
 
     public Result Initialize(JsonElement configValue)
     {
+        if (!IsBindingConfig(configValue))
+        {
+            return Result.Fail("Invalid binding configuration");
+        }
+
         if (_setterAction is null)
         {
-            return Result.Fail($"No setter action specified");
+            return Result.Fail("No setter action specified");
         }
 
-        // Check the type
-        if (configValue.ValueKind != JsonValueKind.String)
+        _formPropertyPath = configValue.GetString()!;
+        SynchonizeProperties();
+
+        if (HasBinding)
         {
-            return Result.Fail($"Config value must be a string");
-        }
-
-        // Apply the property
-        var configText = configValue.GetString()!;
-        if (configText.StartsWith('/'))
-        {
-            // Store the property path for future updates
-            _formPropertyPath = configText;
-
-            // Sync the member variable with the form data provider
-            SynchonizeProperties();
-
-            if (HasBinding)
+            _frameworkElement.SetBinding(_dependencyProperty, new Binding()
             {
-                // Bind dependency property to a member variable on the form element class
-                _frameworkElement.SetBinding(_dependencyProperty, new Binding()
-                {
-                    Path = new PropertyPath(_memberName),
-                    Mode = _bindingMode
-                });
-            }
-
-            // Set a flag to indicate that the form element needs to register for
-            // property update notifications.
-            _formElement.RequiresChangeNotifications = true;
+                Path = new PropertyPath(_memberName),
+                Mode = _bindingMode
+            });
         }
-        else
-        {
-            // Todo: Support localization
-            var jsonValue = configValue.GetRawText();
-            _setterAction?.Invoke(jsonValue);
 
-            if (HasBinding)
-            {
-                // Bind dependency property to a member variable on the form element class
-                _frameworkElement.SetBinding(_dependencyProperty, new Binding()
-                {
-                    Path = new PropertyPath(_memberName),
-                    Mode = BindingMode.OneTime, // Setting member to a fixed value that will never update
-                });
-            }
-        }
+        _formElement.RequiresChangeNotifications = true;
 
         return Result.Ok();
     }
 
     public void OnFormDataChanged(string propertyPath)
     {
-        if (string.IsNullOrEmpty(_formPropertyPath) ||
-            propertyPath != _formPropertyPath)
+        if (!string.IsNullOrEmpty(_formPropertyPath) && propertyPath == _formPropertyPath)
         {
-            return;
+            SynchonizeProperties();
         }
-
-        SynchonizeProperties();
     }
 
     public void OnMemberDataChanged(string propertyName)
     {
-        if (_getterAction is null ||
-            string.IsNullOrEmpty(_memberName) ||
+        if (_getterAction is null || 
+            string.IsNullOrEmpty(_memberName) || 
             propertyName != _memberName)
         {
             return;
         }
 
-        var jsonValue = _getterAction.Invoke();
-
-        var formDataProvider = _formElement.FormDataProvider;
-        formDataProvider.SetProperty(_formPropertyPath, jsonValue, false);
+        T value = _getterAction.Invoke();
+        string jsonValue = JsonSerializer.Serialize(value);
+        _formElement.FormDataProvider.SetProperty(_formPropertyPath, jsonValue, false);
     }
 
     private Result SynchonizeProperties()
     {
         if (_setterAction is null)
         {
-            return Result.Fail($"No setter action specified");
+            return Result.Fail("No setter action specified");
         }
 
         var formDataProvider = _formElement.FormDataProvider;
-
-        // Read the current property JSON value via the FormDataProvider
         var getResult = formDataProvider.GetProperty(_formPropertyPath);
         if (getResult.IsFailure)
         {
             return Result.Fail($"Failed to get property: '{_formPropertyPath}'")
                 .WithErrors(getResult);
         }
-        var jsonValue = getResult.Value;
 
-        // Update the member variable
-        _setterAction.Invoke(jsonValue);
+        try
+        {
+            T value = JsonSerializer.Deserialize<T>(getResult.Value) ?? throw new JsonException("Deserialization resulted in null");
+            _setterAction.Invoke(value);
+        }
+        catch (JsonException ex)
+        {
+            return Result.Fail($"Failed to deserialize JSON: {ex.Message}");
+        }
 
         return Result.Ok();
     }
