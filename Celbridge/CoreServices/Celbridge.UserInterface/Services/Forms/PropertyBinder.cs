@@ -123,6 +123,12 @@ public class PropertyBinder<T> where T : notnull
         _formElement.FormDataProvider.SetProperty(_formPropertyPath, jsonValue, false);
     }
 
+    public void OnElementUnloaded()
+    {
+        _setterAction = null;
+        _getterAction = null;
+    }
+
     private Result SynchonizeProperties()
     {
         if (_setterAction is null)

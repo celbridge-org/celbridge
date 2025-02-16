@@ -226,6 +226,11 @@ public partial class ButtonElement : FormElement
     protected override void OnMemberDataChanged(string propertyName)
     {}
 
+    protected override void OnElementUnloaded()
+    {
+        _isEnabledBinder?.OnElementUnloaded();
+    }
+
     private void OnButtonClicked(string buttonId)
     {
         FormDataProvider?.OnButtonClicked(buttonId);
