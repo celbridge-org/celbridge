@@ -122,7 +122,7 @@ public partial class TextBoxElement : FormElement
     {
         if (config.TryGetProperty("isEnabled", out var configValue))
         {
-            if (PropertyBinder<bool>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _isEnabledBinder = PropertyBinder<bool>.Create(textBox, this)
                     .Setter((value) =>
@@ -162,7 +162,7 @@ public partial class TextBoxElement : FormElement
             // Todo: Support binding
 
             // Apply the property
-            var header = jsonValue.GetString();
+            var header = jsonValue.GetString() ?? string.Empty;
             textBox.Header = header;
         }
 
@@ -217,7 +217,7 @@ public partial class TextBoxElement : FormElement
     {
         if (config.TryGetProperty("text", out var configValue))
         {
-            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _textBinder = PropertyBinder<string>.Create(textBox, this)
                 .Binding(TextBox.TextProperty, BindingMode.TwoWay, nameof(Text))

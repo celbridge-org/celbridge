@@ -5,9 +5,10 @@
     "text": "/dialogueKey"
   },
   {
-    "element": "TextBox",
+    "element": "ComboBox",
     "header": "Character",
-    "text": "/character"
+    "values": "/characterIds",
+    "selectedValue": "/character"
   },
   {
     "element": "TextBox",

@@ -1,10 +1,7 @@
 [
   {
-    "element": "TextBlock",
-    "text": "The edit mode is currently:"
-  },
-  {
-    "element": "TextBlock",
-    "text": "/editorMode"
+    "element": "ComboBox",
+    "header": "Editor Mode",
+    "selectedValue": "/editorMode"
   }
 ]

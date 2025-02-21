@@ -12,6 +12,7 @@ public class ComponentConfig
     public const string PrototypeKey = "prototype";
     public const string FormKey = "form";
     public const string TypeKey = "type";
+    public const string EnumKey = "enum";
 
     public string ComponentType { get; }
     public int ComponentVersion { get; }
