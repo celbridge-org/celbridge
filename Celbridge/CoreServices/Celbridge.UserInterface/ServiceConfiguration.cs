@@ -47,6 +47,7 @@ public static class ServiceConfiguration
         services.AddTransient<TextBoxElement>();
         services.AddTransient<TextBlockElement>();
         services.AddTransient<ButtonElement>();
+        services.AddTransient<ComboBoxElement>();
     }
 
     public static void Initialize()

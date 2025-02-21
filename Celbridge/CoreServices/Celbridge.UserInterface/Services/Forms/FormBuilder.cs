@@ -167,6 +167,18 @@ public class FormBuilder
                     uiElement = buttonResult.Value;
                 }
                 break;
+
+            case "ComboBox":
+                var comboBoxResult = ComboBoxElement.CreateComboBox(config, this);
+                if (comboBoxResult.IsFailure)
+                {
+                    _buildErrors.Add(comboBoxResult.Error);
+                }
+                else
+                {
+                    uiElement = comboBoxResult.Value;
+                }
+                break;
         }
 
         if (uiElement is null)

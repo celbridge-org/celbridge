@@ -105,7 +105,7 @@ public abstract partial class FormElement : ObservableObject
     {
         if (config.TryGetProperty("visibility", out var configValue))
         {
-            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _visibilityBinder = PropertyBinder<string>.Create(frameworkElement, this)
                     .Setter((value) =>
@@ -202,7 +202,7 @@ public abstract partial class FormElement : ObservableObject
     {
         if (config.TryGetProperty("tooltip", out var configValue))
         {
-            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _tooltipBinder = PropertyBinder<string>.Create(frameworkElement, this)
                     .Setter((value) =>
