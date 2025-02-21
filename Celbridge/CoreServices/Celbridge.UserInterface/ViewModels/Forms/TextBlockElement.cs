@@ -130,7 +130,7 @@ public partial class TextBlockElement : FormElement
     {
         if (config.TryGetProperty("text", out var configValue))
         {
-            if (PropertyBinder<string>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _textBinder = PropertyBinder<string>.Create(textBlock, this)
                 .Binding(TextBlock.TextProperty, BindingMode.OneWay, nameof(Text))

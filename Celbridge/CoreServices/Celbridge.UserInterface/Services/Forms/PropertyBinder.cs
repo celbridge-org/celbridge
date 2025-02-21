@@ -24,24 +24,6 @@ public class PropertyBinder<T> where T : notnull
         _formElement = formElement;
     }
 
-    public static bool IsBindingConfig(JsonElement config)
-    {
-        if (config.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        var value = config.GetString();
-        if (!string.IsNullOrEmpty(value) &&
-            value.Length > 1 &&
-            value.StartsWith('/'))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     public static PropertyBinder<T> Create(
         FrameworkElement frameworkElement,
         FormElement formElement)
@@ -74,7 +56,7 @@ public class PropertyBinder<T> where T : notnull
 
     public Result Initialize(JsonElement configValue)
     {
-        if (!IsBindingConfig(configValue))
+        if (!configValue.IsBindingConfig())
         {
             return Result.Fail("Invalid binding configuration");
         }

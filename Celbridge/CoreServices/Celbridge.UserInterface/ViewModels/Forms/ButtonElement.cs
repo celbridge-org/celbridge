@@ -95,7 +95,7 @@ public partial class ButtonElement : FormElement
     {
         if (config.TryGetProperty("isEnabled", out var configValue))
         {
-            if (PropertyBinder<bool>.IsBindingConfig(configValue))
+            if (configValue.IsBindingConfig())
             {
                 _isEnabledBinder = PropertyBinder<bool>.Create(button, this)
                     .Setter((value) =>

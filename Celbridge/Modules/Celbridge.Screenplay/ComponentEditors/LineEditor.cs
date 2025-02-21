@@ -29,5 +29,18 @@ public class LineEditor : ComponentEditorBase
         var summaryText = $"{character}: {sourceText}";
         return new ComponentSummary(summaryText, summaryText);
     }
+
+    protected override Result<string> TryGetProperty(string propertyPath)
+    {
+        if (propertyPath == "/characterIds")
+        {
+            // Todo: Return the list of character Ids for the current screenplay
+            var characterIds = "[\"Character 1\", \"Character 2\", \"Character 3\", \"Character 4\"]";
+            return Result<string>.Ok(characterIds);
+        }
+
+        return Result<string>.Fail();
+    }
+
 }
 
