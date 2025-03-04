@@ -61,7 +61,7 @@ public interface IDocumentsService
     /// If the document is open for editing, the updated content is displayed in the document view.
     /// The file on disk is updated regardless of whether the document is open for editing or not.
     /// </summary>
-    Result SetTextDocumentContent(ResourceKey fileResource, string content);
+    Task<Result> SetTextDocumentContentAsync(ResourceKey fileResource, string content);
 
     /// <summary>
     /// Save any modified documents to disk.

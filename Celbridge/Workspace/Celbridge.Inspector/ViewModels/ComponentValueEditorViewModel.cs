@@ -111,6 +111,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         var acquireEditorResult = _inspectorService.AcquireComponentEditor(componentKey);
         if (acquireEditorResult.IsFailure)
         {
+            _logger.LogError(acquireEditorResult.Error);
             _logger.LogError($"Failed to acquire component editor for component: '{componentKey}'");
             return;
         }
@@ -121,6 +122,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         var createViewResult = _inspectorService.CreateComponentEditorForm(editor);
         if (createViewResult.IsFailure)
         {
+            _logger.LogError(createViewResult.Error);
             _logger.LogError($"Failed to create component editor view for component type: '{ComponentType}'");
             return;
         }

@@ -1,5 +1,6 @@
 <Project ToolsVersion="15.0">
   <ItemGroup>
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
     <PackageVersion Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.1.240916" />
     <PackageVersion Include="Countly" Version="24.1.1" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />

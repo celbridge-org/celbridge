@@ -1,12 +1,44 @@
 [
   {
-    "element": "TextBox",
-    "header": "Scene Title",
-    "text": "/sceneTitle"
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "children": [
+      {
+        "element": "TextBlock",
+        "text": "Excel file:"
+      },
+      {
+        "element": "TextBlock",
+        "text": "/dialogueFile"
+      }
+    ]
   },
   {
-    "element": "TextBox",
-    "header": "Scene Description",
-    "text": "/sceneDescription"
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "children": [
+      {
+        "element": "TextBlock",
+        "text": "Category:"
+      },
+      {
+        "element": "TextBlock",
+        "text": "/category"
+      }
+    ]
+  },
+  {
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "children": [
+      {
+        "element": "TextBlock",
+        "text": "Namespace:"
+      },
+      {
+        "element": "TextBlock",
+        "text": "/namespace"
+      }
+    ]
   }
 ]
