@@ -11,22 +11,27 @@
       "type": "string",
       "const": "Screenplay.Scene#1"
     },
-    "sceneTitle": {
+    "category": {
       "type": "string"
     },
-    "sceneDescription": {
+    "namespace": {
+      "type": "string"
+    },
+    "dialogueFile": {
       "type": "string"
     }
   },
 
   "required": [
     "_type",
-    "sceneTitle",
-    "sceneDescription"
+    "category",
+    "namespace",
+    "dialogueFile"
   ],
 
   "prototype": {
-    "sceneTitle": "",
-    "sceneDescription": ""
+    "category": "",
+    "namespace": "",
+    "dialogueFile": ""
   }
 }    

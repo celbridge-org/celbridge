@@ -79,6 +79,7 @@
     <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
   </ItemGroup>
 
 </Project>

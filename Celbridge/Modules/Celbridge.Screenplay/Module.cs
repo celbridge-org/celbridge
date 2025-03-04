@@ -1,9 +1,10 @@
 using Celbridge.Activities;
 using Celbridge.Modules;
+using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Services;
 
-namespace Celbridge.Workspace;
+namespace Celbridge.Screenplay;
 
 public class Module : IModule
 {
@@ -19,14 +20,22 @@ public class Module : IModule
         //
 
         services.AddTransient<ScreenplayActivity>();
+        services.AddTransient<ScreenplayImporter>();
 
         //
-        // Register compoments
+        // Register components
         //
 
         services.AddTransient<LineEditor>();
         services.AddTransient<SceneEditor>();
+        services.AddTransient<ScreenplayDataEditor>();
         services.AddTransient<ScreenplayActivityEditor>();
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<ImportScreenplayCommand>();
     }
 
     public Result Initialize()

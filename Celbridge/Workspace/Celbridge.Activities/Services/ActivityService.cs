@@ -40,6 +40,21 @@ public class ActivityService : IActivityService, IDisposable
         return Result.Ok();
     }
 
+    public Result<IActivity> GetActivity(string activityName)
+    {
+        if (_activityRegistry is null)
+        {
+            return Result<IActivity>.Fail("Activity registry is not initialized");
+        }
+
+        if (_activityRegistry.Activities.TryGetValue(activityName, out var activity))
+        {
+            return Result<IActivity>.Ok(activity);
+        }
+
+        return Result<IActivity>.Fail($"Activity not found: '{activityName}'");
+    }
+
     public async Task<Result> UpdateAsync()
     {
         if (_activityDispatcher is null)

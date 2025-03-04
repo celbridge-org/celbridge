@@ -12,7 +12,7 @@
     "dialogueKey": {
       "type": "string"
     },
-    "character": {
+    "characterId": {
       "type": "string"
     },
     "sourceText": {
@@ -39,6 +39,9 @@
     "platform": {
       "type": "string"
     },
+    "soundProcessing": {
+      "type": "string"
+    },
     "productionStatus": {
       "type": "string"
     }
@@ -47,7 +50,7 @@
   "required": [
     "_type",
     "dialogueKey",
-    "character",
+    "characterId",
     "sourceText",
     "contextNotes",
     "linePriority",
@@ -56,12 +59,13 @@
     "timeConstraint",
     "direction",
     "platform",
+    "soundProcessing",
     "productionStatus"
   ],
 
   "prototype": {
     "dialogueKey": "",
-    "character": "",
+    "characterId": "",
     "sourceText": "",
     "contextNotes": "",
     "linePriority": "",
@@ -70,6 +74,7 @@
     "timeConstraint": "",
     "direction": "",
     "platform": "",
+    "soundProcessing": "",
     "productionStatus": ""
   }
 }

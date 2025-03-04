@@ -119,7 +119,6 @@ public class MarkdownEditor : ComponentEditorBase
         return Result<string>.Fail();
     }
 
-
     private void OpenDocument()
     {
         var resource = Component.Key.Resource;

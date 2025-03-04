@@ -8,7 +8,7 @@
     "element": "ComboBox",
     "header": "Character",
     "values": "/characterIds",
-    "selectedValue": "/character"
+    "selectedValue": "/characterId"
   },
   {
     "element": "TextBox",

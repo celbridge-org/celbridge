@@ -8,8 +8,8 @@ public class SceneEditor : ComponentEditorBase
     private const string _formPath = "Celbridge.Screenplay.Assets.Forms.SceneForm.json";
 
     public const string ComponentType = "Screenplay.Scene";
-    public const string SceneTitle = "/sceneTitle";
-    public const string SceneDescription = "/sceneDescription";
+    public const string Category = "/category";
+    public const string Namespace = "/namespace";
 
     public override string GetComponentConfig()
     {
@@ -23,10 +23,10 @@ public class SceneEditor : ComponentEditorBase
 
     public override ComponentSummary GetComponentSummary()
     {
-        var sceneTitle = Component.GetString(SceneTitle);
-        var sceneDescription = Component.GetString(SceneDescription);
+        var categoryText = Component.GetString(Category);
+        var namespaceText = Component.GetString(Namespace);
 
-        var summaryText = $"{sceneTitle}: {sceneDescription}";
+        var summaryText = $"{categoryText}: {namespaceText}";
         return new ComponentSummary(summaryText, summaryText);
     }
 }
