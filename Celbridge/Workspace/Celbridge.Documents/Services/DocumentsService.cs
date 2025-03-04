@@ -207,12 +207,28 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Result SetTextDocumentContent(ResourceKey fileResource, string content)
+    public async Task<Result> SetTextDocumentContentAsync(ResourceKey fileResource, string content)
     {
-        var message = new SetTextDocumentContentMessage(fileResource, content);
-        _messengerService.Send(message);
+        try
+        {
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        return Result.Ok();
+            var filePath = resourceRegistry.GetResourcePath(fileResource);
+
+            // Udpate the document file with the new content
+            await File.WriteAllTextAsync(filePath, content);
+
+            // Update the document view with the new content
+            var message = new SetTextDocumentContentMessage(fileResource, content);
+            _messengerService.Send(message);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to set text document content")
+                .WithException(ex);
+        }
     }
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)

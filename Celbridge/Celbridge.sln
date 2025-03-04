@@ -11,6 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Tests", "Celbridg
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{41A71B67-B94B-48A1-9975-2CC623B78CED}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets
@@ -71,6 +72,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BaseLibrary", "BaseLibrary", "{901BDB4C-F3AC-4017-AB91-78A47D8A6F98}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.BaseLibrary", "BaseLibrary\Celbridge.BaseLibrary.csproj", "{8D964A70-3C2F-48B7-8D71-E72D63510249}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Spreadsheet", "Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj", "{08EA0797-E884-4518-BF46-C280120323D6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -182,6 +185,10 @@ Global
 		{8D964A70-3C2F-48B7-8D71-E72D63510249}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D964A70-3C2F-48B7-8D71-E72D63510249}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D964A70-3C2F-48B7-8D71-E72D63510249}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08EA0797-E884-4518-BF46-C280120323D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08EA0797-E884-4518-BF46-C280120323D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08EA0797-E884-4518-BF46-C280120323D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08EA0797-E884-4518-BF46-C280120323D6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -211,6 +218,7 @@ Global
 		{20345FB4-450A-4D5A-BB88-2A35DEAA3EF0} = {C0824544-3370-4309-915C-D12EA7D91482}
 		{0B45C8C1-3A3B-4824-895B-B02B1A800257} = {C0824544-3370-4309-915C-D12EA7D91482}
 		{8D964A70-3C2F-48B7-8D71-E72D63510249} = {901BDB4C-F3AC-4017-AB91-78A47D8A6F98}
+		{08EA0797-E884-4518-BF46-C280120323D6} = {C0824544-3370-4309-915C-D12EA7D91482}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {695F2378-3B43-4460-9FB8-6D27C121D85D}

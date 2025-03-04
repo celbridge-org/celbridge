@@ -2,7 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Core.Components;
 using Celbridge.Modules;
 
-namespace Celbridge.Workspace;
+namespace Celbridge.Core;
 
 public class Module : IModule
 {

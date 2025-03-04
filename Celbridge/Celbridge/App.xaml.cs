@@ -117,6 +117,7 @@ public partial class App : Application
                         "Celbridge.Core",
                         "Celbridge.Markdown",
                         "Celbridge.Screenplay",
+                        "Celbridge.Spreadsheet",
                     };
                     ModuleService.LoadModules(modules, services);
                 })

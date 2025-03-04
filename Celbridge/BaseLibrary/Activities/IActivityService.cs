@@ -11,6 +11,11 @@ public interface IActivityService
     Task<Result> Initialize();
 
     /// <summary>
+    /// Acquire the named activity.
+    /// </summary>
+    Result<IActivity> GetActivity(string activityName);
+
+    /// <summary>
     /// Updates the activities in the workspace.
     /// </summary>
     Task<Result> UpdateAsync();

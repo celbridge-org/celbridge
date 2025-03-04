@@ -19,8 +19,6 @@ public class ScreenplayActivity : IActivity
     private readonly IEntityService _entityService;
     private readonly IDocumentsService _documentService;
 
-    private HashSet<ResourceKey> _pendingEntityUpdates = new();
-
     public ScreenplayActivity(
         IServiceProvider serviceProvider,
         ILogger<ScreenplayActivity> logger,        
@@ -158,7 +156,7 @@ public class ScreenplayActivity : IActivity
         var markdown = generateResult.Value;
 
         // Set the contents of the document to the generated markdown
-        var setContentResult = _documentService.SetTextDocumentContent(resource, markdown);
+        var setContentResult = await _documentService.SetTextDocumentContentAsync(resource, markdown);
         if (setContentResult.IsFailure)
         {
             return Result.Fail($"Failed to set document content")
@@ -166,6 +164,20 @@ public class ScreenplayActivity : IActivity
         }
 
         await Task.CompletedTask;
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> ImportScreenplayAsync(ResourceKey screenplayResource)
+    {
+        var importer = _serviceProvider.AcquireService<ScreenplayImporter>();
+
+        var importResult = await importer.ImportScreenplayAsync(screenplayResource);
+        if (importResult.IsFailure)
+        {
+            return Result.Fail($"Failed to import screenplay data from Excel")
+                .WithErrors(importResult);
+        }
 
         return Result.Ok();
     }
@@ -180,14 +192,14 @@ public class ScreenplayActivity : IActivity
         }
         var sceneComponent = getComponentResult.Value;
 
-        var sceneTitle = sceneComponent.GetString(SceneEditor.SceneTitle);
-        var sceneDescription = sceneComponent.GetString(SceneEditor.SceneDescription);
+        var categoryText = sceneComponent.GetString(SceneEditor.Category);
+        var namespaceText = sceneComponent.GetString(SceneEditor.Namespace);
 
         var sb = new StringBuilder();
 
-        sb.AppendLine($"# {sceneTitle}");
+        sb.AppendLine($"# {categoryText}");
         sb.AppendLine();
-        sb.AppendLine($"{sceneDescription}");
+        sb.AppendLine($"{namespaceText}");
         sb.AppendLine();
 
         var getLinesResult = _entityService.GetComponentsOfType(resource, LineEditor.ComponentType);
@@ -200,7 +212,7 @@ public class ScreenplayActivity : IActivity
 
         foreach (var lineComponent in lineComponents)
         {
-            var character = lineComponent.GetString(LineEditor.Character);
+            var character = lineComponent.GetString(LineEditor.CharacterId);
             var sourceText = lineComponent.GetString(LineEditor.SourceText);
 
             if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
