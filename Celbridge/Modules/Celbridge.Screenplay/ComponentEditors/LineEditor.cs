@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Celbridge.Entities;
@@ -11,8 +12,12 @@ public class LineEditor : ComponentEditorBase
     private const string _formPath = "Celbridge.Screenplay.Assets.Forms.LineForm.json";
 
     public const string ComponentType = "Screenplay.Line";
+    public const string DialogueKey = "/dialogueKey";
     public const string CharacterId = "/characterId";
+    public const string SpeakingTo = "/speakingTo";
     public const string SourceText = "/sourceText";
+    public const string ContextNotes = "/contextNotes";
+    public const string Direction = "/direction";
 
     private readonly IEntityService _entityService;
 
@@ -33,11 +38,42 @@ public class LineEditor : ComponentEditorBase
 
     public override ComponentSummary GetComponentSummary()
     {
+        var dialogueKey = Component.GetString(DialogueKey);
         var characterId = Component.GetString(CharacterId);
+        var speakingTo = Component.GetString(SpeakingTo);
         var sourceText = Component.GetString(SourceText);
+        var contextNotes = Component.GetString(ContextNotes);
+        var direction = Component.GetString(Direction);
 
+        // Display most important properties in the summary
         var summaryText = $"{characterId}: {sourceText}";
-        return new ComponentSummary(summaryText, summaryText);
+
+        // Display important properties in the tooltip
+        var sb = new StringBuilder();
+
+        sb.AppendLine(sourceText);
+        sb.AppendLine();
+
+        sb.AppendLine($"Character: {characterId}");
+        if (!string.IsNullOrEmpty(speakingTo))
+        {
+            sb.AppendLine($"Speaking To: {speakingTo}");
+        }
+        if (!string.IsNullOrEmpty(contextNotes))
+        {
+            sb.AppendLine($"Context Notes: {contextNotes}");
+        }
+        if (!string.IsNullOrEmpty(direction))
+        {
+            sb.AppendLine($"Direction: {direction}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"{dialogueKey}"); // Dialogue key contains character id
+
+        var tooltipText = sb.ToString();
+
+        return new ComponentSummary(summaryText, tooltipText);
     }
 
     protected override Result<string> TryGetProperty(string propertyPath)
@@ -118,7 +154,7 @@ public class LineEditor : ComponentEditorBase
 
         var characterIdsJson = JsonSerializer.Serialize(characterIds);
 
-        return Result<String>.Ok(characterIdsJson);
+        return Result<string>.Ok(characterIdsJson);
     }
 }
 
