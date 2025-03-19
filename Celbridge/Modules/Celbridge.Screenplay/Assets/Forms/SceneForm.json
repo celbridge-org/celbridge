@@ -1,44 +1,20 @@
 [
   {
-    "element": "StackPanel",
-    "orientation": "Horizontal",
-    "children": [
-      {
-        "element": "TextBlock",
-        "text": "Excel file:"
-      },
-      {
-        "element": "TextBlock",
-        "text": "/dialogueFile"
-      }
-    ]
+    "element": "TextBox",
+    "header": "Dialogue File",
+    "text": "/dialogueFile",
+    "isReadOnly": true
   },
   {
-    "element": "StackPanel",
-    "orientation": "Horizontal",
-    "children": [
-      {
-        "element": "TextBlock",
-        "text": "Category:"
-      },
-      {
-        "element": "TextBlock",
-        "text": "/category"
-      }
-    ]
+    "element": "TextBox",
+    "header": "Category",
+    "text": "/category",
+    "isReadOnly": true
   },
   {
-    "element": "StackPanel",
-    "orientation": "Horizontal",
-    "children": [
-      {
-        "element": "TextBlock",
-        "text": "Namespace:"
-      },
-      {
-        "element": "TextBlock",
-        "text": "/namespace"
-      }
-    ]
+    "element": "TextBox",
+    "header": "Namespace",
+    "text": "/namespace",
+    "isReadOnly": true
   }
 ]

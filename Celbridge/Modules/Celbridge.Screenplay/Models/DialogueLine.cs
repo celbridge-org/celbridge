@@ -1,9 +1,9 @@
 namespace Celbridge.Screenplay.Models;
 
 public record DialogueLine(
-    string DialogueKey,
     string Category,
     string Namespace,
+    string DialogueKey,
     string CharacterId,
     string SpeakingTo,
     string SourceText,
@@ -14,5 +14,4 @@ public record DialogueLine(
     string SoundProcessing,
     string Platform,
     string LinePriority,
-    string ProductionStatus,
-    string DialogueAsset);
+    string ProductionStatus);
