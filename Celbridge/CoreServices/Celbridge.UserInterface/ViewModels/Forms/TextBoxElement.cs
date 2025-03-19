@@ -53,7 +53,8 @@ public partial class TextBoxElement : FormElement
             "text",
             "header",
             "placeholder",
-            "checkSpelling"
+            "checkSpelling",
+            "isReadOnly"
         });
 
         if (validateResult.IsFailure)
@@ -113,6 +114,13 @@ public partial class TextBoxElement : FormElement
         {
             return Result<FrameworkElement>.Fail($"Failed to apply 'text' config property")
                 .WithErrors(textResult);
+        }
+
+        var readOnlyResult = ApplyReadOnlyConfig(config, textBox);
+        if (readOnlyResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'isReadOnly' config property")
+                .WithErrors(readOnlyResult);
         }
 
         return Result<FrameworkElement>.Ok(textBox);
@@ -235,6 +243,30 @@ public partial class TextBoxElement : FormElement
             else
             {
                 return Result.Fail($"'text' config is not valid");
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    private Result ApplyReadOnlyConfig(JsonElement config, TextBox textBox)
+    {
+        if (config.TryGetProperty("isReadOnly", out var isReadOnlyValue))
+        {
+            // Check the type
+            if (isReadOnlyValue.ValueKind != JsonValueKind.True &&
+                isReadOnlyValue.ValueKind != JsonValueKind.False)
+            {
+                return Result.Fail("'isReadOnly' property must be a boolean");
+            }
+
+            // Apply the property
+            var isReadOnly = isReadOnlyValue.GetBoolean();
+            if (isReadOnlyValue.GetBoolean())
+            {
+                // Text can be selected but not edited
+                textBox.IsReadOnly = true;
+                textBox.Opacity = 0.6;
             }
         }
 

@@ -17,10 +17,15 @@
     <StackPanel x:Name="UtilitiesPanel"
                 Grid.Row="0"
                 Orientation="Vertical"/>
-    
-    <StackPanel x:Name="ComponentListPanel"
-                Grid.Row="1"
-                Orientation="Vertical"/>
+
+    <ScrollViewer x:Name="ComponentsScrollViewer"
+                  Grid.Row="1"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  Margin="4,0,0,0">
+      <StackPanel x:Name="ComponentListPanel"
+                  Orientation="Vertical"/>
+    </ScrollViewer>
 
     <ScrollViewer x:Name="DetailScrollViewer"
                   Grid.Row="2"

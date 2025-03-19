@@ -29,6 +29,9 @@ public partial class ComponentItem : ObservableObject
     [ObservableProperty]
     private ComponentSummary? _summary;
 
+    [ObservableProperty]
+    private GridLength _indentWidth;
+
     public ComponentItem()
     {
         PropertyChanged += ComponentItem_PropertyChanged;
@@ -50,31 +53,35 @@ public partial class ComponentItem : ObservableObject
         var showErrorIcon = Visibility.Collapsed;
         var showWarningIcon = Visibility.Collapsed;
 
-        if (Annotation is not null &&
-            Annotation.Errors.Count > 0)
-        {
-            var error = Annotation.Errors[0];
-            description = error.Message;
-            tooltip = error.Description;
-
-            if (error.Severity == ComponentErrorSeverity.Critical ||
-                error.Severity == ComponentErrorSeverity.Error)
-            {
-                showErrorIcon = Visibility.Visible;
-                showWarningIcon = Visibility.Collapsed;
-            }
-            else if (error.Severity == ComponentErrorSeverity.Warning)
-            {
-                showErrorIcon = Visibility.Collapsed;
-                showWarningIcon = Visibility.Visible;
-            }
-        }
-        else if (Summary is not null)
+        if (Summary is not null)
         {
             description = Summary.SummaryText;
             tooltip = Summary.Tooltip;
             showErrorIcon = Visibility.Collapsed;
             showWarningIcon = Visibility.Collapsed;
+        }
+
+        if (Annotation is not null)
+        {
+            if (Annotation.Errors.Count > 0)
+            {
+                var error = Annotation.Errors[0];
+                tooltip = $"Error: {error.Message}\n{error.Description}";
+
+                if (error.Severity == ComponentErrorSeverity.Critical ||
+                    error.Severity == ComponentErrorSeverity.Error)
+                {
+                    showErrorIcon = Visibility.Visible;
+                    showWarningIcon = Visibility.Collapsed;
+                }
+                else if (error.Severity == ComponentErrorSeverity.Warning)
+                {
+                    showErrorIcon = Visibility.Collapsed;
+                    showWarningIcon = Visibility.Visible;
+                }
+            }
+
+            IndentWidth = new GridLength(Annotation.IndentLevel * 20);
         }
 
         Description = description;

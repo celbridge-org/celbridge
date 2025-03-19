@@ -2,7 +2,8 @@
   {
     "element": "TextBox",
     "header": "Dialogue Key",
-    "text": "/dialogueKey"
+    "text": "/dialogueKey",
+    "isReadOnly": true
   },
   {
     "element": "ComboBox",

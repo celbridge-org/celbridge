@@ -26,11 +26,11 @@ public class ScreenplayImporter
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<Result> ImportScreenplayAsync(ResourceKey excelFile)
+    public async Task<Result> ImportScreenplayAsync(ResourceKey workbookFile)
     {
         try
         {
-            var extension = Path.GetExtension(excelFile);
+            var extension = Path.GetExtension(workbookFile);
             if (extension != ".xlsx")
             {
                 return Result.Fail($"Unsupported file type: {extension}");
@@ -38,21 +38,21 @@ public class ScreenplayImporter
 
             var entityService = _workspaceWrapper.WorkspaceService.EntityService;
             var resourceRegistry = _explorerService.ResourceRegistry;
-            var excelFilePath = resourceRegistry.GetResourcePath(excelFile);
-            var screenplayFolderPath = Path.GetFileNameWithoutExtension(excelFilePath);
+            var workbookFilePath = resourceRegistry.GetResourcePath(workbookFile);
+            var screenplayFolderPath = Path.GetFileNameWithoutExtension(workbookFilePath);
 
-            // Acquire the ScreenplayData component from the Excel file resource
-            var getComponentResult = entityService.GetComponentOfType(excelFile, ScreenplayDataEditor.ComponentType);
+            // Acquire the ScreenplayData component from the workbook resource
+            var getComponentResult = entityService.GetComponentOfType(workbookFile, ScreenplayDataEditor.ComponentType);
             if (getComponentResult.IsFailure)
             {
-                return Result.Fail($"Failed to get ScreenplayData component from Excel file resource '{excelFile}'")
+                return Result.Fail($"Failed to get ScreenplayData component from workbook file resource '{workbookFile}'")
                     .WithErrors(getComponentResult);
             }
             var screenplayData = getComponentResult.Value;
 
-            // Open the Excel file.
+            // Open the workbook file.
             // It's best to do this before we make any other changes, e.g. in case the file is locked.
-            using var workbook = new XLWorkbook(excelFilePath);
+            using var workbook = new XLWorkbook(workbookFilePath);
 
             // Create a new screenplay folder for the screenplay
             if (Directory.Exists(screenplayFolderPath))
@@ -72,66 +72,75 @@ public class ScreenplayImporter
 
             // Load the characters from the "Characters" worksheet
             var charactersWorksheet = workbook.Worksheet("Characters");
-            var loadCharactersResult = ReadCharacters(charactersWorksheet);
+            var loadCharactersResult = LoadCharacters(charactersWorksheet);
             if (loadCharactersResult.IsFailure)
             {
-                return Result.Fail($"Failed to load characters from Excel")
+                return Result.Fail($"Failed to load characters from 'Characters' worksheet")
                     .WithErrors(loadCharactersResult);
             }
             var characters = loadCharactersResult.Value;
 
-            // Load the dialogue lines from the "Lines" worksheet
-            var linesWorksheet = workbook.Worksheet("Lines");
-            var loadLinesResult = ReadLines(linesWorksheet);
+            // Load the scenes from the "Scenes" worksheet                
+            var scenesWorksheet = workbook.Worksheet("Scenes");
+            var loadScenesResult = LoadScenes(scenesWorksheet);
+            if (loadScenesResult.IsFailure)
+            {
+                return Result.Fail($"Failed to load scenes from 'Scenes' worksheet")
+                    .WithErrors(loadScenesResult);
+            }
+            var scenes = loadScenesResult.Value;
+
+            // Load the dialogue lines from the "Dialogue" worksheet
+            var dialogueWorksheet = workbook.Worksheet("Dialogue");
+            var loadLinesResult = LoadLines(dialogueWorksheet);
             if (loadLinesResult.IsFailure)
             {
-                return Result.Fail($"Failed to load dialogue lines from Excel")
+                return Result.Fail($"Failed to load dialogue lines from 'Dialogue' worksheet")
                     .WithErrors(loadLinesResult);
             }
             var lines = loadLinesResult.Value;
 
-            // Validate imported data
-            var validateResult = ValidateLines(characters, lines);
+            // Validate dialogue data
+            var validateResult = ValidateDialogue(scenes, characters, lines);
             if (validateResult.IsFailure)
             {
-                return Result.Fail($"Failed to validate imported dialogue data")
+                return Result.Fail($"Failed to validate dialogue data")
                     .WithErrors(validateResult);
             }
 
-            // Split the dialogue lines by namespace
-            var createResult = CreateNamespaceLines(lines);
-            if (createResult.IsFailure)
+            // Add the dialogue lines to each scene
+            var addResult = AddSceneLines(scenes, lines);
+            if (addResult.IsFailure)
             {
-                return Result.Fail($"Failed create namespace lines dictionary")
-                    .WithErrors(createResult);
+                return Result.Fail($"Failed to add lines to scenes")
+                    .WithErrors(addResult);
             }
-            var namespaceLines = createResult.Value;
 
-            // Save a .scene file for each namespace
-            var saveResult = await SaveSceneFilesAsync(namespaceLines, excelFile);
+            // Save a .scene file for each scene
+            var saveResult = await SaveSceneFilesAsync(scenes, workbookFile);
             if (saveResult.IsFailure)
             {
                 return Result.Fail($"Failed to save .scene files")
-                    .WithErrors(loadLinesResult);
+                    .WithErrors(saveResult);
             }
 
             var populateResult = PopulateCharacters(screenplayData, characters);
             if (populateResult.IsFailure)
             {
                 return Result.Fail($"Failed to populate characters property")
-                    .WithErrors(loadLinesResult);
+                    .WithErrors(populateResult);
             }
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to import screenplay data from Excel")
+            return Result.Fail($"Failed to import screenplay data from workbook")
                 .WithException(ex);
         }
     }
 
-    private Result<List<Character>> ReadCharacters(IXLWorksheet characterSheet)
+    private Result<List<Character>> LoadCharacters(IXLWorksheet characterSheet)
     {
         var characters = new List<Character>();
 
@@ -190,7 +199,7 @@ public class ScreenplayImporter
             }
             catch (Exception ex)
             {
-                return Result<List<Character>>.Fail($"An error occurred when reading characters from Excel")
+                return Result<List<Character>>.Fail($"An error occurred when loading characters from workbook")
                     .WithException(ex);
             }
         }
@@ -198,7 +207,74 @@ public class ScreenplayImporter
         return Result<List<Character>>.Ok(characters);
     }
 
-    private Result<List<DialogueLine>> ReadLines(IXLWorksheet linesSheet)
+    private Result<List<Scene>> LoadScenes(IXLWorksheet scenesSheet)
+    {
+        // Find the used range
+        var range = scenesSheet.RangeUsed();
+        if (range == null)
+        {
+            return Result<List<Scene>>.Fail("The sheet is empty.");
+        }
+
+        //
+        // Read header row and map column names to indexes
+        //
+
+        var headerRow = range.FirstRowUsed();
+        var columnMap = new Dictionary<string, int>();
+
+        foreach (var cell in headerRow.CellsUsed())
+        {
+            var columnName = cell.GetValue<string>().Trim();
+            if (!string.IsNullOrEmpty(columnName))
+            {
+                columnMap[columnName] = cell.Address.ColumnNumber;
+            }
+        }
+
+        //
+        // Validate required columns
+        //
+
+        string[] requiredColumns = { "Category", "Namespace", "Context", "AssetPath" };
+        foreach (var col in requiredColumns)
+        {
+            if (!columnMap.ContainsKey(col))
+            {
+                return Result<List<Scene>>.Fail($"Missing required column '{col}'");
+            }
+        }
+
+        //
+        // Read data rows, skipping the header
+        //
+        var scenes = new List<Scene>();
+
+        foreach (var row in range.RowsUsed().Skip(1))
+        {
+            try
+            {
+                var scene = new Scene
+                (
+                    Category: TryGetValue<string>(row, columnMap, nameof(Scene.Category)),
+                    Namespace: TryGetValue<string>(row, columnMap, nameof(Scene.Namespace)),
+                    Context: TryGetValue<string>(row, columnMap, nameof(Scene.Context)),
+                    AssetPath: TryGetValue<string>(row, columnMap, nameof(Scene.AssetPath))
+                );
+
+                scenes.Add(scene);
+            }
+            catch (Exception ex)
+            {
+                return Result<List<Scene>>.Fail($"An error occurred when loading scenes from workbook")
+                    .WithException(ex);
+            }
+        }
+
+        return Result<List<Scene>>.Ok(scenes);
+    }
+
+    private Result<List<DialogueLine>> LoadLines(IXLWorksheet linesSheet)
     {
         var lines = new List<DialogueLine>();
 
@@ -261,15 +337,14 @@ public class ScreenplayImporter
                     SoundProcessing: TryGetValue<string>(row, columnMap, nameof(DialogueLine.SoundProcessing)),
                     Platform: TryGetValue<string>(row, columnMap, nameof(DialogueLine.Platform)),
                     LinePriority: TryGetValue<string>(row, columnMap, nameof(DialogueLine.LinePriority)),
-                    ProductionStatus: TryGetValue<string>(row, columnMap, nameof(DialogueLine.ProductionStatus)),
-                    DialogueAsset: TryGetValue<string>(row, columnMap, nameof(DialogueLine.DialogueAsset))
+                    ProductionStatus: TryGetValue<string>(row, columnMap, nameof(DialogueLine.ProductionStatus))
                 );
 
                 lines.Add(line);
             }
             catch (Exception ex)
             {
-                return Result<List<DialogueLine>>.Fail($"An error occurred when reading lines from Excel")
+                return Result<List<DialogueLine>>.Fail($"An error occurred when loading lines from workbook")
                     .WithException(ex);
             }
         }
@@ -277,7 +352,7 @@ public class ScreenplayImporter
         return Result<List<DialogueLine>>.Ok(lines);
     }
 
-    private Result ValidateLines(List<Character> characters, List<DialogueLine> lines)
+    private Result ValidateDialogue(List<Scene> scenes, List<Character> characters, List<DialogueLine> lines)
     {
         for (int i = 0; i < lines.Count; i++)
         {
@@ -301,19 +376,37 @@ public class ScreenplayImporter
                 return Result.Fail($"Invalid namespace at row {row_index}");
             }
 
+            // Check the line namespace matches a scene namespace
+            var foundScene = false;
+            foreach (var scene in scenes)
+            {
+                if (scene.Namespace == line.Namespace)
+                {
+                    foundScene = true;
+                    break;
+                }
+            }
+            if (!foundScene)
+            {
+                return Result.Fail($"Namespace '{line.Namespace}' not found in scenes list at row {row_index}");
+            }
+
             // Check that the referenced character exists
             var characterId = line.CharacterId;
-            if (string.IsNullOrEmpty(characterId) ||
-                !characters.Any(c => c.CharacterId == characterId))
+            if (characterId != "Player" && characterId != "SceneNote")
             {
-                return Result.Fail($"Character '{characterId}' not found in characters list at row {row_index}");
+                if (string.IsNullOrEmpty(characterId) ||
+                    !characters.Any(c => c.CharacterId == characterId))
+                {
+                    return Result.Fail($"Character '{characterId}' not found in characters list at row {row_index}");
+                }
             }
         }
 
         return Result.Ok();
     }
 
-    private Result<Dictionary<string, List<DialogueLine>>> CreateNamespaceLines(List<DialogueLine> lines)
+    private Result AddSceneLines(List<Scene> scenes, List<DialogueLine> lines)
     {
         var namespace_lines = new Dictionary<string, List<DialogueLine>>();
 
@@ -337,7 +430,7 @@ public class ScreenplayImporter
                 {
                     // This namespace has already been processed, but the previous line's namespace
                     // does not match the current line's namespace.
-                    return Result<Dictionary<string, List<DialogueLine>>>.Fail($"Non-contiguous namespace at row {row_index}");
+                    return Result.Fail($"Non-contiguous namespace at row {row_index}");
                 }
             }
 
@@ -348,12 +441,30 @@ public class ScreenplayImporter
             row_index++;
         }
 
-        return Result<Dictionary<string, List<DialogueLine>>>.Ok(namespace_lines);
+        foreach (var scene in scenes)
+        {
+            var namespace_key = scene.Namespace;
+
+            // Check that each scene has at least one line
+            if (!namespace_lines.TryGetValue(namespace_key, out var dialogue_lines))
+            {
+                return Result.Fail($"Scene '{namespace_key}' has no dialogue lines");
+            }
+
+            if (scene.Lines.Count > 0)
+            {
+                return Result.Fail($"Scene '{namespace_key}' already has dialogue lines");
+            }
+
+            scene.Lines.AddRange(dialogue_lines);
+        }
+
+        return Result.Ok();
     }
 
-    private async Task<Result> SaveSceneFilesAsync(Dictionary<string, List<DialogueLine>> namespaceLines, ResourceKey excelResource)
+    private async Task<Result> SaveSceneFilesAsync(List<Scene> scenes, ResourceKey workbookResource)
     {
-        var screenplayFolderResource = Path.GetFileNameWithoutExtension(excelResource);
+        var screenplayFolderResource = Path.GetFileNameWithoutExtension(workbookResource);
 
         var resourceRegistry = _explorerService.ResourceRegistry;
         var sceneFolderPath = resourceRegistry.GetResourcePath(screenplayFolderResource);
@@ -365,19 +476,14 @@ public class ScreenplayImporter
         entityFolderPath = entityFolderPath.Substring(0, entityFolderPath.LastIndexOf('.'));
 
         // Save a .scene file for each namespace
-        foreach (var kv in namespaceLines)
+        foreach (var scene in scenes)
         {
-            var namespaceKey = kv.Key;
-            var lineList = kv.Value;
-
-            if (lineList.Count == 0)
+            if (scene.Lines.Count == 0)
             {
                 continue;
             }
 
-            // Get the category from the first line in the list
-            var category = lineList[0].Category;
-
+            var category = scene.Category;
             if (category == "Bark")
             {
                 // Editing barks is not supported yet
@@ -386,19 +492,22 @@ public class ScreenplayImporter
 
             // Create the .scene resource and entity data
 
-            await SaveSceneFileAsync(sceneFolderPath, category, namespaceKey);
-            await SaveEntityFileAsync(excelResource, entityFolderPath, category, namespaceKey, lineList);
+            await SaveSceneFileAsync(sceneFolderPath, category, scene.AssetPath);
+            await SaveEntityFileAsync(workbookResource, entityFolderPath, category, scene.Namespace, scene.AssetPath, scene.Lines);
         }
 
         return Result.Ok();
     }
 
-    private static async Task SaveSceneFileAsync(string sceneFolderPath, string category, string namespace_key)
+    private static async Task SaveSceneFileAsync(string sceneFolderPath, string category, string assetPath)
     {
         // Create a .scene file
-        var sceneFilePath = Path.Combine(sceneFolderPath, category, $"{namespace_key}.scene");
 
+        var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
+        var assetName = Path.GetFileNameWithoutExtension(assetPath);
+        var sceneFilePath = Path.Combine(sceneFolderPath, category, subFolder, $"{assetName}.scene");
         var sceneFolder = Path.GetDirectoryName(sceneFilePath);
+
         if (!string.IsNullOrEmpty(sceneFolder) &&
             !Directory.Exists(sceneFolder))
         {
@@ -408,11 +517,13 @@ public class ScreenplayImporter
         await File.WriteAllTextAsync(sceneFilePath, string.Empty);
     }
 
-    private static async Task SaveEntityFileAsync(ResourceKey excelResource, string entityFolderPath, string category, string namespace_key, List<DialogueLine> line_list)
+    private static async Task SaveEntityFileAsync(ResourceKey workbookResource, string entityFolderPath, string category, string @namespace, string assetPath, List<DialogueLine> lineList)
     {
-        var entityFilePath = Path.Combine(entityFolderPath, category, $"{namespace_key}.scene.json");
-
+        var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
+        var assetName = Path.GetFileNameWithoutExtension(assetPath);
+        var entityFilePath = Path.Combine(entityFolderPath, category, subFolder, $"{assetName}.scene.json");
         var entityFolder = Path.GetDirectoryName(entityFilePath);
+
         if (!string.IsNullOrEmpty(entityFolder) &&
             !Directory.Exists(entityFolder))
         {
@@ -426,13 +537,13 @@ public class ScreenplayImporter
         // Add scene component
         var sceneComponent = new JsonObject();
         sceneComponent["_type"] = "Screenplay.Scene#1";
-        sceneComponent["dialogueFile"] = excelResource.ToString();
+        sceneComponent["dialogueFile"] = workbookResource.ToString();
         sceneComponent["category"] = category;
-        sceneComponent["namespace"] = namespace_key;
+        sceneComponent["namespace"] = @namespace;
         components.Add(sceneComponent);
 
         // Add line components
-        foreach (var line in line_list)
+        foreach (var line in lineList)
         {
             var lineComponent = new JsonObject();
             lineComponent["_type"] = "Screenplay.Line#1";
@@ -472,8 +583,35 @@ public class ScreenplayImporter
         // mapping character IDs to character names and tags.
 
         var charactersObject = new JsonObject();
+
+        // Add the 'Player' character
+        charactersObject["Player"] = new JsonObject
+        {
+            ["name"] = "Player",
+            ["tag"] = "Character.Player"
+        };
+
+        // Add the characters from the 'Characters' sheet
+        var names = new HashSet<string>();
+        var tags = new HashSet<string>();
+
         foreach (var character in characters)
         {
+            // Check for duplicate names
+            if (names.Contains(character.Name))
+            {
+                return Result.Fail($"Duplicate character name '{character.Name}'");
+            }
+            names.Add(character.Name);
+
+            // Check for duplicate tags
+            if (tags.Contains(character.Tag))
+            {
+                return Result.Fail($"Duplicate character tag '{character.Tag}'");
+            }
+            tags.Add(character.Tag);
+
+            // Add character
             charactersObject[character.CharacterId] = new JsonObject
             {
                 ["name"] = character.Name,
