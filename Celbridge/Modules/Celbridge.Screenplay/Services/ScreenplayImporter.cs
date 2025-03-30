@@ -1,12 +1,12 @@
+using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 using System.Text.Json.Nodes;
 using System.Text.Json;
-using Celbridge.Screenplay.Components;
-using Celbridge.Entities;
 
 namespace Celbridge.Screenplay.Services;
 
@@ -545,22 +545,33 @@ public class ScreenplayImporter
         // Add line components
         foreach (var line in lineList)
         {
-            var lineComponent = new JsonObject();
-            lineComponent["_type"] = "Screenplay.Line#1";
-            lineComponent["dialogueKey"] = line.DialogueKey;
-            lineComponent["characterId"] = line.CharacterId;
-            lineComponent["speakingTo"] = line.SpeakingTo;
-            lineComponent["sourceText"] = line.SourceText;
-            lineComponent["contextNotes"] = line.ContextNotes;
-            lineComponent["direction"] = line.Direction;
-            lineComponent["gameArea"] = line.GameArea;
-            lineComponent["timeConstraint"] = line.TimeConstraint;
-            lineComponent["soundProcessing"] = line.SoundProcessing;
-            lineComponent["platform"] = line.Platform;
-            lineComponent["linePriority"] = line.LinePriority;
-            lineComponent["productionStatus"] = line.ProductionStatus;
+            if (line.CharacterId == "SceneNote")
+            {
+                var emptyComponent = new JsonObject();
+                emptyComponent["_type"] = ".Empty#1";
+                emptyComponent["comment"] = line.SourceText;
 
-            components.Add(lineComponent);
+                components.Add(emptyComponent);
+            }
+            else
+            {
+                var lineComponent = new JsonObject();
+                lineComponent["_type"] = "Screenplay.Line#1";
+                lineComponent["dialogueKey"] = line.DialogueKey;
+                lineComponent["characterId"] = line.CharacterId;
+                lineComponent["speakingTo"] = line.SpeakingTo;
+                lineComponent["sourceText"] = line.SourceText;
+                lineComponent["contextNotes"] = line.ContextNotes;
+                lineComponent["direction"] = line.Direction;
+                lineComponent["gameArea"] = line.GameArea;
+                lineComponent["timeConstraint"] = line.TimeConstraint;
+                lineComponent["soundProcessing"] = line.SoundProcessing;
+                lineComponent["platform"] = line.Platform;
+                lineComponent["linePriority"] = line.LinePriority;
+                lineComponent["productionStatus"] = line.ProductionStatus;
+
+                components.Add(lineComponent);
+            }
         }
 
         var entity = new JsonObject();
@@ -592,24 +603,18 @@ public class ScreenplayImporter
         };
 
         // Add the characters from the 'Characters' sheet
-        var names = new HashSet<string>();
-        var tags = new HashSet<string>();
-
         foreach (var character in characters)
         {
-            // Check for duplicate names
-            if (names.Contains(character.Name))
+            // Check for empty name or tag
+            if (string.IsNullOrEmpty(character.Name))
             {
-                return Result.Fail($"Duplicate character name '{character.Name}'");
+                return Result.Fail($"Empty character name '{character.CharacterId}'");
             }
-            names.Add(character.Name);
 
-            // Check for duplicate tags
-            if (tags.Contains(character.Tag))
+            if (string.IsNullOrEmpty(character.Tag))
             {
-                return Result.Fail($"Duplicate character tag '{character.Tag}'");
+                return Result.Fail($"Empty character tag '{character.CharacterId}'");
             }
-            tags.Add(character.Tag);
 
             // Add character
             charactersObject[character.CharacterId] = new JsonObject
