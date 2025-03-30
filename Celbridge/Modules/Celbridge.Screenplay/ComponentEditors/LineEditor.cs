@@ -1,7 +1,8 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using Celbridge.Activities;
 using Celbridge.Entities;
+using Celbridge.Screenplay.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Screenplay.Components;
@@ -20,10 +21,12 @@ public class LineEditor : ComponentEditorBase
     public const string Direction = "/direction";
 
     private readonly IEntityService _entityService;
+    private readonly IActivityService _activityService;
 
     public LineEditor(IWorkspaceWrapper workspaceWrapper)
     {
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
+        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
     }
 
     public override string GetComponentConfig()
@@ -114,44 +117,36 @@ public class LineEditor : ComponentEditorBase
         }
 
         // Get the dialogue file resource from the scene component
-        var excelFileResource = sceneComponent.GetString("/dialogueFile");
+        ResourceKey excelFileResource = sceneComponent.GetString("/dialogueFile");
         if (string.IsNullOrEmpty(excelFileResource))
         {
             return Result<string>.Fail($"Failed to get dialogue file property");
         }
-        
-        // Get the ScreenplayData component on the Excel resource
-        var getScreenplayDataResult = _entityService.GetComponentOfType(excelFileResource, ScreenplayDataEditor.ComponentType);
-        if (getScreenplayDataResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to get the ScreenplayData component from the Excel file resource");
-        }
-        var screenplayDataComponent = getScreenplayDataResult.Value;
 
-        // Get the 'characters' property from the ScreenplayData component
-        var getCharactersResult = screenplayDataComponent.GetProperty("/characters");
-        if (getCharactersResult.IsFailure)
+        var activityResult = _activityService.GetActivity(nameof(ScreenplayActivity));
+        if (activityResult.IsFailure || 
+            activityResult.Value is not ScreenplayActivity screenplayActivity)
         {
-            return Result<string>.Fail($"Failed to get characters property");
-        }
-        var charactersJson = getCharactersResult.Value;
-
-        // Parse the characters JSON and build a list of character ids
-        var charactersObject = JsonNode.Parse(charactersJson) as JsonObject;
-        if (charactersObject is null)
-        {
-            return Result<string>.Fail("Failed to parse characters JSON");
+            return Result<string>.Fail($"Failed to get Screenplay activity");
         }
 
+        var charactersResult = screenplayActivity.GetCharacters(Component.Key.Resource);
+        if (charactersResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to get characters")
+                .WithErrors(charactersResult);
+        }
+        var characters = charactersResult.Value;
+
+        // Build a list of character ids
         var characterIds = new List<string>();
-        foreach (var kv in charactersObject)
+        foreach (var character in characters)
         {
-            var characterId = kv.Key;
+            var characterId = character.CharacterId;
             characterIds.Add(characterId);
         }
 
         // Convert the character list to JSON so we can return it as a component property
-
         var characterIdsJson = JsonSerializer.Serialize(characterIds);
 
         return Result<string>.Ok(characterIdsJson);
