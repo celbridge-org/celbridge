@@ -368,55 +368,7 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
-    {
-        var getComponentResult = _entityService.GetComponentOfType(resource, SceneEditor.ComponentType);
-        if (getComponentResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to get Scene component")
-                .WithErrors(getComponentResult);
-        }
-        var sceneComponent = getComponentResult.Value;
-
-        var categoryText = sceneComponent.GetString(SceneEditor.Category);
-        var namespaceText = sceneComponent.GetString(SceneEditor.Namespace);
-
-        var sb = new StringBuilder();
-
-        sb.AppendLine($"# {categoryText}");
-        sb.AppendLine();
-        sb.AppendLine($"{namespaceText}");
-        sb.AppendLine();
-
-        var getLinesResult = _entityService.GetComponentsOfType(resource, LineEditor.ComponentType);
-        if (getLinesResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to get Line components")
-                .WithErrors(getLinesResult);
-        }
-        var lineComponents = getLinesResult.Value;
-
-        foreach (var lineComponent in lineComponents)
-        {
-            var character = lineComponent.GetString(LineEditor.CharacterId);
-            var sourceText = lineComponent.GetString(LineEditor.SourceText);
-
-            if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
-            {
-                continue;
-            }
-
-            sb.AppendLine($"**{character}**: {sourceText}");
-            sb.AppendLine();
-        }
-
-        var markdown = sb.ToString();
-
-        return Result<string>.Ok(markdown);
-    }
-
-    // Todo: Make this into a utility or static method
-    private Result<List<Character>> GetCharacters(ResourceKey SceneResource)
+    public Result<List<Character>> GetCharacters(ResourceKey SceneResource)
     {
         // Get the scene component on this entity
         var sceneComponentKey = new ComponentKey(SceneResource, 0);
@@ -509,5 +461,52 @@ public class ScreenplayActivity : IActivity
         }
 
         return Result<List<Character>>.Ok(characters);
+    }
+
+    private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
+    {
+        var getComponentResult = _entityService.GetComponentOfType(resource, SceneEditor.ComponentType);
+        if (getComponentResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to get Scene component")
+                .WithErrors(getComponentResult);
+        }
+        var sceneComponent = getComponentResult.Value;
+
+        var categoryText = sceneComponent.GetString(SceneEditor.Category);
+        var namespaceText = sceneComponent.GetString(SceneEditor.Namespace);
+
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"# {categoryText}");
+        sb.AppendLine();
+        sb.AppendLine($"{namespaceText}");
+        sb.AppendLine();
+
+        var getLinesResult = _entityService.GetComponentsOfType(resource, LineEditor.ComponentType);
+        if (getLinesResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to get Line components")
+                .WithErrors(getLinesResult);
+        }
+        var lineComponents = getLinesResult.Value;
+
+        foreach (var lineComponent in lineComponents)
+        {
+            var character = lineComponent.GetString(LineEditor.CharacterId);
+            var sourceText = lineComponent.GetString(LineEditor.SourceText);
+
+            if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
+            {
+                continue;
+            }
+
+            sb.AppendLine($"**{character}**: {sourceText}");
+            sb.AppendLine();
+        }
+
+        var markdown = sb.ToString();
+
+        return Result<string>.Ok(markdown);
     }
 }
