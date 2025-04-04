@@ -16,5 +16,11 @@
     "header": "Namespace",
     "text": "/namespace",
     "isReadOnly": true
+  },
+  {
+    "element": "TextBox",
+    "header": "Context",
+    "text": "/context",
+    "isReadOnly": true
   }
 ]

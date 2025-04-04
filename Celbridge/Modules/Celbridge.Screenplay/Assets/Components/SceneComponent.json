@@ -17,6 +17,9 @@
     "namespace": {
       "type": "string"
     },
+    "context": {
+      "type": "string"
+    },
     "dialogueFile": {
       "type": "string"
     }
@@ -26,12 +29,14 @@
     "_type",
     "category",
     "namespace",
+    "context",
     "dialogueFile"
   ],
 
   "prototype": {
     "category": "",
     "namespace": "",
+    "context": "",
     "dialogueFile": ""
   }
 }    
