@@ -10,6 +10,7 @@ public class SceneEditor : ComponentEditorBase
     public const string ComponentType = "Screenplay.Scene";
     public const string Category = "/category";
     public const string Namespace = "/namespace";
+    public const string Context = "/context";
 
     public override string GetComponentConfig()
     {
@@ -25,8 +26,10 @@ public class SceneEditor : ComponentEditorBase
     {
         var categoryText = Component.GetString(Category);
         var namespaceText = Component.GetString(Namespace);
+        var context = Component.GetString(Context);
 
         var summaryText = $"{categoryText}: {namespaceText}";
-        return new ComponentSummary(summaryText, summaryText);
+        var tooltipText = $"{summaryText}\n\n{context}";
+        return new ComponentSummary(summaryText, tooltipText);
     }
 }

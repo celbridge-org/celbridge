@@ -19,28 +19,13 @@
   },
   {
     "element": "TextBox",
-    "header": "Context Notes",
-    "text": "/contextNotes"
-  },
-  {
-    "element": "TextBox",
-    "header": "Line Priority",
-    "text": "/linePriority"
-  },
-  {
-    "element": "TextBox",
     "header": "Speaking To",
     "text": "/speakingTo"
   },
   {
     "element": "TextBox",
-    "header": "Game Area",
-    "text": "/gameArea"
-  },
-  {
-    "element": "TextBox",
-    "header": "Time Constraint",
-    "text": "/timeConstraint"
+    "header": "Context Notes",
+    "text": "/contextNotes"
   },
   {
     "element": "TextBox",
@@ -49,12 +34,29 @@
   },
   {
     "element": "TextBox",
+    "header": "Time Constraint",
+    "text": "/timeConstraint"
+  },
+  {
+    "element": "TextBox",
+    "header": "Game Area",
+    "text": "/gameArea"
+  },
+  {
+    "element": "TextBox",
     "header": "Platform",
     "text": "/platform"
   },
   {
-    "element": "TextBox",
+    "element": "ComboBox",
     "header": "Production Status",
-    "text": "/productionStatus"
+    "values": [ "Placeholder", "ReadyForReview", "CutCandidate", "ReadyForVO", "ReadyForLoc", "Final" ],
+    "selectedValue": "/productionStatus"
+  },
+  {
+    "element": "ComboBox",
+    "header": "Line Priority",
+    "values": [ "Default", "Effort", "AIChatter", "PlayerChatter", "HitReaction", "Death" ],
+    "selectedValue": "/linePriority"
   }
 ]

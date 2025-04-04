@@ -493,7 +493,7 @@ public class ScreenplayImporter
             // Create the .scene resource and entity data
 
             await SaveSceneFileAsync(sceneFolderPath, category, scene.AssetPath);
-            await SaveEntityFileAsync(workbookResource, entityFolderPath, category, scene.Namespace, scene.AssetPath, scene.Lines);
+            await SaveEntityFileAsync(workbookResource, entityFolderPath, category, scene.Namespace, scene.Context, scene.AssetPath, scene.Lines);
         }
 
         return Result.Ok();
@@ -517,7 +517,7 @@ public class ScreenplayImporter
         await File.WriteAllTextAsync(sceneFilePath, string.Empty);
     }
 
-    private static async Task SaveEntityFileAsync(ResourceKey workbookResource, string entityFolderPath, string category, string @namespace, string assetPath, List<DialogueLine> lineList)
+    private static async Task SaveEntityFileAsync(ResourceKey workbookResource, string entityFolderPath, string category, string @namespace, string context, string assetPath, List<DialogueLine> lineList)
     {
         var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
         var assetName = Path.GetFileNameWithoutExtension(assetPath);
@@ -540,6 +540,7 @@ public class ScreenplayImporter
         sceneComponent["dialogueFile"] = workbookResource.ToString();
         sceneComponent["category"] = category;
         sceneComponent["namespace"] = @namespace;
+        sceneComponent["context"] = context;
         components.Add(sceneComponent);
 
         // Add line components
