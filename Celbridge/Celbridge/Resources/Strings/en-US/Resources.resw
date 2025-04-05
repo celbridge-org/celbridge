@@ -402,4 +402,13 @@
   <data name="EntityInspector_ContextMenu_Duplicate" xml:space="preserve">
     <value>Duplicate the component</value>
   </data>
+  <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
+    <value>Open Document Failed</value>
+  </data>
+  <data name="Documents_OpenDocumentFailedGeneric" xml:space="preserve">
+    <value>An error occurred while attempting to open '{0}'.</value>
+  </data>
+  <data name="Documents_OpenDocumentFailedNotSupported" xml:space="preserve">
+    <value>The file format is not supported: '{0}'</value>
+  </data>
 </root>

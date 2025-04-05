@@ -1,5 +1,8 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
+using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Commands;
 
@@ -7,14 +10,21 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
+    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
 
     public bool ForceReload { get; set; }
 
-    public OpenDocumentCommand(IWorkspaceWrapper workspaceWrapper)
+    public OpenDocumentCommand(
+        IStringLocalizer stringLocalizer,
+        IDialogService dialogService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _stringLocalizer = stringLocalizer;
+        _dialogService = dialogService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -22,10 +32,28 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
+        var viewType = documentsService.GetDocumentViewType(FileResource);
+        if (viewType == DocumentViewType.UnsupportedFormat)
+        {
+            // Alert the user that the file format is not supported
+            var file = Path.GetFileName(FileResource);
+            var title = _stringLocalizer.GetString("Documents_OpenDocumentFailedTitle");
+            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedNotSupported", file);
+            await _dialogService.ShowAlertDialogAsync(title, message);
+
+            return Result.Fail($"This file format is not supported: '{FileResource}'");
+        }
+
         var openResult = await documentsService.OpenDocument(FileResource, ForceReload);
         if (openResult.IsFailure)
         {
-            return Result.Fail($"Failed to open document for file resource '{FileResource}'")
+            // Alert the user that the document failed to open
+            var file = Path.GetFileName(FileResource);
+            var title = _stringLocalizer.GetString("Documents_OpenDocumentFailedTitle");
+            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedGeneric", file);
+            await _dialogService.ShowAlertDialogAsync(title, message);
+
+            return Result.Fail($"An error occurred while attempting to open '{FileResource}'")
                 .WithErrors(openResult);
         }
 
