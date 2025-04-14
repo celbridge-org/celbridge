@@ -1,15 +1,15 @@
 using Celbridge.Activities;
-using Celbridge.Markdown.ComponentEditors;
-using Celbridge.Markdown.Services;
+using Celbridge.HTML.Components;
+using Celbridge.HTML.Services;
 using Celbridge.Modules;
 
-namespace Celbridge.Markdown;
+namespace Celbridge.HTML;
 
 public class Module : IModule
 {
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
-        nameof(MarkdownActivity)
+        nameof(HTMLActivity)
     };
 
     public void ConfigureServices(IModuleServiceCollection services)
@@ -18,15 +18,14 @@ public class Module : IModule
         // Register services
         //
 
-        services.AddTransient<MarkdownActivity>();
-        services.AddTransient<MarkdownPreviewProvider>();
-        services.AddTransient<AsciiDocPreviewProvider>();
+        services.AddTransient<HTMLActivity>();
+        services.AddTransient<HTMLPreviewProvider>();
 
         //
         // Register component editors
         //
 
-        services.AddTransient<MarkdownEditor>();
+        services.AddTransient<HTMLEditor>();
     }
 
     public Result Initialize()
@@ -36,9 +35,9 @@ public class Module : IModule
 
     public Result<IActivity> CreateActivity(string activityName)
     {
-        if (activityName == nameof(MarkdownActivity))
+        if (activityName == nameof(HTMLActivity))
         {
-            var activity = ServiceLocator.AcquireService<MarkdownActivity>();
+            var activity = ServiceLocator.AcquireService<HTMLActivity>();
             return Result<IActivity>.Ok(activity);
         }
 
