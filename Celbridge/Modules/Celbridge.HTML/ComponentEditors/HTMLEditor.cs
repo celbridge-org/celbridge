@@ -4,26 +4,26 @@ using Celbridge.Entities;
 using Celbridge.Logging;
 using System.Text.Json;
 
-namespace Celbridge.Markdown.ComponentEditors;
+namespace Celbridge.HTML.Components;
 
-public class MarkdownEditor : ComponentEditorBase
+public class HTMLEditor : ComponentEditorBase
 {
-    private readonly ILogger<MarkdownEditor> _logger;
+    private readonly ILogger<HTMLEditor> _logger;
     private readonly ICommandService _commandService;
 
-    private const string ConfigPath = "Celbridge.Markdown.Assets.Components.MarkdownComponent.json";
-    private const string ComponentFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownForm.json";
-    private const string ComponentRootFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownRootForm.json";
+    private const string ConfigPath = "Celbridge.HTML.Assets.Components.HTMLComponent.json";
+    private const string ComponentFormPath = "Celbridge.HTML.Assets.Forms.HTMLForm.json";
+    private const string ComponentRootFormPath = "Celbridge.HTML.Assets.Forms.HTMLRootForm.json";
 
     private const string OpenDocumentButtonId = "OpenDocument";
     private const string EditorButtonId = "Editor";
     private const string EditorAndPreviewButtonId = "EditorAndPreview";
     private const string PreviewButtonId = "Preview";
 
-    public const string ComponentType = "Markdown.Markdown";
+    public const string ComponentType = "HTML.HTML";
 
-    public MarkdownEditor(
-        ILogger<MarkdownEditor> logger,
+    public HTMLEditor(
+        ILogger<HTMLEditor> logger,
         ICommandService commandService)
     {
         _logger = logger;
@@ -123,7 +123,7 @@ public class MarkdownEditor : ComponentEditorBase
     {
         var resource = Component.Key.Resource;
 
-        // Execute a command to open the markdown document.
+        // Execute a command to open the HTML document.
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource;

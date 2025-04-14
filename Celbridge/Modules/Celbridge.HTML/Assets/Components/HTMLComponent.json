@@ -3,14 +3,14 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "MarkdownActivity",
+    "rootActivity": "HTMLActivity",
     "isPreviewController": "true"
   },
 
   "properties": {
     "_type": {
       "type": "string",
-      "const": "Markdown.Markdown#1"
+      "const": "HTML.HTML#1"
     },
     "editorMode": {
       "type": "string",

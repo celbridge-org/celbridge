@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -192,7 +193,7 @@ public sealed partial class MonacoEditorView : DocumentView
         {
             var script = "getTextData();";
             var editorContent = await _webView.ExecuteScriptAsync(script);
-            var textData = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(editorContent);
+            var textData = JsonSerializer.Deserialize<string>(editorContent);
 
             if (textData != null)
             {

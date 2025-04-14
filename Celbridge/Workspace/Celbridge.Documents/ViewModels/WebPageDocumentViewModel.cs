@@ -1,7 +1,7 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Newtonsoft.Json.Linq;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -36,15 +36,13 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
                 return Result.Ok();
             }
 
-            var jo = JObject.Parse(text);
-
-            string url = string.Empty;
-            if (jo.TryGetValue("sourceUrl", out var urlToken))
+            using var document = JsonDocument.Parse(text);
+            if (document.RootElement.TryGetProperty("sourceUrl", out var urlElement))
             {
-                string targetUrl = urlToken.ToString().Trim();
+                string targetUrl = urlElement.GetString()?.Trim() ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(targetUrl) &&
-                    !targetUrl.StartsWith("http") &&
-                    !targetUrl.StartsWith("file"))
+                    !targetUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) &&
+                    !targetUrl.StartsWith("file", StringComparison.OrdinalIgnoreCase))
                 {
                     targetUrl = $"https://{targetUrl}";
                 }
