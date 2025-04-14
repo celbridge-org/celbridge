@@ -115,6 +115,7 @@ public partial class App : Application
                     var modules = new List<string>() 
                     {
                         "Celbridge.Core",
+                        "Celbridge.HTML",
                         "Celbridge.Markdown",
                         "Celbridge.Screenplay",
                         "Celbridge.Spreadsheet",

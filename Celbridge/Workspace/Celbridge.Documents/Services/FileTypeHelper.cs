@@ -1,5 +1,5 @@
-using Newtonsoft.Json;
 using System.Reflection;
+using System.Text.Json;
 
 namespace Celbridge.Documents.Services;
 
@@ -97,7 +97,7 @@ public class FileTypeHelper
         try
         {
             // Deserialize the JSON into a dictionary mapping file extensions to languages
-            var dictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+            var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
             if (dictionary is null)
             {
                 return Result.Fail($"Failed to deserialize embedded resource: {TextEditorTypesResourceName}");
@@ -142,7 +142,7 @@ public class FileTypeHelper
         try
         {
             // Deserialize the JSON into a list of file extensions
-            var fileExtensions = JsonConvert.DeserializeObject<List<string>>(json);
+            var fileExtensions = JsonSerializer.Deserialize<List<string>>(json);
 
             _fileViewerExtensions.ReplaceWith(fileExtensions);
         }

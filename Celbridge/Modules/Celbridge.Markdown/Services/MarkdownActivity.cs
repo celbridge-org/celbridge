@@ -2,7 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Logging;
-using Celbridge.Markdown.Components;
+using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Workspace;
 
 using Path = System.IO.Path;
