@@ -6,14 +6,6 @@ namespace Celbridge.Markdown.Services;
 
 public class MarkdownPreviewProvider : IPreviewProvider
 {
-    private List<string> _supportedFileExtensions = new();
-    public IReadOnlyList<string> SupportedFileExtensions => _supportedFileExtensions;
-
-    public MarkdownPreviewProvider()
-    {
-        _supportedFileExtensions.Add(".md");
-    }
-
     public async Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview)
     {
         await Task.CompletedTask;

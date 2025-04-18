@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
+using System.Text.RegularExpressions;
 
 using Path = System.IO.Path;
 
@@ -35,6 +36,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private bool _isWorkspaceLoaded;
 
     private FileTypeHelper _fileTypeHelper;
+
+    private Dictionary<string, IPreviewProvider> _previewProviders = new();
 
     public DocumentsService(
         IServiceProvider serviceProvider,
@@ -337,40 +340,30 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private List<IPreviewProvider> _previewProviders = new();
-
-    public Result AddPreviewProvider(IPreviewProvider previewProvider)
+    public Result AddPreviewProvider(string fileExtension, IPreviewProvider previewProvider)
     {
-        var extensions = previewProvider.SupportedFileExtensions;
-
-        // Check for duplicate file extension entries
-        bool hasDuplicates = extensions.Select(s => s.ToLower()).Distinct().Count() != extensions.Count();
-        if (hasDuplicates)
+        // Check for valid file extension format
+        if (!Regex.IsMatch(fileExtension, @"^\.[a-zA-Z0-9]+$"))
         {
-            return Result.Fail("SupportedFileExtensions list contains duplicate entries");
+            return Result.Fail($"Invalid file extension: '{fileExtension}'");
         }
 
         // Check for conflicts with previously registered providers
-        foreach (var fileExtension in previewProvider.SupportedFileExtensions)
+        if (_previewProviders.ContainsKey(fileExtension))
         {
-            var existingProvider = _previewProviders.FirstOrDefault(p => p.SupportedFileExtensions.Contains(fileExtension));
-            if (existingProvider != null)
-            {
-                return Result.Fail($"A preview provider is already registered for extension: '{fileExtension}'");
-            }
+            return Result.Fail($"A preview provider is already registered for extension: '{fileExtension}'");
         }
 
-        _previewProviders.Add(previewProvider);
+        _previewProviders.Add(fileExtension, previewProvider);
 
         return Result.Ok();
     }
 
     public Result<IPreviewProvider> GetPreviewProvider(string fileExtension)
     {
-        var provider = _previewProviders.FirstOrDefault(p => p.SupportedFileExtensions.Contains(fileExtension));
-        if (provider != null)
+        if (_previewProviders.TryGetValue(fileExtension, out var previewProvider))
         {
-            return Result<IPreviewProvider>.Ok(provider);
+            return Result<IPreviewProvider>.Ok(previewProvider);
         }
 
         return Result<IPreviewProvider>.Fail();

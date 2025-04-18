@@ -23,12 +23,13 @@ public class HTMLActivity : IActivity
 
     public async Task<Result> ActivateAsync()
     {
-        // Register the HTML preview provider
-        var provider = _serviceProvider.AcquireService<HTMLPreviewProvider>();
-        var addProviderResult = _documentsService.AddPreviewProvider(provider);
+        // Register a HTML preview provider for .html files
+        var provider = _serviceProvider.AcquireService<IHTMLPreviewProvider>();
+
+        var addProviderResult = _documentsService.AddPreviewProvider(".html", provider);
         if (addProviderResult.IsFailure)
         {
-            return Result.Fail("Failed to add HTML preview provider.")
+            return Result.Fail("Failed to register HTML preview provider for '.html' file extension.")
                 .WithErrors(addProviderResult);
         }
 
