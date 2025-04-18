@@ -3,7 +3,8 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "ScreenplayActivity"
+    "rootActivity": "ScreenplayActivity",
+    "isPreviewController": "true"
   },
 
   "properties": {
@@ -39,4 +40,4 @@
     "context": "",
     "dialogueFile": ""
   }
-}    
+}
