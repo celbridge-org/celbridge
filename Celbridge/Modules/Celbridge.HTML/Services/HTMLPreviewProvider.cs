@@ -10,6 +10,7 @@ public class HTMLPreviewProvider : IPreviewProvider
     public HTMLPreviewProvider()
     {
         _supportedFileExtensions.Add(".html");
+        _supportedFileExtensions.Add(".scene");
     }
 
     public async Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview)

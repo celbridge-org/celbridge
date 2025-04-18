@@ -1,5 +1,6 @@
 using Celbridge.Documents.Services;
 using Celbridge.Entities;
+using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -15,6 +16,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
     private readonly IEntityService _entityService;
+    private readonly IInspectorService _inspectorService;
 
     private ResourceKey _fileResource;
 
@@ -29,12 +31,14 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     public TextEditorDocumentViewModel(
         ILogger<TextEditorDocumentViewModel> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IInspectorService inspectorService)
     {
         _logger = logger;
         _messengerService = messengerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
+        _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
         _messengerService.Register<SetTextDocumentContentMessage>(this, OnSetTextDocumentContentMessage);
     }
@@ -96,24 +100,25 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     {
         try
         {
+            // Check for a root component that has the "isPreviewController" attribute set to "true" and that has
+            // an "/editorMode" property. The attribute here performs roughly the same function as an interface in
+            // a language like C#.
             var editorMode = EditorMode.Editor;
-
-            // Any root component may specify the "/editorMode" property, but it must have the
-            // "isPreviewController" attribute set to "true". This is roughly equivalent to implementing an
-            // interface in a language like C#.
-
             var componentKey = new ComponentKey(_fileResource, 0);
-            var getComponentResult = _entityService.GetComponent(componentKey);
-            if (getComponentResult.IsSuccess)
+
+            // Get the "/editorMode" property via the root component editor.
+            // We query the component editor here rather than the component itself. This allows the component editor
+            // class to intercept the property request if needed.
+            var getEditorResult = _inspectorService.AcquireComponentEditor(componentKey);
+
+            if (getEditorResult.IsSuccess)
             {
-                var component = getComponentResult.Value;
+                var editor = getEditorResult.Value;
 
-                var isPreviewController = component.Schema.GetBooleanAttribute("isPreviewController");
-
+                var isPreviewController = editor.Component.Schema.GetBooleanAttribute("isPreviewController");
                 if (isPreviewController)
                 {
-                    // Get the editor mode property from the root component.
-                    var getPropertyResult = component.GetProperty(DocumentConstants.EditorModeProperty);
+                    var getPropertyResult = editor.GetProperty(DocumentConstants.EditorModeProperty);
                     if (getPropertyResult.IsSuccess)
                     {
                         var jsonValue = getPropertyResult.Value;

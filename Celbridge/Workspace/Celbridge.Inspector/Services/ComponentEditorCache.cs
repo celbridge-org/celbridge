@@ -1,4 +1,5 @@
 using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
@@ -21,16 +22,16 @@ public class ComponentEditorCache
 
         _messengerService.Register<InspectedComponentChangedMessage>(this, OnInspectedComponentChangedMessage);
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     public Result<IComponentEditor> AcquireComponentEditor(ComponentKey componentKey)
     {
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
-        if (componentKey.Resource != _inspectedResource)
-        {
-            return Result<IComponentEditor>.Fail($"Failed to acquire component editor for component: '{componentKey}'. Resource is not being inspected.");
-        }
+        // Clients may acquire a component editor for any resource, not just the inspected resource.
+        // The cache is cleared on any structural change to entities or the inspected resource. Clients should not
+        // rely on an editor instance being valid beyond the scope of the current operation.
 
         if (_editorCache.TryGetValue(componentKey, out var cachedEditor))
         {
@@ -54,11 +55,10 @@ public class ComponentEditorCache
     {
         var resource = message.ComponentKey.Resource;
 
+        // Invalidate the cache when a different resource is inspected
         if (_inspectedResource != resource)
         {
             _inspectedResource = resource;
-
-            // Invalidate because a different resource is now being inspected
             InvalidateCache();
         }
     }
@@ -68,12 +68,24 @@ public class ComponentEditorCache
         var component = message.ComponentKey;
         var propertyPath = message.PropertyPath;
 
-        if (_inspectedResource == component.Resource && 
-            propertyPath == "/")
+        // Invalidate the cache if the entity component structure of any cached editor changes.
+        foreach (var kv in _editorCache)
         {
-            // Invalidate because the entity structure has changed
-            InvalidateCache();
+            var componentKey = kv.Key;
+            if (component.Resource == componentKey.Resource &&
+                propertyPath == "/")
+            {
+                _editorCache.Remove(componentKey);
+                InvalidateCache();
+                break;
+            }
         }
+    }
+
+    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    {
+        // Invalidate the cache whenever the resource registry updates
+        InvalidateCache();
     }
 
     private void InvalidateCache()
