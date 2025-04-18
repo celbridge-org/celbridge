@@ -2,16 +2,10 @@ using Celbridge.Documents;
 
 namespace Celbridge.HTML.Services;
 
-public class HTMLPreviewProvider : IPreviewProvider
+public class HTMLPreviewProvider : IHTMLPreviewProvider
 {
-    private List<string> _supportedFileExtensions = new();
-    public IReadOnlyList<string> SupportedFileExtensions => _supportedFileExtensions;
-
     public HTMLPreviewProvider()
-    {
-        _supportedFileExtensions.Add(".html");
-        _supportedFileExtensions.Add(".scene");
-    }
+    {}
 
     public async Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview)
     {
