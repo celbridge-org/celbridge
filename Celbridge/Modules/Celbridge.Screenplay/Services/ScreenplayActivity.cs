@@ -21,7 +21,7 @@ public class ScreenplayActivity : IActivity
     private readonly ILogger<ScreenplayActivity> _logger;
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
-    private readonly IDocumentsService _documentService;
+    private readonly IDocumentsService _documentsService;
 
     public ScreenplayActivity(
         IServiceProvider serviceProvider,
@@ -33,11 +33,21 @@ public class ScreenplayActivity : IActivity
         _logger = logger;
         _commandService = commandService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _documentService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public async Task<Result> ActivateAsync()
     {
+        // Register a HTML preview provider for .scene files
+        var provider = _serviceProvider.AcquireService<IHTMLPreviewProvider>();
+
+        var addProviderResult = _documentsService.AddPreviewProvider(".scene", provider);
+        if (addProviderResult.IsFailure)
+        {
+            return Result.Fail("Failed to register HTML preview provider for '.scene' file extension.")
+                .WithErrors(addProviderResult);
+        }
+
         await Task.CompletedTask;
         return Result.Ok();
     }
@@ -344,7 +354,7 @@ public class ScreenplayActivity : IActivity
         var markdown = generateResult.Value;
 
         // Set the contents of the document to the generated markdown
-        var setContentResult = await _documentService.SetTextDocumentContentAsync(resource, markdown);
+        var setContentResult = await _documentsService.SetTextDocumentContentAsync(resource, markdown);
         if (setContentResult.IsFailure)
         {
             return Result.Fail($"Failed to set document content")

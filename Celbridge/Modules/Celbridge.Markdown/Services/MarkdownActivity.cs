@@ -33,7 +33,7 @@ public class MarkdownActivity : IActivity
     {
         // Register the Markdown preview provider
         var markdownProvider = _serviceProvider.AcquireService<MarkdownPreviewProvider>();
-        var addMarkdownResult = _documentsService.AddPreviewProvider(markdownProvider);
+        var addMarkdownResult = _documentsService.AddPreviewProvider(".md", markdownProvider);
         if (addMarkdownResult.IsFailure)
         {
             return Result.Fail("Failed to add Markdown preview provider.")
@@ -42,7 +42,7 @@ public class MarkdownActivity : IActivity
 
         // Register the AsciiDoc preview provider
         var asciiDocProvider = _serviceProvider.AcquireService<AsciiDocPreviewProvider>();
-        var addAsciiDocResult = _documentsService.AddPreviewProvider(asciiDocProvider);
+        var addAsciiDocResult = _documentsService.AddPreviewProvider(".adoc", asciiDocProvider);
         if (addAsciiDocResult.IsFailure)
         {
             return Result.Fail("Failed to add Asciidoc preview provider.")

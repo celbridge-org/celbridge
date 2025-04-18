@@ -90,7 +90,7 @@ public interface IDocumentsService
     /// <summary>
     /// Adds a preview provider that generates a HTML preview for a specific file extension.
     /// </summary>
-    Result AddPreviewProvider(IPreviewProvider previewProvider);
+    Result AddPreviewProvider(string fileExtension, IPreviewProvider previewProvider);
 
     /// <summary>
     /// Returns a previously registered preview provider for the specified file extension.
