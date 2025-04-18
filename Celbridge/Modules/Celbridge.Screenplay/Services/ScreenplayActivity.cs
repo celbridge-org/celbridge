@@ -6,6 +6,8 @@ using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
+using Humanizer;
+using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -332,7 +334,7 @@ public class ScreenplayActivity : IActivity
             return Result.Ok();
         }
 
-        var generateResult = GenerateScreenplayMarkdown(resource);
+        var generateResult = GenerateScreenplayHTML(resource);
         if (generateResult.IsFailure)
         {
             return Result.Fail($"Failed to generate screenplay markdown").
@@ -368,10 +370,10 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public Result<List<Character>> GetCharacters(ResourceKey SceneResource)
+    public Result<List<Character>> GetCharacters(ResourceKey sceneResource)
     {
         // Get the scene component on this entity
-        var sceneComponentKey = new ComponentKey(SceneResource, 0);
+        var sceneComponentKey = new ComponentKey(sceneResource, 0);
         var getComponentResult = _entityService.GetComponent(sceneComponentKey);
         if (getComponentResult.IsFailure)
         {
@@ -383,7 +385,7 @@ public class ScreenplayActivity : IActivity
         // Check the component is a scene component
         if (sceneComponent.Schema.ComponentType != SceneEditor.ComponentType)
         {
-            return Result<List<Character>>.Fail($"Primary component of resource '{SceneResource}' is not a scene component");
+            return Result<List<Character>>.Fail($"Primary component of resource '{sceneResource}' is not a scene component");
         }
 
         // Get the dialogue file resource from the scene component
@@ -463,50 +465,135 @@ public class ScreenplayActivity : IActivity
         return Result<List<Character>>.Ok(characters);
     }
 
-    private Result<string> GenerateScreenplayMarkdown(ResourceKey resource)
+    private Result<string> GenerateScreenplayHTML(ResourceKey sceneResource)
     {
-        var getComponentResult = _entityService.GetComponentOfType(resource, SceneEditor.ComponentType);
-        if (getComponentResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to get Scene component")
-                .WithErrors(getComponentResult);
-        }
-        var sceneComponent = getComponentResult.Value;
+        // Get all components in the entity, including the Scene component
 
-        var categoryText = sceneComponent.GetString(SceneEditor.Category);
-        var namespaceText = sceneComponent.GetString(SceneEditor.Namespace);
+        var getComponentsResult = _entityService.GetComponents(sceneResource);
+        if (getComponentsResult.IsFailure)
+        {
+            return Result<string>.Fail("Failed to get Line components")
+                .WithErrors(getComponentsResult);
+        }
+        var components = getComponentsResult.Value;
+
+        if (components.Count == 0 ||
+            components[0].Schema.ComponentType != SceneEditor.ComponentType)
+        {
+            return Result<string>.Fail("Entity does not contain a Scene component");
+        }
+
+        var sceneComponent = components[0];
+
+        // Get the list of characters
+
+        var getCharactersResult = GetCharacters(sceneResource);
+        if (getCharactersResult.IsFailure)
+        {
+            return Result<string>.Fail("Failed to get Character list")
+                .WithErrors(getCharactersResult);
+        }
+        var characters = getCharactersResult.Value;
+
+        // Construct the screenplay HTML
+
+        var ns = sceneComponent.GetString(SceneEditor.Namespace);
+        ns = ns.Humanize(LetterCasing.Title);
+        var namespaceText = WebUtility.HtmlEncode(ns);
+
+        var contextText = WebUtility.HtmlEncode(sceneComponent.GetString(SceneEditor.Context));
 
         var sb = new StringBuilder();
 
-        sb.AppendLine($"# {categoryText}");
-        sb.AppendLine();
-        sb.AppendLine($"{namespaceText}");
-        sb.AppendLine();
+        sb.AppendLine("<!DOCTYPE html>");
+        sb.AppendLine("<html>");
+        sb.AppendLine("<head>");
+        sb.AppendLine("<meta charset=\"UTF-8\">");
 
-        var getLinesResult = _entityService.GetComponentsOfType(resource, LineEditor.ComponentType);
-        if (getLinesResult.IsFailure)
+        sb.AppendLine("<style>");
+        sb.AppendLine("body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: transparent; }");
+        sb.AppendLine(".screenplay { max-width: 800px; width: 100%; margin: 0 auto; }");
+        sb.AppendLine(".page { max-width: 794px; margin: 0 auto; }");
+        sb.AppendLine(".scene { text-align: left; margin-bottom: 2em; font-weight: bold; }");
+        sb.AppendLine(".scene-note { text-align: left; margin-bottom: 2em; font-style: italic; }");
+        sb.AppendLine(".line { margin-bottom: 2em; text-align: center; }");
+        sb.AppendLine(".character { display: block; font-weight: bold; text-transform: uppercase; margin-bottom: 0.5em; }");
+        sb.AppendLine(".direction { text-align: center; }");
+        sb.AppendLine(".dialogue { display: block; white-space: pre-wrap; }");
+        sb.AppendLine(".variant { margin-right: 3em; margin-left: auto; text-align: right; font-style: italic; }");
+        sb.AppendLine(".player-color { color: hsl(220, 80%, 60%); }");
+        sb.AppendLine(".npc-color { color: hsl(10, 70%, 50%); }");
+        sb.AppendLine("</style>");
+
+        sb.AppendLine("</head>");
+        sb.AppendLine("<body>");
+        sb.AppendLine("<div class=\"screenplay\">");
+        sb.AppendLine("<div class=\"page\">");
+
+        sb.AppendLine($"<div class=\"scene\">{namespaceText}</div>");
+        sb.AppendLine($"<div class=\"scene-note\">{contextText}</div>");
+
+        foreach (var component in components)
         {
-            return Result<string>.Fail($"Failed to get Line components")
-                .WithErrors(getLinesResult);
-        }
-        var lineComponents = getLinesResult.Value;
-
-        foreach (var lineComponent in lineComponents)
-        {
-            var character = lineComponent.GetString(LineEditor.CharacterId);
-            var sourceText = lineComponent.GetString(LineEditor.SourceText);
-
-            if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(sourceText))
+            if (component.Schema.ComponentType == LineEditor.ComponentType)
             {
-                continue;
-            }
+                // Add line to the screenplay
 
-            sb.AppendLine($"**{character}**: {sourceText}");
-            sb.AppendLine();
+                var characterId = component.GetString(LineEditor.CharacterId);
+                var sourceText = WebUtility.HtmlEncode(component.GetString(LineEditor.SourceText));
+                if (string.IsNullOrWhiteSpace(characterId) || string.IsNullOrWhiteSpace(sourceText))
+                {
+                    continue;
+                }
+
+                string characterName = string.Empty;
+                bool isPlayer = characterId == "Player";
+                bool isPlayerVariant = false;
+
+                foreach (var character in characters)
+                {
+                    if (character.CharacterId == characterId)
+                    {
+                        characterName = character.Name;
+                        if (!isPlayer && character.Tag.StartsWith("Character.Player."))
+                        {
+                            isPlayerVariant = true;
+                        }
+                        break;
+                    }
+                }
+
+                string displayCharacter = characterName == characterId
+                    ? WebUtility.HtmlEncode($"{characterName}")
+                    : WebUtility.HtmlEncode($"{characterName} ({characterId})");
+
+                string lineClass = isPlayerVariant ? "line variant" : "line";
+                string colorClass = isPlayer || isPlayerVariant ? "player-color" : "npc-color";
+
+                var directionText = WebUtility.HtmlEncode(component.GetString(LineEditor.Direction));
+
+                sb.AppendLine($"<div class=\"{lineClass}\">");
+                sb.AppendLine($"  <span class=\"character {colorClass}\">{displayCharacter}</span>");
+                if (!string.IsNullOrEmpty(directionText))
+                {
+                    sb.AppendLine($"  <span class=\"direction\">({directionText})</span>");
+                }
+                sb.AppendLine($"  <span class=\"dialogue\">{sourceText}</span>");
+                sb.AppendLine("</div>");
+            }
+            else if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+            {
+                // Add scene note to the screenplay
+                var commentText = component.GetString("/comment");
+                sb.AppendLine($"<div class=\"scene-note\">{commentText}</div>");
+            }
         }
 
-        var markdown = sb.ToString();
+        sb.AppendLine("</div>"); // page
+        sb.AppendLine("</div>"); // screenplay
+        sb.AppendLine("</body>");
+        sb.AppendLine("</html>");
 
-        return Result<string>.Ok(markdown);
+        return Result<string>.Ok(sb.ToString());
     }
 }
