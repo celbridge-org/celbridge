@@ -144,7 +144,6 @@ public class ScreenplayActivity : IActivity
         //
 
         var lineComponents = new Dictionary<int, IComponentProxy>();
-        var activeLineIds = new HashSet<string>();
         var activeDialogueKeys = new HashSet<string>();
 
         //
@@ -176,23 +175,12 @@ public class ScreenplayActivity : IActivity
             // Mark Line component as recognized
             entityAnnotation.SetIsRecognized(i);
 
-            // Build a list of the existing line ids so that we can allocate a new random line id that won't clash
-            // with any existing one.
-            var dialogueKey = component.GetString("/dialogueKey");
-            var segments = dialogueKey.Split('-');
-            if (segments.Length == 3)
-            {
-                var lineId = segments[2];
-                activeLineIds.Add(lineId);
-            }
-
             lineComponents[i] = component;
         }
 
         //
         // Second pass checks all line components are valid, and checks that
         // each line has a valid character id, line id and dialogue key.
-        // If the current line id is invalid then a new one is generated.
         //
 
         var componentIndices = lineComponents.Keys.ToList();
@@ -246,11 +234,19 @@ public class ScreenplayActivity : IActivity
 
             var dialogueKey = component.GetString("/dialogueKey");
             var segments = dialogueKey.Split('-');
-            var lineId = string.Empty;
-            if (segments.Length == 3)
+            if (segments.Length != 3)
             {
-                lineId = segments[2];
+                var error = new ComponentError(
+                    ComponentErrorSeverity.Critical,
+                    "Invalid dialogue key",
+                    "Dialogue keys must be non-empty and contain 3 segments.");
+                entityAnnotation.AddError(i, error);
+
+                // Can't do any more checks until the user assigns a valid dialogue key
+                continue;
             }
+
+            var lineId = segments[2];
 
             bool isPlayerVariantLine = false;
             var correctLineId = lineId;
@@ -275,13 +271,7 @@ public class ScreenplayActivity : IActivity
                 {
                     // Flag this as a player variant line
                     isPlayerVariantLine = true;
-
-                    // Force the line id to match the player line id of the group.
-                    // This happens for example when a player variant line is moved to a different group.
-                    if (lineId != playerLineId)
-                    {
-                        correctLineId = playerLineId;
-                    }
+                    correctLineId = playerLineId; // Variant lines must have the same line id as the player line
                 }
             }
             else
@@ -289,30 +279,16 @@ public class ScreenplayActivity : IActivity
                 // This is an NPC line, so stop tracking the player line group
                 playerLineId = string.Empty;
             }
-
-            if (string.IsNullOrEmpty(correctLineId))
-            {
-                // No line id has been assigned yet, assign a new random one
-                var random = new Random();
-                do
-                {
-                    // Try a random 4 digit hex code until a unique one is found.
-                    int number = random.Next(0x1000, 0x10000);
-                    correctLineId = number.ToString("X4");
-                }
-                while (activeLineIds.Contains(correctLineId));
-                
-                activeLineIds.Add(correctLineId);
-            }
              
             // Ensure that a valid dialogue key is always assigned.
             var correctDialogueKey = $"{characterId}-{@namespace}-{correctLineId}";
             if (dialogueKey != correctDialogueKey)
             {
-                // This operation currently can't be undone because the undo triggers the activity update. 
-                // Todo: Fix the undo / redo logic to support this case.
-                component.SetString("/dialogueKey", correctDialogueKey);
-                dialogueKey = correctDialogueKey;
+                var error = new ComponentError(
+                    ComponentErrorSeverity.Critical,
+                    "Invalid dialogue key",
+                    "The dialogue key is not correctly formed. Update the dialogue key to assign a correct one.");
+                entityAnnotation.AddError(i, error);
             }
 
             if (activeDialogueKeys.Contains(dialogueKey))
@@ -320,7 +296,7 @@ public class ScreenplayActivity : IActivity
                 var error = new ComponentError(
                     ComponentErrorSeverity.Critical,
                     "Duplicate dialogue key",
-                    "Dialogue keys must be unique for each line");
+                    "Dialogue keys must be unique for each line. Update the dialogue key to assign a new one.");
                 entityAnnotation.AddError(i, error);
             }
             activeDialogueKeys.Add(dialogueKey);
@@ -395,7 +371,7 @@ public class ScreenplayActivity : IActivity
         // Check the component is a scene component
         if (sceneComponent.Schema.ComponentType != SceneEditor.ComponentType)
         {
-            return Result<List<Character>>.Fail($"Primary component of resource '{sceneResource}' is not a scene component");
+            return Result<List<Character>>.Fail($"Root component of resource '{sceneResource}' is not a scene component");
         }
 
         // Get the dialogue file resource from the scene component
@@ -524,7 +500,7 @@ public class ScreenplayActivity : IActivity
         sb.AppendLine("body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: transparent; }");
         sb.AppendLine(".screenplay { max-width: 800px; width: 100%; margin: 0 auto; }");
         sb.AppendLine(".page { max-width: 794px; margin: 0 auto; }");
-        sb.AppendLine(".scene { text-align: left; margin-bottom: 2em; font-weight: bold; }");
+        sb.AppendLine(".scene { text-align: left; margin-bottom: 2em; font-size: 2em; font-weight: bold; margin: 0 0 0.67em 0;}");
         sb.AppendLine(".scene-note { text-align: left; margin-bottom: 2em; font-style: italic; }");
         sb.AppendLine(".line { margin-bottom: 2em; text-align: center; }");
         sb.AppendLine(".character { display: block; font-weight: bold; text-transform: uppercase; margin-bottom: 0.5em; }");
