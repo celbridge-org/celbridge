@@ -1,9 +1,22 @@
 [
   {
-    "element": "TextBox",
-    "header": "Dialogue Key",
-    "text": "/dialogueKey",
-    "isReadOnly": true
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "children": [
+      {
+        "element": "TextBox",
+        "header": "Dialogue Key",
+        "text": "/dialogueKey",
+        "isReadOnly": true
+      },
+      {
+        "element": "Button",
+        "verticalAlignment": "Bottom",
+        "tooltip": "Assign a new dialogue key for this dialogue line",
+        "icon": "Refresh",
+        "buttonId": "UpdateDialogueKey"
+      }
+    ]
   },
   {
     "element": "ComboBox",
