@@ -35,11 +35,19 @@ public class ScreenplayDataEditor : ComponentEditorBase
 
     public override void OnButtonClicked(string buttonId)
     {
-        var resource = Component.Key.Resource;
-
-        _commandService.Execute<ImportScreenplayCommand>(command =>
+        if (buttonId == "LoadScreenplay")
         {
-            command.ExcelFile = resource;
-        });
+            _commandService.Execute<LoadScreenplayCommand>(command =>
+            {
+                command.WorkbookResource = Component.Key.Resource;
+            });
+        }
+        else if (buttonId == "SaveScreenplay")
+        {
+            _commandService.Execute<SaveScreenplayCommand>(command =>
+            {
+                command.WorkbookResource = Component.Key.Resource;
+            });
+        }
     }
 }
