@@ -20,7 +20,8 @@ public class Module : IModule
         //
 
         services.AddTransient<ScreenplayActivity>();
-        services.AddTransient<ScreenplayImporter>();
+        services.AddTransient<ScreenplayLoader>();
+        services.AddTransient<ScreenplaySaver>();
 
         //
         // Register components
@@ -35,7 +36,8 @@ public class Module : IModule
         // Register commands
         //
 
-        services.AddTransient<ImportScreenplayCommand>();
+        services.AddTransient<LoadScreenplayCommand>();
+        services.AddTransient<SaveScreenplayCommand>();
     }
 
     public Result Initialize()

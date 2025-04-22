@@ -4,15 +4,15 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Screenplay.Commands;
 
-public class ImportScreenplayCommand : CommandBase
+public class LoadScreenplayCommand : CommandBase
 {
     private readonly IServiceProvider _serviceProvider;
 
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
-    public ResourceKey ExcelFile { get; set; } = ResourceKey.Empty;
+    public ResourceKey WorkbookResource { get; set; } = ResourceKey.Empty;
 
-    public ImportScreenplayCommand(IServiceProvider serviceProvider)
+    public LoadScreenplayCommand(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
     }
@@ -25,22 +25,22 @@ public class ImportScreenplayCommand : CommandBase
         var getActivityResult = activityService.GetActivity(nameof(ScreenplayActivity));
         if (getActivityResult.IsFailure)
         {
-            return Result.Fail($"Failed to get activity")
+            return Result.Fail($"Failed to get Screenplay activity")
                 .WithErrors(getActivityResult);
         }
 
         var screenplayActivity = getActivityResult.Value as ScreenplayActivity;
         if (screenplayActivity is null)
         {
-            return Result.Fail($"Activity is not a screenplay activity")
+            return Result.Fail($"Activity is not a Screenplay activity")
                 .WithErrors(getActivityResult);
         }
 
-        var importResult = await screenplayActivity.ImportScreenplayAsync(ExcelFile);
-        if (importResult.IsFailure)
+        var loadResult = await screenplayActivity.LoadScreenplayAsync(WorkbookResource);
+        if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to import screenplay from Excel file")
-                .WithErrors(importResult);
+            return Result.Fail($"Failed to load screenplay from workbook")
+                .WithErrors(loadResult);
         }
 
         return Result.Ok();

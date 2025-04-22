@@ -10,14 +10,14 @@ using System.Text.Json;
 
 namespace Celbridge.Screenplay.Services;
 
-public class ScreenplayImporter
+public class ScreenplayLoader
 {
-    private ILogger<ScreenplayImporter> _logger;
+    private ILogger<ScreenplayLoader> _logger;
     private IExplorerService _explorerService;
     private IWorkspaceWrapper _workspaceWrapper;
 
-    public ScreenplayImporter(
-        ILogger<ScreenplayImporter> logger,
+    public ScreenplayLoader(
+        ILogger<ScreenplayLoader> logger,
         IExplorerService explorerService,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -26,7 +26,7 @@ public class ScreenplayImporter
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<Result> ImportScreenplayAsync(ResourceKey workbookFile)
+    public async Task<Result> LoadScreenplayAsync(ResourceKey workbookFile)
     {
         try
         {

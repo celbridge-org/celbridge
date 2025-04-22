@@ -2,8 +2,17 @@
   {
     "element": "Button",
     "horizontalAlignment": "Center",
-    "text": "Import dialogue",
-    "icon": "Refresh",
-    "buttonId": "loadData"
+    "text": "Load Screenplay",
+    "tooltip": "Load screenplay data from the Excel file",
+    "icon": "OpenFile",
+    "buttonId": "LoadScreenplay"
+  },
+  {
+    "element": "Button",
+    "horizontalAlignment": "Center",
+    "text": "Save Screenplay",
+    "tooltip": "Save screenplay data to the Excel file",
+    "icon": "Save",
+    "buttonId": "SaveScreenplay"
   }
 ]
