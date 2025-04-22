@@ -342,15 +342,29 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> ImportScreenplayAsync(ResourceKey screenplayResource)
+    public async Task<Result> LoadScreenplayAsync(ResourceKey screenplayResource)
     {
-        var importer = _serviceProvider.AcquireService<ScreenplayImporter>();
+        var loader = _serviceProvider.AcquireService<ScreenplayLoader>();
 
-        var importResult = await importer.ImportScreenplayAsync(screenplayResource);
-        if (importResult.IsFailure)
+        var loadResult = await loader.LoadScreenplayAsync(screenplayResource);
+        if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to import screenplay data from Excel")
-                .WithErrors(importResult);
+            return Result.Fail($"Failed to load screenplay data from Workbook")
+                .WithErrors(loadResult);
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> SaveScreenplayAsync(ResourceKey screenplayResource)
+    {
+        var saver = _serviceProvider.AcquireService<ScreenplaySaver>();
+
+        var saveResult = await saver.SaveScreenplayAsync(screenplayResource);
+        if (saveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to save screenplay data to Workbook")
+                .WithErrors(saveResult);
         }
 
         return Result.Ok();
