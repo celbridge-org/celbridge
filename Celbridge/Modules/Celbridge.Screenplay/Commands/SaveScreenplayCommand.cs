@@ -34,12 +34,14 @@ public class SaveScreenplayCommand : CommandBase
                 .WithErrors(getActivityResult);
         }
 
-        var saveResult = await screenplayActivity.SaveScreenplayAsync(WorkbookResource);
+        var saveResult = screenplayActivity.SaveScreenplay(WorkbookResource);
         if (saveResult.IsFailure)
         {
             return Result.Fail($"Failed to save screenplay to workbook")
                 .WithErrors(saveResult);
         }
+
+        await Task.CompletedTask;
 
         return Result.Ok();
     }

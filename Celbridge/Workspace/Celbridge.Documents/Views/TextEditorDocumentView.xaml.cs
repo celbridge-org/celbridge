@@ -40,7 +40,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             _supportsPreview = true;
             _previewProvider = getResult.Value;
 
-            if (!MonacoEditor.ViewModel.CachedText.IsNullOrEmpty())
+            if (!string.IsNullOrEmpty(MonacoEditor.ViewModel.CachedText))
             {
                 // If the editor has already been populated (i.e. a file rename from .txt to .md) then
                 // we need to update the new preview provider immediately to reflect the cached text.

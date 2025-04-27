@@ -356,11 +356,11 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> SaveScreenplayAsync(ResourceKey screenplayResource)
+    public Result SaveScreenplay(ResourceKey screenplayResource)
     {
         var saver = _serviceProvider.AcquireService<ScreenplaySaver>();
 
-        var saveResult = await saver.SaveScreenplayAsync(screenplayResource);
+        var saveResult = saver.SaveScreenplayAsync(screenplayResource);
         if (saveResult.IsFailure)
         {
             return Result.Fail($"Failed to save screenplay data to Workbook")

@@ -125,9 +125,6 @@ public partial class App : Application
             );
         MainWindow = builder.Window;
 
-#if DEBUG
-        MainWindow.EnableHotReload();
-#endif
         MainWindow.SetWindowIcon();
 
         Host = builder.Build();
@@ -229,10 +226,6 @@ public partial class App : Application
             Guard.IsNotNull(xamlRoot);
 
             userInterfaceService.Initialize(MainWindow, xamlRoot);
-
-#if DEBUG
-            MainWindow.EnableHotReload();
-#endif
 
             // Start executing commands
             var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;

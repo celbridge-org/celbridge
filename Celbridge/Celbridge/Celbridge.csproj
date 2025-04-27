@@ -1,7 +1,7 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net8.0-maccatalyst;net8.0-windows10.0.22621;net8.0-desktop</TargetFrameworks>
-    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    <TargetFrameworks>net9.0-windows10.0.22621;net9.0-maccatalyst;net9.0-desktop;net9.0</TargetFrameworks>
+    <UnoDisableVSWarnWindowsIsFirst>true</UnoDisableVSWarnWindowsIsFirst>
     
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
@@ -29,6 +29,13 @@
     <PackageCertificateThumbprint>8C33BC6BB5186CD08869A86EC7BBAE1A4A7703F6</PackageCertificateThumbprint>
 
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Workaround for https://github.com/unoplatform/uno/issues/18552 -->
+    <PlatformTarget Condition=" '$(PlatformTarget)' == '' AND $(Platform) == 'AnyCPU' AND '$(NETCoreSdkRuntimeIdentifier)' == 'win-x86'">x86</PlatformTarget>
+    <PlatformTarget Condition=" '$(PlatformTarget)' == '' AND $(Platform) == 'AnyCPU' AND '$(NETCoreSdkRuntimeIdentifier)' == 'win-x64'">x64</PlatformTarget>
+    <PlatformTarget Condition=" '$(PlatformTarget)' == '' AND $(Platform) == 'AnyCPU' AND '$(NETCoreSdkRuntimeIdentifier)' == 'win-arm64'">arm64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
