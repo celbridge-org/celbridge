@@ -34,7 +34,7 @@ public class ScreenplaySaver
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<Result> SaveScreenplayAsync(ResourceKey screenplayResource)
+    public Result SaveScreenplayAsync(ResourceKey screenplayResource)
     {
         try
         {
