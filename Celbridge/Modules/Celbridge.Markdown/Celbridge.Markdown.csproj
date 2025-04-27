@@ -1,6 +1,6 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net8.0-maccatalyst;net8.0-windows10.0.22621;net8.0-desktop</TargetFrameworks>
+    <TargetFrameworks>net9.0;net9.0-maccatalyst;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
@@ -12,7 +12,7 @@
 
   <!-- Modules manage their own package dependency versions -->
   <ItemGroup>
-    <PackageReference Include="Markdig" Version="0.37.0" />
+    <PackageReference Include="Markdig" Version="0.41.0" />
     <PackageReference Include="Leisn.MarkdigToc" Version="0.1.3" />
   </ItemGroup>
 
