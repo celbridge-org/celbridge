@@ -172,8 +172,17 @@ public class ScreenplaySaver
                         playerLineId = string.Empty;
                     }
 
+                    var sourceText = dialogueComponent.GetString(LineEditor.SourceText);
+                    if (sourceText.StartsWith("'") && 
+                        !sourceText.StartsWith("''"))
+                    {
+                        // Excel treats cells that start with an apostrophe as text.
+                        // Escape the leading apostrophe character so it will import correctly. 
+                        sourceText = $"'{sourceText}";
+                    }
+
                     editedSheet.Cell(rowIndex, 5).Value = dialogueComponent.GetString(LineEditor.SpeakingTo);
-                    editedSheet.Cell(rowIndex, 6).Value = dialogueComponent.GetString(LineEditor.SourceText);
+                    editedSheet.Cell(rowIndex, 6).Value = sourceText;
                     editedSheet.Cell(rowIndex, 7).Value = dialogueComponent.GetString(LineEditor.ContextNotes);
                     editedSheet.Cell(rowIndex, 8).Value = dialogueComponent.GetString(LineEditor.Direction);
                     editedSheet.Cell(rowIndex, 9).Value = dialogueComponent.GetString(LineEditor.GameArea);
