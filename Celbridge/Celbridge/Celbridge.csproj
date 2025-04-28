@@ -25,9 +25,7 @@
     </UnoFeatures>
 
     <DefaultLanguage>en-US</DefaultLanguage>
-
-    <PackageCertificateThumbprint>8C33BC6BB5186CD08869A86EC7BBAE1A4A7703F6</PackageCertificateThumbprint>
-
+    
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
 
