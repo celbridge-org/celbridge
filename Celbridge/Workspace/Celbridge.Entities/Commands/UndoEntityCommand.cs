@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -10,8 +9,7 @@ public class UndoEntityCommand : CommandBase, IUndoEntityCommand
 
     public ResourceKey Resource { get; set; }
 
-    public UndoEntityCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public UndoEntityCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

@@ -1,7 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Logging;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Workspace;
 
@@ -14,17 +13,14 @@ public class MarkdownActivity : IActivity
     public const string ActivityName = "Markdown";
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<MarkdownActivity> _logger;
     private readonly IEntityService _entityService;
     private readonly IDocumentsService _documentsService;
 
     public MarkdownActivity(
         IServiceProvider serviceProvider,
-        ILogger<MarkdownActivity> logger,        
         IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
-        _logger = logger;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }

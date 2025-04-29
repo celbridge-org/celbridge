@@ -16,21 +16,21 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public AddResourceDialogCommand(
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()

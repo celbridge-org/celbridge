@@ -23,8 +23,8 @@ public sealed partial class WebPageDocumentView : DocumentView
     private WebView2 _webView;
 
     public WebPageDocumentView(
-        ILogger<WebPageDocumentView> logger,
         IServiceProvider serviceProvider,
+        ILogger<WebPageDocumentView> logger,
         ICommandService commandService,
         IUtilityService utilityService,
         IWorkspaceWrapper workspaceWrapper)

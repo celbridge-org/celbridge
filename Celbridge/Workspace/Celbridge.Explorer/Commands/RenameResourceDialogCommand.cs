@@ -16,15 +16,15 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public RenameResourceDialogCommand(
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
         _stringLocalizer = stringLocalizer;

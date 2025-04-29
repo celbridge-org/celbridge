@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using System.Text.RegularExpressions;
@@ -7,8 +8,6 @@ using System.Text.RegularExpressions;
 using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Services;
-
-using IDocumentsLogger = Logging.ILogger<DocumentsService>;
 
 public record SetTextDocumentContentMessage(ResourceKey Resource, string Content);
 
@@ -18,8 +17,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DocumentsService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IDocumentsLogger _logger;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -41,11 +40,14 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public DocumentsService(
         IServiceProvider serviceProvider,
-        IDocumentsLogger logger,
+        ILogger<DocumentsService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
         _logger = logger;

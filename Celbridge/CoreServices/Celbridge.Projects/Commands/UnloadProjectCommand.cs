@@ -11,13 +11,13 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
     private readonly IProjectService _projectService;
 
     public UnloadProjectCommand(
-        IWorkspaceWrapper workspaceWrapper,
         INavigationService navigationService,
-        IProjectService projectService)
+        IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper)
     {
-        _workspaceWrapper = workspaceWrapper;
         _navigationService = navigationService;
         _projectService = projectService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()

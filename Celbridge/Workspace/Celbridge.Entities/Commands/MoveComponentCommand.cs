@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -12,8 +11,7 @@ public class MoveComponentCommand : CommandBase, IMoveComponentCommand
     public int SourceComponentIndex { get; set; }
     public int DestComponentIndex { get; set; }
 
-    public MoveComponentCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public MoveComponentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

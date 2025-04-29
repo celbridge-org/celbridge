@@ -6,23 +6,22 @@ using Celbridge.UserInterface;
 using Celbridge.Utilities.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
+using Celbridge.Logging;
 
 namespace Celbridge.Explorer.Services;
-
-using IExplorerLogger = Logging.ILogger<IExplorerService>;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
     private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly IExplorerLogger _logger;
+    private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IIconService _iconService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
@@ -48,23 +47,26 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public ExplorerService(
         IServiceProvider serviceProvider,
-        IExplorerLogger logger,
+        ILogger<ExplorerService> logger,
         IMessengerService messengerService,
         IEditorSettings editorSettings,
         ICommandService commandService,
         IProjectService projectService,
-        IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService,
-        IIconService iconService)
+        IIconService iconService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
         _editorSettings = editorSettings;
         _commandService = commandService;
         _projectService = projectService;
-        _workspaceWrapper = workspaceWrapper;
         _iconService = iconService;
+        _workspaceWrapper = workspaceWrapper;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.

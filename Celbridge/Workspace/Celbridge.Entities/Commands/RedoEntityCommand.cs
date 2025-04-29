@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -10,8 +9,7 @@ public class RedoEntityCommand : CommandBase, IRedoEntityCommand
 
     public ResourceKey Resource { get; set; }
 
-    public RedoEntityCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public RedoEntityCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

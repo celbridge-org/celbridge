@@ -1,4 +1,3 @@
-using Celbridge.Explorer;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
 using Celbridge.Workspace;

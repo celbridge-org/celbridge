@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -11,8 +10,7 @@ public class AddComponentCommand : CommandBase, IAddComponentCommand
     public ComponentKey ComponentKey { get; set; } = ComponentKey.Empty;
     public string ComponentType { get; set; } = string.Empty;
 
-    public AddComponentCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public AddComponentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

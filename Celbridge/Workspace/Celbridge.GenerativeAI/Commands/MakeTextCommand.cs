@@ -1,7 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.GenerativeAI.Commands;

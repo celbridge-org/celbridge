@@ -1,4 +1,3 @@
-using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Entities;
 using Celbridge.Forms;
@@ -21,7 +20,6 @@ public partial class ComponentListViewModel : InspectorViewModel
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
     private readonly IInspectorService _inspectorService;
-    private readonly IActivityService _activityService;
     private readonly IFormService _formService;
 
     public ObservableCollection<ComponentItem> ComponentItems { get; } = new();
@@ -56,7 +54,6 @@ public partial class ComponentListViewModel : InspectorViewModel
         _formService = formService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
-        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
     }
 
     public void OnViewLoaded()

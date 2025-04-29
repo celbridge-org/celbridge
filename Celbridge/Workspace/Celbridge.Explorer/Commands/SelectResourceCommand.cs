@@ -11,8 +11,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
     public bool ShowExplorerPanel { get; set; } = true;
 
-    public SelectResourceCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public SelectResourceCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

@@ -14,20 +14,18 @@ public class ProjectService : IProjectService
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly INavigationService _navigationService;
 
-    private const string ProjectDataFileKey = "projectDataFile";
-
     private const string EmptyPageName = "EmptyPage";
 
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
         IEditorSettings editorSettings,
-        IWorkspaceWrapper workspaceWrapper,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _editorSettings = editorSettings;
-        _workspaceWrapper = workspaceWrapper;
         _navigationService = navigationService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)

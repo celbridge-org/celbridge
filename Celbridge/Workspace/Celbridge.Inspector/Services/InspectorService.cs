@@ -52,8 +52,12 @@ public class InspectorService : IInspectorService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<InspectorService> logger,
         IMessengerService messengerService,
-        IFormService formService)
+        IFormService formService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;

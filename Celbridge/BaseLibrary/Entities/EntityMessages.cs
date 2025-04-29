@@ -1,5 +1,3 @@
-using Celbridge.Activities;
-
 namespace Celbridge.Entities;
 
 /// <summary>

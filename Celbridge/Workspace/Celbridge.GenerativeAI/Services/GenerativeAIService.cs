@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.GenerativeAI;
@@ -10,8 +11,12 @@ public class GenerativeAIService : IGenerativeAIService, IDisposable
 
     public GenerativeAIService(
         IServiceProvider serviceProvider,
-        ICommandService commandService)
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _commandService = commandService;
 
         // Todo: Configure provider for the project

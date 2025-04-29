@@ -10,23 +10,15 @@ namespace Celbridge.Spreadsheet.Services;
 
 public class SpreadsheetActivity : IActivity
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<SpreadsheetActivity> _logger;
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
-    private readonly IDocumentsService _documentService;
 
     public SpreadsheetActivity(
-        IServiceProvider serviceProvider,
-        ILogger<SpreadsheetActivity> logger,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
         _commandService = commandService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _documentService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public async Task<Result> ActivateAsync()

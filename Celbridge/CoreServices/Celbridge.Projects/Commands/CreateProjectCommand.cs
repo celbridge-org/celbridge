@@ -12,15 +12,15 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     private readonly ICommandService _commandService;
 
     public CreateProjectCommand(
-        IWorkspaceWrapper workspaceWrapper,
+        ICommandService commandService,
         IProjectService projectService,
         INavigationService navigationService,
-        ICommandService commandService)
+        IWorkspaceWrapper workspaceWrapper)
     {
-        _workspaceWrapper = workspaceWrapper;
+        _commandService = commandService;
         _projectService = projectService;
         _navigationService = navigationService;
-        _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public NewProjectConfig? Config { get; set; }

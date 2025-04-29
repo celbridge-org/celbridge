@@ -22,8 +22,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
-    private readonly IDialogService _dialogService;
-    private readonly IFilePickerService _filePickerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
@@ -31,26 +29,22 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly MainMenuUtils _mainMenuUtils;
 
     public MainPageViewModel(
-        IMessengerService messengerService,
         Logging.ILogger<MainPageViewModel> logger,
+        IMessengerService messengerService,
         INavigationService navigationService,
-        IDialogService dialogService,
-        IFilePickerService filePickerService,
-        IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
         IEditorSettings editorSettings,
         IUndoService undoService,
+        IWorkspaceWrapper workspaceWrapper,
         MainMenuUtils mainMenuUtils)
     {
-        _messengerService = messengerService;
         _logger = logger;
+        _messengerService = messengerService;
         _navigationService = navigationService;
-        _dialogService = dialogService;
-        _filePickerService = filePickerService;
-        _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
         _editorSettings = editorSettings;
         _undoService = undoService;
+        _workspaceWrapper = workspaceWrapper;
         _mainMenuUtils = mainMenuUtils;
     }
 
