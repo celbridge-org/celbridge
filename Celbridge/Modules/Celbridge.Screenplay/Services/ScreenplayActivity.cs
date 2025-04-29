@@ -358,6 +358,11 @@ public class ScreenplayActivity : IActivity
 
         if (loadResult.IsFailure)
         {
+            // Alert the user about the failed load
+            var alertTitleText = _localizerService.GetString("Screenplay_LoadFailedTitle");
+            var alertBodyText = _localizerService.GetString("Screenplay_LoadFailedMessage");
+            await _dialogService.ShowAlertDialogAsync(alertTitleText, alertBodyText);
+
             return Result.Fail($"Failed to load screenplay data from Workbook")
                 .WithErrors(loadResult);
         }
@@ -381,6 +386,11 @@ public class ScreenplayActivity : IActivity
 
         if (saveResult.IsFailure)
         {
+            // Alert the user about the failed save
+            var alertTitleText = _localizerService.GetString("Screenplay_SaveFailedTitle");
+            var alertBodyText = _localizerService.GetString("Screenplay_SaveFailedMessage");
+            await _dialogService.ShowAlertDialogAsync(alertTitleText, alertBodyText);
+
             return Result.Fail($"Failed to save screenplay data to Workbook")
                 .WithErrors(saveResult);
         }
