@@ -417,4 +417,16 @@
   <data name="Screenplay_SavingScreenplayTitle" xml:space="preserve">
     <value>Saving screenplay</value>
   </data>
+  <data name="Screenplay_SaveFailedTitle" xml:space="preserve">
+    <value>Save failed</value>
+  </data>
+  <data name="Screenplay_LoadFailedTitle" xml:space="preserve">
+    <value>Load failed</value>
+  </data>
+  <data name="Screenplay_SaveFailedMessage" xml:space="preserve">
+    <value>An error occurred while saving the screenplay Excel file.</value>
+  </data>
+  <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
+    <value>An error occurred while loading the screenplay Excel file.</value>
+  </data>
 </root>
