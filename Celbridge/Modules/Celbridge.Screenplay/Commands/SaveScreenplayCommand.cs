@@ -34,7 +34,7 @@ public class SaveScreenplayCommand : CommandBase
                 .WithErrors(getActivityResult);
         }
 
-        var saveResult = screenplayActivity.SaveScreenplay(WorkbookResource);
+        var saveResult = await screenplayActivity.SaveScreenplayAsync(WorkbookResource);
         if (saveResult.IsFailure)
         {
             return Result.Fail($"Failed to save screenplay to workbook")
