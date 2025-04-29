@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -12,8 +11,7 @@ public class CopyComponentCommand : CommandBase, ICopyComponentCommand
     public int SourceComponentIndex { get; set; }
     public int DestComponentIndex { get; set; }
 
-    public CopyComponentCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public CopyComponentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

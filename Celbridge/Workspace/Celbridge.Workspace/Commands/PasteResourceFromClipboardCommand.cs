@@ -8,7 +8,6 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
     private readonly IWorkspaceWrapper _workspaceWrapper;
     public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
 
-
     public ResourceKey DestFolderResource { get; set; }
 
     public PasteResourceFromClipboardCommand(IWorkspaceWrapper workspaceWrapper)

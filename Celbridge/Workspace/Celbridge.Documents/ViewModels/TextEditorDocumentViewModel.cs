@@ -31,8 +31,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
     public TextEditorDocumentViewModel(
         ILogger<TextEditorDocumentViewModel> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
-        IInspectorService inspectorService)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;

@@ -10,7 +10,6 @@ namespace Celbridge.Activities.Services;
 
 public class ActivityRegistry
 {
-    private readonly ILogger<ActivityRegistry> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IModuleService _moduleService;
@@ -25,13 +24,11 @@ public class ActivityRegistry
     public IReadOnlyList<string> ActivityNames => _activityNames;
 
     public ActivityRegistry(
-        ILogger<ActivityRegistry> logger,
         IMessengerService messengerService,
         IModuleService moduleService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
         _messengerService = messengerService;
         _moduleService = moduleService;
         _projectService = projectService;

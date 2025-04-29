@@ -10,19 +10,19 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
     private const string DumpFileName = "ResourceRegistry.jsonl";
 
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogSerializer _serializer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDumpFile _dumpFile;
 
     public ResourceRegistryDumper(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
-        ILogSerializer logSerializer)
+        ILogSerializer logSerializer,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
         _serializer = logSerializer;
+        _workspaceWrapper = workspaceWrapper;
 
         // Create the dump file
         _dumpFile = serviceProvider.GetRequiredService<IDumpFile>();

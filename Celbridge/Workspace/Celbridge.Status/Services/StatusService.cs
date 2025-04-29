@@ -13,8 +13,12 @@ public class StatusService : IStatusService, IDisposable
 
     public StatusService(
         IServiceProvider serviceProvider,
-        IMessengerService messengerService)
+        IMessengerService messengerService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
 

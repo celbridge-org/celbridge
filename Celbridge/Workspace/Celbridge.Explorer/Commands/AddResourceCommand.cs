@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Projects;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
 
@@ -15,7 +14,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectService _projectService;
 
     private string _addedResourcePath = string.Empty;
 
@@ -24,12 +22,10 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public AddResourceCommand(
         IServiceProvider serviceProvider,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IProjectService projectService)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _projectService = projectService;
 
         _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
     }

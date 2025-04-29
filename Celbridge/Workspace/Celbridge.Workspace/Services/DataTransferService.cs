@@ -10,17 +10,20 @@ namespace Celbridge.Workspace.Services;
 public class DataTransferService : IDataTransferService, IDisposable
 {
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DataTransferService(
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
 
         ApplicationDataTransfer.Clipboard.ContentChanged += Clipboard_ContentChanged;
     }

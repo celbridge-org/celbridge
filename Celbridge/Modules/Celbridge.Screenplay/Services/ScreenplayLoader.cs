@@ -1,6 +1,7 @@
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
@@ -13,17 +14,19 @@ namespace Celbridge.Screenplay.Services;
 public class ScreenplayLoader
 {
     private ILogger<ScreenplayLoader> _logger;
+    private IMessengerService _messengerService;
     private IExplorerService _explorerService;
     private IWorkspaceWrapper _workspaceWrapper;
 
     public ScreenplayLoader(
         ILogger<ScreenplayLoader> logger,
-        IExplorerService explorerService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _explorerService = explorerService;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
     }
 
     public async Task<Result> LoadScreenplayAsync(ResourceKey workbookFile)
@@ -492,101 +495,135 @@ public class ScreenplayLoader
 
             // Create the .scene resource and entity data
 
-            await SaveSceneFileAsync(sceneFolderPath, category, scene.AssetPath);
-            await SaveEntityFileAsync(workbookResource, entityFolderPath, category, scene.Namespace, scene.Context, scene.AssetPath, scene.Lines);
+            var saveFileResult = await SaveSceneFileAsync(sceneFolderPath, category, scene.AssetPath);
+            if (saveFileResult.IsFailure)
+            {
+                var filename = Path.GetFileName(scene.AssetPath);
+                return Result.Fail($"Failed to save scene file '{filename}'")
+                    .WithErrors(saveFileResult);
+            }
+
+            var saveEntityResult = await SaveSceneEntityFileAsync(workbookResource, entityFolderPath, category, scene.Namespace, scene.Context, scene.AssetPath, scene.Lines);
+            if (saveEntityResult.IsFailure)
+            {
+                var filename = Path.GetFileName(scene.AssetPath);
+                return Result.Fail($"Failed to save scene entity file '{filename}'")
+                    .WithErrors(saveEntityResult);
+            }
         }
 
         return Result.Ok();
     }
 
-    private static async Task SaveSceneFileAsync(string sceneFolderPath, string category, string assetPath)
+    private async Task<Result> SaveSceneFileAsync(string sceneFolderPath, string category, string assetPath)
     {
-        // Create a .scene file
-
-        var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
-        var assetName = Path.GetFileNameWithoutExtension(assetPath);
-        var sceneFilePath = Path.Combine(sceneFolderPath, category, subFolder, $"{assetName}.scene");
-        var sceneFolder = Path.GetDirectoryName(sceneFilePath);
-
-        if (!string.IsNullOrEmpty(sceneFolder) &&
-            !Directory.Exists(sceneFolder))
+        try
         {
-            Directory.CreateDirectory(sceneFolder);
+            // Create a .scene file
+
+            var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
+            var assetName = Path.GetFileNameWithoutExtension(assetPath);
+            var sceneFilePath = Path.Combine(sceneFolderPath, category, subFolder, $"{assetName}.scene");
+            var sceneFolder = Path.GetDirectoryName(sceneFilePath);
+
+            if (!string.IsNullOrEmpty(sceneFolder) &&
+                !Directory.Exists(sceneFolder))
+            {
+                Directory.CreateDirectory(sceneFolder);
+            }
+
+            await File.WriteAllTextAsync(sceneFilePath, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"An error occurred when saving scene file")
+                .WithException(ex);
         }
 
-        await File.WriteAllTextAsync(sceneFilePath, string.Empty);
+        return Result.Ok();
     }
 
-    private static async Task SaveEntityFileAsync(ResourceKey workbookResource, string entityFolderPath, string category, string @namespace, string context, string assetPath, List<DialogueLine> lineList)
+    private async Task<Result> SaveSceneEntityFileAsync(ResourceKey workbookResource, string entityFolderPath, string category, string @namespace, string context, string assetPath, List<DialogueLine> lineList)
     {
-        var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
-        var assetName = Path.GetFileNameWithoutExtension(assetPath);
-        var entityFilePath = Path.Combine(entityFolderPath, category, subFolder, $"{assetName}.scene.json");
-        var entityFolder = Path.GetDirectoryName(entityFilePath);
-
-        if (!string.IsNullOrEmpty(entityFolder) &&
-            !Directory.Exists(entityFolder))
+        try
         {
-            Directory.CreateDirectory(entityFolder);
+            var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
+            var assetName = Path.GetFileNameWithoutExtension(assetPath);
+            var entityFilePath = Path.Combine(entityFolderPath, category, subFolder, $"{assetName}.scene.json");
+            var entityFolder = Path.GetDirectoryName(entityFilePath);
+
+            if (!string.IsNullOrEmpty(entityFolder) &&
+                !Directory.Exists(entityFolder))
+            {
+                Directory.CreateDirectory(entityFolder);
+            }
+
+            // Generate component data for each line
+
+            var components = new JsonArray();
+
+            // Add scene component
+            var sceneComponent = new JsonObject();
+            sceneComponent["_type"] = "Screenplay.Scene#1";
+            sceneComponent["dialogueFile"] = workbookResource.ToString();
+            sceneComponent["category"] = category;
+            sceneComponent["namespace"] = @namespace;
+            sceneComponent["context"] = context;
+            components.Add(sceneComponent);
+
+            // Add line components
+            foreach (var line in lineList)
+            {
+                if (line.CharacterId == "SceneNote")
+                {
+                    var emptyComponent = new JsonObject();
+                    emptyComponent["_type"] = ".Empty#1";
+                    emptyComponent["comment"] = line.SourceText;
+
+                    components.Add(emptyComponent);
+                }
+                else
+                {
+                    var lineComponent = new JsonObject();
+                    lineComponent["_type"] = "Screenplay.Line#1";
+                    lineComponent["dialogueKey"] = line.DialogueKey;
+                    lineComponent["characterId"] = line.CharacterId;
+                    lineComponent["speakingTo"] = line.SpeakingTo;
+                    lineComponent["sourceText"] = line.SourceText;
+                    lineComponent["contextNotes"] = line.ContextNotes;
+                    lineComponent["direction"] = line.Direction;
+                    lineComponent["gameArea"] = line.GameArea;
+                    lineComponent["timeConstraint"] = line.TimeConstraint;
+                    lineComponent["soundProcessing"] = line.SoundProcessing;
+                    lineComponent["platform"] = line.Platform;
+                    lineComponent["linePriority"] = line.LinePriority;
+                    lineComponent["productionStatus"] = line.ProductionStatus;
+
+                    components.Add(lineComponent);
+                }
+            }
+
+            var entity = new JsonObject();
+            entity["_entityVersion"] = 1;
+            entity["_components"] = components;
+
+            var options = new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+                DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
+            };
+            var entityData = entity.ToJsonString(options);
+
+            await File.WriteAllTextAsync(entityFilePath, entityData);
+        }
+        catch (Exception ex) 
+        {
+            return Result.Fail($"An error occurred when saving a scene entity file")
+                .WithException(ex);
+
         }
 
-        // Generate component data for each line
-
-        var components = new JsonArray();
-
-        // Add scene component
-        var sceneComponent = new JsonObject();
-        sceneComponent["_type"] = "Screenplay.Scene#1";
-        sceneComponent["dialogueFile"] = workbookResource.ToString();
-        sceneComponent["category"] = category;
-        sceneComponent["namespace"] = @namespace;
-        sceneComponent["context"] = context;
-        components.Add(sceneComponent);
-
-        // Add line components
-        foreach (var line in lineList)
-        {
-            if (line.CharacterId == "SceneNote")
-            {
-                var emptyComponent = new JsonObject();
-                emptyComponent["_type"] = ".Empty#1";
-                emptyComponent["comment"] = line.SourceText;
-
-                components.Add(emptyComponent);
-            }
-            else
-            {
-                var lineComponent = new JsonObject();
-                lineComponent["_type"] = "Screenplay.Line#1";
-                lineComponent["dialogueKey"] = line.DialogueKey;
-                lineComponent["characterId"] = line.CharacterId;
-                lineComponent["speakingTo"] = line.SpeakingTo;
-                lineComponent["sourceText"] = line.SourceText;
-                lineComponent["contextNotes"] = line.ContextNotes;
-                lineComponent["direction"] = line.Direction;
-                lineComponent["gameArea"] = line.GameArea;
-                lineComponent["timeConstraint"] = line.TimeConstraint;
-                lineComponent["soundProcessing"] = line.SoundProcessing;
-                lineComponent["platform"] = line.Platform;
-                lineComponent["linePriority"] = line.LinePriority;
-                lineComponent["productionStatus"] = line.ProductionStatus;
-
-                components.Add(lineComponent);
-            }
-        }
-
-        var entity = new JsonObject();
-        entity["_entityVersion"] = 1;
-        entity["_components"] = components;
-
-        var options = new JsonSerializerOptions()
-        {
-            WriteIndented = true,
-            DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
-        };
-        var entityData = entity.ToJsonString(options);
-
-        await File.WriteAllTextAsync(entityFilePath, entityData);
+        return Result.Ok();
     }
 
     private Result PopulateCharacters(IComponentProxy screenplayData, List<Character> characters)

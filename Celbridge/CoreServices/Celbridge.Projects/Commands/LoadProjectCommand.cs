@@ -21,21 +21,21 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public LoadProjectCommand(
+        IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         INavigationService navigationService,
         IEditorSettings editorSettings,
         IDialogService dialogService,
-        IStringLocalizer stringLocalizer)
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _navigationService = navigationService;
         _editorSettings = editorSettings;
         _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public string ProjectFilePath { get; set; } = string.Empty;

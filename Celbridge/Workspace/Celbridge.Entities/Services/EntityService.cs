@@ -18,7 +18,6 @@ public class EntityService : IEntityService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EntityService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private ComponentConfigRegistry _configRegistry;
     private ComponentProxyService _componentProxyService;
@@ -38,13 +37,11 @@ public class EntityService : IEntityService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<EntityService> logger,
         IMessengerService messengerService,
-        IProjectService projectService,
-        IWorkspaceWrapper workspaceWrapper)
+        IProjectService projectService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
 
         _configRegistry = serviceProvider.GetRequiredService<ComponentConfigRegistry>();
         _entityRegistry = serviceProvider.GetRequiredService<EntityRegistry>();

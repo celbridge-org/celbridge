@@ -16,21 +16,21 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     private ResourceArchiver _archiver;
 
     private readonly ILogger<ResourceArchiver> _logger;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceCommand(
         ILogger<ResourceArchiver> logger,
         IServiceProvider serviceProvider,
-        IWorkspaceWrapper workspaceWrapper,
         IDialogService dialogService,
-        IStringLocalizer stringLocalizer)
+        IStringLocalizer stringLocalizer,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
+        _workspaceWrapper = workspaceWrapper;
 
         _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
     }

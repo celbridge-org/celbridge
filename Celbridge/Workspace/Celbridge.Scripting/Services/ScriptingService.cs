@@ -22,6 +22,9 @@ public class ScriptingService : IScriptingService, IDisposable
         IStringLocalizer stringLocalizer, 
         IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
     }

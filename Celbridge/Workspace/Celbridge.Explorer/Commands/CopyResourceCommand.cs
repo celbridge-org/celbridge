@@ -19,10 +19,10 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     public bool ExpandCopiedFolder { get; set; }
 
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private Type? _resourceType;
     private ResourceKey _resolvedDestResource;
@@ -31,16 +31,16 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     public CopyResourceCommand(
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         IDialogService dialogService,
-        IStringLocalizer stringLocalizer)
+        IStringLocalizer stringLocalizer,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
