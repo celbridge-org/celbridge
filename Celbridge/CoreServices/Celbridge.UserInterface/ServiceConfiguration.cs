@@ -1,6 +1,7 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Forms;
+using Celbridge.Localization;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
@@ -19,6 +20,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+        services.AddSingleton<ILocalizerService, LocalizerService>();
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IIconService, IconService>();
@@ -27,8 +29,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
-        services.AddSingleton<MainMenuUtils>();
         services.AddSingleton<IFormService, FormService>();
+        services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 
         //

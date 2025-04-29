@@ -411,4 +411,10 @@
   <data name="Documents_OpenDocumentFailedNotSupported" xml:space="preserve">
     <value>The file format is not supported: '{0}'</value>
   </data>
+  <data name="Screenplay_LoadingScreenplayTitle" xml:space="preserve">
+    <value>Loading screenplay</value>
+  </data>
+  <data name="Screenplay_SavingScreenplayTitle" xml:space="preserve">
+    <value>Saving screenplay</value>
+  </data>
 </root>

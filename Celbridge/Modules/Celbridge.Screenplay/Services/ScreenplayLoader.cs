@@ -1,7 +1,5 @@
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
@@ -13,18 +11,11 @@ namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayLoader
 {
-    private ILogger<ScreenplayLoader> _logger;
-    private IMessengerService _messengerService;
     private IExplorerService _explorerService;
     private IWorkspaceWrapper _workspaceWrapper;
 
-    public ScreenplayLoader(
-        ILogger<ScreenplayLoader> logger,
-        IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+    public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
     }

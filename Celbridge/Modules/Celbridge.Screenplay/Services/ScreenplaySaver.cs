@@ -1,6 +1,5 @@
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
@@ -29,7 +28,7 @@ public class ScreenplaySaver
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
     }
 
-    public Result SaveScreenplayAsync(ResourceKey screenplayResource)
+    public Result SaveScreenplay(ResourceKey screenplayResource)
     {
         try
         {
