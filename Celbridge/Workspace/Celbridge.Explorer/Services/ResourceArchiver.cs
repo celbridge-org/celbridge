@@ -12,10 +12,10 @@ namespace Celbridge.Explorer.Services;
 /// </summary>
 public class ResourceArchiver
 {
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IEntityService _entityService;
     private readonly IUtilityService _utilityService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private ResourceKey _resource;
     private string _archivePath = string.Empty;
@@ -25,13 +25,13 @@ public class ResourceArchiver
     public ResourceType ArchivedResourceType { get; private set; }
 
     public ResourceArchiver(
-        IWorkspaceWrapper workspaceWrapper,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _utilityService = utilityService;
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
         _entityService = _workspaceWrapper.WorkspaceService.EntityService;
-        _utilityService = utilityService;
     }
 
     public async Task<Result> ArchiveResourceAsync(ResourceKey resource)

@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Workspace;
 
 namespace Celbridge.Entities.Commands;
@@ -10,8 +9,7 @@ public class RemoveComponentCommand : CommandBase, IRemoveComponentCommand
 
     public ComponentKey ComponentKey { get; set; } = ComponentKey.Empty;
 
-    public RemoveComponentCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public RemoveComponentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

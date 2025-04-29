@@ -8,7 +8,6 @@ namespace Celbridge.Inspector.ViewModels;
 public partial class ResourceNameInspectorViewModel : InspectorViewModel
 {
     private readonly IExplorerService _explorerService;
-    private readonly IResourceRegistry _resourceRegistry;
 
     [ObservableProperty]
     private IconDefinition _icon;
@@ -19,16 +18,12 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
         throw new NotImplementedException();
     }
 
-    public ResourceNameInspectorViewModel(
-        IExplorerService explorerService,
-        IWorkspaceWrapper workspaceWrapper)
+    public ResourceNameInspectorViewModel(IWorkspaceWrapper workspaceWrapper)
     {
         // workspaceWrapper.IsWorkspaceLoaded could be false here if this is called while loading workspace.
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);
 
-        _explorerService = explorerService;
-
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
 
         // Use the default file icon until we can resolve the proper icon when the resource is populated.
         _icon = _explorerService.GetIconForResource(ResourceKey.Empty);

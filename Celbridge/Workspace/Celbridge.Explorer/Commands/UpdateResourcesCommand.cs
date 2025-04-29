@@ -7,8 +7,7 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public UpdateResourcesCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public UpdateResourcesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

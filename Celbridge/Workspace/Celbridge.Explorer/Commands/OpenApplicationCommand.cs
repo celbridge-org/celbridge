@@ -9,8 +9,7 @@ public class OpenApplicationCommand : CommandBase, IOpenApplicationCommand
 
     public ResourceKey Resource { get; set; }
 
-    public OpenApplicationCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public OpenApplicationCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

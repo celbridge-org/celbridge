@@ -9,8 +9,7 @@ public class OpenBrowserCommand : CommandBase, IOpenBrowserCommand
 
     public string URL { get; set; } = string.Empty;
 
-    public OpenBrowserCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public OpenBrowserCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

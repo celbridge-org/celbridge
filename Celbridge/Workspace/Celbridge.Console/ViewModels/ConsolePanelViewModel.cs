@@ -44,9 +44,9 @@ public partial class ConsolePanelViewModel : ObservableObject
     }
 
     public ConsolePanelViewModel(
+        IServiceProvider serviceProvider,
         ILogger<ConsolePanelViewModel> logger,
         IMessengerService messengerService,
-        IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IUtilityService utilityService,

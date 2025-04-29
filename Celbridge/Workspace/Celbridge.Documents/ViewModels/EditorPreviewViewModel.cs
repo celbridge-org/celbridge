@@ -23,8 +23,8 @@ public partial class EditorPreviewViewModel : ObservableObject
 
     public EditorPreviewViewModel(
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IProjectService projectService)
+        IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;

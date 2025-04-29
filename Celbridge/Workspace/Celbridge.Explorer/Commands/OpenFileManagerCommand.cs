@@ -9,8 +9,7 @@ public class OpenFileManagerCommand : CommandBase, IOpenFileManagerCommand
 
     public ResourceKey Resource { get; set; }
 
-    public OpenFileManagerCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public OpenFileManagerCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

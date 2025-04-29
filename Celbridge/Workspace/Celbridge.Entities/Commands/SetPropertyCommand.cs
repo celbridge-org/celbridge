@@ -12,8 +12,7 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
     public string JsonValue { get; set; } = string.Empty;
     public bool Insert { get; set; }
 
-    public SetPropertyCommand(
-        IWorkspaceWrapper workspaceWrapper)
+    public SetPropertyCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }

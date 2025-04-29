@@ -1,21 +1,23 @@
 using Celbridge.Logging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Activities.Services;
 
 public class ActivityService : IActivityService, IDisposable
 {
     private IServiceProvider _serviceProvider;
-    private ILogger<ActivityService> _logger;
 
     private ActivityRegistry? _activityRegistry;
     private ActivityDispatcher? _activityDispatcher;
 
     public ActivityService(
         IServiceProvider serviceProvider,
-        ILogger<ActivityService> logger)
+        IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
         _serviceProvider = serviceProvider;
-        _logger = logger;
     }
 
     public async Task<Result> Initialize()
