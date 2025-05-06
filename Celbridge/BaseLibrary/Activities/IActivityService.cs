@@ -1,3 +1,5 @@
+using Celbridge.Entities;
+
 namespace Celbridge.Activities;
 
 /// <summary>
@@ -19,4 +21,9 @@ public interface IActivityService
     /// Updates the activities in the workspace.
     /// </summary>
     Task<Result> UpdateAsync();
+
+    /// <summary>
+    /// Generates annotation information for a resource.
+    /// </summary>
+    Result<IEntityAnnotation> AnnotateEntity(ResourceKey fileResource);
 }

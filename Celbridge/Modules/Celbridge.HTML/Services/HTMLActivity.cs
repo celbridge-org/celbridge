@@ -58,7 +58,7 @@ public class HTMLActivity : IActivity
         return extension == ".html";
     }
 
-    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
+    public Result AnnotateEntity(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
         var getComponents = _entityService.GetComponents(entity);
         if (getComponents.IsFailure)
@@ -68,7 +68,7 @@ public class HTMLActivity : IActivity
         }
         var components = getComponents.Value;
 
-        if (components.Count != entityAnnotation.Count)
+        if (components.Count != entityAnnotation.ComponentAnnotationCount)
         {
             return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
         }
@@ -84,18 +84,18 @@ public class HTMLActivity : IActivity
         }
         else
         {
-            var error = new ComponentError(
-                ComponentErrorSeverity.Critical,
+            var error = new AnnotationError(
+                AnnotationErrorSeverity.Error,
                 "Invalid component position",
                 "This component must be the first component.");
 
-            entityAnnotation.AddError(0, error);
+            entityAnnotation.AddComponentError(0, error);
         }
 
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateResourceAsync(ResourceKey resource)
+    public async Task<Result> UpdateResourceContentAsync(ResourceKey resource, IEntityAnnotation entityAnnotation)
     {
         await Task.CompletedTask;
 

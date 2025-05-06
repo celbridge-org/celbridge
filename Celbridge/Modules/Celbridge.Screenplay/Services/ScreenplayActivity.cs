@@ -85,8 +85,12 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
+    public Result AnnotateEntity(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
+        //
+        // These cases should never happen, so they are hard errors instead of annotation errors
+        //
+
         var getComponents = _entityService.GetComponents(entity);
         if (getComponents.IsFailure)
         {
@@ -95,7 +99,7 @@ public class ScreenplayActivity : IActivity
         }
         var components = getComponents.Value;
 
-        if (components.Count != entityAnnotation.Count)
+        if (components.Count != entityAnnotation.ComponentAnnotationCount)
         {
             return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
         }
@@ -111,31 +115,30 @@ public class ScreenplayActivity : IActivity
         }
         else
         {
-            var error = new ComponentError(
-                ComponentErrorSeverity.Critical,
+            entityAnnotation.AddComponentError(0, new AnnotationError(
+                AnnotationErrorSeverity.Critical,
                 "Invalid component position",
-                "This component must be the first component.");
-
-            entityAnnotation.AddError(0, error);
+                "This component must be the first component."));
         }
 
         // Todo: Check that the namespace matches one defined in the Screenplay component
         var @namespace = sceneComponent.GetString(SceneEditor.Namespace);
         if (string.IsNullOrEmpty(@namespace))
         {
-            var error = new ComponentError(
-                ComponentErrorSeverity.Critical,
+            entityAnnotation.AddComponentError(0, new AnnotationError(
+                AnnotationErrorSeverity.Error,
                 "Invalid namespace",
-                "The namespace must not be empty");
-            entityAnnotation.AddError(0, error);
+                "The namespace must not be empty"));
         }
 
         // Get the character list from the screenplay component
         var getCharactersResult = GetCharacters(entity);
         if (getCharactersResult.IsFailure)
         {
-            return Result.Fail(entity, $"Failed to get characters from screenplay component")
-                .WithErrors(getCharactersResult);
+            entityAnnotation.AddEntityError(new AnnotationError(
+                AnnotationErrorSeverity.Error,
+                "Failed to get characters",
+                "Failed to get character list from screenplay component"));
         }
         var characters = getCharactersResult.Value;
 
@@ -163,11 +166,10 @@ public class ScreenplayActivity : IActivity
 
             if (component.Schema.ComponentType != LineEditor.ComponentType)
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid component type",
-                    "This component must be a 'Line' component");
-                entityAnnotation.AddError(i, error);
+                    "This component must be a 'Line' component"));
 
                 continue;
             }
@@ -198,11 +200,10 @@ public class ScreenplayActivity : IActivity
             var characterId = component.GetString(LineEditor.CharacterId);
             if (string.IsNullOrEmpty(characterId))
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid character id",
-                    "The character id must not be empty");
-                entityAnnotation.AddError(i, error);
+                    "The character id must not be empty"));
 
                 continue;
             }
@@ -218,11 +219,10 @@ public class ScreenplayActivity : IActivity
             }
             if (character is null)
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid character id",
-                    "A valid character must be selected");
-                entityAnnotation.AddError(i, error);
+                    "A valid character must be selected"));
 
                 // There's not much more we can do until the user selects a character id
                 continue;
@@ -236,11 +236,10 @@ public class ScreenplayActivity : IActivity
             var segments = dialogueKey.Split('-');
             if (segments.Length != 3)
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid dialogue key",
-                    "Dialogue keys must be non-empty and contain 3 segments.");
-                entityAnnotation.AddError(i, error);
+                    "Dialogue keys must be non-empty and contain 3 segments."));
 
                 // Can't do any more checks until the user assigns a valid dialogue key
                 continue;
@@ -261,11 +260,10 @@ public class ScreenplayActivity : IActivity
                 // Player variants lines must be part of a player line group
                 if (string.IsNullOrEmpty(playerLineId))
                 {
-                    var error = new ComponentError(
-                        ComponentErrorSeverity.Critical,
+                    entityAnnotation.AddComponentError(i, new AnnotationError(
+                        AnnotationErrorSeverity.Error,
                         "Invalid player variant line",
-                        "Player variant lines must be part of a player line group");
-                    entityAnnotation.AddError(i, error);
+                        "Player variant lines must be part of a player line group"));
                 }
                 else
                 {
@@ -284,20 +282,18 @@ public class ScreenplayActivity : IActivity
             var correctDialogueKey = $"{characterId}-{@namespace}-{correctLineId}";
             if (dialogueKey != correctDialogueKey)
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid dialogue key",
-                    "The dialogue key is not correctly formed. Update the dialogue key to assign a correct one.");
-                entityAnnotation.AddError(i, error);
+                    "The dialogue key is not correctly formed. Update the dialogue key to assign a correct one."));
             }
 
             if (activeDialogueKeys.Contains(dialogueKey))
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Duplicate dialogue key",
-                    "Dialogue keys must be unique for each line. Update the dialogue key to assign a new one.");
-                entityAnnotation.AddError(i, error);
+                    "Dialogue keys must be unique for each line. Update the dialogue key to assign a new one."));
             }
             activeDialogueKeys.Add(dialogueKey);
 
@@ -311,7 +307,7 @@ public class ScreenplayActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateResourceAsync(ResourceKey resource)
+    public async Task<Result> UpdateResourceContentAsync(ResourceKey resource, IEntityAnnotation entityAnnotation)
     {
         var count = _entityService.GetComponentCount(resource);
         if (count == 0)
