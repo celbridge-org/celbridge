@@ -1,8 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Commands;
-using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 
@@ -97,12 +95,10 @@ public class SpreadsheetActivity : IActivity
         }
         else
         {
-            var error = new AnnotationError(
-                AnnotationErrorSeverity.Error,
+            entityAnnotation.AddComponentError(0, new AnnotationError(
+                AnnotationErrorSeverity.Critical,
                 "Invalid root component",
-                $"The root component must be a '{SpreadsheetEditor.ComponentType}'.");
-
-            entityAnnotation.AddComponentError(0, error);
+                $"The root component must be a '{SpreadsheetEditor.ComponentType}'."));
         }
 
         //
@@ -127,12 +123,10 @@ public class SpreadsheetActivity : IActivity
             }
             else
             {
-                var error = new AnnotationError(
-                    AnnotationErrorSeverity.Error,
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Critical,
                     "Invalid component type",
-                    "This component is not compatible with the 'Data.Spreadsheet' component");
-
-                entityAnnotation.AddComponentError(i, error);
+                    "This component is not compatible with the 'Data.Spreadsheet' component"));
             }
         }
 
