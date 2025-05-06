@@ -1,5 +1,7 @@
+using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
+using Celbridge.Logging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
@@ -17,13 +19,18 @@ public class ScreenplaySaver
     private const string PlayerVariantColor = "e3e3e3";
     private const string SceneNoteColor = "a8e6a3";
 
-    private IExplorerService _explorerService;
-    private IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILogger<ScreenplaySaver> _logger;
+    private readonly IExplorerService _explorerService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private record SceneData(string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
+    private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
 
-    public ScreenplaySaver(IWorkspaceWrapper workspaceWrapper)
+    public ScreenplaySaver(
+        ILogger<ScreenplaySaver> logger,
+        IDialogService dialogService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
     }
@@ -38,48 +45,135 @@ public class ScreenplaySaver
                 return Result.Fail($"Unsupported file type: {extension}");
             }
 
-            var entityService = _workspaceWrapper.WorkspaceService.EntityService;
-            var resourceRegistry = _explorerService.ResourceRegistry;
-            var workbookFilePath = resourceRegistry.GetResourcePath(screenplayResource);
-
-            var screenplayFolderPath = Path.GetDirectoryName(workbookFilePath);
-            if (string.IsNullOrEmpty(screenplayFolderPath))
+            var workbookPath = _explorerService.ResourceRegistry.GetResourcePath(screenplayResource);
+            var screenplayFolder = Path.GetDirectoryName(workbookPath);
+            if (string.IsNullOrEmpty(screenplayFolder))
             {
                 return Result.Fail($"Failed to get screenplay folder path for resource '{screenplayResource}'");
             }
 
-            // Acquire the ScreenplayData component from the screenplay resource
-            var getComponentResult = entityService.GetComponentOfType(screenplayResource, ScreenplayDataEditor.ComponentType);
-            if (getComponentResult.IsFailure)
-            {
-                return Result.Fail($"Failed to get ScreenplayData component from workbook file resource '{screenplayResource}'")
-                    .WithErrors(getComponentResult);
-            }
-            var screenplayData = getComponentResult.Value;
+            var entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
             // Find all .scene files in the screenplay folder
-            var sceneFiles = Directory.GetFiles(screenplayFolderPath, "*.scene", SearchOption.AllDirectories).ToList();
+            var sceneFiles = Directory.GetFiles(screenplayFolder, "*.scene", SearchOption.AllDirectories).ToList();
             if (sceneFiles.Count == 0)
             {
-                return Result.Fail($"No scene files found in folder '{screenplayFolderPath}'");
+                return Result.Fail($"No scene files found in folder '{screenplayFolder}'");
             }
 
             // Collect all dialogue lines for all scene files found
-            var collectResult = CollectSceneData(entityService, sceneFiles);
-            if (collectResult.IsFailure)
+            var collectSceneDataResult = CollectSceneData(entityService, sceneFiles);
+            if (collectSceneDataResult.IsFailure)
             {
-                return Result.Fail($"Failed to collect dialogue data from scene files")
-                    .WithErrors(collectResult);
+                return Result.Fail("Failed to collect dialogue data")
+                    .WithErrors(collectSceneDataResult);
             }
-            var sceneDataList = collectResult.Value;
+            var sceneDataList = collectSceneDataResult.Value;
 
-            return SaveDialogueWorksheet(workbookFilePath, sceneDataList);
+            bool succeeded = true;
+            var errorMessage = string.Empty;
+            var activityService = _workspaceWrapper.WorkspaceService.ActivityService;
+            foreach (var sceneData in sceneDataList)
+            {
+                var sceneResource = sceneData.SceneResource;
+                var annotateResult = activityService.AnnotateEntity(sceneResource);
+                if (annotateResult.IsFailure)
+                {
+                    // Todo: Log the error?
+                    succeeded = false;
+                    break;
+                }
+                var annotation = annotateResult.Value;
+
+                if (annotation.TryGetError(out var entityError) &&
+                    entityError!.Severity >= AnnotationErrorSeverity.Error)
+                {
+                    _logger.LogError($"Failed to save screenplay. Please fix errors in '{sceneResource}' and try again.");
+                    succeeded = false;
+                    break;
+                }
+            }
+
+            if (!succeeded)
+            {
+                return Result.Fail($"Failed to annotate resource");
+            }
+
+            var saveWorksheetResult = SaveDialogueWorksheet(workbookPath, sceneDataList);
+            return saveWorksheetResult;
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to import screenplay data from workbook")
+            return Result.Fail("Failed to save screenplay data to workbook")
                 .WithException(ex);
         }
+    }
+
+    private Result<List<SceneData>> CollectSceneData(IEntityService entityService, IReadOnlyList<string> sceneFiles)
+    {
+        // Build a list of SceneData based on the .scene files we found
+        var processedNamespaces = new HashSet<string>();
+        var sceneDataList = new List<SceneData>();
+
+        foreach (var sceneFile in sceneFiles)
+        {
+            var getResourceKeyResult = _explorerService.ResourceRegistry.GetResourceKey(sceneFile);
+            if (getResourceKeyResult.IsFailure)
+            {
+                return Result<List<SceneData>>.Fail($"Failed to get resource key for scene file '{sceneFile}'")
+                    .WithErrors(getResourceKeyResult);
+            }
+
+            var sceneResource = getResourceKeyResult.Value;
+
+            var getComponentsResult = entityService.GetComponents(sceneResource);
+            if (getComponentsResult.IsFailure)
+            {
+                return Result<List<SceneData>>.Fail($"Failed to get components for scene file '{sceneFile}'")
+                    .WithErrors(getComponentsResult);
+            }
+            var components = getComponentsResult.Value;
+
+            if (components.Count == 0)
+            {
+                return Result<List<SceneData>>.Fail($"No components found for scene file '{sceneFile}'");
+            }
+
+            var sceneComponent = components[0];
+            if (sceneComponent.Schema.ComponentType != SceneEditor.ComponentType)
+            {
+                return Result<List<SceneData>>.Fail($"Root component is not a Scene component for scene file '{sceneFile}'");
+            }
+
+            var category = sceneComponent.GetString(SceneEditor.Category);
+            if (category != "Cinematic" && category != "Conversation" && category != "Bark")
+            {
+                return Result<List<SceneData>>.Fail($"Invalid category '{category}' in scene file '{sceneFile}'");
+            }
+
+            var ns = sceneComponent.GetString(SceneEditor.Namespace);
+            if (processedNamespaces.Contains(ns))
+            {
+                return Result<List<SceneData>>.Fail($"Duplicate declaration of namespace '{ns}' in scene file '{sceneFile}'");
+            }
+
+            processedNamespaces.Add(ns);
+
+            var dialogueComponents = components
+                .Where(c => c.Schema.ComponentType == LineEditor.ComponentType ||
+                            c.Schema.ComponentType == EntityConstants.EmptyComponentType)
+                .ToList();
+
+            var sceneData = new SceneData(sceneResource, category, ns, sceneComponent, dialogueComponents);
+            sceneDataList.Add(sceneData);
+        }
+
+        var sortedList = sceneDataList
+            .OrderBy(sd => sd.Category)
+            .ThenBy(sd => sd.Namespace)
+            .ToList();
+
+        return Result<List<SceneData>>.Ok(sortedList);
     }
 
     private Result SaveDialogueWorksheet(string workbookFilePath, List<SceneData> sceneDataList)
@@ -88,11 +182,16 @@ public class ScreenplaySaver
         // It's best to do this before we make any other changes, e.g. in case the file is locked.
         using var workbook = new XLWorkbook(workbookFilePath);
 
+        if (!workbook.Worksheets.Contains("Dialogue"))
+        {
+            return Result.Fail("Workbook is missing 'Dialogue' sheet");
+        }
+
         var dialogueSheet = workbook.Worksheet("Dialogue");
 
         if (workbook.Worksheets.Contains("TempDialogue"))
         {
-            // Delete the existing "TempDialogue" worksheet
+            // Delete any existing "TempDialogue" worksheet
             workbook.Worksheet("TempDialogue").Delete();
             workbook.Save();
         }
@@ -104,220 +203,147 @@ public class ScreenplaySaver
         var lastRow = editedSheet.LastRowUsed()?.RowNumber() ?? 1;
 
         // Delete all rows except the header
-        var range = editedSheet.Range(2, 1, lastRow, 14);
-        range.Clear();
+        editedSheet.Range(2, 1, lastRow, 14).Clear();
 
         // Output all conversation dialogue lines to the "TempDialogue" spreadsheet.
         int namespaceIndex = 0;
         int rowIndex = 2;
         foreach (var sceneData in sceneDataList)
         {
-            var sceneCategory = sceneData.Category;
-            var sceneNamespace = sceneData.Namespace;
-
-            var categoryColor = sceneCategory switch
-            {
-                "Cinematic" => CinematicColor,
-                "Conversation" => ConversationColor,
-                "Bark" => BarkColor,
-                _ => "FFFFFF"
-            };
-
-            var namespaceColor = namespaceIndex % 2 == 1 ? NamespaceColorA : NamespaceColorB;
-            namespaceIndex++;
+            var categoryColor = GetCategoryColor(sceneData.Category);
+            var nsColor = namespaceIndex++ % 2 == 1 ? NamespaceColorA : NamespaceColorB;
 
             var playerLineId = string.Empty;
             int sceneNoteIndex = 1;
-            foreach (var dialogueComponent in sceneData.DialogueComponents)
+
+            foreach (var dialogue in sceneData.DialogueComponents)
             {
-                editedSheet.Cell(rowIndex, 1).Value = sceneCategory;
-                editedSheet.Cell(rowIndex, 1).Style.Fill.BackgroundColor = XLColor.FromHtml(categoryColor);
+                // playerLineId and sceneNoteIndex may be modified when we write a row
+                WriteDialogueRow(
+                    editedSheet, 
+                    rowIndex, 
+                    sceneData.
+                    Category, 
+                    sceneData.Namespace, 
+                    categoryColor, 
+                    nsColor, 
+                    dialogue, 
+                    ref playerLineId, 
+                    ref sceneNoteIndex);
 
-                editedSheet.Cell(rowIndex, 2).Value = sceneNamespace;
-                editedSheet.Cell(rowIndex, 2).Style.Fill.BackgroundColor = XLColor.FromHtml(namespaceColor);
-
-                if (dialogueComponent.Schema.ComponentType == LineEditor.ComponentType)
-                {
-                    var characterId = dialogueComponent.GetString(LineEditor.CharacterId);
-                    var dialogueKey = dialogueComponent.GetString(LineEditor.DialogueKey);
-                    var separatorIndex = dialogueKey.LastIndexOf('-');
-                    var lineId = separatorIndex >= 0 ? dialogueKey.Substring(separatorIndex + 1) : dialogueKey;
-
-                    editedSheet.Cell(rowIndex, 3).Value = dialogueKey;
-
-                    editedSheet.Cell(rowIndex, 4).Value = characterId;
-                    if (characterId == "Player")
-                    {
-                        // Player line
-                        playerLineId = lineId;
-
-                        editedSheet.Cell(rowIndex, 3).Style.Fill.BackgroundColor = XLColor.FromHtml(PlayerColor);
-                        editedSheet.Cell(rowIndex, 4).Style.Fill.BackgroundColor = XLColor.FromHtml(PlayerColor);
-                    }
-                    else if (lineId == playerLineId)
-                    {
-                        // Player variant line
-                        editedSheet.Cell(rowIndex, 3).Style.Fill.BackgroundColor = XLColor.FromHtml(PlayerVariantColor);
-                        editedSheet.Cell(rowIndex, 4).Style.Fill.BackgroundColor = XLColor.FromHtml(PlayerVariantColor);
-                    }
-                    else
-                    {
-                        // NPC line
-                        playerLineId = string.Empty;
-                    }
-
-                    var sourceText = dialogueComponent.GetString(LineEditor.SourceText);
-                    if (sourceText.StartsWith("'") && 
-                        !sourceText.StartsWith("''"))
-                    {
-                        // Excel treats cells that start with an apostrophe as text.
-                        // Escape the leading apostrophe character so it will import correctly. 
-                        sourceText = $"'{sourceText}";
-                    }
-
-                    editedSheet.Cell(rowIndex, 5).Value = dialogueComponent.GetString(LineEditor.SpeakingTo);
-                    editedSheet.Cell(rowIndex, 6).Value = sourceText;
-                    editedSheet.Cell(rowIndex, 7).Value = dialogueComponent.GetString(LineEditor.ContextNotes);
-                    editedSheet.Cell(rowIndex, 8).Value = dialogueComponent.GetString(LineEditor.Direction);
-                    editedSheet.Cell(rowIndex, 9).Value = dialogueComponent.GetString(LineEditor.GameArea);
-                    editedSheet.Cell(rowIndex, 10).Value = dialogueComponent.GetString(LineEditor.TimeConstraint);
-                    editedSheet.Cell(rowIndex, 11).Value = dialogueComponent.GetString(LineEditor.SoundProcessing);
-                    editedSheet.Cell(rowIndex, 12).Value = dialogueComponent.GetString(LineEditor.Platform);
-                    editedSheet.Cell(rowIndex, 13).Value = dialogueComponent.GetString(LineEditor.LinePriority);
-                    editedSheet.Cell(rowIndex, 14).Value = dialogueComponent.GetString(LineEditor.ProductionStatus);
-                }
-                else if (dialogueComponent.Schema.ComponentType == EntityConstants.EmptyComponentType)
-                {
-                    // Scene note
-                    playerLineId = string.Empty;
-
-                    var commentText = dialogueComponent.GetString("/comment");
-
-                    var dialogueKey = $"SceneNote-{sceneNamespace}-Note{sceneNoteIndex}";
-                    editedSheet.Cell(rowIndex, 3).Value = dialogueKey;
-                    editedSheet.Cell(rowIndex, 4).Value = "SceneNote";
-                    editedSheet.Cell(rowIndex, 6).Value = commentText;
-
-                    for (int i = 3; i <= 14; i++)
-                    {
-                        editedSheet.Cell(rowIndex, i).Style.Fill.BackgroundColor = XLColor.FromHtml(SceneNoteColor);
-                    }
-
-                    sceneNoteIndex++;
-                }
                 rowIndex++;
             }
         }
 
-        // Copy all bark dialogue lines from the "Dialogue" sheet to the bottom of the "TempDialogue" sheet
-        var startBarkRow = -1;
-        for (int i = 2; i <= lastRow; i++)
-        {
-            // Find fisrt row containing bark dialogue
-            var category = dialogueSheet.Cell(i, 1).Value.ToString();
-            if (category == "Bark")
-            {
-                startBarkRow = i;
-                break;
-            }
-        }
-        if (startBarkRow >= 0)
-        {
-            var barkRange = dialogueSheet.Range(startBarkRow, 1, lastRow, 14);
-            barkRange.CopyTo(editedSheet.Cell(rowIndex, 1));
-        }
+        AppendBarkDialogue(dialogueSheet, editedSheet, rowIndex);
+        FinalizeWorksheet(workbook, dialogueSheet, editedSheet);
 
-        // Set the scroll position when the sheet is first opened
-        editedSheet.SheetView.TopLeftCellAddress = editedSheet.FirstCell().Address;
-        editedSheet.SelectedRanges.RemoveAll();
-        editedSheet.FirstCell().SetActive();
-
-        // Replace the "Dialogue" sheet with the "TempDialogue" sheet
-        workbook.Worksheets.Delete(dialogueSheet.Name);
-        editedSheet.Name = dialogueSheet.Name;
-        editedSheet.Position = 1;
-
-        // Save the workbook
         workbook.Save();
 
         return Result.Ok();
     }
 
-    private Result<List<SceneData>> CollectSceneData(IEntityService entityService, IReadOnlyList<string> sceneFiles)
+    private void WriteDialogueRow(IXLWorksheet sheet, int row, string category, string ns, string categoryColor, string nsColor, IComponentProxy component, ref string playerLineId, ref int sceneNoteIndex)
     {
-        var processedNamespaces = new HashSet<string>();
+        sheet.Cell(row, 1).Value = category;
+        sheet.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.FromHtml(categoryColor);
 
-        // Build a dictionary mapping each scene namespace to it's list of dialogue components
-        var sceneDataList = new List<SceneData>();
-        foreach (var sceneFile in sceneFiles)
+        sheet.Cell(row, 2).Value = ns;
+        sheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.FromHtml(nsColor);
+
+        if (component.Schema.ComponentType == LineEditor.ComponentType)
         {
-            // Get the resource key for the scene file
-            var getResourceResult = _explorerService.ResourceRegistry.GetResourceKey(sceneFile);
-            if (getResourceResult.IsFailure)
-            {
-                return Result<List<SceneData>>.Fail($"Failed to get resource key for scene file '{sceneFile}'")
-                    .WithErrors(getResourceResult);
-            }
-            var sceneResource = getResourceResult.Value;
+            var characterId = component.GetString(LineEditor.CharacterId);
+            var dialogueKey = component.GetString(LineEditor.DialogueKey);
+            var lineId = dialogueKey[(dialogueKey.LastIndexOf('-') + 1)..];
 
-            // Get all components in the scene entity
-            var getComponentsResult = entityService.GetComponents(sceneResource);
-            if (getComponentsResult.IsFailure)
-            {
-                Result<List<SceneData>>.Fail($"Failed to get components for scene file '{sceneFile}'")
-                    .WithErrors(getComponentsResult);
-            }
-            var components = getComponentsResult.Value;
+            sheet.Cell(row, 3).Value = dialogueKey;
+            sheet.Cell(row, 4).Value = characterId;
 
-            // Get the Scene root component for the scene file
-            if (components.Count == 0)
+            if (characterId == "Player")
             {
-                Result<List<SceneData>>.Fail($"No components found for scene file '{sceneFile}'");
+                playerLineId = lineId;
+                FillCells(sheet, row, new[] { 3, 4 }, PlayerColor);
             }
-            var sceneComponent = components[0];
-            if (sceneComponent.Schema.ComponentType != SceneEditor.ComponentType)
+            else if (lineId == playerLineId)
             {
-                Result<List<SceneData>>.Fail($"Failed to get Scene root Component for scene file '{sceneFile}'");
+                FillCells(sheet, row, new[] { 3, 4 }, PlayerVariantColor);
+            }
+            else
+            {
+                playerLineId = string.Empty;
             }
 
-            var sceneCategory = sceneComponent.GetString(SceneEditor.Category);
-            if (sceneCategory != "Cinematic" &&
-                sceneCategory != "Conversation" &&
-                sceneCategory != "Bark")
+            var sourceText = component.GetString(LineEditor.SourceText);
+            if (sourceText.StartsWith("'") && !sourceText.StartsWith("''"))
             {
-                Result<List<SceneData>>.Fail($"Invalid category '{sceneCategory}'");
+                sourceText = $"'{sourceText}";
             }
 
-            // Get the scene namespace
-            var sceneNamespace = sceneComponent.GetString(SceneEditor.Namespace);
-            if (processedNamespaces.Contains(sceneNamespace))
-            {
-                return Result<List<SceneData>>.Fail($"Duplicate declaration of namespace '{sceneNamespace}' in scene file '{sceneFile}'.");
-            }
-            processedNamespaces.Add(sceneNamespace);
-
-            // Build list of all Line and Empty components in the scene entity
-            var dialogueComponents = new List<IComponentProxy>();
-            foreach (var component in components)
-            {
-                if (component.Schema.ComponentType == LineEditor.ComponentType ||
-                    component.Schema.ComponentType == EntityConstants.EmptyComponentType)
-                {
-                    // Add the component to the list of dialogue components
-                    dialogueComponents.Add(component);
-                }
-            }
-
-            // Add the scene data to the list
-            var sceneData = new SceneData(sceneCategory, sceneNamespace, sceneComponent, dialogueComponents);
-            sceneDataList.Add(sceneData);
+            sheet.Cell(row, 5).Value = component.GetString(LineEditor.SpeakingTo);
+            sheet.Cell(row, 6).Value = sourceText;
+            sheet.Cell(row, 7).Value = component.GetString(LineEditor.ContextNotes);
+            sheet.Cell(row, 8).Value = component.GetString(LineEditor.Direction);
+            sheet.Cell(row, 9).Value = component.GetString(LineEditor.GameArea);
+            sheet.Cell(row, 10).Value = component.GetString(LineEditor.TimeConstraint);
+            sheet.Cell(row, 11).Value = component.GetString(LineEditor.SoundProcessing);
+            sheet.Cell(row, 12).Value = component.GetString(LineEditor.Platform);
+            sheet.Cell(row, 13).Value = component.GetString(LineEditor.LinePriority);
+            sheet.Cell(row, 14).Value = component.GetString(LineEditor.ProductionStatus);
         }
+        else if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+        {
+            var commentText = component.GetString("/comment");
+            var noteKey = $"SceneNote-{ns}-Note{sceneNoteIndex++}";
 
-        // Sort the scene data list
-        sceneDataList = sceneDataList.OrderBy(sceneData => sceneData.Category)
-            .ThenBy(sceneData => sceneData.Namespace)
-            .ToList();
+            sheet.Cell(row, 3).Value = noteKey;
+            sheet.Cell(row, 4).Value = "SceneNote";
+            sheet.Cell(row, 6).Value = commentText;
 
-        return Result<List<SceneData>>.Ok(sceneDataList);
+            FillCells(sheet, row, Enumerable.Range(3, 12), SceneNoteColor);
+
+            playerLineId = string.Empty;
+        }
     }
+
+    private void AppendBarkDialogue(IXLWorksheet originalSheet, IXLWorksheet targetSheet, int startRow)
+    {
+        int lastRow = originalSheet.LastRowUsed()?.RowNumber() ?? 1;
+        for (int i = 2; i <= lastRow; i++)
+        {
+            if (originalSheet.Cell(i, 1).Value.ToString() == "Bark")
+            {
+                var barkRange = originalSheet.Range(i, 1, lastRow, 14);
+                barkRange.CopyTo(targetSheet.Cell(startRow, 1));
+                break;
+            }
+        }
+    }
+
+    private void FinalizeWorksheet(XLWorkbook workbook, IXLWorksheet originalSheet, IXLWorksheet editedSheet)
+    {
+        editedSheet.SheetView.TopLeftCellAddress = editedSheet.FirstCell().Address;
+        editedSheet.SelectedRanges.RemoveAll();
+        editedSheet.FirstCell().SetActive();
+
+        originalSheet.Delete();
+        editedSheet.Name = "Dialogue";
+        editedSheet.Position = 1;
+    }
+
+    private void FillCells(IXLWorksheet sheet, int row, IEnumerable<int> columns, string hexColor)
+    {
+        foreach (var col in columns)
+        {
+            sheet.Cell(row, col).Style.Fill.BackgroundColor = XLColor.FromHtml(hexColor);
+        }
+    }
+
+    private string GetCategoryColor(string category) => category switch
+    {
+        "Cinematic" => CinematicColor,
+        "Conversation" => ConversationColor,
+        "Bark" => BarkColor,
+        _ => "FFFFFF"
+    };
 }

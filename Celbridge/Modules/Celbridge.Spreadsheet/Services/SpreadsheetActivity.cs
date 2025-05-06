@@ -71,7 +71,7 @@ public class SpreadsheetActivity : IActivity
         return Result.Ok();
     }
 
-    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
+    public Result AnnotateEntity(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
         var getComponents = _entityService.GetComponents(entity);
         if (getComponents.IsFailure)
@@ -81,7 +81,7 @@ public class SpreadsheetActivity : IActivity
         }
         var components = getComponents.Value;
 
-        if (components.Count != entityAnnotation.Count)
+        if (components.Count != entityAnnotation.ComponentAnnotationCount)
         {
             return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
         }
@@ -97,12 +97,12 @@ public class SpreadsheetActivity : IActivity
         }
         else
         {
-            var error = new ComponentError(
-                ComponentErrorSeverity.Critical,
+            var error = new AnnotationError(
+                AnnotationErrorSeverity.Error,
                 "Invalid root component",
                 $"The root component must be a '{SpreadsheetEditor.ComponentType}'.");
 
-            entityAnnotation.AddError(0, error);
+            entityAnnotation.AddComponentError(0, error);
         }
 
         //
@@ -127,19 +127,19 @@ public class SpreadsheetActivity : IActivity
             }
             else
             {
-                var error = new ComponentError(
-                    ComponentErrorSeverity.Critical,
+                var error = new AnnotationError(
+                    AnnotationErrorSeverity.Error,
                     "Invalid component type",
                     "This component is not compatible with the 'Data.Spreadsheet' component");
 
-                entityAnnotation.AddError(i, error);
+                entityAnnotation.AddComponentError(i, error);
             }
         }
 
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateResourceAsync(ResourceKey resource)
+    public async Task<Result> UpdateResourceContentAsync(ResourceKey resource, IEntityAnnotation entityAnnotation)
     {
         await Task.CompletedTask;
 

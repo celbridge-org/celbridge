@@ -35,6 +35,15 @@ public partial class ComponentListViewModel : InspectorViewModel
     private Guid? _rootComponentEditorId;
     public event Action<object?>? OnUpdateRootComponentForm;
 
+    [ObservableProperty]
+    private bool _showEntityError;
+
+    [ObservableProperty]
+    private string _entityErrorDescription;
+
+    [ObservableProperty]
+    private string _entityErrorTooltip;
+
     // Code gen requires a parameterless constructor
     public ComponentListViewModel()
     {
@@ -287,20 +296,37 @@ public partial class ComponentListViewModel : InspectorViewModel
             entityAnnotation = getAnnotationResult.Value;
         }
 
+        if (entityAnnotation is not null &&
+            entityAnnotation.EntityErrors.Count() > 0)
+        {
+            // Display the first entity error message
+            ShowEntityError = true;
+            var entityError = entityAnnotation.EntityErrors.First();
+            EntityErrorDescription = entityError.Message;
+            EntityErrorTooltip = entityError.Description;
+        }
+        else
+        {
+            // Clear entity error message
+            ShowEntityError = false;
+            EntityErrorDescription = string.Empty;
+            EntityErrorTooltip = string.Empty;
+        }
+
         // Apply the most recent annotation data to the corresponding component item
         for (int i = 0; i < ComponentItems.Count; i++)
-        {
-            var componentItem = ComponentItems[i];
-            if (entityAnnotation is not null &&
-                i < entityAnnotation.Count)
             {
-                componentItem.Annotation = entityAnnotation.GetComponentAnnotation(i);
+                var componentItem = ComponentItems[i];
+                if (entityAnnotation is not null &&
+                    i < entityAnnotation.ComponentAnnotationCount)
+                {
+                    componentItem.Annotation = entityAnnotation.GetComponentAnnotation(i);
+                }
+                else
+                {
+                    componentItem.Annotation = null;
+                }
             }
-            else
-            {
-                componentItem.Annotation = null;
-            }
-        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
