@@ -29,14 +29,14 @@ public interface IActivity
     Task<Result> InitializeResourceAsync(ResourceKey resource);
 
     /// <summary>
-    /// Updates the component annotations for the specified entity.
+    /// Updates the annotation information for the specified entity.
     /// The entity must be of a resource type that is supported by this activity.
     /// </summary>
-    Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation);
+    Result AnnotateEntity(ResourceKey entity, IEntityAnnotation entityAnnotation);
 
     /// <summary>
     /// Updates the specified resource, typically by generating document data.
     /// The resource must be of a type that is supported by this activity.
     /// </summary>
-    Task<Result> UpdateResourceAsync(ResourceKey resource);    
+    Task<Result> UpdateResourceContentAsync(ResourceKey resource, IEntityAnnotation entityAnnotation);    
 }

@@ -12,6 +12,7 @@ public class ActivityDispatcher
     private readonly ILogger<ActivityDispatcher> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEntityService _entityService;
+    private readonly IActivityService _activityService;
 
     private ActivityRegistry? _activityRegistry;
 
@@ -29,6 +30,7 @@ public class ActivityDispatcher
 
         _messengerService = messengerService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
+        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
     }
 
     public async Task<Result> Initialize(ActivityRegistry activityRegistry)
@@ -137,102 +139,26 @@ public class ActivityDispatcher
         {
             try
             {
-                // Get the component list for this entity
-                var getComponentsResult = _entityService.GetComponents(fileResource);
-                if (getComponentsResult.IsFailure)
+                var annotateResult = _activityService.AnnotateEntity(fileResource);
+                if (annotateResult.IsFailure)
                 {
-                    failed = true;
-                    _logger.LogError(getComponentsResult.Error);
+                    _logger.LogError(annotateResult.Error);
                     continue;
                 }
-                var components = getComponentsResult.Value;
+                var entityAnnotation = annotateResult.Value;
 
-                if (components.Count == 0)
+                if (_activityRegistry.Activities.TryGetValue(entityAnnotation.ActivityName, out var activity))
                 {
-                    // No components to annotate, early out.
-                    continue;
+                    // Give the activity an opportunity to update the resource content.
+                    var updateResourceResult = await activity.UpdateResourceContentAsync(fileResource, entityAnnotation);
+                    if (updateResourceResult.IsFailure)
+                    {
+                        return Result<IEntityAnnotation>.Fail($"Failed to update entity resource '{fileResource}'")
+                            .WithErrors(updateResourceResult);
+                    }
                 }
 
-                // Create a new entity annotation
-                var entityAnnotation = _serviceProvider.GetRequiredService<IEntityAnnotation>();
-                entityAnnotation.Initialize(components.Count);
                 entityAnnotations[fileResource] = entityAnnotation;
-
-                bool hasValidActivity = true;
-
-                // Get the root component and check that it has a "rootActivity" attribute
-                var rootComponent = components[0];
-                var activityName = rootComponent.Schema.GetStringAttribute("rootActivity");
-                if (string.IsNullOrEmpty(activityName))
-                {
-                    hasValidActivity = false;
-
-                    // Invalid root component.
-                    var error = new ComponentError(
-                        ComponentErrorSeverity.Critical,
-                        "Invalid root component",
-                        "This component is not a valid root component for this resource type.");
-                    entityAnnotation.AddError(0, error);
-                }
-
-                // Perform some basic configuation checks for all components
-                for (int i = 0; i < components.Count; i++)
-                {
-                    // Empty components are always valid in any position.
-                    var component = components[i];
-                    if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
-                    {
-                        entityAnnotation.SetIsRecognized(i);
-                    }
-                    else if (i > 0)
-                    {
-                        var rootActivity = component.Schema.GetStringAttribute("rootActivity");
-                        if (!string.IsNullOrEmpty(rootActivity))
-                        {
-                            hasValidActivity = false;
-
-                            var error = new ComponentError(
-                                ComponentErrorSeverity.Critical,
-                                "Invalid position",
-                                "The root component must be the first component in the list.");
-                            entityAnnotation.AddError(i, error);
-                        }
-                    }
-                }
-
-                if (!hasValidActivity ||
-                    activityName == "None")
-                {
-                    // The Empty root component uses the "None" activity to indicate that no activity should be
-                    // applied to the entity.
-                    continue;
-                }
-
-                // Lookup the activity by name
-                if (!_activityRegistry.Activities.TryGetValue(activityName, out var activity))
-                {
-                    failed = true;
-                    _logger.LogError($"Invalid activity name: '{activityName}'");
-                    continue;
-                }
-
-                // Use the activity to update the entity annotation
-                var updateAnnotations = activity.UpdateEntityAnnotation(fileResource, entityAnnotation);
-                if (updateAnnotations.IsFailure)
-                {
-                    failed = true;
-                    _logger.LogError(updateAnnotations.Error);
-                    continue;
-                }
-
-                // Use the activity to update the resource
-                var updateResult = await activity.UpdateResourceAsync(fileResource);
-                if (updateResult.IsFailure)
-                {
-                    failed = true;
-                    _logger.LogError(updateResult.Error);
-                    continue;
-                }
             }
             catch (Exception ex)
             {

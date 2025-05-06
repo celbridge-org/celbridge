@@ -41,6 +41,27 @@
 
   <StackPanel Orientation="Vertical">
 
+    <StackPanel x:Name="EntityError"
+                Margin="8"
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Visibility="{x:Bind ViewModel.ShowEntityError, Mode=OneWay}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.EntityErrorTooltip, Mode=OneWay}">
+ 
+      <!-- Error icon -->
+      <FontIcon Margin="0 0 8 0"
+                VerticalAlignment="Center"
+                FontFamily="Segoe MDL2 Assets"
+                Glyph="&#xE783;"
+                FontSize="22"
+                Foreground="{ThemeResource ErrorTextColor}" />
+
+      <TextBlock VerticalAlignment="Center"
+                 Text="{x:Bind ViewModel.EntityErrorDescription, Mode=OneWay}"
+                 Foreground="{ThemeResource ErrorTextColor}"/>
+
+    </StackPanel>
+
     <Grid x:Name="RootComponentForm" />
 
     <ListView x:Name="ComponentList"

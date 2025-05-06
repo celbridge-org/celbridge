@@ -83,7 +83,7 @@ public class MarkdownActivity : IActivity
         return Result.Ok();
     }
 
-    public Result UpdateEntityAnnotation(ResourceKey entity, IEntityAnnotation entityAnnotation)
+    public Result AnnotateEntity(ResourceKey entity, IEntityAnnotation entityAnnotation)
     {
         var getComponents = _entityService.GetComponents(entity);
         if (getComponents.IsFailure)
@@ -93,7 +93,7 @@ public class MarkdownActivity : IActivity
         }
         var components = getComponents.Value;
 
-        if (components.Count != entityAnnotation.Count)
+        if (components.Count != entityAnnotation.ComponentAnnotationCount)
         {
             return Result.Fail(entity, $"Component count does not match annotation count: '{entity}'");
         }
@@ -111,7 +111,7 @@ public class MarkdownActivity : IActivity
         return Result.Ok();
     }
 
-    public async Task<Result> UpdateResourceAsync(ResourceKey fileResource)
+    public async Task<Result> UpdateResourceContentAsync(ResourceKey fileResource, IEntityAnnotation entityAnnotation)
     {
         await Task.CompletedTask;
 
