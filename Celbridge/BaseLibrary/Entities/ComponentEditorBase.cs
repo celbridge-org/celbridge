@@ -1,4 +1,6 @@
 using Celbridge.Utilities;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Celbridge.Entities;
 
@@ -66,28 +68,59 @@ public abstract class ComponentEditorBase : IComponentEditor
 
     public Result<string> GetProperty(string propertyPath)
     {
-        var getResult = TryGetProperty(propertyPath);
-        if (getResult.IsSuccess)
+        var getOverrideResult = TryGetProperty(propertyPath);
+        if (getOverrideResult.IsSuccess)
         {
-            // Derived class has intercepted this property get
-            return getResult;
+            // Derived class has intercepted this property
+            return getOverrideResult;
         }
 
-        // Get the property from the component
-        return Component.GetProperty(propertyPath);
+        // Try to get the property via the component system
+        var getComponentResult = Component.GetProperty(propertyPath);
+
+        if (getComponentResult.IsFailure)
+        {
+            // Use reflection to check if the derived ComponentEditor class exposes a matching public getter.
+            var getEditorResult = GetComponentEditorProperty(propertyPath);
+            if (getEditorResult.IsSuccess)
+            {
+                var json = getEditorResult.Value;
+                return Result<string>.Ok(json);
+            }
+        }
+
+        return getComponentResult;
     }
 
     public Result SetProperty(string propertyPath, string jsonValue, bool insert = false)
     {
-        var setResult = TrySetProperty(propertyPath, jsonValue);
-        if (setResult.IsSuccess)
+        var setOverrideResult = TrySetProperty(propertyPath, jsonValue);
+        if (setOverrideResult.IsSuccess)
         {
             // The derived class has intercepted this property get
             return Result.Ok();
         }
 
         // Set the property on the component
-        return Component.SetProperty(propertyPath, jsonValue, insert);
+        var setComponentResult = Component.SetProperty(propertyPath, jsonValue, insert);
+
+        if (setComponentResult.IsFailure)
+        {
+            // Use reflection to check if the derived ComponentEditor class exposes a matching public setter.
+            var setEditorResult = SetComponentEditorProperty(propertyPath, jsonValue);
+            if (setEditorResult.IsSuccess)
+            {
+                var changed = setEditorResult.Value;
+                if (changed)
+                {
+                    NotifyFormPropertyChanged(propertyPath);
+                }
+
+                return Result.Ok();
+            }
+        }
+
+        return setComponentResult;
     }
 
     protected virtual Result<string> TryGetProperty(string propertyPath)
@@ -144,5 +177,92 @@ public abstract class ComponentEditorBase : IComponentEditor
     {
         // Forward component property changes to the form
         NotifyFormPropertyChanged(propertyPath);
+    }
+
+    private Result<string> GetComponentEditorProperty(string propertyPath)
+    {
+        try
+        {
+            PropertyInfo? propertyInfo = GetPropertyInfo(propertyPath);
+            if (propertyInfo is null)
+            {
+                return Result<string>.Fail();
+            }
+
+            var value = propertyInfo.GetValue(this);
+            if (value is null)
+            {
+                return Result<string>.Fail();
+            }
+
+            var json = JsonSerializer.Serialize(value);
+            return Result<string>.Ok(json);
+        }
+        catch
+        {
+            return Result<string>.Fail();
+        }
+    }
+
+    private Result<bool> SetComponentEditorProperty(string propertyPath, string jsonValue)
+    {
+        try
+        {
+            PropertyInfo? propertyInfo = GetPropertyInfo(propertyPath);
+            if (propertyInfo is null)
+            {
+                return Result<bool>.Fail();
+            }
+
+            if (propertyInfo.CanRead)
+            {
+                var value = propertyInfo.GetValue(this);
+                if (value is null)
+                {
+                    return Result<bool>.Fail();
+                }
+
+                var currentValue = JsonSerializer.Serialize(value);
+                if (jsonValue == currentValue)
+                {
+                    // Value has not changed
+                    return Result<bool>.Ok(false);
+                }
+            }
+
+            // Set the new value
+
+            var deserialized = JsonSerializer.Deserialize(jsonValue, propertyInfo.PropertyType);
+            propertyInfo.SetValue(this, deserialized, null);
+
+            // Value has changed
+            return Result<bool>.Ok(true);
+        }
+        catch
+        {
+            return Result<bool>.Fail();
+        }
+    }
+
+    private PropertyInfo? GetPropertyInfo(string propertyPath)
+    {
+        if (string.IsNullOrWhiteSpace(propertyPath) || !propertyPath.StartsWith("/"))
+        {
+            return null;
+        }
+
+        // Convert propertyPath to PascalCase with no leading slash
+        var name = propertyPath.Substring(1);
+        var propertyName = char.ToUpperInvariant(name[0]) + name.Substring(1);
+
+        // Search for a matching property on this class (case sensitive)
+        var ownerType = this.GetType();
+        var properties = ownerType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var propertyInfo = properties.FirstOrDefault(prop =>
+            Attribute.IsDefined(prop, typeof(ComponentPropertyAttribute)) &&
+             string.Equals(propertyName, prop.Name, StringComparison.Ordinal)
+        );
+
+        return propertyInfo;
     }
 }
