@@ -1,7 +1,7 @@
-using System.ComponentModel;
-using System.Text.Json;
 using Celbridge.Forms;
 using Celbridge.UserInterface.Services.Forms;
+using System.ComponentModel;
+using System.Text.Json;
 
 namespace Celbridge.UserInterface.ViewModels.Forms;
 
@@ -17,7 +17,10 @@ public abstract partial class FormElement : ObservableObject
 
     private FrameworkElement? _frameworkElement;
 
+    [ObservableProperty]
+    private Visibility _visibility = Visibility.Visible;
     private PropertyBinder<string>? _visibilityBinder;
+
     private PropertyBinder<string>? _tooltipBinder;
 
     public Result<FrameworkElement> Create(JsonElement config, FormBuilder formBuilder)
@@ -108,11 +111,12 @@ public abstract partial class FormElement : ObservableObject
             if (configValue.IsBindingConfig())
             {
                 _visibilityBinder = PropertyBinder<string>.Create(frameworkElement, this)
+                    .Binding(UIElement.VisibilityProperty, BindingMode.OneWay, nameof(Visibility))
                     .Setter((value) =>
                     {
                         if (Enum.TryParse<Visibility>(value, out var visibility))
                         {
-                            frameworkElement.Visibility = visibility;
+                            Visibility = visibility;
                         }
                     });
 
@@ -290,11 +294,17 @@ public abstract partial class FormElement : ObservableObject
     }
 
     protected virtual void OnElementUnloaded()
-    {}
+    {
+        _visibilityBinder?.OnElementUnloaded();
+    }
 
     protected virtual void OnFormDataChanged(string propertyPath)
-    {}
+    {
+        _visibilityBinder?.OnFormDataChanged(propertyPath);
+    }
 
     protected virtual void OnMemberDataChanged(string propertyName)
-    {}
+    {
+        _visibilityBinder?.OnMemberDataChanged(propertyName);
+    }
 }

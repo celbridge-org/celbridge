@@ -39,10 +39,10 @@ public partial class ComponentListViewModel : InspectorViewModel
     private bool _showEntityError;
 
     [ObservableProperty]
-    private string _entityErrorDescription;
+    private string _entityErrorDescription = string.Empty;
 
     [ObservableProperty]
-    private string _entityErrorTooltip;
+    private string _entityErrorTooltip = string.Empty;
 
     // Code gen requires a parameterless constructor
     public ComponentListViewModel()

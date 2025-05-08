@@ -2,6 +2,7 @@ using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
@@ -19,18 +20,18 @@ public class ScreenplaySaver
     private const string PlayerVariantColor = "e3e3e3";
     private const string SceneNoteColor = "a8e6a3";
 
-    private readonly ILogger<ScreenplaySaver> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IExplorerService _explorerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
 
     public ScreenplaySaver(
-        ILogger<ScreenplaySaver> logger,
+        IMessengerService messengerService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
     }
@@ -65,38 +66,48 @@ public class ScreenplaySaver
             var collectSceneDataResult = CollectSceneData(entityService, sceneFiles);
             if (collectSceneDataResult.IsFailure)
             {
-                return Result.Fail("Failed to collect dialogue data")
+                return Result.Fail("Failed to collect scene data")
                     .WithErrors(collectSceneDataResult);
             }
             var sceneDataList = collectSceneDataResult.Value;
 
-            bool succeeded = true;
-            var errorMessage = string.Empty;
+            bool allSucceeded = true;
+
             var activityService = _workspaceWrapper.WorkspaceService.ActivityService;
             foreach (var sceneData in sceneDataList)
             {
+                bool annotateSucceeded = true;
                 var sceneResource = sceneData.SceneResource;
-                var annotateResult = activityService.AnnotateEntity(sceneResource);
-                if (annotateResult.IsFailure)
-                {
-                    // Todo: Log the error?
-                    succeeded = false;
-                    break;
-                }
-                var annotation = annotateResult.Value;
 
-                if (annotation.TryGetError(out var entityError) &&
-                    entityError!.Severity >= AnnotationErrorSeverity.Error)
+                var annotateResult = activityService.AnnotateEntity(sceneResource);
+                if (annotateResult.IsSuccess)
                 {
-                    _logger.LogError($"Failed to save screenplay. Please fix errors in '{sceneResource}' and try again.");
-                    succeeded = false;
-                    break;
+                    var annotation = annotateResult.Value;
+
+                    if (annotation.TryGetError(out var entityError) &&
+                        entityError!.Severity >= AnnotationErrorSeverity.Error)
+                    {
+                        annotateSucceeded = false;
+                    }
+                }
+                else
+                {
+                    annotateSucceeded = false;
+                }
+
+                if (!annotateSucceeded)
+                {
+                    allSucceeded = false;
+
+                    // Broadcast a message to notify the user about the error via the inspector panel for the ScreenplayData component.
+                    var message = new SaveScreenplayErrorMessage(sceneResource);
+                    _messengerService.Send(message);
                 }
             }
 
-            if (!succeeded)
+            if (!allSucceeded)
             {
-                return Result.Fail($"Failed to annotate resource");
+                return Result.Fail($"Failed to annotate scene resources");
             }
 
             var saveWorksheetResult = SaveDialogueWorksheet(workbookPath, sceneDataList);

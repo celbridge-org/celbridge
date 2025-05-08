@@ -58,6 +58,9 @@ public partial class TextBlockElement : FormElement
         // Apply element-specific config properties
         //
 
+        // Todo: Set this via a config property
+        textBlock.TextWrapping = TextWrapping.Wrap;
+
         var italicResult = ApplyItalicConfig(config, textBlock);
         if (italicResult.IsFailure)
         {
