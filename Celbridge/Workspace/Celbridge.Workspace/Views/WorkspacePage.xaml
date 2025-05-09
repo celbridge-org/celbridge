@@ -159,15 +159,24 @@
         </Button.KeyboardAccelerators>
       </Button>
 
-      <Button x:Name="ShowToolsPanelButton"
-            Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"             
+      <!-- Render a solid rectangle behind the button to avoid overlapping visually -->
+      <Grid x:Name="ShowToolsPanelButton"
+            Background="{ThemeResource PanelBackgroundBBrush}"
             HorizontalAlignment="Right"
             VerticalAlignment="Center"
-            Margin="0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE70E;"/>
-      </Button>
-     
+            Width="44"
+            Height="32"
+            Margin="0"
+            Canvas.ZIndex="10">
+        <Button Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Margin="0">
+          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    Glyph="&#xE70E;"/>
+        </Button>
+      </Grid>
+
     </Grid>
 
     <!-- Grid splitters -->
