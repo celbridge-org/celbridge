@@ -20,11 +20,20 @@
                  Text="{x:Bind ViewModel.ComponentType, Mode=OneWay}"/>
     </Grid>
 
-    <Grid Grid.Row="1">
+    <StackPanel Grid.Row="1"
+                Orientation="Vertical">
+
+      <InfoBar IsOpen ="{x:Bind ViewModel.ShowComponentError, Mode=OneWay}"
+               IsIconVisible="True"
+               IsClosable="False"
+               Severity="Error"
+               Title="{x:Bind ViewModel.ComponentErrorTitle, Mode=OneWay}"
+               Message="{x:Bind ViewModel.ComponentErrorMessage, Mode=OneWay}" />
+
       <StackPanel x:Name="FormPanel"
                   Margin="6"
                   Spacing="8"/>
-    </Grid>
+    </StackPanel>
   </Grid>
 
 </UserControl>

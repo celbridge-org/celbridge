@@ -16,6 +16,15 @@ public partial class ComponentValueEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _componentType = string.Empty;
 
+    [ObservableProperty]
+    private bool _showComponentError;
+
+    [ObservableProperty]
+    private string _componentErrorTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _componentErrorMessage = string.Empty;
+
     private bool _pendingRefresh;
 
     public event Action<List<UIElement>>? OnFormCreated;
@@ -32,6 +41,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         messengerService.Register<InspectedComponentChangedMessage>(this, OnInspectedComponentChangedMessage);
         messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
         messengerService.Register<UpdateInspectorMessage>(this, OnUpdateInspectorMessage);
+        messengerService.Register<AnnotatedEntityMessage>(this, OnAnnotatedEntityMessage);
     }
 
     private void OnInspectedComponentChangedMessage(object recipient, InspectedComponentChangedMessage message)
@@ -64,14 +74,26 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         }
     }
 
+    private void OnAnnotatedEntityMessage(object recipient, AnnotatedEntityMessage message)
+    {
+        if (message.Resource == _inspectorService.InspectedResource)
+        {
+            UpdateComponentError();
+        }
+    }
+
     private void ClearPropertyList()
     {
+        UpdateComponentError();
+
         ComponentType = string.Empty;
         OnFormCreated?.Invoke(new List<UIElement>());
     }
 
     private void PopulatePropertyList()
     {
+        UpdateComponentError();
+
         var componentKey = new ComponentKey(
             _inspectorService.InspectedResource, 
             _inspectorService.InspectedComponentIndex);
@@ -139,5 +161,46 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             };
             OnFormCreated?.Invoke(uiElements);
         }    
+    }
+
+    private void UpdateComponentError()
+    {
+        var componentKey = new ComponentKey(
+            _inspectorService.InspectedResource,
+            _inspectorService.InspectedComponentIndex);
+
+        var showComponentError = false;
+        var componentErrorTitle = string.Empty;
+        var componentErrorMessage = string.Empty;
+
+        // Setting the inspected item to an invalid resource or invalid component index
+        // is expected behaviour that indicates no component is currently being inspected.
+        if (!componentKey.Resource.IsEmpty &&
+            componentKey.ComponentIndex >= 0)
+        {
+            var getAnnotationResult = _inspectorService.GetCachedEntityAnnotation(componentKey.Resource);
+            if (getAnnotationResult.IsSuccess)
+            {
+                var entityAnnotation = getAnnotationResult.Value;
+
+                if (entityAnnotation.ComponentAnnotationCount >= componentKey.ComponentIndex)
+                {
+                    var componentAnnotation = entityAnnotation.GetComponentAnnotation(componentKey.ComponentIndex);
+
+                    if (componentAnnotation.ComponentErrors.Count > 0)
+                    {
+                        var componentError = componentAnnotation.ComponentErrors[0];
+
+                        showComponentError = true;
+                        componentErrorTitle = componentError.Message;
+                        componentErrorMessage = componentError.Description;
+                    }
+                }
+            }
+        }
+
+        ShowComponentError = showComponentError;
+        ComponentErrorTitle = componentErrorTitle;
+        ComponentErrorMessage = componentErrorMessage;
     }
 }
