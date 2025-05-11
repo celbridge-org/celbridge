@@ -189,6 +189,8 @@ public class ScreenplayActivity : IActivity
         componentIndices.Sort();
 
         var playerLineId = string.Empty;
+        var playerSpeakingTo = string.Empty;
+
         foreach (var i in componentIndices)
         {
             var component = lineComponents[i];
@@ -245,6 +247,8 @@ public class ScreenplayActivity : IActivity
                 continue;
             }
 
+            var speakingTo = component.GetString("/speakingTo");
+
             var lineId = segments[2];
 
             bool isPlayerVariantLine = false;
@@ -254,6 +258,7 @@ public class ScreenplayActivity : IActivity
             {
                 // Start of a new player line group
                 playerLineId = lineId;
+                playerSpeakingTo = speakingTo;
             }
             else if (character.Tag.StartsWith("Character.Player."))
             {
@@ -270,12 +275,22 @@ public class ScreenplayActivity : IActivity
                     // Flag this as a player variant line
                     isPlayerVariantLine = true;
                     correctLineId = playerLineId; // Variant lines must have the same line id as the player line
+
+                    // Speaking To property must match the player line
+                    if (speakingTo != playerSpeakingTo)
+                    {
+                        entityAnnotation.AddComponentError(i, new AnnotationError(
+                            AnnotationErrorSeverity.Error,
+                            "Invalid player variant line",
+                            "Player variant line 'Speaking To' value must exactly match the player line 'Speaking To' value"));
+                    }
                 }
             }
             else
             {
                 // This is an NPC line, so stop tracking the player line group
                 playerLineId = string.Empty;
+                playerSpeakingTo = string.Empty;
             }
              
             // Ensure that a valid dialogue key is always assigned.
