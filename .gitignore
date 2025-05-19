@@ -404,3 +404,4 @@ solution-config.props
 /CelbridgeEditor/CelbridgeWebUtils/Properties/PublishProfiles/CelbridgeContent.pubxml
 
 .idea/
+/Celbridge/Build
