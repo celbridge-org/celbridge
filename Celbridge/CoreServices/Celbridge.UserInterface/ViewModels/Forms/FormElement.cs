@@ -15,11 +15,9 @@ public abstract partial class FormElement : ObservableObject
 
     public bool RequiresChangeNotifications { get; set; }
 
-    private FrameworkElement? _frameworkElement;
-
     [ObservableProperty]
     private Visibility _visibility = Visibility.Visible;
-    private PropertyBinder<string>? _visibilityBinder;
+    private PropertyBinder<Visibility>? _visibilityBinder;
 
     private PropertyBinder<string>? _tooltipBinder;
 
@@ -35,8 +33,6 @@ public abstract partial class FormElement : ObservableObject
                 .WithErrors(createUIResult);
         }
         var uiElement = createUIResult.Value;
-
-        _frameworkElement = uiElement;
 
         if (RequiresChangeNotifications)
         {
@@ -110,14 +106,11 @@ public abstract partial class FormElement : ObservableObject
         {
             if (configValue.IsBindingConfig())
             {
-                _visibilityBinder = PropertyBinder<string>.Create(frameworkElement, this)
+                _visibilityBinder = PropertyBinder<Visibility>.Create(frameworkElement, this)
                     .Binding(UIElement.VisibilityProperty, BindingMode.OneWay, nameof(Visibility))
                     .Setter((value) =>
                     {
-                        if (Enum.TryParse<Visibility>(value, out var visibility))
-                        {
-                            Visibility = visibility;
-                        }
+                        Visibility = value;
                     });
 
                 return _visibilityBinder.Initialize(configValue);
@@ -266,17 +259,6 @@ public abstract partial class FormElement : ObservableObject
         _formDataProvider = null;
     }
 
-    private void OnFormPropertyChanged(string propertyPath)
-    {
-        Guard.IsNotNullOrEmpty(propertyPath);
-
-        // Tooltip binder only needs to respond to form property changes
-        _tooltipBinder?.OnFormDataChanged(propertyPath);
-
-        // Forward the event to the derived class
-        OnFormDataChanged(propertyPath);
-    }
-
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         Guard.IsNotNullOrEmpty(e.PropertyName);
@@ -296,6 +278,19 @@ public abstract partial class FormElement : ObservableObject
     protected virtual void OnElementUnloaded()
     {
         _visibilityBinder?.OnElementUnloaded();
+    }
+
+    private void OnFormPropertyChanged(string propertyPath)
+    {
+        Guard.IsNotNullOrEmpty(propertyPath);
+
+        _visibilityBinder?.OnFormDataChanged(propertyPath);
+
+        // Tooltip binder only needs to respond to form property changes
+        _tooltipBinder?.OnFormDataChanged(propertyPath);
+
+        // Forward the event to the derived class
+        OnFormDataChanged(propertyPath);
     }
 
     protected virtual void OnFormDataChanged(string propertyPath)

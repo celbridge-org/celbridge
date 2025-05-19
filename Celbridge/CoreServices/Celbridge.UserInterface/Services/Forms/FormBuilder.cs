@@ -179,6 +179,18 @@ public class FormBuilder
                     uiElement = comboBoxResult.Value;
                 }
                 break;
+
+            case "InfoBar":
+                var infoBarResult = InfoBarElement.CreateInfoBar(config, this);
+                if (infoBarResult.IsFailure)
+                {
+                    _buildErrors.Add(infoBarResult.Error);
+                }
+                else
+                {
+                    uiElement = infoBarResult.Value;
+                }
+                break;
         }
 
         if (uiElement is null)
