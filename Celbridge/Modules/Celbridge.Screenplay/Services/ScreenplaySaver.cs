@@ -1,7 +1,6 @@
 using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
@@ -71,7 +70,7 @@ public class ScreenplaySaver
             }
             var sceneDataList = collectSceneDataResult.Value;
 
-            bool allSucceeded = true;
+            var errorScene = ResourceKey.Empty;
 
             var activityService = _workspaceWrapper.WorkspaceService.ActivityService;
             foreach (var sceneData in sceneDataList)
@@ -97,20 +96,32 @@ public class ScreenplaySaver
 
                 if (!annotateSucceeded)
                 {
-                    allSucceeded = false;
-
-                    // Broadcast a message to notify the user about the error via the inspector panel for the ScreenplayData component.
-                    var message = new SaveScreenplayErrorMessage(sceneResource);
-                    _messengerService.Send(message);
+                    errorScene = sceneResource;
+                    break;
                 }
             }
 
-            if (!allSucceeded)
+            if (!errorScene.IsEmpty)
             {
-                return Result.Fail($"Failed to annotate scene resources");
+                // Broadcast a message to notify the user about the save error.
+                var message = new SaveScreenplayFailedMessage(errorScene);
+                _messengerService.Send(message);
+
+                // The save operation is considered to have succeeded if a scene error was detected and handled correctly.
+                return Result.Ok();
             }
 
             var saveWorksheetResult = SaveDialogueWorksheet(workbookPath, sceneDataList);
+
+            if (saveWorksheetResult.IsSuccess)
+            {
+                // Broadcast a message to notify the user about the successful save.
+                var message = new SaveScreenplaySucceededMessage();
+                _messengerService.Send(message);
+            }
+
+            // Todo: Handle errors in the save operation (e.g. permissions)
+
             return saveWorksheetResult;
         }
         catch (Exception ex)
