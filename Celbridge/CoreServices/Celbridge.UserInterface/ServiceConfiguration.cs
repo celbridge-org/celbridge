@@ -50,6 +50,7 @@ public static class ServiceConfiguration
         services.AddTransient<TextBlockElement>();
         services.AddTransient<ButtonElement>();
         services.AddTransient<ComboBoxElement>();
+        services.AddTransient<InfoBarElement>();
     }
 
     public static void Initialize()

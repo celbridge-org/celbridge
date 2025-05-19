@@ -11,7 +11,13 @@ public partial class ButtonElement : FormElement
         return formElement.Create(config, formBuilder);
     }
 
+    [ObservableProperty]
+    private bool _isEnabled = true;
     private PropertyBinder<bool>? _isEnabledBinder;
+
+    [ObservableProperty]
+    private string _buttonText = string.Empty;
+    private PropertyBinder<string>? _buttonTextBinder;
 
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
     {
@@ -98,9 +104,10 @@ public partial class ButtonElement : FormElement
             if (configValue.IsBindingConfig())
             {
                 _isEnabledBinder = PropertyBinder<bool>.Create(button, this)
+                    .Binding(Button.IsEnabledProperty, BindingMode.OneWay, nameof(IsEnabled))
                     .Setter((value) =>
                     {
-                        button.IsEnabled = value;
+                        IsEnabled = value;
                     });
 
                 return _isEnabledBinder.Initialize(configValue);
@@ -169,21 +176,41 @@ public partial class ButtonElement : FormElement
                 return Result<bool>.Fail("'text' property must be a string");
             }
 
-            // Apply the property
-            var buttonText = textProperty.GetString();
-
-            if (!string.IsNullOrEmpty(buttonText))
+            var textBlock = new TextBlock();
+            if (buttonPanel.Children.Count > 0)
             {
-                var textBlock = new TextBlock()
-                    .Text(buttonText);
+                // Add a gap between the icon and the text
+                textBlock.Margin = new Thickness(8, 0, 0, 0);
+            }
 
-                if (buttonPanel.Children.Count > 0)
+            if (textProperty.IsBindingConfig())
+            {
+                _buttonTextBinder = PropertyBinder<string>.Create(textBlock, this)
+                    .Binding(TextBlock.TextProperty, BindingMode.OneWay, nameof(ButtonText))
+                    .Setter((value) =>
+                    {
+                        ButtonText = value;
+                    });
+
+                var initResult = _buttonTextBinder.Initialize(textProperty);
+                if (initResult.IsFailure)
                 {
-                    // Add a gap between the icon and the text
-                    textBlock.Margin = new Thickness(8, 0, 0, 0);
+                    return Result.Fail("Failed to initialize button text binding")
+                        .WithErrors(initResult);
                 }
 
                 buttonPanel.Children.Add(textBlock);
+            }
+            else
+            {
+                // Apply the property
+                var buttonText = textProperty.GetString();
+
+                if (!string.IsNullOrEmpty(buttonText))
+                {
+                    textBlock.Text = buttonText;
+                    buttonPanel.Children.Add(textBlock);
+                }
             }
         }
 
@@ -221,14 +248,19 @@ public partial class ButtonElement : FormElement
     protected override void OnFormDataChanged(string propertyPath)
     {
         _isEnabledBinder?.OnFormDataChanged(propertyPath);
+        _buttonTextBinder?.OnFormDataChanged(propertyPath);
     }
 
     protected override void OnMemberDataChanged(string propertyName)
-    {}
+    {
+        _isEnabledBinder?.OnMemberDataChanged(propertyName);
+        _buttonTextBinder?.OnMemberDataChanged(propertyName);
+    }
 
     protected override void OnElementUnloaded()
     {
         _isEnabledBinder?.OnElementUnloaded();
+        _buttonTextBinder?.OnElementUnloaded();
     }
 
     private void OnButtonClicked(string buttonId)
