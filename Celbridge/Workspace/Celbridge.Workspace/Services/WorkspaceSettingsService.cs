@@ -8,10 +8,15 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
-    public WorkspaceSettingsService(IWorkspaceWrapper workspaceWrapper)
+    public WorkspaceSettingsService()
     {
-        // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        // Workaround so that this check is not performed when running tests
+        if (ServiceLocator.ServiceProvider is not null)
+        {
+            var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+            // Only the workspace service is allowed to instantiate this service
+            Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        }
     }
 
     public async Task<Result> AcquireWorkspaceSettingsAsync()
