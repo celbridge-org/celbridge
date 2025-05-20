@@ -439,18 +439,18 @@ public class ScreenplayLoader
         {
             var namespace_key = scene.Namespace;
 
-            // Check that each scene has at least one line
-            if (!namespace_lines.TryGetValue(namespace_key, out var dialogue_lines))
-            {
-                return Result.Fail($"Scene '{namespace_key}' has no dialogue lines");
-            }
-
+            // The scene should not contain any lines yet
             if (scene.Lines.Count > 0)
             {
                 return Result.Fail($"Scene '{namespace_key}' already has dialogue lines");
             }
 
-            scene.Lines.AddRange(dialogue_lines);
+            // Add any lines that were found to the scene.
+            // If there are no lines then this is probably a newly added Dialogue Asset.
+            if (namespace_lines.TryGetValue(namespace_key, out var dialogue_lines))
+            {
+                scene.Lines.AddRange(dialogue_lines);
+            }
         }
 
         return Result.Ok();
@@ -472,11 +472,6 @@ public class ScreenplayLoader
         // Save a .scene file for each namespace
         foreach (var scene in scenes)
         {
-            if (scene.Lines.Count == 0)
-            {
-                continue;
-            }
-
             var category = scene.Category;
             if (category == "Bark")
             {
@@ -563,6 +558,7 @@ public class ScreenplayLoader
             components.Add(sceneComponent);
 
             // Add line components
+            // The line list may be empty if this is a newly created scene.
             foreach (var line in lineList)
             {
                 if (line.CharacterId == "SceneNote")
