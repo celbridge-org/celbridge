@@ -12,11 +12,15 @@ public partial class TextBoxElement : FormElement
         return formElement.Create(config, formBuilder);
     }
 
+    [ObservableProperty]
+    private bool _isEnabled = true;
     private PropertyBinder<bool>? _isEnabledBinder;
 
     [ObservableProperty]
     private string _text = string.Empty;
     private PropertyBinder<string>? _textBinder;
+
+    private bool _autoTrim = true;
 
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
     {
@@ -54,7 +58,8 @@ public partial class TextBoxElement : FormElement
             "header",
             "placeholder",
             "checkSpelling",
-            "isReadOnly"
+            "isReadOnly",
+            "autoTrim"
         });
 
         if (validateResult.IsFailure)
@@ -123,6 +128,13 @@ public partial class TextBoxElement : FormElement
                 .WithErrors(readOnlyResult);
         }
 
+        var autoTrimResult = ApplyAutoTrimConfig(config, textBox);
+        if (autoTrimResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'autoTrim' config property")
+                .WithErrors(autoTrimResult);
+        }
+
         return Result<FrameworkElement>.Ok(textBox);
     }
 
@@ -133,9 +145,10 @@ public partial class TextBoxElement : FormElement
             if (configValue.IsBindingConfig())
             {
                 _isEnabledBinder = PropertyBinder<bool>.Create(textBox, this)
+                    .Binding(TextBox.IsEnabledProperty, BindingMode.OneWay, nameof(IsEnabled))
                     .Setter((value) =>
                     {
-                        textBox.IsEnabled = value;
+                        IsEnabled = value;
                     });
 
                 return _isEnabledBinder.Initialize(configValue);
@@ -231,7 +244,8 @@ public partial class TextBoxElement : FormElement
                 .Binding(TextBox.TextProperty, BindingMode.TwoWay, nameof(Text))
                 .Setter((value) =>
                 {
-                    Text = value;
+                    // If auto trim is enabled then trim the text before setting the property
+                    Text = _autoTrim ? value.Trim() : value;
                 })
                 .Getter(() =>
                 {
@@ -262,12 +276,44 @@ public partial class TextBoxElement : FormElement
 
             // Apply the property
             var isReadOnly = isReadOnlyValue.GetBoolean();
-            if (isReadOnlyValue.GetBoolean())
+            if (isReadOnly)
             {
                 // Text can be selected but not edited
                 textBox.IsReadOnly = true;
                 textBox.Opacity = 0.6;
             }
+        }
+
+        return Result.Ok();
+    }
+
+    private Result ApplyAutoTrimConfig(JsonElement config, TextBox textBox)
+    {
+        if (config.TryGetProperty("autoTrim", out var autoTrimValue))
+        {
+            // Check the type
+            if (autoTrimValue.ValueKind != JsonValueKind.True &&
+                autoTrimValue.ValueKind != JsonValueKind.False)
+            {
+                return Result.Fail("'autoTrim' property must be a boolean");
+            }
+
+            // Apply the property
+            var autoTrim = autoTrimValue.GetBoolean();
+            if (!autoTrim)
+            {
+                // Auto trim is on by default
+                _autoTrim = false;
+            }
+        }
+
+        if (_autoTrim)
+        {
+            textBox.LostFocus += (s, e) =>
+            {
+                // If auto trim is enabled then trim the text displayed in the TextBox
+                textBox.Text = textBox.Text.Trim();
+            };
         }
 
         return Result.Ok();
