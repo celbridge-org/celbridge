@@ -18,6 +18,7 @@ public static class ServiceConfiguration
         services.AddTransient<EntityRegistry>();
         services.AddTransient<IEntityAnnotation, EntityAnnotation>();
         services.AddTransient<IComponentEditorHelper, ComponentEditorHelper>();
+        services.AddTransient<IComponentSchemaReaderFactory, ComponentSchemaReaderFactory>();
 
         //
         // Register commands

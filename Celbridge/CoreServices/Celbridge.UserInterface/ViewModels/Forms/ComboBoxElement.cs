@@ -173,9 +173,8 @@ public partial class ComboBoxElement : FormElement
                 if (configValue.IsBindingConfig())
                 {
                     _valuesBinder = PropertyBinder<List<string>>.Create(comboBox, this)
-                        .Binding(ComboBox.ItemsSourceProperty,
-                            BindingMode.OneWay,
-                            nameof(Values))
+                        .Binding(ComboBox.ItemsSourceProperty, BindingMode.TwoWay, nameof(Values))
+                        .Getter(() => Values )
                         .Setter((value) =>
                         {
                             Values = value;
@@ -214,26 +213,16 @@ public partial class ComboBoxElement : FormElement
             }
             var component = componentEditor.Component;
 
-            // Acquire the property and check if it specifies enum values.
             var propertyPath = configValue.ToString();
-            var property = component.Schema.Properties.First((p) => propertyPath == $"/{p.PropertyName}");
-            if (property is null)
-            {
-                return Result.Fail($"Failed to acquire component property '{property}'");
-            }
 
-            if (property.Attributes.TryGetValue("enum", out var enumJson))
+            // Attempt to get enum values for the bound property.
+            var getEnumResult = component.SchemaReader.GetObjectAttribute<List<string>>("enum", propertyPath);
+            if (getEnumResult.IsSuccess)
             {
-                // The property specifies an enum attribute, so use the enum values as the ItemSource.
-                var enumValues = JsonSerializer.Deserialize<List<string>>(enumJson);
-                if (enumValues is null)
-                {
-                    return Result.Fail($"Failed to deserialize enum json");
-                }
-
+                var enumValues = getEnumResult.Value;
                 if (enumValues.Count != enumValues.Distinct().Count())
                 {
-                    return Result.Fail($"'selectedValues' property contains duplicate values");
+                    return Result.Fail($"'selectedValue' property contains duplicate enum values");
                 }
 
                 comboBox.ItemsSource = enumValues;
@@ -277,16 +266,19 @@ public partial class ComboBoxElement : FormElement
     {
         _isEnabledBinder?.OnFormDataChanged(propertyPath);
         _selectedValueBinder?.OnFormDataChanged(propertyPath);
+        _valuesBinder?.OnFormDataChanged(propertyPath);
     }
 
     protected override void OnMemberDataChanged(string propertyName)
     {
         _selectedValueBinder?.OnMemberDataChanged(propertyName);
+        _valuesBinder?.OnMemberDataChanged(propertyName);
     }
 
     protected override void OnElementUnloaded()
     {
         _isEnabledBinder?.OnElementUnloaded();
         _selectedValueBinder?.OnElementUnloaded();
+        _valuesBinder?.OnElementUnloaded();
     }
 }

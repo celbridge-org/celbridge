@@ -114,7 +114,7 @@ public partial class TextEditorDocumentViewModel : ObservableObject
             {
                 var editor = getEditorResult.Value;
 
-                var isPreviewController = editor.Component.Schema.GetBooleanAttribute("isPreviewController");
+                var isPreviewController = editor.Component.SchemaReader.GetBooleanAttribute("isPreviewController");
                 if (isPreviewController)
                 {
                     var getPropertyResult = editor.GetProperty(DocumentConstants.EditorModeProperty);

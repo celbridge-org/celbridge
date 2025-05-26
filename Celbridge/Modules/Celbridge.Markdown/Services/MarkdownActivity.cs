@@ -103,7 +103,7 @@ public class MarkdownActivity : IActivity
         //
 
         var rootComponent = components[0];
-        if (rootComponent.Schema.ComponentType == MarkdownEditor.ComponentType)
+        if (rootComponent.IsComponentType(MarkdownEditor.ComponentType))
         {
             entityAnnotation.SetIsRecognized(0);
         }

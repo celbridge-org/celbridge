@@ -90,7 +90,7 @@ public class InspectorService : IInspectorService, IDisposable
         Guard.IsNotNull(componentEditor.Component);
 
         // Get the form config from the component editor
-        var formName = componentEditor.Component.Schema.ComponentType;
+        var formName = componentEditor.Component.SchemaReader.Schema.ComponentType;
         var formConfig = componentEditor.GetComponentForm();
 
         // Create the form, using the component type as the form name for error reporting.

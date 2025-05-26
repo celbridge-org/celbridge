@@ -78,7 +78,7 @@ public class HTMLActivity : IActivity
         //
 
         var sceneComponent = components[0];
-        if (sceneComponent.Schema.ComponentType == HTMLEditor.ComponentType)
+        if (sceneComponent.IsComponentType(HTMLEditor.ComponentType))
         {
             entityAnnotation.SetIsRecognized(0);
         }

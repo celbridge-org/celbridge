@@ -164,7 +164,7 @@ public class ComponentProxyService
         }
 
         // Return only the components of the specified type
-        var filtered = components.Where(c => c.Schema.ComponentType == componentType).ToList();
+        var filtered = components.Where(c => c.IsComponentType(componentType)).ToList();
         return Result<IReadOnlyList<IComponentProxy>>.Ok(filtered);
     }
 }

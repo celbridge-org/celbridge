@@ -86,7 +86,7 @@ public class ScreenplayLoader
 
             // Load the dialogue lines from the "Dialogue" worksheet
             var dialogueWorksheet = workbook.Worksheet("Dialogue");
-            var loadLinesResult = LoadLines(dialogueWorksheet);
+            var loadLinesResult = LoadLines(dialogueWorksheet, characters);
             if (loadLinesResult.IsFailure)
             {
                 return Result.Fail($"Failed to load dialogue lines from 'Dialogue' worksheet")
@@ -268,7 +268,7 @@ public class ScreenplayLoader
         return Result<List<Scene>>.Ok(scenes);
     }
 
-    private Result<List<DialogueLine>> LoadLines(IXLWorksheet linesSheet)
+    private Result<List<DialogueLine>> LoadLines(IXLWorksheet linesSheet, List<Character> characters)
     {
         var lines = new List<DialogueLine>();
 
@@ -316,10 +316,24 @@ public class ScreenplayLoader
         {
             try
             {
+                var characterId = TryGetValue<string>(row, columnMap, nameof(DialogueLine.CharacterId));
+
+                // Determine the line type
+                var lineTypeResult = GetLineType(characterId, characters);
+                if (lineTypeResult.IsFailure)
+                {
+                    return Result<List<DialogueLine>>.Fail($"Failed to determine line type at row '{row}'")
+                        .WithErrors(lineTypeResult);
+                }
+                var lineType = lineTypeResult.Value;
+
+                var category = TryGetValue<string> (row, columnMap, nameof(DialogueLine.Category));
+
                 var line = new DialogueLine
                 (
+                    LineType: lineType,
                     DialogueKey: TryGetValue<string>(row, columnMap, nameof(DialogueLine.DialogueKey)),
-                    Category: TryGetValue<string>(row, columnMap, nameof(DialogueLine.Category)),
+                    Category: category,
                     Namespace: TryGetValue<string>(row, columnMap, nameof(DialogueLine.Namespace)),
                     CharacterId: TryGetValue<string>(row, columnMap, nameof(DialogueLine.CharacterId)),
                     SpeakingTo: TryGetValue<string>(row, columnMap, nameof(DialogueLine.SpeakingTo)),
@@ -344,6 +358,37 @@ public class ScreenplayLoader
         }
 
         return Result<List<DialogueLine>>.Ok(lines);
+    }
+
+    private static Result<string> GetLineType(string characterId, List<Character> characters)
+    {
+        if (characterId == "SceneNote")
+        {
+            return Result<string>.Ok("SceneNote");
+        }
+        else if (characterId == "Player")
+        {
+            return Result<string>.Ok("Player");
+        }
+        else
+        {
+            foreach (var character in characters)
+            {
+                if (character.CharacterId == characterId)
+                {
+                    if (character.Tag.StartsWith("Character.Player."))
+                    {
+                        return Result<string>.Ok("PlayerVariant");
+                    }
+                    else
+                    {
+                        return Result<string>.Ok("NPC");
+                    }
+                }
+            }
+        }
+        
+        return Result<string>.Fail("Invalid line type");
     }
 
     private Result ValidateDialogue(List<Scene> scenes, List<Character> characters, List<DialogueLine> lines)
@@ -563,16 +608,29 @@ public class ScreenplayLoader
             {
                 if (line.CharacterId == "SceneNote")
                 {
-                    var emptyComponent = new JsonObject();
-                    emptyComponent["_type"] = ".Empty#1";
-                    emptyComponent["comment"] = line.SourceText;
+                    var lineComponent = new JsonObject();
+                    lineComponent["_type"] = "Screenplay.Line#1";
+                    lineComponent["lineType"] = line.LineType;
+                    lineComponent["dialogueKey"] = line.DialogueKey;
+                    lineComponent["characterId"] = line.CharacterId;
+                    lineComponent["speakingTo"] = string.Empty;
+                    lineComponent["sourceText"] = line.SourceText;
+                    lineComponent["contextNotes"] = string.Empty;
+                    lineComponent["direction"] = string.Empty;
+                    lineComponent["gameArea"] = string.Empty;
+                    lineComponent["timeConstraint"] = string.Empty;
+                    lineComponent["soundProcessing"] = string.Empty;
+                    lineComponent["platform"] = string.Empty;
+                    lineComponent["linePriority"] = string.Empty;
+                    lineComponent["productionStatus"] = string.Empty;
 
-                    components.Add(emptyComponent);
+                    components.Add(lineComponent);
                 }
                 else
                 {
                     var lineComponent = new JsonObject();
                     lineComponent["_type"] = "Screenplay.Line#1";
+                    lineComponent["lineType"] = line.LineType;
                     lineComponent["dialogueKey"] = line.DialogueKey;
                     lineComponent["characterId"] = line.CharacterId;
                     lineComponent["speakingTo"] = line.SpeakingTo;

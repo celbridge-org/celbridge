@@ -9,6 +9,10 @@
       "type": "string",
       "const": "Screenplay.Line#1"
     },
+    "lineType": {
+      "type": "string",
+      "enum": [ "Player", "PlayerVariant", "NPC", "SceneNote" ]
+    },
     "dialogueKey": {
       "type": "string"
     },
@@ -49,6 +53,7 @@
 
   "required": [
     "_type",
+    "lineType",
     "dialogueKey",
     "characterId",
     "sourceText",
@@ -64,17 +69,18 @@
   ],
 
   "prototype": {
+    "lineType": "Player",
     "dialogueKey": "",
-    "characterId": "",
+    "characterId": "Player",
     "sourceText": "",
     "contextNotes": "",
-    "linePriority": "",
+    "linePriority": "Default",
     "speakingTo": "",
     "gameArea": "",
     "timeConstraint": "",
     "direction": "",
     "platform": "",
     "soundProcessing": "",
-    "productionStatus": ""
+    "productionStatus": "Placeholder"
   }
 }

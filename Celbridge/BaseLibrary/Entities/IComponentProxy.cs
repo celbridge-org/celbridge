@@ -25,9 +25,14 @@ public interface IComponentProxy
     ComponentKey Key { get; }
 
     /// <summary>
-    /// Returns the schema of the component.
+    /// Returns a reader utility for querying the component schema.
     /// </summary>
-    ComponentSchema Schema { get; }
+    IComponentSchemaReader SchemaReader { get; }
+
+    /// <summary>
+    /// Returns true if the component is of the specified component type.
+    /// </summary>
+    bool IsComponentType(string componentType);
 
     /// <summary>
     /// Raised when a component property changes.
