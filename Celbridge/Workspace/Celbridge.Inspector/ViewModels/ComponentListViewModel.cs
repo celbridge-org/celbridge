@@ -429,7 +429,7 @@ public partial class ComponentListViewModel : InspectorViewModel
                         var formConfig = editor.GetComponentRootForm();
                         if (!string.IsNullOrEmpty(formConfig))
                         {
-                            var formName = editor.Component.Schema.ComponentType;
+                            var formName = editor.Component.SchemaReader.Schema.ComponentType;
                             var createResult = _formService.CreateForm(formName, formConfig, editor);
                             if (createResult.IsSuccess)
                             {

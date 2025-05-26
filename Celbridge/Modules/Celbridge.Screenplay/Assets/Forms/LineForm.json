@@ -1,5 +1,10 @@
 [
   {
+    "element": "ComboBox",
+    "header": "Line Type",
+    "selectedValue": "/lineType"
+  },
+  {
     "element": "StackPanel",
     "orientation": "Horizontal",
     "children": [
@@ -20,6 +25,7 @@
   },
   {
     "element": "ComboBox",
+    "visibility": "/characterIdVisibility",
     "header": "Character",
     "values": "/characterIds",
     "selectedValue": "/characterId"
@@ -32,42 +38,50 @@
   },
   {
     "element": "TextBox",
+    "visibility": "/variantVisibility",
     "header": "Speaking To",
     "text": "/speakingTo"
   },
   {
     "element": "TextBox",
+    "visibility": "/variantVisibility",
     "header": "Context Notes",
     "text": "/contextNotes"
   },
   {
     "element": "TextBox",
+    "visibility": "/directionVisibility",
     "header": "Direction",
     "text": "/direction"
   },
   {
     "element": "TextBox",
+    "visibility": "/variantVisibility",
     "header": "Time Constraint",
     "text": "/timeConstraint"
   },
   {
     "element": "TextBox",
+    "visibility": "/variantVisibility",
     "header": "Game Area",
     "text": "/gameArea"
   },
   {
     "element": "TextBox",
+    "visibility": "/variantVisibility",
     "header": "Platform",
     "text": "/platform"
   },
   {
     "element": "ComboBox",
+    "visibility": "/variantVisibility",
     "header": "Production Status",
     "values": [ "Placeholder", "ReadyForReview", "CutCandidate", "ReadyForVO", "ReadyForLoc", "Final" ],
     "selectedValue": "/productionStatus"
   },
   {
     "element": "ComboBox",
+    "visibility": "/variantVisibility",
     "header": "Line Priority",
     "values": [ "Default", "Effort", "AIChatter", "PlayerChatter", "HitReaction", "Death" ],
     "selectedValue": "/linePriority"

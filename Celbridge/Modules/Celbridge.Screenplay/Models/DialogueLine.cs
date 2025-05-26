@@ -1,6 +1,7 @@
 namespace Celbridge.Screenplay.Models;
 
 public record DialogueLine(
+    string LineType,
     string Category,
     string Namespace,
     string DialogueKey,

@@ -99,7 +99,7 @@ public class ActivityService : IActivityService, IDisposable
 
         // Get the root component and check that it has a "rootActivity" attribute
         var rootComponent = components[0];
-        var activityName = rootComponent.Schema.GetStringAttribute("rootActivity");
+        var activityName = rootComponent.SchemaReader.GetStringAttribute("rootActivity");
         if (string.IsNullOrEmpty(activityName))
         {
             hasValidRootComponent = false;
@@ -115,14 +115,14 @@ public class ActivityService : IActivityService, IDisposable
         {
             // Empty components are always valid in any position.
             var component = components[i];
-            if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+            if (component.IsComponentType(EntityConstants.EmptyComponentType))
             {
                 entityAnnotation.SetIsRecognized(i);
             }
             else if (i > 0)
             {
                 // Check if this is a root component that's in the wrong position
-                var rootActivity = component.Schema.GetStringAttribute("rootActivity");
+                var rootActivity = component.SchemaReader.GetStringAttribute("rootActivity");
                 if (!string.IsNullOrEmpty(rootActivity))
                 {
                     hasValidRootComponent = false;
@@ -145,7 +145,7 @@ public class ActivityService : IActivityService, IDisposable
             for (int i = 0; i < components.Count; i++)
             {
                 var component = components[i];
-                if (component.Schema.ComponentType != EntityConstants.EmptyComponentType)
+                if (!component.IsComponentType(EntityConstants.EmptyComponentType))
                 {
                     entityAnnotation.AddComponentError(i, new AnnotationError(
                         AnnotationErrorSeverity.Critical,

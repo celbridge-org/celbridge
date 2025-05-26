@@ -109,7 +109,7 @@ public class ScreenplayActivity : IActivity
         //
 
         var sceneComponent = components[0];
-        if (sceneComponent.Schema.ComponentType == SceneEditor.ComponentType)
+        if (sceneComponent.IsComponentType(SceneEditor.ComponentType))
         {
             entityAnnotation.SetIsRecognized(0);
         }
@@ -158,13 +158,13 @@ public class ScreenplayActivity : IActivity
         {
             var component = components[i];
 
-            if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+            if (component.IsComponentType(EntityConstants.EmptyComponentType))
             {
                 // Skip empty components
                 continue;
             }
 
-            if (component.Schema.ComponentType != LineEditor.ComponentType)
+            if (!component.IsComponentType(LineEditor.ComponentType))
             {
                 entityAnnotation.AddComponentError(i, new AnnotationError(
                     AnnotationErrorSeverity.Error,
@@ -196,6 +196,25 @@ public class ScreenplayActivity : IActivity
             var component = lineComponents[i];
 
             //
+            // Get the line type
+            //
+
+            var lineType = component.GetString(LineEditor.LineType);
+            if (lineType != "Player" &&
+                lineType != "PlayerVariant" &&
+                lineType != "NPC" &&
+                lineType != "SceneNote")
+            {
+                entityAnnotation.AddComponentError(i, new AnnotationError(
+                    AnnotationErrorSeverity.Error,
+                    "Invalid line type",
+                    "The line type must be Player, PlayerVariant, NPC or SceneNote"));
+
+                continue;
+            }
+
+
+            //
             // Get the character id
             //
 
@@ -219,7 +238,8 @@ public class ScreenplayActivity : IActivity
                     break;
                 }
             }
-            if (character is null)
+            if (lineType != "SceneNote" &&
+                character is null)
             {
                 entityAnnotation.AddComponentError(i, new AnnotationError(
                     AnnotationErrorSeverity.Error,
@@ -254,43 +274,39 @@ public class ScreenplayActivity : IActivity
             bool isPlayerVariantLine = false;
             var correctLineId = lineId;
 
-            if (character.Tag == "Character.Player")
+            if (lineType != "SceneNote")
             {
-                // Start of a new player line group
-                playerLineId = lineId;
-                playerSpeakingTo = speakingTo;
-            }
-            else if (character.Tag.StartsWith("Character.Player."))
-            {
-                // Player variants lines must be part of a player line group
-                if (string.IsNullOrEmpty(playerLineId))
-                {
-                    entityAnnotation.AddComponentError(i, new AnnotationError(
-                        AnnotationErrorSeverity.Error,
-                        "Invalid player variant line",
-                        "Player variant lines must be part of a player line group"));
-                }
-                else
-                {
-                    // Flag this as a player variant line
-                    isPlayerVariantLine = true;
-                    correctLineId = playerLineId; // Variant lines must have the same line id as the player line
+                Guard.IsNotNull(character);
 
-                    // Speaking To property must match the player line
-                    if (speakingTo != playerSpeakingTo)
+                if (character.Tag == "Character.Player")
+                {
+                    // Start of a new player line group
+                    playerLineId = lineId;
+                    playerSpeakingTo = speakingTo;
+                }
+                else if (character.Tag.StartsWith("Character.Player."))
+                {
+                    // Player variants lines must be part of a player line group
+                    if (string.IsNullOrEmpty(playerLineId))
                     {
                         entityAnnotation.AddComponentError(i, new AnnotationError(
                             AnnotationErrorSeverity.Error,
                             "Invalid player variant line",
-                            "Player variant line 'Speaking To' value must exactly match the player line 'Speaking To' value"));
+                            "Player variant lines must be part of a player line group"));
+                    }
+                    else
+                    {
+                        // Flag this as a player variant line
+                        isPlayerVariantLine = true;
+                        correctLineId = playerLineId; // Variant lines must have the same line id as the player line
                     }
                 }
-            }
-            else
-            {
-                // This is an NPC line, so stop tracking the player line group
-                playerLineId = string.Empty;
-                playerSpeakingTo = string.Empty;
+                else
+                {
+                    // This is an NPC line, so stop tracking the player line group
+                    playerLineId = string.Empty;
+                    playerSpeakingTo = string.Empty;
+                }
             }
              
             // Ensure that a valid dialogue key is always assigned.
@@ -422,7 +438,7 @@ public class ScreenplayActivity : IActivity
         var sceneComponent = getComponentResult.Value;
 
         // Check the component is a scene component
-        if (sceneComponent.Schema.ComponentType != SceneEditor.ComponentType)
+        if (!sceneComponent.IsComponentType(SceneEditor.ComponentType))
         {
             return Result<List<Character>>.Fail($"Root component of resource '{sceneResource}' is not a scene component");
         }
@@ -517,7 +533,7 @@ public class ScreenplayActivity : IActivity
         var components = getComponentsResult.Value;
 
         if (components.Count == 0 ||
-            components[0].Schema.ComponentType != SceneEditor.ComponentType)
+            !components[0].IsComponentType(SceneEditor.ComponentType))
         {
             return Result<string>.Fail("Entity does not contain a Scene component");
         }
@@ -574,7 +590,7 @@ public class ScreenplayActivity : IActivity
 
         foreach (var component in components)
         {
-            if (component.Schema.ComponentType == LineEditor.ComponentType)
+            if (component.IsComponentType(LineEditor.ComponentType))
             {
                 // Add line to the screenplay
 
@@ -611,20 +627,22 @@ public class ScreenplayActivity : IActivity
 
                 var directionText = WebUtility.HtmlEncode(component.GetString(LineEditor.Direction));
 
-                sb.AppendLine($"<div class=\"{lineClass}\">");
-                sb.AppendLine($"  <span class=\"character {colorClass}\">{displayCharacter}</span>");
-                if (!string.IsNullOrEmpty(directionText))
+                if (characterId == "SceneNote")
                 {
-                    sb.AppendLine($"  <span class=\"direction\">({directionText})</span>");
+                    // Add scene note to the screenplay
+                    sb.AppendLine($"<div class=\"scene-note\">{sourceText}</div>");
                 }
-                sb.AppendLine($"  <span class=\"dialogue\">{sourceText}</span>");
-                sb.AppendLine("</div>");
-            }
-            else if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
-            {
-                // Add scene note to the screenplay
-                var commentText = component.GetString("/comment");
-                sb.AppendLine($"<div class=\"scene-note\">{commentText}</div>");
+                else
+                {
+                    sb.AppendLine($"<div class=\"{lineClass}\">");
+                    sb.AppendLine($"  <span class=\"character {colorClass}\">{displayCharacter}</span>");
+                    if (!string.IsNullOrEmpty(directionText))
+                    {
+                        sb.AppendLine($"  <span class=\"direction\">({directionText})</span>");
+                    }
+                    sb.AppendLine($"  <span class=\"dialogue\">{sourceText}</span>");
+                    sb.AppendLine("</div>");
+                }
             }
         }
 

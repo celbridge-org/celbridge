@@ -635,7 +635,7 @@ public class EntityService : IEntityService, IDisposable
     public Result<IComponentEditor> CreateComponentEditor(IComponentProxy componentProxy)
     {
         // Acquire the config for this component
-        var componentType = componentProxy.Schema.ComponentType;
+        var componentType = componentProxy.SchemaReader.Schema.ComponentType;
         var getConfigResult = _configRegistry.GetComponentConfig(componentType);
         if (getConfigResult.IsFailure)
         {
