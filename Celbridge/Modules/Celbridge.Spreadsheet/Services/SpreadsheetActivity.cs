@@ -89,7 +89,7 @@ public class SpreadsheetActivity : IActivity
         //
 
         var rootComponent = components[0];
-        if (rootComponent.Schema.ComponentType == SpreadsheetEditor.ComponentType)
+        if (rootComponent.IsComponentType(SpreadsheetEditor.ComponentType))
         {
             entityAnnotation.SetIsRecognized(0);
         }
@@ -109,13 +109,13 @@ public class SpreadsheetActivity : IActivity
         {
             var component = components[i];
 
-            if (component.Schema.ComponentType == EntityConstants.EmptyComponentType)
+            if (component.IsComponentType(EntityConstants.EmptyComponentType))
             {
                 // Skip empty components
                 continue;
             }
 
-            var isSpreadsheetComponent = component.Schema.GetBooleanAttribute("isSpreadsheetComponent");
+            var isSpreadsheetComponent = component.SchemaReader.GetBooleanAttribute("isSpreadsheetComponent");
 
             if (isSpreadsheetComponent)
             {

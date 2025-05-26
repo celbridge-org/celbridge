@@ -127,7 +127,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
         var component = getComponentResult.Value;
 
         // Populate the Component Type in the panel header
-        ComponentType = component.Schema.ComponentType;
+        ComponentType = component.SchemaReader.Schema.ComponentType;
 
         // Acquire a ComponentEditor for this component
         var acquireEditorResult = _inspectorService.AcquireComponentEditor(componentKey);
@@ -183,7 +183,7 @@ public partial class ComponentValueEditorViewModel : ObservableObject
             {
                 var entityAnnotation = getAnnotationResult.Value;
 
-                if (entityAnnotation.ComponentAnnotationCount >= componentKey.ComponentIndex)
+                if (componentKey.ComponentIndex < entityAnnotation.ComponentAnnotationCount)
                 {
                     var componentAnnotation = entityAnnotation.GetComponentAnnotation(componentKey.ComponentIndex);
 
