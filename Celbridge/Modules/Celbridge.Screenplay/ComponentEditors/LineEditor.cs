@@ -158,6 +158,10 @@ public class LineEditor : ComponentEditorBase
                     return Result<string>.Ok(JsonSerializer.Serialize(Visibility.Collapsed));
             }
         }
+        else if (propertyPath == "/directionPlaceholderText")
+        {
+            return GetDirectionPlaceholderText();
+        }
 
         return Result<string>.Fail();
     }
@@ -447,6 +451,63 @@ public class LineEditor : ComponentEditorBase
         var newDialogueKey = $"{characterId}-{@namespace}-{newLineId}";
         var jsonValue = JsonSerializer.Serialize(newDialogueKey);
         Component.SetProperty(DialogueKey, jsonValue);
+    }
+
+    /// <summary>
+    /// Returns the placeholder text to display in the Direction text field.
+    /// This applies when the Direction property of a Player Variant line is empty.
+    /// In this case, the Direction property of the parent Player Line is displayed as placeholder text.
+    /// In all other cases the placeholder text should be empty.
+    /// </summary>
+    private Result<string> GetDirectionPlaceholderText()
+    {
+        var lineType = Component.GetString(LineEditor.LineType);
+        if (lineType != "PlayerVariant")
+        {
+            // Line is not a Player Variant
+            return Result<string>.Ok(string.Empty);
+        }
+
+        // Search through preceding lines for the Player Line
+        int index = Component.Key.ComponentIndex - 1;
+        while (index > 0)
+        {
+            var lineComponentKey = Component.Key with
+            {
+                ComponentIndex = index
+            };
+            index--;
+
+            var getComponentResult = _entityService.GetComponent(lineComponentKey);
+            if (getComponentResult.IsSuccess)
+            {
+                // Ignore other component types, e.g. Empty components.
+                var otherLineComponent = getComponentResult.Value;
+                if (otherLineComponent.IsComponentType(LineEditor.ComponentType))
+                {
+                    var otherLineType = otherLineComponent.GetString("/lineType");
+                    if (otherLineType == "PlayerVariant")
+                    {
+                        // Skip over other Player Variant lines
+                        continue;
+                    }
+                    else if (otherLineType == "Player")
+                    {
+                        // Preceding Player Line found.
+                        // Todo: Check that the line ids match (though it's already an error state if they don'ty)
+                        var otherDirection = otherLineComponent.GetString("/direction");
+                        return Result<string>.Ok(JsonSerializer.Serialize(otherDirection));
+                    }
+                    else
+                    {
+                        // Any other line type is an error state, give up.
+                        break;
+                    }
+                }
+            }
+        }
+
+        return Result<string>.Ok(JsonSerializer.Serialize(string.Empty));
     }
 }
 

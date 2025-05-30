@@ -17,6 +17,7 @@ public class ScreenplaySaver
         public string LineId { get; init; } = string.Empty;
         public string SpeakingTo { get; init; } = string.Empty;
         public string ContextNotes { get; init; } = string.Empty;
+        public string Direction { get; init; } = string.Empty;
         public string GameArea { get; init; } = string.Empty;
         public string TimeConstraint { get; init; } = string.Empty;
         public string SoundProcessing { get; init; } = string.Empty;
@@ -338,6 +339,7 @@ public class ScreenplaySaver
                     LineId = lineId,
                     SpeakingTo = speakingTo,
                     ContextNotes = contextNotes,
+                    Direction = direction,
                     GameArea = gameArea,
                     TimeConstraint = timeConstraint,
                     SoundProcessing = soundProcessing,
@@ -362,6 +364,12 @@ public class ScreenplaySaver
                 platform = playerLine.Platform;
                 linePriority = playerLine.LinePriority;
                 productionStatus = playerLine.ProductionStatus;
+
+                if (string.IsNullOrEmpty(direction))
+                {
+                    // Use the direction from the Player ine if no direction is specified for the PlayerVariant
+                    direction = playerLine.Direction;
+                }
 
                 dialogueKey = $"{characterId}-{ns}-{lineId}";
 

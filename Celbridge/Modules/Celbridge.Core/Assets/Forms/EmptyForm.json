@@ -3,7 +3,7 @@
     "element": "TextBox",
     "header": "Comment",
     "text": "/comment",
-    "placeholder": "Enter a comment",
+    "placeholderText": "Enter a comment",
     "checkSpelling": false
   }
 ]
