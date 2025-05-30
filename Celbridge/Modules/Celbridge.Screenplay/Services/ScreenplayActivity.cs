@@ -588,6 +588,11 @@ public class ScreenplayActivity : IActivity
         sb.AppendLine($"<div class=\"scene\">{namespaceText}</div>");
         sb.AppendLine($"<div class=\"scene-note\">{contextText}</div>");
 
+        // If the Direction property of a Player Variant line is empty, it defaults to the 
+        // Direction of its parent Player Line. We store the Player Line direction when we process it so
+        // that we can output it for Player Variant Lines if needed.
+        string playerDirection = string.Empty;
+
         foreach (var component in components)
         {
             if (component.IsComponentType(LineEditor.ComponentType))
@@ -625,7 +630,25 @@ public class ScreenplayActivity : IActivity
                 string lineClass = isPlayerVariant ? "line variant" : "line";
                 string colorClass = isPlayer || isPlayerVariant ? "player-color" : "npc-color";
 
-                var directionText = WebUtility.HtmlEncode(component.GetString(LineEditor.Direction));
+                var direction = component.GetString(LineEditor.Direction);
+
+                if (isPlayer)
+                {
+                    // Record the Player direction to display as placeholder direction in PlayerVariant lines
+                    playerDirection = direction;
+                }
+                else if (!isPlayerVariant)
+                {
+                    playerDirection = string.Empty;
+                }
+
+                // Display the recorded Player direction if the PlayerVariant direction is empty
+                if (isPlayerVariant && string.IsNullOrEmpty(direction))
+                {
+                    direction = playerDirection;
+                }
+
+                var directionText = WebUtility.HtmlEncode(direction);
 
                 if (characterId == "SceneNote")
                 {

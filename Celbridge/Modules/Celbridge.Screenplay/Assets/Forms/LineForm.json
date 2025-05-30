@@ -51,6 +51,7 @@
   {
     "element": "TextBox",
     "visibility": "/directionVisibility",
+    "placeholderText": "/directionPlaceholderText",
     "header": "Direction",
     "text": "/direction"
   },
