@@ -20,6 +20,10 @@ public partial class TextBoxElement : FormElement
     private string _text = string.Empty;
     private PropertyBinder<string>? _textBinder;
 
+    [ObservableProperty]
+    private string _placeholderText = string.Empty;
+    private PropertyBinder<string>? _placeholderTextBinder;
+
     private bool _autoTrim = true;
 
     protected override Result<FrameworkElement> CreateUIElement(JsonElement config, FormBuilder formBuilder)
@@ -56,7 +60,7 @@ public partial class TextBoxElement : FormElement
             "isEnabled",
             "text",
             "header",
-            "placeholder",
+            "placeholderText",
             "checkSpelling",
             "isReadOnly",
             "autoTrim"
@@ -100,10 +104,10 @@ public partial class TextBoxElement : FormElement
                 .WithErrors(headerResult);        
         }
 
-        var placeholderResult = ApplyPlaceholderConfig(config, textBox);
+        var placeholderResult = ApplyPlaceholderTextConfig(config, textBox);
         if (placeholderResult.IsFailure)
         {
-            return Result<FrameworkElement>.Fail($"Failed to apply 'placeholder' config property")
+            return Result<FrameworkElement>.Fail($"Failed to apply 'placeholderText' config property")
                 .WithErrors(placeholderResult);
         }
 
@@ -190,21 +194,29 @@ public partial class TextBoxElement : FormElement
         return Result.Ok();
     }
 
-    private Result ApplyPlaceholderConfig(JsonElement config, TextBox textBox)
+    private Result ApplyPlaceholderTextConfig(JsonElement config, TextBox textBox)
     {
-        if (config.TryGetProperty("placeholder", out var jsonValue))
+        if (config.TryGetProperty("placeholderText", out var configValue))
         {
-            // Check the type
-            if (jsonValue.ValueKind != JsonValueKind.String)
+            if (configValue.IsBindingConfig())
             {
-                return Result.Fail("'placeholder' property must be a string");
+                _placeholderTextBinder = PropertyBinder<string>.Create(textBox, this)
+                .Binding(TextBox.PlaceholderTextProperty, BindingMode.OneWay, nameof(PlaceholderText))
+                .Setter((value) =>
+                {
+                    PlaceholderText = value;
+                });
+
+                return _placeholderTextBinder.Initialize(configValue);
             }
-
-            // Todo: Support binding
-
-            // Apply the property
-            var placeholder = jsonValue.GetString();
-            textBox.PlaceholderText = placeholder;
+            else if (configValue.ValueKind == JsonValueKind.String)
+            {
+                textBox.PlaceholderText = configValue.GetString() ?? string.Empty;
+            }
+            else
+            {
+                return Result.Fail($"'placeholderText' config is not valid");
+            }
         }
 
         return Result.Ok();
@@ -323,16 +335,20 @@ public partial class TextBoxElement : FormElement
     {
         _isEnabledBinder?.OnFormDataChanged(propertyPath);
         _textBinder?.OnFormDataChanged(propertyPath);
+        _placeholderTextBinder?.OnFormDataChanged(propertyPath);    
     }
 
     protected override void OnMemberDataChanged(string propertyName)
     {
+        _isEnabledBinder?.OnFormDataChanged(propertyName);  
         _textBinder?.OnMemberDataChanged(propertyName);
+        _placeholderTextBinder?.OnFormDataChanged(propertyName);
     }
 
     protected override void OnElementUnloaded()
     {
         _textBinder?.OnElementUnloaded();
         _isEnabledBinder?.OnElementUnloaded();
+        _placeholderTextBinder?.OnElementUnloaded();
     }
 }
