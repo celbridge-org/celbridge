@@ -138,7 +138,7 @@ public class ScreenplayActivity : IActivity
             entityAnnotation.AddEntityError(new AnnotationError(
                 AnnotationErrorSeverity.Error,
                 "Failed to get characters",
-                "Failed to get character list from screenplay component"));
+                "Failed to get character list from Screenplay component"));
         }
         var characters = getCharactersResult.Value;
 
@@ -147,7 +147,8 @@ public class ScreenplayActivity : IActivity
         //
 
         var lineComponents = new Dictionary<int, IComponentProxy>();
-        var activeDialogueKeys = new HashSet<string>();
+        var activeLineIds = new HashSet<string>();
+        var activePlayerVariants = new HashSet<string>();
 
         //
         // First pass checks component types are valid and records all
@@ -246,33 +247,36 @@ public class ScreenplayActivity : IActivity
                     "Invalid character id",
                     "A valid character must be selected"));
 
-                // There's not much more we can do until the user selects a character id
+                // There's not much more we can do until the user selects a valid character id
                 continue;
             }
 
             //
-            // Get the existing dialogue key and line id
+            // Get the line id
             //
 
-            var dialogueKey = component.GetString("/dialogueKey");
-            var segments = dialogueKey.Split('-');
-            if (segments.Length != 3)
+            var lineId = component.GetString("/lineId");
+
+            // PlayerVariants inherit their parent's Line Id, so their own LineId property may be empty.
+            // All other line types must have a non-empty LineId
+            if (lineType != "PlayerVariant" &&
+                string.IsNullOrEmpty(lineId))
             {
                 entityAnnotation.AddComponentError(i, new AnnotationError(
                     AnnotationErrorSeverity.Error,
                     "Invalid dialogue key",
-                    "Dialogue keys must be non-empty and contain 3 segments."));
+                    "Line id must not be empty. Generate a new dialogue key to fix this."));
 
-                // Can't do any more checks until the user assigns a valid dialogue key
+                // We can't perform any more checks until the user assigns a valid line id
                 continue;
             }
 
             var speakingTo = component.GetString("/speakingTo");
 
-            var lineId = segments[2];
-
             bool isPlayerVariantLine = false;
-            var correctLineId = lineId;
+
+            // PlayerVariant lines inherit their Line Id from their parents.
+            var resolvedLineId = lineId;
 
             if (lineType != "SceneNote")
             {
@@ -280,53 +284,80 @@ public class ScreenplayActivity : IActivity
 
                 if (character.Tag == "Character.Player")
                 {
-                    // Start of a new player line group
+                    // Start of a new Player line group
                     playerLineId = lineId;
                     playerSpeakingTo = speakingTo;
                 }
                 else if (character.Tag.StartsWith("Character.Player."))
                 {
-                    // Player variants lines must be part of a player line group
+                    // Player Variant lines must be part of a player line group
                     if (string.IsNullOrEmpty(playerLineId))
                     {
                         entityAnnotation.AddComponentError(i, new AnnotationError(
                             AnnotationErrorSeverity.Error,
-                            "Invalid player variant line",
-                            "Player variant lines must be part of a player line group"));
+                            "Invalid variant line",
+                            "Player Variant lines must be part of a Player Line group"));
                     }
                     else
                     {
-                        // Flag this as a player variant line
+                        // Flag this as a player variant line.
                         isPlayerVariantLine = true;
-                        correctLineId = playerLineId; // Variant lines must have the same line id as the player line
+
+                        // Inherit the parent Player line's Line Id.
+                        resolvedLineId = playerLineId;
                     }
                 }
                 else
                 {
-                    // This is an NPC line, so stop tracking the player line group
+                    // This is an NPC line, so stop tracking the Player Line group
                     playerLineId = string.Empty;
                     playerSpeakingTo = string.Empty;
                 }
             }
-             
-            // Ensure that a valid dialogue key is always assigned.
-            var correctDialogueKey = $"{characterId}-{@namespace}-{correctLineId}";
-            if (dialogueKey != correctDialogueKey)
-            {
-                entityAnnotation.AddComponentError(i, new AnnotationError(
-                    AnnotationErrorSeverity.Error,
-                    "Invalid dialogue key",
-                    "The dialogue key is not correctly formed. Update the dialogue key to assign a correct one."));
-            }
 
-            if (activeDialogueKeys.Contains(dialogueKey))
+            //
+            // Check the Line Id is valid and unique. 
+            //
+
+            if (lineType == "PlayerVariant")
             {
-                entityAnnotation.AddComponentError(i, new AnnotationError(
-                    AnnotationErrorSeverity.Error,
-                    "Duplicate dialogue key",
-                    "Dialogue keys must be unique for each line. Update the dialogue key to assign a new one."));
+                // Each Player Variant within the group must specify a different character id.
+                var dialogueKey = $"{characterId}-{@namespace}-{resolvedLineId}";
+                if (activePlayerVariants.Contains(dialogueKey))
+                {
+                    entityAnnotation.AddComponentError(i, new AnnotationError(
+                        AnnotationErrorSeverity.Error,
+                        "Invalid character",
+                        "This character is already selected in a Player Variant line."));
+                }
+
+                activePlayerVariants.Add(dialogueKey);
             }
-            activeDialogueKeys.Add(dialogueKey);
+            else
+            {
+                // Check that a valid line id is assigned.
+                if (lineId != resolvedLineId)
+                {
+                    // Todo: Is this error mode still possible?
+                    entityAnnotation.AddComponentError(i, new AnnotationError(
+                        AnnotationErrorSeverity.Error,
+                        "Invalid dialogue key",
+                        "The line id is not valid. Generate a new dialogue key to fix this."));
+                }
+
+                // Check that each line id is unique.
+                if (activeLineIds.Contains(lineId))
+                {
+                    entityAnnotation.AddComponentError(i, new AnnotationError(
+                        AnnotationErrorSeverity.Error,
+                        "Invalid dialogue key",
+                        "Every line must have a unique line id. Generate a new dialogue key to fix this."));
+                }
+                else
+                {
+                    activeLineIds.Add(lineId);
+                }
+            }
 
             // Indent player variant lines
             if (isPlayerVariantLine)

@@ -34,7 +34,8 @@ public partial class TextBlockElement : FormElement
         {
             "text",
             "italic",
-            "bold"
+            "bold",
+            "textWrapping"
         });
 
         if (validateResult.IsFailure)
@@ -58,9 +59,6 @@ public partial class TextBlockElement : FormElement
         // Apply element-specific config properties
         //
 
-        // Todo: Set this via a config property
-        textBlock.TextWrapping = TextWrapping.Wrap;
-
         var italicResult = ApplyItalicConfig(config, textBlock);
         if (italicResult.IsFailure)
         {
@@ -80,6 +78,13 @@ public partial class TextBlockElement : FormElement
         {
             return Result<FrameworkElement>.Fail($"Failed to apply 'text' config property")
                 .WithErrors(textResult);
+        }
+
+        var textWrappingResult = ApplyTextWrappingConfig(config, textBlock);
+        if (textWrappingResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'textWrapping' config property")
+                .WithErrors(textWrappingResult);
         }
 
         return Result<FrameworkElement>.Ok(textBlock);
@@ -152,6 +157,33 @@ public partial class TextBlockElement : FormElement
             {
                 return Result.Fail($"'text' config is not valid");
             }
+        }
+
+        return Result.Ok();
+    }
+
+    private Result ApplyTextWrappingConfig(JsonElement config, TextBlock textBlock)
+    {
+        if (config.TryGetProperty("textWrapping", out var textWrappingValue))
+        {
+            // Check the type
+            if (textWrappingValue.ValueKind != JsonValueKind.String)
+            {
+                return Result.Fail("'textWrapping' property must be a string.");
+            }
+
+            // Apply the property
+            if (!Enum.TryParse(textWrappingValue.GetString(), out TextWrapping textWrapping))
+            {
+                return Result.Fail("Failed to parse 'textWrapping' property.");
+            }
+
+            textBlock.TextWrapping = textWrapping;
+        }
+        else
+        {
+            // Enable text wrapping by default
+            textBlock.TextWrapping = TextWrapping.Wrap;
         }
 
         return Result.Ok();

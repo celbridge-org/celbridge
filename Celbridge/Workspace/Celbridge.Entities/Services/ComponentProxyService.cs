@@ -1,4 +1,5 @@
 using Celbridge.Entities.Models;
+using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
@@ -11,7 +12,7 @@ public class ComponentProxyService
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private IEntityService? _entityService;
 
-    private Dictionary<ResourceKey, Dictionary<int, ComponentProxy>> _componentCache = new();
+    private Dictionary<ResourceKey, Dictionary<int, IComponentProxy>> _componentCache = new();
     private Dictionary<ResourceKey, IReadOnlyList<IComponentProxy>> _componentListCache = new();
 
     public ComponentProxyService(
@@ -29,6 +30,7 @@ public class ComponentProxyService
         _entityService = _workspaceWrapper.WorkspaceService.EntityService;
 
         _messengerService.Register<ComponentChangedMessage>(this, OnComponentChangedMessage);
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
 
         return Result.Ok();
     }
@@ -54,13 +56,43 @@ public class ComponentProxyService
                 foreach (var proxy in indexCache.Values)
                 {
                     // Just to be safe, the proxy also listens for the same event and invalidates itself.
-                    proxy.Invalidate();
+                    var concreteProxy = proxy as ComponentProxy;
+                    Guard.IsNotNull(concreteProxy);
+
+                    concreteProxy.Invalidate();
                 }
             }
 
             _componentCache.Remove(resource);
             _componentListCache.Remove(resource);
         }
+    }
+
+    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    {
+        // Invalidate the component caches whenever the resource registry is updated.
+        foreach (var kv in _componentCache)
+        {
+            var resource = kv.Key;
+            var indexCache = kv.Value;
+
+            // Invalidate all proxies in the index cache.
+            foreach (var proxy in indexCache.Values)
+            {
+                // Just to be safe, the proxy also listens for the same event and invalidates itself.
+                var concreteProxy = proxy as ComponentProxy;
+                Guard.IsNotNull(concreteProxy);
+                concreteProxy.Invalidate();
+            }
+
+            _componentCache.Remove(resource);
+            _componentListCache.Remove(resource);
+        }
+
+        Guard.IsTrue(_componentCache.Count == 0);
+
+        // The component list cache may still have entries for folder resources, clear those out now.
+        _componentListCache.Clear();
     }
 
     public Result<IComponentProxy> GetComponent(ComponentKey componentKey)
@@ -70,7 +102,7 @@ public class ComponentProxyService
         // Attempt to get the proxy from the cache
         if (!_componentCache.TryGetValue(componentKey.Resource, out var indexCache))
         {
-            indexCache = new Dictionary<int, ComponentProxy>();
+            indexCache = new Dictionary<int, IComponentProxy>();
             _componentCache[componentKey.Resource] = indexCache;
         }
         if (indexCache.TryGetValue(componentKey.ComponentIndex, out var cachedProxy))

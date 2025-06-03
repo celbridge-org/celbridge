@@ -16,7 +16,7 @@ public class LineEditor : ComponentEditorBase
 
     public const string ComponentType = "Screenplay.Line";
     public const string LineType = "/lineType";
-    public const string DialogueKey = "/dialogueKey";
+    public const string LineId = "/lineId";
     public const string CharacterId = "/characterId";
     public const string SpeakingTo = "/speakingTo";
     public const string SourceText = "/sourceText";
@@ -54,7 +54,6 @@ public class LineEditor : ComponentEditorBase
 
     public override ComponentSummary GetComponentSummary()
     {
-        var dialogueKey = Component.GetString(DialogueKey);
         var characterId = Component.GetString(CharacterId);
         var speakingTo = Component.GetString(SpeakingTo);
         var sourceText = Component.GetString(SourceText);
@@ -84,8 +83,14 @@ public class LineEditor : ComponentEditorBase
             sb.AppendLine($"Direction: {direction}");
         }
 
-        sb.AppendLine();
-        sb.AppendLine($"{dialogueKey}"); // Dialogue key contains character id
+        var getKeyResult = GetDialogueKey();
+        if (getKeyResult.IsSuccess)
+        {
+            var dialogueKey = getKeyResult.Value;
+
+            sb.AppendLine();
+            sb.AppendLine($"{dialogueKey}"); 
+        }
 
         var tooltipText = sb.ToString();
 
@@ -162,15 +167,54 @@ public class LineEditor : ComponentEditorBase
         {
             return GetDirectionPlaceholderText();
         }
+        else if (propertyPath == "/generateDialogueKeyVisibility")
+        {
+            if (Component.GetString(LineType) == "PlayerVariant")
+            {
+                return Result<string>.Ok(JsonSerializer.Serialize(Visibility.Collapsed));
+            }
+            else
+            {
+                return Result<string>.Ok(JsonSerializer.Serialize(Visibility.Visible));
+            }
+        }
+        else if (propertyPath == "/lineId")
+        {
+            if (Component.GetString(LineType) == "PlayerVariant")
+            {
+                // Get the Player line that's the parent of this Player Variant line
+                var getParentResult = GetParentPlayerLine();
+                if (getParentResult.IsSuccess)
+                {
+                    // Return the parent's Line Id
+                    var playerLine = getParentResult.Value;
+                    var lineId = playerLine.GetString(LineId);
+                    if (!string.IsNullOrEmpty(lineId))
+                    {
+                        return Result<string>.Ok(JsonSerializer.Serialize(lineId));
+                    }
+                }
+            }
+        }
+        else if (propertyPath == "/dialogueKey")
+        {
+            var getKeyResult = GetDialogueKey();
+            if (getKeyResult.IsSuccess)
+            {
+                var dialogueKey = getKeyResult.Value;
+                return Result<string>.Ok(JsonSerializer.Serialize(dialogueKey));
+            }
+        }
 
+        // The property was not overridden
         return Result<string>.Fail();
     }
 
     public override void OnButtonClicked(string buttonId)
     {
-        if (buttonId == "UpdateDialogueKey")
+        if (buttonId == "GenerateDialogueKey")
         {
-            UpdateDialogueKey();
+            GenerateDialogueKey();
         }
     }
 
@@ -181,9 +225,12 @@ public class LineEditor : ComponentEditorBase
             // Update virtual properties when the line type changes
             // The character ids list will be filtered depending on the line type.
             NotifyFormPropertyChanged("/characterIds");
+            NotifyFormPropertyChanged("/characterId");
             NotifyFormPropertyChanged("/characterIdVisibility");
             NotifyFormPropertyChanged("/variantVisibility");
             NotifyFormPropertyChanged("/directionVisibility");
+            NotifyFormPropertyChanged("/dialogueKey");
+            NotifyFormPropertyChanged("/generateDialogueKeyVisibility");
 
             // Get the filtered list of character ids            
             var getResult = GetProperty("/characterIds");
@@ -210,6 +257,10 @@ public class LineEditor : ComponentEditorBase
                     Component.SetProperty(CharacterId, JsonSerializer.Serialize(string.Empty));
                 }
             }
+        }
+        else if (propertyPath == "/lineId" || propertyPath == "/characterId")
+        {
+            NotifyFormPropertyChanged("/dialogueKey");
         }
     }
 
@@ -302,7 +353,81 @@ public class LineEditor : ComponentEditorBase
         return Result<List<Character>>.Ok(characters);
     }
 
-    private void UpdateDialogueKey()
+    /// <summary>
+    /// Construct a Dialogue Key based on the character id, namespace and line id.
+    /// </summary>
+    private Result<string> GetDialogueKey()
+    {
+        //
+        // Get all components 
+        //
+
+        var sceneResource = Component.Key.Resource;
+        var getComponentsResult = _entityService.GetComponents(sceneResource);
+        if (getComponentsResult.IsFailure)
+        {
+            return Result<string>.Fail();
+        }
+
+        var components = getComponentsResult.Value;
+        if (components.Count == 0)
+        {
+            return Result<string>.Fail();
+        }
+
+        //
+        // Get the namespace from the Scene component on this entity
+        //
+
+        if (!components[0].IsComponentType(SceneEditor.ComponentType))
+        {
+            _logger.LogError($"Failed to update dialogue key. First component is not a Scene component.");
+            return Result<string>.Fail();
+        }
+
+        var @namespace = components[0].GetString(SceneEditor.Namespace);
+        if (string.IsNullOrEmpty(@namespace))
+        {
+            _logger.LogError($"Failed to update dialogue key. Namespace is empty.");
+            return Result<string>.Fail();
+        }
+
+        //
+        // Get the Character Id
+        //
+
+        var characterId = Component.GetString(CharacterId);
+
+        var getLineIdResult = GetProperty(LineId); // Use the property override mechanism
+        if (getLineIdResult.IsFailure)
+        {
+            return Result<string>.Fail();
+        }
+        var lineId = JsonSerializer.Deserialize<string>(getLineIdResult.Value);
+
+        // Todo: Add a validation util for dialogue keys
+        var dialogueKey = $"{characterId}-{@namespace}-{lineId}";
+
+        return Result<string>.Ok(dialogueKey);
+    }
+
+    private void GenerateDialogueKey()
+    {
+        // Generate a new dialogue key by assigning a new unique line id.
+
+        var getLineIdResult = GetUniqueLineId();
+        if (getLineIdResult.IsFailure)
+        {
+            // Todo: Show an alert if generating line id fails
+            _logger.LogError($"Failed to get a unique line id. {getLineIdResult.Error}");
+            return;
+        }
+        var lineId = getLineIdResult.Value;
+
+        Component.SetProperty(LineId, JsonSerializer.Serialize(lineId));
+    }
+
+    private Result<string> GetUniqueLineId()
     {
         //
         // Get all components on this entity
@@ -312,80 +437,20 @@ public class LineEditor : ComponentEditorBase
         var getComponentsResult = _entityService.GetComponents(sceneResource);
         if (getComponentsResult.IsFailure)
         {
-            _logger.LogError($"Failed to update dialogue key. {getComponentsResult.Error}");
-            return;
+            return Result<string>.Fail($"Failed to get components for resource '{sceneResource}'")
+                .WithErrors(getComponentsResult);
         }
         var components = getComponentsResult.Value;
         if (components.Count == 0)
         {
-            return;
+            return Result<string>.Fail($"Failed to get components for resource '{sceneResource}'");
         }
 
         //
-        // Get the list of characters from the screenplay
+        // Find all currently used line ids in this scene
         //
 
-        var getCharactersResult = GetAllCharacters();
-        if (getCharactersResult.IsFailure)
-        {
-            _logger.LogError($"Failed to update dialogue key. {getCharactersResult.Error}");
-            return;
-        }
-        var characters = getCharactersResult.Value;
-
-        //
-        // Get the character speaking this line
-        //
-
-        var characterId = Component.GetString(CharacterId);
-        if (string.IsNullOrEmpty(characterId))
-        {
-            _logger.LogError($"Failed to update dialogue key. Character id is empty.");
-            return;
-        }
-
-        bool isPlayerVariant = false;
-        if (characterId != "SceneNote")
-        {
-            var speakingCharacter = characters.FirstOrDefault(c => c.CharacterId == characterId);
-            if (speakingCharacter is null)
-            {
-                _logger.LogError($"Failed to update dialogue key. No character matching '{characterId}' was found.");
-                return;
-            }
-
-            // Note if the current line is a player variant line
-            isPlayerVariant = speakingCharacter.Tag.StartsWith("Character.Player.");
-        }
-
-
-        //
-        // Get the namespace from the Scene component on this entity
-        //
-
-        if (!components[0].IsComponentType(SceneEditor.ComponentType))
-        {
-            _logger.LogError($"Failed to update dialogue key. First component is not a Scene component.");
-            return;
-        }
-
-        var @namespace = components[0].GetString(SceneEditor.Namespace);
-        if (string.IsNullOrEmpty(@namespace))
-        {
-            _logger.LogError($"Failed to update dialogue key. Namespace is empty.");
-            return;
-        }
-
-        //
-        // Assign a new line id
-        //
-
-        // Build the set of line ids currently in use
         var activeLineIds = new HashSet<string>();
-
-        var lineComponentIndex = Component.Key.ComponentIndex;
-        var playerLineId = string.Empty;
-
         for (int i = 0; i < components.Count; i++)
         {
             var lineComponent = components[i];
@@ -395,62 +460,35 @@ public class LineEditor : ComponentEditorBase
                 continue;
             }
 
-            // Get the dialogue key property
-            var dialogueKey = lineComponent.GetString(DialogueKey);
-            if (string.IsNullOrEmpty(dialogueKey))
+            // Get the line id property
+            var lineId = lineComponent.GetString(LineId);
+            if (string.IsNullOrEmpty(lineId))
             {
                 // Skip empty dialogue keys
                 continue;
             }
 
-            // Extract the line id from the dialogue key and add it to the active set
-            var lineId = string.Empty;
-            var segments = dialogueKey.Split('-');
-            if (segments.Length == 3)
-            {
-                lineId = segments[2];
-            }
             if (!string.IsNullOrEmpty(lineId))
             {
                 activeLineIds.Add(lineId);
             }
-
-            // If this is a player variant line, attempt to find the line id of the preceding player line.
-            if (isPlayerVariant &&
-                i < lineComponentIndex)
-            {
-                if (lineComponent.GetString(CharacterId) == "Player")
-                {
-                    playerLineId = lineId;
-                }
-            }
         }
 
-        // If this is a player variant line and a player line id was found, then use the player line id.
-        string newLineId = string.Empty;
-        if (isPlayerVariant)
+        //
+        // Generate a new unique line id
+        //
+
+        var newLineId = string.Empty;
+        var random = new Random();
+        do
         {
-            newLineId = playerLineId;
+            // Try a random 4 digit hex code until a unique one is found.
+            int number = random.Next(0x1000, 0x10000);
+            newLineId = number.ToString("X4");
         }
+        while (activeLineIds.Contains(newLineId));
 
-        // If no new line id has been assigned yet then assign a unique line id
-        if (string.IsNullOrEmpty(newLineId))
-        {
-            // Find a new line id that is not already in use
-            var random = new Random();
-            do
-            {
-                // Try a random 4 digit hex code until a unique one is found.
-                int number = random.Next(0x1000, 0x10000);
-                newLineId = number.ToString("X4");
-            }
-            while (activeLineIds.Contains(newLineId));
-        }
-
-        // Set the new dialogue key
-        var newDialogueKey = $"{characterId}-{@namespace}-{newLineId}";
-        var jsonValue = JsonSerializer.Serialize(newDialogueKey);
-        Component.SetProperty(DialogueKey, jsonValue);
+        return Result<string>.Ok(newLineId);
     }
 
     /// <summary>
@@ -465,10 +503,32 @@ public class LineEditor : ComponentEditorBase
         if (lineType != "PlayerVariant")
         {
             // Line is not a Player Variant
-            return Result<string>.Ok(string.Empty);
+            return Result<string>.Ok(JsonSerializer.Serialize(string.Empty));
         }
 
-        // Search through preceding lines for the Player Line
+        var getParentResult = GetParentPlayerLine();
+        if (getParentResult.IsSuccess)
+        {
+            var parentLine = getParentResult.Value;
+
+            // Found the Player Line, return the direction property.
+            var otherDirection = parentLine.GetString("/direction");
+            return Result<string>.Ok(JsonSerializer.Serialize(otherDirection));
+        }
+
+        return Result<string>.Ok(JsonSerializer.Serialize(string.Empty));
+    }
+
+    private Result<IComponentProxy> GetParentPlayerLine()
+    {
+        var lineType = Component.GetString(LineEditor.LineType);
+        if (lineType != "PlayerVariant")
+        {
+            // This Line is not a Player Variant
+            return Result<IComponentProxy>.Fail();
+        }
+
+        // Search through preceding lines for the parent Player Line
         int index = Component.Key.ComponentIndex - 1;
         while (index > 0)
         {
@@ -493,21 +553,18 @@ public class LineEditor : ComponentEditorBase
                     }
                     else if (otherLineType == "Player")
                     {
-                        // Preceding Player Line found.
-                        // Todo: Check that the line ids match (though it's already an error state if they don'ty)
-                        var otherDirection = otherLineComponent.GetString("/direction");
-                        return Result<string>.Ok(JsonSerializer.Serialize(otherDirection));
+                        return Result<IComponentProxy>.Ok(otherLineComponent);
                     }
                     else
                     {
-                        // Any other line type is an error state, give up.
+                        // Any other line type means we're in an error state, give up.
                         break;
                     }
                 }
             }
         }
 
-        return Result<string>.Ok(JsonSerializer.Serialize(string.Empty));
+        return Result<IComponentProxy>.Fail();
     }
 }
 

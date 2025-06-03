@@ -329,6 +329,12 @@ public class ScreenplayLoader
 
                 var category = TryGetValue<string> (row, columnMap, nameof(DialogueLine.Category));
 
+                if (category == "Bark")
+                {
+                    // The Screenplay system only supports editing dialogue lines currently
+                    continue;
+                }
+
                 var line = new DialogueLine
                 (
                     LineType: lineType,
@@ -393,6 +399,8 @@ public class ScreenplayLoader
 
     private Result ValidateDialogue(List<Scene> scenes, List<Character> characters, List<DialogueLine> lines)
     {
+        var existingDialogueKeys = new HashSet<string>();
+
         for (int i = 0; i < lines.Count; i++)
         {
             var row_index = i + 1;
@@ -440,6 +448,38 @@ public class ScreenplayLoader
                     return Result.Fail($"Character '{characterId}' not found in characters list at row {row_index}");
                 }
             }
+
+            // Check that the dialogue key is valid.
+            // Bark lines have already been excluded so all dialogue keys should have exactly 3 parts.
+            var dialogueKey = line.DialogueKey;
+            var keyParts = dialogueKey.Split('-');
+            if (keyParts.Length != 3 || keyParts.Any((p) => p.Length == 0))
+            {
+                return Result.Fail($"DialogueKey '{dialogueKey}' does not contain 3 parts at row {row_index}");
+            }
+
+            if (characterId != keyParts[0])
+            {
+                return Result.Fail($"DialogueKey '{dialogueKey}' does not match character id '{characterId}' at row {row_index}");
+            }
+            if (line.Namespace != keyParts[1])
+            {
+                return Result.Fail($"DialogueKey '{dialogueKey}' does not match namespace '{line.Namespace}' at row {row_index}");
+            }
+
+            var lineId = keyParts[2];
+            if (string.IsNullOrEmpty(lineId))
+            {
+                return Result.Fail($"Line id is empty at row {row_index}");
+            }
+
+            if (existingDialogueKeys.Contains(dialogueKey))
+            {
+                return Result.Fail($"Duplicate dialogue key '{dialogueKey}' at row {row_index}");
+            }
+
+            // Check that there are no duplicate dialogue keys
+            existingDialogueKeys.Add(dialogueKey);
         }
 
         return Result.Ok();
@@ -606,12 +646,22 @@ public class ScreenplayLoader
             // The line list may be empty if this is a newly created scene.
             foreach (var line in lineList)
             {
+                var dialogueKey = line.DialogueKey;
+
+                // Extract the line id
+                var lineIdIndex = dialogueKey.LastIndexOf('-');
+
+                // Todo: Move these checks to the validation step
+                Guard.IsFalse(lineIdIndex == -1);
+                Guard.IsFalse(dialogueKey.Length == lineIdIndex + 1);
+                var lineId = dialogueKey.Substring(lineIdIndex + 1);
+
                 if (line.CharacterId == "SceneNote")
                 {
                     var lineComponent = new JsonObject();
                     lineComponent["_type"] = "Screenplay.Line#1";
                     lineComponent["lineType"] = line.LineType;
-                    lineComponent["dialogueKey"] = line.DialogueKey;
+                    lineComponent["lineId"] = lineId;
                     lineComponent["characterId"] = line.CharacterId;
                     lineComponent["speakingTo"] = string.Empty;
                     lineComponent["sourceText"] = line.SourceText;
@@ -631,7 +681,7 @@ public class ScreenplayLoader
                     var lineComponent = new JsonObject();
                     lineComponent["_type"] = "Screenplay.Line#1";
                     lineComponent["lineType"] = line.LineType;
-                    lineComponent["dialogueKey"] = line.DialogueKey;
+                    lineComponent["lineId"] = lineId;
                     lineComponent["characterId"] = line.CharacterId;
                     lineComponent["speakingTo"] = line.SpeakingTo;
                     lineComponent["sourceText"] = line.SourceText;

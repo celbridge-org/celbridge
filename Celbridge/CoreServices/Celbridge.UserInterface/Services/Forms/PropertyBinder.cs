@@ -67,7 +67,12 @@ public class PropertyBinder<T> where T : notnull
         }
 
         _formPropertyPath = configValue.GetString()!;
-        SynchonizeProperties();
+        var syncResult = SynchonizeProperties();
+        if (syncResult.IsFailure)
+        {
+            return Result.Fail("Failed to synchonize properties")
+                .WithErrors(syncResult);
+        }
 
         if (HasBinding)
         {
