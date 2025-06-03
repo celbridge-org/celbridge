@@ -63,7 +63,8 @@ public partial class TextBoxElement : FormElement
             "placeholderText",
             "checkSpelling",
             "isReadOnly",
-            "autoTrim"
+            "autoTrim",
+            "textWrapping"
         });
 
         if (validateResult.IsFailure)
@@ -93,9 +94,6 @@ public partial class TextBoxElement : FormElement
             return Result<FrameworkElement>.Fail($"Failed to apply 'isEnabled' config")
                 .WithErrors(isEnabledResult);
         }
-
-        // Todo: Set this via a config property
-        textBox.TextWrapping = TextWrapping.Wrap;
 
         var headerResult = ApplyHeaderConfig(config, textBox);
         if (headerResult.IsFailure)
@@ -137,6 +135,13 @@ public partial class TextBoxElement : FormElement
         {
             return Result<FrameworkElement>.Fail($"Failed to apply 'autoTrim' config property")
                 .WithErrors(autoTrimResult);
+        }
+
+        var textWrappingResult = ApplyTextWrappingConfig(config, textBox);
+        if (textWrappingResult.IsFailure)
+        {
+            return Result<FrameworkElement>.Fail($"Failed to apply 'textWrapping' config property")
+                .WithErrors(textWrappingResult);
         }
 
         return Result<FrameworkElement>.Ok(textBox);
@@ -326,6 +331,33 @@ public partial class TextBoxElement : FormElement
                 // If auto trim is enabled then trim the text displayed in the TextBox
                 textBox.Text = textBox.Text.Trim();
             };
+        }
+
+        return Result.Ok();
+    }
+
+    private Result ApplyTextWrappingConfig(JsonElement config, TextBox textBox)
+    {
+        if (config.TryGetProperty("textWrapping", out var textWrappingValue))
+        {
+            // Check the type
+            if (textWrappingValue.ValueKind != JsonValueKind.String)
+            {
+                return Result.Fail("'textWrapping' property must be a string.");
+            }
+
+            // Apply the property
+            if (!Enum.TryParse(textWrappingValue.GetString(), out TextWrapping textWrapping))
+            {
+                return Result.Fail("Failed to parse 'textWrapping' property.");
+            }
+
+            textBox.TextWrapping = textWrapping;
+        }
+        else
+        {
+            // Enable text wrapping by default
+            textBox.TextWrapping = TextWrapping.Wrap;
         }
 
         return Result.Ok();
