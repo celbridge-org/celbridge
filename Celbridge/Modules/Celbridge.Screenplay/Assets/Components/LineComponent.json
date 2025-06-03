@@ -13,7 +13,7 @@
       "type": "string",
       "enum": [ "Player", "PlayerVariant", "NPC", "SceneNote" ]
     },
-    "dialogueKey": {
+    "lineId": {
       "type": "string"
     },
     "characterId": {
@@ -54,7 +54,7 @@
   "required": [
     "_type",
     "lineType",
-    "dialogueKey",
+    "lineId",
     "characterId",
     "sourceText",
     "contextNotes",
@@ -70,7 +70,7 @@
 
   "prototype": {
     "lineType": "Player",
-    "dialogueKey": "",
+    "lineId": "",
     "characterId": "Player",
     "sourceText": "",
     "contextNotes": "",
