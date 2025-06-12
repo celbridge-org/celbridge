@@ -309,6 +309,8 @@ public class LineEditor : ComponentEditorBase
             characterIds.Add("SceneNote");
         }
 
+        characterIds.Sort();
+
         return Result<List<string>>.Ok(characterIds);
     }
 
