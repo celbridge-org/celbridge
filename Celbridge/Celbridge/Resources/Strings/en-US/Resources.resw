@@ -429,4 +429,13 @@
   <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
     <value>An error occurred while loading the screenplay Excel file.</value>
   </data>
+  <data name="Screenplay_ConfirmLoadTitle" xml:space="preserve">
+    <value>Confirm Load</value>
+  </data>
+  <data name="Screenplay_ConfirmLoadMessage" xml:space="preserve">
+    <value>Loading will overwrite modified scene files:
+{0}
+
+Do you wish to continue?</value>
+  </data>
 </root>
