@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Screenplay.Services;
 using Celbridge.Workspace;
@@ -6,23 +7,20 @@ namespace Celbridge.Screenplay.Commands;
 
 public class LoadScreenplayCommand : CommandBase
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IActivityService _activityService;
 
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey WorkbookResource { get; set; } = ResourceKey.Empty;
 
-    public LoadScreenplayCommand(IServiceProvider serviceProvider)
+    public LoadScreenplayCommand(IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
+        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var workspaceWrapper = _serviceProvider.AcquireService<IWorkspaceWrapper>();
-        var activityService = workspaceWrapper.WorkspaceService.ActivityService;
-
-        var getActivityResult = activityService.GetActivity(nameof(ScreenplayActivity));
+        var getActivityResult = _activityService.GetActivity(nameof(ScreenplayActivity));
         if (getActivityResult.IsFailure)
         {
             return Result.Fail($"Failed to get Screenplay activity")

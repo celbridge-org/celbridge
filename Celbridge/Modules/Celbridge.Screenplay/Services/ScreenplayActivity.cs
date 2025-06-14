@@ -2,6 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Localization;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
@@ -22,6 +23,8 @@ public class ScreenplayActivity : IActivity
     private readonly IDialogService _dialogService;
     private readonly IEntityService _entityService;
     private readonly IDocumentsService _documentsService;
+    private readonly IWorkspaceSettings _workspaceSettings;
+    private readonly IResourceRegistry _resourceRegistry;
 
     public ScreenplayActivity(
         IServiceProvider serviceProvider,
@@ -34,6 +37,8 @@ public class ScreenplayActivity : IActivity
         _dialogService = dialogService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
     }
 
     public async Task<Result> ActivateAsync()
@@ -402,9 +407,16 @@ public class ScreenplayActivity : IActivity
 
     public async Task<Result> LoadScreenplayAsync(ResourceKey screenplayResource)
     {
+        // If the load will overwrite modified scenes, ask the user if it's ok to proceed.
+        var confirmed = await ConfirmLoadScreenplay();
+        if (!confirmed)
+        {
+            return Result.Ok();
+        }
+
         // Display a progress dialog
-        var dialogueTitleText = _localizerService.GetString("Screenplay_LoadingScreenplayTitle");
-        var progressToken = _dialogService.AcquireProgressDialog(dialogueTitleText);
+        var dialogTitleText = _localizerService.GetString("Screenplay_LoadingScreenplayTitle");
+        var progressToken = _dialogService.AcquireProgressDialog(dialogTitleText);
 
         // Give the progress dialog a chance to display
         await Task.Delay(100);
@@ -424,6 +436,9 @@ public class ScreenplayActivity : IActivity
             return Result.Fail($"Failed to load screenplay data from Workbook")
                 .WithErrors(loadResult);
         }
+
+        // Reset list of modified scenes
+        await _workspaceSettings.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
 
         return Result.Ok();
     }
@@ -452,6 +467,9 @@ public class ScreenplayActivity : IActivity
             return Result.Fail($"Failed to save screenplay data to Workbook")
                 .WithErrors(saveResult);
         }
+
+        // All modified scenes have now been saved, so reset the modified scenes list
+        await _workspaceSettings.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
 
         return Result.Ok();
     }
@@ -549,6 +567,69 @@ public class ScreenplayActivity : IActivity
         }
 
         return Result<List<Character>>.Ok(characters);
+    }
+
+    private async Task<bool> ConfirmLoadScreenplay()
+    {
+        // Get the list of modified scenes from the workspace settings
+        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        if (modifiedScenes is null ||
+            modifiedScenes.Count == 0)
+        {
+            return true;
+        }
+
+        // Construct a sorted list containing the filename of each scene 
+        var sceneResources = new List<string>();
+        foreach (var sceneResource in modifiedScenes)
+        {
+            var getResourceResult = _resourceRegistry.GetResource(sceneResource);
+            if (getResourceResult.IsFailure)
+            {
+                // Ignore this scene resource because it no longer exists (e.g. user deleted it)
+                continue;
+            }
+
+            var sceneFilename = Path.GetFileNameWithoutExtension(sceneResource);
+            if (!string.IsNullOrEmpty(sceneFilename))
+            {
+                sceneResources.Add(sceneFilename);
+            }
+        }
+        sceneResources.Sort();
+
+        if (sceneResources.Count == 0)
+        {
+            // No existing scene resources will be affected by the load, so it can proceed.
+            return true;
+        }
+
+        var maxScenes = 5;
+        var sb = new StringBuilder();
+        for (int i = 0; i < sceneResources.Count; i++)
+        {
+            var scene = sceneResources[i];
+            if (i > maxScenes)
+            {
+                sb.Append($"...");
+                break;
+            }
+            sb.AppendLine(scene.ToString());
+        }
+        var sceneListText = sb.ToString();
+
+        // Ask the user to confirm that they want to overwrite the modified scenes
+        var dialogTitleText = _localizerService.GetString("Screenplay_ConfirmLoadTitle");
+        var dialogMessageText = _localizerService.GetString("Screenplay_ConfirmLoadMessage", sceneListText);
+
+        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(dialogTitleText, dialogMessageText);
+        if (confirmResult.IsFailure)
+        {
+            return false;
+        }
+        var confirmed = confirmResult.Value;
+
+        return confirmed;
     }
 
     private Result<string> GenerateScreenplayHTML(ResourceKey sceneResource)
