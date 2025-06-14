@@ -77,6 +77,24 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
     }
 
+    public async Task<bool> DeletePropertyAsync(string key)
+    {
+        try
+        {
+            var rowsDeleted = await _connection.DeleteAsync<WorkspaceProperty>(key);
+            if (rowsDeleted <= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to delete workspace property for key {key}", ex);
+        }
+    }
+
     public async Task<T?> GetPropertyAsync<T>(string key)
     {
         var defaultValue = default(T);

@@ -31,4 +31,10 @@ public interface IWorkspaceSettings
     /// Returns default(T) if the key was not found or if the property could not be deserialized to type T.
     /// </summary>
     Task<T?> GetPropertyAsync<T>(string key);
+
+    /// <summary>
+    /// Deletes the specified property.
+    /// Returns true if the property existed prior to deletion.
+    /// </summary>
+    Task<bool> DeletePropertyAsync(string key);
 }

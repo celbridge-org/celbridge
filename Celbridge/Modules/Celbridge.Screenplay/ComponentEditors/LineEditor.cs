@@ -32,6 +32,7 @@ public class LineEditor : ComponentEditorBase
     private readonly ILogger<LineEditor> _logger;
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
+    private readonly IWorkspaceSettings _workspaceSettings;
 
     public LineEditor(
         ILogger<LineEditor> logger,
@@ -40,6 +41,7 @@ public class LineEditor : ComponentEditorBase
         _logger = logger;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
+        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
     }
 
     public override string GetComponentConfig()
@@ -219,7 +221,9 @@ public class LineEditor : ComponentEditorBase
     }
 
     protected override void OnFormPropertyChanged(string propertyPath)
-    { 
+    {
+        _ = RecordModifiedScene();
+
         if (propertyPath == "/lineType")
         {
             // Update virtual properties when the line type changes
@@ -262,6 +266,28 @@ public class LineEditor : ComponentEditorBase
         {
             NotifyFormPropertyChanged("/dialogueKey");
         }
+    }
+
+    /// <summary>
+    /// Add the scene to the modified scenes list.
+    /// </summary>
+    private async Task RecordModifiedScene()
+    {
+        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        if (modifiedScenes is null)
+        {
+            modifiedScenes = new HashSet<string>();
+        }
+
+        var resource = Component.Key.Resource;
+        if (modifiedScenes.Contains(resource))
+        {
+            // Scene is already marked as modified, early out.
+            return;
+        }
+
+        modifiedScenes.Add(resource);
+        await _workspaceSettings.SetPropertyAsync(ScreenplayConstants.ModifiedScenesKey, modifiedScenes);
     }
 
     private Result<List<string>> GetFilteredCharacterIds()
@@ -316,19 +342,14 @@ public class LineEditor : ComponentEditorBase
 
     private Result<List<Character>> GetAllCharacters()
     {
-        // Get the scene component on this entity
-        var sceneComponentKey = new ComponentKey(Component.Key.Resource, 0);
-        var getComponentResult = _entityService.GetComponent(sceneComponentKey);
-        if (getComponentResult.IsFailure)
+        // Get the scene component
+        var getSceneResult = GetSceneComponent();
+        if (getSceneResult.IsFailure)
         {
-            return Result<List<Character>>.Fail($"Failed to get scene component: '{sceneComponentKey}'")
-                .WithErrors(getComponentResult);
+            return Result<List<Character>>.Fail($"Failed to get scene component")
+                .WithErrors(getSceneResult);
         }
-        var sceneComponent = getComponentResult.Value;
-        if (!sceneComponent.IsComponentType(SceneEditor.ComponentType))
-        {
-            return Result<List<Character>>.Fail($"Root component is not a Scene component");
-        }
+        var sceneComponent = getSceneResult.Value;
 
         // Get the dialogue file resource from the scene component
         ResourceKey excelFileResource = sceneComponent.GetString("/dialogueFile");
@@ -353,6 +374,26 @@ public class LineEditor : ComponentEditorBase
         var characters = charactersResult.Value;
 
         return Result<List<Character>>.Ok(characters);
+    }
+
+    private Result<IComponentProxy> GetSceneComponent()
+    {
+        // Get the scene component on this entity
+        var sceneComponentKey = new ComponentKey(Component.Key.Resource, 0);
+        var getComponentResult = _entityService.GetComponent(sceneComponentKey);
+        if (getComponentResult.IsFailure)
+        {
+            return Result<IComponentProxy>.Fail($"Failed to get scene component: '{sceneComponentKey}'")
+                .WithErrors(getComponentResult);
+        }
+
+        var sceneComponent = getComponentResult.Value;
+        if (!sceneComponent.IsComponentType(SceneEditor.ComponentType))
+        {
+            return Result<IComponentProxy>.Fail($"Root component is not a Scene component");
+        }
+
+        return Result<IComponentProxy>.Ok(sceneComponent);
     }
 
     /// <summary>
