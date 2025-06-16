@@ -182,12 +182,28 @@ public class ScreenplayLoader
         {
             try
             {
-                var character = new Character
-                (
+                var tag = TryGetValue<string>(row, columnMap, nameof(Character.Tag));
+
+                CharacterType characterType;
+                if (tag.StartsWith("Character.Player."))
+                {
+                    characterType = CharacterType.PlayerVariant;
+                }
+                else if (tag.StartsWith("Character."))
+                {
+                    characterType = CharacterType.NPC;
+                }
+                else
+                {
+                    // All other character tags are invalid - ignore them.
+                    continue;
+                }
+
+                var character = new Character(
                     CharacterId: TryGetValue<string>(row, columnMap, nameof(Character.CharacterId)),
                     Name: TryGetValue<string>(row, columnMap, nameof(Character.Name)),
-                    Tag: TryGetValue<string>(row, columnMap, nameof(Character.Tag))
-                );
+                    Tag: tag,
+                    CharacterType: characterType);
 
                 characters.Add(character);
             }
@@ -394,7 +410,7 @@ public class ScreenplayLoader
             }
         }
         
-        return Result<string>.Fail("Invalid line type");
+        return Result<string>.Fail($"Failed to determine line type for character id '{characterId}'");
     }
 
     private Result ValidateDialogue(List<Scene> scenes, List<Character> characters, List<DialogueLine> lines)
