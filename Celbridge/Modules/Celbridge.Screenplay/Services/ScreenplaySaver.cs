@@ -256,22 +256,31 @@ public class ScreenplaySaver
 
             foreach (var dialogue in sceneData.DialogueComponents)
             {
-                // playerLineId and sceneNoteIndex may be modified when we write a row
-                var writeResult = WriteDialogueRow(
-                    editedSheet, 
-                    rowIndex, 
-                    sceneData.
-                    Category, 
-                    sceneData.Namespace, 
-                    categoryColor, 
-                    nsColor, 
-                    dialogue, 
-                    ref playerLine, // Use the returned player line (if any) on the next iteration
-                    ref sceneNoteIndex);
-
-                if (writeResult.IsFailure)
+                try
                 {
-                    return Result.Fail($"Failed to write dialogue row {rowIndex}");
+                    // playerLineId and sceneNoteIndex may be modified when we write a row
+                    var writeResult = WriteDialogueRow(
+                        editedSheet,
+                        rowIndex,
+                        sceneData.
+                        Category,
+                        sceneData.Namespace,
+                        categoryColor,
+                        nsColor,
+                        dialogue,
+                        ref playerLine, // Use the returned player line (if any) on the next iteration
+                        ref sceneNoteIndex);
+
+                    if (writeResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to write dialogue row {rowIndex}. Resource '{sceneData.SceneResource}'")
+                            .WithErrors(writeResult);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Result.Fail($"Failed to write dialogue row {rowIndex}. Resource '{sceneData.SceneResource}'")
+                        .WithException(ex);
                 }
 
                 rowIndex++;
@@ -353,8 +362,11 @@ public class ScreenplaySaver
             }
             else if (lineType == "PlayerVariant")
             {
-                Guard.IsNotNull(playerLine);
-                    
+                if (playerLine is null)
+                {
+                    return Result.Fail($"PlayerLine is null for PlayerVariant line: {dialogueKey}");
+                }
+
                 // For Player Variant lines these fields should all match the parent Player Line
                 lineId = playerLine.LineId;
                 speakingTo = playerLine.SpeakingTo;
@@ -365,12 +377,6 @@ public class ScreenplaySaver
                 platform = playerLine.Platform;
                 linePriority = playerLine.LinePriority;
                 productionStatus = playerLine.ProductionStatus;
-
-                //if (string.IsNullOrEmpty(direction))
-                //{
-                //    // Use the direction from the Player ine if no direction is specified for the PlayerVariant
-                //    direction = playerLine.Direction;
-                //}
 
                 // Override the dialogue key for Player Variants
                 dialogueKey = $"{characterId}-{ns}-{lineId}";

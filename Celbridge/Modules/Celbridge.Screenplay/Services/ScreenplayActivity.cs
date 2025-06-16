@@ -144,6 +144,9 @@ public class ScreenplayActivity : IActivity
                 AnnotationErrorSeverity.Error,
                 "Failed to get characters",
                 "Failed to get character list from Screenplay component"));
+
+            return Result.Fail(entity, $"Failed to get characters: '{entity}'")
+                .WithErrors(getCharactersResult);
         }
         var characters = getCharactersResult.Value;
 
@@ -326,6 +329,25 @@ public class ScreenplayActivity : IActivity
 
             if (lineType == "PlayerVariant")
             {
+                // Check that the character id is a valid Player Variant character.
+                var isPlayerVariant = false;
+                foreach (var c in characters.Where(c => characterId == c.CharacterId))
+                {
+                    if (c.CharacterType == CharacterType.PlayerVariant)
+                    {
+                        isPlayerVariant = true;
+                    }
+                    break;
+                }
+
+                if (!isPlayerVariant)
+                {
+                    entityAnnotation.AddComponentError(i, new AnnotationError(
+                        AnnotationErrorSeverity.Error,
+                        "Invalid character",
+                        "Invalid character selected for Player Variant line type"));
+                }
+
                 // Each Player Variant within the group must specify a different character id.
                 var dialogueKey = $"{characterId}-{@namespace}-{resolvedLineId}";
                 if (activePlayerVariants.Contains(dialogueKey))
@@ -544,10 +566,12 @@ public class ScreenplayActivity : IActivity
                 return Result<List<Character>>.Fail("Character name is empty");
             }
 
+            CharacterType characterType;
             var characterTag = string.Empty;
             if (characterName == "Player")
             {
                 characterTag = "Character.Player";
+                characterType = CharacterType.Player;
             }
             else
             {
@@ -560,9 +584,23 @@ public class ScreenplayActivity : IActivity
                 {
                     return Result<List<Character>>.Fail("Character tag is empty");
                 }
+
+                if (characterTag.StartsWith("Character.Player."))
+                {
+                    characterType = CharacterType.PlayerVariant;
+                }
+                else if (characterTag.StartsWith("Character."))
+                {
+                    characterType = CharacterType.NPC;
+                }
+                else
+                {
+                    // All other character tags are invalid - ignore them.
+                    continue;
+                }
             }
 
-            var character = new Character(characterId, characterName, characterTag);
+            var character = new Character(characterId, characterName, characterTag, characterType);
             characters.Add(character);
         }
 
