@@ -1,3 +1,4 @@
+using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
@@ -37,7 +38,9 @@ public class ScreenplaySaver
 
     private readonly IMessengerService _messengerService;
     private readonly IExplorerService _explorerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IEntityService _entityService;
+    private readonly IActivityService _activityService;
+    private readonly IWorkspaceSettings _workspaceSettings;
 
     private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
 
@@ -47,11 +50,13 @@ public class ScreenplaySaver
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _entityService = workspaceWrapper.WorkspaceService.EntityService;
+        _activityService = workspaceWrapper.WorkspaceService.ActivityService;
+        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
     }
 
-    public Result SaveScreenplay(ResourceKey screenplayResource)
+    public async Task<Result> SaveScreenplay(ResourceKey screenplayResource)
     {
         try
         {
@@ -68,8 +73,6 @@ public class ScreenplaySaver
                 return Result.Fail($"Failed to get screenplay folder path for resource '{screenplayResource}'");
             }
 
-            var entityService = _workspaceWrapper.WorkspaceService.EntityService;
-
             // Find all .scene files in the screenplay folder
             var sceneFiles = Directory.GetFiles(screenplayFolder, "*.scene", SearchOption.AllDirectories).ToList();
             if (sceneFiles.Count == 0)
@@ -78,7 +81,7 @@ public class ScreenplaySaver
             }
 
             // Collect all dialogue lines for all scene files found
-            var collectSceneDataResult = CollectSceneData(entityService, sceneFiles);
+            var collectSceneDataResult = CollectSceneData(sceneFiles);
             if (collectSceneDataResult.IsFailure)
             {
                 return Result.Fail("Failed to collect scene data")
@@ -88,13 +91,12 @@ public class ScreenplaySaver
 
             var errorScene = ResourceKey.Empty;
 
-            var activityService = _workspaceWrapper.WorkspaceService.ActivityService;
             foreach (var sceneData in sceneDataList)
             {
                 bool annotateSucceeded = true;
                 var sceneResource = sceneData.SceneResource;
 
-                var annotateResult = activityService.AnnotateEntity(sceneResource);
+                var annotateResult = _activityService.AnnotateEntity(sceneResource);
                 if (annotateResult.IsSuccess)
                 {
                     var annotation = annotateResult.Value;
@@ -127,7 +129,7 @@ public class ScreenplaySaver
                 return Result.Ok();
             }
 
-            var saveWorksheetResult = SaveDialogueWorksheet(workbookPath, sceneDataList);
+            var saveWorksheetResult = await SaveDialogueWorksheet(workbookPath, sceneDataList);
 
             if (saveWorksheetResult.IsSuccess)
             {
@@ -147,7 +149,7 @@ public class ScreenplaySaver
         }
     }
 
-    private Result<List<SceneData>> CollectSceneData(IEntityService entityService, IReadOnlyList<string> sceneFiles)
+    private Result<List<SceneData>> CollectSceneData(IReadOnlyList<string> sceneFiles)
     {
         // Build a list of SceneData based on the .scene files we found
         var processedNamespaces = new HashSet<string>();
@@ -164,7 +166,7 @@ public class ScreenplaySaver
 
             var sceneResource = getResourceKeyResult.Value;
 
-            var getComponentsResult = entityService.GetComponents(sceneResource);
+            var getComponentsResult = _entityService.GetComponents(sceneResource);
             if (getComponentsResult.IsFailure)
             {
                 return Result<List<SceneData>>.Fail($"Failed to get components for scene file '{sceneFile}'")
@@ -213,7 +215,7 @@ public class ScreenplaySaver
         return Result<List<SceneData>>.Ok(sortedList);
     }
 
-    private Result SaveDialogueWorksheet(string workbookFilePath, List<SceneData> sceneDataList)
+    private async Task<Result> SaveDialogueWorksheet(string workbookFilePath, List<SceneData> sceneDataList)
     {
         // Open the workbook file.
         // It's best to do this before we make any other changes, e.g. in case the file is locked.
@@ -289,6 +291,9 @@ public class ScreenplaySaver
 
         AppendBarkDialogue(dialogueSheet, editedSheet, rowIndex);
         FinalizeWorksheet(workbook, dialogueSheet, editedSheet);
+
+        var scenesSheet = workbook.Worksheet("Scenes");
+        await WriteModifiedScenes(scenesSheet);
 
         workbook.Save();
 
@@ -453,6 +458,31 @@ public class ScreenplaySaver
         originalSheet.Delete();
         editedSheet.Name = "Dialogue";
         editedSheet.Position = 1;
+    }
+
+    private async Task WriteModifiedScenes(IXLWorksheet scenesSheet)
+    {
+        // Get the list of modified scenes from the workspace settings
+        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        if (modifiedScenes is null ||
+            modifiedScenes.Count == 0)
+        {
+            return;
+        }
+
+        var lastRow = scenesSheet.LastRowUsed()?.RowNumber() ?? 1;
+        var range = scenesSheet.Range(2, 1, lastRow, 5);
+
+        foreach (var row in range.Rows())
+        {
+            var @namespace = row.Cell(2).GetString();
+
+            if (modifiedScenes.Contains(@namespace))
+            {
+                var modifiedCell = row.Cell(5);
+                modifiedCell.SetValue("True");
+            }
+        }
     }
 
     private void FillCells(IXLWorksheet sheet, int row, IEnumerable<int> columns, string hexColor)
