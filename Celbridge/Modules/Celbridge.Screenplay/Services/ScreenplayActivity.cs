@@ -476,7 +476,7 @@ public class ScreenplayActivity : IActivity
 
         var saver = _serviceProvider.AcquireService<ScreenplaySaver>();
 
-        var saveResult = saver.SaveScreenplay(screenplayResource);
+        var saveResult = await saver.SaveScreenplay(screenplayResource);
         _dialogService.ReleaseProgressDialog(progressToken);
 
         if (saveResult.IsFailure)
@@ -617,42 +617,21 @@ public class ScreenplayActivity : IActivity
             return true;
         }
 
-        // Construct a sorted list containing the filename of each scene 
-        var sceneResources = new List<string>();
-        foreach (var sceneResource in modifiedScenes)
-        {
-            var getResourceResult = _resourceRegistry.GetResource(sceneResource);
-            if (getResourceResult.IsFailure)
-            {
-                // Ignore this scene resource because it no longer exists (e.g. user deleted it)
-                continue;
-            }
+        // Construct a sorted list containing the namespace of each modified scene 
+        var namespaces = modifiedScenes.ToList();
+        namespaces.Sort();
 
-            var sceneFilename = Path.GetFileNameWithoutExtension(sceneResource);
-            if (!string.IsNullOrEmpty(sceneFilename))
-            {
-                sceneResources.Add(sceneFilename);
-            }
-        }
-        sceneResources.Sort();
-
-        if (sceneResources.Count == 0)
-        {
-            // No existing scene resources will be affected by the load, so it can proceed.
-            return true;
-        }
-
-        var maxScenes = 5;
+        var maxNamespaces = 5;
         var sb = new StringBuilder();
-        for (int i = 0; i < sceneResources.Count; i++)
+        for (int i = 0; i < namespaces.Count; i++)
         {
-            var scene = sceneResources[i];
-            if (i > maxScenes)
+            var @namespace = namespaces[i];
+            if (i > maxNamespaces)
             {
                 sb.Append($"...");
                 break;
             }
-            sb.AppendLine(scene.ToString());
+            sb.AppendLine(@namespace.ToString());
         }
         var sceneListText = sb.ToString();
 

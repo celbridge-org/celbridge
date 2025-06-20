@@ -269,7 +269,7 @@ public class LineEditor : ComponentEditorBase
     }
 
     /// <summary>
-    /// Add the scene to the modified scenes list.
+    /// Add the scene namespace to the modified scenes list.
     /// </summary>
     private async Task RecordModifiedScene()
     {
@@ -279,14 +279,20 @@ public class LineEditor : ComponentEditorBase
             modifiedScenes = new HashSet<string>();
         }
 
-        var resource = Component.Key.Resource;
-        if (modifiedScenes.Contains(resource))
+        var getNamepaceResult = GetNamespace();
+        if (getNamepaceResult.IsFailure)
+        {
+            return;
+        }
+        var @namespace = getNamepaceResult.Value;
+
+        if (modifiedScenes.Contains(@namespace))
         {
             // Scene is already marked as modified, early out.
             return;
         }
 
-        modifiedScenes.Add(resource);
+        modifiedScenes.Add(@namespace);
         await _workspaceSettings.SetPropertyAsync(ScreenplayConstants.ModifiedScenesKey, modifiedScenes);
     }
 
@@ -401,10 +407,34 @@ public class LineEditor : ComponentEditorBase
     /// </summary>
     private Result<string> GetDialogueKey()
     {
-        //
-        // Get all components 
-        //
+        // Get the Character Id
+        var characterId = Component.GetString(CharacterId);
 
+        // Get the namespace
+        var getNamespaceResult = GetNamespace();
+        if (getNamespaceResult.IsFailure)
+        {
+            return Result<string>.Fail();
+        }
+        var @namespace = getNamespaceResult.Value;
+
+        // Get the line id
+        var getLineIdResult = GetProperty(LineId); // Use the property override mechanism
+        if (getLineIdResult.IsFailure)
+        {
+            return Result<string>.Fail();
+        }
+        var lineId = JsonSerializer.Deserialize<string>(getLineIdResult.Value);
+
+        // Todo: Add a validation util for dialogue keys
+        var dialogueKey = $"{characterId}-{@namespace}-{lineId}";
+
+        return Result<string>.Ok(dialogueKey);
+    }
+
+    private Result<string> GetNamespace()
+    {
+        // Get all components 
         var sceneResource = Component.Key.Resource;
         var getComponentsResult = _entityService.GetComponents(sceneResource);
         if (getComponentsResult.IsFailure)
@@ -412,15 +442,12 @@ public class LineEditor : ComponentEditorBase
             return Result<string>.Fail();
         }
 
+        // Get the namespace from the Scene component on this entity
         var components = getComponentsResult.Value;
         if (components.Count == 0)
         {
             return Result<string>.Fail();
         }
-
-        //
-        // Get the namespace from the Scene component on this entity
-        //
 
         if (!components[0].IsComponentType(SceneEditor.ComponentType))
         {
@@ -435,23 +462,7 @@ public class LineEditor : ComponentEditorBase
             return Result<string>.Fail();
         }
 
-        //
-        // Get the Character Id
-        //
-
-        var characterId = Component.GetString(CharacterId);
-
-        var getLineIdResult = GetProperty(LineId); // Use the property override mechanism
-        if (getLineIdResult.IsFailure)
-        {
-            return Result<string>.Fail();
-        }
-        var lineId = JsonSerializer.Deserialize<string>(getLineIdResult.Value);
-
-        // Todo: Add a validation util for dialogue keys
-        var dialogueKey = $"{characterId}-{@namespace}-{lineId}";
-
-        return Result<string>.Ok(dialogueKey);
+        return Result<string>.Ok(@namespace);
     }
 
     private void GenerateDialogueKey()
