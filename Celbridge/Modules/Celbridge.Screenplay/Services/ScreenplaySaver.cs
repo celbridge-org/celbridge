@@ -478,6 +478,7 @@ public class ScreenplaySaver
         var lastRow = scenesSheet.LastRowUsed()?.RowNumber() ?? 1;
         var range = scenesSheet.Range(2, 1, lastRow, 5);
 
+        bool modified = false;
         foreach (var row in range.Rows())
         {
             var @namespace = row.Cell(2).GetString();
@@ -486,7 +487,18 @@ public class ScreenplaySaver
             {
                 var modifiedCell = row.Cell(5);
                 modifiedCell.SetValue("True");
+                modified = true;
             }
+        }
+
+        if (modified)
+        {
+            // Set header cell in column D to "Modified" and copy the style from the cell to its left
+            var headerCell = scenesSheet.Cell(1, 5);
+            headerCell.Value = "Modified";
+
+            var leftCell = scenesSheet.Cell(1, 4);
+            headerCell.Style = leftCell.Style;
         }
     }
 
