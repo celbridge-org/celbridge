@@ -127,9 +127,14 @@ public class ScreenplayLoader
 
             return Result.Ok();
         }
+        catch (IOException ex) when (ex.HResult == unchecked((int)0x80070020))
+        {
+            return Result.Fail("Excel file is in use by another process")
+                .WithException(ex);
+        }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to import screenplay data from workbook")
+            return Result.Fail($"Failed to load screenplay data from workbook")
                 .WithException(ex);
         }
     }

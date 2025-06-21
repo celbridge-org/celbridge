@@ -424,10 +424,13 @@
     <value>Load failed</value>
   </data>
   <data name="Screenplay_SaveFailedMessage" xml:space="preserve">
-    <value>An error occurred while saving the screenplay Excel file.</value>
+    <value>An error occurred while saving the screenplay Excel file.  See console log for details.</value>
   </data>
   <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
-    <value>An error occurred while loading the screenplay Excel file.</value>
+    <value>An error occurred while loading the screenplay Excel file. See console log for details.</value>
+  </data>
+  <data name="Screenplay_AccessErrorMessage" xml:space="preserve">
+    <value>The screenplay Excel file is open in another application. Please close the other application and try again.</value>
   </data>
   <data name="Screenplay_ConfirmLoadTitle" xml:space="preserve">
     <value>Confirm Load</value>

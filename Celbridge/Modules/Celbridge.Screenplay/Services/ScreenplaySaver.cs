@@ -142,6 +142,11 @@ public class ScreenplaySaver
 
             return saveWorksheetResult;
         }
+        catch (IOException ex) when (ex.HResult == unchecked((int)0x80070020))
+        {
+            return Result.Fail("Excel file is in use by another process")
+                .WithException(ex);
+        }
         catch (Exception ex)
         {
             return Result.Fail("Failed to save screenplay data to workbook")

@@ -49,7 +49,7 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Gets the first error message in the errors list.
+    /// Returns the first error message in the errors list.
     /// </summary>
     public string FirstErrorMessage
     {
@@ -61,6 +61,25 @@ public abstract class Result
             }
 
             return _errors[0].Message;
+        }
+    }
+
+    /// <summary>
+    /// Returns the first exception in the errors list.
+    /// </summary>
+    public Exception? FirstException
+    {
+        get
+        {
+            foreach (var error in _errors)
+            {
+                if (error.Exception != null)
+                {
+                    return error.Exception;
+                }
+            }
+
+            return null;
         }
     }
 
