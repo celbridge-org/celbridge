@@ -452,7 +452,20 @@ public class ScreenplayActivity : IActivity
         {
             // Alert the user about the failed load
             var alertTitleText = _localizerService.GetString("Screenplay_LoadFailedTitle");
-            var alertBodyText = _localizerService.GetString("Screenplay_LoadFailedMessage");
+
+            string alertBodyText;
+            var exception = loadResult.FirstException;
+            if (exception != null && exception is IOException)
+            {
+                // Excel file is open in another application
+                alertBodyText = _localizerService.GetString("Screenplay_AccessErrorMessage");
+            }
+            else
+            {
+                // Generic load failed error message
+                alertBodyText = _localizerService.GetString("Screenplay_LoadFailedMessage");
+            }
+
             await _dialogService.ShowAlertDialogAsync(alertTitleText, alertBodyText);
 
             return Result.Fail($"Failed to load screenplay data from Workbook")
@@ -481,9 +494,21 @@ public class ScreenplayActivity : IActivity
 
         if (saveResult.IsFailure)
         {
+            string alertBodyText;
+            var exception = saveResult.FirstException;
+            if (exception != null && exception is IOException)
+            {
+                // Excel file is open in another application
+                alertBodyText = _localizerService.GetString("Screenplay_AccessErrorMessage");
+            }
+            else
+            {
+                // Generic save failed error message
+                alertBodyText = _localizerService.GetString("Screenplay_SaveFailedMessage");
+            }
+
             // Alert the user about the failed save
             var alertTitleText = _localizerService.GetString("Screenplay_SaveFailedTitle");
-            var alertBodyText = _localizerService.GetString("Screenplay_SaveFailedMessage");
             await _dialogService.ShowAlertDialogAsync(alertTitleText, alertBodyText);
 
             return Result.Fail($"Failed to save screenplay data to Workbook")
