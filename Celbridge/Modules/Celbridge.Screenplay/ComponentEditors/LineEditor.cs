@@ -149,9 +149,9 @@ public class LineEditor : ComponentEditorBase
                     return Result<string>.Ok(JsonSerializer.Serialize(Visibility.Collapsed));
             }
         }
-        else if (propertyPath == "/directionVisibility")
+        else if (propertyPath == "/directionVisibility" || propertyPath == "/contextNotesVisibility")
         {
-            // Determine visibility for Direction field
+            // Determine visibility for Direction & Context Notes fields
             var lineType = Component.GetString(LineEditor.LineType);
             switch (lineType)
             {
@@ -167,7 +167,11 @@ public class LineEditor : ComponentEditorBase
         }
         else if (propertyPath == "/directionPlaceholderText")
         {
-            return GetDirectionPlaceholderText();
+            return GetParentPlayerLineProperty("/direction");
+        }
+        else if (propertyPath == "/contextNotesPlaceholderText")
+        {
+            return GetParentPlayerLineProperty("/contextNotes");
         }
         else if (propertyPath == "/generateDialogueKeyVisibility")
         {
@@ -545,13 +549,7 @@ public class LineEditor : ComponentEditorBase
         return Result<string>.Ok(newLineId);
     }
 
-    /// <summary>
-    /// Returns the placeholder text to display in the Direction text field.
-    /// This applies when the Direction property of a Player Variant line is empty.
-    /// In this case, the Direction property of the parent Player Line is displayed as placeholder text.
-    /// In all other cases the placeholder text should be empty.
-    /// </summary>
-    private Result<string> GetDirectionPlaceholderText()
+    private Result<string> GetParentPlayerLineProperty(string propertyPath)
     {
         var lineType = Component.GetString(LineEditor.LineType);
         if (lineType != "PlayerVariant")
@@ -565,9 +563,9 @@ public class LineEditor : ComponentEditorBase
         {
             var parentLine = getParentResult.Value;
 
-            // Found the Player Line, return the direction property.
-            var otherDirection = parentLine.GetString("/direction");
-            return Result<string>.Ok(JsonSerializer.Serialize(otherDirection));
+            // Found the Player Line, return the value at the specified property path.
+            var parentPropertyValue = parentLine.GetString(propertyPath);
+            return Result<string>.Ok(JsonSerializer.Serialize(parentPropertyValue));
         }
 
         return Result<string>.Ok(JsonSerializer.Serialize(string.Empty));
