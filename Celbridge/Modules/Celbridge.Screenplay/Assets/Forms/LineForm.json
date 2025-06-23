@@ -52,7 +52,8 @@
   },
   {
     "element": "TextBox",
-    "visibility": "/variantVisibility",
+    "visibility": "/contextNotesVisibility",
+    "placeholderText": "/contextNotesPlaceholderText",
     "header": "Context Notes",
     "text": "/contextNotes"
   },
