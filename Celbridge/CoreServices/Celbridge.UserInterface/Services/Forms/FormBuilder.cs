@@ -156,6 +156,18 @@ public class FormBuilder
                 }
                 break;
 
+            case "DropDownTextBox":
+                var dropDownTextBoxResult = DropDownTextBoxElement.CreateDropDownTextBox(config, this);
+                if (dropDownTextBoxResult.IsFailure)
+                {
+                    _buildErrors.Add(dropDownTextBoxResult.Error);
+                }
+                else
+                {
+                    uiElement = dropDownTextBoxResult.Value;
+                }
+                break;
+
             case "Button":
                 var buttonResult = ButtonElement.CreateButton(config, this);
                 if (buttonResult.IsFailure)

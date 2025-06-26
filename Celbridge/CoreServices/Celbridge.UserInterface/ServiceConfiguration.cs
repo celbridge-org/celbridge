@@ -48,6 +48,7 @@ public static class ServiceConfiguration
         services.AddTransient<StackPanelElement>();
         services.AddTransient<TextBoxElement>();
         services.AddTransient<TextBlockElement>();
+        services.AddTransient<DropDownTextBoxElement>();
         services.AddTransient<ButtonElement>();
         services.AddTransient<ComboBoxElement>();
         services.AddTransient<InfoBarElement>();

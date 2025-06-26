@@ -1,0 +1,27 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.DropDownTextBox"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <StackPanel Orientation="Horizontal"
+              Spacing="4"
+              HorizontalAlignment="Stretch">
+    <TextBox x:Name="InputBox"/>
+
+    <DropDownButton x:Name="DropdownButton"
+                    VerticalAlignment="Bottom"
+                    Click="DropdownButton_Click">
+      <DropDownButton.Flyout>
+        <Flyout>
+          <ListView x:Name="OptionList"
+                    IsItemClickEnabled="True"
+                    ItemClick="OptionList_ItemClick"
+                    Width="200"
+                    MaxHeight="300" />
+        </Flyout>
+      </DropDownButton.Flyout>
+    </DropDownButton>
+  </StackPanel>
+</UserControl>

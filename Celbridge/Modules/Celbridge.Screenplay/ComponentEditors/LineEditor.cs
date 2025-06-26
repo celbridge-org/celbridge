@@ -101,7 +101,7 @@ public class LineEditor : ComponentEditorBase
 
     protected override Result<string> TryGetProperty(string propertyPath)
     {
-        // Get list of available characters to populate the Character combo box
+        // Get list of available characters to populate the Character Id combo box
         if (propertyPath == "/characterIds")
         {
             var getCharactersResult = GetFilteredCharacterIds();
@@ -116,6 +116,22 @@ public class LineEditor : ComponentEditorBase
             var charactersJson = JsonSerializer.Serialize(characterIds);
 
             return Result<string>.Ok(charactersJson);
+        }
+        else if (propertyPath == "/speakingToCharacterIds")
+        {
+            var getCharactersResult = GetSpeakingToCharacterIds();
+            if (getCharactersResult.IsFailure)
+            {
+                return Result<string>.Fail($"Failed to get speaking to character ids")
+                    .WithErrors(getCharactersResult);
+            }
+            var characterIds = getCharactersResult.Value;
+
+            // Convert the character id list to JSON so we can return it as a component property
+            var charactersJson = JsonSerializer.Serialize(characterIds);
+
+            return Result<string>.Ok(charactersJson);
+
         }
         else if (propertyPath == "/characterIdVisibility")
         {
@@ -298,6 +314,36 @@ public class LineEditor : ComponentEditorBase
 
         modifiedScenes.Add(@namespace);
         await _workspaceSettings.SetPropertyAsync(ScreenplayConstants.ModifiedScenesKey, modifiedScenes);
+    }
+
+    private Result<List<string>> GetSpeakingToCharacterIds()
+    {
+        var characterIds = new List<string>();
+
+        var getCharactersResult = GetAllCharacters();
+        if (getCharactersResult.IsFailure)
+        {
+            return Result<List<string>>.Fail($"Failed to get characters")
+                .WithErrors(getCharactersResult);
+        }
+        var characters = getCharactersResult.Value;
+
+        foreach (var character in characters)
+        {
+            var characterId = character.CharacterId;
+
+            if (character.CharacterType == CharacterType.Player ||
+                character.CharacterType == CharacterType.PlayerVariant)
+            {
+                continue;
+            }
+
+            characterIds.Add(characterId);
+        }
+        characterIds.Sort();
+        characterIds.Insert(0, "Player");
+
+        return Result<List<string>>.Ok(characterIds);
     }
 
     private Result<List<string>> GetFilteredCharacterIds()
