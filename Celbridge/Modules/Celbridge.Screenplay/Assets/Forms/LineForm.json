@@ -45,10 +45,12 @@
     "checkSpelling": true
   },
   {
-    "element": "TextBox",
+    "element": "DropDownTextBox",
     "visibility": "/variantVisibility",
     "header": "Speaking To",
-    "text": "/speakingTo"
+    "text": "/speakingTo",
+    "buttonIcon":  "People",
+    "values": "/speakingToCharacterIds"
   },
   {
     "element": "TextBox",
