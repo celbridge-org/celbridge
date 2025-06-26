@@ -164,7 +164,7 @@ public partial class TextBoxElement : FormElement
             }
             else if (configValue.ValueKind == JsonValueKind.True)
             {
-                textBox.IsEnabled = false;
+                textBox.IsEnabled = true;
             }
             else if (configValue.ValueKind == JsonValueKind.False)
             {

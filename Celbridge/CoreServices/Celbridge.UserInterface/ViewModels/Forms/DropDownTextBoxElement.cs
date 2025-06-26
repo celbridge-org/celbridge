@@ -142,7 +142,7 @@ public partial class DropDownTextBoxElement : FormElement
         if (buttonTextResult.IsFailure)
         {
             return Result<FrameworkElement>.Fail($"Failed to apply 'buttonText' config property")
-                .WithErrors(iconResult);
+                .WithErrors(buttonTextResult);
         }        
 
         var valuesResult = ApplyValuesConfig(config, dropDownTextBox);
@@ -179,7 +179,7 @@ public partial class DropDownTextBoxElement : FormElement
             }
             else if (configValue.ValueKind == JsonValueKind.True)
             {
-                dropDownTextBox.IsEnabled = false;
+                dropDownTextBox.IsEnabled = true;
             }
             else if (configValue.ValueKind == JsonValueKind.False)
             {
