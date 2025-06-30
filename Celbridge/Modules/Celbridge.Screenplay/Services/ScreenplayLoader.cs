@@ -587,7 +587,7 @@ public class ScreenplayLoader
 
             // Create the .scene resource and entity data
 
-            var saveFileResult = await SaveSceneFileAsync(sceneFolderPath, category, scene.AssetPath);
+            var saveFileResult = await SaveSceneFileAsync(sceneFolderPath, scene.AssetPath);
             if (saveFileResult.IsFailure)
             {
                 var filename = Path.GetFileName(scene.AssetPath);
@@ -607,7 +607,7 @@ public class ScreenplayLoader
         return Result.Ok();
     }
 
-    private async Task<Result> SaveSceneFileAsync(string sceneFolderPath, string category, string assetPath)
+    private async Task<Result> SaveSceneFileAsync(string sceneFolderPath, string assetPath)
     {
         try
         {
@@ -615,7 +615,7 @@ public class ScreenplayLoader
 
             var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
             var assetName = Path.GetFileNameWithoutExtension(assetPath);
-            var sceneFilePath = Path.Combine(sceneFolderPath, category, subFolder, $"{assetName}.scene");
+            var sceneFilePath = Path.Combine(sceneFolderPath, subFolder, $"{assetName}.scene");
             var sceneFolder = Path.GetDirectoryName(sceneFilePath);
 
             if (!string.IsNullOrEmpty(sceneFolder) &&
@@ -641,7 +641,7 @@ public class ScreenplayLoader
         {
             var subFolder = Path.GetDirectoryName(assetPath) ?? string.Empty;
             var assetName = Path.GetFileNameWithoutExtension(assetPath);
-            var entityFilePath = Path.Combine(entityFolderPath, category, subFolder, $"{assetName}.scene.json");
+            var entityFilePath = Path.Combine(entityFolderPath, subFolder, $"{assetName}.scene.json");
             var entityFolder = Path.GetDirectoryName(entityFilePath);
 
             if (!string.IsNullOrEmpty(entityFolder) &&
