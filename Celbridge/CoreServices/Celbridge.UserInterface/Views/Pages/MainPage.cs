@@ -102,14 +102,16 @@ public sealed partial class MainPage : Page
         };
 #else
         Guard.IsNotNull(mainWindow);
-        Guard.IsNotNull(mainWindow.CoreWindow);
-        mainWindow.CoreWindow.KeyDown += (s, e) =>
+        if (mainWindow.CoreWindow is not null)
         {
-            if (OnKeyDown(e.VirtualKey))
+            mainWindow.CoreWindow.KeyDown += (s, e) =>
             {
-                e.Handled = true;
-            }
-        };
+                if (OnKeyDown(e.VirtualKey))
+                {
+                    e.Handled = true;
+                }
+            };
+        }
 #endif
     }
 
