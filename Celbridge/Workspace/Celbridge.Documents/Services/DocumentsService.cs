@@ -394,8 +394,10 @@ public class DocumentsService : IDocumentsService, IDisposable
                 documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
                 break;
 #else
-            case DocumentViewType.TextDocument:
             case DocumentViewType.WebPageDocument:
+                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
+                break;
+            case DocumentViewType.TextDocument:
             case DocumentViewType.FileViewer:
 
                 // On non-Windows platforms, use the text editor document view for all document types
