@@ -135,7 +135,7 @@ public sealed partial class MonacoEditorView : DocumentView
         _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
         _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
 
-        // Release the webvuew back to the pool.
+        // Release the webview back to the pool.
         // TextEditorWebViewPool is not exposed via the public interface
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);

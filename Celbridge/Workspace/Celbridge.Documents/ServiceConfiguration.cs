@@ -27,6 +27,7 @@ public static class ServiceConfiguration
         services.AddTransient<FileViewerDocumentView>();
         services.AddTransient<EditorPreviewView>();
         services.AddTransient<TextEditorDocumentView>();
+        services.AddTransient<SpreadsheetDocumentView>();
 
         //
         // Register view models
@@ -40,6 +41,7 @@ public static class ServiceConfiguration
         services.AddTransient<FileViewerDocumentViewModel>();
         services.AddTransient<EditorPreviewViewModel>();
         services.AddTransient<TextEditorDocumentViewModel>();
+        services.AddTransient<SpreadsheetDocumentViewModel>();
 
         //
         // Register commands

@@ -161,6 +161,30 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
+    public bool CanAccessFile(string resourcePath)
+    {
+        if (string.IsNullOrEmpty(resourcePath) ||
+            !File.Exists(resourcePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var fileInfo = new FileInfo(resourcePath);
+            using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
@@ -170,6 +194,11 @@ public class DocumentsService : IDocumentsService, IDisposable
             !File.Exists(filePath))
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
+        }
+
+        if (!CanAccessFile(filePath))
+        {
+            return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
         var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload);
@@ -392,6 +421,10 @@ public class DocumentsService : IDocumentsService, IDisposable
 
             case DocumentViewType.FileViewer:
                 documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
+                break;
+
+            case DocumentViewType.Spreadsheet:
+                documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
                 break;
 #else
             case DocumentViewType.WebPageDocument:

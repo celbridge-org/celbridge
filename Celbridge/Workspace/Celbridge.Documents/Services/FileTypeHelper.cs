@@ -35,6 +35,11 @@ public class FileTypeHelper
             return DocumentViewType.WebPageDocument;
         }
 
+        if (fileExtension == ".xlsx")
+        {
+            return DocumentViewType.Spreadsheet;
+        }
+
         if (IsWebViewerFile(fileExtension))
         {
             return DocumentViewType.FileViewer;

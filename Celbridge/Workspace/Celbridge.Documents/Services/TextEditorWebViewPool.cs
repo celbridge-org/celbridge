@@ -69,7 +69,7 @@ public class TextEditorWebViewPool
         await webView.EnsureCoreWebView2Async();
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
             "MonacoEditor",
-            "monaco",
+            "Web/Monaco",
             CoreWebView2HostResourceAccessKind.Allow);
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
