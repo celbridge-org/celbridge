@@ -1,4 +1,4 @@
-<Project Sdk="Uno.Sdk">
+﻿<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
@@ -23,14 +23,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="preview\**" />
-    <Content Include="monaco\**" />
+    <Content Include="Web\**" />
     <!-- Excluding these files as they trigger localization warnings during the build process -->
-    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-    <Content Remove="monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-    <Content Remove="monaco\min\vs\basic-languages\st\st.js" />
-    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-    <Content Remove="monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
+    <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="Web\Monaco\min\vs\basic-languages\st\st.js" />
+    <Content Remove="Web\Monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="Web\Monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
   </ItemGroup>
 
   <ItemGroup>

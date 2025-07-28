@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// The supported types of document view.
@@ -26,5 +26,10 @@ public enum DocumentViewType
     /// A non-text file resource viewed via a web view.
     /// e.g. an image, audio clip, pdf file, etc.
     /// </summary>
-    FileViewer
+    FileViewer,
+
+    /// <summary>
+    /// An Excel spreadsheet document with the .xlsx extension
+    /// </summary>
+    Spreadsheet,
 }
