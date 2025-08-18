@@ -25,7 +25,7 @@ public class ClearHistoryCommand : CommandBase, IClearHistoryCommand
         var consolePanel = consoleService.ConsolePanel as ConsolePanel;
         Guard.IsNotNull(consolePanel);
             
-        consolePanel.ViewModel.ClearHistory();
+        // consolePanel.ViewModel.ClearHistory();
 
         await Task.CompletedTask;
         return Result.Ok();

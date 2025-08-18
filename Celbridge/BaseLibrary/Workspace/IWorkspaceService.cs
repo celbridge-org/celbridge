@@ -6,7 +6,7 @@ using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
-using Celbridge.Scripting;
+using Celbridge.Python;
 using Celbridge.Status;
 
 namespace Celbridge.Workspace;
@@ -27,9 +27,9 @@ public interface IWorkspaceService
     IWorkspaceSettings WorkspaceSettings { get; }
 
     /// <summary>
-    /// Returns the Scripting Service associated with the workspace.
+    /// Returns the Python Service associated with the workspace.
     /// </summary>
-    IScriptingService ScriptingService { get; }
+    IPythonService PythonService { get; }
 
     /// <summary>
     /// Returns the Console Service associated with the workspace.

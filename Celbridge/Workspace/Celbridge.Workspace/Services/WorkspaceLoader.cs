@@ -107,14 +107,23 @@ public class WorkspaceLoader
         await documentsService.StoreOpenDocuments();
 
         //
-        // Initialize console scripting support
+        // Initialize terminal window and Python scripting
         //
+
         var consoleService = workspaceService.ConsoleService;
-        var initResult = await consoleService.ConsolePanel.InitializeScripting();
-        if (initResult.IsFailure)
+        var initTerminal = await consoleService.InitializeTerminalWindow();
+        if (initTerminal.IsFailure)
         {
-            return Result.Fail("Failed to initialize console scripting")
-                .WithErrors(initResult);
+            return Result.Fail("Failed to initialize console terminal")
+                .WithErrors(initTerminal);
+        }
+
+        var pythonService = workspaceService.PythonService;
+        var initPython = await pythonService.InitializePython();
+        if (initPython.IsFailure)
+        {
+            return Result.Fail("Failed to initialize Python scripting")
+                .WithErrors(initPython);
         }
 
         return Result.Ok();

@@ -25,7 +25,7 @@ public class ClearCommand : CommandBase, IClearCommand
         var consolePanel = consoleService.ConsolePanel as ConsolePanel;
         Guard.IsNotNull(consolePanel);
             
-        consolePanel.ViewModel.ClearLog();
+        // consolePanel.ViewModel.ClearLog();
 
         await Task.CompletedTask;
         return Result.Ok();

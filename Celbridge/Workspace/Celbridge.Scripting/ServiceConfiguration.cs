@@ -1,5 +1,3 @@
-using Celbridge.Modules;
-using Celbridge.Scripting.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Scripting;
@@ -11,7 +9,5 @@ public static class ServiceConfiguration
         //
         // Register services
         //
-
-        services.AddTransient<IScriptingService, ScriptingService>();
     }
 }

@@ -67,7 +67,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         // Add a mapping for the "preview" files packaged with the build.
         _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
             "Preview",
-            "Web/Preview",
+            "Celbridge.Documents/Web/Preview",
             CoreWebView2HostResourceAccessKind.Allow);
 
         // Add a mapping for the file's parent folder so that relative links work.

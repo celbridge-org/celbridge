@@ -15,6 +15,9 @@
     <MenuFlyout x:Name="ResourceContextMenu"
                 Placement="RightEdgeAlignedTop"
                 Opening="ResourceContextMenu_Opening">
+      <MenuFlyoutItem Text="{x:Bind RunString}"
+                      Click="ResourceContextMenu_Run"
+                      IsEnabled="{x:Bind ViewModel.IsExecutableResourceSelected, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind OpenString}"
                       Click="ResourceContextMenu_Open"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />

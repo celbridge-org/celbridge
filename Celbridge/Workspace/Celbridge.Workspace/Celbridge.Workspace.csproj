@@ -37,6 +37,7 @@
     <ProjectReference Include="..\Celbridge.GenerativeAI\Celbridge.GenerativeAI.csproj" />
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
     <ProjectReference Include="..\Celbridge.Scripting\Celbridge.Scripting.csproj" />
+    <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Celbridge.Status\Celbridge.Status.csproj" />
   </ItemGroup>
   

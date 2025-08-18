@@ -391,11 +391,24 @@ public class ResourceRegistry : IResourceRegistry
                 return true;
             }
 #endif
+            var dirInfo = new DirectoryInfo(path);
 
-            if (isRootFolder &&
-                path.EndsWith(ProjectConstants.ProjectDataFolder))
+            // Ignore the CelData folder
+            if (isRootFolder && dirInfo.Name == ProjectConstants.ProjectDataFolder)
             {
-                // Ignore the "CelData" project data folder
+                return true;
+            }
+
+            // Ignore python cache folders
+            if (dirInfo.Name == "__pycache__")
+            {
+                return true;
+            }
+
+            // Ignore the Python/Lib folder containing pip packages
+            if (dirInfo.Name == "Lib" &&
+                dirInfo.Parent?.Name == "Python")
+            {
                 return true;
             }
 

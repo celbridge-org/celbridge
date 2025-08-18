@@ -120,9 +120,6 @@
   <data name="ApplicationName" xml:space="preserve">
     <value>Celbridge</value>
   </data>
-  <data name="ConsolePanel_ClearButtonTooltip" xml:space="preserve">
-    <value>Clear the console window</value>
-  </data>
   <data name="DialogButton_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
@@ -452,5 +449,8 @@
 {0}
 
 Do you wish to continue?</value>
+  </data>
+  <data name="ResourceTree_Run" xml:space="preserve">
+    <value>Run</value>
   </data>
 </root>
