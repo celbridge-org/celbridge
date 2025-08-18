@@ -8,7 +8,12 @@ namespace Celbridge.Console;
 public interface IRunCommand : IExecutableCommand
 {
     /// <summary>
-    // The script to run.
+    // The script file to run.
     /// </summary>
     public ResourceKey ScriptResource { get; set; }
+
+    /// <summary>
+    /// Argument string to pass to the script file
+    /// </summary>
+    string Arguments { get; set; }
 }

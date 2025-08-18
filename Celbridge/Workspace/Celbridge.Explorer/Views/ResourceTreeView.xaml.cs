@@ -14,6 +14,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
+    private LocalizedString RunString => _stringLocalizer.GetString("ResourceTree_Run");
     private LocalizedString OpenString => _stringLocalizer.GetString("ResourceTree_Open");
     private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
     private LocalizedString FolderString => _stringLocalizer.GetString("ResourceTree_Folder");
@@ -247,6 +248,20 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         OpenResource(resource, treeViewNode);
     }
 
+    private void ResourceContextMenu_Run(object sender, RoutedEventArgs e)
+    {
+        var menuFlyoutItem = sender as MenuFlyoutItem;
+        Guard.IsNotNull(menuFlyoutItem);
+
+        var treeViewNode = menuFlyoutItem.DataContext as TreeViewNode;
+        Guard.IsNotNull(treeViewNode);
+
+        var resource = treeViewNode.Content as IResource;
+        Guard.IsNotNull(resource);
+
+        RunScriptResource(resource, treeViewNode);
+    }
+
     private void ResourceContextMenu_Open(object? sender, RoutedEventArgs e)
     {
         var menuFlyoutItem = sender as MenuFlyoutItem;
@@ -259,6 +274,14 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         Guard.IsNotNull(resource);
 
         OpenResource(resource, treeViewNode);
+    }
+
+    private void RunScriptResource(IResource resource, TreeViewNode node)
+    {
+        if (resource is IFileResource scriptResource)
+        {
+            ViewModel.RunScript(scriptResource);
+        }
     }
 
     private void OpenResource(IResource resource, TreeViewNode node)

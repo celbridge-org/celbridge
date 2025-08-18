@@ -22,6 +22,16 @@ public interface IConsoleService
     IConsolePanel ConsolePanel { get; }
 
     /// <summary>
+    /// Returns the terminal instance created by the console service during initialization. 
+    /// </summary>
+    ITerminal Terminal { get; }
+
+    /// <summary>
+    /// Initialize the terminal by spawning a new process.
+    /// </summary>
+    Task<Result> InitializeTerminalWindow();
+
+    /// <summary>
     /// Event fired when the Print() method is called.
     /// </summary>
     event Action<MessageType, string> OnPrint;
@@ -30,4 +40,9 @@ public interface IConsoleService
     /// Print a message to the console.
     /// </summary>
     void Print(MessageType messageType, string message);
+
+    /// <summary>
+    /// Runs a command by injecting terminal input.
+    /// </summary>
+    void RunCommand(string command);
 }

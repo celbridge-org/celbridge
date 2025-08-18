@@ -1,6 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
+using Celbridge.Python.Services;
 
-namespace Celbridge.Scripting;
+namespace Celbridge.Python;
 
 public static class ServiceConfiguration
 {
@@ -9,5 +9,6 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+        services.AddTransient<IPythonService, PythonService>();
     }
 }

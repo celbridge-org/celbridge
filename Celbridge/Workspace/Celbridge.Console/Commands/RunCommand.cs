@@ -9,16 +9,15 @@ public class RunCommand : CommandBase, IRunCommand
     private ILogger<RunCommand> _logger;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IDispatcher _dispatcher;
 
     public ResourceKey ScriptResource { get; set; }
 
+    public string Arguments { get; set; } = string.Empty;
+
     public RunCommand(
-        IDispatcher dispatcher,
         ILogger<RunCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _dispatcher = dispatcher;
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
     }
@@ -32,13 +31,17 @@ public class RunCommand : CommandBase, IRunCommand
 
         var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
 
-        var command = $"#!import \"{ScriptResource}\"";
-        var executeResult = await consoleService.ConsolePanel.ExecuteCommand(command, false);
-        if (executeResult.IsFailure)
+        var command = $"%run \"{ScriptResource}\"";
+        if (string.IsNullOrEmpty(Arguments))
         {
-            return Result.Fail($"Failed to run script resource: {ScriptResource}")
-                .WithErrors(executeResult);
+            command += " " + Arguments;
         }
+
+        consoleService.RunCommand(command);
+
+        _logger.LogDebug($"Run script: {command}");
+
+        await Task.CompletedTask;
 
         return Result.Ok();
     }

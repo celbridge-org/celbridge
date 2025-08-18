@@ -11,6 +11,8 @@ public class ConsoleService : IConsoleService, IDisposable
     private IConsolePanel? _consolePanel;
     public IConsolePanel ConsolePanel => _consolePanel!;
 
+    public ITerminal Terminal { get; private set; }
+
     public ConsoleService(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
@@ -23,6 +25,8 @@ public class ConsoleService : IConsoleService, IDisposable
         _messengerService = messengerService;
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
+
+        Terminal = serviceProvider.AcquireService<ITerminal>();
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
@@ -30,11 +34,29 @@ public class ConsoleService : IConsoleService, IDisposable
         _consolePanel = _serviceProvider.GetRequiredService<IConsolePanel>();
     }
 
+    public async Task<Result> InitializeTerminalWindow()
+    {
+        Guard.IsNotNull(_consolePanel);
+
+        return await _consolePanel.InitializeTerminalWindow(Terminal);
+    }
+
     public event Action<MessageType, string>? OnPrint;
 
     public void Print(MessageType printType, string message)
     {
         OnPrint?.Invoke(printType, message);
+    }
+
+    public void RunCommand(string command)
+    {
+        // Populate the CommandBuffer with the command to be executed.
+        Terminal.CommandBuffer = command;
+
+        // Send a fake keyboard interrupt to clear the current input buffer.
+        // The terminal will inject the buffered command once the input buffer has been cleared.
+        var interruptCode = $"{(char)3}";
+        Terminal.Write(interruptCode);
     }
 
     private bool _disposed;

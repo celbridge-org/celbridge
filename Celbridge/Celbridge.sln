@@ -77,6 +77,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Celbridge.Spreadsheet", "Mo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.HTML", "Modules\Celbridge.HTML\Celbridge.HTML.csproj", "{DFFB0513-AEEB-4C79-BE32-25DFF771F4BA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Python", "Workspace\Celbridge.Python\Celbridge.Python.csproj", "{A80FCC13-D1E3-429D-B771-087570124F92}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -195,6 +197,10 @@ Global
 		{DFFB0513-AEEB-4C79-BE32-25DFF771F4BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DFFB0513-AEEB-4C79-BE32-25DFF771F4BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DFFB0513-AEEB-4C79-BE32-25DFF771F4BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A80FCC13-D1E3-429D-B771-087570124F92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A80FCC13-D1E3-429D-B771-087570124F92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A80FCC13-D1E3-429D-B771-087570124F92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A80FCC13-D1E3-429D-B771-087570124F92}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -226,6 +232,7 @@ Global
 		{8D964A70-3C2F-48B7-8D71-E72D63510249} = {901BDB4C-F3AC-4017-AB91-78A47D8A6F98}
 		{08EA0797-E884-4518-BF46-C280120323D6} = {C0824544-3370-4309-915C-D12EA7D91482}
 		{DFFB0513-AEEB-4C79-BE32-25DFF771F4BA} = {C0824544-3370-4309-915C-D12EA7D91482}
+		{A80FCC13-D1E3-429D-B771-087570124F92} = {00D6636E-63D7-4B7C-AEB0-9A433AA10316}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {695F2378-3B43-4460-9FB8-6D27C121D85D}
