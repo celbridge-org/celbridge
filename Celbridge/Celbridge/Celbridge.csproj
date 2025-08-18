@@ -44,18 +44,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\Workspace\Celbridge.Documents\Web\**" Link="Web\%(RecursiveDir)%(FileName)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <!-- Excluding these files as they trigger localization warnings during the build process -->
-    <Content Remove="..\Workspace\Celbridge.Documents\Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-    <Content Remove="..\Workspace\Celbridge.Documents\Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-    <Content Remove="..\Workspace\Celbridge.Documents\Web\Monaco\min\vs\basic-languages\st\st.js" />
-    <Content Remove="..\Workspace\Celbridge.Documents\Web\Monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-    <Content Remove="..\Workspace\Celbridge.Documents\Web\Monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
-  </ItemGroup>
-
-  <ItemGroup>
     <UnoImage Include="Assets\Images\title_icon.svg" />
   </ItemGroup>
 

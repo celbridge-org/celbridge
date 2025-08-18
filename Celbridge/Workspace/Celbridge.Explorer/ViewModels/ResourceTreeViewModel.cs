@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
@@ -88,6 +89,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     private bool _isDocumentResourceSelected;
 
     /// <summary>
+    /// Set to true if the selected context menu item is an executable script that can be run.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isExecutableResourceSelected;
+
+    /// <summary>
     /// Set to true if the clipboard content contains a resource.
     /// </summary>
     [ObservableProperty]
@@ -100,6 +107,9 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // The Open context menu option is only available for file resources that can be opened as documents
         IsDocumentResourceSelected = IsSupportedDocumentFormat(resource);
+
+        // The Run context menu option is only available for script resources that can be executed
+        IsExecutableResourceSelected = IsResourceExecutable(resource);
 
         // The Paste context menu option is only available if there is a resource on the clipboard
         bool isResourceOnClipboard = false;
@@ -134,6 +144,21 @@ public partial class ResourceTreeViewModel : ObservableObject
         return false;
     }
 
+    private bool IsResourceExecutable(IResource? resource)
+    {
+        if (resource is not null &&
+            resource is IFileResource fileResource)
+        {
+            var resourceRegistry = _explorerService.ResourceRegistry;
+            var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+
+            return Path.GetExtension(resourceKey) == ".py";
+        }
+
+        return false;
+    }
+
+
     //
     // Tree View state
     //
@@ -163,6 +188,25 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
     // Resource editing
     //
+
+    public void RunScript(IFileResource scriptResource)
+    {
+        var resourceRegistry = _explorerService.ResourceRegistry;
+        var resource = resourceRegistry.GetResourceKey(scriptResource);
+
+        if (Path.GetExtension(resource) != ".py")
+        {
+            // Attempting to run a non Python resource has no effect
+            return;
+        }
+
+        // Todo: Read an argument string from the meta data for the resource
+
+        _commandService.Execute<IRunCommand>(command =>
+        {
+            command.ScriptResource = resource;
+        });
+    }
 
     public void OpenDocument(IFileResource fileResource)
     {

@@ -6,9 +6,9 @@ namespace Celbridge.Console;
 public interface IConsolePanel
 {
     /// <summary>
-    /// Initialize the scripting support for the console panel.
+    /// Initialize the terminal window displayed in the console panel.
     /// </summary>
-    Task<Result> InitializeScripting();
+    Task<Result> InitializeTerminalWindow(ITerminal terminal);
 
     /// <summary>
     /// Execute a command using the console script context.

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Xterm</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-clipboard@0.1.0/lib/addon-clipboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.js"></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        #terminal {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal"></div>
+
+    <script src="terminal-themes.js"></script>
+
+    <script>
+
+        const darkTheme = window.VSCodeTerminalThemes.dark;
+        const lightTheme = window.VSCodeTerminalThemes.light;
+
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const initialTheme = prefersDark ? darkTheme : lightTheme;
+
+        const term = new Terminal({
+            theme: initialTheme,
+            windowsPty: {
+                backend: 'conpty'
+            }
+        });
+
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+
+        const clipboardAddon = new ClipboardAddon.ClipboardAddon();
+        term.loadAddon(clipboardAddon);
+
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+        term.loadAddon(webLinksAddon);
+
+        term.open(document.getElementById('terminal'));
+
+        // Update xterm.js color scheme when the system theme changes
+        const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq) {
+            function applyThemeForMatch() {
+                try {
+                    term.options.theme = mq.matches ? darkTheme : lightTheme;
+                } catch (e) {
+                    // ignore if term.option isn't available yet
+                }
+            }
+            applyThemeForMatch();
+            if (mq.addEventListener) {
+                mq.addEventListener('change', applyThemeForMatch);
+            } else if (mq.addListener) {
+                mq.addListener(applyThemeForMatch);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+        });
+
+        // Supress context menu if user clicks in shim area at the bottom of the console window
+        document.addEventListener('contextmenu', (e) => {
+            if (!e.composedPath().some(el => el.classList && el.classList.contains('xterm'))) {
+                e.preventDefault();
+            }
+        });
+
+        term.onResize(({ cols, rows }) => {
+            console.log(`Terminal now ${cols} cols by ${rows} rows`);
+
+            // Notify console host that the terminal has resized
+            data = `console_size,${cols},${rows}`
+            window.chrome.webview.postMessage(data);
+        });
+
+        // Fit the terminal size to the available space in the host WebView2 control.
+        fitAddon.fit();
+
+        term.attachCustomKeyEventHandler((ev) => {
+
+            // Copy: if there’s a selection, ctl-c copies it to the clipboard
+            if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
+                if (term.hasSelection()) {
+                    navigator.clipboard.writeText(term.getSelection());
+                    ev.preventDefault?.();
+                    return false; // consume the event
+                }
+                return true; // no selection, ctrl-c clears the input buffer
+            }
+
+            // Paste: ctrl+v pastes clipboard into the terminal
+            if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'v') {
+                navigator.clipboard.readText().then(text => term.paste(text));
+                ev.preventDefault?.();
+                return false;  // consume the event
+            }
+
+            // No exit: Block Ctrl+D and Ctrl+Z (Windows EOF)
+            if (ev.ctrlKey && (ev.key === 'd' || ev.key === 'z')) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // Send terminal input to host
+        term.onData(data => {
+            window.chrome.webview.postMessage(data);
+        });
+
+        // Receive data from host and write it to the terminal
+        window.chrome.webview.addEventListener('message', event => {
+            const data = event.data;
+            if (typeof data === "string") {
+                term.write(data);
+            }
+        });
+    </script>
+</body>
+</html>

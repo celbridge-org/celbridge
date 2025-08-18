@@ -53,6 +53,8 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
+        Guard.IsNotNull(_webView);
+
         // Send a message to request the data to be serialized and sent back as another message.
         _webView.CoreWebView2.PostWebMessageAsString("request_save");
 
@@ -85,7 +87,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Todo: Download and embed spreadJS libs when making an installer build to support full offline usage.
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("SpreadJS", "Web/SpreadJS", CoreWebView2HostResourceAccessKind.Allow);
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("SpreadJS", 
+                "Celbridge.Documents/Web/SpreadJS", 
+                CoreWebView2HostResourceAccessKind.Allow);
             webView.CoreWebView2.Navigate("https://SpreadJS/index.html");
 
             bool isEditorReady = false;

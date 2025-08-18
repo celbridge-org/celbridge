@@ -27,11 +27,11 @@ public class HelpCommand : CommandBase, IHelpCommand
             return Result.Fail("Workspace not loaded");
         }
 
-        var scriptingService = _workspaceWrapper.WorkspaceService.ScriptingService;
+        //var scriptingService = _workspaceWrapper.WorkspaceService.ScriptingService;
 
-        var helpText = scriptingService.GetHelpText(SearchTerm);
+        //var helpText = scriptingService.GetHelpText(SearchTerm);
 
-        _logger.LogInformation(helpText);
+        //_logger.LogInformation(helpText);
 
         await Task.CompletedTask;
         return Result.Ok();
