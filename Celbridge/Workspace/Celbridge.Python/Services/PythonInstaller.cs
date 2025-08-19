@@ -8,7 +8,6 @@ public static class PythonInstaller
 {
     private const string PythonFolderName = "Python";
     private const string PythonZipAssetPath = "ms-appx:///Assets/EmbeddedPython/python-3.13.6-embed-amd64.zip";
-    private const string PipZipAssetPath = "ms-appx:///Assets/EmbeddedPython/pip.zip";
 
     public static async Task<Result<string>> InstallPythonAsync()
     {
