@@ -52,7 +52,24 @@
         const clipboardAddon = new ClipboardAddon.ClipboardAddon();
         term.loadAddon(clipboardAddon);
 
-        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+        // Web link support
+
+        function handleLink(ev, uri) {
+            ev?.preventDefault?.();
+
+            // Clicked links trigger the WebView2 to navigate to the URI.
+            // We intercept the navigation in the WebView2 and open the system browser instead.
+            location.assign(uri);
+        }
+
+        term.options.linkHandler = {
+            activate: handleLink,
+            hover() { },
+            leave() { },
+            allowNonHttpProtocols: true
+        };
+
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon(handleLink);
         term.loadAddon(webLinksAddon);
 
         term.open(document.getElementById('terminal'));
