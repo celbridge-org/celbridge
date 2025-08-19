@@ -99,7 +99,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             }
             catch (Exception)
             {
-                // The SpreadJS license file is not present, display an error message an exit.
+                // The SpreadJS license file is not present, display an error message and exit.
                 webView.CoreWebView2.Navigate("https://spreadjs.celbridge/error.html");
                 _webView = webView;
                 this.Content = _webView;

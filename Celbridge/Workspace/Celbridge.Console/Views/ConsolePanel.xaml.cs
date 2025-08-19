@@ -1,8 +1,9 @@
+using Celbridge.Commands;
 using Celbridge.Console.ViewModels;
+using Celbridge.Explorer;
 using Celbridge.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace Celbridge.Console.Views;
@@ -10,6 +11,7 @@ namespace Celbridge.Console.Views;
 public sealed partial class ConsolePanel : UserControl, IConsolePanel
 {
     private ILogger<ConsolePanel> _logger;
+    private ICommandService _commandService;
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -20,6 +22,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         this.InitializeComponent();
 
         _logger = ServiceLocator.AcquireService<ILogger<ConsolePanel>>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
     }
 
@@ -61,8 +64,18 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
         if (!success) 
         {
-            return Result.Fail($"Failed to terminal HTML page.");
+            return Result.Fail($"Failed to navigate to terminal HTML page.");
         }
+
+
+        // Clicking weblinks in the terminal triggers a navigation event.
+        // We intercept those navigation events here and instead open the URI in the system browser.
+        TerminalWebView.NavigationStarting += (s, args) =>
+        {
+            args.Cancel = true;
+            var uri = args.Uri;
+            OpenSystemBrowser(uri);
+        };
 
         DispatcherQueue dispatcher = DispatcherQueue.GetForCurrentThread();
 
@@ -93,6 +106,19 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         };
 
         return Result.Ok();
+    }
+
+    private void OpenSystemBrowser(string? uri)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        _commandService.Execute<IOpenBrowserCommand>(command =>
+        {
+            command.URL = uri;
+        });
     }
 
     private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
