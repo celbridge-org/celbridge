@@ -120,8 +120,15 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                     }
                     else
                     {
-                        // This is a regular command execution, not a redo, so just create an empty text file.
-                        File.WriteAllText(addedResourcePath, string.Empty);
+                        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+                        // This is a regular command execution, not a redo, so just create an empty file resource.
+                        var createResult = documentsService.CreateDocumentResource(addedResourcePath);                        
+                        if (createResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to create resource: {DestResource}")
+                                .WithErrors(createResult);
+                        }
                     }
                 }
                 else
