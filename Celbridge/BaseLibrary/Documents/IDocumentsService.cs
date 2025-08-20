@@ -40,6 +40,11 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
+    /// Creates a new file resource at the specified path.
+    /// </summary>
+    Result CreateDocumentResource(string resourcePath);
+
+    /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload);
