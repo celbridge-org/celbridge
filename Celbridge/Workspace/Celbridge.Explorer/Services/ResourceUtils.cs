@@ -156,32 +156,36 @@ public class ResourceUtils
         return Result.Ok();
     }
 
-    public static Result<string> ExtractUrlFromWebFile(string webFilePath)
+    public static Result<string> ExtractUrlFromWebAppFile(string webAppPath)
     {
         try
         {
-            if (string.IsNullOrEmpty(webFilePath))
+            if (string.IsNullOrEmpty(webAppPath))
             {
-                return Result<string>.Fail($"Failed to get path for file resource: {webFilePath}");
+                return Result<string>.Fail($"Failed to get path for file resource: {webAppPath}");
             }
 
-            if (!File.Exists(webFilePath))
+            if (!File.Exists(webAppPath))
             {
-                return Result<string>.Fail($"File does not exist: {webFilePath}");
+                return Result<string>.Fail($"File does not exist: {webAppPath}");
             }
 
-            if (Path.GetExtension(webFilePath) != ".web")
+            var fileExtension = Path.GetExtension(webAppPath);
+
+            if (fileExtension != ".webapp" &&
+                fileExtension == ".web") // Todo: Remove this - legacy support
+
             {
-                return Result<string>.Fail($"File does not have the .web extension: {webFilePath}");
+                return Result<string>.Fail($"File does not have the .webapp extension: {webAppPath}");
             }
 
-            var json = File.ReadAllText(webFilePath);
+            var json = File.ReadAllText(webAppPath);
             var jsonObj = JObject.Parse(json);
 
             var urlToken = jsonObj["sourceUrl"];
             if (urlToken is null)
             {
-                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .web JSON data: {webFilePath}");
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webapp JSON data: {webAppPath}");
             }
 
             // Todo: This logic is repeated in multiple places, move it to the utility service
@@ -202,7 +206,7 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"An exception occurred when extracting the url from a .web file")
+            return Result<string>.Fail($"An exception occurred when extracting the url from a .webapp file")
                 .WithException(ex); ;
         }
     }

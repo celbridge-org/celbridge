@@ -90,7 +90,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
             if (string.IsNullOrEmpty(json))
             {
-                // No data populated yet in the .web file, default to empty url
+                // No data populated yet in the .webapp file, default to empty url
                 return Result<string>.Ok(string.Empty);
             }
 
