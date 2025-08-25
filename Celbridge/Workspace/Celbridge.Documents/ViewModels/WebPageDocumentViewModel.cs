@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class WebPageDocumentViewModel : DocumentViewModel
+public partial class WebAppDocumentViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
 
@@ -13,12 +13,12 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
     private string _sourceUrl = string.Empty;
 
     // Code gen requires a parameterless constructor
-    public WebPageDocumentViewModel()
+    public WebAppDocumentViewModel()
     {
         throw new NotImplementedException();
     }
 
-    public WebPageDocumentViewModel(ICommandService commandService)
+    public WebAppDocumentViewModel(ICommandService commandService)
     {
         _commandService = commandService;
     }
@@ -31,7 +31,7 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
 
             if (string.IsNullOrEmpty(text))
             {
-                // No data populated yet in the .web file, default to empty url
+                // No data populated yet in the .webapp file, default to empty url
                 SourceUrl = string.Empty;
                 return Result.Ok();
             }
@@ -57,7 +57,7 @@ public partial class WebPageDocumentViewModel : DocumentViewModel
                 .WithException(ex);
         }
 
-        return Result.Fail($"Failed to local content from .web file: {FileResource}");
+        return Result.Fail($"Failed to local content from .webapp file: {FileResource}");
     }
 
     public void OpenBrowser(string url)

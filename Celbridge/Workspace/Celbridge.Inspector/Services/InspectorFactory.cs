@@ -80,10 +80,11 @@ public class InspectorFactory : IInspectorFactory
 
     private Result<IInspector> CreateFileInspector(ResourceKey resource)
     {
-        var extension = Path.GetExtension(resource);
+        var fileExtension = Path.GetExtension(resource);
 
         IInspector? inspector = null;
-        if (extension == ".web")
+        if (fileExtension == ".webapp" ||
+            fileExtension == ".web") // Todo: Remove this - legacy support
         {
             inspector = CreateInspector<WebInspector, WebInspectorViewModel>(resource);
         }

@@ -11,20 +11,20 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebPageDocumentView : DocumentView
+public sealed partial class WebAppDocumentView : DocumentView
 {
-    private ILogger<WebPageDocumentView> _logger;
+    private ILogger<WebAppDocumentView> _logger;
     private ICommandService _commandService;
     private IUtilityService _utilityService;
     private IResourceRegistry _resourceRegistry;
 
-    public WebPageDocumentViewModel ViewModel { get; }
+    public WebAppDocumentViewModel ViewModel { get; }
 
     private WebView2 _webView;
 
-    public WebPageDocumentView(
+    public WebAppDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<WebPageDocumentView> logger,
+        ILogger<WebAppDocumentView> logger,
         ICommandService commandService,
         IUtilityService utilityService,
         IWorkspaceWrapper workspaceWrapper)
@@ -33,7 +33,7 @@ public sealed partial class WebPageDocumentView : DocumentView
         _commandService = commandService;
         _utilityService = utilityService;
 
-        ViewModel = serviceProvider.GetRequiredService<WebPageDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 

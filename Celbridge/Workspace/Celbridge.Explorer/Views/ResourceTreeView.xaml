@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Explorer.Views"
+    xmlns:explorer="using:Celbridge.Explorer"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
@@ -25,9 +26,21 @@
         <MenuFlyoutItem Text="{x:Bind FolderString}"
                         Icon="Folder"
                         Click="ResourceContextMenu_AddFolder" />
-        <MenuFlyoutItem Text="{x:Bind FileString}"
-                        Icon="Add"
+        <MenuFlyoutItem Text="{x:Bind AddPythonScriptString}"
+                        Tag="{x:Bind explorer:ResourceFormat.Python}"
                         Click="ResourceContextMenu_AddFile" />
+        <MenuFlyoutItem Text="{x:Bind AddExcelString}"
+                        Tag="{x:Bind explorer:ResourceFormat.Excel}"
+                        Click="ResourceContextMenu_AddFile" />
+        <MenuFlyoutItem Text="{x:Bind AddMarkdownString}"
+                        Tag="{x:Bind explorer:ResourceFormat.Markdown}"
+                        Click="ResourceContextMenu_AddFile" />
+        <MenuFlyoutItem Text="{x:Bind AddWebAppString}"
+                        Tag="{x:Bind explorer:ResourceFormat.WebApp}"
+                        Click="ResourceContextMenu_AddFile" />
+        <MenuFlyoutItem Text="{x:Bind AddTextFileString}"
+                        Tag="{x:Bind explorer:ResourceFormat.Text}"
+                        Click="ResourceContextMenu_AddFile" />        
       </MenuFlyoutSubItem>
       <MenuFlyoutSubItem Text="{x:Bind EditString}">
         <MenuFlyoutItem Text="{x:Bind CutString}"

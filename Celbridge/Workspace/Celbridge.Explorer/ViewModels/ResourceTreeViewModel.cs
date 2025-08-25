@@ -225,7 +225,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
-    public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
+    public void ShowAddResourceDialog(ResourceType resourceType, ResourceFormat resourceFormat, IFolderResource? destFolder)
     {
         var resourceRegistry = _explorerService.ResourceRegistry;
 
@@ -240,7 +240,8 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Execute a command to show the add resource dialog
         _commandService.Execute<IAddResourceDialogCommand>(command =>
         {
-            command.ResourceType = resourceType;
+            command.ResourceType = resourceType; // File or folder
+            command.ResourceFormat = resourceFormat; // Folder, .txt, .md, .py, etc.
             command.DestFolderResource = destFolderResource;
         });
     }
@@ -288,11 +289,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
-        if (Path.GetExtension(resourceKey) == ".web")
+        var fileExtension = Path.GetExtension(resourceKey);
+
+        if (fileExtension == ".webapp" ||
+            fileExtension == ".web") // Todo: Remove this - legacy support
         {
             var webFilePath = resourceRegistry.GetResourcePath(resourceKey);
 
-            var extractResult = ResourceUtils.ExtractUrlFromWebFile(webFilePath);
+            var extractResult = ResourceUtils.ExtractUrlFromWebAppFile(webFilePath);
             if (extractResult.IsFailure)
             {
                 _logger.LogError(extractResult.Error);
