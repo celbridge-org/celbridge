@@ -1,7 +1,7 @@
-﻿namespace Celbridge.Explorer;
+namespace Celbridge.Explorer;
 
 /// <summary>
-/// Types of resource that can be added to a project.
+/// Types of resource that can a project can contain.
 /// </summary>
 public enum ResourceType
 {

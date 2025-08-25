@@ -443,8 +443,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
                 break;
 
-            case DocumentViewType.WebPageDocument:
-                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
+            case DocumentViewType.WebAppDocument:
+                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
                 break;
 
             case DocumentViewType.FileViewer:
@@ -455,8 +455,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
                 break;
 #else
-            case DocumentViewType.WebPageDocument:
-                documentView = _serviceProvider.GetRequiredService<WebPageDocumentView>();
+            case DocumentViewType.WebAppDocument:
+                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
                 break;
             case DocumentViewType.TextDocument:
             case DocumentViewType.FileViewer:

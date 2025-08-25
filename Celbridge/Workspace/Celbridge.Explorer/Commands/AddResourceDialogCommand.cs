@@ -11,6 +11,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
+    public ResourceFormat ResourceFormat { get; set; }
     public ResourceKey DestFolderResource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
@@ -60,7 +61,13 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var defaultStringKey = ResourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
-        var defaultText = FindDefaultResourceName(defaultStringKey, parentFolder);
+        var getDefaultResult = FindDefaultResourceName(defaultStringKey, parentFolder);
+        if (getDefaultResult.IsFailure)
+        {
+            return Result.Fail()
+                .WithErrors(getDefaultResult);
+        }
+        var defaultText = getDefaultResult.Value;
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
@@ -97,34 +104,53 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     /// <summary>
     /// Find a localized default resource name that doesn't clash with an existing resource on disk. 
     /// </summary>
-    private string FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
+    private Result<string> FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-
-        string defaultResourceName;
         if (parentFolder is null)
         {
-            defaultResourceName = _stringLocalizer.GetString(stringKey, 1).ToString();
-        }
-        else
-        {
-            int resourceNumber = 1;
-            while (true)
-            {
-                var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
-                var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
-                var candidatePath = Path.Combine(parentFolderPath, candidateName);
-                if (!Directory.Exists(candidatePath) &&
-                    !File.Exists(candidatePath))
-                {
-                    defaultResourceName = candidateName;
-                    break;
-                }
-                resourceNumber++;
-            }
+            return Result<string>.Fail("Parent folder is null");
         }
 
-        return defaultResourceName;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
+        string defaultResourceName = string.Empty;
+        int resourceNumber = 1;
+        while (true)
+        {
+            var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
+            var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
+
+            // Default to the appropriate file extension for the specified file format.
+            var extension = Path.GetExtension(candidateName);
+            if (!string.IsNullOrEmpty(extension))
+            {
+                var newExtension = ResourceFormat switch
+                {
+                    ResourceFormat.Folder => string.Empty,
+                    ResourceFormat.Excel => ".xlsx",
+                    ResourceFormat.Markdown => ".md",
+                    ResourceFormat.Python => ".py",
+                    ResourceFormat.WebApp => ".webapp",
+                    _ => ".txt",
+                };
+
+                if (newExtension != extension)
+                {
+                    candidateName = Path.ChangeExtension(candidateName, newExtension);
+                }
+            }
+
+            var candidatePath = Path.Combine(parentFolderPath, candidateName);
+            if (!Directory.Exists(candidatePath) &&
+                !File.Exists(candidatePath))
+            {
+                defaultResourceName = candidateName;
+                break;
+            }
+            resourceNumber++;
+        }
+
+        return Result<string>.Ok(defaultResourceName);
     }
 
     //

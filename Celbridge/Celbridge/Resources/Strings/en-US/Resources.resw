@@ -132,8 +132,20 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
-  <data name="ResourceTree_File" xml:space="preserve">
-    <value>File</value>
+  <data name="ResourceTree_AddFile_TextFile" xml:space="preserve">
+    <value>Text file (.txt, .json, .html, ...)</value>
+  </data>
+  <data name="ResourceTree_AddFile_WebApp" xml:space="preserve">
+    <value>Web application file  (.webapp)</value>
+  </data>
+  <data name="ResourceTree_AddFile_Excel" xml:space="preserve">
+    <value>Excel file (.xlsx)</value>
+  </data>
+  <data name="ResourceTree_AddFile_Markdown" xml:space="preserve">
+    <value>Markdown file (.md)</value>
+  </data>
+  <data name="ResourceTree_AddFile_PythonScript" xml:space="preserve">
+    <value>Python script (.py)</value>
   </data>
   <data name="ResourceTree_Folder" xml:space="preserve">
     <value>Folder</value>

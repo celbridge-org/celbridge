@@ -30,9 +30,10 @@ public class FileTypeHelper
 
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        if (fileExtension == ".web")
+        if (fileExtension == ".webapp" ||
+            fileExtension == ".web") // Todo: Remove this - legacy support
         {
-            return DocumentViewType.WebPageDocument;
+            return DocumentViewType.WebAppDocument;
         }
 
         if (fileExtension == ".xlsx")
