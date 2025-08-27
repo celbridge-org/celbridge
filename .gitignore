@@ -404,7 +404,9 @@ solution-config.props
 /CelbridgeEditor/CelbridgeWebUtils/Properties/PublishProfiles/CelbridgeContent.pubxml
 
 .idea/
-/Celbridge/Build
+
+# Celbridge temp files
+.celbridge/
 
 # SpreadJS library
 /Celbridge/Workspace/Celbridge.Documents/Web/SpreadJS/lib
