@@ -14,7 +14,7 @@
   ".c": "c",
   ".cake": "csharp",
   ".cc": "cpp",
-  ".celproject": "json",
+  ".celbridge": "toml",
   ".cjs": "javascript",
   ".clj": "clojure",
   ".cljc": "clojure",

@@ -394,7 +394,7 @@ public class ResourceRegistry : IResourceRegistry
             var dirInfo = new DirectoryInfo(path);
 
             // Ignore the CelData folder
-            if (isRootFolder && dirInfo.Name == ProjectConstants.ProjectDataFolder)
+            if (isRootFolder && dirInfo.Name == ProjectConstants.MetaDataFolder)
             {
                 return true;
             }

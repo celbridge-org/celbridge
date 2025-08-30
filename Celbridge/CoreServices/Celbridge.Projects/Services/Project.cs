@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Utilities;
 
 using Path = System.IO.Path;
 
@@ -6,10 +7,13 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
+    private const string DefaultProjectVersion = "0.1.0";
+    private const string DefaultPythonVersion = "3.13.6";
+
     private readonly ILogger<Project> _logger;
 
-    private ProjectConfig? _projectConfig;
-    public IProjectConfig ProjectConfig => _projectConfig!;
+    private IProjectConfigService? _projectConfig;
+    public IProjectConfigService ProjectConfig => _projectConfig!;
 
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
@@ -23,7 +27,9 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-    public Project(ILogger<Project> logger)
+
+    public Project(
+        ILogger<Project> logger)
     {
         _logger = logger;
     }
@@ -51,12 +57,10 @@ public class Project : IDisposable, IProject
             // Load project properties from the project file
             //
 
-            var configJson = File.ReadAllText(projectFilePath);
-
-            var projectConfig = ServiceLocator.AcquireService<IProjectConfig>() as ProjectConfig;
+            var projectConfig = ServiceLocator.AcquireService<IProjectConfigService>() as ProjectConfigService;
             Guard.IsNotNull(projectConfig);
 
-            var initResult = projectConfig.Initialize(configJson);
+            var initResult = projectConfig.InitializeFromFile(projectFilePath);
             if (initResult.IsFailure)
             {
                 return Result<IProject>.Fail($"Failed to initialize project configuration")
@@ -103,15 +107,33 @@ public class Project : IDisposable, IProject
             var projectPath = Path.GetDirectoryName(projectFilePath);
             Guard.IsNotNull(projectPath);
 
-            var projectDataFolderPath = Path.Combine(projectPath, ProjectConstants.ProjectDataFolder);
+            var projectDataFolderPath = Path.Combine(projectPath, ProjectConstants.MetaDataFolder);
 
             if (!Directory.Exists(projectDataFolderPath))
             {
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
+            // Get Celbridge version
+            var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+            var info = utilityService.GetEnvironmentInfo();
+
+            var projectTOML = $"""
+                [project]
+                version = "{DefaultProjectVersion}"
+                celbridge_version = "{info.AppVersion}"
+
+                [python]
+                version = "{DefaultPythonVersion}"
+                packages = []
+
+                [python.scripts]
+                startup = ""
+
+                """;
+
             // Todo: Populate this with project configuration options
-            await File.WriteAllTextAsync(projectFilePath, "{}");
+            await File.WriteAllTextAsync(projectFilePath, projectTOML);
         }
         catch (Exception ex)
         {
@@ -132,7 +154,7 @@ public class Project : IDisposable, IProject
         _projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
         Guard.IsNotNullOrWhiteSpace(ProjectFolderPath);
 
-        _projectDataFolderPath = Path.Combine(ProjectFolderPath, ProjectConstants.ProjectDataFolder);
+        _projectDataFolderPath = Path.Combine(ProjectFolderPath, ProjectConstants.MetaDataFolder);
     }
 
     private bool _disposed = false;

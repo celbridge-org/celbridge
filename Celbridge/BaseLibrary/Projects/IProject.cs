@@ -28,5 +28,5 @@ public interface IProject
     /// <summary>
     /// Gets the project configuration.
     /// </summary>
-    public IProjectConfig ProjectConfig { get; }
+    public IProjectConfigService ProjectConfig { get; }
 }
