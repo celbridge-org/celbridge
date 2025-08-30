@@ -94,7 +94,7 @@ public class EntityService : IEntityService, IDisposable
 
     public string GetEntityDataRelativePath(ResourceKey resource)
     {
-        var relativePath = $"{ProjectConstants.ProjectDataFolder}/{ProjectConstants.EntitiesFolder}/{resource}.json";
+        var relativePath = $"{ProjectConstants.MetaDataFolder}/{ProjectConstants.EntitiesFolder}/{resource}.json";
         return relativePath;
     }
 

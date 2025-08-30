@@ -5,7 +5,7 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity  Name="com.AnTulcha.Celbridge" Version="0.0.11.0" Publisher="CN=AnTulcha"/>
+  <Identity  Name="com.AnTulcha.Celbridge" Version="0.0.12.0" Publisher="CN=AnTulcha"/>
   <Properties >
     <DisplayName>Celbridge</DisplayName>
     <PublisherDisplayName>An Tulcha</PublisherDisplayName>
@@ -31,7 +31,7 @@
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="celbridge_project">
             <uap:SupportedFileTypes>
-              <uap:FileType ContentType="application/json">.celproject</uap:FileType>
+              <uap:FileType ContentType="application/json">.celbridge</uap:FileType>
             </uap:SupportedFileTypes>
             <uap:DisplayName>Celbridge project</uap:DisplayName>
             <uap:InfoTip>Celbridge project</uap:InfoTip>

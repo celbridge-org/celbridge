@@ -7,7 +7,8 @@ namespace Celbridge.Python.Services;
 public static class PythonInstaller
 {
     private const string PythonFolderName = "Python";
-    private const string PythonZipAssetPath = "ms-appx:///Assets/EmbeddedPython/python-3.13.6-embed-amd64.zip";
+    private const string PythonAssetsFolder = "Assets\\Python";
+    private const string UVZipAssetPath = "ms-appx:///Assets/UV/uv-x86_64-pc-windows-msvc.zip";
 
     public static async Task<Result<string>> InstallPythonAsync()
     {
@@ -16,7 +17,7 @@ public static class PythonInstaller
             var localFolder = ApplicationData.Current.LocalFolder;
             var pythonFolderPath = Path.Combine(localFolder.Path, PythonFolderName);
 
-            // Uncomment to force install embedded Python
+            // Uncomment to force install the Python support files
             //if (Directory.Exists(pythonFolderPath))
             //{
             //    Directory.Delete(pythonFolderPath, true);
@@ -26,26 +27,22 @@ public static class PythonInstaller
             {
                 var pythonFolder = await localFolder.CreateFolderAsync(PythonFolderName, CreationCollisionOption.OpenIfExists);
 
-                // Unzip embedded Python
-                var pythonZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(PythonZipAssetPath));
-                var pythonTempFile = await pythonZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "python.zip", NameCollisionOption.ReplaceExisting);
-                ZipFile.ExtractToDirectory(pythonTempFile.Path, pythonFolder.Path, overwriteFiles: true);
+                // uv handles installing the required python & package versions for the loaded project
+                var uvZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(UVZipAssetPath));
+                var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "uv.zip", NameCollisionOption.ReplaceExisting);
+                ZipFile.ExtractToDirectory(uvTempFile.Path, pythonFolder.Path, overwriteFiles: true);
 
+                // Copy the celbridge python module
                 StorageFolder installedLocation = Package.Current.InstalledLocation;
-                StorageFolder extrasFolder = await installedLocation.GetFolderAsync("Assets\\PythonExtras");
+                StorageFolder extrasFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
                 await CopyStorageFolderAsync(extrasFolder, pythonFolder.Path);
-
-                // Unzip lib.zip and delete the zip file
-                var libZipPath = Path.Combine(pythonFolderPath, "lib.zip");
-                ZipFile.ExtractToDirectory(libZipPath, pythonFolder.Path, overwriteFiles: true);
-                File.Delete(libZipPath);
             }
 
             return Result<string>.Ok(pythonFolderPath);
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Failed to install embedded Python to: pythonFolderPath")
+            return Result<string>.Fail($"Failed to install Python support files")
                 .WithException(ex);
         }
     }
