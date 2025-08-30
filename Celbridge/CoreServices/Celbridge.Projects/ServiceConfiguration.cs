@@ -13,7 +13,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddTransient<IProject, Project>();
-        services.AddTransient<IProjectConfig, ProjectConfig>();
+        services.AddTransient<IProjectConfigService, ProjectConfigService>();
 
         //
         // Register commands
