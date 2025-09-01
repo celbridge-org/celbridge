@@ -4,9 +4,9 @@ Celbridge is a user-friendly data processing tool. It provides a bridge between 
 
 **The goals of Celbridge are:**
 
-* Make <em>common tasks with data</em> easier and more accessible.
-* Act as <em>a bridge</em> between systems (e.g. applications, programming languages like Python, libraries, environments).
-* Support a wide range of functionality via <em>extensions</em>, with a simple core application. 
+* Make **common tasks with data** easier and more accessible.
+* Act as **a bridge** between systems (e.g. applications, programming languages like Python, libraries, environments).
+* Support a wide range of functionality via **extensions**, with a simple core application. 
 
 <br>
 <a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif" alt="Celbridge screenshot GIF">
@@ -32,7 +32,7 @@ Celbridge is still in **early development**. Any update may introduce incompatib
 
 ## Spreadsheets and Data Processing
 
-* View and edit `xlsx` files using the built-in spreadsheet editor, powered by [SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
+* View and edit `.xlsx` files using the built-in spreadsheet editor, powered by [SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
 * Supports most common Excel functionality, including formulas, graph and table generation, images, etc.
 * Does not require Excel to be installed on your machine.
 
@@ -52,7 +52,7 @@ Celbridge is still in **early development**. Any update may introduce incompatib
 * `.web` files allow you to open any web page as a tabbed document. 
 * Quickly tab back to web pages using bookmark-like functionality. 
 
-**Planned features include:**
+## Planned Features
 
 * A simple visual scripting language that transpiles to Python script.
 * An extension system and package manager to allow the user community to add custom functionality.
@@ -66,7 +66,7 @@ Celbridge is distributed as a `.msix` installer for Windows.
 3. Run the Celbrifge `.msix` installer. 
 
 > [!NOTE]
-> Celbridge currently runs on Windows only. A macOS version is planned, and a Linux version may be possible in future.
+> Celbridge currently runs on Windows only. A macOS version is planned, and a Linux version may be possible depending on demand.
 
 # Installing From Source
 
