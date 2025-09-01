@@ -1,104 +1,112 @@
 # What is Celbridge?
 
-`Celbridge` is a user friendly tool that helps creative people make cool stuff. 
+Celbridge is a user-friendly data processing tool. It provides a bridge between Python and your project, making complex tasks with data easy. 
 
-The goals of `Celbridge` are to:
+**The goals of Celbridge are:**
 
-- Make common development tasks easier and **more accessible** for makers.
-- Act as **a bridge** between systems (e.g. apps, programming languages, libraries, environments).
-- Support a wide range of functionality via **extensions**, with a simple core application.
+* Make <em>common tasks with data</em> easier and more accessible.
+* Act as <em>a bridge</em> between systems (e.g. applications, programming languages like Python, libraries, environments).
+* Support a wide range of functionality via <em>extensions</em>, with a simple core application. 
 
 <br>
-<a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/CelbridgeScreenshot.png" alt="Celbridge screenshot">
-  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/CelbridgeScreenshot.png?raw=true">
+<a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif" alt="Celbridge screenshot GIF">
+  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif?raw=true">
 </a>
 <br>
 
+Celbridge is still in **early development**. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge.
+
 # Key Features
 
-- Manage files via the `Explorer Panel`; add, move and delete files, with copy & paste and undo/redo.
-- Edit text documents with syntax highlighting, code completion and split-screen preview.
-- View common file types (images, audio, video, pdf, ...)
-- Bookmark web pages as documents by creating simple `.web` files.
-- Run scripts in the `Console Panel` via a built-in scripting engine, with command history.
-- Add custom behaviours to files and folders via the `Inspector Window` and component system (similar to [Unity](https://docs.unity3d.com/6000.0/Documentation/Manual/UsingTheInspector.html) or [Unreal](https://dev.epicgames.com/documentation/en-us/unreal-engine/level-editor-details-panel-in-unreal-engine)).
+## Python Integration
 
-Planned features include:
+* An integrated Python kernel running Python 3.13.
+* Easy package installation process: no need for virtual environments. 
+* An integrated read–eval–print loop (REPL) shell, featuring
+    * Syntax highlighting
+    * Command history
+    * Command completion
+    * [pdb](https://docs.python.org/3/library/pdb.html#module-pdb) command line debugger
+    * [IPython](https://ipython.readthedocs.io/en/stable/index.html) magic commands (%run, %alias, %ls, etc. )
+* Run Python scripts with a single click. 
 
-- An integrated `Python` scripting and sandboxed execution environment.
-- A simple visual scripting language that transpiles to `Python` script.
-- An extension system and package manager to allow the user community to add custom functionality.
+## Spreadsheets and Data Processing
 
-# Installation
+* View and edit `xlsx` files using the built-in spreadsheet editor, powered by [SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
+* Supports most common Excel functionality, including formulas, graph and table generation, images, etc.
+* Does not require Excel to be installed on your machine.
 
-`Celbridge` is distributed as a `.msix` installer for `Windows PCs`.
+## Security
 
-- Download the latest `.msix` installer from the [releases section](https://github.com/AnTulcha/Celbridge/releases).
-- Run the `.msix` installer
+* All files in Celbridge are managed locally on your machine, not in the cloud.
 
-You can now run `Celbridge` from the start menu, or by opening a `.celbridge` project file via `Windows Explorer`.
+## Editor Functionality
+* Create, move, drag, drop, copy, and paste files. 
+* A code editor based on [Monaco](https://microsoft.github.io/monaco-editor/), the text editor used in VS Code. 
+* Supports all popular programming languages, with features such a syntax highlighting and search and replace. 
+* A Markdown document editor with a split-screen preview window.
+* Support for images and other media in Markdown preview windows. 
+
+## Web Integration
+
+* `.web` files allow you to open any web page as a tabbed document. 
+* Quickly tab back to web pages using bookmark-like functionality. 
+
+**Planned features include:**
+
+* A simple visual scripting language that transpiles to Python script.
+* An extension system and package manager to allow the user community to add custom functionality.
+
+# Getting Started
+
+Celbridge is distributed as a `.msix` installer for Windows.
+
+1. Install the latest `.msix` version of Celbridge from the [releases](https://github.com/AnTulcha/Celbridge/releases) section of the Github page. 
+2. Install the .NET Desktop Runtime if prompted.  
+3. Run the Celbrifge `.msix` installer. 
 
 > [!NOTE]
-> `Celbridge` currently runs on `Windows`. A `MacOS` version is planned, and a `Linux` version may be possible in future.
+> Celbridge currently runs on Windows only. A macOS version is planned, and a Linux version may be possible in future.
 
-# Building From Source
+# Installing From Source
 
 1. Clone the Celbridge git repo on your machine.
-2. Install the latest version of `Visual Studio` (the free [Community Edition]() works fine).
-3. Follow the `Visual Studio` setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
-4. Open `Celbridge.sln` in `Visual Studio`.
+2. Install the latest version of Visual Studio (the free [Community Edition](https://visualstudio.microsoft.com/vs/community/) works fine).
+3. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
+4. Open `Celbridge.sln` in Visual Studio.
 
-Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the `Visual Studio` configuration toolbar, then build and run the aplication.
+Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the Visual Studio configuration toolbar, then build and run the aplication.
 
 > [!NOTE]
-> `Uno Platform` performs some initial setup work behind the scenes when you first open the solution. Allow `Visual Studio` to idle for a minute or so after the solution opens, then close and reopen `Visual Studio`. You may need to repeat this process a couple times before the project will compile and run successfully.
+> Uno Platform performs some initial setup work behind the scenes when you first open the solution. Allow Visual Studio to idle for a minute or so after the solution opens, then close and reopen Visual Studio. You may need to repeat this process a couple times before the project will compile and run successfully.
 
 # Roadmap
 
-My goal is to develop `Celbridge` from a personal research project into a robust tool suitable for use in production environments, with a friendly and helpful user community. My own background is in game development, so the initial focus is on typical game development use cases like writing documentation and game narrative.
+Our goal is to turn Celbridge into a robust tool suitable for use in production environments, backed by a friendly and helpful user community. We're hoping to get version 1.0 out by the end of 2025. 
 
-Please be aware that `Celbridge` is still in **early development**. This means that every release may contain breaking changes for existing projects created using the tool. Once the project reaches `v1.0` there will be a strong emphasis on maintaining compatibility for existing user projects.
+# Who are we?
 
-There's very little user documentation available just yet, but I am working on it.
+We're a small team led by [Chris Gregan](https://github.com/chrisgregan). Chris has worked in games development for over 20 years — most recently he was Lead Tools Programmer at [Romero Games](https://romerogames.com/). He has a lot of experience with many programming languages and technologies, his favourites being C#, .NET and Python.  
 
-- [x] Proof-of-concept prototype
-- [x] Application framework (`DI`, `MVVM`, extension architecture, public API, etc.)
-- [x] File management via `Explorer Panel`
-- [x] Scripting support (currently `.NET Interactive`)
-- [x] `Console Panel`
-- [x] Web page documents and file viewer using `WebView2`
-- [x] Advanced text editing via [Monaco Editor]( https://microsoft.github.io/monaco-editor/)
-- [ ] Initial pass on documentation
-- [ ] Use [Json](https://www.json.org/json-en.html) & [Json Schema](https://json-schema.org/) for all project data files.
-- [ ] Change scripting to use `Python` exclusively
-- [ ] Investigate using a sandboxed execution environment, e.g. [Pyodide](https://pyodide.org)
-- [ ] Global find and replace
-- [ ] `Cel Script` visual scripting language
-- [ ] `Cel Script` debugger
-- [ ] Extension system and package manager
+Chris is currently doing a Research Masters with [Technical University Dublin](https://www.tudublin.ie/), where the idea for Celbridge was born.
 
-# Who am I?
-
-I'm [Chris Gregan](https://github.com/chrisgregan) and I work at [Romero Games](https://romerogames.com/), a games studio based in Galway, Ireland. I've worked in games development for 20+ years and have a lot of experience with many programming languages and technologies, my favourites being C#, .NET and Python.
-
-I am currently doing a Research Masters with [Technical University Dublin](https://www.tudublin.ie/), and I am using this project to help conduct my research.
-
-I also created the [Fungus](https://github.com/snozbot/fungus) visual scripting tool for Unity Engine. That project is now maintained by the community.
+Chris also created the [Fungus](https://github.com/snozbot/fungus) visual scripting tool for the Unity game engine. That project is now maintained by the community.
 
 # Contributions
 
-All feedback and contributions are very welcome! I have a strong vision for the architecture of `Celbridge` that I hope will allow the project to scale successfully. If you would like to contribute a new feature, please open an issue first so we can discuss the best way to implement whatever you have in mind.
+All feedback and contributions are very welcome! If you'd like to contribute a new feature, please open an issue first so we can discuss the best way to implement it. We have a strong vision for the architecture of Celbridge that we hope will allow the project to scale successfully. 
 
 # Credits
 
 This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda, John and all of the incredible team at Romero Games for their support.❤️❤️❤️
 
+Many thanks to [SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
+
 Celbridge relies on code from these fantastic open source projects:
+* [Uno Platform](https://platform.uno) 
+* [Monaco Editor](https://microsoft.github.io/monaco-editor)
+* [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
+* [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
+* [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 
-- [Uno Platform](https://platform.uno) 
-- [Monaco Editor](https://microsoft.github.io/monaco-editor)
-- [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
-- [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
-- [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
-
-Celbridge also uses a range of open source nuget packages, details of which can be found in the solution files.
+Celbridge also uses a range of open source NuGet packages, details of which can be found in the solution files.
