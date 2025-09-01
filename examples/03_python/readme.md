@@ -41,7 +41,7 @@ As before, this displays the default output: "Hello world!".
 Now enter this command:
 
 ```python
-%run "03_python/hello_world.py Earth"
+%run "03_python/hello_world.py" "Earth"
 ```
 
 The "Earth" string is passed as a parameter to the `hello_world.py` script, which then outputs "Hello Earth!".
