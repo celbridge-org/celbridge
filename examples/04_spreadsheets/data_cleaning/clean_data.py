@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 from openpyxl.utils import get_column_letter  # convert 1->"A", 2->"B", ...
 
-INPUT_FILE  = "04_Excel/data_cleaning/messy_data.xlsx"
-OUTPUT_FILE = "04_Excel/data_cleaning/tidy_data.xlsx"
+INPUT_FILE  = "04_spreadsheets/data_cleaning/messy_data.xlsx"
+OUTPUT_FILE = "04_spreadsheets/data_cleaning/tidy_data.xlsx"
 
 
 def to_mm(series: pd.Series) -> pd.Series:
