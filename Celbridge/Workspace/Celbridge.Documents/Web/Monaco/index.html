@@ -105,6 +105,15 @@
                 wordWrap: "on"
             });
 
+            // Set the appropriate EOL depending on the platform
+            const isWindows = /windows/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent);
+            const model = window.editor.getModel();
+
+            model.setEOL(isWindows
+                ? monaco.editor.EndOfLineSequence.CRLF
+                : monaco.editor.EndOfLineSequence.LF
+            );
+
             window.editor.getModel().onDidChangeContent((event) => {
                 if (!window.isWebView) {
                     return;
