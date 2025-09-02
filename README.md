@@ -1,12 +1,17 @@
 # What is Celbridge?
 
-Celbridge is a user-friendly data processing tool. It provides a bridge between Python and your project, making complex tasks with data easy. 
+Celbridge is an open source, user-friendly data processing tool. It provides a bridge between [Python](https://www.python.org/) and your project files, making complex tasks with data easy. 
 
 **The goals of Celbridge are:**
 
 * Make **common tasks with data** easier and more accessible.
-* Act as **a bridge** between systems (e.g. applications, programming languages like Python, libraries, environments).
-* Support a wide range of functionality via **extensions**, with a simple core application. 
+* Keep your data local-first and private by default.
+* Act as **a bridge** between `Python` scripting and widely used filetypes such as `Excel`, `CSV`, `Markdown`, `JSON`, `HTML`, `CSS`, etc.).
+* Support easy extensibility via **Python packages**, with a core editor application written in [.NET](https://dotnet.microsoft.com/en-us/) using [Uno Platform](https://platform.uno/).
+* Provide quick access to the web applications you regularly use (e.g. dashboards, support portals, docs, etc).
+
+> [!IMPORTANT]
+> Many thanks to [SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 <br>
 <a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif" alt="Celbridge screenshot GIF">
@@ -14,15 +19,16 @@ Celbridge is a user-friendly data processing tool. It provides a bridge between 
 </a>
 <br>
 
-Celbridge is still in **early development**. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge.
+> [!WARNING]
+> Celbridge is still in **early development**. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge.
 
 # Key Features
 
 ## Python Integration
 
-* An integrated Python kernel running Python 3.13.
-* Easy package installation process: no need for virtual environments. 
-* An integrated read–eval–print loop (REPL) shell, featuring
+* An integrated Python interpreter, with configurable Python version.
+* Fast and easy package installation using [uv](https://docs.astral.sh/uv/): no need for virtual environments. 
+* An integrated read–eval–print loop (REPL), featuring
     * Syntax highlighting
     * Command history
     * Command completion
@@ -33,29 +39,32 @@ Celbridge is still in **early development**. Any update may introduce incompatib
 ## Spreadsheets and Data Processing
 
 * View and edit `.xlsx` files using the built-in spreadsheet editor, powered by [SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
-* Supports most common Excel functionality, including formulas, graph and table generation, images, etc.
+* Supports all common Excel functionality, including formulas, graph and table generation, images, etc.
 * Does not require Excel to be installed on your machine.
 
 ## Security
 
-* All files in Celbridge are managed locally on your machine, not in the cloud.
+* Celbridge keeps your data local-first and private by default.
+* All files in Celbridge are managed locally on your machine, not in the cloud (unless you upload them yourself).
 
 ## Editor Functionality
 * Create, move, drag, drop, copy, and paste files. 
-* A code editor based on [Monaco](https://microsoft.github.io/monaco-editor/), the text editor used in VS Code. 
-* Supports all popular programming languages, with features such a syntax highlighting and search and replace. 
+* Celbridge uses [Monaco](https://microsoft.github.io/monaco-editor/), the text editor used in VS Code. 
+* Supports all popular programming languages and text formats, with features such a syntax highlighting, search and replace, formatting, etc. 
 * A Markdown document editor with a split-screen preview window.
-* Support for images and other media in Markdown preview windows. 
+* Built-in support for viewing PDFs, images, audio and other media. 
 
-## Web Integration
+## Web App Integration
 
-* `.web` files allow you to open any web page as a tabbed document. 
-* Quickly tab back to web pages using bookmark-like functionality. 
+* `.webapp` files allow you to open any web page as a tabbed document. 
+* Provides quick access to the web applications you regularly use (e.g. dashboards, support portals, docs, etc).
+* Quickly navigate back to web pages using bookmark-like functionality (no more searching through open tabs).
 
 ## Planned Features
 
-* A simple visual scripting language that transpiles to Python script.
-* An extension system and package manager to allow the user community to add custom functionality.
+* Intergated user community forum, based on [Discourse](https://discourse.org/).
+* Privacy-first AI: bring your own model (BYOM), run LLMs locally, keep control of your data.
+* A Python-based extension system and package manager to allow the community to add custom functionality.
 
 # Getting Started
 
@@ -63,7 +72,7 @@ Celbridge is distributed as a `.msix` installer for Windows.
 
 1. Install the latest `.msix` version of Celbridge from the [releases](https://github.com/AnTulcha/Celbridge/releases) section of the Github page. 
 2. Install the .NET Desktop Runtime if prompted.  
-3. Run the Celbrifge `.msix` installer. 
+3. Run the Celbridge `.msix` installer. 
 
 > [!NOTE]
 > Celbridge currently runs on Windows only. A macOS version is planned, and a Linux version may be possible depending on demand.
