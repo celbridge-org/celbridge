@@ -10,7 +10,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 * Support easy extensibility via **Python packages**, with a core editor application written in [.NET](https://dotnet.microsoft.com/en-us/) using [Uno Platform](https://platform.uno/).
 * Provide quick access to the web applications you regularly use (e.g. dashboards, support portals, docs, etc).
 
-> [!IMPORTANT]
+> [!NOTE]
 > Many thanks to [SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 <br>
