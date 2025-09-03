@@ -33,7 +33,7 @@ This runs the Python script with no arguments, displaying the default "Hello wor
 In the `Console Window`, enter this command:
 
 ```python
-%run "03_python/hello_world.py"
+run "03_python/hello_world.py"
 ```
 
 As before, this displays the default output: "Hello world!".
@@ -41,7 +41,7 @@ As before, this displays the default output: "Hello world!".
 Now enter this command:
 
 ```python
-%run "03_python/hello_world.py" "Earth"
+run "03_python/hello_world.py" "Earth"
 ```
 
 The "Earth" string is passed as a parameter to the `hello_world.py` script, which then outputs "Hello Earth!".
