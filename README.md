@@ -22,7 +22,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 # Key Features
 
 > [!NOTE]
-> Celbridge is still in **early development**, so we're still making architectural changes. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge before upgrading.
+> Celbridge is still in **early development**, so we're still making breaking architectural changes. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge before upgrading.
 
 ## Privacy and Security
 
@@ -47,7 +47,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 * Supports all common Excel functionality, including formulas, graph and table generation, images, pivot tables, etc.
 * Does **not require Excel** to be installed on your machine.
 
-[Editing an Excel spreadsheet in Celbridge]: Docs/Images/ExcelSpreadsheet.png "Excel Spreadsheet"
+<img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/ExcelSpreadsheet.png?raw=true">
 
 ## File Explorer
 
@@ -120,6 +120,8 @@ Chris is currently doing a Research Masters with [Technical University Dublin](h
 All feedback and contributions are very welcome! If you'd like to contribute a new feature, please open an issue first so we can discuss the best way to implement it. We have a strong vision for the architecture of Celbridge that we hope will allow the project to scale successfully. 
 
 # Credits
+
+Huge thanks to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith) and Matt Johnson.
 
 This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda, John and all of the incredible team at Romero Games for their support.❤️❤️❤️
 
