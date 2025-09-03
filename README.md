@@ -21,7 +21,8 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 
 # Key Features
 
-> [!NOTE]> Celbridge is still in **early development**, so we're still making architectural changes. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge before upgrading.
+> [!NOTE]
+> Celbridge is still in **early development**, so we're still making architectural changes. Any update may introduce incompatibilities with previous versions, so always back up any data created with Celbridge before upgrading.
 
 ## Privacy and Security
 
