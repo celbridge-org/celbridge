@@ -107,13 +107,16 @@ Each release includes an Example project that demonstrates the features of Celbr
 2. Install the latest version of Visual Studio (the free [Community Edition](https://visualstudio.microsoft.com/vs/community/) works fine).
 3. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
 4. Open `Celbridge.sln` in Visual Studio.
-5. Ensure that the `Celbridge` project is set as the startup project.
+5. In `Solution Explorer`, right click on the `Celbridge` project and select `Set as Startup Project`.
+6. Select the `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` targets in the Visual Studio configuration toolbar.
+7. Build and run the application.
 
-Make sure you have `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` selected in the Visual Studio configuration toolbar, then build and run the aplication.
+If you encounter build errors, try restarting `Visual Studio` and do a clean build.
 
 # Roadmap
 
-Our goal is to turn Celbridge into a robust tool suitable for use in production environments, backed by a friendly and helpful user community. We're hoping to get version 1.0 out by the end of 2025. 
+Our goal is to turn Celbridge into a robust data processing tool suitable for use in production environments, backed by a friendly and helpful user community. 
+We're aiming to get version 1.0 out by the end of 2025. 
 
 # Who are we?
 
@@ -127,9 +130,9 @@ All feedback and contributions are very welcome! If you'd like to contribute a n
 
 # Credits
 
-Huge thanks to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith) and Matt Johnson.
+Thank you to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith) and [Matt Johnson](https://github.com/amazinggitboy).
 
-This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda, John and all of the incredible team at Romero Games for their support.❤️❤️❤️
+This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda & John Romero and all of the incredible team at Romero Games for their support.❤️❤️❤️
 
 Many thanks to [SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
