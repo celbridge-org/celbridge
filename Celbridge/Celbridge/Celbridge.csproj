@@ -10,6 +10,8 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationPublisher>An Tulcha</ApplicationPublisher>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
     <Description>An open source visual programming IDE.</Description>
 
     <UnoFeatures>
