@@ -2,20 +2,19 @@ using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+using System.ComponentModel;
 
 namespace Celbridge.Inspector.Views;
 
 public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 {
+    private readonly ILogger<InspectorPanel> _logger;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IInspectorService _inspectorService;
+
     public InspectorPanelViewModel ViewModel { get; }
 
-    public LocalizedString TitleString => _stringLocalizer.GetString($"InspectorPanel_Title");
-
-    private ILogger<InspectorPanel> _logger;
-    private IStringLocalizer _stringLocalizer;
-
-    private EntityEditor _entityEditor;
+    public LocalizedString TitleString => _stringLocalizer.GetString("InspectorPanel_Title");
 
     public InspectorPanel()
     {
@@ -28,47 +27,27 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         ViewModel = ServiceLocator.AcquireService<InspectorPanelViewModel>();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        var titleBar = new Grid()
-            .Background(ThemeResource.Get<Brush>("PanelBackgroundBrush"))
-            .BorderBrush(ThemeResource.Get<Brush>("PanelBorderBrush"))
-            .BorderThickness(0, 0, 0, 1)
-            .ColumnDefinitions("Auto, *")
-            .Children(
-                new TextBlock()
-                    .Grid(column: 0)
-                    .Text(TitleString)
-                    .Margin(6, 0, 0, 0)
-                    .VerticalAlignment(VerticalAlignment.Center)
-            );
+        InitializeComponent();
 
-        _entityEditor = new EntityEditor()
-            .Margin(4)
-            .Grid(row: 1);
+        DataContext = ViewModel;
 
-        var panelGrid = new Grid()
-            .RowDefinitions("40, *")
-            .Children(titleBar, _entityEditor);
-           
-        //
-        // Set the data context and page content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(panelGrid));
+        Unloaded += (_, __) =>
+        {
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        };
     }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ViewModel.SelectedResource))
         {
-            var resource = ViewModel.SelectedResource;
-            UpdateSelectedResource(resource);
+            UpdateSelectedResource(ViewModel.SelectedResource);
         }
     }
 
     private void UpdateSelectedResource(ResourceKey resource)
     {
-        _entityEditor.ClearComponentListPanel();
+        EntityEditor.ClearComponentListPanel();
 
         if (resource.IsEmpty)
         {
@@ -77,9 +56,9 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
         var factory = _inspectorService.InspectorFactory;
 
-        List<UIElement> inspectorElements = new();
+        var inspectorElements = new List<UIElement>();
 
-        // Create the resource name inspector displayed at the top of the inspector panel
+        // Resource name inspector (top of panel)
         var nameInspectorResult = factory.CreateResourceNameInspector(resource);
         if (nameInspectorResult.IsFailure)
         {
@@ -88,29 +67,26 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         }
         var nameInspector = nameInspectorResult.Value as UserControl;
         Guard.IsNotNull(nameInspector);
-
         inspectorElements.Add(nameInspector);
 
-        // Create the resource inspector (if one is implemented) for the selected resource
+        // Optional resource inspector
         var resourceInspectorResult = factory.CreateResourceInspector(resource);
         if (resourceInspectorResult.IsSuccess)
         {
             var resourceInspector = resourceInspectorResult.Value as UserControl;
             Guard.IsNotNull(resourceInspector);
-
             inspectorElements.Add(resourceInspector);
         }
 
-        // Create the component list view for the selected resource
+        // Component list view
         var componentListResult = factory.CreateComponentListView(resource);
         if (componentListResult.IsSuccess)
         {
             var entityInspector = componentListResult.Value as UserControl;
             Guard.IsNotNull(entityInspector);
-
             inspectorElements.Add(entityInspector);
         }
 
-        _entityEditor.PopulateComponentsPanel(inspectorElements);
+        EntityEditor.PopulateComponentsPanel(inspectorElements);
     }
 }
