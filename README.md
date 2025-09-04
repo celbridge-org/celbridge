@@ -56,14 +56,15 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 
 ## Text Editor 
 
-* The text editor uses the open source [Monaco](https://microsoft.github.io/monaco-editor/) editor, which is the same one used in [Visual Studio Code](https://code.visualstudio.com/). 
-* Supports all popular text formats and programming languages, featuring:
-  * syntax highlighting
-  * search and replace
-  * formatting
-  * copy and paste, full undo / redo
-  * multi-cursor editing
-  * command palette 
+* Fully featured text editor based on [Monaco](https://microsoft.github.io/monaco-editor/), the editor used in [Visual Studio Code](https://code.visualstudio.com/). 
+* Supports all popular text formats and programming languages.
+* Features:
+  * Syntax highlighting
+  * Search and replace
+  * Formatting
+  * Copy and paste, full undo / redo
+  * Multi-cursor editing
+  * Command palette 
 
 ## Markdown Documentation
 
@@ -88,12 +89,17 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 
 Celbridge is distributed as a `.msix` installer for Windows.
 
+> [!NOTE]
+> Celbridge currently runs on Windows only. A macOS version is planned, and Linux/WASM versions may be possible depending on demand.
+
 1. Install the latest `.msix` version of Celbridge from the [releases](https://github.com/AnTulcha/Celbridge/releases) section of the Github page. 
 2. Install the .NET Desktop Runtime if prompted.  
 3. Run the Celbridge `.msix` installer. 
 
-> [!NOTE]
-> Celbridge currently runs on Windows only. A macOS version is planned, and Linux/WASM versions may be possible depending on demand.
+Each release includes an Example project that demonstrates the features of Celbridge.
+1. Download `Examples.zip` from the [releases](https://github.com/AnTulcha/Celbridge/releases)  section of the Github page.
+2. Unzip this file to a location on your machine.
+3. Open the `example.celbridge` project with `Celbridge`.
 
 # Building From Source
 
