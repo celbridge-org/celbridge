@@ -15,7 +15,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 
 <br>
 <a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif" alt="Celbridge screenshot GIF">
-  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif?raw=true">
+  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/celbridge.gif?raw=true">
 </a>
 <br>
 
@@ -47,7 +47,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 * Supports all common Excel functionality, including formulas, graph and table generation, images, pivot tables, etc.
 * Does **not require Excel** to be installed on your machine.
 
-<img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/ExcelSpreadsheet.png?raw=true">
+<img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/excel_spreadsheet.png?raw=true">
 
 ## File Explorer
 
