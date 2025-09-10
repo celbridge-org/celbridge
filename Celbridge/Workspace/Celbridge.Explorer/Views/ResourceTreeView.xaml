@@ -8,6 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:models="using:Celbridge.Explorer.Models"
+    xmlns:ui="using:Celbridge.UserInterface.Services"
     mc:Ignorable="d"
     DataContext="{x:Bind ViewModel}"
     Background="{ThemeResource ApplicationBackgroundBrush}">
@@ -107,7 +108,7 @@
       </muxc:TreeViewItem>
     </DataTemplate>
 
-    <local:FontFamilyConverter x:Key="FontFamilyConverter" />
+    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
 
     <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
                                     FolderTemplate="{StaticResource FolderTemplate}"
