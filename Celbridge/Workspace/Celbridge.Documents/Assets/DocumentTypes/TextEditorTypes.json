@@ -30,6 +30,7 @@
   ".csproj": "xml",
   ".css": "css",
   ".csx": "csharp",
+  ".csv": "csv",
   ".ctp": "php",
   ".cxx": "cpp",
   ".dart": "dart",
