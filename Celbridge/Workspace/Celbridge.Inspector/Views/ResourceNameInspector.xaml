@@ -1,0 +1,89 @@
+﻿<UserControl
+    x:Class="Celbridge.Inspector.Views.ResourceNameInspector"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Inspector.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:Celbridge.Inspector.ViewModels"  
+    xmlns:ui="using:Celbridge.UserInterface.Services"
+    mc:Ignorable="d">
+
+  <UserControl.Resources>
+    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
+  </UserControl.Resources>
+  
+  <Grid HorizontalAlignment="Stretch"
+                Margin="0"
+                Padding="0"
+                Background="Transparent">
+
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/>
+      <ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
+
+    <Grid Grid.Column="0"
+          Margin="0 0 8 0">
+
+      <StackPanel Orientation="Horizontal">
+        <FontIcon
+            x:Name="ResourceIcon"
+            FontFamily="{x:Bind ViewModel.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+            Glyph="{x:Bind ViewModel.Icon.FontCharacter}"
+            Foreground="{x:Bind ViewModel.Icon.FontColor, Mode=OneWay}"
+            FontSize="20"
+            MinWidth="20"
+            Margin="0,4,4,4"
+            VerticalAlignment="Center" />
+
+        <TextBlock
+            x:Name="ResourceNameText"
+            FontWeight="Bold"
+            IsTextSelectionEnabled="True"
+            VerticalAlignment="Top"
+            Margin="2,4,0,0"
+            Text="{x:Bind ViewModel.Resource.ResourceName,Mode=OneWay}" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Column="1"
+          Margin="0 0 8 0">
+      <StackPanel Orientation="Horizontal">
+        <Button x:Name="NavigateToButton"
+            Padding="1"
+            Foreground="white"
+            Command="{x:Bind ViewModel.NavigateToResourceCommand}">
+          <FontIcon FontFamily="{StaticResource FontAwesomeFontFamily}"
+                  Glyph="&#xF05B;"/>
+        </Button>
+
+        <Button x:Name="ElipsisFlyoutMenuButton"
+            Margin="8 0 0 0"
+            Width="24"
+            Height="24"
+            Padding="0"
+            BorderThickness="0"
+            Background="Transparent">
+          <FontIcon FontFamily="Segoe MDL2 Assets"
+                        Glyph="&#xE712;"/>
+          <Button.Flyout>
+            <MenuFlyout x:Name="ResourceNameInspectorElipsisMenu">
+              <MenuFlyoutItem Text="{x:Bind OpenString}"
+                          Command="{x:Bind ViewModel.OpenDocumentCommand}" />
+              <MenuFlyoutItem Text="{x:Bind DeleteString}"
+                          Command="{x:Bind ViewModel.DeleteDocumentCommand}" />
+              <MenuFlyoutSubItem Text="{x:Bind OpenInString}">
+                <MenuFlyoutItem Text="{x:Bind OpenInExplorerString}"
+                          Command="{x:Bind ViewModel.OpenResourceInExplorerCommand}" />
+                <MenuFlyoutItem Text="{x:Bind OpenInApplicationString}"
+                          Command="{x:Bind ViewModel.OpenResourceInApplicationCommand}" />
+              </MenuFlyoutSubItem>
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+      </StackPanel>
+    </Grid>
+
+  </Grid>
+</UserControl>

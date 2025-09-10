@@ -401,6 +401,39 @@ public class ExplorerService : IExplorerService, IDisposable
         return _iconService.DefaultFileIcon;
     }
 
+    public void OpenResource(ResourceKey resource)
+    {
+        var fileExtension = Path.GetExtension(resource.ResourceName);
+
+        if (fileExtension == ".webapp" ||
+            fileExtension == ".web") // Todo: Remove this - legacy support
+        {
+            var webFilePath = ResourceRegistry.GetResourcePath(resource);
+
+            var extractResult = ResourceUtils.ExtractUrlFromWebAppFile(webFilePath);
+            if (extractResult.IsFailure)
+            {
+                _logger.LogError(extractResult.Error);
+                return;
+            }
+            var url = extractResult.Value;
+
+            // Execute a command to open the resource with the system default browser
+            _commandService.Execute<IOpenBrowserCommand>(command =>
+            {
+                command.URL = url;
+            });
+        }
+        else
+        {
+            // Execute a command to open the resource with the associated application
+            _commandService.Execute<IOpenApplicationCommand>(command =>
+            {
+                command.Resource = resource;
+            });
+        }
+    }
+
     private bool PathContainsSubPath(string path, string subPath)
     {
         string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

@@ -289,34 +289,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
-        var fileExtension = Path.GetExtension(resourceKey);
-
-        if (fileExtension == ".webapp" ||
-            fileExtension == ".web") // Todo: Remove this - legacy support
+        if(!resourceKey.IsEmpty)
         {
-            var webFilePath = resourceRegistry.GetResourcePath(resourceKey);
-
-            var extractResult = ResourceUtils.ExtractUrlFromWebAppFile(webFilePath);
-            if (extractResult.IsFailure)
-            {
-                _logger.LogError(extractResult.Error);
-                return;
-            }
-            var url = extractResult.Value;
-            
-            // Execute a command to open the resource with the system default browser
-            _commandService.Execute<IOpenBrowserCommand>(command =>
-            {
-                command.URL = url;
-            });
-        }
-        else
-        {
-            // Execute a command to open the resource with the associated application
-            _commandService.Execute<IOpenApplicationCommand>(command =>
-            {
-                command.Resource = resourceKey;
-            });
+            _explorerService.OpenResource(resourceKey);
         }
     }
 
