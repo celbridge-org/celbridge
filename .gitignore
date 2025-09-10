@@ -412,4 +412,4 @@ solution-config.props
 /Celbridge/Workspace/Celbridge.Documents/Web/SpreadJS/lib
 
 # Celbridge ephemeral data
-.celbridge/
+.cache/

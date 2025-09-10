@@ -125,7 +125,10 @@ public partial class App : Application
             );
         MainWindow = builder.Window;
 
+#if WINDOWS && !HAS_UNO
+        // Temporary workaround for this issue: https://github.com/unoplatform/uno.resizetizer/issues/347
         MainWindow.SetWindowIcon();
+#endif
 
         Host = builder.Build();
 
