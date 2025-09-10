@@ -161,11 +161,6 @@ public partial class App : Application
         }
 #endif
 
-        // Start the telemetry service
-        // Todo: Enable this once we have user opt-in UI for telemetry.
-        // var telemetryService = Host.Services.GetRequiredService<ITelemetryService>();
-        // telemetryService.Initialize();
-
         // Initialize the Core Services
         InitializeCoreServices();
 
@@ -253,7 +248,6 @@ public partial class App : Application
         Modules.ServiceConfiguration.ConfigureServices(services);
         Projects.ServiceConfiguration.ConfigureServices(services);
         Settings.ServiceConfiguration.ConfigureServices(services);
-        Telemetry.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
         Workspace.ServiceConfiguration.ConfigureServices(services);
