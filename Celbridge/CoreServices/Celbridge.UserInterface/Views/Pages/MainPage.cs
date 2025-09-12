@@ -72,19 +72,14 @@ public sealed partial class MainPage : Page
         Guard.IsNotNull(mainWindow);
 
 #if WINDOWS
-        // WinUI displays a light title bar in dark mode by default. 
-        // This looks terrible, so we override the title bar in dark mode to use a dark version.
-        if (_userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark)
-        {
-            // Setup the custom title bar (Windows only)
-            var titleBar = new TitleBar();
-            _layoutRoot.Children.Add(titleBar);
+        // Setup the custom title bar (Windows only)
+        var titleBar = new TitleBar();
+        _layoutRoot.Children.Add(titleBar);
 
-            mainWindow.ExtendsContentIntoTitleBar = true;
-            mainWindow.SetTitleBar(titleBar);
+        mainWindow.ExtendsContentIntoTitleBar = true;
+        mainWindow.SetTitleBar(titleBar);
 
-            _userInterfaceService.RegisterTitleBar(titleBar);
-        }
+        _userInterfaceService.RegisterTitleBar(titleBar);
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
