@@ -82,6 +82,8 @@ public sealed partial class MainPage : Page
 
             mainWindow.ExtendsContentIntoTitleBar = true;
             mainWindow.SetTitleBar(titleBar);
+
+            _userInterfaceService.RegisterTitleBar(titleBar);
         }
 #endif
 

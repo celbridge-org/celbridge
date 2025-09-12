@@ -17,7 +17,22 @@ public interface IUserInterfaceService
     object XamlRoot { get; }
 
     /// <summary>
+    /// Returns the TitleBar of the application.
+    /// </summary>
+    object TitleBar { get; }
+
+    /// <summary>
     /// Color theme of the user interface
     /// </summary>
     UserInterfaceTheme UserInterfaceTheme { get; }
+
+    /// <summary>
+    /// Call to register the Titlebar of the application with the UserInterface service.
+    /// </summary>
+    void RegisterTitleBar(object titleBar);
+
+    /// <summary>
+    /// Call to set the current project title when a new project is made or loaded.
+    /// </summary>
+    void SetCurrentProjectTitle( string currentProjectTitle );
 }

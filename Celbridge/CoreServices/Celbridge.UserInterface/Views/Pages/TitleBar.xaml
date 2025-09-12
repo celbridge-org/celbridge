@@ -32,6 +32,9 @@
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="32"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -45,5 +48,11 @@
                    Text="Celbridge" 
                    Margin="6"
                    VerticalAlignment="Center"/>
-    </Grid>
+    
+    <TextBlock x:Name="ProjectNameText"
+                   Grid.Column="3" 
+                   Margin="6"
+               VerticalAlignment="Center"/>
+
+  </Grid>
 </UserControl>

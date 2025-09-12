@@ -6,8 +6,11 @@ public class UserInterfaceService : IUserInterfaceService
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
+    private Celbridge.UserInterface.Views.TitleBar? _titleBar;
+
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
+    public object TitleBar => _titleBar!;
 
     public UserInterfaceService(
         IMessengerService messengerService)
@@ -57,4 +60,19 @@ public class UserInterfaceService : IUserInterfaceService
         }
     }
 #endif
+
+    public void RegisterTitleBar( object titleBar )
+    {
+        Views.TitleBar? givenTitleBar = titleBar as Views.TitleBar;
+        if (givenTitleBar != null)
+        {
+            _titleBar = givenTitleBar;
+        }
+    }
+
+    public void SetCurrentProjectTitle(string currentProjectTitle)
+    {
+        Guard.IsNotNull(_titleBar);
+        _titleBar.SetProjectTitle(currentProjectTitle);
+    }
 }
