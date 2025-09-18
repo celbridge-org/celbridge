@@ -14,7 +14,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IDocumentsService _documentsService;
 
-    public bool IsExplorerPanelVisible => _editorSettings.IsExplorerPanelVisible;
+    public bool IsExplorerPanelVisible => _editorSettings.IsContextPanelVisible;
 
     public bool IsInspectorPanelVisible => _editorSettings.IsInspectorPanelVisible;
 
@@ -62,7 +62,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         // 
         // Map the changed editor setting to the corresponding view model property.
         //
-        if (e.PropertyName == nameof(IEditorSettings.IsExplorerPanelVisible))
+        if (e.PropertyName == nameof(IEditorSettings.IsContextPanelVisible))
         {
             OnPropertyChanged(nameof(IsExplorerPanelVisible));
         }

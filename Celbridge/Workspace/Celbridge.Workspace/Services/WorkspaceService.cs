@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
+//using Celbridge.Debug;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
@@ -9,6 +10,8 @@ using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Python;
+//using Celbridge.RevisionControl;
+//using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.Status;
 
@@ -28,6 +31,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
+/*    
+    public ISearchService SearchService { get; }
+    public IDebugService DebugService { get; }
+    public IRevisionControlService RevisionControlService { get; }
+*/
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
@@ -47,7 +55,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IProjectService projectService)
     {
         _logger = logger;
-        _editorSettings = editorSettings; 
+        _editorSettings = editorSettings;
+
+        ContextAreaUsageDetails = new ContextAreaUsage();
 
         // Create instances of the required sub-services
 
@@ -77,13 +87,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public void ToggleFocusMode()
     {
         // Are we in focus mode?
-        bool isFocusModeActive = !_editorSettings.IsExplorerPanelVisible &&
+        bool isFocusModeActive = !_editorSettings.IsContextPanelVisible &&
             !_editorSettings.IsInspectorPanelVisible;
 
         if (isFocusModeActive)
         {
             // Exit focus mode
-            _editorSettings.IsExplorerPanelVisible = true;
+            _editorSettings.IsContextPanelVisible = true;
             _editorSettings.IsInspectorPanelVisible = true;
 
             if (_showToolsPanelOnExitFocusMode)
@@ -100,7 +110,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             // Remember if we should make the tools panel visible when we exit focus mode
             _showToolsPanelOnExitFocusMode = _editorSettings.IsToolsPanelVisible;
 
-            _editorSettings.IsExplorerPanelVisible = false;
+            _editorSettings.IsContextPanelVisible = false;
             _editorSettings.IsInspectorPanelVisible = false;
             _editorSettings.IsToolsPanelVisible = false;
         }
@@ -185,6 +195,57 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    // %%% TEST - This is a try out to see how well this works. If we commit to this style of display then we'll
+    //  likely change the controls to be pages and use another page display area to do this.
+
+
+    protected class ContextAreaUsage
+    {
+        private Dictionary<IWorkspaceService.ContextAreaUse, UIElement> ContextAreaDictionary = new Dictionary<IWorkspaceService.ContextAreaUse, UIElement>();
+
+        public void Add(IWorkspaceService.ContextAreaUse Use, UIElement Element)
+        {
+            ContextAreaDictionary[Use] = Element;
+            Element.Visibility = Visibility.Collapsed;
+        }
+
+        public void SetUsage(IWorkspaceService.ContextAreaUse Use)
+        {
+            foreach (KeyValuePair<IWorkspaceService.ContextAreaUse, UIElement> Pair in ContextAreaDictionary)
+            {
+                UIElement Element = Pair.Value;
+                if ((Pair.Key != Use) && (Element.Visibility != Visibility.Collapsed))
+                {
+                    Element.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    if (Pair.Key == Use)
+                    {
+                        Element.Visibility = Visibility.Visible;
+                    }
+                }
+            }
+        }
+    };
+
+    protected ContextAreaUsage ContextAreaUsageDetails;
+
+    public void ClearContextAreaUses()
+    {
+        ContextAreaUsageDetails = new ContextAreaUsage();
+    }
+
+    public void SetContextAreaUsage(IWorkspaceService.ContextAreaUse contextAreaUse)
+    {
+        ContextAreaUsageDetails.SetUsage(contextAreaUse);
+    }
+
+    public void AddContextAreaUse(IWorkspaceService.ContextAreaUse contextAreaUse, UIElement element)
+    {
+        ContextAreaUsageDetails.Add(contextAreaUse, element);
     }
 
     protected virtual void Dispose(bool disposing)

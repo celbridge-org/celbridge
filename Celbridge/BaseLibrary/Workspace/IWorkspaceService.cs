@@ -95,4 +95,21 @@ public interface IWorkspaceService
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
+
+    public enum ContextAreaUse
+    {
+        None,
+        Explorer,
+        Search,
+        Debug,
+        RevisionControl,
+
+        _LIMIT
+    };
+
+    void ClearContextAreaUses();
+
+    void SetContextAreaUsage(ContextAreaUse contextAreaUse);
+
+    void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element);
 }

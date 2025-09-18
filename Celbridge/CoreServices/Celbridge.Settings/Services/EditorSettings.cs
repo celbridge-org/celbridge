@@ -6,16 +6,16 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         : base(settingsGroup, nameof(EditorSettings))
     {}
 
-    public bool IsExplorerPanelVisible
+    public bool IsContextPanelVisible
     {
-        get => GetValue<bool>(nameof(IsExplorerPanelVisible), true);
-        set => SetValue(nameof(IsExplorerPanelVisible), value);
+        get => GetValue<bool>(nameof(IsContextPanelVisible), true);
+        set => SetValue(nameof(IsContextPanelVisible), value);
     }
 
-    public float ExplorerPanelWidth
+    public float ContextPanelWidth
     {
-        get => GetValue<float>(nameof(ExplorerPanelWidth), 250);
-        set => SetValue(nameof(ExplorerPanelWidth), value);
+        get => GetValue<float>(nameof(ContextPanelWidth), 250);
+        set => SetValue(nameof(ContextPanelWidth), value);
     }
 
     public bool IsInspectorPanelVisible
