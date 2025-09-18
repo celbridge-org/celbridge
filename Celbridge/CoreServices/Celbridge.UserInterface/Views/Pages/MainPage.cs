@@ -1,5 +1,11 @@
+#if DEBUG
+//#define INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+#else
+#endif
+
 using Celbridge.UserInterface.ViewModels.Pages;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -13,6 +19,10 @@ public sealed partial class MainPage : Page
     public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
     public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
+    public LocalizedString ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
+    public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
+    public LocalizedString DebugString => _stringLocalizer.GetString($"MainPage_Debug");
+    public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -32,27 +42,76 @@ public sealed partial class MainPage : Page
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
 
+        var symbolFontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
         _mainNavigation = new NavigationView()
             .Name("MainNavigation")
             .Grid(row: 1)
+            .IsPaneToggleButtonVisible(false)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .IsBackButtonVisible(NavigationViewBackButtonVisible.Collapsed)
-            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftMinimal)
+            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftCompact)
             .MenuItems(
+                new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.GlobalNavigationButton))
+                    .MenuItems(
+                        new NavigationViewItem()
+                            .Icon(new SymbolIcon(Symbol.NewFolder))
+                            .Tag(MainPageViewModel.NewProjectTag)
+                            .Content(NewProjectString),
+                        new NavigationViewItem()
+                            .Icon(new SymbolIcon(Symbol.OpenLocal))
+                            .Tag(MainPageViewModel.OpenProjectTag)
+                            .Content(OpenProjectString)
+                    )
+                    .Content(HomeString),
+
+                new NavigationViewItemSeparator(),
+
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
                     .Tag(MainPageViewModel.HomeTag)
+                    .ToolTipService(PlacementMode.Right, null, HomeString)
                     .Content(HomeString),
+
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.NewFolder))
-                    .Tag(MainPageViewModel.NewProjectTag)
-                    .Content(NewProjectString),
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\uec50")  // File Explorer
+                        )
+                    .Tag(MainPageViewModel.ExplorerTag)
+                    .ToolTipService(PlacementMode.Right, null, ExplorerString)
+                    .Content(HomeString)
+#if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+                ,new NavigationViewItem()
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\ue721")   // Search
+                        )
+                    .Tag(MainPageViewModel.SearchTag)
+                    .ToolTipService(PlacementMode.Right, null, SearchString)
+                    .Content(HomeString),
+
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.OpenLocal))
-                    .Tag(MainPageViewModel.OpenProjectTag)
-                    .Content(OpenProjectString)
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\uebe8")   // Bug
+                        )
+                    .Tag(MainPageViewModel.DebugTag)
+                    .ToolTipService(PlacementMode.Right, null, DebugString)
+                    .Content(HomeString),
+
+                new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Upload))
+                    .Tag(MainPageViewModel.RevisionControlTag) // GitHub
+                    .ToolTipService(PlacementMode.Right, null, RevisionControlString)
+                    .Content(HomeString)
+
+#endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
                 )
-                .Content(_contentFrame);
+            .Content(_contentFrame);
+
+        _mainNavigation.Loaded += NavigationView_Loaded;
 
         _layoutRoot = new Grid()
             .Name("LayoutRoot")
@@ -64,6 +123,22 @@ public sealed partial class MainPage : Page
 
         Loaded += OnMainPage_Loaded;
         Unloaded += OnMainPage_Unloaded;
+    }
+
+    private void MainNavigation_Loaded(object sender, RoutedEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void NavigationView_Loaded(object sender, RoutedEventArgs e)
+    {
+        // This now appears to have no effect, - possibly an ordering thing, - but it's behaviour may actually be undesirable.
+//        this._mainNavigation.IsPaneOpen = true;
+    }
+
+    private void MainPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        throw new NotImplementedException();
     }
 
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
@@ -92,6 +167,12 @@ public sealed partial class MainPage : Page
 
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
+
+        // Ask for our Navigation pain to be open at start.
+        //  (This has to be done in code as loading behaviour overrides this.)
+
+        // This now appears to have no effect, - possibly an ordering thing, - but it's behaviour may actually be undesirable.
+//        _mainNavigation.IsPaneOpen = true;
 
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
@@ -137,6 +218,10 @@ public sealed partial class MainPage : Page
         // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
         var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(CoreVirtualKeyStates.Down);
+
+        // %%% TEST
+        // This now appears to cause the main navigation bar to fully open in full mode, which is undesirable.
+//        _mainNavigation.IsPaneOpen = true;
 
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
@@ -194,13 +279,18 @@ public sealed partial class MainPage : Page
         var item = args.InvokedItemContainer as NavigationViewItem;
         Guard.IsNotNull(item);
 
+        // %%% We now have a menu accessed from our navigation view, so we have a valid case
+        //  where the user needs to click on a value without a tag.
         var navigationItemTag = item.Tag;
-        Guard.IsNotNull(navigationItemTag);
+//        Guard.IsNotNull(navigationItemTag);
 
-        var tag = navigationItemTag.ToString();
-        Guard.IsNotNullOrEmpty(tag);
+        if (navigationItemTag != null)
+        {
+            var tag = navigationItemTag.ToString();
+            Guard.IsNotNullOrEmpty(tag);
 
-        ViewModel.SelectNavigationItem(tag);
+            ViewModel.SelectNavigationItem(tag);
+        }
     }
 
     public void Navigate(Type pageType, object parameter)

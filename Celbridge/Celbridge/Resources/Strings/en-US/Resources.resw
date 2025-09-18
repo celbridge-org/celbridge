@@ -168,6 +168,18 @@
   <data name="MainPage_Home" xml:space="preserve">
     <value>Home</value>
   </data>
+  <data name="MainPage_Explorer" xml:space="preserve">
+    <value>Explorer</value>
+  </data>
+  <data name="MainPage_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="MainPage_Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="MainPage_RevisionControl" xml:space="preserve">
+    <value>RevisionControl</value>
+  </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
   </data>

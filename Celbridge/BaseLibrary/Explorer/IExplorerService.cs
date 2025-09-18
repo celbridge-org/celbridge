@@ -14,6 +14,11 @@ public interface IExplorerService
     IExplorerPanel? ExplorerPanel { get; }
 
     /// <summary>
+    /// TEMPORARY: Returns the Explorer Panel view. - %%% Move this to separate Search module.
+    /// </summary>
+    ISearchPanel? SearchPanel { get; }
+
+    /// <summary>
     /// Returns the Resource Registry associated with the current project.
     /// </summary>
     IResourceRegistry ResourceRegistry { get; }
