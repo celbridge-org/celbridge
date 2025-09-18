@@ -10,12 +10,12 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// <summary>
     /// Gets or sets a value indicating whether the explorer panel is visible.
     /// </summary>
-    bool IsExplorerPanelVisible { get; set; }
+    bool IsContextPanelVisible { get; set; }
 
     /// <summary>
     /// Gets or sets the width of the explorer panel.
     /// </summary>
-    float ExplorerPanelWidth { get; set; }
+    float ContextPanelWidth { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the inspector panel is visible.

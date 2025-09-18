@@ -15,9 +15,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
     public const string SettingsTag = "Settings";
+    public const string SearchTag = "Search";
+    public const string ExplorerTag = "Explorer";
+    public const string DebugTag = "Debug";
+    public const string RevisionControlTag = "RevisionControl";
 
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
+    private const string WorkspacePageName = "WorkspacePage";   // Centralise these?
 
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
@@ -119,6 +124,38 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             case SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
                 break;
+
+            case ExplorerTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Explorer);
+                }
+                break;
+
+            case SearchTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Search);
+                }
+                break;
+
+            case DebugTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Debug);
+                }
+                break;
+
+            case RevisionControlTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.RevisionControl);
+                }
+                break;
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
@@ -126,6 +163,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task NavigateToHomeAsync()
     {
+/*
         if (IsWorkspaceLoaded)
         {
             _commandService.Execute<IUnloadProjectCommand>();
@@ -139,6 +177,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
         // Clear the previous project so we don't try to reload it next time the application starts
         _editorSettings.PreviousProject = string.Empty;
+*/
         _navigationService.NavigateToPage(HomePageName);
     }
 

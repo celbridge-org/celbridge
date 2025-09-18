@@ -44,7 +44,7 @@ public sealed partial class TitleBar : UserControl
         VisualStateManager.GoToState(this, "Inactive", false);
     }
 
-    public void SetProjectTitle( string title )
+    public void SetProjectTitle(string title)
     {
         ProjectNameText.Text = title;
     }
