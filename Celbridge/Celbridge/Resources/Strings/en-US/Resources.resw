@@ -480,4 +480,7 @@ Do you wish to continue?</value>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
   </data>
+  <data name="InspectorPanel_SelectResource" xml:space="preserve">
+    <value>Select resource in Explorer</value>
+  </data>
 </root>
