@@ -13,8 +13,8 @@ public sealed partial class ResourceNameInspector : UserControl, IInspector
     private LocalizedString OpenInString => _stringLocalizer.GetString("ResourceTree_OpenIn");
     private LocalizedString OpenInExplorerString => _stringLocalizer.GetString("ResourceTree_OpenInExplorer");
     private LocalizedString OpenInApplicationString => _stringLocalizer.GetString("ResourceTree_OpenInApplication");
-
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
+    private LocalizedString SelectResourceString => _stringLocalizer.GetString("InspectorPanel_SelectResource");
     
     public ResourceKey Resource
     {
