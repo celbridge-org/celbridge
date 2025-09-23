@@ -11,7 +11,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 * Provide quick access to the web applications you regularly use (e.g. dashboards, support portals, docs, etc).
 
 > [!NOTE]
-> Many thanks to [Mescius & SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
+> Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 <br>
 <a href="https://github.com/AnTulcha/Celbridge/blob/main/Docs/Images/celbridge.gif" alt="Celbridge screenshot GIF">
@@ -43,7 +43,7 @@ Celbridge is an open source, user-friendly data processing tool. It provides a b
 
 ## Spreadsheets and Data Processing
 
-* Edit `.xlsx` files using a powerful built-in spreadsheet editor, powered by [SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
+* Edit `.xlsx` files using a powerful built-in spreadsheet editor, powered by [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
 * Supports all common Excel functionality, including formulas, graph and table generation, images, pivot tables, etc.
 * Does **not require Excel** to be installed on your machine.
 
@@ -134,7 +134,7 @@ Thank you to everyone who has contributed to Celbridge, especially [Katie Cannin
 
 This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda & John Romero and all of the incredible team at Romero Games for their support.❤️❤️❤️
 
-Many thanks to [Mescius & SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
+Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 Celbridge relies on code from many fantastic open source projects, including:
 * [Uno Platform](https://platform.uno) 
