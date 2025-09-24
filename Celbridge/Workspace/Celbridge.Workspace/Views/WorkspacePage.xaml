@@ -5,6 +5,7 @@
     xmlns:local="using:Celbridge.Workspace.Views"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:vm="using:Celbridge.Workspace.ViewModels"
+    NavigationCacheMode="Required"
     DataContext="{x:Bind ViewModel}">
 
   <Grid x:Name="LayoutRoot">

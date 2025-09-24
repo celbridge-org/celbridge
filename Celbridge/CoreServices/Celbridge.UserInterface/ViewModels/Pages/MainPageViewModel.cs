@@ -1,3 +1,4 @@
+using System;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
@@ -6,6 +7,7 @@ using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
 
@@ -89,7 +91,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var previousProjectFile = _editorSettings.PreviousProject;
         if (!string.IsNullOrEmpty(previousProjectFile) &&
             File.Exists(previousProjectFile))
-        {
+        { 
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {
                 command.ProjectFilePath = previousProjectFile;
@@ -163,21 +165,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task NavigateToHomeAsync()
     {
-/*
-        if (IsWorkspaceLoaded)
-        {
-            _commandService.Execute<IUnloadProjectCommand>();
-
-            // Wait until the project is unloaded before navigating
-            while (IsWorkspaceLoaded)
-            {
-                await Task.Delay(50);
-            }
-        }
-
-        // Clear the previous project so we don't try to reload it next time the application starts
-        _editorSettings.PreviousProject = string.Empty;
-*/
         _navigationService.NavigateToPage(HomePageName);
     }
 
