@@ -114,7 +114,6 @@ public sealed partial class WorkspacePage : Page
             // Insert the child panels at the start of the children collection so that the panel toggle
             // buttons take priority for accepting input.
 
-            // %%% Change this to be a 'setting of focus' for the context panel, within this class.
             var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
             if (explorerPanel != null)
             {

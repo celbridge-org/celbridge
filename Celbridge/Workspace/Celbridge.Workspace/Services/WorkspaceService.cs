@@ -197,10 +197,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // %%% TEST - This is a try out to see how well this works. If we commit to this style of display then we'll
-    //  likely change the controls to be pages and use another page display area to do this.
-
-
     protected class ContextAreaUsage
     {
         private Dictionary<IWorkspaceService.ContextAreaUse, UIElement> ContextAreaDictionary = new Dictionary<IWorkspaceService.ContextAreaUse, UIElement>();

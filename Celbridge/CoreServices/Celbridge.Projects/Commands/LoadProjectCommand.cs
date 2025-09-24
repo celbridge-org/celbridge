@@ -54,7 +54,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Ok();
         }
 
-        // %%% TEST - Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
+        // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
         if ((_workspaceWrapper.IsWorkspacePageLoaded) && (_workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null))
         {
             _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
@@ -97,6 +97,8 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
                 .WithErrors(loadResult);
         }
 
+        // %%% Swap to Empty Page ,and delay as working test and workaround.
+
         var loadPageCancelationToken = new CancellationTokenSource();
         _navigationService.NavigateToPage(WorkspacePageName, loadPageCancelationToken);
 
@@ -110,6 +112,13 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         if (loadPageCancelationToken.IsCancellationRequested)
         {
             return Result.Fail("Failed to open project because an error occured");
+        }
+
+        // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
+        if (_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            await Task.Delay(250);
+            _navigationService.NavigationProvider.SelectNavigationItemUI("ExplorerNavigationItem");
         }
 
         return Result.Ok();
