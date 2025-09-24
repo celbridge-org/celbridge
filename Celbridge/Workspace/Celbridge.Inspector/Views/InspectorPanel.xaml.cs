@@ -25,13 +25,17 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
 
         ViewModel = ServiceLocator.AcquireService<InspectorPanelViewModel>();
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         InitializeComponent();
 
         DataContext = ViewModel;
 
-        Unloaded += (_, __) =>
+        Loaded += (s, e) =>
+        {
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        };
+
+        Unloaded += (s, e) =>
         {
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         };
