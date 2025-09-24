@@ -162,7 +162,11 @@ public abstract class Result
     /// </summary>
     public Result WithErrors(Result otherResult)
     {
-        if (otherResult is null) return this;
+        if (otherResult is null)
+        {
+            return this;
+        }
+
         _errors.InsertRange(0, otherResult._errors);
         return this;
     }
@@ -250,7 +254,11 @@ public class Result<T> : Result where T : notnull
     /// </summary>
     public static Result<T> Ok(T value)
     {
-        if (value is null) throw new ArgumentNullException(nameof(value));
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         return new Result<T>(value);
     }
 
@@ -295,7 +303,11 @@ public class Result<T> : Result where T : notnull
     /// </summary>
     public static implicit operator Result<T>(T value)
     {
-        if (value is null) throw new ArgumentNullException(nameof(value));
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         return Result<T>.Ok(value);
     }
 
