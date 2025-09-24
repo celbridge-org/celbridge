@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Workspace;
 
@@ -29,7 +30,7 @@ public class MarkdownActivity : IActivity
     {
         // Register the Markdown preview provider
         var markdownProvider = _serviceProvider.AcquireService<MarkdownPreviewProvider>();
-        var addMarkdownResult = _documentsService.AddPreviewProvider(".md", markdownProvider);
+        var addMarkdownResult = _documentsService.AddPreviewProvider(ExplorerConstants.MarkdownExtension, markdownProvider);
         if (addMarkdownResult.IsFailure)
         {
             return Result.Fail("Failed to add Markdown preview provider.")
@@ -59,7 +60,7 @@ public class MarkdownActivity : IActivity
     public bool SupportsResource(ResourceKey resource)
     {
         var extension = Path.GetExtension(resource);
-        return extension == ".md";
+        return extension == ExplorerConstants.MarkdownExtension;
     }
 
     public async Task<Result> InitializeResourceAsync(ResourceKey resource)

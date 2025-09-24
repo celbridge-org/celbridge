@@ -172,9 +172,7 @@ public class ResourceUtils
 
             var fileExtension = Path.GetExtension(webAppPath);
 
-            if (fileExtension != ".webapp" &&
-                fileExtension == ".web") // Todo: Remove this - legacy support
-
+            if (fileExtension == ExplorerConstants.WebAppExtension)
             {
                 return Result<string>.Fail($"File does not have the .webapp extension: {webAppPath}");
             }

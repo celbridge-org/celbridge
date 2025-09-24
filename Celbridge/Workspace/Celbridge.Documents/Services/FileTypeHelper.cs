@@ -1,3 +1,4 @@
+using Celbridge.Explorer;
 using System.Reflection;
 using System.Text.Json;
 
@@ -30,13 +31,12 @@ public class FileTypeHelper
 
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        if (fileExtension == ".webapp" ||
-            fileExtension == ".web") // Todo: Remove this - legacy support
+        if (fileExtension == ExplorerConstants.WebAppExtension)
         {
             return DocumentViewType.WebAppDocument;
         }
 
-        if (fileExtension == ".xlsx")
+        if (fileExtension == ExplorerConstants.ExcelExtension)
         {
             return DocumentViewType.Spreadsheet;
         }
