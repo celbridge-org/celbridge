@@ -112,4 +112,7 @@ public interface IWorkspaceService
     void SetContextAreaUsage(ContextAreaUse contextAreaUse);
 
     void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element);
+
+    public delegate void SetWorkspacePagePersistenceDelegate(bool Persistence);
+    public SetWorkspacePagePersistenceDelegate SetWorkspacePagePersistence { get; set; }
 }

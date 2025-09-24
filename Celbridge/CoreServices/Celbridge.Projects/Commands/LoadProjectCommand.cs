@@ -10,7 +10,7 @@ namespace Celbridge.Projects.Commands;
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
     private const string HomePageName = "HomePage";
-    private const string WorkspacePageName = "WorkspacePage";
+    private const string WorkspacePageName = "WorkspacePage";   // Centralise these?
 
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -52,6 +52,12 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             // The project is already loaded.
             // We can just early out here as we're already in the expected end state.
             return Result.Ok();
+        }
+
+        // %%% TEST - Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
+        if ((_workspaceWrapper.IsWorkspacePageLoaded) && (_workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null))
+        {
+            _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
         }
 
         // Close any loaded project.
