@@ -247,6 +247,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         ContextAreaUsageDetails.Add(contextAreaUse, element);
     }
+    public IWorkspaceService.SetWorkspacePagePersistenceDelegate SetWorkspacePagePersistence { get; set; }
+
 
     protected virtual void Dispose(bool disposing)
     {
