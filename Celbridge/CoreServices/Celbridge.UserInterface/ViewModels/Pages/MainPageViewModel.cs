@@ -58,6 +58,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
+    public event Func<string, Result>? SelectNavigationItem;
 
     public Result NavigateToPage(Type pageType)
     {
@@ -68,6 +69,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public Result NavigateToPage(Type pageType, object parameter)
     {
         return OnNavigate?.Invoke(pageType, parameter)!;
+    }
+
+    public Result SelectNavigationItemUI(string navItemName)
+    {
+        return SelectNavigationItem?.Invoke(navItemName);
     }
 
     public void OnMainPage_Loaded()
@@ -107,7 +113,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public void OnMainPage_Unloaded()
     { }
 
-    public void SelectNavigationItem(string tag)
+    public void OnSelectNavigationItem(string tag)
     {
         switch (tag)
         {

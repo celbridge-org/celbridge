@@ -54,6 +54,7 @@ public sealed partial class MainPage : Page
             .MenuItems(
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.GlobalNavigationButton))
+                    .Name("MenuNavigationItem")
                     .MenuItems(
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
@@ -70,6 +71,7 @@ public sealed partial class MainPage : Page
 
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
+                    .Name("HomeNavigationItem")
                     .Tag(MainPageViewModel.HomeTag)
                     .ToolTipService(PlacementMode.Right, null, HomeString)
                     .Content(HomeString),
@@ -79,6 +81,7 @@ public sealed partial class MainPage : Page
                             .FontFamily(symbolFontFamily)
                             .Glyph("\uec50")  // File Explorer
                         )
+                    .Name("ExplorerNavigationItem")
                     .Tag(MainPageViewModel.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
                     .Content(HomeString)
@@ -158,6 +161,7 @@ public sealed partial class MainPage : Page
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
+        ViewModel.SelectNavigationItem += SelectNavigationItem;
         ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
@@ -200,6 +204,7 @@ public sealed partial class MainPage : Page
         // Unregister all event handlers to avoid memory leaks
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
+        ViewModel.SelectNavigationItem -= SelectNavigationItem;
 
         _mainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
@@ -213,10 +218,6 @@ public sealed partial class MainPage : Page
         // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
         var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(CoreVirtualKeyStates.Down);
-
-        // %%% TEST
-        // This now appears to cause the main navigation bar to fully open in full mode, which is undesirable.
-//        _mainNavigation.IsPaneOpen = true;
 
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
@@ -267,24 +268,22 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsTag);
+            ViewModel.OnSelectNavigationItem(MainPageViewModel.SettingsTag);
             return;
         }
 
         var item = args.InvokedItemContainer as NavigationViewItem;
         Guard.IsNotNull(item);
 
-        // %%% We now have a menu accessed from our navigation view, so we have a valid case
+        // Note: We now have a menu accessed from our navigation view, so we have a valid case
         //  where the user needs to click on a value without a tag.
         var navigationItemTag = item.Tag;
-//        Guard.IsNotNull(navigationItemTag);
-
         if (navigationItemTag != null)
         {
             var tag = navigationItemTag.ToString();
             Guard.IsNotNullOrEmpty(tag);
 
-            ViewModel.SelectNavigationItem(tag);
+            ViewModel.OnSelectNavigationItem(tag);
         }
     }
 
@@ -297,5 +296,12 @@ public sealed partial class MainPage : Page
         {
             _contentFrame.Navigate(pageType, parameter);
         }
+    }
+
+    public Result SelectNavigationItem(string navItemName)
+    {      
+//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName("ExplorerNavigationItem") as NavigationViewItem;
+        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
+        return Result.Ok();
     }
 }
