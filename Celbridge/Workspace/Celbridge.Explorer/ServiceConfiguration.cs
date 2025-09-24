@@ -27,7 +27,6 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerPanel, ExplorerPanel>();
-        // %%% Temporary
         services.AddTransient<ISearchPanel, SearchPanel>();
 
         //
