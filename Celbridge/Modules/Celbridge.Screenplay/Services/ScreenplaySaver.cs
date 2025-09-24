@@ -61,7 +61,7 @@ public class ScreenplaySaver
         try
         {
             var extension = Path.GetExtension(screenplayResource);
-            if (extension != ".xlsx")
+            if (extension != ExplorerConstants.ExcelExtension)
             {
                 return Result.Fail($"Unsupported file type: {extension}");
             }
