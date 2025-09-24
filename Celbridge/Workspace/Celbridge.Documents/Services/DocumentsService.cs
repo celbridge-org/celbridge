@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
+using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -168,7 +169,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (!string.IsNullOrEmpty(extension))
         {
             resourcePath = Path.ChangeExtension(resourcePath, extension.ToLowerInvariant());
-            if (extension == ".xlsx")
+            if (extension == ExplorerConstants.ExcelExtension)
             {
                 // Create an empty Excel file at resource path
                 using var wb = new XLWorkbook();

@@ -1,3 +1,4 @@
+using Celbridge.Explorer;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
 using Celbridge.Workspace;
@@ -83,8 +84,7 @@ public class InspectorFactory : IInspectorFactory
         var fileExtension = Path.GetExtension(resource);
 
         IInspector? inspector = null;
-        if (fileExtension == ".webapp" ||
-            fileExtension == ".web") // Todo: Remove this - legacy support
+        if (fileExtension == ExplorerConstants.WebAppExtension)
         {
             inspector = CreateInspector<WebInspector, WebInspectorViewModel>(resource);
         }

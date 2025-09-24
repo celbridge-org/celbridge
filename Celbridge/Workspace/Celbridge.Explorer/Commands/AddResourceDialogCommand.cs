@@ -127,11 +127,11 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                 var newExtension = ResourceFormat switch
                 {
                     ResourceFormat.Folder => string.Empty,
-                    ResourceFormat.Excel => ".xlsx",
-                    ResourceFormat.Markdown => ".md",
-                    ResourceFormat.Python => ".py",
-                    ResourceFormat.WebApp => ".webapp",
-                    _ => ".txt",
+                    ResourceFormat.Excel => ExplorerConstants.ExcelExtension,
+                    ResourceFormat.Markdown => ExplorerConstants.MarkdownExtension,
+                    ResourceFormat.Python => ExplorerConstants.PythonExtension,
+                    ResourceFormat.WebApp => ExplorerConstants.WebAppExtension,
+                    _ => ExplorerConstants.TextExtension,
                 };
 
                 if (newExtension != extension)

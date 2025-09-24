@@ -405,8 +405,7 @@ public class ExplorerService : IExplorerService, IDisposable
     {
         var fileExtension = Path.GetExtension(resource.ResourceName);
 
-        if (fileExtension == ".webapp" ||
-            fileExtension == ".web") // Todo: Remove this - legacy support
+        if (fileExtension == ExplorerConstants.WebAppExtension)
         {
             var webFilePath = ResourceRegistry.GetResourcePath(resource);
 

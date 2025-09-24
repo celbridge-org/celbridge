@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 
@@ -34,7 +35,7 @@ public class SpreadsheetActivity : IActivity
     public bool SupportsResource(ResourceKey resource)
     {
         var extension = Path.GetExtension(resource);
-        return extension == ".xlsx";
+        return extension == ExplorerConstants.ExcelExtension;
     }
 
     public async Task<Result> InitializeResourceAsync(ResourceKey resource)
