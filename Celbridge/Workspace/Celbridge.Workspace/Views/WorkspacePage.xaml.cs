@@ -151,6 +151,7 @@ public sealed partial class WorkspacePage : Page
             _ = ViewModel.LoadWorkspaceAsync();
 
             workspaceService.SetWorkspacePagePersistence += SetWorkspacePagePersistence;
+            workspaceService.UnloadWorkspacePage += PageUnloadInternal;
 
             Initialised = true;
         }
@@ -176,6 +177,7 @@ public sealed partial class WorkspacePage : Page
         Guard.IsNotNull(workspaceService);
 
         workspaceService.SetWorkspacePagePersistence -= SetWorkspacePagePersistence;
+        workspaceService.UnloadWorkspacePage -= PageUnloadInternal;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnWorkspacePageUnloaded();
     }
@@ -320,7 +322,6 @@ public sealed partial class WorkspacePage : Page
         else
         {
             NavigationCacheMode = NavigationCacheMode.Disabled;
-            PageUnloadInternal();
         }
     }
 }

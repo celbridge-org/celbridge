@@ -153,6 +153,7 @@ public sealed partial class MainPage : Page
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
+        ViewModel.ReturnCurrentPage += ReturnCurrentPage;
         ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
@@ -190,6 +191,7 @@ public sealed partial class MainPage : Page
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
         ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
+        ViewModel.ReturnCurrentPage = ReturnCurrentPage;
 
         _mainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
@@ -247,6 +249,19 @@ public sealed partial class MainPage : Page
             return Result.Ok();
         }
         return Result.Fail($"Failed to navigate to page type {pageType}");
+    }
+
+    private string ReturnCurrentPage()
+    {
+        Page? currentPage = _contentFrame.Content as Page;
+        if (currentPage != null)
+        {
+            return currentPage.Name;
+        }
+        else
+        {
+            return "None";
+        }
     }
 
     private void OnMainPage_NavigationViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)

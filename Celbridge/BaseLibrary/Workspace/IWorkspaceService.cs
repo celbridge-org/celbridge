@@ -117,4 +117,11 @@ public interface IWorkspaceService
     /// Accessor to the SetWorkspacePagePersistence delegate, allowing the delegate to be set or called.
     /// </summary>
     public SetWorkspacePagePersistenceDelegate SetWorkspacePagePersistence { get; set; }
+
+    public delegate void UnloadWorkspacePageInternalDelegate();
+
+    /// <summary>
+    /// Accessor to the UnloadWorkspacePage delegate, allowing the delegate to be set or called.
+    /// </summary>
+    public UnloadWorkspacePageInternalDelegate UnloadWorkspacePage { get; set; }
 }

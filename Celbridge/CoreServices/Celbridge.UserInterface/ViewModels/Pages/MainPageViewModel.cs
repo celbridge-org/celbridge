@@ -55,6 +55,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public event Func<Type, object, Result>? OnNavigate;
     public event Func<string, Result>? SelectNavigationItem;
+    public delegate string ReturnCurrentPageDelegate();
+
+    public ReturnCurrentPageDelegate ReturnCurrentPage;
 
     public Result NavigateToPage(Type pageType)
     {
@@ -70,6 +73,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public Result SelectNavigationItemByNameUI(string navItemName)
     {
         return SelectNavigationItem?.Invoke(navItemName);
+    }
+
+    public string GetCurrentPageName()
+    {
+        return ReturnCurrentPage();
     }
 
     public void OnMainPage_Loaded()
