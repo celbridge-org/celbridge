@@ -54,6 +54,13 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Ok();
         }
 
+        // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
+        if (_workspaceWrapper.IsWorkspacePageLoaded 
+            && _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null)
+        {
+            _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
+        }
+
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
         await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
@@ -104,6 +111,12 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         if (loadPageCancelationToken.IsCancellationRequested)
         {
             return Result.Fail("Failed to open project because an error occured");
+        }
+
+        // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
+        if (_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            _navigationService.NavigationProvider.SelectNavigationItemByNameUI("ExplorerNavigationItem");
         }
 
         return Result.Ok();

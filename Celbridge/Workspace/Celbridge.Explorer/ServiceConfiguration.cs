@@ -27,6 +27,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerPanel, ExplorerPanel>();
+        services.AddTransient<ISearchPanel, SearchPanel>();
 
         //
         // Register view models

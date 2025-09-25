@@ -65,7 +65,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
 
-        if (e.PropertyName == nameof(IsExplorerPanelVisible) ||
+        if (e.PropertyName == nameof(IsContextPanelVisible) ||
             e.PropertyName == nameof(IsInspectorPanelVisible))
         {
             UpdateIsFocusModeActive();
@@ -75,14 +75,14 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void UpdateIsFocusModeActive()
     {
         IsFocusModeActive =
-            !_editorSettings.IsExplorerPanelVisible &&
+            !_editorSettings.IsContextPanelVisible &&
             !_editorSettings.IsInspectorPanelVisible;
     }
 
-    public float ExplorerPanelWidth
+    public float ContextPanelWidth
     {
-        get => _editorSettings.ExplorerPanelWidth;
-        set => _editorSettings.ExplorerPanelWidth = value;
+        get => _editorSettings.ContextPanelWidth;
+        set => _editorSettings.ContextPanelWidth = value;
     }
 
     public float InspectorPanelWidth
@@ -97,10 +97,10 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.ToolsPanelHeight = value;
     }
 
-    public bool IsExplorerPanelVisible
+    public bool IsContextPanelVisible
     {
-        get => _editorSettings.IsExplorerPanelVisible;
-        set => _editorSettings.IsExplorerPanelVisible = value;
+        get => _editorSettings.IsContextPanelVisible;
+        set => _editorSettings.IsContextPanelVisible = value;
     }
 
     public bool IsInspectorPanelVisible
@@ -118,7 +118,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     public ICommand ToggleExplorerPanelCommand => new RelayCommand(ToggleExplorerPanel_Executed);
     private void ToggleExplorerPanel_Executed()
     {
-        _editorSettings.IsExplorerPanelVisible = !_editorSettings.IsExplorerPanelVisible;
+        _editorSettings.IsContextPanelVisible = !_editorSettings.IsContextPanelVisible;
     }
 
     public ICommand ToggleInspectorPanelCommand => new RelayCommand(ToggleInspectorPanel_Executed);

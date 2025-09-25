@@ -1,6 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
+using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;
@@ -13,6 +14,8 @@ public sealed partial class WorkspacePage : Page
     public WorkspacePageViewModel ViewModel { get; }
 
     private LocalizedString ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
+
+    private bool Initialised = false;
 
     public WorkspacePage()
     {
@@ -28,16 +31,17 @@ public sealed partial class WorkspacePage : Page
         DataContext = ViewModel;
 
         Loaded += WorkspacePage_Loaded;
+
         Unloaded += WorkspacePage_Unloaded;
     }
 
     private void ApplyPanelButtonTooltips()
     {
         // Explorer panel 
-        ToolTipService.SetToolTip(ShowExplorerPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowExplorerPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideExplorerPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideExplorerPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(ShowContextPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
+        ToolTipService.SetPlacement(ShowContextPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(HideContextPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
+        ToolTipService.SetPlacement(HideContextPanelButton, PlacementMode.Bottom);
 
         // Inspector panel 
         ToolTipService.SetToolTip(ShowInspectorPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
@@ -65,67 +69,113 @@ public sealed partial class WorkspacePage : Page
 
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
-        var leftPanelWidth = ViewModel.ExplorerPanelWidth;
-        var rightPanelWidth = ViewModel.InspectorPanelWidth;
-        var bottomPanelHeight = ViewModel.ToolsPanelHeight;
-
-        if (leftPanelWidth > 0)
+        // Only execute this functionality if we have Cache Mode set to Disabled.
+        //  - This means we are purposefully wanted to rebuild the Workspace (Intentional Project Load, rather than UI context switch).
+        if ((!Initialised) || (NavigationCacheMode == NavigationCacheMode.Disabled))
         {
-            ExplorerPanelColumn.Width = new GridLength(leftPanelWidth);
+            var leftPanelWidth = ViewModel.ContextPanelWidth;
+            var rightPanelWidth = ViewModel.InspectorPanelWidth;
+            var bottomPanelHeight = ViewModel.ToolsPanelHeight;
+
+            if (leftPanelWidth > 0)
+            {
+                ContextPanelColumn.Width = new GridLength(leftPanelWidth);
+            }
+            if (rightPanelWidth > 0)
+            {
+                InspectorPanelColumn.Width = new GridLength(rightPanelWidth);
+            }
+            if (bottomPanelHeight > 0)
+            {
+                ToolsPanelRow.Height = new GridLength(bottomPanelHeight);
+            }
+
+            UpdatePanels();
+            UpdateFocusModeButton();
+
+            ContextPanel.SizeChanged += (s, e) => ViewModel.ContextPanelWidth = (float)e.NewSize.Width;
+            InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
+            ToolsPanel.SizeChanged += (s, e) => ViewModel.ToolsPanelHeight = (float)e.NewSize.Height;
+
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+            //
+            // Populate the workspace panels.
+            //
+
+            var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+            var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
+            Guard.IsNotNull(workspaceService);
+
+            // Send a message to tell services to initialize their workspace panels
+            var message = new WorkspaceWillPopulatePanelsMessage();
+            _messengerService.Send(message);
+
+            // Insert the child panels at the start of the children collection so that the panel toggle
+            // buttons take priority for accepting input.
+
+            var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
+            if (explorerPanel != null)
+            {
+                workspaceService.AddContextAreaUse(ContextAreaUse.Explorer, explorerPanel);
+                ContextPanel.Children.Insert(0, explorerPanel);
+            }
+
+            //        var searchPanel = workspaceService.SearchService.SearchPanel as UIElement;
+            var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
+            workspaceService.AddContextAreaUse(ContextAreaUse.Search, searchPanel);
+            ContextPanel.Children.Insert(1, searchPanel);
+            /*
+            var debugPanel = workspaceService.DebugService.DebugPanel as UIElement;
+            workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.Debug, debugPanel);
+            ContextPanel.Children.Insert(2, debugPanel);
+
+            var revisionControlPanel = workspaceService.RevisionControlService.RevisioncControlPanel as UIElement;
+            workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.VersionControl, revisionControlPanel);
+            ContextPanel.Children.Insert(3, revisionControlPanel);
+            */
+            var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
+            DocumentsPanel.Children.Insert(0, documentsPanel);
+
+            var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
+            InspectorPanel.Children.Add(inspectorPanel);
+
+            var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
+            ToolsContent.Children.Add(consolePanel);
+
+            var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
+            StatusPanel.Children.Add(statusPanel);
+
+            workspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
+
+            _ = ViewModel.LoadWorkspaceAsync();
+
+            workspaceService.SetWorkspacePagePersistence += SetWorkspacePagePersistence;
+
+            Initialised = true;
         }
-        if (rightPanelWidth > 0)
-        {
-            InspectorPanelColumn.Width = new GridLength(rightPanelWidth);
-        }
-        if (bottomPanelHeight > 0)
-        {
-            ToolsPanelRow.Height = new GridLength(bottomPanelHeight);
-        }
 
-        UpdatePanels();
-        UpdateFocusModeButton();
-
-        ExplorerPanel.SizeChanged += (s, e) => ViewModel.ExplorerPanelWidth = (float)e.NewSize.Width;
-        InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
-        ToolsPanel.SizeChanged += (s, e) => ViewModel.ToolsPanelHeight = (float)e.NewSize.Height;
-
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-        //
-        // Populate the workspace panels.
-        //
-
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
-        Guard.IsNotNull(workspaceService);
-
-        // Send a message to tell services to initialize their workspace panels
-        var message = new WorkspaceWillPopulatePanelsMessage();
-        _messengerService.Send(message);
-
-        // Insert the child panels at the start of the children collection so that the panel toggle
-        // buttons take priority for accepting input.
-
-        var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
-        ExplorerPanel.Children.Insert(0, explorerPanel);
-
-        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
-        DocumentsPanel.Children.Insert(0, documentsPanel);
-
-        var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
-        InspectorPanel.Children.Add(inspectorPanel);
-
-        var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-        ToolsContent.Children.Add(consolePanel);
-
-        var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
-        StatusPanel.Children.Add(statusPanel);
-
-        _ = ViewModel.LoadWorkspaceAsync();
+        // Reset our cache status to required.
+        NavigationCacheMode = NavigationCacheMode.Required;
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
+        // Only execute this functionality if we have Cache Mode set to Disabled.
+        //  - This means we are purposefully wanted to rebuild the Workspace (Intentional Project Load, rather than UI context switch).
+        if (NavigationCacheMode == NavigationCacheMode.Disabled)
+        {
+            PageUnloadInternal();
+        }
+    }
+
+    private void PageUnloadInternal()
+    {
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
+        Guard.IsNotNull(workspaceService);
+
+        workspaceService.SetWorkspacePagePersistence -= SetWorkspacePagePersistence;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnWorkspacePageUnloaded();
     }
@@ -134,7 +184,7 @@ public sealed partial class WorkspacePage : Page
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.IsExplorerPanelVisible):
+            case nameof(ViewModel.IsContextPanelVisible):
             case nameof(ViewModel.IsInspectorPanelVisible):
             case nameof(ViewModel.IsToolsPanelVisible):
                 UpdatePanels();
@@ -151,8 +201,8 @@ public sealed partial class WorkspacePage : Page
         // Update button visibility based on panel visibility state
         //
 
-        ShowExplorerPanelButton.Visibility = ViewModel.IsExplorerPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideExplorerPanelButton.Visibility = ViewModel.IsExplorerPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        ShowContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        HideContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
         ShowInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
         HideInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -164,19 +214,19 @@ public sealed partial class WorkspacePage : Page
         // Update panel and splitter visibility based on the panel visibility state
         //
 
-        if (ViewModel.IsExplorerPanelVisible)
+        if (ViewModel.IsContextPanelVisible)
         {
-            ExplorerPanelSplitter.Visibility = Visibility.Visible;
-            ExplorerPanel.Visibility = Visibility.Visible;
-            ExplorerPanelColumn.MinWidth = 100;
-            ExplorerPanelColumn.Width = new GridLength(ViewModel.ExplorerPanelWidth);
+            ContextPanelSplitter.Visibility = Visibility.Visible;
+            ContextPanel.Visibility = Visibility.Visible;
+            ContextPanelColumn.MinWidth = 100;
+            ContextPanelColumn.Width = new GridLength(ViewModel.ContextPanelWidth);
         }
         else
         {
-            ExplorerPanelSplitter.Visibility = Visibility.Collapsed;
-            ExplorerPanel.Visibility = Visibility.Collapsed;
-            ExplorerPanelColumn.MinWidth = 0;
-            ExplorerPanelColumn.Width = new GridLength(0);
+            ContextPanelSplitter.Visibility = Visibility.Collapsed;
+            ContextPanel.Visibility = Visibility.Collapsed;
+            ContextPanelColumn.MinWidth = 0;
+            ContextPanelColumn.Width = new GridLength(0);
         }
 
         if (ViewModel.IsInspectorPanelVisible)
@@ -258,6 +308,19 @@ public sealed partial class WorkspacePage : Page
         if (Enum.TryParse<WorkspacePanel>(trimmed, out var panel))
         {
             ViewModel.SetActivePanel(panel);
+        }
+    }
+
+    public void SetWorkspacePagePersistence(bool persistant)
+    {
+        if (persistant)
+        {
+            NavigationCacheMode = NavigationCacheMode.Required;
+        }
+        else
+        {
+            NavigationCacheMode = NavigationCacheMode.Disabled;
+            PageUnloadInternal();
         }
     }
 }

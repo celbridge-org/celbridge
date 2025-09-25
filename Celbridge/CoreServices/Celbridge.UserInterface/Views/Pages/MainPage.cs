@@ -1,3 +1,8 @@
+#if DEBUG
+//#define INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+#else
+#endif
+
 using Celbridge.UserInterface.ViewModels.Pages;
 using Microsoft.UI.Input;
 using Windows.System;
@@ -13,6 +18,10 @@ public sealed partial class MainPage : Page
     public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
     public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
+    public LocalizedString ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
+    public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
+    public LocalizedString DebugString => _stringLocalizer.GetString($"MainPage_Debug");
+    public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -32,27 +41,77 @@ public sealed partial class MainPage : Page
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentFrame");
 
+        var symbolFontFamily = ThemeResource.Get<FontFamily>("SymbolThemeFontFamily");
+
         _mainNavigation = new NavigationView()
             .Name("MainNavigation")
             .Grid(row: 1)
+            .IsPaneToggleButtonVisible(false)
             .Background(ThemeResource.Get<Brush>("PanelBackgroundABrush"))
             .IsBackButtonVisible(NavigationViewBackButtonVisible.Collapsed)
-            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftMinimal)
+            .PaneDisplayMode(NavigationViewPaneDisplayMode.LeftCompact)
             .MenuItems(
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.Home))
-                    .Tag(MainPageViewModel.HomeTag)
+                    .Icon(new SymbolIcon(Symbol.GlobalNavigationButton))
+                    .Name("MenuNavigationItem")
+                    .MenuItems(
+                        new NavigationViewItem()
+                            .Icon(new SymbolIcon(Symbol.NewFolder))
+                            .Tag(MainPageViewModel.NewProjectTag)
+                            .Content(NewProjectString),
+                        new NavigationViewItem()
+                            .Icon(new SymbolIcon(Symbol.OpenLocal))
+                            .Tag(MainPageViewModel.OpenProjectTag)
+                            .Content(OpenProjectString)
+                    )
                     .Content(HomeString),
+
+                new NavigationViewItemSeparator(),
+
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.NewFolder))
-                    .Tag(MainPageViewModel.NewProjectTag)
-                    .Content(NewProjectString),
+                    .Icon(new SymbolIcon(Symbol.Home))
+                    .Name("HomeNavigationItem")
+                    .Tag(MainPageViewModel.HomeTag)
+                    .ToolTipService(PlacementMode.Right, null, HomeString)
+                    .Content(HomeString),
+
                 new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.OpenLocal))
-                    .Tag(MainPageViewModel.OpenProjectTag)
-                    .Content(OpenProjectString)
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\uec50")  // File Explorer
+                        )
+                    .Name("ExplorerNavigationItem")
+                    .Tag(MainPageViewModel.ExplorerTag)
+                    .ToolTipService(PlacementMode.Right, null, ExplorerString)
+                    .Content(HomeString)
+#if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+                ,new NavigationViewItem()
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\ue721")   // Search
+                        )
+                    .Tag(MainPageViewModel.SearchTag)
+                    .ToolTipService(PlacementMode.Right, null, SearchString)
+                    .Content(HomeString),
+
+                new NavigationViewItem()
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+                            .Glyph("\uebe8")   // Bug
+                        )
+                    .Tag(MainPageViewModel.DebugTag)
+                    .ToolTipService(PlacementMode.Right, null, DebugString)
+                    .Content(HomeString),
+
+                new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Upload))
+                    .Tag(MainPageViewModel.RevisionControlTag) // GitHub
+                    .ToolTipService(PlacementMode.Right, null, RevisionControlString)
+                    .Content(HomeString)
+
+#endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
                 )
-                .Content(_contentFrame);
+            .Content(_contentFrame);
 
         _layoutRoot = new Grid()
             .Name("LayoutRoot")
@@ -64,6 +123,16 @@ public sealed partial class MainPage : Page
 
         Loaded += OnMainPage_Loaded;
         Unloaded += OnMainPage_Unloaded;
+    }
+
+    private void MainNavigation_Loaded(object sender, RoutedEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void MainPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        throw new NotImplementedException();
     }
 
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
@@ -83,6 +152,7 @@ public sealed partial class MainPage : Page
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
+        ViewModel.SelectNavigationItem += SelectNavigationItemByName;
         ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
@@ -119,6 +189,7 @@ public sealed partial class MainPage : Page
         // Unregister all event handlers to avoid memory leaks
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
+        ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
 
         _mainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
@@ -182,20 +253,23 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.SelectNavigationItem(MainPageViewModel.SettingsTag);
+            ViewModel.OnSelectNavigationItem(MainPageViewModel.SettingsTag);
             return;
         }
 
         var item = args.InvokedItemContainer as NavigationViewItem;
         Guard.IsNotNull(item);
 
+        // Note: We now have a menu accessed from our navigation view, so we have a valid case
+        //  where the user needs to click on a value without a tag.
         var navigationItemTag = item.Tag;
-        Guard.IsNotNull(navigationItemTag);
+        if (navigationItemTag != null)
+        {
+            var tag = navigationItemTag.ToString();
+            Guard.IsNotNullOrEmpty(tag);
 
-        var tag = navigationItemTag.ToString();
-        Guard.IsNotNullOrEmpty(tag);
-
-        ViewModel.SelectNavigationItem(tag);
+            ViewModel.OnSelectNavigationItem(tag);
+        }
     }
 
     public void Navigate(Type pageType, object parameter)
@@ -207,5 +281,13 @@ public sealed partial class MainPage : Page
         {
             _contentFrame.Navigate(pageType, parameter);
         }
+    }
+
+    public Result SelectNavigationItemByName(string navItemName)
+    {      
+        // %%% Work around for purpose of presentation until the bug with the intended line can be resolved.
+        _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
+//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
+        return Result.Ok();
     }
 }

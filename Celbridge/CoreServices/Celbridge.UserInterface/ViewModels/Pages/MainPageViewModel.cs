@@ -1,6 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
-using Celbridge.FilePicker;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -15,9 +13,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
     public const string SettingsTag = "Settings";
+    public const string SearchTag = "Search";
+    public const string ExplorerTag = "Explorer";
+    public const string DebugTag = "Debug";
+    public const string RevisionControlTag = "RevisionControl";
 
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
+    private const string WorkspacePageName = "WorkspacePage";
 
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
@@ -51,6 +54,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
+    public event Func<string, Result>? SelectNavigationItem;
 
     public Result NavigateToPage(Type pageType)
     {
@@ -61,6 +65,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public Result NavigateToPage(Type pageType, object parameter)
     {
         return OnNavigate?.Invoke(pageType, parameter)!;
+    }
+
+    public Result SelectNavigationItemByNameUI(string navItemName)
+    {
+        return SelectNavigationItem?.Invoke(navItemName);
     }
 
     public void OnMainPage_Loaded()
@@ -84,7 +93,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var previousProjectFile = _editorSettings.PreviousProject;
         if (!string.IsNullOrEmpty(previousProjectFile) &&
             File.Exists(previousProjectFile))
-        {
+        { 
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {
                 command.ProjectFilePath = previousProjectFile;
@@ -100,7 +109,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public void OnMainPage_Unloaded()
     { }
 
-    public void SelectNavigationItem(string tag)
+    public void OnSelectNavigationItem(string tag)
     {
         switch (tag)
         {
@@ -119,6 +128,38 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
             case SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
                 break;
+
+            case ExplorerTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
+                }
+                break;
+
+            case SearchTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Search);
+                }
+                break;
+
+            case DebugTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Debug);
+                }
+                break;
+
+            case RevisionControlTag:
+                _navigationService.NavigateToPage(WorkspacePageName);
+                if (_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
+                }
+                break;
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
@@ -126,19 +167,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private async Task NavigateToHomeAsync()
     {
-        if (IsWorkspaceLoaded)
-        {
-            _commandService.Execute<IUnloadProjectCommand>();
-
-            // Wait until the project is unloaded before navigating
-            while (IsWorkspaceLoaded)
-            {
-                await Task.Delay(50);
-            }
-        }
-
-        // Clear the previous project so we don't try to reload it next time the application starts
-        _editorSettings.PreviousProject = string.Empty;
         _navigationService.NavigateToPage(HomePageName);
     }
 

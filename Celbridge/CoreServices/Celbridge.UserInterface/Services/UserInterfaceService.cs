@@ -61,7 +61,7 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    public void RegisterTitleBar( object titleBar )
+    public void RegisterTitleBar(object titleBar)
     {
         Views.TitleBar? givenTitleBar = titleBar as Views.TitleBar;
         if (givenTitleBar != null)
