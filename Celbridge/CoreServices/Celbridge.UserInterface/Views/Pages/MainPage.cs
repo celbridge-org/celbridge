@@ -22,6 +22,7 @@ public sealed partial class MainPage : Page
     public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
     public LocalizedString DebugString => _stringLocalizer.GetString($"MainPage_Debug");
     public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
+    public LocalizedString CommunityString => _stringLocalizer.GetString($"MainPage_Community");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -111,6 +112,19 @@ public sealed partial class MainPage : Page
 
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
                 )
+            .FooterMenuItems(
+                new NavigationViewItem()
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+//                            .Glyph("\ue125")  // Community - Two people
+//                            .Glyph("\ue128")  // Community - World
+                            .Glyph("\ue12b")  // Community - Globe
+                        )
+                    .Name("CommunityNavigationItem")
+                    .Tag(MainPageViewModel.CommunityTag)
+                    .ToolTipService(PlacementMode.Right, null, CommunityString)
+                    .Content(HomeString)
+            )
             .Content(_contentFrame);
 
         _layoutRoot = new Grid()

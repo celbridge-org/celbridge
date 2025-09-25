@@ -15,12 +15,14 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public const string SettingsTag = "Settings";
     public const string SearchTag = "Search";
     public const string ExplorerTag = "Explorer";
+    public const string CommunityTag = "Community";
     public const string DebugTag = "Debug";
     public const string RevisionControlTag = "RevisionControl";
 
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
     private const string WorkspacePageName = "WorkspacePage";
+    private const string CommunityPageName = "CommunityPage";
 
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
@@ -167,6 +169,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 {
                     _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
                 }
+                break;
+
+            case CommunityTag:
+                _navigationService.NavigateToPage(CommunityPageName);
                 break;
         }
 
