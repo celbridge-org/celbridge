@@ -5,12 +5,13 @@
     xmlns:local="using:Celbridge.Workspace.Views"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:vm="using:Celbridge.Workspace.ViewModels"
+    NavigationCacheMode="Required"
     DataContext="{x:Bind ViewModel}">
 
   <Grid x:Name="LayoutRoot">
     
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="ExplorerPanelColumn" Width="Auto" MinWidth="100"/>
+      <ColumnDefinition x:Name="ContextPanelColumn" Width="Auto" MinWidth="100"/>
       <ColumnDefinition Width="*"/>
       <ColumnDefinition x:Name="InspectorPanelColumn" Width="Auto" MinWidth="100"/>
     </Grid.ColumnDefinitions>
@@ -22,7 +23,7 @@
     </Grid.RowDefinitions>
 
     <!-- Explorer Panel -->
-    <Grid x:Name="ExplorerPanel"
+    <Grid x:Name="ContextPanel"
           Grid.RowSpan="3"
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
@@ -31,15 +32,27 @@
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
 
-      <Button x:Name="HideExplorerPanelButton"
+      <Grid x:Name="ContextMasterArea"
+              >
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Would prefer to call this 'ContextWorkPanel' - Will rename this once the layout is settled. -->
+        <Grid x:Name="InnerContextPanel"
+                Grid.Column="0">
+          
+          <Button x:Name="HideContextPanelButton"
               Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
               Margin="0,3,2,0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76B;"/>
-      </Button>
-      
+          </Button>
+
+        </Grid>
+      </Grid>
     </Grid>
 
     <!-- Documents Panel -->
@@ -49,7 +62,7 @@
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
 
-      <Button x:Name="ShowExplorerPanelButton"
+      <Button x:Name="ShowContextPanelButton"
               Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Left"
               VerticalAlignment="Top"
@@ -181,7 +194,7 @@
 
     <!-- Grid splitters -->
 
-    <controls:GridSplitter x:Name="ExplorerPanelSplitter"
+    <controls:GridSplitter x:Name="ContextPanelSplitter"
                            Grid.Column="0"
                            Grid.RowSpan="3"
                            HorizontalAlignment="Right"
