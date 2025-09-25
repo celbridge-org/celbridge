@@ -18,6 +18,16 @@ public class WorkspaceLoader
         }
 
         //
+        // Set the current directory to the workspace project folder
+        //
+        var projectFolderPath = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.ProjectFolderPath;
+        projectFolderPath = Path.GetFullPath(projectFolderPath);
+        if (Path.Exists(projectFolderPath))
+        {
+            Directory.SetCurrentDirectory(projectFolderPath);
+        }
+
+        //
         // Acquire the workspace settings
         //
         var workspaceSettingsService = workspaceService.WorkspaceSettingsService;
