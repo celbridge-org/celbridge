@@ -10,7 +10,7 @@ namespace Celbridge.Projects.Commands;
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
     private const string HomePageName = "HomePage";
-    private const string WorkspacePageName = "WorkspacePage";   // Centralise these?
+    private const string WorkspacePageName = "WorkspacePage";
 
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -55,7 +55,8 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
-        if ((_workspaceWrapper.IsWorkspacePageLoaded) && (_workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null))
+        if (_workspaceWrapper.IsWorkspacePageLoaded 
+            && _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null)
         {
             _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
         }
@@ -97,8 +98,6 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
                 .WithErrors(loadResult);
         }
 
-        // %%% Swap to Empty Page ,and delay as working test and workaround.
-
         var loadPageCancelationToken = new CancellationTokenSource();
         _navigationService.NavigateToPage(WorkspacePageName, loadPageCancelationToken);
 
@@ -117,8 +116,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            await Task.Delay(250);
-            _navigationService.NavigationProvider.SelectNavigationItemUI("ExplorerNavigationItem");
+            _navigationService.NavigationProvider.SelectNavigationItemByNameUI("ExplorerNavigationItem");
         }
 
         return Result.Ok();

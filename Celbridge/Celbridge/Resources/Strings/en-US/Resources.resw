@@ -178,7 +178,7 @@
     <value>Debug</value>
   </data>
   <data name="MainPage_RevisionControl" xml:space="preserve">
-    <value>RevisionControl</value>
+    <value>Version Control</value>
   </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
