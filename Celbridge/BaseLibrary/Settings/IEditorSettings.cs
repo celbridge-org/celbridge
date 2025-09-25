@@ -8,12 +8,12 @@ namespace Celbridge.Settings;
 public interface IEditorSettings : INotifyPropertyChanged
 {
     /// <summary>
-    /// Gets or sets a value indicating whether the explorer panel is visible.
+    /// Gets or sets a value indicating whether the Context panel is visible.
     /// </summary>
     bool IsContextPanelVisible { get; set; }
 
     /// <summary>
-    /// Gets or sets the width of the explorer panel.
+    /// Gets or sets the width of the Context panel.
     /// </summary>
     float ContextPanelWidth { get; set; }
 

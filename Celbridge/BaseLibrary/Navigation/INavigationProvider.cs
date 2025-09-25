@@ -16,5 +16,8 @@ public interface INavigationProvider
     /// </summary>
     Result NavigateToPage(Type pageType, object parameter);
 
-    Result SelectNavigationItemUI(string navItemName);
+    /// <summary>
+    /// Select the specified Navigation Item in our Main Navigaion View by name.
+    /// </summary>
+    Result SelectNavigationItemByNameUI(string navItemName);
 }

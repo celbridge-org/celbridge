@@ -96,23 +96,25 @@ public interface IWorkspaceService
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
 
-    public enum ContextAreaUse
-    {
-        None,
-        Explorer,
-        Search,
-        Debug,
-        RevisionControl,
-
-        _LIMIT
-    };
-
+    /// <summary>
+    /// Clear all currently stored Context Area Uses.
+    /// </summary>
     void ClearContextAreaUses();
 
-    void SetContextAreaUsage(ContextAreaUse contextAreaUse);
+    /// <summary>
+    /// Set the current Context Area Usage to the Usage given
+    /// </summary>
+    void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse);
 
+    /// <summary>
+    /// Adds the given UIElement to the available map of Context Area Usages, keyed by the given ContextAreaUse.
+    /// </summary>
     void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element);
 
-    public delegate void SetWorkspacePagePersistenceDelegate(bool Persistence);
+    public delegate void SetWorkspacePagePersistenceDelegate(bool persistence);
+
+    /// <summary>
+    /// Accessor to the SetWorkspacePagePersistence delegate, allowing the delegate to be set or called.
+    /// </summary>
     public SetWorkspacePagePersistenceDelegate SetWorkspacePagePersistence { get; set; }
 }

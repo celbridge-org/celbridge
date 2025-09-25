@@ -1,13 +1,9 @@
-using System;
 using Celbridge.Commands;
-using Celbridge.Dialog;
-using Celbridge.FilePicker;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
 
@@ -24,7 +20,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
-    private const string WorkspacePageName = "WorkspacePage";   // Centralise these?
+    private const string WorkspacePageName = "WorkspacePage";
 
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
@@ -71,7 +67,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         return OnNavigate?.Invoke(pageType, parameter)!;
     }
 
-    public Result SelectNavigationItemUI(string navItemName)
+    public Result SelectNavigationItemByNameUI(string navItemName)
     {
         return SelectNavigationItem?.Invoke(navItemName);
     }
@@ -137,7 +133,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
-                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Explorer);
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
                 }
                 break;
 
@@ -145,7 +141,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
-                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Search);
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Search);
                 }
                 break;
 
@@ -153,7 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
-                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Debug);
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Debug);
                 }
                 break;
 
@@ -161,7 +157,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
-                    _workspaceWrapper.WorkspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.RevisionControl);
+                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
                 }
                 break;
         }
