@@ -28,6 +28,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
+
+//  Future support:    
+//  public ISearchService SearchService { get; }
+//  public IDebugService DebugService { get; }
+//  public IRevisionControlService RevisionControlService { get; }
+
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
@@ -47,7 +53,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IProjectService projectService)
     {
         _logger = logger;
-        _editorSettings = editorSettings; 
+        _editorSettings = editorSettings;
+
+        ContextAreaUsageDetails = new ContextAreaUsage();
 
         // Create instances of the required sub-services
 
@@ -77,13 +85,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public void ToggleFocusMode()
     {
         // Are we in focus mode?
-        bool isFocusModeActive = !_editorSettings.IsExplorerPanelVisible &&
+        bool isFocusModeActive = !_editorSettings.IsContextPanelVisible &&
             !_editorSettings.IsInspectorPanelVisible;
 
         if (isFocusModeActive)
         {
             // Exit focus mode
-            _editorSettings.IsExplorerPanelVisible = true;
+            _editorSettings.IsContextPanelVisible = true;
             _editorSettings.IsInspectorPanelVisible = true;
 
             if (_showToolsPanelOnExitFocusMode)
@@ -100,7 +108,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             // Remember if we should make the tools panel visible when we exit focus mode
             _showToolsPanelOnExitFocusMode = _editorSettings.IsToolsPanelVisible;
 
-            _editorSettings.IsExplorerPanelVisible = false;
+            _editorSettings.IsContextPanelVisible = false;
             _editorSettings.IsInspectorPanelVisible = false;
             _editorSettings.IsToolsPanelVisible = false;
         }
@@ -186,6 +194,25 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Dispose(true);
         GC.SuppressFinalize(this);
     }
+
+    protected ContextAreaUsage ContextAreaUsageDetails;
+
+    public void ClearContextAreaUses()
+    {
+        ContextAreaUsageDetails = new ContextAreaUsage();
+    }
+
+    public void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse)
+    {
+        ContextAreaUsageDetails.SetUsage(contextAreaUse);
+    }
+
+    public void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element)
+    {
+        ContextAreaUsageDetails.Add(contextAreaUse, element);
+    }
+    public IWorkspaceService.SetWorkspacePagePersistenceDelegate SetWorkspacePagePersistence { get; set; }
+
 
     protected virtual void Dispose(bool disposing)
     {

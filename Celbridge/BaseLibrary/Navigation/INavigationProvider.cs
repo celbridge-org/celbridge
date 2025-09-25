@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Navigation;
+namespace Celbridge.Navigation;
 
 /// <summary>
 /// Abstraction for a UI element that supports application-wide page navigation.
@@ -15,4 +15,9 @@ public interface INavigationProvider
     /// The target page can access the passed the parameter object during initialization.
     /// </summary>
     Result NavigateToPage(Type pageType, object parameter);
+
+    /// <summary>
+    /// Select the specified Navigation Item in our Main Navigaion View by name.
+    /// </summary>
+    Result SelectNavigationItemByNameUI(string navItemName);
 }
