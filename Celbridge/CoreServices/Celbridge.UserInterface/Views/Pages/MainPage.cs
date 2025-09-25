@@ -5,7 +5,6 @@
 
 using Celbridge.UserInterface.ViewModels.Pages;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -114,8 +113,6 @@ public sealed partial class MainPage : Page
                 )
             .Content(_contentFrame);
 
-        _mainNavigation.Loaded += NavigationView_Loaded;
-
         _layoutRoot = new Grid()
             .Name("LayoutRoot")
             .RowDefinitions("Auto, *")
@@ -131,12 +128,6 @@ public sealed partial class MainPage : Page
     private void MainNavigation_Loaded(object sender, RoutedEventArgs e)
     {
         throw new NotImplementedException();
-    }
-
-    private void NavigationView_Loaded(object sender, RoutedEventArgs e)
-    {
-        // This now appears to have no effect, - possibly an ordering thing, - but it's behaviour may actually be undesirable.
-//        this._mainNavigation.IsPaneOpen = true;
     }
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -161,17 +152,11 @@ public sealed partial class MainPage : Page
 #endif
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
-        ViewModel.SelectNavigationItem += SelectNavigationItem;
+        ViewModel.SelectNavigationItem += SelectNavigationItemByName;
         ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
-
-        // Ask for our Navigation pain to be open at start.
-        //  (This has to be done in code as loading behaviour overrides this.)
-
-        // This now appears to have no effect, - possibly an ordering thing, - but it's behaviour may actually be undesirable.
-//        _mainNavigation.IsPaneOpen = true;
 
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
@@ -204,7 +189,7 @@ public sealed partial class MainPage : Page
         // Unregister all event handlers to avoid memory leaks
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
-        ViewModel.SelectNavigationItem -= SelectNavigationItem;
+        ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
 
         _mainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
@@ -298,10 +283,11 @@ public sealed partial class MainPage : Page
         }
     }
 
-    public Result SelectNavigationItem(string navItemName)
+    public Result SelectNavigationItemByName(string navItemName)
     {      
-//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName("ExplorerNavigationItem") as NavigationViewItem;
-        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
+        // %%% Work around for purpose of presentation until the bug with the intended line can be resolved.
+        _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
+//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
         return Result.Ok();
     }
 }

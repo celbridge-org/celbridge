@@ -117,13 +117,13 @@ public sealed partial class WorkspacePage : Page
             var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
             if (explorerPanel != null)
             {
-                workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.Explorer, explorerPanel);
+                workspaceService.AddContextAreaUse(ContextAreaUse.Explorer, explorerPanel);
                 ContextPanel.Children.Insert(0, explorerPanel);
             }
 
             //        var searchPanel = workspaceService.SearchService.SearchPanel as UIElement;
             var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
-            workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.Search, searchPanel);
+            workspaceService.AddContextAreaUse(ContextAreaUse.Search, searchPanel);
             ContextPanel.Children.Insert(1, searchPanel);
             /*
             var debugPanel = workspaceService.DebugService.DebugPanel as UIElement;
@@ -131,7 +131,7 @@ public sealed partial class WorkspacePage : Page
             ContextPanel.Children.Insert(2, debugPanel);
 
             var revisionControlPanel = workspaceService.RevisionControlService.RevisioncControlPanel as UIElement;
-            workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.RevisionControl, revisionControlPanel);
+            workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.VersionControl, revisionControlPanel);
             ContextPanel.Children.Insert(3, revisionControlPanel);
             */
             var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
@@ -146,7 +146,7 @@ public sealed partial class WorkspacePage : Page
             var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
             StatusPanel.Children.Add(statusPanel);
 
-            workspaceService.SetContextAreaUsage(IWorkspaceService.ContextAreaUse.Explorer);
+            workspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
 
             _ = ViewModel.LoadWorkspaceAsync();
 

@@ -1,7 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
-//using Celbridge.Debug;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
@@ -10,8 +9,6 @@ using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Python;
-//using Celbridge.RevisionControl;
-//using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.Status;
 
@@ -31,11 +28,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
-/*    
-    public ISearchService SearchService { get; }
-    public IDebugService DebugService { get; }
-    public IRevisionControlService RevisionControlService { get; }
-*/
+
+//  Future support:    
+//  public ISearchService SearchService { get; }
+//  public IDebugService DebugService { get; }
+//  public IRevisionControlService RevisionControlService { get; }
+
     public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
@@ -197,36 +195,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected class ContextAreaUsage
-    {
-        private Dictionary<IWorkspaceService.ContextAreaUse, UIElement> ContextAreaDictionary = new Dictionary<IWorkspaceService.ContextAreaUse, UIElement>();
-
-        public void Add(IWorkspaceService.ContextAreaUse Use, UIElement Element)
-        {
-            ContextAreaDictionary[Use] = Element;
-            Element.Visibility = Visibility.Collapsed;
-        }
-
-        public void SetUsage(IWorkspaceService.ContextAreaUse Use)
-        {
-            foreach (KeyValuePair<IWorkspaceService.ContextAreaUse, UIElement> Pair in ContextAreaDictionary)
-            {
-                UIElement Element = Pair.Value;
-                if ((Pair.Key != Use) && (Element.Visibility != Visibility.Collapsed))
-                {
-                    Element.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    if (Pair.Key == Use)
-                    {
-                        Element.Visibility = Visibility.Visible;
-                    }
-                }
-            }
-        }
-    };
-
     protected ContextAreaUsage ContextAreaUsageDetails;
 
     public void ClearContextAreaUses()
@@ -234,12 +202,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ContextAreaUsageDetails = new ContextAreaUsage();
     }
 
-    public void SetContextAreaUsage(IWorkspaceService.ContextAreaUse contextAreaUse)
+    public void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse)
     {
         ContextAreaUsageDetails.SetUsage(contextAreaUse);
     }
 
-    public void AddContextAreaUse(IWorkspaceService.ContextAreaUse contextAreaUse, UIElement element)
+    public void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element)
     {
         ContextAreaUsageDetails.Add(contextAreaUse, element);
     }
