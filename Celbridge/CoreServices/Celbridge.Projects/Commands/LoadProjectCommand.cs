@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
@@ -12,6 +13,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private const string HomePageName = "HomePage";
     private const string WorkspacePageName = "WorkspacePage";
 
+    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -21,6 +23,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IStringLocalizer _stringLocalizer;
 
     public LoadProjectCommand(
+        IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IProjectService projectService,
@@ -29,6 +32,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _projectService = projectService;
@@ -55,10 +59,10 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
-        if (_workspaceWrapper.IsWorkspacePageLoaded 
-            && _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null)
+        if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
+            var message = new SetWorkspacePagePersistenceMessage(false);
+            _messengerService.Send(message);
         }
 
         // Close any loaded project.

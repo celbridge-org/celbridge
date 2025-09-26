@@ -61,5 +61,6 @@ public static class ServiceConfiguration
         navigationService.RegisterPage(nameof(EmptyPage), typeof(EmptyPage));
         navigationService.RegisterPage(nameof(HomePage), typeof(HomePage));
         navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
+        navigationService.RegisterPage(nameof(CommunityPage), typeof(CommunityPage));
     }
 }

@@ -20,4 +20,9 @@ public interface INavigationProvider
     /// Select the specified Navigation Item in our Main Navigaion View by name.
     /// </summary>
     Result SelectNavigationItemByNameUI(string navItemName);
+
+    /// <summary>
+    /// Return the Instance Name of the page currently displayed in the NavigationView Panel, or "None".
+    /// </summary>
+    string GetCurrentPageName();
 }

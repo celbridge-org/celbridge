@@ -180,7 +180,10 @@
   <data name="MainPage_RevisionControl" xml:space="preserve">
     <value>Version Control</value>
   </data>
-  <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+  <data name="MainPage_Community" xml:space="preserve">
+    <value>Community</value>
+  </data>
+    <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
   </data>
   <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">

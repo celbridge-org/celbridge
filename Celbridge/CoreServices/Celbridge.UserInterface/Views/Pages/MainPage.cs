@@ -22,6 +22,7 @@ public sealed partial class MainPage : Page
     public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
     public LocalizedString DebugString => _stringLocalizer.GetString($"MainPage_Debug");
     public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
+    public LocalizedString CommunityString => _stringLocalizer.GetString($"MainPage_Community");
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
@@ -111,6 +112,19 @@ public sealed partial class MainPage : Page
 
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
                 )
+            .FooterMenuItems(
+                new NavigationViewItem()
+                    .Icon(new FontIcon()
+                            .FontFamily(symbolFontFamily)
+//                            .Glyph("\ue125")  // Community - Two people
+//                            .Glyph("\ue128")  // Community - World
+                            .Glyph("\ue12b")  // Community - Globe
+                        )
+                    .Name("CommunityNavigationItem")
+                    .Tag(MainPageViewModel.CommunityTag)
+                    .ToolTipService(PlacementMode.Right, null, CommunityString)
+                    .Content(HomeString)
+            )
             .Content(_contentFrame);
 
         _layoutRoot = new Grid()
@@ -153,6 +167,7 @@ public sealed partial class MainPage : Page
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
+        ViewModel.ReturnCurrentPage += ReturnCurrentPage;
         ViewModel.OnMainPage_Loaded();
 
         // Begin listening for user navigation events
@@ -190,6 +205,7 @@ public sealed partial class MainPage : Page
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
         ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
+        ViewModel.ReturnCurrentPage = ReturnCurrentPage;
 
         _mainNavigation.ItemInvoked -= OnMainPage_NavigationViewItemInvoked;
 
@@ -247,6 +263,19 @@ public sealed partial class MainPage : Page
             return Result.Ok();
         }
         return Result.Fail($"Failed to navigate to page type {pageType}");
+    }
+
+    private string ReturnCurrentPage()
+    {
+        Page? currentPage = _contentFrame.Content as Page;
+        if (currentPage != null)
+        {
+            return currentPage.Name;
+        }
+        else
+        {
+            return "None";
+        }
     }
 
     private void OnMainPage_NavigationViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)

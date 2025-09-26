@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -11,21 +12,25 @@ public class ProjectService : IProjectService
 {
     private const int RecentProjectsMax = 5;
 
+    private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly INavigationService _navigationService;
     private readonly IUserInterfaceService _userInterfaceService;
 
     private const string EmptyPageName = "EmptyPage";
+    private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
 
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
+        IMessengerService messengerService,
         IEditorSettings editorSettings,
         INavigationService navigationService,
         IUserInterfaceService userInterfaceService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _messengerService = messengerService;
         _editorSettings = editorSettings;
         _navigationService = navigationService;
         _userInterfaceService = userInterfaceService;
@@ -134,6 +139,15 @@ public class ProjectService : IProjectService
 
         // Todo: Notify the workspace that it is about to close.
         // The workspace may want to perform some operations (e.g. save changes) before we close it.
+
+        // Check which page we're on, and if we are not on the workspace page, call the manual unloading for it.
+        //  - If the Workspace Page is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
+        //      if not however, then the page will need explicitly unloading.
+        if (_navigationService.NavigationProvider.GetCurrentPageName() != WorkspacePageInstanceName)
+        {
+            var message = new UnloadWorkspacePageMessage();
+            _messengerService.Send(message);
+        }
 
         // Force the Workspace page to unload by navigating to an empty page.
         _navigationService.NavigateToPage(EmptyPageName);
