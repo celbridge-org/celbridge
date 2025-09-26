@@ -150,13 +150,24 @@ public sealed partial class WorkspacePage : Page
 
             _ = ViewModel.LoadWorkspaceAsync();
 
-            workspaceService.SetWorkspacePagePersistence += SetWorkspacePagePersistence;
+            _messengerService.Register<SetWorkspacePagePersistenceMessage>(this, OnSetWorkspacePagePersistenceMessage);
+            _messengerService.Register<UnloadWorkspacePageMessage>(this, OnUnloadWorkspacePageMessage);
 
             Initialised = true;
         }
 
         // Reset our cache status to required.
         NavigationCacheMode = NavigationCacheMode.Required;
+    }
+
+    private void OnSetWorkspacePagePersistenceMessage(object recipient, SetWorkspacePagePersistenceMessage message)
+    {
+        SetWorkspacePagePersistence(message.isPersistant);
+    }
+
+    private void OnUnloadWorkspacePageMessage(object recipient, UnloadWorkspacePageMessage message)
+    {
+        PageUnloadInternal();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
@@ -171,11 +182,9 @@ public sealed partial class WorkspacePage : Page
 
     private void PageUnloadInternal()
     {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
-        Guard.IsNotNull(workspaceService);
+        _messengerService.Unregister<SetWorkspacePagePersistenceMessage>(this);
+        _messengerService.Unregister<UnloadWorkspacePageMessage>(this);
 
-        workspaceService.SetWorkspacePagePersistence -= SetWorkspacePagePersistence;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnWorkspacePageUnloaded();
     }
@@ -320,7 +329,6 @@ public sealed partial class WorkspacePage : Page
         else
         {
             NavigationCacheMode = NavigationCacheMode.Disabled;
-            PageUnloadInternal();
         }
     }
 }
