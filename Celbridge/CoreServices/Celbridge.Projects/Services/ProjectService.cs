@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -11,6 +12,7 @@ public class ProjectService : IProjectService
 {
     private const int RecentProjectsMax = 5;
 
+    private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly INavigationService _navigationService;
@@ -19,15 +21,16 @@ public class ProjectService : IProjectService
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
 
-
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
+        IMessengerService messengerService,
         IEditorSettings editorSettings,
         INavigationService navigationService,
         IUserInterfaceService userInterfaceService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _messengerService = messengerService;
         _editorSettings = editorSettings;
         _navigationService = navigationService;
         _userInterfaceService = userInterfaceService;
@@ -142,10 +145,8 @@ public class ProjectService : IProjectService
         //      if not however, then the page will need explicitly unloading.
         if (_navigationService.NavigationProvider.GetCurrentPageName() != WorkspacePageInstanceName)
         {
-            if (_workspaceWrapper.WorkspaceService.UnloadWorkspacePage != null)
-            {
-                _workspaceWrapper.WorkspaceService.UnloadWorkspacePage();
-            }
+            var message = new UnloadWorkspacePageMessage();
+            _messengerService.Send(message);
         }
 
         // Force the Workspace page to unload by navigating to an empty page.
