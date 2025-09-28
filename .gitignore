@@ -409,7 +409,7 @@ solution-config.props
 .celbridge/
 
 # SpreadJS library
-/Celbridge/Workspace/Celbridge.Documents/Web/SpreadJS/lib
+/Workspace/Celbridge.Documents/Web/SpreadJS/lib
 
 # Celbridge ephemeral data
 .cache/
