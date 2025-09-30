@@ -132,7 +132,7 @@ All feedback and contributions are very welcome! If you'd like to contribute a n
 
 Thank you to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith) and [Matt Johnson](https://github.com/amazinggitboy).
 
-This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda Romero & John Romero and all of the incredible team at Romero Games for their support - gold medals all round. ❤️❤️❤️
+This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda Romero🏅 & John Romero and all of the incredible team at Romero Games for their support. ❤️❤️❤️
 
 Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
