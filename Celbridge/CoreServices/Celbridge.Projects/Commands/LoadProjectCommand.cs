@@ -1,9 +1,12 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Dialog;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Commands;
 
@@ -55,11 +58,14 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
+        // %%% Move this to the generalised case, implemented below.
         if (_workspaceWrapper.IsWorkspacePageLoaded 
             && _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null)
         {
             _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
         }
+
+        _navigationService.ClearPersistenceOfAllLoadedPages();
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
@@ -85,6 +91,22 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         _editorSettings.PreviousProject = ProjectFilePath;
+
+        // %%% Sorting out opening Welcome Markdown document on opening of project.
+
+        string targetFilePath = "Welcome.md";
+
+        // Get the resource key from the entity file path %%% -> Kept for reference.
+//        var relativeResourcePath = Path.GetRelativePath(baseFilePath, targetFilePath);
+  //      relativeResourcePath = Path.ChangeExtension(relativeResourcePath, null);
+ //       var resourceKey = new ResourceKey(relativeResourcePath);
+
+        // Execute a command to open the HTML document.
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = targetFilePath;
+            command.ForceReload = false;
+        });
 
         return Result.Ok();
     }

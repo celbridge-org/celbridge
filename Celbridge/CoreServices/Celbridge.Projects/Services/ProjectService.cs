@@ -140,6 +140,8 @@ public class ProjectService : IProjectService
         // Check which page we're on, and if we are not on the workspace page, call the manual unloading for it.
         //  - If the Workspace Page is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
         //      if not however, then the page will need explicitly unloading.
+
+        // %%% Move this to the generalised case, implemented below.
         if (_navigationService.NavigationProvider.GetCurrentPageName() != WorkspacePageInstanceName)
         {
             if (_workspaceWrapper.WorkspaceService.UnloadWorkspacePage != null)
@@ -147,6 +149,8 @@ public class ProjectService : IProjectService
                 _workspaceWrapper.WorkspaceService.UnloadWorkspacePage();
             }
         }
+
+        _navigationService.UnloadPersistantUnfocusedPages();
 
         // Force the Workspace page to unload by navigating to an empty page.
         _navigationService.NavigateToPage(EmptyPageName);
