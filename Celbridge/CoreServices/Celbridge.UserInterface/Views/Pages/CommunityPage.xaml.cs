@@ -11,6 +11,8 @@ public sealed partial class CommunityPage : PersistentPage
 {
     public CommunityPage()
     {
+        Persistence = PersistenceLevel.Eternal;
+
         this.InitializeComponent();
     }
 
