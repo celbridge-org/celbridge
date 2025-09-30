@@ -84,11 +84,11 @@ public class NavigationService : INavigationService
     }
     public void ClearPersistenceOfAllLoadedPages()
     {
-        AppPageBase.ClearPersistenceOfAllLoadedPages();
+        PersistentPage.ClearPersistenceOfAllLoadedPages();
     }
 
     public void UnloadPersistantUnfocusedPages()
     {
-        AppPageBase.UnloadPersistantUnfocusedPages(NavigationProvider.GetCurrentPageName());
+        PersistentPage.UnloadPersistantUnfocusedPages(NavigationProvider.GetCurrentPageName());
     }
 }

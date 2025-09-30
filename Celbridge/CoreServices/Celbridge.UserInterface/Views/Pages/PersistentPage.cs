@@ -3,14 +3,14 @@ using Celbridge.Navigation;
 
 namespace Celbridge.UserInterface.Views;
 
-public abstract class AppPageBase : Page
+public abstract class PersistentPage : Page
 {
     private readonly INavigationService _navigationService;
 
-    static List<AppPageBase> _activePersistantPages = new List<AppPageBase>();
+    static List<PersistentPage> _activePersistantPages = new List<PersistentPage>();
     bool Initialised = false;
 
-    public AppPageBase() // : base()
+    public PersistentPage() // : base()
     {
         // Register ourselves with navigation handling. - Looks like we may not have to even do this!!
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
@@ -38,7 +38,7 @@ public abstract class AppPageBase : Page
 
     public static void ClearPersistenceOfAllLoadedPages()
     {
-        foreach (AppPageBase page in _activePersistantPages)
+        foreach (PersistentPage page in _activePersistantPages)
         {
             page.SetWorkspacePagePersistence(false);
         }
@@ -73,8 +73,8 @@ public abstract class AppPageBase : Page
         // Check which page we're on, and if we are not on the workspace page, call the manual unloading for it.
         //  - If the Workspace Page is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
         //      if not however, then the page will need explicitly unloading.
-        List<AppPageBase> UnloadPages = new();
-        foreach (AppPageBase page in _activePersistantPages)
+        List<PersistentPage> UnloadPages = new();
+        foreach (PersistentPage page in _activePersistantPages)
         {
             if (page.Name != focusedPageName)
             {
@@ -84,7 +84,7 @@ public abstract class AppPageBase : Page
 
         for (int i=0; i<UnloadPages.Count; ++i)
         {
-            AppPageBase page = UnloadPages[i];
+            PersistentPage page = UnloadPages[i];
             page.Loaded -= page.WorkspacePage_Loaded;
             page.Unloaded -= page.WorkspacePage_Unloaded;
             _activePersistantPages.Remove(page);
