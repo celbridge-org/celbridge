@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;
 
-public sealed partial class WorkspacePage : Page
+public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.PersistentPage
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -150,9 +150,6 @@ public sealed partial class WorkspacePage : Page
 
             _ = ViewModel.LoadWorkspaceAsync();
 
-            workspaceService.SetWorkspacePagePersistence += SetWorkspacePagePersistence;
-            workspaceService.UnloadWorkspacePage += PageUnloadInternal;
-
             Initialised = true;
         }
 
@@ -166,18 +163,16 @@ public sealed partial class WorkspacePage : Page
         //  - This means we are purposefully wanted to rebuild the Workspace (Intentional Project Load, rather than UI context switch).
         if (NavigationCacheMode == NavigationCacheMode.Disabled)
         {
-            PageUnloadInternal();
+//            PageUnloadInternal();
         }
     }
 
-    private void PageUnloadInternal()
+    public override void PageUnloadInternal()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        workspaceService.SetWorkspacePagePersistence -= SetWorkspacePagePersistence;
-        workspaceService.UnloadWorkspacePage -= PageUnloadInternal;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnWorkspacePageUnloaded();
     }
@@ -310,18 +305,6 @@ public sealed partial class WorkspacePage : Page
         if (Enum.TryParse<WorkspacePanel>(trimmed, out var panel))
         {
             ViewModel.SetActivePanel(panel);
-        }
-    }
-
-    public void SetWorkspacePagePersistence(bool persistant)
-    {
-        if (persistant)
-        {
-            NavigationCacheMode = NavigationCacheMode.Required;
-        }
-        else
-        {
-            NavigationCacheMode = NavigationCacheMode.Disabled;
         }
     }
 }

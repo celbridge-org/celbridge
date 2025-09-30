@@ -137,19 +137,9 @@ public class ProjectService : IProjectService
         // Todo: Notify the workspace that it is about to close.
         // The workspace may want to perform some operations (e.g. save changes) before we close it.
 
-        // Check which page we're on, and if we are not on the workspace page, call the manual unloading for it.
-        //  - If the Workspace Page is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
+        // Call the manual unloading for any persistent pages we have active which are not in focus.
+        //  - If a PersistentPage is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
         //      if not however, then the page will need explicitly unloading.
-
-        // %%% Move this to the generalised case, implemented below.
-        if (_navigationService.NavigationProvider.GetCurrentPageName() != WorkspacePageInstanceName)
-        {
-            if (_workspaceWrapper.WorkspaceService.UnloadWorkspacePage != null)
-            {
-                _workspaceWrapper.WorkspaceService.UnloadWorkspacePage();
-            }
-        }
-
         _navigationService.UnloadPersistantUnfocusedPages();
 
         // Force the Workspace page to unload by navigating to an empty page.

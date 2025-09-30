@@ -57,14 +57,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             return Result.Ok();
         }
 
-        // Change the Navigation Cache status of the Workspace Page to Disabled, to allow it to be destroyed.
-        // %%% Move this to the generalised case, implemented below.
-        if (_workspaceWrapper.IsWorkspacePageLoaded 
-            && _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence != null)
-        {
-            _workspaceWrapper.WorkspaceService.SetWorkspacePagePersistence(false);
-        }
-
+        // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
         _navigationService.ClearPersistenceOfAllLoadedPages();
 
         // Close any loaded project.
