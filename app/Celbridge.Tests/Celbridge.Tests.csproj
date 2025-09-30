@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Projects\Celbridge.Projects.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Settings\Celbridge.Settings.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+  </ItemGroup>
+  
+</Project>

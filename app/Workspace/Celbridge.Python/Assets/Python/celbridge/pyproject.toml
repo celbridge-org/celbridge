@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "celbridge"
+version = "0.1.0"
+description = "The python engine that powers the Celbridge editor tool."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Chris Gregan", email = "chrisgregan@gmail.com" }]
+keywords = ["celbridge"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Utilities"
+]
+
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/AnTulcha/Celbridge"
+Repository = "https://github.com/AnTulcha/Celbridge"
+Issues = "https://github.com/AnTulcha/Celbridge/issues"
+
+[project.scripts]
+celbridge = "celbridge.cli:main"
+
+[project.optional-dependencies]
+ipython = ["ipython>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/celbridge"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/celbridge", "README.md", "LICENSE", "pyproject.toml", "PUBLISHING.md"]

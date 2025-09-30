@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {
+    "rootActivity": "SpreadsheetActivity"
+  },
+
+  "properties": {
+    "_type": {
+      "type": "string",
+      "const": "Data.Spreadsheet#1"
+    }
+  },
+
+  "required": [
+    "_type"
+  ],
+
+  "prototype": {
+  }
+}    

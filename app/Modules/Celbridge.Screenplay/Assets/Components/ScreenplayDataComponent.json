@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {
+    "isSpreadsheetComponent": true
+  },
+
+  "properties": {
+    "_type": {
+      "type": "string",
+      "const": "Screenplay.ScreenplayData#1"
+    },
+    "characters": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[^\\s]+$": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            }
+          },
+          "required": [ "name", "tag" ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+
+  "required": [
+    "_type",
+    "characters"
+  ],
+
+  "prototype": {
+    "characters": {}
+  }
+}
