@@ -136,7 +136,6 @@ public class Project : IDisposable, IProject
             // Todo: Populate this with project configuration options
             await File.WriteAllTextAsync(projectFilePath, projectTOML);
 
-            // %%% TEST
             string readMePath = projectPath + "\\Readme.md";
             var readMeText = $"""
                 ## Welcome to Celbridge

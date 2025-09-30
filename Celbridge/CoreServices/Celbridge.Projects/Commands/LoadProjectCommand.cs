@@ -85,25 +85,42 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         _editorSettings.PreviousProject = ProjectFilePath;
 
-        // %%% Sorting out opening Welcome Markdown document on opening of project.
-
+        // Opening Welcome Markdown document on opening of project if the file exists and is accessible.
         string targetFilePath = "Readme.md";
 
-        // Execute a command to open the HTML document.
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = targetFilePath;
-            command.ForceReload = false;
-        });
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        // Execute a command to select the welcome document
-        var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
+        var filePath = resourceRegistry.GetResourcePath(targetFilePath);
+        if (!string.IsNullOrEmpty(filePath) &&
+            File.Exists(filePath))
         {
-            command.FileResource = new ResourceKey(targetFilePath);
-        });
+            try
+            {
+                // Ensure the file is accessible.
+                //  %%% - This would be done better using DocumentsService.CanAccessFile but DocumentsService isn't created until
+                //  the explorer starts and we may be reaching here before then.
+                var fileInfo = new FileInfo(filePath);
+                using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        if (selectResult.IsSuccess)
-        {
+                // Execute a command to open the HTML document.
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = targetFilePath;
+                    command.ForceReload = false;
+                });
+
+                // Execute a command to select the welcome document
+                var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
+                {
+                    command.FileResource = new ResourceKey(targetFilePath);
+                });
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
 
         return Result.Ok();
