@@ -1,0 +1,27 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
+    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    <UnoSingleProject>true</UnoSingleProject>
+    <OutputType>Library</OutputType>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Modules manage their own package dependency versions -->
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.41.3" />
+    <PackageReference Include="Leisn.MarkdigToc" Version="0.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
+  </ItemGroup>
+
+</Project>

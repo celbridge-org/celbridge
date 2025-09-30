@@ -10,10 +10,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging.Console (v9.0.8)
+License notice for Microsoft.Extensions.Logging.Console (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -24,10 +24,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.Skottie (v3.119.0)
+License notice for SkiaSharp.Skottie (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -36,10 +36,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.Views.Uno.WinUI (v3.119.0)
+License notice for SkiaSharp.Views.Uno.WinUI (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -48,10 +48,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Uno.Extensions.Configuration (v6.2.3)
+License notice for Uno.Extensions.Configuration (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -60,10 +60,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Core.WinUI (v6.2.3)
+License notice for Uno.Extensions.Core.WinUI (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -72,10 +72,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Hosting.WinUI (v6.2.3)
+License notice for Uno.Extensions.Hosting.WinUI (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -84,10 +84,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Localization.WinUI (v6.2.3)
+License notice for Uno.Extensions.Localization.WinUI (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -96,10 +96,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Logging.WinUI (v6.2.3)
+License notice for Uno.Extensions.Logging.WinUI (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -108,30 +108,18 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Settings.DevServer (v1.5.16)
+License notice for Uno.Settings.DevServer (v1.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 1ffceed1a2a841cab8f3a3fa8bcbd97fcc474de8
+https://github.com/unoplatform/uno at 1f224105921fccc18ff5f9611011a164a6a64a0d
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
 
-License notice for Uno.Toolkit.WinUI (v8.1.4)
+License notice for Uno.Toolkit.WinUI (v7.0.2)
 ------------------------------------
 
-https://github.com/unoplatform/uno.toolkit.ui at 89ac699d8c0111055933aad5cf2734c94f1adcb0
-
-Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
-
-Licensed under Apache-2.0
-
-Available at https://licenses.nuget.org/Apache-2.0
-
-
-License notice for Uno.Toolkit.WinUI.Markup (v8.1.4)
-------------------------------------
-
-https://github.com/unoplatform/uno.toolkit.ui at 89ac699d8c0111055933aad5cf2734c94f1adcb0
+https://github.com/unoplatform/uno.toolkit.ui at b6bc5004c388b0568ca90b4b48db0ebd4a6f1068
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -140,10 +128,22 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.UI.Adapter.Microsoft.Extensions.Logging (v6.2.58)
+License notice for Uno.Toolkit.WinUI.Markup (v7.0.2)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.toolkit.ui at b6bc5004c388b0568ca90b4b48db0ebd4a6f1068
+
+Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
+
+Licensed under Apache-2.0
+
+Available at https://licenses.nuget.org/Apache-2.0
+
+
+License notice for Uno.UI.Adapter.Microsoft.Extensions.Logging (v6.0.611)
+------------------------------------
+
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -152,18 +152,18 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.UI.HotDesign (v1.15.66)
+License notice for Uno.UI.HotDesign (v1.11.182)
 ------------------------------------
 
-https://github.com/unoplatform/uno.hotdesign at cf2804c4c0a751fea5135a3f3184268b35e9e092
+https://github.com/unoplatform/uno.hotdesign at 66f2e001fccd8fc6108ae9ca2fe3e8933a6cfc33
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
 
-License notice for Uno.WinUI (v6.2.58)
+License notice for Uno.WinUI (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.git at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 https://platform.uno/
 
@@ -174,10 +174,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.DevServer (v6.2.58)
+License notice for Uno.WinUI.DevServer (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.git at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 https://platform.uno/
 
@@ -188,10 +188,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Lottie (v6.2.58)
+License notice for Uno.WinUI.Lottie (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.git at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 https://platform.uno/
 
@@ -202,26 +202,26 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Markup (v6.2.10)
+License notice for Uno.WinUI.Markup (v6.0.15)
 ------------------------------------
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
 
-License notice for ClosedXML (v0.105.0)
+License notice for ClosedXML (v0.104.2)
 ------------------------------------
 
-https://github.com/ClosedXML/ClosedXML at d15f6690886801980c0d83b7eb1d1b5d2171ad31
+https://github.com/ClosedXML/ClosedXML at 3dfd3414f3aa32fa8ffee7124478ca9ac5fe6945
 
 Licensed under MIT
 
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for ClosedXML.Parser (v2.0.0)
+License notice for ClosedXML.Parser (v1.2.0)
 ------------------------------------
 
-https://github.com/ClosedXML/ClosedXML.Parser at 658973aeedc2fe289e0ccba2bb9959f67692ded5
+https://github.com/ClosedXML/ClosedXML.Parser at aaf2ade77aa160d7e929088320eab562b2df6851
 
 Licensed under MIT
 
@@ -272,6 +272,16 @@ https://github.com/CommunityToolkit/Windows at 6d537b47e243a8193e36258a5319d4ec7
 Licensed under MIT
 
 Available at https://licenses.nuget.org/MIT
+
+
+License notice for Countly (v24.1.1)
+------------------------------------
+
+https://github.com/countly/countly-sdk-windows
+
+(C) Countly
+
+License available at https://github.com/Countly/countly-sdk-windows/blob/master/LICENSE
 
 
 License notice for DocumentFormat.OpenXml (v3.1.1)
@@ -938,10 +948,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for JsonSchema.Net (v7.4.0)
+License notice for JsonSchema.Net (v7.3.4)
 ------------------------------------
 
-https://github.com/json-everything/json-everything at a3c4e63e075f595e4039d6424a77765a6761f7d0
+https://github.com/json-everything/json-everything at be57a968e9a136002606f09f16c53e10ef33f27d
 
 Licensed under MIT
 
@@ -960,10 +970,10 @@ Licensed under BSD-2-Clause
 Available at https://licenses.nuget.org/BSD-2-Clause
 
 
-License notice for Markdig (v0.41.3)
+License notice for Markdig (v0.41.0)
 ------------------------------------
 
-https://github.com/xoofx/markdig at 7ff8db9016593b71f9ae17d9b2b053fbd54e9cdf
+https://github.com/xoofx/markdig at 09a4b81a6ed04baaf1f890a2e8665c01f9494ab6
 
 Alexandre Mutel
 
@@ -986,10 +996,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Configuration (v9.0.8)
+License notice for Microsoft.Extensions.Configuration (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1000,10 +1010,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Configuration.Abstractions (v9.0.8)
+License notice for Microsoft.Extensions.Configuration.Abstractions (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1014,10 +1024,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Configuration.Binder (v9.0.8)
+License notice for Microsoft.Extensions.Configuration.Binder (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1098,10 +1108,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.DependencyInjection (v9.0.8)
+License notice for Microsoft.Extensions.DependencyInjection (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1112,10 +1122,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.DependencyInjection.Abstractions (v9.0.8)
+License notice for Microsoft.Extensions.DependencyInjection.Abstractions (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1140,10 +1150,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Diagnostics.Abstractions (v8.0.1)
+License notice for Microsoft.Extensions.Diagnostics.Abstractions (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -1210,10 +1220,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Hosting.Abstractions (v8.0.1)
+License notice for Microsoft.Extensions.Hosting.Abstractions (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -1238,10 +1248,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging (v9.0.8)
+License notice for Microsoft.Extensions.Logging (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1252,10 +1262,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging.Abstractions (v9.0.8)
+License notice for Microsoft.Extensions.Logging.Abstractions (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1266,10 +1276,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging.Configuration (v9.0.8)
+License notice for Microsoft.Extensions.Logging.Configuration (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1322,10 +1332,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Options (v9.0.8)
+License notice for Microsoft.Extensions.Options (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1336,10 +1346,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Options.ConfigurationExtensions (v9.0.8)
+License notice for Microsoft.Extensions.Options.ConfigurationExtensions (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1350,10 +1360,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Primitives (v9.0.8)
+License notice for Microsoft.Extensions.Primitives (v9.0.5)
 ------------------------------------
 
-https://github.com/dotnet/runtime at aae90fa09086a9be09dac83fa66542232c7269d8
+https://github.com/dotnet/runtime at e36e4d1a8f8dfb08d7e3a6041459c9791d732c01
 
 https://dot.net/
 
@@ -1378,10 +1388,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for NLog (v6.0.3)
+License notice for NLog (v5.4.0)
 ------------------------------------
 
-https://github.com/NLog/NLog.git at e276e1969a52b8ecc5cc84c1670a516efea0cb19
+https://github.com/NLog/NLog.git at 4d45d445601312040107cbe2ac00e56c4bf4a60b
 
 https://nlog-project.org/
 
@@ -1392,10 +1402,10 @@ Licensed under BSD-3-Clause
 Available at https://licenses.nuget.org/BSD-3-Clause
 
 
-License notice for NLog.Extensions.Logging (v6.0.3)
+License notice for NLog.Extensions.Logging (v5.4.0)
 ------------------------------------
 
-https://github.com/NLog/NLog.Extensions.Logging.git at 2b25c06cf805164d1eb6225dfe453de3bb2aca77
+https://github.com/NLog/NLog.Extensions.Logging.git at 5cf0f9d17ffe57b5271ea8839bffd46d43bef3e9
 
 https://github.com/NLog/NLog.Extensions.Logging
 
@@ -1406,21 +1416,15 @@ Licensed under BSD-2-Clause
 Available at https://licenses.nuget.org/BSD-2-Clause
 
 
-License notice for OpenAI (v2.4.0)
+License notice for OpenAI (v2.1.0)
 ------------------------------------
 
-https://github.com/openai/openai-dotnet at 47b5d8180540f8b64f412e627cc00f3e4fb8bb5f
+https://github.com/openai/openai-dotnet at c046c34ad06f7ca050b2f8044cfc8372d8cf0e76
 
-https://github.com/openai/openai-dotnet/tree/OpenAI_2.4.0
-
-Copyright (c) 2024 OpenAI (https://openai.com)
-
-Licensed under MIT
-
-Available at https://licenses.nuget.org/MIT
+https://github.com/openai/openai-dotnet/tree/OpenAI_2.1.0
 
 
-License notice for RBush.Signed (v4.0.0)
+License notice for RBush (v4.0.0)
 ------------------------------------
 
 https://github.com/viceroypenguin/RBush at b8690322abac35d835baa2fdca4a3918ed77a910
@@ -1444,10 +1448,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for SkiaSharp (v3.119.0)
+License notice for SkiaSharp (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1456,10 +1460,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.NativeAssets.macOS (v3.119.0)
+License notice for SkiaSharp.NativeAssets.macOS (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1468,10 +1472,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.NativeAssets.WebAssembly (v3.119.0)
+License notice for SkiaSharp.NativeAssets.WebAssembly (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1480,10 +1484,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.NativeAssets.Win32 (v3.119.0)
+License notice for SkiaSharp.NativeAssets.Win32 (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1492,10 +1496,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.Resources (v3.119.0)
+License notice for SkiaSharp.Resources (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1504,10 +1508,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for SkiaSharp.SceneGraph (v3.119.0)
+License notice for SkiaSharp.SceneGraph (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1576,12 +1580,12 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for System.ClientModel (v1.6.1)
+License notice for System.ClientModel (v1.2.1)
 ------------------------------------
 
-https://github.com/Azure/azure-sdk-for-net at 07fd8b8b397542f41a1cc34751d810b4c6ead32d
+https://github.com/Azure/azure-sdk-for-net at b3ee3eb51d5dfdc7592b1e75e10e3d360382f5c6
 
-https://github.com/Azure/azure-sdk-for-net/blob/System.ClientModel_1.6.1/sdk/core/System.ClientModel/README.md
+https://github.com/Azure/azure-sdk-for-net/blob/System.ClientModel_1.2.1/sdk/core/System.ClientModel/README.md
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -1591,6 +1595,20 @@ Available at https://licenses.nuget.org/MIT
 
 
 License notice for System.Collections.Immutable (v8.0.0)
+------------------------------------
+
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
+
+https://dot.net/
+
+Copyright © Microsoft Corporation. All rights reserved.
+
+Licensed under MIT
+
+Available at https://licenses.nuget.org/MIT
+
+
+License notice for System.Diagnostics.DiagnosticSource (v8.0.0)
 ------------------------------------
 
 https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
@@ -1654,10 +1672,10 @@ Copyright © Microsoft Corporation. All rights reserved.
 License available at https://github.com/dotnet/corefx/blob/master/LICENSE.TXT
 
 
-License notice for System.Memory.Data (v8.0.1)
+License notice for System.Memory.Data (v6.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 4822e3c3aa77eb82b2fb33c9321f923cf11ddde6
 
 https://dot.net/
 
@@ -1690,18 +1708,6 @@ https://dot.net/
 Copyright © Microsoft Corporation. All rights reserved.
 
 License available at https://github.com/dotnet/corefx/blob/master/LICENSE.TXT
-
-
-License notice for Tomlyn (v0.19.0)
-------------------------------------
-
-https://github.com/xoofx/Tomlyn at ee3e3ca5b1f016b0db21ceb74d6c85d28a08ca16
-
-Alexandre Mutel
-
-Licensed under BSD-2-Clause
-
-Available at https://licenses.nuget.org/BSD-2-Clause
 
 
 License notice for Uno.Core.Extensions.Collections (v4.1.1)
@@ -1782,10 +1788,10 @@ https://github.com/unoplatform/Uno.Diagnostics.Eventing
 Copyright (C) 2015-2021 nventive inc. - all rights reserved
 
 
-License notice for Uno.Extensions.Core (v6.2.3)
+License notice for Uno.Extensions.Core (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1794,10 +1800,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Hosting (v6.2.3)
+License notice for Uno.Extensions.Hosting (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1806,10 +1812,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Localization (v6.2.3)
+License notice for Uno.Extensions.Localization (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1830,28 +1836,16 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Markup.WinUI (v6.2.10)
+License notice for Uno.Extensions.Markup.WinUI (v6.0.15)
 ------------------------------------
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
 
-License notice for Uno.Extensions.Serialization (v6.2.3)
+License notice for Uno.Extensions.Serialization (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
-
-Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
-
-Licensed under Apache-2.0
-
-Available at https://licenses.nuget.org/Apache-2.0
-
-
-License notice for Uno.Extensions.Storage (v6.2.3)
-------------------------------------
-
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1860,10 +1854,22 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Extensions.Storage.WinUI (v6.2.3)
+License notice for Uno.Extensions.Storage (v5.3.8)
 ------------------------------------
 
-https://github.com/unoplatform/uno.extensions at c9a54e7824152d6c3019517867396243ca25c2a5
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
+
+Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
+
+Licensed under Apache-2.0
+
+Available at https://licenses.nuget.org/Apache-2.0
+
+
+License notice for Uno.Extensions.Storage.WinUI (v5.3.8)
+------------------------------------
+
+https://github.com/unoplatform/uno.extensions at 15bfc9e7b8b959bf5a203a5f2855f86c93bba2b5
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1886,6 +1892,18 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
+License notice for Uno.Fonts.OpenSans (v2.4.5)
+------------------------------------
+
+https://github.com/unoplatform/uno.fonts
+
+Copyright (C) 2015-2024 Uno Platform inc. - all rights reserved
+
+Licensed under Apache-2.0
+
+Available at https://licenses.nuget.org/Apache-2.0
+
+
 License notice for Uno.Fonts.Roboto (v2.2.2)
 ------------------------------------
 
@@ -1894,10 +1912,10 @@ https://github.com/unoplatform/uno.fonts
 Copyright (C) 2015-2023 Uno Platform inc. - all rights reserved
 
 
-License notice for Uno.Foundation (v6.2.58)
+License notice for Uno.Foundation (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.git at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 https://platform.uno/
 
@@ -1908,10 +1926,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Foundation.Logging (v6.2.58)
+License notice for Uno.Foundation.Logging (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -1920,10 +1938,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Themes.WinUI (v5.6.3)
+License notice for Uno.Themes.WinUI (v5.5.0-dev.96)
 ------------------------------------
 
-https://github.com/unoplatform/Uno.Themes at e513e0e318ada537daf1d3211b0483dbaab980bf
+https://github.com/unoplatform/Uno.Themes at df75fc621fec87f13500215cd5ee078b7995dd15
 
 https://github.com/unoplatform/uno.themes
 
@@ -1934,10 +1952,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.Toolkit (v8.1.4)
+License notice for Uno.Toolkit (v7.0.2)
 ------------------------------------
 
-https://github.com/unoplatform/uno.toolkit.ui at 89ac699d8c0111055933aad5cf2734c94f1adcb0
+https://github.com/unoplatform/uno.toolkit.ui at b6bc5004c388b0568ca90b4b48db0ebd4a6f1068
 
 Copyright (C) 2015-2025 Uno Platform inc. - all rights reserved
 
@@ -1954,10 +1972,10 @@ https://github.com/nventive/Uno.Wasm.WebSockets at c3351c1ab2911a597f9c7806b0f6a
 Copyright (C) 2015-2018 nventive inc. - all rights reserved
 
 
-License notice for Uno.WinRT (v6.2.58)
+License notice for Uno.WinRT (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno.git at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 https://platform.uno/
 
@@ -1968,10 +1986,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.DevServer.Messaging (v6.2.58)
+License notice for Uno.WinUI.DevServer.Messaging (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -1980,7 +1998,7 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Microsoft.Web.WebView2 (v1.0.3405.78)
+License notice for Microsoft.Web.WebView2 (v1.0.3240.44)
 ------------------------------------
 
 https://aka.ms/webview
@@ -2004,24 +2022,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Graphics2DSK (v6.2.58)
+License notice for Uno.WinUI.Graphics2DSK (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno.git at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
-
-https://github.com/unoplatform/uno
-
-Uno Platform
-
-Licensed under Apache-2.0
-
-Available at https://licenses.nuget.org/Apache-2.0
-
-
-License notice for Uno.WinUI.Runtime.Skia.Linux.FrameBuffer (v6.2.58)
-------------------------------------
-
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2030,10 +2034,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Runtime.Skia.MacOS (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia.Linux.FrameBuffer (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2042,10 +2046,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Runtime.Skia.Win32 (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia.MacOS (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2054,10 +2058,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Runtime.Skia.Wpf (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia.Win32 (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2066,10 +2070,10 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.Runtime.Skia.X11 (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia.Wpf (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2078,10 +2082,22 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Uno.WinUI.WebView.Skia.X11 (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia.X11 (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
+
+Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
+
+Licensed under Apache-2.0
+
+Available at https://licenses.nuget.org/Apache-2.0
+
+
+License notice for Uno.WinUI.WebView.Skia.X11 (v6.0.611)
+------------------------------------
+
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2126,10 +2142,10 @@ License notice for GtkSharp (v3.24.24.117-develop)
 https://github.com/GtkSharp/GtkSharp at b7303616129ab5a0ca64def45649ab522d83fa4a
 
 
-License notice for HarfBuzzSharp (v8.3.1.1)
+License notice for HarfBuzzSharp (v8.3.1.1-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2138,10 +2154,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for HarfBuzzSharp.NativeAssets.Linux (v8.3.1.1)
+License notice for HarfBuzzSharp.NativeAssets.Linux (v8.3.1.1-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2150,10 +2166,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for HarfBuzzSharp.NativeAssets.macOS (v8.3.1.1)
+License notice for HarfBuzzSharp.NativeAssets.macOS (v8.3.1.1-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2162,10 +2178,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for HarfBuzzSharp.NativeAssets.Win32 (v8.3.1.1)
+License notice for HarfBuzzSharp.NativeAssets.Win32 (v8.3.1.1-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2266,10 +2282,10 @@ License notice for PangoSharp (v3.24.24.117-develop)
 https://github.com/GtkSharp/GtkSharp at b7303616129ab5a0ca64def45649ab522d83fa4a
 
 
-License notice for SkiaSharp.NativeAssets.Linux (v3.119.0)
+License notice for SkiaSharp.NativeAssets.Linux (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2328,10 +2344,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Uno.WinUI.Runtime.Skia (v6.2.58)
+License notice for Uno.WinUI.Runtime.Skia (v6.0.611)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6e5d3d1179e9fd954e4462c0df2873fc3b984188
+https://github.com/unoplatform/uno at b3e6b0d376d077a207adad2c882ee8620d10c442
 
 Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
 
@@ -2346,7 +2362,7 @@ License notice for WebkitGtkSharp (v3.24.24.117-develop)
 https://github.com/GtkSharp/GtkSharp at b7303616129ab5a0ca64def45649ab522d83fa4a
 
 
-License notice for Microsoft.Windows.SDK.BuildTools (v10.0.26100.4948)
+License notice for Microsoft.Windows.SDK.BuildTools (v10.0.26100.3916)
 ------------------------------------
 
 https://aka.ms/WinSDKProjectURL
@@ -2356,7 +2372,7 @@ Copyright © Microsoft Corporation. All rights reserved.
 License available at https://aka.ms/WinSDKLicenseURL
 
 
-License notice for Microsoft.WindowsAppSDK (v1.7.250606001)
+License notice for Microsoft.WindowsAppSDK (v1.7.250401001)
 ------------------------------------
 
 https://github.com/microsoft/windowsappsdk
@@ -2368,10 +2384,10 @@ Available at https://aka.ms/deprecateLicenseUrl
 license.txt
 
 
-License notice for SkiaSharp.Views.WinUI (v3.119.0)
+License notice for SkiaSharp.Views.WinUI (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2392,10 +2408,10 @@ Available at https://aka.ms/deprecateLicenseUrl
 LICENSE.txt
 
 
-License notice for SkiaSharp.NativeAssets.WinUI (v3.119.0)
+License notice for SkiaSharp.NativeAssets.WinUI (v3.119.0-preview.1.2)
 ------------------------------------
 
-https://go.microsoft.com/fwlink/?linkid=868515 at 64f24b1cddb68d30ec0ac6b661964178fc21d5ec
+https://go.microsoft.com/fwlink/?linkid=868515 at 1911fbf16e0f5ccfcd88fc75d22cc947f30d30f0
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2404,10 +2420,22 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for FluentAssertions (v8.6.0)
+License notice for Uno.WinUI.DevServer.Messaging (v6.0.465)
 ------------------------------------
 
-https://github.com/fluentassertions/fluentassertions at 3c1a442c4845a73a89a6b084f92db7edfa3e9ca4
+https://github.com/unoplatform/uno at 6b95f7eefb41ffa04d80936326365490832a6f61
+
+Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
+
+Licensed under Apache-2.0
+
+Available at https://licenses.nuget.org/Apache-2.0
+
+
+License notice for FluentAssertions (v8.2.0)
+------------------------------------
+
+https://github.com/fluentassertions/fluentassertions at 04defbe85c05581c443d819b5d01bf84f0d62222
 
 https://xceed.com/products/unit-testing/fluent-assertions/
 
@@ -2418,10 +2446,10 @@ Available at https://aka.ms/deprecateLicenseUrl
 LICENSE
 
 
-License notice for Microsoft.NET.Test.Sdk (v17.14.1)
+License notice for Microsoft.NET.Test.Sdk (v17.13.0)
 ------------------------------------
 
-https://github.com/microsoft/vstest at 490850ae3fdc1b470e3804ceab4f6a41cf89ae51
+https://github.com/microsoft/vstest at e8cf3808d0b16dea8d6e1a9b77f1660a5ff45e13
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2430,7 +2458,7 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for NUnit (v4.4.0)
+License notice for NUnit (v4.3.2)
 ------------------------------------
 
 https://github.com/nunit/nunit
@@ -2444,7 +2472,7 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for NUnit3TestAdapter (v5.1.0)
+License notice for NUnit3TestAdapter (v5.0.0)
 ------------------------------------
 
 https://github.com/nunit/nunit3-vs-adapter
@@ -2458,10 +2486,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.ApplicationInsights (v2.23.0)
+License notice for Microsoft.ApplicationInsights (v2.22.0)
 ------------------------------------
 
-https://github.com/Microsoft/ApplicationInsights-dotnet at 2faa7e8b157a431daa2e71785d68abd5fa817b53
+https://github.com/Microsoft/ApplicationInsights-dotnet at 43825e06a22cdfb702fc199a7ba99a7d541d48c6
 
 https://go.microsoft.com/fwlink/?LinkId=392727
 
@@ -2472,10 +2500,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.CodeCoverage (v17.14.1)
+License notice for Microsoft.CodeCoverage (v17.13.0)
 ------------------------------------
 
-https://github.com/microsoft/vstest at 490850ae3fdc1b470e3804ceab4f6a41cf89ae51
+https://github.com/microsoft/vstest at e8cf3808d0b16dea8d6e1a9b77f1660a5ff45e13
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2526,10 +2554,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.DependencyInjection (v8.0.1)
+License notice for Microsoft.Extensions.DependencyInjection (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -2540,10 +2568,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.DependencyInjection.Abstractions (v8.0.2)
+License notice for Microsoft.Extensions.DependencyInjection.Abstractions (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -2554,10 +2582,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging (v8.0.1)
+License notice for Microsoft.Extensions.Logging (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -2568,10 +2596,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Logging.Abstractions (v8.0.3)
+License notice for Microsoft.Extensions.Logging.Abstractions (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at eba546b0f0d448e0176a2222548fd7a2fbf464c0
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -2610,10 +2638,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Extensions.Options (v8.0.2)
+License notice for Microsoft.Extensions.Options (v8.0.0)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 1381d5ebd2ab1f292848d5b19b80cf71ac332508
+https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
@@ -2652,10 +2680,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Testing.Extensions.Telemetry (v1.7.3)
+License notice for Microsoft.Testing.Extensions.Telemetry (v1.5.3)
 ------------------------------------
 
-https://github.com/microsoft/testfx at 5abdae1f2e07071c4e81b27ac262f241708ec3cf
+https://github.com/microsoft/testfx at 2a34431d753f39463aadf19674237f6c4e5b6865
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2664,10 +2692,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Testing.Extensions.TrxReport.Abstractions (v1.7.3)
+License notice for Microsoft.Testing.Extensions.TrxReport.Abstractions (v1.5.3)
 ------------------------------------
 
-https://github.com/microsoft/testfx at 5abdae1f2e07071c4e81b27ac262f241708ec3cf
+https://github.com/microsoft/testfx at 2a34431d753f39463aadf19674237f6c4e5b6865
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2676,10 +2704,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Testing.Extensions.VSTestBridge (v1.7.3)
+License notice for Microsoft.Testing.Extensions.VSTestBridge (v1.5.3)
 ------------------------------------
 
-https://github.com/microsoft/testfx at 5abdae1f2e07071c4e81b27ac262f241708ec3cf
+https://github.com/microsoft/testfx at 2a34431d753f39463aadf19674237f6c4e5b6865
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2688,10 +2716,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Testing.Platform (v1.7.3)
+License notice for Microsoft.Testing.Platform (v1.5.3)
 ------------------------------------
 
-https://github.com/microsoft/testfx at 5abdae1f2e07071c4e81b27ac262f241708ec3cf
+https://github.com/microsoft/testfx at 2a34431d753f39463aadf19674237f6c4e5b6865
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2700,10 +2728,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.Testing.Platform.MSBuild (v1.7.3)
+License notice for Microsoft.Testing.Platform.MSBuild (v1.5.3)
 ------------------------------------
 
-https://github.com/microsoft/testfx at 5abdae1f2e07071c4e81b27ac262f241708ec3cf
+https://github.com/microsoft/testfx at 2a34431d753f39463aadf19674237f6c4e5b6865
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2712,7 +2740,7 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.TestPlatform.AdapterUtilities (v17.13.0)
+License notice for Microsoft.TestPlatform.ObjectModel (v17.13.0)
 ------------------------------------
 
 https://github.com/microsoft/vstest at e8cf3808d0b16dea8d6e1a9b77f1660a5ff45e13
@@ -2724,10 +2752,10 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.TestPlatform.ObjectModel (v17.14.1)
+License notice for Microsoft.TestPlatform.TestHost (v17.13.0)
 ------------------------------------
 
-https://github.com/microsoft/vstest at 490850ae3fdc1b470e3804ceab4f6a41cf89ae51
+https://github.com/microsoft/vstest at e8cf3808d0b16dea8d6e1a9b77f1660a5ff45e13
 
 Copyright © Microsoft Corporation. All rights reserved.
 
@@ -2736,78 +2764,38 @@ Licensed under MIT
 Available at https://licenses.nuget.org/MIT
 
 
-License notice for Microsoft.TestPlatform.TestHost (v17.14.1)
+License notice for System.Reflection.Metadata (v1.6.0)
 ------------------------------------
-
-https://github.com/microsoft/vstest at 490850ae3fdc1b470e3804ceab4f6a41cf89ae51
-
-Copyright © Microsoft Corporation. All rights reserved.
-
-Licensed under MIT
-
-Available at https://licenses.nuget.org/MIT
-
-
-License notice for System.Diagnostics.DiagnosticSource (v5.0.0)
-------------------------------------
-
-git://github.com/dotnet/runtime at cf258a14b70ad9069470a108f13765e0e5988f51
-
-https://github.com/dotnet/runtime
-
-Copyright © Microsoft Corporation. All rights reserved.
-
-Licensed under MIT
-
-Available at https://licenses.nuget.org/MIT
-
-
-License notice for System.Reflection.Metadata (v8.0.0)
-------------------------------------
-
-https://github.com/dotnet/runtime at 5535e31a712343a63f5d7d796cd874e563e5ac14
 
 https://dot.net/
 
-Copyright © Microsoft Corporation. All rights reserved.
+Copyright © Microsoft Corporation.  All rights reserved.
 
-Licensed under MIT
-
-Available at https://licenses.nuget.org/MIT
+License available at https://github.com/dotnet/corefx/blob/master/LICENSE.TXT
 
 
-License notice for Uno.UI.Adapter.Microsoft.Extensions.Logging (v6.0.465)
+License notice for Uno.UI.Adapter.Microsoft.Extensions.Logging (v5.3.144)
 ------------------------------------
 
-https://github.com/unoplatform/uno at 6b95f7eefb41ffa04d80936326365490832a6f61
+https://github.com/unoplatform/uno.git at c0fede9939440a34dbd44038e179222dac690dab
 
-Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
+https://github.com/unoplatform/uno
+
+Uno Platform
 
 Licensed under Apache-2.0
 
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for Microsoft.Extensions.Logging.Abstractions (v8.0.2)
+License notice for Uno.Foundation.Logging (v5.3.144)
 ------------------------------------
 
-https://github.com/dotnet/runtime at 81cabf2857a01351e5ab578947c7403a5b128ad1
+https://github.com/unoplatform/uno.git at c0fede9939440a34dbd44038e179222dac690dab
 
-https://dot.net/
+https://github.com/unoplatform/uno
 
-Copyright © Microsoft Corporation. All rights reserved.
-
-Licensed under MIT
-
-Available at https://licenses.nuget.org/MIT
-
-
-License notice for Uno.Foundation.Logging (v6.0.465)
-------------------------------------
-
-https://github.com/unoplatform/uno at 6b95f7eefb41ffa04d80936326365490832a6f61
-
-Copyright (C) 2015-2025 Uno Platform Inc. - all rights reserved
+Uno Platform
 
 Licensed under Apache-2.0
 

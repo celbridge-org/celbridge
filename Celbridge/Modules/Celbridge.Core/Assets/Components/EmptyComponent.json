@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {
+    "rootActivity": "None"
+  },
+
+  "properties": {
+    "_type": {
+      "type": "string",
+      "const": ".Empty#1"
+    },
+    "comment": {
+      "type": "string"
+    }
+  },
+
+  "required": [
+    "_type",
+    "comment"
+  ],
+
+  "prototype": {
+    "comment": ""
+  }
+}

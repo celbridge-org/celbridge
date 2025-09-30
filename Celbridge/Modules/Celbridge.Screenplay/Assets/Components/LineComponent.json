@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+
+  "attributes": {},
+
+  "properties": {
+    "_type": {
+      "type": "string",
+      "const": "Screenplay.Line#1"
+    },
+    "lineType": {
+      "type": "string",
+      "enum": [ "Player", "PlayerVariant", "NPC", "SceneNote" ]
+    },
+    "lineId": {
+      "type": "string"
+    },
+    "characterId": {
+      "type": "string"
+    },
+    "sourceText": {
+      "type": "string"
+    },
+    "contextNotes": {
+      "type": "string"
+    },
+    "linePriority": {
+      "type": "string"
+    },
+    "speakingTo": {
+      "type": "string"
+    },
+    "gameArea": {
+      "type": "string"
+    },
+    "timeConstraint": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "soundProcessing": {
+      "type": "string"
+    },
+    "productionStatus": {
+      "type": "string"
+    }
+  },
+
+  "required": [
+    "_type",
+    "lineType",
+    "lineId",
+    "characterId",
+    "sourceText",
+    "contextNotes",
+    "linePriority",
+    "speakingTo",
+    "gameArea",
+    "timeConstraint",
+    "direction",
+    "platform",
+    "soundProcessing",
+    "productionStatus"
+  ],
+
+  "prototype": {
+    "lineType": "Player",
+    "lineId": "",
+    "characterId": "Player",
+    "sourceText": "",
+    "contextNotes": "",
+    "linePriority": "Default",
+    "speakingTo": "",
+    "gameArea": "",
+    "timeConstraint": "",
+    "direction": "",
+    "platform": "",
+    "soundProcessing": "",
+    "productionStatus": "Placeholder"
+  }
+}

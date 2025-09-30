@@ -1,0 +1,101 @@
+[
+  {
+    "element": "StackPanel",
+    "orientation": "Horizontal",
+    "children": [
+      {
+        "element": "StackPanel",
+        "orientation": "Horizontal",
+        "children": [
+          {
+            "element": "TextBox",
+            "header": "Dialogue Key",
+            "text": "/dialogueKey",
+            "textWrapping":  "NoWrap",
+            "isReadOnly": true
+          },
+          {
+            "element": "Button",
+            "verticalAlignment": "Bottom",
+            "tooltip": "Generate a new dialogue key for this dialogue line",
+            "icon": "Refresh",
+            "buttonId": "GenerateDialogueKey",
+            "visibility": "/generateDialogueKeyVisibility"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "element": "ComboBox",
+    "header": "Line Type",
+    "selectedValue": "/lineType"
+  },
+  {
+    "element": "ComboBox",
+    "visibility": "/characterIdVisibility",
+    "header": "Character",
+    "values": "/characterIds",
+    "selectedValue": "/characterId"
+  },
+  {
+    "element": "TextBox",
+    "header": "Source Text",
+    "text": "/sourceText",
+    "checkSpelling": true
+  },
+  {
+    "element": "DropDownTextBox",
+    "visibility": "/variantVisibility",
+    "header": "Speaking To",
+    "text": "/speakingTo",
+    "buttonIcon":  "People",
+    "values": "/speakingToCharacterIds"
+  },
+  {
+    "element": "TextBox",
+    "visibility": "/contextNotesVisibility",
+    "placeholderText": "/contextNotesPlaceholderText",
+    "header": "Context Notes",
+    "text": "/contextNotes"
+  },
+  {
+    "element": "TextBox",
+    "visibility": "/directionVisibility",
+    "placeholderText": "/directionPlaceholderText",
+    "header": "Direction",
+    "text": "/direction"
+  },
+  {
+    "element": "TextBox",
+    "visibility": "/variantVisibility",
+    "header": "Time Constraint",
+    "text": "/timeConstraint"
+  },
+  {
+    "element": "TextBox",
+    "visibility": "/variantVisibility",
+    "header": "Game Area",
+    "text": "/gameArea"
+  },
+  {
+    "element": "TextBox",
+    "visibility": "/variantVisibility",
+    "header": "Platform",
+    "text": "/platform"
+  },
+  {
+    "element": "ComboBox",
+    "visibility": "/variantVisibility",
+    "header": "Production Status",
+    "values": [ "Placeholder", "ReadyForReview", "CutCandidate", "ReadyForVO", "ReadyForLoc", "Final" ],
+    "selectedValue": "/productionStatus"
+  },
+  {
+    "element": "ComboBox",
+    "visibility": "/variantVisibility",
+    "header": "Line Priority",
+    "values": [ "Default", "Effort", "AIChatter", "PlayerChatter", "HitReaction", "Death" ],
+    "selectedValue": "/linePriority"
+  }
+]

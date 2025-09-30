@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ApplicationName" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="DialogButton_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DialogButton_Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="DialogButton_Ok" xml:space="preserve">
+    <value>Ok</value>
+  </data>
+  <data name="DocumentsPanel_Title" xml:space="preserve">
+    <value>Documents</value>
+  </data>
+  <data name="ResourceTree_AddFile_TextFile" xml:space="preserve">
+    <value>Text file (.txt, .json, .html, ...)</value>
+  </data>
+  <data name="ResourceTree_AddFile_WebApp" xml:space="preserve">
+    <value>Web application file  (.webapp)</value>
+  </data>
+  <data name="ResourceTree_AddFile_Excel" xml:space="preserve">
+    <value>Excel file (.xlsx)</value>
+  </data>
+  <data name="ResourceTree_AddFile_Markdown" xml:space="preserve">
+    <value>Markdown file (.md)</value>
+  </data>
+  <data name="ResourceTree_AddFile_PythonScript" xml:space="preserve">
+    <value>Python script (.py)</value>
+  </data>
+  <data name="ResourceTree_Folder" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="ResourceTree_EnterName" xml:space="preserve">
+    <value>Enter name</value>
+  </data>
+  <data name="InspectorPanel_Title" xml:space="preserve">
+    <value>Inspector</value>
+  </data>
+  <data name="LoadProjectFailedAlert_Message" xml:space="preserve">
+    <value>Failed to load project file '{0}'. See log for details.</value>
+  </data>
+  <data name="LoadProjectFailedAlert_Title" xml:space="preserve">
+    <value>Failed to load project</value>
+  </data>
+  <data name="MainPage_CloseProject" xml:space="preserve">
+    <value>Close project</value>
+  </data>
+  <data name="MainPage_Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="MainPage_Explorer" xml:space="preserve">
+    <value>Explorer</value>
+  </data>
+  <data name="MainPage_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="MainPage_Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="MainPage_RevisionControl" xml:space="preserve">
+    <value>Version Control</value>
+  </data>
+  <data name="MainPage_Community" xml:space="preserve">
+    <value>Community</value>
+  </data>
+    <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+    <value>Project folder</value>
+  </data>
+  <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
+    <value>Select folder</value>
+  </data>
+  <data name="NewProjectDialog_ProjectName" xml:space="preserve">
+    <value>Project name</value>
+  </data>
+  <data name="NewProjectDialog_ProjectNamePlaceholder" xml:space="preserve">
+    <value>Enter project name</value>
+  </data>
+  <data name="NewProjectDialog_Title" xml:space="preserve">
+    <value>New project</value>
+  </data>
+  <data name="ExplorerPanel_RefreshTooltip" xml:space="preserve">
+    <value>Refresh project files</value>
+  </data>
+  <data name="ExplorerPanel_Title" xml:space="preserve">
+    <value>Explorer</value>
+  </data>
+  <data name="ResourceTree_ConfirmDeleteFile" xml:space="preserve">
+    <value>Delete '{0}' file?</value>
+  </data>
+  <data name="ResourceTree_ConfirmDeleteFolder" xml:space="preserve">
+    <value>Delete '{0}' folder?</value>
+  </data>
+  <data name="ResourceTree_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="ResourceTree_AddFileFailed" xml:space="preserve">
+    <value>Failed to add file '{0}'</value>
+  </data>
+  <data name="ResourceTree_AddFolderFailed" xml:space="preserve">
+    <value>Failed to add folder '{0}'</value>
+  </data>
+  <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
+    <value>Failed to delete file '{0}'</value>
+  </data>
+  <data name="ResourceTree_Rename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="SettingsPage_Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="WorkspacePage_LoadingWorkspace" xml:space="preserve">
+    <value>Loading workspace</value>
+  </data>
+  <data name="ResourceTree_EnterNewName" xml:space="preserve">
+    <value>Enter a new name:</value>
+  </data>
+  <data name="ResourceTree_CopyResource" xml:space="preserve">
+    <value>Copy resource</value>
+  </data>
+  <data name="ResourceTree_RenameFolder" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="ResourceTree_RenameResource" xml:space="preserve">
+    <value>Rename {0}</value>
+  </data>
+  <data name="ResourceTree_DefaultFileName" xml:space="preserve">
+    <value>NewFile{0}.txt</value>
+  </data>
+  <data name="ResourceTree_DefaultFolderName" xml:space="preserve">
+    <value>NewFolder{0}</value>
+  </data>
+  <data name="ResourceTree_CopyResourceFailed" xml:space="preserve">
+    <value>Failed to copy resource '{0}' to '{1}'</value>
+  </data>
+  <data name="Validation_FileNameAlreadyExists" xml:space="preserve">
+    <value>A file with the name '{0}' already exists</value>
+  </data>
+  <data name="Validation_FolderNameAlreadyExists" xml:space="preserve">
+    <value>A folder with the name '{0}' already exists</value>
+  </data>
+  <data name="Validation_NameContainsInvalidCharacters" xml:space="preserve">
+    <value>Name contains invalid characters: {0}</value>
+  </data>
+  <data name="ResourceTree_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="ResourceTree_Cut" xml:space="preserve">
+    <value>Cut</value>
+  </data>
+  <data name="ResourceTree_Paste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="ResourceTree_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="ResourceTree_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="ResourceTree_AddFile" xml:space="preserve">
+    <value>Add file</value>
+  </data>
+  <data name="ResourceTree_AddFolder" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+  <data name="ResourceTree_PasteResourceFailed" xml:space="preserve">
+    <value>Failed to paste to '{0}'</value>
+  </data>
+  <data name="ResourceTree_UndoPasteResourceFailed" xml:space="preserve">
+    <value>Failed to undo paste to '{0}'</value>
+  </data>
+  <data name="ResourceTree_UndoAddFileFailed" xml:space="preserve">
+    <value>Failed to undo add file '{0}'</value>
+  </data>
+  <data name="ResourceTree_UndoAddFolderFailed" xml:space="preserve">
+    <value>Failed to undo add folder '{0}'</value>
+  </data>
+  <data name="ResourceTree_UndoDeleteFileFailed" xml:space="preserve">
+    <value>Failed to undo delete file '{0}'</value>
+  </data>
+  <data name="ResourceTree_DeleteFolderFailed" xml:space="preserve">
+    <value>Failed to delete folder '{0}'</value>
+  </data>
+  <data name="ResourceTree_UndoDeleteFolderFailed" xml:space="preserve">
+    <value>Failed to undo delete folder '{0}'</value>
+  </data>
+  <data name="ResourceTree_MoveResource" xml:space="preserve">
+    <value>Move resource</value>
+  </data>
+  <data name="ResourceTree_MoveResourceFailed" xml:space="preserve">
+    <value>Failed to move resource '{0}' to '{1}'</value>
+  </data>
+  <data name="ResourceTree_DuplicateResource" xml:space="preserve">
+    <value>Duplicate {0}</value>
+  </data>
+  <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
+    <value>Enter a name for the new copy:</value>
+  </data>
+  <data name="ResourceTree_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
+    <value>Copy resource key to clipboard</value>
+  </data>
+  <data name="WorkspacePage_ShowPanelTooltip" xml:space="preserve">
+    <value>Show panel</value>
+  </data>
+  <data name="WorkspacePage_ExitFocusModeTooltip" xml:space="preserve">
+    <value>Exit focus mode (F4)</value>
+  </data>
+  <data name="WorkspacePage_HidePanelTooltip" xml:space="preserve">
+    <value>Hide panel</value>
+  </data>
+  <data name="WorkspacePage_EnterFocusModeTooltip" xml:space="preserve">
+    <value>Enter focus mode (F4)</value>
+  </data>
+  <data name="StatusPanel_SelectResourceTooltip" xml:space="preserve">
+    <value>Select resource in explorer panel</value>
+  </data>
+  <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
+    <value>Console</value>
+  </data>
+  <data name="ConsolePanel_ExecuteCommandTooltip" xml:space="preserve">
+    <value>Execute the entered text as a console command (Enter)</value>
+  </data>
+  <data name="ConsolePanel_WelcomeMessage" xml:space="preserve">
+    <value>Welcome to Celbridge v{0}! Type 'Help()' for a list of available commands.</value>
+  </data>
+  <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
+    <value>Alert</value>
+  </data>
+  <data name="ScriptingService_NoMatchesFound" xml:space="preserve">
+    <value>No commands were found matching search term '{0}'.</value>
+  </data>
+  <data name="HomePage_NewProject" xml:space="preserve">
+    <value>New project</value>
+  </data>
+  <data name="HomePage_OpenProject" xml:space="preserve">
+    <value>Open project</value>
+  </data>
+  <data name="MainPage_NewProject" xml:space="preserve">
+    <value>New project</value>
+  </data>
+  <data name="MainPage_OpenProject" xml:space="preserve">
+    <value>Open project</value>
+  </data>
+  <data name="HomePage_Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="HomePage_Title" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="HomePage_Subtitle" xml:space="preserve">
+    <value>We are the makers</value>
+  </data>
+  <data name="HomePage_Recent" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="HomePage_NoRecentProjects" xml:space="preserve">
+    <value>You have no recent projects.</value>
+  </data>
+  <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
+    <value>Place project in a subfolder with the same name</value>
+  </data>
+  <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
+    <value>Places the project file in a new subfolder with the same name as the project</value>
+  </data>
+  <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
+    <value>The project will be saved at this location.</value>
+  </data>
+  <data name="ResourceTree_OpenIn" xml:space="preserve">
+    <value>Open in</value>
+  </data>
+  <data name="ResourceTree_OpenInExplorer" xml:space="preserve">
+    <value>File Explorer</value>
+  </data>
+  <data name="ResourceTree_OpenInApplication" xml:space="preserve">
+    <value>Associated application</value>
+  </data>
+  <data name="WebInspector_StartURL" xml:space="preserve">
+    <value>Start URL</value>
+  </data>
+  <data name="WebInspector_OpenURLTooltip" xml:space="preserve">
+    <value>Open web page document</value>
+  </data>
+  <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
+    <value>Enter web address</value>
+  </data>
+  <data name="InspectorPanel_ShowEditorAndPreviewTooltip" xml:space="preserve">
+    <value>Show editor and preview </value>
+  </data>
+  <data name="InspectorPanel_ShowEditorTooltip" xml:space="preserve">
+    <value>Show editor only</value>
+  </data>
+  <data name="InspectorPanel_ShowPreviewTooltip" xml:space="preserve">
+    <value>Show preview only</value>
+  </data>
+  <data name="InspectorPanel_OpenDocumentTooltip" xml:space="preserve">
+    <value>Open document</value>
+  </data>
+  <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
+    <value>Add a new component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Add" xml:space="preserve">
+    <value>Add a new component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Delete" xml:space="preserve">
+    <value>Delete the component</value>
+  </data>
+  <data name="EntityInspector_ContextMenu_Duplicate" xml:space="preserve">
+    <value>Duplicate the component</value>
+  </data>
+  <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
+    <value>Open Document Failed</value>
+  </data>
+  <data name="Documents_LoadDocumentConfirmTitle" xml:space="preserve">
+    <value>Load Document</value>
+  </data>
+  <data name="Documents_LoadDocumentConfirm" xml:space="preserve">
+    <value>This will reload '{0}' and discard any changes you've made. Continue?</value>
+  </data>
+  <data name="Documents_SaveDocumentFailedTitle" xml:space="preserve">
+    <value>Save Document Failed</value>
+  </data>
+  <data name="Documents_OpenDocumentFailedGeneric" xml:space="preserve">
+    <value>An error occurred while attempting to open '{0}'.</value>
+  </data>
+  <data name="Documents_SaveDocumentFailedGeneric" xml:space="preserve">
+    <value>An error occurred while attempting to save '{0}'.</value>
+  </data>
+  <data name="Documents_OpenDocumentFailedNotSupported" xml:space="preserve">
+    <value>The file format is not supported: '{0}'</value>
+  </data>
+  <data name="Screenplay_LoadingScreenplayTitle" xml:space="preserve">
+    <value>Loading screenplay</value>
+  </data>
+  <data name="Screenplay_SavingScreenplayTitle" xml:space="preserve">
+    <value>Saving screenplay</value>
+  </data>
+  <data name="Screenplay_SaveFailedTitle" xml:space="preserve">
+    <value>Save failed</value>
+  </data>
+  <data name="Screenplay_LoadFailedTitle" xml:space="preserve">
+    <value>Load failed</value>
+  </data>
+  <data name="Screenplay_SaveFailedMessage" xml:space="preserve">
+    <value>An error occurred while saving the screenplay Excel file.  See console log for details.</value>
+  </data>
+  <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
+    <value>An error occurred while loading the screenplay Excel file. See console log for details.</value>
+  </data>
+  <data name="Screenplay_AccessErrorMessage" xml:space="preserve">
+    <value>The screenplay Excel file is open in another application. Please close the other application and try again.</value>
+  </data>
+  <data name="Screenplay_ConfirmLoadTitle" xml:space="preserve">
+    <value>Confirm Load</value>
+  </data>
+  <data name="Screenplay_ConfirmLoadMessage" xml:space="preserve">
+    <value>Loading will overwrite modified scene files:
+{0}
+
+Do you wish to continue?</value>
+  </data>
+  <data name="ResourceTree_Run" xml:space="preserve">
+    <value>Run</value>
+  </data>
+  <data name="InspectorPanel_SelectResource" xml:space="preserve">
+    <value>Select resource in Explorer</value>
+  </data>
+</root>

@@ -1,0 +1,32 @@
+﻿<UserControl x:Class="Celbridge.Inspector.Views.InspectorPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:local="using:Celbridge.Inspector.Views"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <Grid>
+
+    <Grid.RowDefinitions>
+      <RowDefinition Height="40"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <Grid BorderBrush="{ThemeResource PanelBorderBrush}"
+          BorderThickness="0,0,0,1">
+      
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBlock Grid.Column="0"
+                 Margin="6,0,0,0"
+                 VerticalAlignment="Center"
+                 Text="{x:Bind TitleString.Value, Mode=OneWay}" />
+    </Grid>
+    
+    <local:EntityEditor x:Name="EntityEditor"
+                        Grid.Row="1"
+                        Margin="4" />
+  </Grid>
+</UserControl>
