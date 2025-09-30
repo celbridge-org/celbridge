@@ -89,6 +89,13 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         string targetFilePath = "Readme.md";
 
+        // Execute a command to open the HTML document.
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = targetFilePath;
+            command.ForceReload = false;
+        });
+
         // Execute a command to select the welcome document
         var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
         {
@@ -97,12 +104,6 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         if (selectResult.IsSuccess)
         {
-            // Execute a command to open the HTML document.
-            _commandService.Execute<IOpenDocumentCommand>(command =>
-            {
-                command.FileResource = targetFilePath;
-                command.ForceReload = false;
-            });
         }
 
         return Result.Ok();
