@@ -32,6 +32,9 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
             return Result.Fail("Failed to create new project because config is null.");
         }
 
+        // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
+        _navigationService.ClearPersistenceOfAllLoadedPages();
+
         // Close any open project.
         // This will fail if there's no project currently open, but we can just ignore that.
         await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
