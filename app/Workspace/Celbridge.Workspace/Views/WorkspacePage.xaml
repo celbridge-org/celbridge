@@ -1,9 +1,10 @@
-﻿<Page
+﻿<uiviews:PersistentPage
     x:Class="Celbridge.Workspace.Views.WorkspacePage"
     x:Name="WorkspacePageName"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Workspace.Views"
+    xmlns:uiviews="using:Celbridge.UserInterface.Views"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:vm="using:Celbridge.Workspace.ViewModels"
     NavigationCacheMode="Required"
@@ -222,4 +223,4 @@
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
   </Grid>
-</Page>
+</uiviews:PersistentPage>

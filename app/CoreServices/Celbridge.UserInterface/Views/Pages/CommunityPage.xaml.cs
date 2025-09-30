@@ -7,10 +7,17 @@ namespace Celbridge.UserInterface.Views;
 /// <summary>
 /// The very beginnings of the Community Page.
 /// </summary>
-public sealed partial class CommunityPage : Page
+public sealed partial class CommunityPage : PersistentPage
 {
     public CommunityPage()
     {
+        Persistence = PersistenceLevel.Eternal;
+
         this.InitializeComponent();
+    }
+
+    public override void PageUnloadInternal()
+    {
+
     }
 }

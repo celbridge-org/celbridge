@@ -1,4 +1,5 @@
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Views;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -80,5 +81,14 @@ public class NavigationService : INavigationService
         }
 
         return navigateResult;
+    }
+    public void ClearPersistenceOfAllLoadedPages()
+    {
+        PersistentPage.ClearPersistenceOfAllLoadedPages();
+    }
+
+    public void UnloadPersistantUnfocusedPages()
+    {
+        PersistentPage.UnloadPersistantUnfocusedPages(NavigationProvider.GetCurrentPageName());
     }
 }

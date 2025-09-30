@@ -134,6 +134,15 @@ public class Project : IDisposable, IProject
 
             // Todo: Populate this with project configuration options
             await File.WriteAllTextAsync(projectFilePath, projectTOML);
+
+            // %%% Change this to read the file from a file in the project build, and also to ensure we're not stomping an existing file.
+            string readMePath = projectPath + "\\readme.md";
+            var readMeText = $"""
+                ## Welcome to Celbridge
+                # This is your project.
+                """;
+
+            await File.WriteAllTextAsync(readMePath, readMeText);
         }
         catch (Exception ex)
         {
