@@ -10,13 +10,26 @@ public abstract class PersistentPage : Page
     static List<PersistentPage> _activePersistantPages = new List<PersistentPage>();
     bool Initialised = false;
 
+    // NOTE : The logic using this is currently very simple, but may need to be expanded upon if we start
+    //  introducing more cases to this.
+    public enum PersistenceLevel
+    {
+        Project,
+        Eternal
+    };
+
+    public PersistenceLevel Persistence { get; protected set; }
+
     public PersistentPage() // : base()
     {
         // Register ourselves with navigation handling. - Looks like we may not have to even do this!!
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
         Loaded += WorkspacePage_Loaded;
         base.Unloaded += WorkspacePage_Unloaded;
+
         NavigationCacheMode = NavigationCacheMode.Required;
+
+        Persistence = PersistenceLevel.Project;
     }
 
     public abstract void PageUnloadInternal();
@@ -40,7 +53,10 @@ public abstract class PersistentPage : Page
     {
         foreach (PersistentPage page in _activePersistantPages)
         {
-            page.SetWorkspacePagePersistence(false);
+            if (page.Persistence == PersistenceLevel.Project)
+            {
+                page.SetWorkspacePagePersistence(false);
+            }
         }
     }
 
@@ -76,7 +92,8 @@ public abstract class PersistentPage : Page
         List<PersistentPage> UnloadPages = new();
         foreach (PersistentPage page in _activePersistantPages)
         {
-            if (page.Name != focusedPageName)
+            if (page.Name != focusedPageName
+                && page.Persistence == PersistenceLevel.Project)
             {
                 UnloadPages.Add(page);
             }
