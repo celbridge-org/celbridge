@@ -87,19 +87,23 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         // %%% Sorting out opening Welcome Markdown document on opening of project.
 
-        string targetFilePath = "Welcome.md";
+        string targetFilePath = "Readme.md";
 
-        // Get the resource key from the entity file path %%% -> Kept for reference.
-//        var relativeResourcePath = Path.GetRelativePath(baseFilePath, targetFilePath);
-  //      relativeResourcePath = Path.ChangeExtension(relativeResourcePath, null);
- //       var resourceKey = new ResourceKey(relativeResourcePath);
-
-        // Execute a command to open the HTML document.
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        // Execute a command to select the welcome document
+        var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
         {
-            command.FileResource = targetFilePath;
-            command.ForceReload = false;
+            command.FileResource = new ResourceKey(targetFilePath);
         });
+
+        if (selectResult.IsSuccess)
+        {
+            // Execute a command to open the HTML document.
+            _commandService.Execute<IOpenDocumentCommand>(command =>
+            {
+                command.FileResource = targetFilePath;
+                command.ForceReload = false;
+            });
+        }
 
         return Result.Ok();
     }
