@@ -21,3 +21,14 @@ public record WorkspaceWillPopulatePanelsMessage();
 /// Sent when the loaded workspace has finished unloading.
 /// </summary>
 public record WorkspaceUnloadedMessage();
+
+/// <summary>
+/// Sent when the workspace page persistence mode is changed.
+/// </summary>
+public record SetWorkspacePagePersistenceMessage(bool isPersistant);
+
+/// <summary>
+/// Sent when the workspace page is unloaded.
+/// </summary>
+public record UnloadWorkspacePageMessage();
+
