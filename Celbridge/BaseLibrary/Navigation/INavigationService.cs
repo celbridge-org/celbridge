@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Navigation;
+namespace Celbridge.Navigation;
 
 /// <summary>
 /// A service that supports page UI navigation.
@@ -31,4 +31,15 @@ public interface INavigationService
     /// Navigates the top-level UI to display the specified page, passing an object parameter.
     /// </summary>
     Result NavigateToPage(string pageName, object parameter);
+
+    /// <summary>
+    /// Clears the persistence settings of all loaded pages. Used before unloading a project to ensure all pages can be flushed.
+    /// </summary>
+    public void ClearPersistenceOfAllLoadedPages();
+
+    /// <summary>
+    /// Performs a forced unload of all the persistant pages which are out of focus. 
+    ///  The in focus page will be unloaded normally by the navigation.
+    /// </summary>
+    public void UnloadPersistantUnfocusedPages();
 }
