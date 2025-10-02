@@ -36,7 +36,7 @@ def apply_formatting(ws, df: pd.DataFrame) -> None:
         col_letter = get_column_letter(col_idx)
 
         # Number format (skip header row = 1)
-        if col_name in numeric_cols:
+        if "(mm)" in col_name:
             for row in ws.iter_rows(min_row=2, max_row=ws.max_row,
                                     min_col=col_idx, max_col=col_idx):
                 row[0].number_format = "0.000"
