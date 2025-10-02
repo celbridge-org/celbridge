@@ -1,6 +1,6 @@
 # What is Celbridge?
 
-Celbridge is an open source, user-friendly data processing tool. It provides a bridge between [Python](https://www.python.org/) and your project files, making complex tasks with data easy. 
+Celbridge is an open source tool that provides a bridge between spreadsheets and [Python](https://www.python.org/) scripting. Edit spreadsheets and write Python scripts side by side in a unified environment, making it easy to enter, analyze and automate your data. 
 
 **The goals of Celbridge are:**
 
