@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Workspace;
+using Celbridge.Documents;
 
 namespace Celbridge.Explorer.Commands;
 
@@ -187,6 +188,9 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         await Task.CompletedTask;
 
+        // Open our document in the editor.
+        OpenResourceDocument(DestResource);
+
         return Result.Ok();
     }
 
@@ -236,7 +240,62 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFile(string sourcePath, ResourceKey destResource)
+    private static void OpenResourceDocument(ResourceKey resourceKey)
+    {
+        // %%% Need to wait for previous command to complete.
+        //  NOTE : Been thinking about this a lot. I was wondering whether the AddResource command should automatically open the document, but I was thinking that in some cases
+        //          we may have automations that add a great number of files to the project, and the user will probably not be amused at having to close all the millions of opened documents afterwards.
+        //          We probably need to talk about this a little to get a decision on the best positioning for this.
+
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
+        }
+
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        //
+        //  Open our new file.
+        //
+
+        var filePath = resourceRegistry.GetResourcePath(resourceKey);
+        if (!string.IsNullOrEmpty(filePath) &&
+            File.Exists(filePath))
+        {
+            try
+            {
+                // Ensure the file is accessible.
+                //  This would be done better using DocumentsService.CanAccessFile but DocumentsService isn't created until
+                //  the explorer starts and we may be reaching here before then.
+                var fileInfo = new FileInfo(filePath);
+                using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                // Execute a command to open the HTML document.
+                commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = resourceKey;
+                    command.ForceReload = false;
+                });
+
+                // Execute a command to select the welcome document
+                commandService.Execute<ISelectDocumentCommand>(command =>
+                {
+                    command.FileResource = new ResourceKey(resourceKey);
+                });
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    public static async void AddFile(string sourcePath, ResourceKey destResource)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
@@ -251,12 +310,14 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IAddResourceCommand>(command =>
+        await commandService.ExecuteAsync<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.SourcePath = sourcePath;
             command.DestResource = resolvedDestResource;
         });
+
+        OpenResourceDocument(resolvedDestResource);
     }
 
     public static void AddFile(ResourceKey destResource)
