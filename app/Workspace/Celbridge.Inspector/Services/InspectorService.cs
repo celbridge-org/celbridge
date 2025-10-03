@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Forms;
@@ -67,7 +68,7 @@ public class InspectorService : IInspectorService, IDisposable
         _entityAnnotationCache = _serviceProvider.GetRequiredService<EntityAnnotationCache>();
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
-        _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
         _messengerService.Register<SelectedComponentChangedMessage>(this, OnSelectedComponentChangedMessage);
 
         InspectorFactory = _serviceProvider.GetRequiredService<IInspectorFactory>();
@@ -120,9 +121,9 @@ public class InspectorService : IInspectorService, IDisposable
         _inspectorPanel = _serviceProvider.GetRequiredService<IInspectorPanel>();
     }
 
-    private void OnSelectedResourceChangedMessage(object recipient, SelectedResourceChangedMessage message)
+    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
     {
-        InspectedResource = message.Resource;
+        InspectedResource = message.DocumentResource;
         InspectedComponentIndex = -1;
 
         var changedMessage = new InspectedComponentChangedMessage(new ComponentKey(InspectedResource, InspectedComponentIndex));
