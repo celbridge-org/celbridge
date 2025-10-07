@@ -52,6 +52,11 @@ public class FileTypeHelper
             return DocumentViewType.TextDocument;
         }
 
+        if (fileExtension == ExplorerConstants.AppSettingsExtension)
+        {
+            return DocumentViewType.AppSettings;
+        }
+
         return DocumentViewType.UnsupportedFormat;
     }
 

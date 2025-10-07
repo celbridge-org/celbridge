@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Settings;
 
@@ -71,4 +72,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Resets the settings to their default values.
     /// </summary>
     void Reset();
+
+    /// <summary>
+    /// Gets or Sets the Application User Interface Theme value.
+    /// </summary>
+    UserInterfaceTheme Theme { get; set; }
 }
