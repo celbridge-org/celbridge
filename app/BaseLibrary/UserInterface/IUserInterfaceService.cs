@@ -24,7 +24,7 @@ public interface IUserInterfaceService
     /// <summary>
     /// Color theme of the user interface
     /// </summary>
-    UserInterfaceTheme UserInterfaceTheme { get; }
+    UserInterfaceTheme UserInterfaceTheme { get; set; }
 
     /// <summary>
     /// Call to register the Titlebar of the application with the UserInterface service.
@@ -35,4 +35,9 @@ public interface IUserInterfaceService
     /// Call to set the current project title when a new project is made or loaded.
     /// </summary>
     void SetCurrentProjectTitle( string currentProjectTitle );
+
+    /// <summary>
+    /// Applies the currently selected theme to the UserInterface.
+    /// </summary>
+    void ApplyCurrentTheme();
 }

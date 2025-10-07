@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,11 +17,11 @@ public partial class InspectorPanelViewModel : ObservableObject
 
     public InspectorPanelViewModel(IMessengerService messengerService)
     {
-        messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+        messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
     }
 
-    private void OnSelectedResourceChangedMessage(object recipient, SelectedResourceChangedMessage message)
+    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
     {
-        SelectedResource = message.Resource;
+        SelectedResource = message.DocumentResource;
     }
 }
