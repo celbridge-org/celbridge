@@ -137,19 +137,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case SettingsTag:
-//                _navigationService.NavigateToPage(SettingsPageName);
-                _navigationService.NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
-                }
-
-                // Execute a command to open the HTML document.
-                _commandService.Execute<IOpenDocumentCommand>(command =>
-                {
-                    command.FileResource = "ApplicationSettings.>appsettings";
-                    command.ForceReload = false;
-                });
+                _navigationService.NavigateToPage(SettingsPageName);
                 break;
 
             case ExplorerTag:
