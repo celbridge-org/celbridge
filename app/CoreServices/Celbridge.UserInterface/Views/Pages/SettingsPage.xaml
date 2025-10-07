@@ -27,27 +27,27 @@
       </Grid.ColumnDefinitions>
 
       <StackPanel Grid.Row="1"
-                      Grid.ColumnSpan="4"
-                      Grid.Column="1">
+                  Grid.ColumnSpan="4"
+                  Grid.Column="1">
         <TextBlock FontSize="36"
-                       VerticalAlignment="Center"
-                        FontWeight="Bold">
-              Settings
+                   Text="{x:Bind TitleString}"
+                   VerticalAlignment="Center"
+                   FontWeight="Bold">
         </TextBlock>
         <!-- I Did want to place a Separator here but can't seem to find them on Uno! -->
       </StackPanel>
 
       <TextBlock Grid.Row="3"
-                     VerticalAlignment="Center"
-                     Grid.Column="1">
-            Application Theme
+                 Text="{x:Bind ApplicationThemeString}"
+                 VerticalAlignment="Center"
+                 Grid.Column="1">
       </TextBlock>
 
       <ComboBox Grid.Row="3"
-                    Grid.Column="3"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
-                    x:Name="ApplicationThemeComboBox"/>
+                Grid.Column="3"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                x:Name="ApplicationThemeComboBox"/>
 
     </Grid>
   </Grid>
