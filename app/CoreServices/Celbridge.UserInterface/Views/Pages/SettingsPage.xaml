@@ -1,0 +1,55 @@
+﻿<local:PersistentPage
+    x:Class="Celbridge.UserInterface.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.UserInterface.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    x:Name="SettingsPageName"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+  <Grid>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="60"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="60"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="100"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="100"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <StackPanel Grid.Row="1"
+                  Grid.ColumnSpan="4"
+                  Grid.Column="1">
+        <TextBlock FontSize="36"
+                   Text="{x:Bind TitleString}"
+                   VerticalAlignment="Center"
+                   FontWeight="Bold">
+        </TextBlock>
+        <!-- I Did want to place a Separator here but can't seem to find them on Uno! -->
+      </StackPanel>
+
+      <TextBlock Grid.Row="3"
+                 Text="{x:Bind ApplicationThemeString}"
+                 VerticalAlignment="Center"
+                 Grid.Column="1">
+      </TextBlock>
+
+      <ComboBox Grid.Row="3"
+                Grid.Column="3"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                x:Name="ApplicationThemeComboBox"/>
+
+    </Grid>
+  </Grid>
+</local:PersistentPage>
+

@@ -1,11 +1,12 @@
-﻿namespace Celbridge.Settings;
+namespace Celbridge.Settings;
 
 /// <summary>
 /// Supported application color themes.
-/// Matches the enum values defined in Microsoft.UI.Xaml.ApplicationTheme.
+/// Enum of values used for the Applications selection of themes, whether to use the System selection, or force Light or Dark theme.
 /// </summary>
 public enum ApplicationColorTheme
 {
+    System,
     Light,
     Dark
 };
