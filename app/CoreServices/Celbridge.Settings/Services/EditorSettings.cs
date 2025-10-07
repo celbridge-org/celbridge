@@ -1,3 +1,5 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
@@ -76,5 +78,11 @@ public class EditorSettings : ObservableSettings, IEditorSettings
     {
         get => GetValue<string>(nameof(SheetsAPIKey), string.Empty);
         set => SetValue(nameof(SheetsAPIKey), value);
+    }
+
+    public ApplicationColorTheme Theme 
+    {
+        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
+        set => SetValue(nameof(Theme), value);
     }
 }

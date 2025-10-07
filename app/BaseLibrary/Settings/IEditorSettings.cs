@@ -71,4 +71,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Resets the settings to their default values.
     /// </summary>
     void Reset();
+
+    /// <summary>
+    /// Gets or Sets the Application User Interface Theme value.
+    /// </summary>
+    ApplicationColorTheme Theme { get; set; }
 }
