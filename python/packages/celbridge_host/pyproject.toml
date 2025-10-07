@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Celbridge", email = "celbridge.org@gmail.com"}
+    {name = "Celbridge.org", email = "contact@celbridge.org"}
 ]
 dependencies = []
 

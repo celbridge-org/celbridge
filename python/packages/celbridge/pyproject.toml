@@ -10,12 +10,17 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Celbridge", email = "celbridge.org@gmail.com"}
+    {name = "Celbridge.org", email = "contact@celbridge.org"}
 ]
 dependencies = [
     "typer>=0.12,<1",
     "rich>=13,<14",
 ]
+
+[project.urls]
+Homepage = "https://celbridge.org"
+Repository = "https://github.com/celbridge-org/celbridge"
+Issues = "https://github.com/celbridge-org/celbridge/issues"
 
 [project.optional-dependencies]
 dev = [
