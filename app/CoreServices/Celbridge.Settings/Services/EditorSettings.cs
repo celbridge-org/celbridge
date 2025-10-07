@@ -80,9 +80,9 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(SheetsAPIKey), value);
     }
 
-    public UserInterfaceTheme Theme 
+    public ApplicationColorTheme Theme 
     {
-        get => GetValue<UserInterfaceTheme>(nameof(UserInterfaceTheme), UserInterfaceTheme.Light);
+        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
         set => SetValue(nameof(Theme), value);
     }
 }
