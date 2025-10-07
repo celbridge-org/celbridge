@@ -23,16 +23,10 @@ celbridge version
 pytest packages/ -v
 ```
 
-## Usage
+## Building for .NET Integration
+
+The `build.py` script builds the python packages as wheel files and copies them to the Celbridge.Python Assets folder:
 
 ```bash
-# CLI
-celbridge version --format json
-
-# Python host (programmatic access)
-python -c "from celbridge_host import cel; print(cel.version(format='json'))"
+python build.py
 ```
-
-## License
-
-MIT
