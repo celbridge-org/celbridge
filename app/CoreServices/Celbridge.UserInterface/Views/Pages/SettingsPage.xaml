@@ -32,7 +32,7 @@
         <TextBlock FontSize="36"
                        VerticalAlignment="Center"
                         FontWeight="Bold">
-              Celbridge Application Settings Page
+              Settings
         </TextBlock>
         <!-- I Did want to place a Separator here but can't seem to find them on Uno! -->
       </StackPanel>
