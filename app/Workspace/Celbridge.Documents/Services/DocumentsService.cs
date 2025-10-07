@@ -470,10 +470,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             case DocumentViewType.Spreadsheet:
                 documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
                 break;
-
-            case DocumentViewType.AppSettings:
-                documentView = _serviceProvider.GetRequiredService<AppSettingsDocumentView>();
-                break;
 #else
             case DocumentViewType.WebAppDocument:
                 documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();

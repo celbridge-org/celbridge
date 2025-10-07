@@ -28,7 +28,6 @@ public static class ServiceConfiguration
         services.AddTransient<EditorPreviewView>();
         services.AddTransient<TextEditorDocumentView>();
         services.AddTransient<SpreadsheetDocumentView>();
-        services.AddTransient<AppSettingsDocumentView>();
 
         //
         // Register view models
