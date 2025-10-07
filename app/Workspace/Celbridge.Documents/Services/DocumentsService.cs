@@ -6,7 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 using System.Text.RegularExpressions;
-
 using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Services;
