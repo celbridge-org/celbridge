@@ -14,7 +14,7 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public sealed partial class SettingsPage : PersistentPage
 {
-    Dictionary<UserInterfaceTheme, string> ThemeToNameLookupDictionary = new();
+    Dictionary<ApplicationColorTheme, string> ThemeToNameLookupDictionary = new();
 
     private readonly IEditorSettings _editorSettings;
     private readonly IStringLocalizer _stringLocalizer;
@@ -27,10 +27,10 @@ public sealed partial class SettingsPage : PersistentPage
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
         // Initialise our Theme lookup Dictionary.
-        var ThemeValues = Enum.GetValues(typeof(UserInterfaceTheme));
-        foreach (UserInterfaceTheme themeEntry in ThemeValues)
+        var ThemeValues = Enum.GetValues(typeof(ApplicationColorTheme));
+        foreach (ApplicationColorTheme themeEntry in ThemeValues)
         {
-            string name = $"Theme_" + Enum.GetName(typeof(UserInterfaceTheme), themeEntry);
+            string name = $"Theme_" + Enum.GetName(typeof(ApplicationColorTheme), themeEntry);
             var localizedName = _stringLocalizer.GetString(name);
             if (localizedName == null)
             {
@@ -63,9 +63,37 @@ public sealed partial class SettingsPage : PersistentPage
         ComboBox? comboBox = sender as ComboBox;
         if (comboBox != null && comboBox.SelectedValue != null)
         {
-            UserInterfaceTheme theme = (UserInterfaceTheme)comboBox.SelectedValue;
-            _userInterfaceService.UserInterfaceTheme = theme;
+            ApplicationColorTheme theme = (ApplicationColorTheme)comboBox.SelectedValue;
             _editorSettings.Theme = theme;
+            switch (theme)
+            {
+                case ApplicationColorTheme.System:
+                    switch (SystemThemeHelper.GetCurrentOsTheme())
+                    {
+                        case ApplicationTheme.Dark:
+                            _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Dark;
+                            break;
+
+                        case ApplicationTheme.Light:
+                            _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Light;
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                case ApplicationColorTheme.Dark:
+                    _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Dark;
+                    break;
+
+                case ApplicationColorTheme.Light:
+                    _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Light;
+                    break;
+
+                default:
+                    break;
+            }
         }
     }
 
@@ -74,9 +102,9 @@ public sealed partial class SettingsPage : PersistentPage
         // Wasn't able to set the selection directly with the values using SelectedItem due to instancing complications making
         //  it simpler to do it this way, unfortunately.
         int index = 0;
-        foreach (KeyValuePair<UserInterfaceTheme, string> themeEntry in ThemeToNameLookupDictionary)
+        foreach (KeyValuePair<ApplicationColorTheme, string> themeEntry in ThemeToNameLookupDictionary)
         {
-            if (themeEntry.Key == _userInterfaceService.UserInterfaceTheme)
+            if (themeEntry.Key == _editorSettings.Theme)
             {
                 ApplicationThemeComboBox.SelectedIndex = index;
                 return;
