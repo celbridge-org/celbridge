@@ -486,4 +486,10 @@ Do you wish to continue?</value>
   <data name="InspectorPanel_SelectResource" xml:space="preserve">
     <value>Select resource in Explorer</value>
   </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
 </root>

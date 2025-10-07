@@ -29,4 +29,11 @@ public static class ExplorerConstants
     /// File extension for Excel file resources.
     /// </summary>
     public const string ExcelExtension = ".xlsx";
+
+    /// <summary>
+    /// File extension for our virtual Application Settings resources.
+    ///  NOTE : No real files of this type will ever be created. This is intended purely
+    ///   to allow our custom Settings files editor to live within the document framework.
+    /// </summary>
+    public const string AppSettingsExtension = ".>appsettings";
 }
