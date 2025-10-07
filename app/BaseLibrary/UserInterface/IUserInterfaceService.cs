@@ -35,4 +35,9 @@ public interface IUserInterfaceService
     /// Call to set the current project title when a new project is made or loaded.
     /// </summary>
     void SetCurrentProjectTitle( string currentProjectTitle );
+
+    /// <summary>
+    /// Applies the currently selected theme to the UserInterface.
+    /// </summary>
+    void ApplyCurrentTheme();
 }

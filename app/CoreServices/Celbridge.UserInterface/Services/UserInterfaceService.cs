@@ -1,8 +1,12 @@
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Celbridge.Settings;
+
 namespace Celbridge.UserInterface.Services;
 
 public class UserInterfaceService : IUserInterfaceService
 {
     private IMessengerService _messengerService;
+    private IEditorSettings _editorSettings;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -13,9 +17,11 @@ public class UserInterfaceService : IUserInterfaceService
     public object TitleBar => _titleBar!;
 
     public UserInterfaceService(
-        IMessengerService messengerService)
+        IMessengerService messengerService, 
+        IEditorSettings editorSettings)
     {
         _messengerService = messengerService;
+        _editorSettings = editorSettings;
     }
 
     public void Initialize(Window mainWindow, XamlRoot xamlRoot)
@@ -26,6 +32,8 @@ public class UserInterfaceService : IUserInterfaceService
 
         _mainWindow = mainWindow;
         _xamlRoot = xamlRoot;
+
+        ApplyCurrentTheme();
 
 #if WINDOWS
         // Broadcast a message whenever the main window acquires or loses focus (Windows only).
@@ -79,5 +87,39 @@ public class UserInterfaceService : IUserInterfaceService
     {
         Guard.IsNotNull(_titleBar);
         _titleBar.SetProjectTitle(currentProjectTitle);
+    }
+
+    public void ApplyCurrentTheme()
+    {
+        var theme = _editorSettings.Theme;
+        switch (theme)
+        {
+            case ApplicationColorTheme.System:
+                switch (SystemThemeHelper.GetCurrentOsTheme())
+                {
+                    case ApplicationTheme.Dark:
+                        UserInterfaceTheme = UserInterfaceTheme.Dark;
+                        break;
+
+                    case ApplicationTheme.Light:
+                        UserInterfaceTheme = UserInterfaceTheme.Light;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+
+            case ApplicationColorTheme.Dark:
+                UserInterfaceTheme = UserInterfaceTheme.Dark;
+                break;
+
+            case ApplicationColorTheme.Light:
+                UserInterfaceTheme = UserInterfaceTheme.Light;
+                break;
+
+            default:
+                break;
+        }
     }
 }
