@@ -31,11 +31,5 @@ public enum DocumentViewType
     /// <summary>
     /// An Excel spreadsheet document with the .xlsx extension
     /// </summary>
-    Spreadsheet,
-
-    /// <summary>
-    /// Our virtual Application Settings document.
-    ///  NOTE : Added only for compatibility with document framework.
-    /// </summary>
-    AppSettings,
+    Spreadsheet
 }
