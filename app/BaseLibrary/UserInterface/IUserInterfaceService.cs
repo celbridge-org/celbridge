@@ -24,7 +24,7 @@ public interface IUserInterfaceService
     /// <summary>
     /// Color theme of the user interface
     /// </summary>
-    UserInterfaceTheme UserInterfaceTheme { get; }
+    UserInterfaceTheme UserInterfaceTheme { get; set; }
 
     /// <summary>
     /// Call to register the Titlebar of the application with the UserInterface service.

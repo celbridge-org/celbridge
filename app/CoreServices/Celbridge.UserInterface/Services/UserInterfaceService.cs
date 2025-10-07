@@ -40,6 +40,11 @@ public class UserInterfaceService : IUserInterfaceService
             var rootTheme = SystemThemeHelper.GetRootTheme(_xamlRoot);
             return rootTheme == Microsoft.UI.Xaml.ApplicationTheme.Light ? UserInterfaceTheme.Light : UserInterfaceTheme.Dark;
         }
+
+        set 
+        {
+            SystemThemeHelper.SetRootTheme(_xamlRoot, value == UserInterfaceTheme.Dark);
+        }
     }
 
 #if WINDOWS
