@@ -68,13 +68,6 @@ public class PythonService : IPythonService, IDisposable
             // Get the dir that uv uses to cached python versions & packages
             var uvCacheDir = Path.Combine(pythonFolder, "uv_cache");
 
-            // Get the celbridge module path
-            var celbridgeModuleDir = Path.Combine(pythonFolder, "celbridge");
-            if (!Directory.Exists(celbridgeModuleDir))
-            {
-                return Result.Fail($"Celbridge module not found at '{celbridgeModuleDir}'");
-            }
-
             // Ensure the ipython storage dir exists
             var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, "ipython");
             Directory.CreateDirectory(ipythonDir);
@@ -86,13 +79,43 @@ public class PythonService : IPythonService, IDisposable
             var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
             Environment.SetEnvironmentVariable("CELBRIDGE_VERSION", $"{celbridgeVersion}");
 
-            // The celbridge and ipython packages are always included
+            // Get the path to the celbridge wheel file
+            // This is the CLI application that implements the core functionality of Celbridge.
+            var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
+            if (findCelbridgeWheelResult.IsFailure)
+            {
+                return findCelbridgeWheelResult;
+            }
+            var celbridgeWheelPath = findCelbridgeWheelResult.Value;
+
+            // Set environment variables for celbridge_host to use uv with dependency isolation
+            Environment.SetEnvironmentVariable("CELBRIDGE_UV_PATH", uvExePath);
+            Environment.SetEnvironmentVariable("CELBRIDGE_UV_CACHE_DIR", uvCacheDir);
+            Environment.SetEnvironmentVariable("CELBRIDGE_PACKAGE_PATH", celbridgeWheelPath);
+
+            // Get the path to the celbridge_host wheel file
+            var findHostWheelResult = FindWheelFile(pythonFolder, "celbridge_host");
+            if (findHostWheelResult.IsFailure)
+            {
+                return findHostWheelResult;
+            }
+            var hostWheelPath = findHostWheelResult.Value;
+
+            // Get the celbridge module path
+            var celbridgeModuleDir = Path.Combine(pythonFolder, "celbridge");
+            if (!Directory.Exists(celbridgeModuleDir))
+            {
+                return Result.Fail($"Celbridge module not found at '{celbridgeModuleDir}'");
+            }
+
+            // The celbridge_host and ipython packages are always included
             var packageArgs = new List<string>()
             {
                 "--with", celbridgeModuleDir,
+                "--with", hostWheelPath,
                 "--with", "ipython"
             };
-
+            
             // Add any additional packages specified in the project config
             var pythonPackages = pythonConfig.Packages;
             if (pythonPackages is not null)
@@ -133,58 +156,65 @@ public class PythonService : IPythonService, IDisposable
         }
     }
 
-    private static string BuildCommandLine(string exePath, IEnumerable<string> args)
+    /// <summary>
+    /// Finds the latest version of a wheel file for the specified package in the given folder.
+    /// </summary>
+    private static Result<string> FindWheelFile(string folderPath, string packageName)
     {
-        var parts = new List<string> { QuoteArg(exePath) };
-        parts.AddRange(args.Select(QuoteArg));
-        return string.Join(" ", parts);
-    }
-
-    private static string QuoteArg(string arg)
-    {
-        if (string.IsNullOrEmpty(arg)) return OperatingSystem.IsWindows() ? "\"\"" : "''";
-
-        if (OperatingSystem.IsWindows())
+        try
         {
-            // Needs quoting if it contains whitespace or quotes
-            bool needQuotes = arg.Any(ch => ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '"');
-            if (!needQuotes) return arg;
+            var searchPattern = $"{packageName}-*.whl";
+            var wheelFiles = Directory.GetFiles(folderPath, searchPattern, SearchOption.TopDirectoryOnly);
 
-            var sb = new System.Text.StringBuilder();
-            sb.Append('"');
-            int backslashes = 0;
-            foreach (char c in arg)
+            if (wheelFiles.Length == 0)
             {
-                if (c == '\\')
-                {
-                    backslashes++;
-                }
-                else if (c == '"')
-                {
-                    // Escape all backslashes + the quote
-                    sb.Append('\\', backslashes * 2 + 1);
-                    sb.Append('"');
-                    backslashes = 0;
-                }
-                else
-                {
-                    if (backslashes > 0)
-                    {
-                        sb.Append('\\', backslashes);
-                        backslashes = 0;
-                    }
-                    sb.Append(c);
-                }
+                return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
             }
-            // Escape trailing backslashes
-            if (backslashes > 0) sb.Append('\\', backslashes * 2);
-            sb.Append('"');
-            return sb.ToString();
+
+            // Parse version numbers and find the latest
+            var wheelVersions = wheelFiles
+                .Select(filePath =>
+                {
+                    var fileName = Path.GetFileName(filePath);
+                    Version? version = null;
+
+                    // Extract version from wheel filename (format: {packageName}-1.2.3-py3-none-any.whl)
+                    try
+                    {
+                        var parts = fileName.Split('-');
+                        if (parts.Length >= 2 && parts[0] == packageName)
+                        {
+                            var versionString = parts[1];
+                            Version.TryParse(versionString, out version);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore parsing errors
+                    }
+
+                    return new
+                    {
+                        Path = filePath,
+                        FileName = fileName,
+                        Version = version
+                    };
+                })
+                .Where(x => x.Version != null)
+                .OrderByDescending(x => x.Version)
+                .ToList();
+
+            if (wheelVersions.Count == 0)
+            {
+                return Result<string>.Fail($"No valid versioned wheel files found for package '{packageName}'");
+            }
+
+            return Result<string>.Ok(wheelVersions.First().Path);
         }
-        else
+        catch (Exception ex)
         {
-            // POSIX: single-quote, escape embedded single quotes as: ' foo'\'bar '
-            return "'" + arg.Replace("'", "'\"'\"'") + "'";
+            return Result<string>.Fail($"Error searching for wheel files for package '{packageName}'")
+                .WithException(ex);
         }
     }
 
