@@ -22,7 +22,6 @@ public static class ServiceConfiguration
         Explorer.ServiceConfiguration.ConfigureServices(services);
         GenerativeAI.ServiceConfiguration.ConfigureServices(services);
         Inspector.ServiceConfiguration.ConfigureServices(services);
-        Scripting.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
         Status.ServiceConfiguration.ConfigureServices(services);
 
