@@ -65,35 +65,7 @@ public sealed partial class SettingsPage : PersistentPage
         {
             ApplicationColorTheme theme = (ApplicationColorTheme)comboBox.SelectedValue;
             _editorSettings.Theme = theme;
-            switch (theme)
-            {
-                case ApplicationColorTheme.System:
-                    switch (SystemThemeHelper.GetCurrentOsTheme())
-                    {
-                        case ApplicationTheme.Dark:
-                            _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Dark;
-                            break;
-
-                        case ApplicationTheme.Light:
-                            _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Light;
-                            break;
-
-                        default:
-                            break;
-                    }
-                    break;
-
-                case ApplicationColorTheme.Dark:
-                    _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Dark;
-                    break;
-
-                case ApplicationColorTheme.Light:
-                    _userInterfaceService.UserInterfaceTheme = UserInterfaceTheme.Light;
-                    break;
-
-                default:
-                    break;
-            }
+            _userInterfaceService.ApplyCurrentTheme();
         }
     }
 

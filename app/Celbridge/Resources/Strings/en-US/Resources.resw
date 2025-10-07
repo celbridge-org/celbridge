@@ -493,6 +493,6 @@ Do you wish to continue?</value>
     <value>Dark</value>
   </data>
   <data name="Theme_System" xml:space="preserve">
-    <value>As System</value>
+    <value>System Default</value>
   </data>
 </root>
