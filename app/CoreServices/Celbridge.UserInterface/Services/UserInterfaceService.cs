@@ -51,7 +51,20 @@ public class UserInterfaceService : IUserInterfaceService
 
         set 
         {
-            SystemThemeHelper.SetRootTheme(_xamlRoot, value == UserInterfaceTheme.Dark);
+            switch (value)
+            {
+                case UserInterfaceTheme.Dark:
+                    SystemThemeHelper.SetApplicationTheme(_xamlRoot, ElementTheme.Dark);
+                    break;
+
+                case UserInterfaceTheme.Light:
+                    SystemThemeHelper.SetApplicationTheme(_xamlRoot, ElementTheme.Light);
+                    break;
+
+                default:
+                    SystemThemeHelper.SetApplicationTheme(_xamlRoot, ElementTheme.Default);
+                    break;
+            }
         }
     }
 
