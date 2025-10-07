@@ -6,7 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 using System.Text.RegularExpressions;
-using Windows.ApplicationModel.Background;
 using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Services;
@@ -214,35 +213,20 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public bool IsFileSystemDocument(ResourceKey resourceKey)
-    {
-        var documentViewType = GetDocumentViewType(resourceKey);
-        switch (documentViewType)
-        {
-            case DocumentViewType.AppSettings:
-                return false;
-            default: 
-                return true;
-        }
-    }
-
     public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
-        if (IsFileSystemDocument(fileResource))
-        { 
-            if (string.IsNullOrEmpty(filePath) ||
-                !File.Exists(filePath))
-            {
-                return Result.Fail($"File path does not exist: '{filePath}'");
-            }
+        if (string.IsNullOrEmpty(filePath) ||
+            !File.Exists(filePath))
+        {
+            return Result.Fail($"File path does not exist: '{filePath}'");
+        }
 
-            if (!CanAccessFile(filePath))
-            {
-                return Result.Fail($"File exists but cannot be opened: '{filePath}'");
-            }
+        if (!CanAccessFile(filePath))
+        {
+            return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
         var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload);
