@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.Services;
@@ -134,5 +133,9 @@ public class UserInterfaceService : IUserInterfaceService
             default:
                 break;
         }
+
+        // Notify all components that the theme has changed
+        var message = new ThemeChangedMessage(UserInterfaceTheme);
+        _messengerService.Send(message);
     }
 }
