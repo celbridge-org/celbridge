@@ -2,6 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Console.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.UserInterface;
+using Celbridge.Messaging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 using System.Runtime.InteropServices;
@@ -12,10 +14,13 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 {
     private ILogger<ConsolePanel> _logger;
     private ICommandService _commandService;
+    private IUserInterfaceService _userInterfaceService;
+    private IMessengerService _messengerService;
 
     public ConsolePanelViewModel ViewModel { get; }
 
     private ITerminal? _terminal;
+    private UserInterfaceTheme _currentTheme;
 
     public ConsolePanel()
     {
@@ -23,7 +28,51 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
         _logger = ServiceLocator.AcquireService<ILogger<ConsolePanel>>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
+
+        // Monitor theme changes via messenger
+        _currentTheme = _userInterfaceService.UserInterfaceTheme;
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
+
+        this.Loaded += ConsolePanel_Loaded;
+    }
+
+    private void ConsolePanel_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Sync theme when control becomes visible again in case it changed while invisible
+        var currentTheme = _userInterfaceService.UserInterfaceTheme;
+        if (_currentTheme != currentTheme)
+        {
+            _currentTheme = currentTheme;
+            SendThemeToTerminal();
+        }
+    }
+
+    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        if (_currentTheme != message.Theme)
+        {
+            _currentTheme = message.Theme;
+            SendThemeToTerminal();
+        }
+    }
+
+    private void SendThemeToTerminal()
+    {
+        if (TerminalWebView?.CoreWebView2 != null)
+        {
+            var themeMessage = $"theme_change,{(_currentTheme == UserInterfaceTheme.Dark ? "dark" : "light")}";
+            try
+            {
+                TerminalWebView.CoreWebView2.PostWebMessageAsString(themeMessage);
+            }
+            catch (COMException ex)
+            {
+                _logger.LogWarning(ex, "Failed to send theme change message to terminal");
+            }
+        }
     }
 
     public async Task<Result> ExecuteCommand(string command, bool logCommand)
@@ -67,6 +116,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             return Result.Fail($"Failed to navigate to terminal HTML page.");
         }
 
+        // Send initial theme to terminal after navigation completes
+        SendThemeToTerminal();
 
         // Clicking weblinks in the terminal triggers a navigation event.
         // We intercept those navigation events here and instead open the URI in the system browser.

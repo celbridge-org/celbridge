@@ -36,8 +36,8 @@
         const darkTheme = window.VSCodeTerminalThemes.dark;
         const lightTheme = window.VSCodeTerminalThemes.light;
 
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialTheme = prefersDark ? darkTheme : lightTheme;
+        // Default to dark theme, will be updated by host
+        const initialTheme = darkTheme;
 
         const term = new Terminal({
             theme: initialTheme,
@@ -74,21 +74,12 @@
 
         term.open(document.getElementById('terminal'));
 
-        // Update xterm.js color scheme when the system theme changes
-        const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-        if (mq) {
-            function applyThemeForMatch() {
-                try {
-                    term.options.theme = mq.matches ? darkTheme : lightTheme;
-                } catch (e) {
-                    // ignore if term.option isn't available yet
-                }
-            }
-            applyThemeForMatch();
-            if (mq.addEventListener) {
-                mq.addEventListener('change', applyThemeForMatch);
-            } else if (mq.addListener) {
-                mq.addListener(applyThemeForMatch);
+        // Function to apply theme based on host application
+        function applyTheme(isDark) {
+            try {
+                term.options.theme = isDark ? darkTheme : lightTheme;
+            } catch (e) {
+                // ignore if term.options isn't available yet
             }
         }
 
@@ -116,7 +107,7 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
-            // Copy: if there’s a selection, ctl-c copies it to the clipboard
+            // Copy: if there's a selection, ctl-c copies it to the clipboard
             if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
                 if (term.hasSelection()) {
                     navigator.clipboard.writeText(term.getSelection());
@@ -150,6 +141,14 @@
         window.chrome.webview.addEventListener('message', event => {
             const data = event.data;
             if (typeof data === "string") {
+                // Handle theme change messages from host
+                if (data.startsWith("theme_change,")) {
+                    const themeName = data.split(',')[1];
+                    applyTheme(themeName === 'dark');
+                    return;
+                }
+                
+                // Handle regular terminal data
                 term.write(data);
             }
         });
