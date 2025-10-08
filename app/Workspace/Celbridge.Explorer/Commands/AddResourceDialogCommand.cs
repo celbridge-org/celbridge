@@ -95,6 +95,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             {
                 command.ResourceType = ResourceType;
                 command.DestResource = newResource;
+                command.OpenAfterAdding = true;
             });
         }
 
