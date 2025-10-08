@@ -60,7 +60,7 @@ def _wrap_allow_exit(fn):
 
 
 def _attach_ipython_hooks():
-    """money patches IPython's exit paths to block exiting."""
+    """monkey patches IPython's exit paths to block exiting."""
 
     try:
         from IPython import get_ipython 
