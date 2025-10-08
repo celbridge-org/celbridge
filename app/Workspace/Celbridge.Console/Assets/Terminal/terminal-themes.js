@@ -6,7 +6,7 @@ const VSCodeDarkPlus = {
     foreground: '#D4D4D4',
     background: '#1E1E1E',
     cursor: '#FFFFFF',
-    selection: '#555555',
+    selectionBackground: 'rgba(255,255,255,0.18)', // subtle light highlight
 
     black: '#000000',
     red: '#cd3131',
@@ -31,7 +31,7 @@ const VSCodeLightPlus = {
     foreground: '#333333',
     background: '#ffffff',
     cursor: '#333333',
-    selection: 'rgba(0,0,0,0.08)',
+    selectionBackground: 'rgba(0,0,0,0.13)', // subtle dark highlight
 
     black: '#000000',
     red: '#e51400',
