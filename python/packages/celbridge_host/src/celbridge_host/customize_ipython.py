@@ -1,12 +1,3 @@
-import atexit
-import builtins
-import os
-import runpy
-import shlex
-import sys
-import platform
-
-
 def apply_ipython_customizations():
 
     try:
@@ -27,6 +18,13 @@ def apply_ipython_customizations():
         try:
             ip.run_line_magic('config', 'InteractiveShell.cache_size = 0')
             ip.run_line_magic('config', 'InteractiveShell.highlight_matching_brackets  = False')
+
+            # Uncomment this to remove the spacing between input/output lines in the REPL
+            # After trying it out, I think the spacing is actually helpful for readability.
+            # Leaving this here in case we decide to change it later.
+            # ip.run_line_magic('config', 'InteractiveShell.separate_in = ""')
+            # ip.run_line_magic('config', 'InteractiveShell.separate_out = ""')
+            # ip.run_line_magic('config', 'InteractiveShell.separate_out2 = ""')
         except Exception:
             if hasattr(ip, 'displayhook'):
                 ip.displayhook.cache_size = 0
@@ -44,7 +42,7 @@ def apply_ipython_customizations():
 
         # Use plain Python REPL-style prompts
         try:
-            from IPython.terminal.prompts import Prompts, Token
+            from IPython.terminal.prompts import Prompts, Token  # type: ignore[import-not-found]
 
             class PythonStylePrompts(Prompts):
                 def in_prompt_tokens(self, *a, **k):

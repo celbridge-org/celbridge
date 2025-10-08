@@ -1,10 +1,16 @@
 """Integration tests for host wrapper that calls the real CLI."""
 
 import pytest
-from celbridge_host import CelbridgeHost, cel
+from celbridge_host import CelbridgeHost
 
 
-def test_version_json_format():
+@pytest.fixture
+def cel():
+    """Create a fresh CelbridgeHost instance for each test."""
+    return CelbridgeHost()
+
+
+def test_version_json_format(cel):
     """Test getting version information in JSON format."""
     result = cel.version(format="json")
     
@@ -18,7 +24,7 @@ def test_version_json_format():
     assert result["api"] == "1.0"
 
 
-def test_version_text_format():
+def test_version_text_format(cel):
     """Test getting version information in text format."""
     result = cel.version(format="text")
     
@@ -35,13 +41,13 @@ def test_celbridge_host_class_instance():
     assert result
 
 
-def test_invalid_command():
+def test_invalid_command(cel):
     """Test that invalid commands raise appropriate errors."""
     with pytest.raises(RuntimeError, match="CLI command failed"):
         cel.nonexistent_command(format="json")
 
 
-def test_invalid_json_response():
+def test_invalid_json_response(cel):
     """Test that invalid format options are handled correctly."""
     # The CLI should error on invalid format
     with pytest.raises(Exception):  # Could be RuntimeError or other

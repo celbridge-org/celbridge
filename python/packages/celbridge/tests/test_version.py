@@ -1,28 +1,33 @@
 """Tests for the version command."""
 
 import json
+import pytest
 from typer.testing import CliRunner
 from celbridge.__main__ import app
 from celbridge import __version__
 
-runner = CliRunner()
+
+@pytest.fixture
+def runner():
+    """Create a fresh CliRunner instance for each test."""
+    return CliRunner()
 
 
-def test_version_text_format():
+def test_version_text_format(runner):
     """Test version command with text format."""
     result = runner.invoke(app, ["version", "--format", "text"])
     assert result.exit_code == 0
     assert f"celbridge {__version__}" in result.stdout
 
 
-def test_version_text_format_default():
+def test_version_text_format_default(runner):
     """Test version command with default (text) format."""
     result = runner.invoke(app, ["version"])
     assert result.exit_code == 0
     assert f"celbridge {__version__}" in result.stdout
 
 
-def test_version_json_format():
+def test_version_json_format(runner):
     """Test version command with JSON format."""
     result = runner.invoke(app, ["version", "--format", "json"])
     assert result.exit_code == 0
@@ -33,7 +38,7 @@ def test_version_json_format():
     assert data["api"] == "1.0"
 
 
-def test_version_invalid_format():
+def test_version_invalid_format(runner):
     """Test version command with invalid format."""
     result = runner.invoke(app, ["version", "--format", "invalid"])
     assert result.exit_code == 1

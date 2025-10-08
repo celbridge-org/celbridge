@@ -213,8 +213,3 @@ class CelbridgeHost:
         command_wrapper.__doc__ = f"Execute 'celbridge {command.replace('_', '-')}' command."
         
         return command_wrapper
-
-
-# Global instance for convenience
-cel = CelbridgeHost()
-

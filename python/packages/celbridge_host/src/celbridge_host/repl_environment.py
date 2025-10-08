@@ -14,6 +14,16 @@ import traceback
 from . import customize_ipython
 from . import exit_lock
 from . import exit_message
+from .celbridge_host import CelbridgeHost
+
+
+def setup_global_cel() -> None:
+    """Make the 'cel' object available globally in the REPL."""
+    
+    # Create a CelbridgeHost instance and inject it into the main module's global namespace
+    # This makes it available immediately when the REPL starts
+    import __main__
+    __main__.cel = CelbridgeHost()  # type: ignore[attr-defined]
 
 
 def setup_python_path() -> None:
@@ -49,6 +59,7 @@ def display_startup_banner() -> None:
     python_version = platform.python_version()
     
     print(f"Celbridge v{celbridge_version} - Python v{python_version}")
+    print("Type 'help(cel)' for a list of commands.")
 
 
 def initialize_repl_environment() -> int:
@@ -63,6 +74,7 @@ def initialize_repl_environment() -> int:
         setup_python_path()
         setup_exit_handling()
         setup_ipython_customizations()
+        setup_global_cel()
         display_startup_banner()
         
         return 0
