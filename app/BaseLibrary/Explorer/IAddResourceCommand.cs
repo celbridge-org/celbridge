@@ -1,4 +1,4 @@
-﻿using Celbridge.Commands;
+using Celbridge.Commands;
 
 namespace Celbridge.Explorer;
 
@@ -22,4 +22,9 @@ public interface IAddResourceCommand : IExecutableCommand
     /// Resource key for the new resource
     /// </summary>
     ResourceKey DestResource { get; set; }
+
+    /// <summary>
+    /// Open the created file in the Explorer after it's been added to the project.
+    /// </summary>
+    bool OpenAfterAdding { get; set; }
 }
