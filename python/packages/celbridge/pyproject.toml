@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "celbridge"
+version = "0.1.0"
+description = "A command-line interface for managing Celbridge projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Celbridge.org", email = "contact@celbridge.org"}
+]
+dependencies = [
+    "typer>=0.12,<1",
+    "rich>=13,<14",
+]
+
+[project.urls]
+Homepage = "https://celbridge.org"
+Repository = "https://github.com/celbridge-org/celbridge"
+Issues = "https://github.com/celbridge-org/celbridge/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.scripts]
+celbridge = "celbridge.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
