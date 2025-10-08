@@ -101,17 +101,9 @@ public class PythonService : IPythonService, IDisposable
             }
             var hostWheelPath = findHostWheelResult.Value;
 
-            // Get the celbridge module path
-            var celbridgeModuleDir = Path.Combine(pythonFolder, "celbridge");
-            if (!Directory.Exists(celbridgeModuleDir))
-            {
-                return Result.Fail($"Celbridge module not found at '{celbridgeModuleDir}'");
-            }
-
             // The celbridge_host and ipython packages are always included
             var packageArgs = new List<string>()
             {
-                "--with", celbridgeModuleDir,
                 "--with", hostWheelPath,
                 "--with", "ipython"
             };
@@ -134,13 +126,13 @@ public class PythonService : IPythonService, IDisposable
                 .Add("run")                                 // uv run
                 .Add("--cache-dir", uvCacheDir)             // cache uv files in app data folder (not globally per-user)
                 .Add("--python", pythonVersion!)            // python interpreter version
-                //.Add("--refresh-package", "celbridge")    // uncomment to always refresh the celbridge package
+                //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
                 .Add(packageArgs.ToArray())                 // specify the packages to install     
                 .Add("python")                              // run the python interpreter
                 .Add("-m", "IPython")                       // use IPython
                 .Add("--no-banner")                         // don't show the IPython banner
                 .Add("--ipython-dir", ipythonDir)           // use a ipython storage dir in the celbridge cache folder
-                .Add("-m", "celbridge")                     // run the celbridge module
+                .Add("-m", "celbridge_host")                // run the celbridge module
                 .Add("-i")                                  // drop to interactive mode after running celbridge module
                 .ToString();
 

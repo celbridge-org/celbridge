@@ -26,14 +26,4 @@
     <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="**\__pycache__\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="**\*.dist-info\RECORD">
-      <PRIResource>false</PRIResource>
-    </None>
-  </ItemGroup>
-
 </Project>
