@@ -32,7 +32,7 @@ public static class PythonInstaller
                 var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "uv.zip", NameCollisionOption.ReplaceExisting);
                 ZipFile.ExtractToDirectory(uvTempFile.Path, pythonFolder.Path, overwriteFiles: true);
 
-                // Copy the celbridge python module
+                // Copy the embedded Python assets to the local Python folder
                 StorageFolder installedLocation = Package.Current.InstalledLocation;
                 StorageFolder extrasFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
                 await CopyStorageFolderAsync(extrasFolder, pythonFolder.Path);
