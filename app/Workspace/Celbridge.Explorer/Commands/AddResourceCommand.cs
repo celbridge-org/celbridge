@@ -12,6 +12,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;
     public ResourceKey DestResource { get; set; }
+    public bool OpenAfterAdding { get; set; } = false;
 
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -40,6 +41,11 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             {
                 command.Resource = DestResource;
             });
+
+            if (OpenAfterAdding)
+            {
+                OpenResourceDocument(DestResource);
+            }
 
             return Result.Ok();
         }
@@ -188,9 +194,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         await Task.CompletedTask;
 
-        // Open our document in the editor.
-        OpenResourceDocument(DestResource);
-
         return Result.Ok();
     }
 
@@ -315,9 +318,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             command.ResourceType = ResourceType.File;
             command.SourcePath = sourcePath;
             command.DestResource = resolvedDestResource;
+            command.OpenAfterAdding = true;
         });
-
-        OpenResourceDocument(resolvedDestResource);
     }
 
     public static void AddFile(ResourceKey destResource)
