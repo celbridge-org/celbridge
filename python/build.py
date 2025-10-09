@@ -3,6 +3,7 @@
 
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 
@@ -35,6 +36,12 @@ def main():
     for whl in wheels:
         shutil.copy2(whl, assets)
         print(f"  ✅ {whl.name}")
+    
+    # Write build version file with GUID
+    build_id = str(uuid.uuid4())
+    version_file = assets / "build_version.txt"
+    version_file.write_text(build_id, encoding="utf-8")
+    print(f"  📝 build_version.txt ({build_id})")
     
     # Clean up build artifacts
     for pkg in packages:
