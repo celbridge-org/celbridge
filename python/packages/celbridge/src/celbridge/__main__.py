@@ -1,5 +1,5 @@
 import typer
-from celbridge.cli import version_command
+from celbridge.cli import register_commands
 
 app = typer.Typer(
     name="celbridge",
@@ -7,16 +7,8 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-# Register commands
-app.command("version")(version_command)
-
-# Add a placeholder command to prevent single-command mode
-# This forces Typer to display a command list instead of promoting
-# the single command to the top level
-@app.command("help", hidden=True)
-def help_command():
-    """Show help (hidden placeholder)."""
-    pass
+# Register all commands
+register_commands(app)
 
 
 def main():
