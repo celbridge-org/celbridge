@@ -32,9 +32,9 @@ def register_commands(app: typer.Typer) -> None:
         if name == 'help_command':
             # Create a wrapper with proper closure
             def make_help_wrapper(help_func):
-                def wrapper():
-                    """Display help information for all commands."""
-                    help_func(app)
+                def wrapper(command: str = typer.Argument(None, help="Optional command name to get help for")):
+                    """Display help information for all commands, or a specific command."""
+                    help_func(app, command)
                 return wrapper
             
             app.command(command_name)(make_help_wrapper(obj))
