@@ -320,29 +320,30 @@ class CelbridgeHost:
         if commands:
             print("Available Commands:\n")
             
-            # Find the longest command name for alignment
-            max_name_len = max(len(cmd.get("name", "")) for cmd in commands)
-            
             for cmd in commands:
                 name = cmd.get("name", "")
                 help_text = cmd.get("help", "")
                 parameters = cmd.get("parameters", [])
                 
-                # Print command name and help text
-                print(f"  {name.ljust(max_name_len)}  {help_text}")
+                # Build usage string
+                usage = f"cel.{name.replace('-', '_')}("
+                param_parts = []
+                for param in parameters:
+                    param_name = param.get("name", "")
+                    required = param.get("required", False)
+                    default = param.get("default")
+                    
+                    if required:
+                        param_parts.append(f"{param_name}")
+                    else:
+                        default_str = f'"{default}"' if isinstance(default, str) else str(default)
+                        param_parts.append(f"{param_name}={default_str}")
                 
-                # Print parameters (if any)
-                if parameters:
-                    for param in parameters:
-                        param_name = param.get("name", "")
-                        param_type = param.get("type", "str")
-                        required = param.get("required", False)
-                        default = param.get("default")
-                        
-                        req_str = "required" if required else "optional"
-                        default_str = f", default: {default}" if default else ""
-                        
-                        print(f"    - {param_name} ({param_type}, {req_str}{default_str})")
+                usage += ", ".join(param_parts) + ")"
+                
+                # Print usage and help text
+                print(f"  {usage}")
+                print(f"    {help_text}\n")
             
    
     def __getattr__(self, command: str):
