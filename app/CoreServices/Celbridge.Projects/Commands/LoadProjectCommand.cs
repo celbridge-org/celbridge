@@ -162,7 +162,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag(INavigationProvider.ExplorerTag);
+            _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag(NavigationConstants.ExplorerTag);
         }
 
         return Result.Ok();

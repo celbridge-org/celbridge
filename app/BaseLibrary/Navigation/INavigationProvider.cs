@@ -5,16 +5,6 @@ namespace Celbridge.Navigation;
 /// </summary>
 public interface INavigationProvider
 {
-    public const string HomeTag = "Home";
-    public const string NewProjectTag = "NewProject";
-    public const string OpenProjectTag = "OpenProject";
-    public const string SettingsTag = "Settings";
-    public const string SearchTag = "Search";
-    public const string ExplorerTag = "Explorer";
-    public const string CommunityTag = "Community";
-    public const string DebugTag = "Debug";
-    public const string RevisionControlTag = "RevisionControl";
-
     /// <summary>
     /// Navigate the main application UI to the requested page.
     /// </summary>

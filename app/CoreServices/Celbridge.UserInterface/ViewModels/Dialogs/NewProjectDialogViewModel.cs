@@ -49,9 +49,9 @@ public partial class NewProjectDialogViewModel : ObservableObject
         //  NOTE : It is possible for the home documents folder to become invalid if the user has messed up their windows set up, but in that case we only really have the choice
         //          of offering the path they have or a potentially empty previous path. As the Create button is hidden for invalid paths then it is safe for us to allow this.
         //             We could potentially start listing the drives and offering the root folder of drives but then this could fail due to permissions, so I think this is probably enough.
-        _destFolderPath = (_editorSettings.PreviousNewProjectFolderPath == string.Empty || !Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
+        _destFolderPath = (string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath) || !Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
                             && Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments))
-                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) // + $"\\Celbridge" 
+                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
                                     : _editorSettings.PreviousNewProjectFolderPath;
 
         PropertyChanged += NewProjectDialogViewModel_PropertyChanged;

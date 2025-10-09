@@ -117,23 +117,23 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         switch (tag)
         {
-            case INavigationProvider.HomeTag:
+            case NavigationConstants.HomeTag:
                 _ = NavigateToHomeAsync();
                 return;
 
-            case INavigationProvider.NewProjectTag:
+            case NavigationConstants.NewProjectTag:
                 _ = _mainMenuUtils.ShowNewProjectDialogAsync();
                 return;
 
-            case INavigationProvider.OpenProjectTag:
+            case NavigationConstants.OpenProjectTag:
                 _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
                 return;
 
-            case INavigationProvider.SettingsTag:
+            case NavigationConstants.SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
                 break;
 
-            case INavigationProvider.ExplorerTag:
+            case NavigationConstants.ExplorerTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -141,7 +141,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case INavigationProvider.SearchTag:
+            case NavigationConstants.SearchTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -149,7 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case INavigationProvider.DebugTag:
+            case NavigationConstants.DebugTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -157,7 +157,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case INavigationProvider.RevisionControlTag:
+            case NavigationConstants.RevisionControlTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -165,7 +165,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case INavigationProvider.CommunityTag:
+            case NavigationConstants.CommunityTag:
                 _navigationService.NavigateToPage(CommunityPageName);
                 break;
         }
