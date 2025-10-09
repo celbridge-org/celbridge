@@ -9,7 +9,7 @@ from celbridge import __version__
 
 
 def version_command():
-    """Display version information in JSON format."""
+    """Get version information for the celbridge python package."""
     output = {
         "version": __version__,
         "api": "1.0",

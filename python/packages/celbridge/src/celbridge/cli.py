@@ -36,7 +36,7 @@ def register_commands(app: typer.Typer) -> None:
             # Create a wrapper with proper closure
             def make_help_wrapper(help_func):
                 def wrapper():
-                    """Display help information for all commands in JSON format."""
+                    """Display help information for all commands."""
                     help_func(app)
                 return wrapper
             

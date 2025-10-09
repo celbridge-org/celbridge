@@ -138,3 +138,6 @@ dmypy.json
 # OS specific
 .DS_Store
 Thumbs.db
+
+# AI coding agent instructions (workspace-specific, not for repo)
+.github/copilot-instructions.md

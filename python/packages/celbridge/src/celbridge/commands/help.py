@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 
 def help_command(app: typer.Typer):
-    """Display help information for all commands in JSON format."""
+    """Display help information for all commands."""
     commands: List[Dict[str, Any]] = []
     
     # Iterate through registered commands in the Typer app
