@@ -59,11 +59,11 @@ public sealed partial class MainPage : Page
                     .MenuItems(
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
-                            .Tag(INavigationProvider.NewProjectTag)
+                            .Tag(NavigationConstants.NewProjectTag)
                             .Content(NewProjectString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.OpenLocal))
-                            .Tag(INavigationProvider.OpenProjectTag)
+                            .Tag(NavigationConstants.OpenProjectTag)
                             .Content(OpenProjectString)
                     )
                     .Content(HomeString),
@@ -73,7 +73,7 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
                     .Name("HomeNavigationItem")
-                    .Tag(INavigationProvider.HomeTag)
+                    .Tag(NavigationConstants.HomeTag)
                     .ToolTipService(PlacementMode.Right, null, HomeString)
                     .Content(HomeString),
 
@@ -84,7 +84,7 @@ public sealed partial class MainPage : Page
                         )
                     .Name("ExplorerNavigationItem")
                     .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
-                    .Tag(INavigationProvider.ExplorerTag)
+                    .Tag(NavigationConstants.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
                     .Content(HomeString)
 #if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
@@ -123,7 +123,7 @@ public sealed partial class MainPage : Page
                             .Glyph("\ue12b")  // Community - Globe
                         )
                     .Name("CommunityNavigationItem")
-                    .Tag(INavigationProvider.CommunityTag)
+                    .Tag(NavigationConstants.CommunityTag)
                     .ToolTipService(PlacementMode.Right, null, CommunityString)
                     .Content(HomeString)
             )
@@ -284,7 +284,7 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.OnSelectNavigationItem(INavigationProvider.SettingsTag);
+            ViewModel.OnSelectNavigationItem(NavigationConstants.SettingsTag);
             return;
         }
 
