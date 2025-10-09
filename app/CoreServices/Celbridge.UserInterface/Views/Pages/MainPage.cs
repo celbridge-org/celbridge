@@ -82,6 +82,7 @@ public sealed partial class MainPage : Page
                             .Glyph("\uec50")  // File Explorer
                         )
                     .Name("ExplorerNavigationItem")
+                    .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
                     .Tag(MainPageViewModel.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
                     .Content(HomeString)
