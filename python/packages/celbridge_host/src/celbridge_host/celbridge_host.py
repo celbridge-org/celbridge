@@ -4,10 +4,57 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Union
+from typing import Any
 
 
-def _run_cli_command_uv(args: List[str]) -> str:
+class CelbridgeCommandError(Exception):
+    """
+    Exception raised when a Celbridge CLI command fails.
+    
+    This is used internally to distinguish CLI errors from user code errors,
+    allowing us to display CLI errors cleanly without a traceback while
+    preserving full tracebacks for user code errors.
+    """
+    def __init__(self, message: str, command: str | None = None):
+        """
+        Initialize the exception.
+        
+        Args:
+            message: The error message to display
+            command: The command that failed (for help display)
+        """
+        super().__init__(message)
+        self.command = command
+
+
+def _clean_error_message(stderr: str) -> str:
+    """
+    Remove usage/help lines from error messages that aren't helpful in REPL context.
+    
+    Args:
+        stderr: The raw stderr output from the CLI command
+        
+    Returns:
+        Cleaned error message with usage lines removed
+    """
+    lines = stderr.strip().split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Skip usage and help suggestion lines
+        if line.startswith('Usage:') or line.startswith('Try '):
+            continue
+        # Skip uv installation progress messages
+        if 'Installed' in line and 'packages in' in line:
+            continue
+        if line.startswith('Resolved ') or line.startswith('Prepared '):
+            continue
+        cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines).strip()
+
+
+def _run_cli_command_uv(args: list[str]) -> str:
     """
     Run a Celbridge CLI command in an isolated environment using uv.
     
@@ -21,7 +68,7 @@ def _run_cli_command_uv(args: List[str]) -> str:
         Command output as JSON string
         
     Raises:
-        RuntimeError: If command execution fails
+        CelbridgeCommandError: If command execution fails
     """
     # Get uv path from environment variable set by the host application
     uv_path = os.environ.get("CELBRIDGE_UV_PATH")
@@ -66,16 +113,18 @@ def _run_cli_command_uv(args: List[str]) -> str:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"CLI command failed (exit code {e.returncode}): {e.stderr.strip()}"
-        ) from e
+        # Clean up error message for REPL users
+        error_msg = _clean_error_message(e.stderr)
+        # Extract command name from args (first argument is the command)
+        command = args[0] if args else None
+        raise CelbridgeCommandError(error_msg, command) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find uv executable at: {uv_path}"
         ) from e
 
 
-def _run_cli_command_python(args: List[str]) -> str:
+def _run_cli_command_python(args: list[str]) -> str:
     """
     Run a Celbridge CLI command using the current Python interpreter.
     
@@ -89,7 +138,7 @@ def _run_cli_command_python(args: List[str]) -> str:
         Command output as JSON string
         
     Raises:
-        RuntimeError: If command execution fails
+        CelbridgeCommandError: If command execution fails
     """
     # Build the command: python -m celbridge <args>
     full_cmd = [
@@ -107,16 +156,18 @@ def _run_cli_command_python(args: List[str]) -> str:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"CLI command failed (exit code {e.returncode}): {e.stderr.strip()}"
-        ) from e
+        # Clean up error message for REPL users
+        error_msg = _clean_error_message(e.stderr)
+        # Extract command name from args (first argument is the command)
+        command = args[0] if args else None
+        raise CelbridgeCommandError(error_msg, command) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find Python executable: {sys.executable}"
         ) from e
 
 
-def _run_cli_command(args: List[str]) -> str:
+def _run_cli_command(args: list[str]) -> str:
     """
     Run a Celbridge CLI command using the appropriate execution method.
     
@@ -140,6 +191,74 @@ def _run_cli_command(args: List[str]) -> str:
         return _run_cli_command_python(args)
 
 
+def _get_command_help(command_name: str) -> dict[str, Any] | None:
+    """
+    Get help information for a specific command.
+    
+    Args:
+        command_name: The name of the command to get help for
+        
+    Returns:
+        Command help dict or None if command not found or help fails
+    """
+    try:
+        # Get help for specific command
+        output = _run_cli_command(["help", command_name])
+        help_data = json.loads(output)
+        
+        # Return the first (and only) command
+        commands = help_data.get("commands", [])
+        if commands:
+            return commands[0]
+        return None
+    except Exception:
+        # If we can't get help, just return None
+        return None
+
+
+def _format_command_help(cmd_help: dict[str, Any]) -> str:
+    """
+    Format command help information for display.
+    
+    Args:
+        cmd_help: Command help dictionary from the help command
+        
+    Returns:
+        Formatted help text
+    """
+    name = cmd_help.get("name", "")
+    help_text = cmd_help.get("help", "")
+    parameters = cmd_help.get("parameters", [])
+    
+    lines = [
+        f"\nUsage: cel.{name.replace('-', '_')}(",
+    ]
+    
+    # Build parameter list
+    param_parts = []
+    for param in parameters:
+        param_name = param.get("name", "")
+        param_type = param.get("type", "str")
+        required = param.get("required", False)
+        default = param.get("default")
+        
+        if required:
+            param_parts.append(f"{param_name}")
+        else:
+            default_str = f'"{default}"' if isinstance(default, str) else str(default)
+            param_parts.append(f"{param_name}={default_str}")
+    
+    if param_parts:
+        lines[0] += ", ".join(param_parts)
+    lines[0] += ")"
+    
+    # Add description
+    if help_text:
+        lines.append(help_text)
+        
+    return "\n".join(lines)
+
+
 class CelbridgeHost:
     """
     Dynamic proxy for Celbridge CLI commands.
@@ -154,19 +273,45 @@ class CelbridgeHost:
         {'version': '0.1.0', 'api': '1.0'}
     """
     
-    def help(self) -> None:
+    def help(self, command: str | None = None) -> None:
         """
-        Display help information for all Celbridge commands.
+        Display help information for all Celbridge commands, or a specific command.
+        
+        Args:
+            command: Optional command name to get help for (e.g., "greet")
         
         Fetches help data from the celbridge CLI and formats it as
         human-readable text.
         """
         # Get help data from CLI
-        output = _run_cli_command(["help"])
-        help_data = json.loads(output)
+        try:
+            if command:
+                output = _run_cli_command(["help", command])
+            else:
+                output = _run_cli_command(["help"])
+            help_data = json.loads(output)
+        except CelbridgeCommandError as e:
+            # If the command execution failed, print the error message
+            print(e)
+            return
+        
+        # Check for error in the response
+        if "error" in help_data:
+            print(help_data["error"])
+            return
         
         # Format and print help information
         commands = help_data.get("commands", [])
+        
+        # If specific command requested, show detailed help
+        if command:
+            if not commands:
+                print(f"Command '{command}' not found")
+                return
+            # Display detailed help for single command
+            cmd = commands[0]
+            print(_format_command_help(cmd))
+            return
         
         # Print usage instructions at the top
         print(f"Use cel.<command>() to execute a command. Example: cel.version()\n")
@@ -210,7 +355,7 @@ class CelbridgeHost:
         Returns:
             A callable that executes the CLI command
         """
-        def command_wrapper(*args, **kwargs) -> Dict[str, Any]:
+        def command_wrapper(*args, **kwargs) -> dict[str, Any] | None:
             """
             Execute a CLI command with the given arguments.
             
@@ -221,28 +366,40 @@ class CelbridgeHost:
             Returns:
                 Parsed JSON dict with command output
             """
-            # Convert command name from Python style to CLI style
-            cli_command = command.replace('_', '-')
-            cmd_args = [cli_command]
-            
-            # Add positional arguments
-            cmd_args.extend(str(arg) for arg in args)
-            
-            # Add keyword arguments as CLI options
-            for key, value in kwargs.items():
-                option_name = key.replace('_', '-')
-                if isinstance(value, bool):
-                    # Boolean flags
-                    if value:
-                        cmd_args.append(f"--{option_name}")
-                else:
-                    # Key-value options
-                    cmd_args.extend([f"--{option_name}", str(value)])
-            
-            output = _run_cli_command(cmd_args)
-            
-            # Parse JSON output
-            return json.loads(output)
+            try:
+                # Convert command name from Python style to CLI style
+                cli_command = command.replace('_', '-')
+                cmd_args = [cli_command]
+                
+                # Add positional arguments
+                cmd_args.extend(str(arg) for arg in args)
+                
+                # Add keyword arguments as CLI options
+                for key, value in kwargs.items():
+                    option_name = key.replace('_', '-')
+                    if isinstance(value, bool):
+                        # Boolean flags
+                        if value:
+                            cmd_args.append(f"--{option_name}")
+                    else:
+                        # Key-value options
+                        cmd_args.extend([f"--{option_name}", str(value)])
+                
+                output = _run_cli_command(cmd_args)
+                
+                # Parse JSON output
+                return json.loads(output)
+            except CelbridgeCommandError as e:
+                # Print the error cleanly without a traceback
+                print(e)
+                
+                # Try to display command-specific help
+                if e.command:
+                    cmd_help = _get_command_help(e.command)
+                    if cmd_help:
+                        print(_format_command_help(cmd_help))
+                
+                return None
         
         # Preserve the command name for better debugging
         command_wrapper.__name__ = f"celbridge_{command}"

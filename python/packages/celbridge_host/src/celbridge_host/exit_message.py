@@ -1,8 +1,8 @@
 import atexit
 import sys
-from typing import TextIO, Optional
+from typing import TextIO
 
-def register(message: str, *, stream: Optional[TextIO] = None) -> None:
+def register(message: str, *, stream: TextIO | None = None) -> None:
     """Print `message` when the interpreter exits."""
     out = sys.stdout if stream is None else stream
 
