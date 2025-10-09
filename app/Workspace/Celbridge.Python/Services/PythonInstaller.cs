@@ -18,10 +18,10 @@ public static class PythonInstaller
             var pythonFolderPath = Path.Combine(localFolder.Path, PythonFolderName);
 
             // Uncomment to force install the Python support files
-            //if (Directory.Exists(pythonFolderPath))
-            //{
-            //    Directory.Delete(pythonFolderPath, true);
-            //}
+            if (Directory.Exists(pythonFolderPath))
+            {
+                Directory.Delete(pythonFolderPath, true);
+            }
 
             if (!Directory.Exists(pythonFolderPath))
             {
