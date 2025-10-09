@@ -4,10 +4,48 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Union
+from typing import Any
 
 
-def _run_cli_command_uv(args: List[str]) -> str:
+class CelbridgeCommandError(Exception):
+    """
+    Exception raised when a Celbridge CLI command fails.
+    
+    This is used internally to distinguish CLI errors from user code errors,
+    allowing us to display CLI errors cleanly without a traceback while
+    preserving full tracebacks for user code errors.
+    """
+    pass
+
+
+def _clean_error_message(stderr: str) -> str:
+    """
+    Remove usage/help lines from error messages that aren't helpful in REPL context.
+    
+    Args:
+        stderr: The raw stderr output from the CLI command
+        
+    Returns:
+        Cleaned error message with usage lines removed
+    """
+    lines = stderr.strip().split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Skip usage and help suggestion lines
+        if line.startswith('Usage:') or line.startswith('Try '):
+            continue
+        # Skip uv installation progress messages
+        if 'Installed' in line and 'packages in' in line:
+            continue
+        if line.startswith('Resolved ') or line.startswith('Prepared '):
+            continue
+        cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines).strip()
+
+
+def _run_cli_command_uv(args: list[str]) -> str:
     """
     Run a Celbridge CLI command in an isolated environment using uv.
     
@@ -66,16 +104,16 @@ def _run_cli_command_uv(args: List[str]) -> str:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"CLI command failed (exit code {e.returncode}): {e.stderr.strip()}"
-        ) from e
+        # Clean up error message for REPL users
+        error_msg = _clean_error_message(e.stderr)
+        raise CelbridgeCommandError(error_msg) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find uv executable at: {uv_path}"
         ) from e
 
 
-def _run_cli_command_python(args: List[str]) -> str:
+def _run_cli_command_python(args: list[str]) -> str:
     """
     Run a Celbridge CLI command using the current Python interpreter.
     
@@ -107,16 +145,16 @@ def _run_cli_command_python(args: List[str]) -> str:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"CLI command failed (exit code {e.returncode}): {e.stderr.strip()}"
-        ) from e
+        # Clean up error message for REPL users
+        error_msg = _clean_error_message(e.stderr)
+        raise CelbridgeCommandError(error_msg) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find Python executable: {sys.executable}"
         ) from e
 
 
-def _run_cli_command(args: List[str]) -> str:
+def _run_cli_command(args: list[str]) -> str:
     """
     Run a Celbridge CLI command using the appropriate execution method.
     
@@ -210,7 +248,7 @@ class CelbridgeHost:
         Returns:
             A callable that executes the CLI command
         """
-        def command_wrapper(*args, **kwargs) -> Dict[str, Any]:
+        def command_wrapper(*args, **kwargs) -> dict[str, Any] | None:
             """
             Execute a CLI command with the given arguments.
             
@@ -221,28 +259,33 @@ class CelbridgeHost:
             Returns:
                 Parsed JSON dict with command output
             """
-            # Convert command name from Python style to CLI style
-            cli_command = command.replace('_', '-')
-            cmd_args = [cli_command]
-            
-            # Add positional arguments
-            cmd_args.extend(str(arg) for arg in args)
-            
-            # Add keyword arguments as CLI options
-            for key, value in kwargs.items():
-                option_name = key.replace('_', '-')
-                if isinstance(value, bool):
-                    # Boolean flags
-                    if value:
-                        cmd_args.append(f"--{option_name}")
-                else:
-                    # Key-value options
-                    cmd_args.extend([f"--{option_name}", str(value)])
-            
-            output = _run_cli_command(cmd_args)
-            
-            # Parse JSON output
-            return json.loads(output)
+            try:
+                # Convert command name from Python style to CLI style
+                cli_command = command.replace('_', '-')
+                cmd_args = [cli_command]
+                
+                # Add positional arguments
+                cmd_args.extend(str(arg) for arg in args)
+                
+                # Add keyword arguments as CLI options
+                for key, value in kwargs.items():
+                    option_name = key.replace('_', '-')
+                    if isinstance(value, bool):
+                        # Boolean flags
+                        if value:
+                            cmd_args.append(f"--{option_name}")
+                    else:
+                        # Key-value options
+                        cmd_args.extend([f"--{option_name}", str(value)])
+                
+                output = _run_cli_command(cmd_args)
+                
+                # Parse JSON output
+                return json.loads(output)
+            except CelbridgeCommandError as e:
+                # Print the error cleanly without a traceback
+                print(e)
+                return None
         
         # Preserve the command name for better debugging
         command_wrapper.__name__ = f"celbridge_{command}"

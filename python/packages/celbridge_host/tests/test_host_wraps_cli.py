@@ -26,7 +26,13 @@ def test_version_command(cel):
     assert len(result["api"]) > 0
 
 
-def test_invalid_command(cel):
-    """Test that invalid commands raise appropriate errors."""
-    with pytest.raises(RuntimeError, match="CLI command failed"):
-        cel.nonexistent_command()
+def test_invalid_command(cel, capsys):
+    """Test that invalid commands display errors cleanly without raising."""
+    result = cel.nonexistent_command()
+    
+    # Should return None
+    assert result is None
+    
+    # Error should be printed to stdout
+    captured = capsys.readouterr()
+    assert "No such command" in captured.out

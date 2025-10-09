@@ -1,12 +1,12 @@
 import inspect
 import json
 import typer
-from typing import Any, Dict, List
+from typing import Any
 
 
 def help_command(app: typer.Typer):
     """Get help information for all available commands."""
-    commands: List[Dict[str, Any]] = []
+    commands: list[dict[str, Any]] = []
     
     # Iterate through registered commands in the Typer app
     for command_info in app.registered_commands:
