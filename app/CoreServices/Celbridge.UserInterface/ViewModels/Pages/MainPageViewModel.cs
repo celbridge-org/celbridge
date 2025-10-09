@@ -9,16 +9,6 @@ namespace Celbridge.UserInterface.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    public const string HomeTag = "Home";
-    public const string NewProjectTag = "NewProject";
-    public const string OpenProjectTag = "OpenProject";
-    public const string SettingsTag = "Settings";
-    public const string SearchTag = "Search";
-    public const string ExplorerTag = "Explorer";
-    public const string CommunityTag = "Community";
-    public const string DebugTag = "Debug";
-    public const string RevisionControlTag = "RevisionControl";
-
     private const string HomePageName = "HomePage";
     private const string SettingsPageName = "SettingsPage";
     private const string WorkspacePageName = "WorkspacePage";
@@ -56,7 +46,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
+
+    // %%% Considering whether this is still required.
     public event Func<string, Result>? SelectNavigationItem;
+
     public delegate string ReturnCurrentPageDelegate();
 
     public ReturnCurrentPageDelegate ReturnCurrentPage;
@@ -72,9 +65,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         return OnNavigate?.Invoke(pageType, parameter)!;
     }
 
-    public Result SelectNavigationItemByNameUI(string navItemName)
+    public Result SelectNavigationItemByNavigationTag(string navigationTag)
     {
-        return SelectNavigationItem?.Invoke(navItemName);
+        OnSelectNavigationItem(navigationTag);
+        return Result.Ok();
     }
 
     public string GetCurrentPageName()
@@ -123,23 +117,23 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     {
         switch (tag)
         {
-            case HomeTag:
+            case NavigationConstants.HomeTag:
                 _ = NavigateToHomeAsync();
                 return;
 
-            case NewProjectTag:
+            case NavigationConstants.NewProjectTag:
                 _ = _mainMenuUtils.ShowNewProjectDialogAsync();
                 return;
 
-            case OpenProjectTag:
+            case NavigationConstants.OpenProjectTag:
                 _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
                 return;
 
-            case SettingsTag:
+            case NavigationConstants.SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
                 break;
 
-            case ExplorerTag:
+            case NavigationConstants.ExplorerTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -147,7 +141,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case SearchTag:
+            case NavigationConstants.SearchTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -155,7 +149,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case DebugTag:
+            case NavigationConstants.DebugTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -163,7 +157,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case RevisionControlTag:
+            case NavigationConstants.RevisionControlTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -171,7 +165,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 }
                 break;
 
-            case CommunityTag:
+            case NavigationConstants.CommunityTag:
                 _navigationService.NavigateToPage(CommunityPageName);
                 break;
         }
