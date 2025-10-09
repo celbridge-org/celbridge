@@ -202,15 +202,14 @@ def _get_command_help(command_name: str) -> dict[str, Any] | None:
         Command help dict or None if command not found or help fails
     """
     try:
-        # Get all help data
-        output = _run_cli_command(["help"])
+        # Get help for specific command
+        output = _run_cli_command(["help", command_name])
         help_data = json.loads(output)
         
-        # Find the specific command
+        # Return the first (and only) command
         commands = help_data.get("commands", [])
-        for cmd in commands:
-            if cmd.get("name") == command_name:
-                return cmd
+        if commands:
+            return commands[0]
         return None
     except Exception:
         # If we can't get help, just return None
@@ -274,19 +273,45 @@ class CelbridgeHost:
         {'version': '0.1.0', 'api': '1.0'}
     """
     
-    def help(self) -> None:
+    def help(self, command: str | None = None) -> None:
         """
-        Display help information for all Celbridge commands.
+        Display help information for all Celbridge commands, or a specific command.
+        
+        Args:
+            command: Optional command name to get help for (e.g., "greet")
         
         Fetches help data from the celbridge CLI and formats it as
         human-readable text.
         """
         # Get help data from CLI
-        output = _run_cli_command(["help"])
-        help_data = json.loads(output)
+        try:
+            if command:
+                output = _run_cli_command(["help", command])
+            else:
+                output = _run_cli_command(["help"])
+            help_data = json.loads(output)
+        except CelbridgeCommandError as e:
+            # If the command execution failed, print the error message
+            print(e)
+            return
+        
+        # Check for error in the response
+        if "error" in help_data:
+            print(help_data["error"])
+            return
         
         # Format and print help information
         commands = help_data.get("commands", [])
+        
+        # If specific command requested, show detailed help
+        if command:
+            if not commands:
+                print(f"Command '{command}' not found")
+                return
+            # Display detailed help for single command
+            cmd = commands[0]
+            print(_format_command_help(cmd))
+            return
         
         # Print usage instructions at the top
         print(f"Use cel.<command>() to execute a command. Example: cel.version()\n")

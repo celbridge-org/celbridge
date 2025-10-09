@@ -1,11 +1,11 @@
 import inspect
 import json
 import typer
-from typing import Any
+from typing import Any, Optional
 
 
-def help_command(app: typer.Typer):
-    """Get help information for all available commands."""
+def help_command(app: typer.Typer, command: Optional[str] = None):
+    """Get help information for all available commands, or a specific command."""
     commands: list[dict[str, Any]] = []
     
     # Iterate through registered commands in the Typer app
@@ -21,6 +21,11 @@ def help_command(app: typer.Typer):
             
         # Extract command information
         command_name = command_info.name or callback.__name__.replace("_", "-")
+        
+        # If a specific command is requested, skip commands that don't match
+        if command is not None and command_name != command:
+            continue
+        
         help_text = callback.__doc__ or ""
         # Clean up the help text (remove extra whitespace)
         help_text = " ".join(help_text.split()).strip()
@@ -56,10 +61,15 @@ def help_command(app: typer.Typer):
         }
         commands.append(command_data)
     
+    # If a specific command was requested but not found, include error in output
+    # but don't exit with error code (this is informational, not a failure)
     output = {
         "commands": commands,
         "app_name": app.info.name or "celbridge",
         "app_help": app.info.help or "",
     }
+    
+    if command is not None and not commands:
+        output["error"] = f"Command '{command}' not found"
     
     typer.echo(json.dumps(output, indent=2))
