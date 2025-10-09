@@ -7,7 +7,7 @@ import sys
 from typing import Any, Dict, List, Union
 
 
-def _run_cli_command_uv(args: List[str], format: str = "json") -> str:
+def _run_cli_command_uv(args: List[str]) -> str:
     """
     Run a Celbridge CLI command in an isolated environment using uv.
     
@@ -16,10 +16,9 @@ def _run_cli_command_uv(args: List[str], format: str = "json") -> str:
     
     Args:
         args: Command arguments (without the base command)
-        format: Output format (json or text)
         
     Returns:
-        Command output as string
+        Command output as JSON string
         
     Raises:
         RuntimeError: If command execution fails
@@ -48,7 +47,7 @@ def _run_cli_command_uv(args: List[str], format: str = "json") -> str:
             "The host application must set this to the uv cache directory."
         )
     
-    # Build the command: uv run --cache-dir <dir> --with <celbridge_package_path> python -m celbridge <args> --format <format>
+    # Build the command: uv run --cache-dir <dir> --with <celbridge_package_path> python -m celbridge <args>
     full_cmd = [
         uv_path,
         "run",
@@ -57,7 +56,6 @@ def _run_cli_command_uv(args: List[str], format: str = "json") -> str:
         "python", "-m", "celbridge"
     ]
     full_cmd.extend(args)
-    full_cmd.extend(["--format", format])
     
     try:
         result = subprocess.run(
@@ -77,7 +75,7 @@ def _run_cli_command_uv(args: List[str], format: str = "json") -> str:
         ) from e
 
 
-def _run_cli_command_python(args: List[str], format: str = "json") -> str:
+def _run_cli_command_python(args: List[str]) -> str:
     """
     Run a Celbridge CLI command using the current Python interpreter.
     
@@ -86,21 +84,19 @@ def _run_cli_command_python(args: List[str], format: str = "json") -> str:
     
     Args:
         args: Command arguments (without the base command)
-        format: Output format (json or text)
         
     Returns:
-        Command output as string
+        Command output as JSON string
         
     Raises:
         RuntimeError: If command execution fails
     """
-    # Build the command: python -m celbridge <args> --format <format>
+    # Build the command: python -m celbridge <args>
     full_cmd = [
         sys.executable,  # Use the current Python interpreter
         "-m", "celbridge"
     ]
     full_cmd.extend(args)
-    full_cmd.extend(["--format", format])
     
     try:
         result = subprocess.run(
@@ -120,7 +116,7 @@ def _run_cli_command_python(args: List[str], format: str = "json") -> str:
         ) from e
 
 
-def _run_cli_command(args: List[str], format: str = "json") -> str:
+def _run_cli_command(args: List[str]) -> str:
     """
     Run a Celbridge CLI command using the appropriate execution method.
     
@@ -129,20 +125,19 @@ def _run_cli_command(args: List[str], format: str = "json") -> str:
     
     Args:
         args: Command arguments (without the base command)
-        format: Output format (json or text)
         
     Returns:
-        Command output as string
+        Command output as JSON string
         
     Raises:
         RuntimeError: If command execution fails
     """
     # Check if we should use uv for isolation (production mode)
     if os.environ.get("CELBRIDGE_UV_PATH"):
-        return _run_cli_command_uv(args, format)
+        return _run_cli_command_uv(args)
     else:
         # Fall back to current Python interpreter (development/testing mode)
-        return _run_cli_command_python(args, format)
+        return _run_cli_command_python(args)
 
 
 class CelbridgeHost:
@@ -151,14 +146,12 @@ class CelbridgeHost:
     
     This class automatically proxies method calls to the celbridge CLI.
     Method names are converted to CLI commands (underscores become hyphens).
+    All commands return JSON output.
     
     Examples:
         >>> cel = CelbridgeHost()
-        >>> cel.version(format="json")
-        {'name': 'celbridge', 'version': '0.1.0', 'api': '1.0'}
-        
-        >>> cel.version(format="text")
-        'celbridge 0.1.0'        
+        >>> cel.version()
+        {'version': '0.1.0', 'api': '1.0'}
     """
     
     def __getattr__(self, command: str):
@@ -171,17 +164,16 @@ class CelbridgeHost:
         Returns:
             A callable that executes the CLI command
         """
-        def command_wrapper(*args, format: str = "json", **kwargs) -> Union[Dict[str, Any], str]:
+        def command_wrapper(*args, **kwargs) -> Dict[str, Any]:
             """
             Execute a CLI command with the given arguments.
             
             Args:
                 *args: Positional arguments for the command
-                format: Output format ('json' or 'text')
                 **kwargs: Keyword arguments converted to CLI options (--key value)
                 
             Returns:
-                Parsed JSON dict if format='json', otherwise raw string output
+                Parsed JSON dict with command output
             """
             # Convert command name from Python style to CLI style
             cli_command = command.replace('_', '-')
@@ -201,12 +193,10 @@ class CelbridgeHost:
                     # Key-value options
                     cmd_args.extend([f"--{option_name}", str(value)])
             
-            output = _run_cli_command(cmd_args, format=format)
+            output = _run_cli_command(cmd_args)
             
-            # Parse JSON output if requested
-            if format == "json":
-                return json.loads(output)
-            return output
+            # Parse JSON output
+            return json.loads(output)
         
         # Preserve the command name for better debugging
         command_wrapper.__name__ = f"celbridge_{command}"
