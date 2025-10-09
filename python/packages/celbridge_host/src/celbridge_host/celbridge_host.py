@@ -154,6 +154,52 @@ class CelbridgeHost:
         {'version': '0.1.0', 'api': '1.0'}
     """
     
+    def help(self) -> None:
+        """
+        Display help information for all Celbridge commands.
+        
+        Fetches help data from the celbridge CLI and formats it as
+        human-readable text.
+        """
+        # Get help data from CLI
+        output = _run_cli_command(["help"])
+        help_data = json.loads(output)
+        
+        # Format and print help information
+        commands = help_data.get("commands", [])
+        
+        # Print usage instructions at the top
+        print(f"Use cel.<command>() to execute a command. Example: cel.version()\n")
+        
+        # Print commands
+        if commands:
+            print("Available Commands:\n")
+            
+            # Find the longest command name for alignment
+            max_name_len = max(len(cmd.get("name", "")) for cmd in commands)
+            
+            for cmd in commands:
+                name = cmd.get("name", "")
+                help_text = cmd.get("help", "")
+                parameters = cmd.get("parameters", [])
+                
+                # Print command name and help text
+                print(f"  {name.ljust(max_name_len)}  {help_text}")
+                
+                # Print parameters (if any)
+                if parameters:
+                    for param in parameters:
+                        param_name = param.get("name", "")
+                        param_type = param.get("type", "str")
+                        required = param.get("required", False)
+                        default = param.get("default")
+                        
+                        req_str = "required" if required else "optional"
+                        default_str = f", default: {default}" if default else ""
+                        
+                        print(f"    - {param_name} ({param_type}, {req_str}{default_str})")
+            
+   
     def __getattr__(self, command: str):
         """
         Dynamically create a wrapper function for any CLI command.
