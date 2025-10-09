@@ -53,6 +53,13 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         if (_projectService.CurrentProject?.ProjectFilePath == ProjectFilePath)
         {
             // The project is already loaded.
+
+            // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
+            if (_workspaceWrapper.IsWorkspacePageLoaded)
+            {
+                _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag("Explorer");
+            }
+
             // We can just early out here as we're already in the expected end state.
             return Result.Ok();
         }
@@ -155,7 +162,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _navigationService.NavigationProvider.SelectNavigationItemByNameUI("ExplorerNavigationItem");
+            _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag(NavigationConstants.ExplorerTag);
         }
 
         return Result.Ok();

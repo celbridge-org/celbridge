@@ -4,6 +4,7 @@
 #endif
 
 using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.Navigation;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -58,11 +59,11 @@ public sealed partial class MainPage : Page
                     .MenuItems(
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
-                            .Tag(MainPageViewModel.NewProjectTag)
+                            .Tag(NavigationConstants.NewProjectTag)
                             .Content(NewProjectString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.OpenLocal))
-                            .Tag(MainPageViewModel.OpenProjectTag)
+                            .Tag(NavigationConstants.OpenProjectTag)
                             .Content(OpenProjectString)
                     )
                     .Content(HomeString),
@@ -72,7 +73,7 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.Home))
                     .Name("HomeNavigationItem")
-                    .Tag(MainPageViewModel.HomeTag)
+                    .Tag(NavigationConstants.HomeTag)
                     .ToolTipService(PlacementMode.Right, null, HomeString)
                     .Content(HomeString),
 
@@ -82,7 +83,8 @@ public sealed partial class MainPage : Page
                             .Glyph("\uec50")  // File Explorer
                         )
                     .Name("ExplorerNavigationItem")
-                    .Tag(MainPageViewModel.ExplorerTag)
+                    .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
+                    .Tag(NavigationConstants.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
                     .Content(HomeString)
 #if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
@@ -121,7 +123,7 @@ public sealed partial class MainPage : Page
                             .Glyph("\ue12b")  // Community - Globe
                         )
                     .Name("CommunityNavigationItem")
-                    .Tag(MainPageViewModel.CommunityTag)
+                    .Tag(NavigationConstants.CommunityTag)
                     .ToolTipService(PlacementMode.Right, null, CommunityString)
                     .Content(HomeString)
             )
@@ -282,7 +284,7 @@ public sealed partial class MainPage : Page
     {
         if (args.IsSettingsInvoked)
         {
-            ViewModel.OnSelectNavigationItem(MainPageViewModel.SettingsTag);
+            ViewModel.OnSelectNavigationItem(NavigationConstants.SettingsTag);
             return;
         }
 
