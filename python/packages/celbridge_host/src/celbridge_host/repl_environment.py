@@ -59,7 +59,7 @@ def display_startup_banner() -> None:
     python_version = platform.python_version()
     
     print(f"Celbridge v{celbridge_version} - Python v{python_version}")
-    print("Type 'help(cel)' for a list of commands.")
+    print("Type cel.help() for a list of available commands.")
 
 
 def initialize_repl_environment() -> int:
