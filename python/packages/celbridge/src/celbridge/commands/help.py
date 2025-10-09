@@ -44,7 +44,18 @@ def help_command(app: typer.Typer, command: Optional[str] = None):
             
             # Check if parameter has a default value
             has_default = param.default != inspect.Parameter.empty
-            default_value = None if not has_default else str(param.default)
+            default_value = None
+            
+            if has_default:
+                # Check if it's a Typer ArgumentInfo/OptionInfo object
+                if hasattr(param.default, '__class__') and 'typer.models' in str(type(param.default)):
+                    # For Typer objects, check if they have a default attribute
+                    if hasattr(param.default, 'default'):
+                        default_value = str(param.default.default) if param.default.default is not None else None
+                    else:
+                        default_value = None
+                else:
+                    default_value = str(param.default)
             
             param_info = {
                 "name": param_name,
