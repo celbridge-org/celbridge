@@ -186,7 +186,7 @@ class CelbridgeHost:
                 # Print command name and help text
                 print(f"  {name.ljust(max_name_len)}  {help_text}")
                 
-                # Print parameters if any
+                # Print parameters (if any)
                 if parameters:
                     for param in parameters:
                         param_name = param.get("name", "")

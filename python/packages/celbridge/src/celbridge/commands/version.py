@@ -1,8 +1,3 @@
-"""Version command for Celbridge CLI.
-
-Provides version information about the Celbridge package.
-"""
-
 import json
 import typer
 from celbridge import __version__

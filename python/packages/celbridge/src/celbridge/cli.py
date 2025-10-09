@@ -16,9 +16,6 @@ def register_commands(app: typer.Typer) -> None:
     commands package. Command functions should be named with the pattern
     `<command_name>_command` and will be registered as `<command_name>`.
     
-    Special handling:
-    - help_command: Receives the app instance as a parameter
-    
     Args:
         app: The Typer application instance to register commands with.
     """

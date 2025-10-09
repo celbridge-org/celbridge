@@ -1,8 +1,3 @@
-"""Help command for Celbridge CLI.
-
-Provides JSON-formatted help information for all commands.
-"""
-
 import inspect
 import json
 import typer
@@ -10,7 +5,7 @@ from typing import Any, Dict, List
 
 
 def help_command(app: typer.Typer):
-    """Display help information for all commands."""
+    """Get help information for all available commands."""
     commands: List[Dict[str, Any]] = []
     
     # Iterate through registered commands in the Typer app
