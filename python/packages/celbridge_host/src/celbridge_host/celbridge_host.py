@@ -15,7 +15,16 @@ class CelbridgeCommandError(Exception):
     allowing us to display CLI errors cleanly without a traceback while
     preserving full tracebacks for user code errors.
     """
-    pass
+    def __init__(self, message: str, command: str | None = None):
+        """
+        Initialize the exception.
+        
+        Args:
+            message: The error message to display
+            command: The command that failed (for help display)
+        """
+        super().__init__(message)
+        self.command = command
 
 
 def _clean_error_message(stderr: str) -> str:
@@ -59,7 +68,7 @@ def _run_cli_command_uv(args: list[str]) -> str:
         Command output as JSON string
         
     Raises:
-        RuntimeError: If command execution fails
+        CelbridgeCommandError: If command execution fails
     """
     # Get uv path from environment variable set by the host application
     uv_path = os.environ.get("CELBRIDGE_UV_PATH")
@@ -106,7 +115,9 @@ def _run_cli_command_uv(args: list[str]) -> str:
     except subprocess.CalledProcessError as e:
         # Clean up error message for REPL users
         error_msg = _clean_error_message(e.stderr)
-        raise CelbridgeCommandError(error_msg) from None
+        # Extract command name from args (first argument is the command)
+        command = args[0] if args else None
+        raise CelbridgeCommandError(error_msg, command) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find uv executable at: {uv_path}"
@@ -127,7 +138,7 @@ def _run_cli_command_python(args: list[str]) -> str:
         Command output as JSON string
         
     Raises:
-        RuntimeError: If command execution fails
+        CelbridgeCommandError: If command execution fails
     """
     # Build the command: python -m celbridge <args>
     full_cmd = [
@@ -147,7 +158,9 @@ def _run_cli_command_python(args: list[str]) -> str:
     except subprocess.CalledProcessError as e:
         # Clean up error message for REPL users
         error_msg = _clean_error_message(e.stderr)
-        raise CelbridgeCommandError(error_msg) from None
+        # Extract command name from args (first argument is the command)
+        command = args[0] if args else None
+        raise CelbridgeCommandError(error_msg, command) from None
     except FileNotFoundError as e:
         raise RuntimeError(
             f"Could not find Python executable: {sys.executable}"
@@ -176,6 +189,75 @@ def _run_cli_command(args: list[str]) -> str:
     else:
         # Fall back to current Python interpreter (development/testing mode)
         return _run_cli_command_python(args)
+
+
+def _get_command_help(command_name: str) -> dict[str, Any] | None:
+    """
+    Get help information for a specific command.
+    
+    Args:
+        command_name: The name of the command to get help for
+        
+    Returns:
+        Command help dict or None if command not found or help fails
+    """
+    try:
+        # Get all help data
+        output = _run_cli_command(["help"])
+        help_data = json.loads(output)
+        
+        # Find the specific command
+        commands = help_data.get("commands", [])
+        for cmd in commands:
+            if cmd.get("name") == command_name:
+                return cmd
+        return None
+    except Exception:
+        # If we can't get help, just return None
+        return None
+
+
+def _format_command_help(cmd_help: dict[str, Any]) -> str:
+    """
+    Format command help information for display.
+    
+    Args:
+        cmd_help: Command help dictionary from the help command
+        
+    Returns:
+        Formatted help text
+    """
+    name = cmd_help.get("name", "")
+    help_text = cmd_help.get("help", "")
+    parameters = cmd_help.get("parameters", [])
+    
+    lines = [
+        f"\nUsage: cel.{name.replace('-', '_')}(",
+    ]
+    
+    # Build parameter list
+    param_parts = []
+    for param in parameters:
+        param_name = param.get("name", "")
+        param_type = param.get("type", "str")
+        required = param.get("required", False)
+        default = param.get("default")
+        
+        if required:
+            param_parts.append(f"{param_name}")
+        else:
+            default_str = f'"{default}"' if isinstance(default, str) else str(default)
+            param_parts.append(f"{param_name}={default_str}")
+    
+    if param_parts:
+        lines[0] += ", ".join(param_parts)
+    lines[0] += ")"
+    
+    # Add description
+    if help_text:
+        lines.append(help_text)
+        
+    return "\n".join(lines)
 
 
 class CelbridgeHost:
@@ -285,6 +367,13 @@ class CelbridgeHost:
             except CelbridgeCommandError as e:
                 # Print the error cleanly without a traceback
                 print(e)
+                
+                # Try to display command-specific help
+                if e.command:
+                    cmd_help = _get_command_help(e.command)
+                    if cmd_help:
+                        print(_format_command_help(cmd_help))
+                
                 return None
         
         # Preserve the command name for better debugging

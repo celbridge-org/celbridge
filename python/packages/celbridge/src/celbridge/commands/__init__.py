@@ -8,8 +8,10 @@ version commands, help.py for help commands, etc.).
 # Re-export command functions for convenient importing
 from celbridge.commands.version import version_command
 from celbridge.commands.help import help_command
+from celbridge.commands.greet import greet_command
 
 __all__ = [
     "version_command",
     "help_command",
+    "greet_command",
 ]
