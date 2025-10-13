@@ -144,3 +144,5 @@ Celbridge relies on code from many fantastic open source projects, including:
 * [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 
 Celbridge also uses a range of open source NuGet & Python packages, details of which can be found in the THIRD-PARTY-LICENSES.txt.
+
+Note: The second egg is shorter than the first.
