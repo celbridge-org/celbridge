@@ -6,11 +6,34 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:ui="using:Celbridge.UserInterface.Services"
     mc:Ignorable="d"
     DataContext="{x:Bind ViewModel}">
 
-    <muxc:TabViewItem.Header>
-        <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}" />
-    </muxc:TabViewItem.Header>
+<muxc:TabViewItem.Resources>
+    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
+</muxc:TabViewItem.Resources>
+
+<muxc:TabViewItem.Header>
+        <StackPanel Orientation="Horizontal">
+
+            <FontIcon
+                 x:Name="ResourceIcon"
+                 FontFamily="{x:Bind ViewModel.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+                 Glyph="{x:Bind ViewModel.Icon.FontCharacter}"
+                 Foreground="{x:Bind ViewModel.Icon.FontColor, Mode=OneWay}"
+                 FontSize="16"
+                 MinWidth="20"
+                 Margin="0"
+                  />
+
+            <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                 Margin="4,0,0,0"
+                 ToolTipService.ToolTip="{x:Bind ViewModel.FilePath, Mode=OneWay}"
+                 ToolTipService.Placement="Bottom"
+                  />
+          
+         </StackPanel>
+     </muxc:TabViewItem.Header>
 
 </muxc:TabViewItem>

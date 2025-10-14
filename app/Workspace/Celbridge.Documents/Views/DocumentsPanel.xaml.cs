@@ -1,4 +1,6 @@
 using Celbridge.Documents.ViewModels;
+using Celbridge.Explorer;
+using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
@@ -8,15 +10,17 @@ using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
 public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
     private IDocumentsLogger _logger;
+    private readonly IResourceRegistry _resourceRegistry;
 
     public DocumentsPanelViewModel ViewModel { get; }
 
-    public DocumentsPanel()
+    public DocumentsPanel(IWorkspaceWrapper workspaceWrapper)
     {
         InitializeComponent();
 
         _logger = ServiceLocator.AcquireService<IDocumentsLogger>();
         ViewModel = ServiceLocator.AcquireService<DocumentsPanelViewModel>();
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         //
         // Set the data context
@@ -130,8 +134,52 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return openDocuments;
     }
 
+    public class PathNode
+    {
+        public string entryString;
+        public int groupIndex;
+
+        // These fields are not used for any algorithmic reason but are very useful for tracing and debugging the algorithm.
+        //  Also, if we do want to do any further work on this to make it more contextual this information will likely be what we need to use.
+#if DEBUG
+        public List<PathNode> nextNodes;
+        public List<DocumentTab> tabIdentifiers;
+#endif // DEBUG
+
+        public PathNode(string entryString, int groupIndex, DocumentTab initialTabIndentifier)
+        {
+            this.entryString = entryString;
+            this.groupIndex = groupIndex;
+#if DEBUG
+            nextNodes = new List<PathNode>();
+            this.tabIdentifiers = new List<DocumentTab>() { initialTabIndentifier };
+#endif // DEBUG
+        }
+    }
+
+    public class PathWorkEntry
+    {
+        public int currentIndex;
+        public string[] pathSegments;
+        public List<string> displaySegments;
+        public string finalDisplayString;
+        public PathNode? currentNode;
+
+        public PathWorkEntry(string _path)
+        {
+            pathSegments = _path.Split('\\');
+            currentIndex = pathSegments.Length - 2;
+            displaySegments = new List<string>();
+            finalDisplayString = "";
+        }
+    }
+
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
     {
+        string fileName = System.IO.Path.GetFileName(filePath);
+
+        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+
         // Check if the file is already opened
         foreach (var tabItem in TabView.TabItems)
         {
@@ -155,7 +203,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
                 return Result.Ok();
             }
+            else
+            {
+                // Check for alike filenames where we need to show a differentiation of paths.
+                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
+                {
+                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
+                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                }
+            }
         }
+
 
         //
         // Add a new DocumentTab to the TabView immediately.
@@ -165,7 +223,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceNameNoExtension;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
         // must be populated at this point.
@@ -194,7 +252,146 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         TabView.SelectedItem = null;
         TabView.SelectedItem = documentTab;
 
+        // Handle differentiation for alike filenames.
+        if (collidedTabs.Count > 0)
+        {
+            collidedTabs.Add(documentTab, new PathWorkEntry(filePath));
+            HandleCollidedTabs(ref collidedTabs);
+
+            foreach (var tabInfo in collidedTabs)
+            {
+                // Update our display string for this tab.
+                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
+            }
+        }
+
         return Result.Ok();
+    }
+
+    public static void HandleCollidedTabs(ref Dictionary<DocumentTab, PathWorkEntry> collidedTabs)
+    {
+        // Make a list of tab identifiers to iterate to avoid iterate lock up on our instances (Thanks C#)
+        var tabIdentifiers = new List<DocumentTab>();
+        foreach (var pair in collidedTabs)
+        {
+            tabIdentifiers.Add(pair.Key);
+        }
+
+        int nextGroupIndex = 1;
+        bool stillBusy = true;
+        do
+        {
+            // Reset our busy flag.
+            stillBusy = false;
+
+            // Sort identifiers by group, ready to process.
+            var GroupToIdentifiersDictionary = new Dictionary<int, List<DocumentTab>>();
+            foreach (var identifier in tabIdentifiers)
+            {
+                PathWorkEntry workEntry = collidedTabs[identifier];
+                if (workEntry.currentIndex < 0)
+                {
+                    continue;
+                }
+
+                stillBusy = true;       // If we reach here, - then there's still work to be done.
+
+                int groupIndex = workEntry.currentNode != null ? workEntry.currentNode.groupIndex : 0;
+                if (!GroupToIdentifiersDictionary.ContainsKey(groupIndex))
+                {
+                    GroupToIdentifiersDictionary.Add(groupIndex, new List<DocumentTab>() { identifier });
+                }
+                else
+                {
+                    GroupToIdentifiersDictionary[groupIndex].Add(identifier);
+                }
+            }
+
+            // Run through identifiers in group blocks, with a clean node dictionary for each group.
+            foreach (var pair in GroupToIdentifiersDictionary)
+            {
+                var NodeDictionary = new Dictionary<string, PathNode>();
+
+                foreach (DocumentTab identifier in pair.Value)
+                {
+                    var workEntry = collidedTabs[identifier];
+                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
+                    if (NodeDictionary.ContainsKey(segmentString))
+                    {
+#if DEBUG
+                        NodeDictionary[segmentString].tabIdentifiers.Add(identifier);
+#endif // DEBUG
+                    }
+                    else
+                    {
+                        NodeDictionary.Add(segmentString, new PathNode(segmentString, nextGroupIndex++, identifier));
+                    }
+
+#if DEBUG
+                    if (workEntry.currentNode != null)
+                    {
+                        if (!NodeDictionary[segmentString].nextNodes.Contains(workEntry.currentNode))
+                        {
+                            NodeDictionary[segmentString].nextNodes.Add(workEntry.currentNode);
+                        }
+                    }
+#endif // DEBUG
+
+                    workEntry.currentNode = NodeDictionary[segmentString];
+                }
+
+                // If we have only one node, then there is no deviation, so use '...', otherwise, use the segment.
+                bool useSegment = NodeDictionary.Count > 1;
+                foreach (var identifier in pair.Value)
+                {
+                    var workEntry = collidedTabs[identifier];
+                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
+                    if (useSegment)
+                    {
+                        workEntry.displaySegments.Add(segmentString);
+                    }
+                    else
+                    {
+                        if ((workEntry.displaySegments.Count > 0) && 
+                            (workEntry.displaySegments[workEntry.displaySegments.Count - 1] != "..."))
+                        {
+                            workEntry.displaySegments.Add("...");
+                        }
+                    }
+                    workEntry.currentIndex--;
+                }
+            }
+        }
+        while (stillBusy);
+
+        // Render out to a string ready for output and tidy any leading '...' entries.
+        foreach (var pair in collidedTabs)
+        {
+            PathWorkEntry workEntry = pair.Value;
+            var displaySegments = workEntry.displaySegments;
+            displaySegments.Reverse();
+            string outputPath = "";
+            foreach (var segment in displaySegments)
+            {
+                if (outputPath.Length > 0)
+                {
+                    outputPath += "\\";
+                }
+                else
+                {
+                    if (segment == "...")
+                    {
+                        continue;
+                    }
+                }
+                outputPath += segment;
+            }
+
+            // Add file name to the end of the path.
+            outputPath += "\\" + workEntry.pathSegments[workEntry.pathSegments.Length - 1];
+
+            workEntry.finalDisplayString = outputPath;
+        }
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
