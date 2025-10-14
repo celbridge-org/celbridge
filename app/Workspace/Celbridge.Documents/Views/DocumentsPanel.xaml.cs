@@ -165,9 +165,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         public string finalDisplayString;
         public PathNode? currentNode;
 
-        public PathWorkEntry(string _path)
+        public PathWorkEntry(string path)
         {
-            pathSegments = _path.Split('\\');
+            pathSegments = path.Split('\\');
             currentIndex = pathSegments.Length - 2;
             displaySegments = new List<string>();
             finalDisplayString = "";
