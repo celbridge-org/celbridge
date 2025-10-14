@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -11,9 +12,18 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+
+    [ObservableProperty]
+    private IconDefinition _icon;
 
     [ObservableProperty]
     private ResourceKey _fileResource;
+
+    partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
+    {
+        _icon = _workspaceWrapper.WorkspaceService.ExplorerService.GetIconForResource(newValue);
+    }
 
     [ObservableProperty]
     public string _documentName = string.Empty;
@@ -32,6 +42,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         // We can't use the view's Loaded & Unloaded methods to register & unregister here.
@@ -46,6 +57,9 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
+
+        // Use the default file icon until we can resolve the proper icon when the resource is populated.
+        _icon = workspaceWrapper.WorkspaceService.ExplorerService.GetIconForResource(ResourceKey.Empty);
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
