@@ -2,6 +2,7 @@ using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Logging;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.Python.Services;
@@ -15,6 +16,9 @@ public class PythonService : IPythonService, IDisposable
     private readonly Func<string, IRpcService> _rpcServiceFactory;
 
     private IRpcService? _rpcService;
+    private IPythonRpcClient? _pythonRpcClient;
+
+    public IPythonRpcClient RpcClient => _pythonRpcClient!;
 
     public PythonService(
         IProjectService projectService,
@@ -163,6 +167,9 @@ public class PythonService : IPythonService, IDisposable
                 return Result.Fail("Failed to connect to Python RPC server")
                     .WithErrors(connectResult);
             }
+
+            // Create Python RPC client for strongly-typed Python method calls
+            _pythonRpcClient = new PythonRpcClient(_rpcService);
 
             return Result.Ok();
         }

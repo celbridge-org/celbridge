@@ -11,6 +11,7 @@ public class RpcService : IRpcService
 {
     private readonly ILogger<RpcService> _logger;
     private readonly string _pipeName;
+    private readonly PythonRpcHandler _handler;
     private readonly SemaphoreSlim _lock = new(1, 1);
     
     private NamedPipeClientStream? _pipeStream;
@@ -26,15 +27,16 @@ public class RpcService : IRpcService
         }
     }
 
-    public RpcService(ILogger<RpcService> logger, string pipeName)
+    public RpcService(ILogger<RpcService> logger, string pipeName, PythonRpcHandler handler)
     {
         _logger = logger;
         _pipeName = pipeName;
+        _handler = handler;
     }
 
     public async Task<Result> ConnectAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));  
         await _lock.WaitAsync(cts.Token);
         try
         {
@@ -62,11 +64,12 @@ public class RpcService : IRpcService
                 // Connect to the pipe with timeout
                 await _pipeStream.ConnectAsync();
 
-                // Attach JSON-RPC (automatically starts listening)
-                _rpc = JsonRpc.Attach(_pipeStream);
-
-                // Listen for disconnection
+                // Create JsonRpc instance
+                _rpc = new JsonRpc(_pipeStream, _pipeStream);
+                _rpc.AddLocalRpcTarget(_handler);
                 _rpc.Disconnected += OnRpcDisconnected;
+
+                _rpc.StartListening();
 
                 _logger.LogInformation("Successfully connected to Python RPC server");
             }
@@ -106,43 +109,7 @@ public class RpcService : IRpcService
             _lock.Release();
         }
 
-        var versionResult = await GetCelbridgeVersionAsync();
-        if (versionResult.IsSuccess)
-        {
-            var version = versionResult.Value;
-            _logger.LogInformation("Connected to celbridge Python package version: {Version}", version);
-        }
-
         return Result.Ok();
-    }
-
-    public async Task<Result<string>> GetCelbridgeVersionAsync()
-    {
-        try
-        {
-            // Check if connected
-            if (!IsConnected)
-            {
-                return Result<string>.Fail("RPC service is not connected to Python process");
-            }
-
-            // Invoke the "version" method with no arguments
-            var versionResult = await InvokeAsync<string>("version");
-
-            if (versionResult.IsFailure)
-            {
-                _logger.LogError("Failed to get celbridge version: {Error}", versionResult.Error);
-                return versionResult;
-            }
-
-            _logger.LogInformation("Celbridge Python package version: {Version}", versionResult.Value);
-            return versionResult;
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail("An error occurred while getting celbridge version")
-                .WithException(ex);
-        }
     }
 
     public async Task<Result> DisconnectAsync()

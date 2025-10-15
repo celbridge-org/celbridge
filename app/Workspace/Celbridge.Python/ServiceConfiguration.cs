@@ -12,11 +12,14 @@ public static class ServiceConfiguration
         //
         services.AddTransient<IPythonService, PythonService>();
         
-        // Register RPC service factory (creates RpcService instances with specific pipe names)
+        services.AddTransient<IPythonRpcClient, PythonRpcClient>();
+        services.AddTransient<PythonRpcHandler>();
+        
         services.AddTransient<Func<string, IRpcService>>(serviceProvider => pipeName =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<RpcService>>();
-            return new RpcService(logger, pipeName);
+            var handler = serviceProvider.GetRequiredService<PythonRpcHandler>();
+            return new RpcService(logger, pipeName, handler);
         });
     }
 }

@@ -1,11 +1,17 @@
+using Celbridge.Logging;
+
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceLoader
 {
+    private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public WorkspaceLoader(IWorkspaceWrapper workspaceWrapper)
+    public WorkspaceLoader(
+        ILogger<WorkspaceLoader> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -134,6 +140,14 @@ public class WorkspaceLoader
         {
             return Result.Fail("Failed to initialize Python scripting")
                 .WithErrors(initPython);
+        }
+
+        // Get Python package version to confirm RPC connection is working
+        var versionResult = await pythonService.RpcClient.GetVersionAsync();
+        if (versionResult.IsSuccess)
+        {
+            var packageVersion = versionResult.Value;
+            _logger.LogInformation("Connected to celbridge Python package version: {Version}", packageVersion);
         }
 
         return Result.Ok();

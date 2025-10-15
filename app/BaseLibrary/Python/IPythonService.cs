@@ -9,4 +9,9 @@ public interface IPythonService
     /// Initializes the Python environment.
     /// </summary>
     Task<Result> InitializePython();
+
+    /// <summary>
+    /// Gets the RPC client used to communicate with the Python host.
+    /// </summary>
+    IPythonRpcClient RpcClient { get; }
 }
