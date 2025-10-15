@@ -143,11 +143,11 @@ public class WorkspaceLoader
         }
 
         // Get Python package version to confirm RPC connection is working
-        var versionResult = await pythonService.RpcClient.GetVersionAsync();
-        if (versionResult.IsSuccess)
+        var infoResult = await pythonService.RpcClient.GetSystemInfoAsync();
+        if (infoResult.IsSuccess)
         {
-            var packageVersion = versionResult.Value;
-            _logger.LogInformation("Connected to celbridge Python package version: {Version}", packageVersion);
+            var info = infoResult.Value;
+            _logger.LogInformation($"Connected to celbridge Python package version: {info}");
         }
 
         return Result.Ok();

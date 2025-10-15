@@ -12,6 +12,11 @@ public class PythonRpcClient : IPythonRpcClient
 
     public async Task<Result<string>> GetVersionAsync()
     {
-        return await _rpcService.InvokeAsync<string>("version");
+        return await _rpcService.InvokeAsync<string>("get_version");
+    }
+
+    public async Task<Result<SystemInfo>> GetSystemInfoAsync()
+    {
+        return await _rpcService.InvokeAsync<SystemInfo>("get_system_info");
     }
 }
