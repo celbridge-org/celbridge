@@ -14,6 +14,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IUtilityService _utilityService;
     private readonly ILogger<PythonService> _logger;
     private readonly Func<string, IRpcService> _rpcServiceFactory;
+    private readonly Func<IRpcService, IPythonRpcClient> _pythonRpcClientFactory;
 
     private IRpcService? _rpcService;
     private IPythonRpcClient? _pythonRpcClient;
@@ -25,13 +26,15 @@ public class PythonService : IPythonService, IDisposable
         IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService,
         ILogger<PythonService> logger,
-        Func<string, IRpcService> rpcServiceFactory)
+        Func<string, IRpcService> rpcServiceFactory,
+        Func<IRpcService, IPythonRpcClient> pythonRpcClientFactory)
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _utilityService = utilityService;
         _logger = logger;
         _rpcServiceFactory = rpcServiceFactory;
+        _pythonRpcClientFactory = pythonRpcClientFactory;
     }
 
     public async Task<Result> InitializePython()
@@ -169,7 +172,7 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Create Python RPC client for strongly-typed Python method calls
-            _pythonRpcClient = new PythonRpcClient(_rpcService);
+            _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
 
             return Result.Ok();
         }

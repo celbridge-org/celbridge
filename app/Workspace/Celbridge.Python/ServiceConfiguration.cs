@@ -11,15 +11,21 @@ public static class ServiceConfiguration
         // Register services
         //
         services.AddTransient<IPythonService, PythonService>();
-        
-        services.AddTransient<IPythonRpcClient, PythonRpcClient>();
-        services.AddTransient<PythonRpcHandler>();
-        
+                
         services.AddTransient<Func<string, IRpcService>>(serviceProvider => pipeName =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<RpcService>>();
             var handler = serviceProvider.GetRequiredService<PythonRpcHandler>();
             return new RpcService(logger, pipeName, handler);
         });
+
+        services.AddTransient<Func<IRpcService, IPythonRpcClient>>(serviceProvider => rpcService =>
+        {
+            // Todo: Add any dependencies PythonRpcClient needs here
+            return new PythonRpcClient(rpcService);
+        });
+
+        services.AddTransient<PythonRpcHandler>();
+
     }
 }
