@@ -1,24 +1,42 @@
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Logging;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.Python.Services;
 
 public class PythonService : IPythonService, IDisposable
 {
+    private const int PythonLogMaxFiles = 10;
+
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUtilityService _utilityService;
+    private readonly ILogger<PythonService> _logger;
+    private readonly Func<string, IRpcService> _rpcServiceFactory;
+    private readonly Func<IRpcService, IPythonRpcClient> _pythonRpcClientFactory;
+
+    private IRpcService? _rpcService;
+    private IPythonRpcClient? _pythonRpcClient;
+
+    public IPythonRpcClient RpcClient => _pythonRpcClient!;
 
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        ILogger<PythonService> logger,
+        Func<string, IRpcService> rpcServiceFactory,
+        Func<IRpcService, IPythonRpcClient> pythonRpcClientFactory)
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _utilityService = utilityService;
+        _logger = logger;
+        _rpcServiceFactory = rpcServiceFactory;
+        _pythonRpcClientFactory = pythonRpcClientFactory;
     }
 
     public async Task<Result> InitializePython()
@@ -79,6 +97,17 @@ public class PythonService : IPythonService, IDisposable
             var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
             Environment.SetEnvironmentVariable("CELBRIDGE_VERSION", $"{celbridgeVersion}");
 
+            // Set Python logging environment variables
+            Environment.SetEnvironmentVariable("PYTHON_LOG_LEVEL", "DEBUG");
+            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.LogsFolder);
+            Environment.SetEnvironmentVariable("PYTHON_LOG_DIR", pythonLogFolder);
+            Environment.SetEnvironmentVariable("PYTHON_LOG_MAX_FILES", PythonLogMaxFiles.ToString());
+
+            // Generate unique pipe name for JSON-RPC communication
+            var pipeName = $"celbridge_rpc_{Guid.NewGuid():N}";
+            Environment.SetEnvironmentVariable("CELBRIDGE_RPC_PIPE", pipeName);
+            _logger.LogInformation("Generated RPC pipe name: {PipeName}", pipeName);
+
             // Get the path to the celbridge wheel file
             // This is the CLI application that implements the core functionality of Celbridge.
             var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
@@ -138,6 +167,20 @@ public class PythonService : IPythonService, IDisposable
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
             terminal.Start(commandLine, workingDir);
+
+            // Create and connect RPC service
+            _rpcService = _rpcServiceFactory(pipeName);
+            
+            // Wait for Python process to start RPC server (with timeout)
+            var connectResult = await _rpcService.ConnectAsync();
+            if (connectResult.IsFailure)
+            {
+                return Result.Fail("Failed to connect to Python RPC server")
+                    .WithErrors(connectResult);
+            }
+
+            // Create Python RPC client for strongly-typed Python method calls
+            _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
 
             return Result.Ok();
         }
@@ -224,7 +267,9 @@ public class PythonService : IPythonService, IDisposable
         {
             if (disposing)
             {
-                // Dispose managed objects here
+                // Dispose RPC service
+                _rpcService?.Dispose();
+                _rpcService = null;
             }
 
             _disposed = true;

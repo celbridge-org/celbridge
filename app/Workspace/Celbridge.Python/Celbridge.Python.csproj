@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="StreamJsonRpc" />
+  </ItemGroup>
+
 </Project>
