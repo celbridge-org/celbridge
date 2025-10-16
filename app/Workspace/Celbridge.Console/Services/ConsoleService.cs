@@ -41,13 +41,6 @@ public class ConsoleService : IConsoleService, IDisposable
         return await _consolePanel.InitializeTerminalWindow(Terminal);
     }
 
-    public event Action<MessageType, string>? OnPrint;
-
-    public void Print(MessageType printType, string message)
-    {
-        OnPrint?.Invoke(printType, message);
-    }
-
     public void RunCommand(string command)
     {
         // Populate the CommandBuffer with the command to be executed.
