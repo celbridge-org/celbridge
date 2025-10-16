@@ -9,6 +9,8 @@ namespace Celbridge.Python.Services;
 
 public class PythonService : IPythonService, IDisposable
 {
+    private const int PythonLogMaxFiles = 10;
+
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUtilityService _utilityService;
@@ -94,6 +96,12 @@ public class PythonService : IPythonService, IDisposable
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
             Environment.SetEnvironmentVariable("CELBRIDGE_VERSION", $"{celbridgeVersion}");
+
+            // Set Python logging environment variables
+            Environment.SetEnvironmentVariable("PYTHON_LOG_LEVEL", "DEBUG");
+            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.LogsFolder);
+            Environment.SetEnvironmentVariable("PYTHON_LOG_DIR", pythonLogFolder);
+            Environment.SetEnvironmentVariable("PYTHON_LOG_MAX_FILES", PythonLogMaxFiles.ToString());
 
             // Generate unique pipe name for JSON-RPC communication
             var pipeName = $"celbridge_rpc_{Guid.NewGuid():N}";

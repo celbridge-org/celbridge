@@ -15,26 +15,9 @@ public class PythonRpcHandler
     // Note: These methods should NOT return Result<T> - they should throw exceptions
     // on error, which StreamJsonRpc will propagate back to Python as RPC errors.
 
-    public Task LogMessageAsync(string level, string message)
+    public Task LogMessageAsync(string message)
     {
-        switch (level.ToLowerInvariant())
-        {
-            case "debug":
-                _logger.LogDebug("[Python] {Message}", message);
-                break;
-            case "info":
-                _logger.LogInformation("[Python] {Message}", message);
-                break;
-            case "warning":
-                _logger.LogWarning("[Python] {Message}", message);
-                break;
-            case "error":
-                _logger.LogError("[Python] {Message}", message);
-                break;
-            default:
-                _logger.LogInformation("[Python] {Message}", message);
-                break;
-        }
+        _logger.LogInformation("[Python] {Message}", message);
 
         return Task.CompletedTask;
     }
