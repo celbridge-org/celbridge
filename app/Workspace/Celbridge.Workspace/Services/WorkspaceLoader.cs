@@ -1,11 +1,17 @@
+using Celbridge.Logging;
+
 namespace Celbridge.Workspace.Services;
 
 public class WorkspaceLoader
 {
+    private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public WorkspaceLoader(IWorkspaceWrapper workspaceWrapper)
+    public WorkspaceLoader(
+        ILogger<WorkspaceLoader> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
     }
 
