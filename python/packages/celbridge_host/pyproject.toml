@@ -12,7 +12,11 @@ license = {text = "MIT"}
 authors = [
     {name = "Celbridge.org", email = "contact@celbridge.org"}
 ]
-dependencies = []
+dependencies = [
+    "jsonrpcserver>=5.0",
+    "jsonrpcclient>=4.0",
+    "pywin32>=306",
+]
 
 [project.optional-dependencies]
 dev = [
