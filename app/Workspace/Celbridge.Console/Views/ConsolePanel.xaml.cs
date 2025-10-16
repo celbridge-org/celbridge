@@ -4,6 +4,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.Messaging;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 using System.Runtime.InteropServices;
@@ -16,11 +17,14 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     private ICommandService _commandService;
     private IUserInterfaceService _userInterfaceService;
     private IMessengerService _messengerService;
+    private IStringLocalizer _stringLocalizer;
 
     public ConsolePanelViewModel ViewModel { get; }
 
     private ITerminal? _terminal;
     private UserInterfaceTheme _currentTheme;
+
+    public string RestartButton_Tooltip => _stringLocalizer.GetString("ConsolePanel_RestartHostTooltip");
 
     public ConsolePanel()
     {
@@ -30,6 +34,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
         // Monitor theme changes via messenger

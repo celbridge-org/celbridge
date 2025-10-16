@@ -33,6 +33,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<IClearCommand, ClearCommand>();
         services.AddTransient<IClearHistoryCommand, ClearHistoryCommand>();
+        services.AddTransient<IRestartHostCommand, RestartHostCommand>();
         services.AddTransient<IUndoCommand, UndoCommand>();
         services.AddTransient<IRedoCommand, RedoCommand>();
         services.AddTransient<IHelpCommand, HelpCommand>();

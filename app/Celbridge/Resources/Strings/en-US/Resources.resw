@@ -183,7 +183,7 @@
   <data name="MainPage_Community" xml:space="preserve">
     <value>Community</value>
   </data>
-    <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+  <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
   </data>
   <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
@@ -378,9 +378,6 @@
   <data name="HomePage_NoRecentProjects" xml:space="preserve">
     <value>You have no recent projects.</value>
   </data>
-  <data name="SettingsPage_Title" xml:space="preserve">
-    <value>Settings</value>
-  </data>
   <data name="SettingsPage_ApplicationTheme" xml:space="preserve">
     <value>Application Theme</value>
   </data>
@@ -500,5 +497,8 @@ Do you wish to continue?</value>
   </data>
   <data name="Theme_System" xml:space="preserve">
     <value>System Default</value>
+  </data>
+  <data name="ConsolePanel_RestartHostTooltip" xml:space="preserve">
+    <value>Restart the console host</value>
   </data>
 </root>

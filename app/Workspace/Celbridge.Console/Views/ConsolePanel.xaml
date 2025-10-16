@@ -6,8 +6,32 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-  <Grid>
+  <Grid RowDefinitions="40, *">
+    <!-- Toolbar -->
+    <Grid Grid.Row="0"
+          Background="{ThemeResource PanelBackgroundABrush}"
+          BorderBrush="{ThemeResource PanelBorderBrush}"
+          BorderThickness="0,0,0,1"
+          ColumnDefinitions="Auto, *, Auto">
+      
+      <TextBlock Grid.Column="0"
+                 Text="Console"
+                 VerticalAlignment="Center"
+                 Margin="6,0,0,0"/>
+
+      <Button x:Name="RestartHostButton"
+              Grid.Column="2"
+              VerticalAlignment="Center"
+              Margin="0,0,2,0"
+              Command="{x:Bind ViewModel.RestartHostCommand}"
+              ToolTipService.ToolTip="{x:Bind RestartButton_Tooltip}">
+        <SymbolIcon Symbol="Refresh"/>
+      </Button>
+    </Grid>
+
+    <!-- Terminal WebView -->
     <WebView2 x:Name="TerminalWebView"
+              Grid.Row="1"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
               DefaultBackgroundColor="Transparent"/>

@@ -116,6 +116,11 @@ public partial class ConsolePanelViewModel : ObservableObject
         _commandService.Execute<IClearCommand>();
     }
 
+    public ICommand RestartHostCommand => new RelayCommand(RestartHost_Executed);
+    private void RestartHost_Executed()
+    {
+        _commandService.Execute<IRestartHostCommand>();
+    }
 
     private void AppendLogEntry(MessageType messageType, string message)
     {
