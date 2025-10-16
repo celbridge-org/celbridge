@@ -20,9 +20,12 @@ logger = logging.getLogger(__name__)
 _rpc_service: Optional['CelbridgeRpcService'] = None
 _service_lock = threading.Lock()
 
-# Global pipe handler for outgoing requests to C#
+# Global pipe handler for bidirectional communication
 _pipe_handler: Optional[NamedPipeHandler] = None
 _pipe_handler_lock = threading.Lock()
+
+# Lock to serialize pipe I/O operations (one request/response at a time)
+_pipe_io_lock = threading.Lock()
 
 
 class CelbridgeRpcService:
@@ -79,42 +82,44 @@ class CelbridgeRpcService:
         """
         global _pipe_handler
         
-        # Store the pipe handler globally for outgoing requests
+        # Store the pipe handler globally for bidirectional communication
         with _pipe_handler_lock:
             _pipe_handler = handler
         
         try:
             while self.running:
-                # Read request
-                request_str = handler.read_message()
-                if not request_str:
-                    logger.info("Client disconnected")
-                    break
-                
-                logger.debug(f"Received request: {request_str}")
-                
-                try:
-                    # Dispatch to appropriate method and get response
-                    response_str = dispatch(request_str)
-                    logger.debug(f"Sending response: {response_str}")
-                    
-                    # Send response
-                    if not handler.write_message(response_str):
-                        logger.error("Failed to write response")
+                # Acquire I/O lock before reading to prevent conflicts with outgoing calls
+                with _pipe_io_lock:
+                    # Read request
+                    request_str = handler.read_message()
+                    if not request_str:
+                        logger.info("Client disconnected")
                         break
+                    
+                    logger.debug(f"Received request: {request_str}")
+                    
+                    try:
+                        # Dispatch to appropriate method and get response
+                        response_str = dispatch(request_str)
+                        logger.debug(f"Sending response: {response_str}")
                         
-                except Exception as e:
-                    logger.error(f"Error processing request: {e}")
-                    # Send error response
-                    error_response = json.dumps({
-                        "jsonrpc": "2.0",
-                        "error": {
-                            "code": -32603,
-                            "message": f"Internal error: {str(e)}"
-                        },
-                        "id": None
-                    })
-                    handler.write_message(error_response)
+                        # Send response
+                        if not handler.write_message(response_str):
+                            logger.error("Failed to write response")
+                            break
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing request: {e}")
+                        # Send error response
+                        error_response = json.dumps({
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32603,
+                                "message": f"Internal error: {str(e)}"
+                            },
+                            "id": None
+                        })
+                        handler.write_message(error_response)
         finally:
             # Clear the global pipe handler when client disconnects
             with _pipe_handler_lock:
@@ -197,8 +202,7 @@ def call_csharp_method(method: str, **params) -> Any:
     Raises:
         RpcError: If the RPC call fails (connection, transport, or protocol error)
     """
-
-    # Get the transport (pipe handler)
+    # Get the pipe handler
     pipe_handler = get_pipe_handler()
     if pipe_handler is None:
         raise RpcError(f"Cannot call '{method}': No active pipe connection to C#")
@@ -207,18 +211,22 @@ def call_csharp_method(method: str, **params) -> Any:
     request_str = request_json(method, params=params)
     logger.debug(f"RPC call to C#: {method}({params})")
     
-    # Send request
-    if not pipe_handler.write_message(request_str):
-        raise RpcError(f"Failed to send RPC request: {method}")
-    
-    # Receive response
-    response_str = pipe_handler.read_message()
-    if not response_str:
-        raise RpcError(f"Failed to receive RPC response: {method}")
-    
-    # Parse JSON-RPC response
+    # Acquire I/O lock for the entire request/response cycle
+    # This prevents the server thread from reading the next incoming request
+    # while we're waiting for a response to our outgoing request
+    with _pipe_io_lock:
+        # Send request
+        if not pipe_handler.write_message(request_str):
+            raise RpcError(f"Failed to send RPC request: {method}")
+
+        # Receive response
+        response_str = pipe_handler.read_message()
+        if not response_str:
+            raise RpcError(f"Failed to receive RPC response: {method}")
+
+    # Parse JSON-RPC response (outside the lock)
     response = parse_json(response_str)
-    
+
     if isinstance(response, Ok):
         logger.debug(f"RPC call succeeded: {method}")
         return response.result
