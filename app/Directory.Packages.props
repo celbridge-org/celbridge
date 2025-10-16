@@ -30,6 +30,7 @@
     <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
     <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
+    <PackageVersion Include="StreamJsonRpc" Version="2.22.23" />
     <PackageVersion Include="Tomlyn" Version="0.19.0" />
   </ItemGroup>
 </Project>

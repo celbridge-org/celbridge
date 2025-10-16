@@ -6,7 +6,6 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Celbridge.Utilities;
-using Uno.Resizetizer;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
@@ -34,6 +33,8 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         this.UnhandledException += OnAppUnhandledException;
+
+        SetupLoggingEnvironment();
 
         // Load WinUI Resources
         Resources.Build(r => r.Merged(
@@ -288,5 +289,30 @@ public partial class App : Application
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
         logger.LogError(exception, "An unhandled exception occurred");
+    }
+
+
+    /// <summary>
+    /// Set an environment variable for where the application log file should be created.
+    /// This allows us to easily share the value with both NLog and with Python host child processes.
+    /// </summary>
+    private static void SetupLoggingEnvironment()
+    {
+
+        string localDataPath;
+#if WINDOWS
+        localDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+#else
+        localDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+#endif
+
+        // Get process start time formatted to match the Python host log filenames.
+        var processStartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
+        var timestamp = processStartTime.ToString("yyyyMMdd_HHmmss");
+
+        var logFileName = $"celbridge_{timestamp}.log";
+        var logFilePath = System.IO.Path.Combine(localDataPath, "Logs", logFileName);
+
+        Environment.SetEnvironmentVariable("CELBRIDGE_LOG_FILE", logFilePath);
     }
 }

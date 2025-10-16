@@ -26,6 +26,11 @@ public static class ProjectConstants
     public const string CacheFolder = ".cache";
 
     /// <summary>
+    /// Folder containing Python logs.
+    /// </summary>
+    public const string LogsFolder = ".logs";
+
+    /// <summary>
     /// File containing the workspace settings data.
     /// </summary>
     public const string WorkspaceSettingsFile = "workspace_settings.db";
