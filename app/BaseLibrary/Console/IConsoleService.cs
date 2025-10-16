@@ -32,16 +32,6 @@ public interface IConsoleService
     Task<Result> InitializeTerminalWindow();
 
     /// <summary>
-    /// Event fired when the Print() method is called.
-    /// </summary>
-    event Action<MessageType, string> OnPrint;
-
-    /// <summary>
-    /// Print a message to the console.
-    /// </summary>
-    void Print(MessageType messageType, string message);
-
-    /// <summary>
     /// Runs a command by injecting terminal input.
     /// </summary>
     void RunCommand(string command);
