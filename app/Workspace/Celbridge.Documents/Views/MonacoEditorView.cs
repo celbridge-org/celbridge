@@ -147,7 +147,9 @@ public sealed partial class MonacoEditorView : DocumentView
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
         var pool = documentsService.TextEditorWebViewPool;
-        pool.ReleaseInstance(_webView);
+        
+        // Fire and forget - we can't await in PrepareToClose as it's synchronous in the interface
+        _ = pool.ReleaseInstanceAsync(_webView);
 
         _webView = null;
     }

@@ -1,3 +1,4 @@
+using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
 using System.Collections.Concurrent;
@@ -7,35 +8,63 @@ namespace Celbridge.Documents.Services;
 
 public class TextEditorWebViewPool
 {
+    private readonly ILogger<TextEditorWebViewPool> _logger;
     private readonly ConcurrentQueue<WebView2> _pool;
     private readonly HashSet<WebView2> _activeInstances;
     private readonly int _maxPoolSize;
+    private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
     private readonly object _lock = new object();
+    private bool _isInitialized = false;
     private bool _isShuttingDown = false;
+    private Task? _initializationTask;
 
     public TextEditorWebViewPool(int poolSize)
     {
+        _logger = ServiceLocator.AcquireService<ILogger<TextEditorWebViewPool>>();
         _maxPoolSize = poolSize;
         _pool = new ConcurrentQueue<WebView2>();
         _activeInstances = new HashSet<WebView2>();
 
 #if WINDOWS
-        InitializePool();
+        // Start initialization but don't await it
+        _initializationTask = InitializePoolAsync();
 #endif
     }
 
-    private async void InitializePool()
+    private async Task InitializePoolAsync()
     {
-        for (int i = 0; i < _maxPoolSize; i++)
+        await _initializationSemaphore.WaitAsync();
+        try
         {
-            var webView = await CreateTextEditorWebView();
-            _pool.Enqueue(webView);
+            if (_isInitialized || _isShuttingDown)
+                return;
+
+            for (int i = 0; i < _maxPoolSize; i++)
+            {
+                try
+                {
+                    var webView = await CreateTextEditorWebView();
+                    _pool.Enqueue(webView);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to create WebView2 instance {i + 1} of {_maxPoolSize} during pool initialization");
+                }
+            }
+
+            _isInitialized = true;
+            _logger.LogDebug($"TextEditorWebViewPool initialized with {_pool.Count} of {_maxPoolSize} instances");
+        }
+        finally
+        {
+            _initializationSemaphore.Release();
         }
     }
 
     public async Task<WebView2> AcquireInstance()
     {
-        WebView2? webView;
+        WebView2? webView = null;
+        bool needsCreation = false;
         
         lock (_lock)
         {
@@ -44,24 +73,29 @@ public class TextEditorWebViewPool
                 throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
             }
 
-            if (!_pool.TryDequeue(out webView))
+            // Try to get an instance from the pool first (don't wait for initialization)
+            if (_pool.TryDequeue(out webView))
             {
-                // Pool is empty, we'll create a new instance outside the lock
+                _activeInstances.Add(webView);
             }
             else
             {
-                _activeInstances.Add(webView);
-                return webView;
+                needsCreation = true;
             }
         }
 
-        // Create a new instance if the pool was empty
-        webView = await CreateTextEditorWebView();
-        
-        lock (_lock)
+        // Create outside the lock if needed
+        if (needsCreation)
         {
-            if (!_isShuttingDown)
+            webView = await CreateTextEditorWebView();
+            
+            lock (_lock)
             {
+                if (_isShuttingDown)
+                {
+                    CloseWebView(webView);
+                    throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
+                }
                 _activeInstances.Add(webView);
             }
         }
@@ -70,7 +104,7 @@ public class TextEditorWebViewPool
         return webView;
     }
 
-    public async void ReleaseInstance(WebView2 webView)
+    public async Task ReleaseInstanceAsync(WebView2 webView)
     {
         bool shouldCreateNew = false;
 
@@ -99,25 +133,75 @@ public class TextEditorWebViewPool
         // Create a fresh instance for the pool to ensure the Monaco editor starts in a pristine state
         if (shouldCreateNew)
         {
-            var newWebView = await CreateTextEditorWebView();
-            
-            lock (_lock)
+            try
             {
-                if (!_isShuttingDown)
+                var newWebView = await CreateTextEditorWebView();
+                
+                lock (_lock)
                 {
-                    _pool.Enqueue(newWebView);
+                    if (!_isShuttingDown)
+                    {
+                        _pool.Enqueue(newWebView);
+                    }
+                    else
+                    {
+                        // If we're shutting down by the time we created this, close it immediately
+                        CloseWebView(newWebView);
+                    }
                 }
-                else
-                {
-                    // If we're shutting down by the time we created this, close it immediately
-                    CloseWebView(newWebView);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create replacement WebView2 instance for pool during release");
             }
         }
     }
 
     public void Shutdown()
     {
+        try
+        {
+            // Synchronous wrapper for ShutdownAsync with timeout protection.
+            // This is safe to call during Dispose() as it won't block indefinitely.        
+            var shutdownTask = ShutdownAsync();
+            if (!shutdownTask.Wait(TimeSpan.FromSeconds(3)))
+            {
+                _logger.LogWarning("Shutdown did not complete within 3 seconds. Some cleanup may be incomplete.");
+            }
+        }
+        catch (AggregateException ex) when (ex.InnerException != null)
+        {
+            // Task.Wait() wraps exceptions in an AggregateException
+            _logger.LogError(ex.InnerException, "An exception occurred during shutdown");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An exception occurred during shutdown");
+        }
+    }
+
+    private async Task ShutdownAsync()
+    {
+        if (_initializationTask != null && !_initializationTask.IsCompleted)
+        {
+            // Initialization is still in progress.
+            // Wait briefly but don't block indefinitely
+            try
+            {
+                var timeoutTask = Task.Delay(2000);
+                var completedTask = await Task.WhenAny(_initializationTask, timeoutTask).ConfigureAwait(false);
+
+                if (completedTask == timeoutTask)
+                {
+                    _logger.LogWarning("Pool initialization did not complete within timeout. Proceeding with cleanup.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "An exception occurred during pool initialization while shutting down");
+            }
+        }
+
         lock (_lock)
         {
             _isShuttingDown = true;
@@ -135,6 +219,9 @@ public class TextEditorWebViewPool
             }
             _activeInstances.Clear();
         }
+
+        _initializationSemaphore.Dispose();
+        _logger.LogDebug("TextEditorWebViewPool shutdown complete");
     }
 
     private static void CloseWebView(WebView2? webView)
