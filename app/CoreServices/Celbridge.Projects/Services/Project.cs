@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Celbridge.Logging;
 using Celbridge.Utilities;
 
@@ -26,6 +27,8 @@ public class Project : IDisposable, IProject
 
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
+
+    private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
 
 
     public Project(
@@ -88,7 +91,7 @@ public class Project : IDisposable, IProject
         }
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, bool createExampleProject)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
@@ -114,11 +117,13 @@ public class Project : IDisposable, IProject
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
-            // Get Celbridge version
-            var utilityService = ServiceLocator.AcquireService<IUtilityService>();
-            var info = utilityService.GetEnvironmentInfo();
+            if (!createExampleProject)
+            {
+                // Get Celbridge version
+                var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+                var info = utilityService.GetEnvironmentInfo();
 
-            var projectTOML = $"""
+                var projectTOML = $"""
                 [project]
                 version = "{DefaultProjectVersion}"
                 celbridge_version = "{info.AppVersion}"
@@ -132,17 +137,27 @@ public class Project : IDisposable, IProject
 
                 """;
 
-            // Todo: Populate this with project configuration options
-            await File.WriteAllTextAsync(projectFilePath, projectTOML);
+                // Todo: Populate this with project configuration options
+                await File.WriteAllTextAsync(projectFilePath, projectTOML);
 
-            // %%% Change this to read the file from a file in the project build, and also to ensure we're not stomping an existing file.
-            string readMePath = projectPath + "\\readme.md";
-            var readMeText = $"""
+                // %%% Change this to read the file from a file in the project build, and also to ensure we're not stomping an existing file.
+                string readMePath = projectPath + "\\readme.md";
+                var readMeText = $"""
                 ## Welcome to Celbridge
                 # This is your project.
                 """;
 
-            await File.WriteAllTextAsync(readMePath, readMeText);
+                await File.WriteAllTextAsync(readMePath, readMeText);
+            }
+            else
+            {
+                // Extract our Examples Zip file to the selected location.
+                var uvZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ExamplesZipAssetPath));
+                var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "examples.zip", NameCollisionOption.ReplaceExisting);
+                ZipFile.ExtractToDirectory(uvTempFile.Path, projectPath, overwriteFiles: true);
+
+                File.Move(projectPath + "\\Example.celbridge", projectFilePath);
+            }
         }
         catch (Exception ex)
         {

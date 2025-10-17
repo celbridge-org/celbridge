@@ -1,4 +1,4 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Validators;
 
@@ -89,6 +89,17 @@ public class DialogService : IDialogService
     public async Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync()
     {
         var dialog = _dialogFactory.CreateNewProjectDialog();
+
+        SuppressProgressDialog(true);
+        var showResult = await dialog.ShowDialogAsync();
+        SuppressProgressDialog(false);
+
+        return showResult;
+    }
+
+    public async Task<Result<NewProjectConfig>> ShowCreateExampleProjectDialogAsync()
+    {
+        var dialog = _dialogFactory.CreateCreateExampleProjectDialog();
 
         SuppressProgressDialog(true);
         var showResult = await dialog.ShowDialogAsync();

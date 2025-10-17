@@ -47,12 +47,14 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
                 .WithErrors(createResult);
         }
 
+        // %%% NOTE : Do we want to install MANY examples, in which case which one do we load?
+        //  For now, assume we are only unpacking one example project.
+
         // Load the newly created project
         _commandService.Execute<ILoadProjectCommand>(command =>
         {
             command.ProjectFilePath = Config.ProjectFilePath;
         });
-
         return Result.Ok();
     }
 
@@ -60,13 +62,13 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     // Static methods for scripting support.
     //
 
-    public static void CreateProject(string projectFilePath)
+    public static void CreateProject(string projectFilePath, bool createExampleProject)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
         commandService.Execute<ICreateProjectCommand>(command =>
         {
-            command.Config = new NewProjectConfig(projectFilePath);
+            command.Config = new NewProjectConfig(projectFilePath, createExampleProject);
         });
     }
 }
