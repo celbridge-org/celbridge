@@ -1,6 +1,7 @@
 using Celbridge.Dialog;
-using Celbridge.Validators;
+using Celbridge.Projects;
 using Celbridge.UserInterface.Views;
+using Celbridge.Validators;
 
 namespace Celbridge.UserInterface.Services.Dialogs;
 
@@ -36,7 +37,7 @@ public class DialogFactory : IDialogFactory
 
     public INewProjectDialog CreateNewProjectDialog()
     {
-        var dialog = new NewProjectDialog(false);
+        var dialog = new NewProjectDialog(NewProjectConfigType.Standard);
         return dialog;
     }
 
@@ -47,7 +48,7 @@ public class DialogFactory : IDialogFactory
         //  and have it used by both the Create New Project dialog (which would have little else in it), and the Create Example Project Dialog (which would
         //  have the lists of examples to select and so on, also).
         //  For now we will use a flag to change some rudimentary behaviour until this is ready to be overhauled.
-        var dialog = new NewProjectDialog(true);
+        var dialog = new NewProjectDialog(NewProjectConfigType.Example);
         return dialog;
     }
 
