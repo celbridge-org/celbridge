@@ -1,7 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
-using DocumentFormat.OpenXml.Bibliography;
+using Celbridge.Console.Views;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Workspace.Views;
@@ -168,6 +168,15 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         Guard.IsNotNull(workspaceService);
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        // Close all open documents and clean up their WebView2 resources
+        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel;
+        documentsPanel?.Shutdown();
+
+        // Clean up WebView2 resources in the ConsolePanel
+        var consolePanel = workspaceService.ConsoleService.ConsolePanel as ConsolePanel;
+        consolePanel?.Shutdown();
+
         ViewModel.OnWorkspacePageUnloaded();
     }
 

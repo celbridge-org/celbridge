@@ -19,6 +19,7 @@ public sealed class ConPtyTerminal : IDisposable
 
     private Process? _childProcess;
     private Task? _outputReaderTask;
+    private CancellationTokenSource? _cancellationTokenSource;
 
     private int _cols = -1;
     private int _rows = -1;
@@ -88,24 +89,41 @@ public sealed class ConPtyTerminal : IDisposable
         _hThreadHandle = pi.hThread;
 
         _childProcess = Process.GetProcessById(pi.dwProcessId);
-        _outputReaderTask = Task.Run(ReadOutputLoop);
+        _cancellationTokenSource = new CancellationTokenSource();
+        _outputReaderTask = Task.Run(() => ReadOutputLoop(_cancellationTokenSource.Token));
     }
 
-    private async Task ReadOutputLoop()
+    private async Task ReadOutputLoop(CancellationToken cancellationToken)
     {
         var buffer = new byte[4096];
-        using var reader = new FileStream(new SafeFileHandle(_hOutputRead, ownsHandle: false), FileAccess.Read);
 
-        while (true)
+        try
         {
-            int bytesRead = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length));
-            if (bytesRead == 0)
-            {
-                break;
-            }
+            using var reader = new FileStream(new SafeFileHandle(_hOutputRead, ownsHandle: false), FileAccess.Read);
 
-            var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            OutputReceived?.Invoke(this, text);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                int bytesRead = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                OutputReceived?.Invoke(this, text);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation requested - this is expected during disposal
+        }
+        catch (IOException)
+        {
+            // Handle is closed/invalid - this is expected during disposal
+        }
+        catch (ObjectDisposedException)
+        {
+            // FileStream was disposed - this is expected during disposal
         }
     }
 
@@ -140,6 +158,9 @@ public sealed class ConPtyTerminal : IDisposable
 
     public void Dispose()
     {
+        // Cancel the read loop first to prevent new read operations
+        _cancellationTokenSource?.Cancel();
+
         // Close the input pipe first to signal the process that no more input is coming
         if (_hInputWrite != IntPtr.Zero)
         {
@@ -216,6 +237,10 @@ public sealed class ConPtyTerminal : IDisposable
             Marshal.FreeHGlobal(_lpAttributeList);
             _lpAttributeList = IntPtr.Zero;
         }
+
+        // Dispose the cancellation token source
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
     }
 
     #region Win32 Interop

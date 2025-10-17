@@ -90,9 +90,12 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         return await MonacoEditor.CanClose();
     }
 
-    public void PrepareToClose()
+    public async Task PrepareToClose()
     {
-        MonacoEditor.PrepareToClose();
+        await MonacoEditor.PrepareToClose();
+
+        // Dispose the EditorPreview WebView2 control
+        EditorPreview.Dispose();
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

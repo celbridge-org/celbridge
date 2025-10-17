@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents.Views;
+namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
@@ -25,6 +25,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         return true;
     }
 
-    public virtual void PrepareToClose()
-    {}
+    public virtual async Task PrepareToClose()
+    {
+        await Task.CompletedTask;
+    }
 }
