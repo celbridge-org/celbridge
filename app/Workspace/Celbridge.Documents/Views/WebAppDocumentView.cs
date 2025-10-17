@@ -59,6 +59,11 @@ public sealed partial class WebAppDocumentView : DocumentView
         {
             try
             {
+                if (_webView == null)
+                {
+                    return;
+                }
+                
                 await _webView.EnsureCoreWebView2Async();
                 _webView.CoreWebView2.Navigate(ViewModel.SourceUrl);
             }
@@ -71,7 +76,13 @@ public sealed partial class WebAppDocumentView : DocumentView
 
     private void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
     {
-        var downloadPath = args.ResultFilePath; 
+        var downloadPath = args.ResultFilePath;
+        if (string.IsNullOrEmpty(downloadPath))
+        {
+            args.Cancel = true;
+            return;
+        }
+        
         var filename = Path.GetFileName(downloadPath);
 
         //
@@ -154,6 +165,11 @@ public sealed partial class WebAppDocumentView : DocumentView
     {
         // Be aware that this method can be called multiple times if the document is reloaded as a result of
         // the user changing the URL in the inspector.
+
+        if (_webView == null)
+        {
+            return Result.Fail("WebView2 control is not initialized");
+        }
 
         await _webView.EnsureCoreWebView2Async();
 
