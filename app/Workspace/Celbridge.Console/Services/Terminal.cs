@@ -1,7 +1,6 @@
-
 namespace Celbridge.Console.Services;
 
-public class Terminal : ITerminal
+public class Terminal : ITerminal, IDisposable
 {
 #if WINDOWS
     private ConPtyTerminal _terminal = new ConPtyTerminal();
@@ -47,6 +46,13 @@ public class Terminal : ITerminal
         _terminal.SetSize(cols, rows);
 #else
         throw new NotImplementedException();
+#endif
+    }
+
+    public void Dispose()
+    {
+#if WINDOWS
+        _terminal?.Dispose();
 #endif
     }
 }
