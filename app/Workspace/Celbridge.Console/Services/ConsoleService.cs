@@ -68,6 +68,7 @@ public class ConsoleService : IConsoleService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
+                Terminal?.Dispose();
             }
 
             _disposed = true;
