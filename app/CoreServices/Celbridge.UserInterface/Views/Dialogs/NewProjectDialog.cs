@@ -23,7 +23,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public LocalizedString CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
     public LocalizedString SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
 
-    public NewProjectDialog( bool createExampleProject = false )
+    public NewProjectDialog(NewProjectConfigType createExampleProject = NewProjectConfigType.Standard)
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
@@ -100,7 +100,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         this.DataContext(ViewModel, (dialog, vm) =>
             dialog
-                .Title(createExampleProject ? CreateExampleProjectTitleString : TitleString)
+                .Title(createExampleProject == NewProjectConfigType.Example ? CreateExampleProjectTitleString : TitleString)
                 .PrimaryButtonText(CreateString)
                 .SecondaryButtonText(CancelString)
                 .IsPrimaryButtonEnabled(x => x.Binding(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))

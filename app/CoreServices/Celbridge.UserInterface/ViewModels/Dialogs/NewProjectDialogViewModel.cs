@@ -34,7 +34,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
-    public bool CreateExampleProject { get; set; }
+    public NewProjectConfigType CreateExampleProject { get; set; }
 
     public NewProjectDialogViewModel(
         IStringLocalizer stringLocalizer,
