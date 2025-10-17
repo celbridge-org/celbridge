@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Documents;
+namespace Celbridge.Documents;
 
 /// <summary>
 /// Interface for interacting with a document view.
@@ -45,5 +45,5 @@ public interface IDocumentView
     /// This can be used to clear the document view state and free resources, etc. before the document view closes. 
     /// This approach is used instead of the Dispose Pattern to support pooling use cases.
     /// </summary>
-    void PrepareToClose();
+    Task PrepareToClose();
 }

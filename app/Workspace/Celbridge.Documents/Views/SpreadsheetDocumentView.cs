@@ -1,4 +1,3 @@
-using System;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
@@ -288,5 +287,23 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             var message = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", file);
             await _dialogService.ShowAlertDialogAsync(title, message);
         }
+    }
+
+    public override async Task PrepareToClose()
+    {
+        Loaded -= SpreadsheetDocumentView_Loaded;
+
+        if (_webView != null)
+        {
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
+            
+            // Note: Event handlers were added with lambda functions, so we can't unregister them
+            // individually but the Close() method will clean them up anyway.
+
+            _webView.Close();
+            _webView = null;
+        }
+
+        await base.PrepareToClose();
     }
 }
