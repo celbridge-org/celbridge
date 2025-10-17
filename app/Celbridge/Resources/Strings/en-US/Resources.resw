@@ -369,6 +369,9 @@
   <data name="MainPage_OpenProject" xml:space="preserve">
     <value>Open project</value>
   </data>
+  <data name="MainPage_ReopenProject" xml:space="preserve">
+    <value>Reopen project</value>
+  </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
   </data>

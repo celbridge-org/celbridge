@@ -4,6 +4,7 @@ using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
+using Microsoft.UI.Xaml.Hosting;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
 
@@ -22,6 +23,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     private readonly IEditorSettings _editorSettings;
     private readonly IUndoService _undoService;
     private readonly MainMenuUtils _mainMenuUtils;
+    private readonly IProjectService _projectService;
 
     public MainPageViewModel(
         Logging.ILogger<MainPageViewModel> logger,
@@ -31,7 +33,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         IEditorSettings editorSettings,
         IUndoService undoService,
         IWorkspaceWrapper workspaceWrapper,
-        MainMenuUtils mainMenuUtils)
+        MainMenuUtils mainMenuUtils,
+        IProjectService projectService)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -41,6 +44,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _undoService = undoService;
         _workspaceWrapper = workspaceWrapper;
         _mainMenuUtils = mainMenuUtils;
+        _projectService = projectService;
     }
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
@@ -129,6 +133,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
                 return;
 
+            case NavigationConstants.ReopenProjectTag:
+                ReopenProjectAsync();
+                return;
+
             case NavigationConstants.SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
                 break;
@@ -171,6 +179,26 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
+    }
+
+    private async Task ReopenProjectAsync()
+    {
+        if (_projectService.CurrentProject is not null)
+        {
+            // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
+            _navigationService.ClearPersistenceOfAllLoadedPages();
+
+            string projectPath = _projectService.CurrentProject.ProjectFilePath;
+
+            // Close any loaded project.
+            // This will fail if there's no project currently open, but we can just ignore that.
+            await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
+
+            _commandService.Execute<ILoadProjectCommand>((command) =>
+            {
+                command.ProjectFilePath = projectPath;
+            });
+        }
     }
 
     private async Task NavigateToHomeAsync()
