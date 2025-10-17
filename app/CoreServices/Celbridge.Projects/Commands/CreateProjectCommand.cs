@@ -62,7 +62,7 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     // Static methods for scripting support.
     //
 
-    public static void CreateProject(string projectFilePath, bool createExampleProject)
+    public static void CreateProject(string projectFilePath, NewProjectConfigType createExampleProject)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 

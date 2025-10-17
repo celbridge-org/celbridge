@@ -91,7 +91,7 @@ public class Project : IDisposable, IProject
         }
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath, bool createExampleProject)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, NewProjectConfigType createExampleProject)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
@@ -117,7 +117,7 @@ public class Project : IDisposable, IProject
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
-            if (!createExampleProject)
+            if (createExampleProject == NewProjectConfigType.Standard)
             {
                 // Get Celbridge version
                 var utilityService = ServiceLocator.AcquireService<IUtilityService>();
