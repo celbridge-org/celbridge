@@ -3,7 +3,7 @@ namespace Celbridge.Console;
 /// <summary>
 /// A terminal window instance used to interact with command line programs.
 /// </summary>
-public interface ITerminal
+public interface ITerminal : IDisposable
 {
     /// <summary>
     /// Event fired when the terminal has received output data.

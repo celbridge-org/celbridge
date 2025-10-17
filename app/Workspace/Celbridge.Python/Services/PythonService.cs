@@ -11,6 +11,24 @@ public class PythonService : IPythonService, IDisposable
 {
     private const int PythonLogMaxFiles = 10;
 
+    // Folder and file names
+    private const string UVCacheFolderName = "uv_cache";
+    private const string UVExecutableName = "uv";
+    private const string UVExecutableNameWindows = "uv.exe";
+    private const string UVPythonInstallsFolderName = "uv_python_installs";
+    private const string IPythonCacheFolderName = "ipython";
+
+    // Environment variable names
+    private const string UVPythonInstallDirEnv = "UV_PYTHON_INSTALL_DIR";
+    private const string CelbridgeVersionEnv = "CELBRIDGE_VERSION";
+    private const string PythonLogLevelEnv = "PYTHON_LOG_LEVEL";
+    private const string PythonLogDirEnv = "PYTHON_LOG_DIR";
+    private const string PythonLogMaxFilesEnv = "PYTHON_LOG_MAX_FILES";
+    private const string CelbridgeRpcPipeEnv = "CELBRIDGE_RPC_PIPE";
+    private const string CelbridgeUVPathEnv = "CELBRIDGE_UV_PATH";
+    private const string CelbridgeUVCacheDirEnv = "CELBRIDGE_UV_CACHE_DIR";
+    private const string CelbridgePackagePathEnv = "CELBRIDGE_PACKAGE_PATH";
+
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUtilityService _utilityService;
@@ -76,7 +94,7 @@ public class PythonService : IPythonService, IDisposable
             var pythonFolder = installResult.Value;
 
             // Get uv exe path (Windows/macOS/Linux)
-            var uvFileName = OperatingSystem.IsWindows() ? "uv.exe" : "uv";
+            var uvFileName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
             var uvExePath = Path.Combine(pythonFolder, uvFileName);
             if (!File.Exists(uvExePath))
             {
@@ -84,10 +102,15 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Get the dir that uv uses to cached python versions & packages
-            var uvCacheDir = Path.Combine(pythonFolder, "uv_cache");
+            var uvCacheDir = Path.Combine(pythonFolder, UVCacheFolderName);
+
+            // Set where uv installs Python interpreters
+            var uvPythonInstallDir = Path.Combine(pythonFolder, UVPythonInstallsFolderName);
+            Directory.CreateDirectory(uvPythonInstallDir);
+            Environment.SetEnvironmentVariable(UVPythonInstallDirEnv, uvPythonInstallDir);
 
             // Ensure the ipython storage dir exists
-            var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, "ipython");
+            var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, IPythonCacheFolderName);
             Directory.CreateDirectory(ipythonDir);
 
             // Set the Celbridge version number as an environment variable so we can print it at startup.
@@ -95,17 +118,17 @@ public class PythonService : IPythonService, IDisposable
             var version = environmentInfo.AppVersion;
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
-            Environment.SetEnvironmentVariable("CELBRIDGE_VERSION", $"{celbridgeVersion}");
+            Environment.SetEnvironmentVariable(CelbridgeVersionEnv, celbridgeVersion);
 
             // Set Python logging environment variables
-            Environment.SetEnvironmentVariable("PYTHON_LOG_LEVEL", "DEBUG");
+            Environment.SetEnvironmentVariable(PythonLogLevelEnv, "DEBUG");
             var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.LogsFolder);
-            Environment.SetEnvironmentVariable("PYTHON_LOG_DIR", pythonLogFolder);
-            Environment.SetEnvironmentVariable("PYTHON_LOG_MAX_FILES", PythonLogMaxFiles.ToString());
+            Environment.SetEnvironmentVariable(PythonLogDirEnv, pythonLogFolder);
+            Environment.SetEnvironmentVariable(PythonLogMaxFilesEnv, PythonLogMaxFiles.ToString());
 
             // Generate unique pipe name for JSON-RPC communication
             var pipeName = $"celbridge_rpc_{Guid.NewGuid():N}";
-            Environment.SetEnvironmentVariable("CELBRIDGE_RPC_PIPE", pipeName);
+            Environment.SetEnvironmentVariable(CelbridgeRpcPipeEnv, pipeName);
             _logger.LogInformation("Generated RPC pipe name: {PipeName}", pipeName);
 
             // Get the path to the celbridge wheel file
@@ -118,9 +141,9 @@ public class PythonService : IPythonService, IDisposable
             var celbridgeWheelPath = findCelbridgeWheelResult.Value;
 
             // Set environment variables for celbridge_host to use uv with dependency isolation
-            Environment.SetEnvironmentVariable("CELBRIDGE_UV_PATH", uvExePath);
-            Environment.SetEnvironmentVariable("CELBRIDGE_UV_CACHE_DIR", uvCacheDir);
-            Environment.SetEnvironmentVariable("CELBRIDGE_PACKAGE_PATH", celbridgeWheelPath);
+            Environment.SetEnvironmentVariable(CelbridgeUVPathEnv, uvExePath);
+            Environment.SetEnvironmentVariable(CelbridgeUVCacheDirEnv, uvCacheDir);
+            Environment.SetEnvironmentVariable(CelbridgePackagePathEnv, celbridgeWheelPath);
 
             // Get the path to the celbridge_host wheel file
             var findHostWheelResult = FindWheelFile(pythonFolder, "celbridge_host");
@@ -134,7 +157,7 @@ public class PythonService : IPythonService, IDisposable
             var packageArgs = new List<string>()
             {
                 "--with", hostWheelPath,
-                "--with", "ipython"
+                "--with", IPythonCacheFolderName
             };
             
             // Add any additional packages specified in the project config
