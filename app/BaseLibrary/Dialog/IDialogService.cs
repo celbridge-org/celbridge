@@ -1,4 +1,4 @@
-﻿using Celbridge.Projects;
+using Celbridge.Projects;
 using Celbridge.Validators;
 
 namespace Celbridge.Dialog;
@@ -36,6 +36,11 @@ public interface IDialogService
     /// Display a New Project Dialog.
     /// </summary>
     Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync();
+
+    /// <summary>
+    /// Display a Create Example Project Dialog.
+    /// </summary>
+    Task<Result<NewProjectConfig>> ShowCreateExampleProjectDialogAsync();
 
     /// <summary>
     /// Display an Input Text Dialog.

@@ -1,4 +1,4 @@
-﻿using Celbridge.Validators;
+using Celbridge.Validators;
 
 namespace Celbridge.Dialog;
 
@@ -27,6 +27,11 @@ public interface IDialogFactory
     /// Create a New Project Dialog.
     /// </summary>
     INewProjectDialog CreateNewProjectDialog();
+
+    /// <summary>
+    /// Create a Create Example Project Dialog.
+    /// </summary>
+    INewProjectDialog CreateCreateExampleProjectDialog();
 
     /// <summary>
     /// Create an Input Text Dialog.
