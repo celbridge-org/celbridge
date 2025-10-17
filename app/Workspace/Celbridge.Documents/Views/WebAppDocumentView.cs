@@ -20,7 +20,7 @@ public sealed partial class WebAppDocumentView : DocumentView
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    private WebView2 _webView;
+    private WebView2? _webView;
 
     public WebAppDocumentView(
         IServiceProvider serviceProvider,
@@ -178,5 +178,24 @@ public sealed partial class WebAppDocumentView : DocumentView
         {
             ViewModel.OpenBrowser(url);
         }
+    }
+
+    public override void PrepareToClose()
+    {
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        if (_webView != null)
+        {
+            if (_webView.CoreWebView2 != null)
+            {
+                _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+                _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            }
+
+            _webView.Close();
+            _webView = null;
+        }
+
+        base.PrepareToClose();
     }
 }

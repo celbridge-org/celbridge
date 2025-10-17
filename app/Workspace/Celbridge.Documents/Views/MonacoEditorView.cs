@@ -130,17 +130,24 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public override void PrepareToClose()
     {
-        Guard.IsNotNull(_webView);
+        if (_webView == null)
+        {
+            return;
+        }
 
         _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
-        _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+        
+        if (_webView.CoreWebView2 != null)
+        {
+            _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+        }
 
         // Release the webview back to the pool.
         // TextEditorWebViewPool is not exposed via the public interface
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
         var pool = documentsService.TextEditorWebViewPool;
-        pool.ReleaseInstance(_webView!);
+        pool.ReleaseInstance(_webView);
 
         _webView = null;
     }

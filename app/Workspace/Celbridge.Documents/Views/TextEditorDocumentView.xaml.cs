@@ -93,6 +93,9 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
     public void PrepareToClose()
     {
         MonacoEditor.PrepareToClose();
+
+        // Dispose the EditorPreview WebView2 control
+        EditorPreview.Dispose();
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

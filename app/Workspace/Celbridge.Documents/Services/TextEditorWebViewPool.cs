@@ -8,12 +8,16 @@ namespace Celbridge.Documents.Services;
 public class TextEditorWebViewPool
 {
     private readonly ConcurrentQueue<WebView2> _pool;
+    private readonly HashSet<WebView2> _activeInstances;
     private readonly int _maxPoolSize;
+    private readonly object _lock = new object();
+    private bool _isShuttingDown = false;
 
     public TextEditorWebViewPool(int poolSize)
     {
         _maxPoolSize = poolSize;
         _pool = new ConcurrentQueue<WebView2>();
+        _activeInstances = new HashSet<WebView2>();
 
 #if WINDOWS
         InitializePool();
@@ -25,7 +29,6 @@ public class TextEditorWebViewPool
         for (int i = 0; i < _maxPoolSize; i++)
         {
             var webView = await CreateTextEditorWebView();
-
             _pool.Enqueue(webView);
         }
     }
@@ -33,28 +36,119 @@ public class TextEditorWebViewPool
     public async Task<WebView2> AcquireInstance()
     {
         WebView2? webView;
-        if (!_pool.TryDequeue(out webView))
+        
+        lock (_lock)
         {
-            // Create a new instance if the pool is empty            
-            webView = await CreateTextEditorWebView();
-        }
-        Guard.IsNotNull(webView);
+            if (_isShuttingDown)
+            {
+                throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
+            }
 
+            if (!_pool.TryDequeue(out webView))
+            {
+                // Pool is empty, we'll create a new instance outside the lock
+            }
+            else
+            {
+                _activeInstances.Add(webView);
+                return webView;
+            }
+        }
+
+        // Create a new instance if the pool was empty
+        webView = await CreateTextEditorWebView();
+        
+        lock (_lock)
+        {
+            if (!_isShuttingDown)
+            {
+                _activeInstances.Add(webView);
+            }
+        }
+
+        Guard.IsNotNull(webView);
         return webView;
     }
 
     public async void ReleaseInstance(WebView2 webView)
     {
-        // Todo: This isn't really pooling as we're allowing the existing WebView to go out of scope and then just adding a new WebView
-        // instance to the pool. This ensures that the web view & Monaco editor start in a pristine state, but we might want to try reusing
-        // the existing instance to improve performance and memory usage.
+        bool shouldCreateNew = false;
 
-        webView.CoreWebView2.Navigate("about:blank");
+        lock (_lock)
+        {
+            // Remove from active instances
+            _activeInstances.Remove(webView);
 
-        if (_pool.Count < _maxPoolSize)
+            // If we're shutting down, just close it and don't refill the pool
+            if (_isShuttingDown)
+            {
+                CloseWebView(webView);
+                return;
+            }
+
+            // Check if we should create a new one for the pool
+            if (_pool.Count < _maxPoolSize)
+            {
+                shouldCreateNew = true;
+            }
+        }
+
+        // Close the old WebView2 instance to free resources
+        CloseWebView(webView);
+
+        // Create a fresh instance for the pool to ensure the Monaco editor starts in a pristine state
+        if (shouldCreateNew)
         {
             var newWebView = await CreateTextEditorWebView();
-            _pool.Enqueue(newWebView);
+            
+            lock (_lock)
+            {
+                if (!_isShuttingDown)
+                {
+                    _pool.Enqueue(newWebView);
+                }
+                else
+                {
+                    // If we're shutting down by the time we created this, close it immediately
+                    CloseWebView(newWebView);
+                }
+            }
+        }
+    }
+
+    public void Shutdown()
+    {
+        lock (_lock)
+        {
+            _isShuttingDown = true;
+
+            // Clean up pooled instances
+            while (_pool.TryDequeue(out var webView))
+            {
+                CloseWebView(webView);
+            }
+
+            // Clean up active instances
+            foreach (var webView in _activeInstances)
+            {
+                CloseWebView(webView);
+            }
+            _activeInstances.Clear();
+        }
+    }
+
+    private static void CloseWebView(WebView2? webView)
+    {
+        if (webView == null)
+            return;
+
+        try
+        {
+            webView.Close();
+        }
+        catch
+        {
+            // Ignore exceptions during cleanup
         }
     }
 

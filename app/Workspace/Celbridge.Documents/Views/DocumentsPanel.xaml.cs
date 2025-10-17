@@ -12,6 +12,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private IDocumentsLogger _logger;
     private readonly IResourceRegistry _resourceRegistry;
 
+    private bool _isShuttingDown = false;
+
     public DocumentsPanelViewModel ViewModel { get; }
 
     public DocumentsPanel(IWorkspaceWrapper workspaceWrapper)
@@ -38,6 +40,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void TabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
         ResourceKey documentResource = ResourceKey.Empty;
 
         var documentTab = TabView.SelectedItem as DocumentTab;
@@ -51,6 +58,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void TabView_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
     {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
         var documentResources = GetOpenDocuments();
         ViewModel.OnOpenDocumentsChanged(documentResources);
 
@@ -570,5 +582,27 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FilePath = newResourcePath;
 
         return Result.Ok();
+    }
+
+    public void Shutdown()
+    {
+        // Set shutdown flag to prevent event handlers from triggering workspace updates
+        _isShuttingDown = true;
+
+        // Close all open documents and clean up their WebView2 resources
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            var documentView = documentTab.Content as IDocumentView;
+            if (documentView != null)
+            {
+                // Call PrepareToClose to clean up WebView2 resources
+                documentView.PrepareToClose();
+            }
+        }
+
+        TabView.TabItems.Clear();
     }
 }

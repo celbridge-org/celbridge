@@ -524,6 +524,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 _messengerService.UnregisterAll(this);
 
                 _previewProviders.Clear();
+
+                TextEditorWebViewPool.Shutdown();
             }
 
             _disposed = true;
