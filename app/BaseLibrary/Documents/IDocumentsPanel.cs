@@ -37,4 +37,9 @@ public interface IDocumentsPanel
     /// Change the resource of an opened document.
     /// </summary>
     Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
+
+    /// <summary>
+    /// Closes all open documents and cleans up their resources. Called when the workspace is being unloaded.
+    /// </summary>
+    void Shutdown();
 }

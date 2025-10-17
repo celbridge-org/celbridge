@@ -5,13 +5,14 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class EditorPreviewView : UserControl, IEditorPreview
+public sealed partial class EditorPreviewView : UserControl, IEditorPreview, IDisposable
 {
     public EditorPreviewViewModel ViewModel { get; }
 
     private WebView2? _webView;
 
     private bool _loaded = false;
+    private bool _disposed = false;
 
     public EditorPreviewView()
     {
@@ -54,6 +55,20 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     private async Task InitializeWebView(string filePath)
     {
         // This method can be called multiple times, e.g. when a file is renamed.
+        // Clean up the previous WebView if it exists
+        if (_webView != null)
+        {
+            _webView.NavigationCompleted -= WebView_NavigationCompleted;
+            _webView.NavigationStarting -= WebView_NavigationStarting;
+            
+            if (_webView.CoreWebView2 != null)
+            {
+                _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            }
+            
+            _webView.Close();
+            _webView = null;
+        }
 
         _loaded = false;
         _webView = new WebView2();
@@ -182,5 +197,29 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         // Todo: Handle errors
 
         return Result<string>.Ok(unescapedHtml);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        if (_webView != null)
+        {
+            _webView.NavigationCompleted -= WebView_NavigationCompleted;
+            _webView.NavigationStarting -= WebView_NavigationStarting;
+            
+            if (_webView.CoreWebView2 != null)
+            {
+                _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            }
+            
+            _webView.Close();
+            _webView = null;
+        }
     }
 }

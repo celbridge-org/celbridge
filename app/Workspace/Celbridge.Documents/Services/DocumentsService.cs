@@ -31,7 +31,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     public List<ResourceKey> OpenDocuments { get; } = new();
 
     // This utility is only used internally and is not exposed via IDocumentService
-    internal TextEditorWebViewPool TextEditorWebViewPool { get; } = new(3);
+    internal TextEditorWebViewPool TextEditorWebViewPool { get; }
 
     private bool _isWorkspaceLoaded;
 
@@ -54,6 +54,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+
+        // Initialize the TextEditorWebViewPool
+        TextEditorWebViewPool = new TextEditorWebViewPool(3);
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
@@ -524,6 +527,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 _messengerService.UnregisterAll(this);
 
                 _previewProviders.Clear();
+
+                TextEditorWebViewPool.Shutdown();
             }
 
             _disposed = true;

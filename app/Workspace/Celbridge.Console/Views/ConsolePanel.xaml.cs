@@ -208,4 +208,21 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             _logger.LogWarning(ex, "An error occurred when posting a message to WebView2");
         }
     }
+
+    public void Shutdown()
+    {
+        _messengerService.UnregisterAll(this);
+
+        if (TerminalWebView?.CoreWebView2 != null)
+        {
+            TerminalWebView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
+        }
+
+        if (TerminalWebView != null)
+        {
+            TerminalWebView.Close();
+        }
+
+        this.Loaded -= ConsolePanel_Loaded;
+    }
 }
