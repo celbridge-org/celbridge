@@ -13,6 +13,9 @@ public sealed class ConPtyTerminal : IDisposable
     private IntPtr _pseudoConsoleHandle = IntPtr.Zero;
     private IntPtr _hInputWrite;
     private IntPtr _hOutputRead;
+    private IntPtr _hProcessHandle;
+    private IntPtr _hThreadHandle;
+    private IntPtr _lpAttributeList;
 
     private Process? _childProcess;
     private Task? _outputReaderTask;
@@ -50,7 +53,8 @@ public sealed class ConPtyTerminal : IDisposable
         siEx.StartupInfo.cb = Marshal.SizeOf(siEx);
         IntPtr lpSize = IntPtr.Zero;
         InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref lpSize);
-        siEx.lpAttributeList = Marshal.AllocHGlobal(lpSize);
+        _lpAttributeList = Marshal.AllocHGlobal(lpSize);
+        siEx.lpAttributeList = _lpAttributeList;
         InitializeProcThreadAttributeList(siEx.lpAttributeList, 1, 0, ref lpSize);
 
         UpdateProcThreadAttribute(
@@ -79,6 +83,9 @@ public sealed class ConPtyTerminal : IDisposable
         {
             throw new Win32Exception(Marshal.GetLastWin32Error(), "CreateProcess failed");
         }
+
+        _hProcessHandle = pi.hProcess;
+        _hThreadHandle = pi.hThread;
 
         _childProcess = Process.GetProcessById(pi.dwProcessId);
         _outputReaderTask = Task.Run(ReadOutputLoop);
@@ -133,22 +140,81 @@ public sealed class ConPtyTerminal : IDisposable
 
     public void Dispose()
     {
-        _childProcess?.Kill();
-        _childProcess?.Dispose();
-
-        if (_pseudoConsoleHandle != IntPtr.Zero)
-        {
-            ClosePseudoConsole(_pseudoConsoleHandle);
-        }
-
+        // Close the input pipe first to signal the process that no more input is coming
         if (_hInputWrite != IntPtr.Zero)
         {
             CloseHandle(_hInputWrite);
+            _hInputWrite = IntPtr.Zero;
         }
 
+        // Try to terminate the child process gracefully
+        if (_childProcess != null && !_childProcess.HasExited)
+        {
+            try
+            {
+                // Give the process a chance to exit gracefully
+                if (!_childProcess.WaitForExit(1000))
+                {
+                    _childProcess.Kill();
+                }
+            }
+            catch
+            {
+                // Process may have already exited
+            }
+            finally
+            {
+                _childProcess?.Dispose();
+                _childProcess = null;
+            }
+        }
+
+        // Wait for the output reader task to complete
+        if (_outputReaderTask != null)
+        {
+            try
+            {
+                _outputReaderTask.Wait(1000);
+            }
+            catch
+            {
+                // Task may have already completed or been cancelled
+            }
+        }
+
+        // Close the output pipe
         if (_hOutputRead != IntPtr.Zero)
         {
             CloseHandle(_hOutputRead);
+            _hOutputRead = IntPtr.Zero;
+        }
+
+        // Close the pseudo console
+        if (_pseudoConsoleHandle != IntPtr.Zero)
+        {
+            ClosePseudoConsole(_pseudoConsoleHandle);
+            _pseudoConsoleHandle = IntPtr.Zero;
+        }
+
+        // Close process and thread handles
+        if (_hProcessHandle != IntPtr.Zero)
+        {
+            CloseHandle(_hProcessHandle);
+            _hProcessHandle = IntPtr.Zero;
+        }
+
+        if (_hThreadHandle != IntPtr.Zero)
+        {
+            CloseHandle(_hThreadHandle);
+            _hThreadHandle = IntPtr.Zero;
+        }
+
+        // Free the attribute list memory
+        if (_lpAttributeList != IntPtr.Zero)
+        {
+            DeleteProcThreadAttributeList(_lpAttributeList);
+            Marshal.FreeHGlobal(_lpAttributeList);
+            _lpAttributeList = IntPtr.Zero;
         }
     }
 
@@ -209,6 +275,9 @@ public sealed class ConPtyTerminal : IDisposable
         IntPtr cbSize,
         IntPtr lpPreviousValue,
         IntPtr lpReturnSize);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern void DeleteProcThreadAttributeList(IntPtr lpAttributeList);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct COORD
