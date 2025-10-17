@@ -34,6 +34,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
+    public NewProjectConfigType CreateExampleProject { get; set; }
+
     public NewProjectDialogViewModel(
         IStringLocalizer stringLocalizer,
         IEditorSettings editorSettings,
@@ -152,7 +154,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
     private void CreateCommand_Execute()
     {
-        var config = new NewProjectConfig(DestProjectFilePath);
+        var config = new NewProjectConfig(DestProjectFilePath, CreateExampleProject);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
