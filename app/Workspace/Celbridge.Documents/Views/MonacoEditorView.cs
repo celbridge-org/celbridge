@@ -128,7 +128,7 @@ public sealed partial class MonacoEditorView : DocumentView
         return await ViewModel.SaveDocument(textData);
     }
 
-    public override void PrepareToClose()
+    public override async Task PrepareToClose()
     {
         if (_webView == null)
         {
@@ -148,8 +148,7 @@ public sealed partial class MonacoEditorView : DocumentView
         Guard.IsNotNull(documentsService);
         var pool = documentsService.TextEditorWebViewPool;
         
-        // Fire and forget - we can't await in PrepareToClose as it's synchronous in the interface
-        _ = pool.ReleaseInstanceAsync(_webView);
+        await pool.ReleaseInstanceAsync(_webView);
 
         _webView = null;
     }

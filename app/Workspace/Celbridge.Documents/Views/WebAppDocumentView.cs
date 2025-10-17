@@ -180,7 +180,7 @@ public sealed partial class WebAppDocumentView : DocumentView
         }
     }
 
-    public override void PrepareToClose()
+    public override async Task PrepareToClose()
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
@@ -196,6 +196,6 @@ public sealed partial class WebAppDocumentView : DocumentView
             _webView = null;
         }
 
-        base.PrepareToClose();
+        await base.PrepareToClose();
     }
 }

@@ -289,7 +289,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         }
     }
 
-    public override void PrepareToClose()
+    public override async Task PrepareToClose()
     {
         Loaded -= SpreadsheetDocumentView_Loaded;
 
@@ -304,6 +304,6 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             _webView = null;
         }
 
-        base.PrepareToClose();
+        await base.PrepareToClose();
     }
 }

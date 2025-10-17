@@ -558,7 +558,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var newDocumentView = createResult.Value;
 
             // Clean up the old DocumentView state
-            oldDocumentView.PrepareToClose();
+            await oldDocumentView.PrepareToClose();
 
             // Populate the tab content
             documentTab.ViewModel.DocumentView = newDocumentView;
@@ -599,7 +599,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             if (documentView != null)
             {
                 // Call PrepareToClose to clean up WebView2 resources
-                documentView.PrepareToClose();
+                // Note: We can't await here since Shutdown is synchronous, but the cleanup will happen asynchronously
+                _ = documentView.PrepareToClose();
             }
         }
 

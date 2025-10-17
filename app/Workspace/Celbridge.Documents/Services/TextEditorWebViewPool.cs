@@ -26,7 +26,8 @@ public class TextEditorWebViewPool
         _activeInstances = new HashSet<WebView2>();
 
 #if WINDOWS
-        // Start initialization but don't await it
+        // Start initialization but don't await it.
+        // This allows the WebView pool to be populated in the background.
         _initializationTask = InitializePoolAsync();
 #endif
     }
