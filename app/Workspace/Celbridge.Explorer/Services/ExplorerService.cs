@@ -22,6 +22,7 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ResourceChangeMonitor? _resourceChangeMonitor;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
@@ -47,7 +48,6 @@ public class ExplorerService : IExplorerService, IDisposable
     public ResourceKey SelectedResource { get; private set; }
 
     private bool _isWorkspaceLoaded;
-    private ResourceChangeMonitor? _resourceChangeMonitor;
 
     public ExplorerService(
         IServiceProvider serviceProvider,
@@ -58,7 +58,8 @@ public class ExplorerService : IExplorerService, IDisposable
         IProjectService projectService,
         IUtilityService utilityService,
         IIconService iconService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ResourceChangeMonitor resourceChangeMonitor)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -71,6 +72,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _projectService = projectService;
         _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
+        _resourceChangeMonitor = resourceChangeMonitor;
 
         // Delete the DeletedFiles folder to clean these archives up.
         // The DeletedFiles folder contain archived files and folders from previous delete commands.
@@ -98,22 +100,19 @@ public class ExplorerService : IExplorerService, IDisposable
     {
         try
         {
-            var logger = _serviceProvider.GetRequiredService<ILogger<ResourceChangeMonitor>>();
-            _resourceChangeMonitor = new ResourceChangeMonitor(logger, _projectService);
+            Guard.IsNotNull(_resourceChangeMonitor);
             
             var initResult = _resourceChangeMonitor.Initialize();
             if (initResult.IsFailure)
             {
                 _logger.LogWarning(initResult, "Failed to initialize resource change monitor");
                 _resourceChangeMonitor?.Dispose();
-                _resourceChangeMonitor = null;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError($"Exception occurred while initializing resource change monitor: {ex.Message}");
             _resourceChangeMonitor?.Dispose();
-            _resourceChangeMonitor = null;
         }
     }
 
@@ -491,7 +490,6 @@ public class ExplorerService : IExplorerService, IDisposable
                 // Shutdown and dispose the resource change monitor
                 _resourceChangeMonitor?.Shutdown();
                 _resourceChangeMonitor?.Dispose();
-                _resourceChangeMonitor = null;
             }
 
             _disposed = true;

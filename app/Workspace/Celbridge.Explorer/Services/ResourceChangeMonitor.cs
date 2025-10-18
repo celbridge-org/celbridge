@@ -10,6 +10,8 @@ public class ResourceChangeMonitor : IDisposable
 {
     private readonly ILogger<ResourceChangeMonitor> _logger;
     private readonly IProjectService _projectService;
+    private readonly IMessengerService _messengerService;
+    private readonly IDispatcher _dispatcher;
     private readonly string _projectFolderPath;
 
     private FileSystemWatcher? _fileSystemWatcher;
@@ -27,10 +29,14 @@ public class ResourceChangeMonitor : IDisposable
 
     public ResourceChangeMonitor(
         ILogger<ResourceChangeMonitor> logger,
-        IProjectService projectService)
+        IProjectService projectService,
+        IMessengerService messengerService,
+        IDispatcher dispatcher)
     {
         _logger = logger;
         _projectService = projectService;
+        _messengerService = messengerService;
+        _dispatcher = dispatcher;
 
         var project = _projectService.CurrentProject;
         Guard.IsNotNull(project);
@@ -42,9 +48,6 @@ public class ResourceChangeMonitor : IDisposable
         _debounceTimer.Elapsed += OnDebounceTimerElapsed;
     }
 
-    /// <summary>
-    /// Start monitoring the project folder for file system changes.
-    /// </summary>
     public Result Initialize()
     {
         if (_isDisposed)
@@ -59,6 +62,7 @@ public class ResourceChangeMonitor : IDisposable
                 return Result.Fail($"Project folder does not exist: {_projectFolderPath}");
             }
 
+            /// Start monitoring the project folder for file system changes.
             _fileSystemWatcher = new FileSystemWatcher(_projectFolderPath)
             {
                 NotifyFilter = NotifyFilters.FileName 
@@ -66,20 +70,19 @@ public class ResourceChangeMonitor : IDisposable
                              | NotifyFilters.LastWrite 
                              | NotifyFilters.Size,
                 IncludeSubdirectories = true,
-                EnableRaisingEvents = false // Start disabled, enable after setup
+                EnableRaisingEvents = false
             };
 
-            // Subscribe to all file system events
             _fileSystemWatcher.Created += OnFileSystemCreated;
             _fileSystemWatcher.Changed += OnFileSystemChanged;
             _fileSystemWatcher.Deleted += OnFileSystemDeleted;
             _fileSystemWatcher.Renamed += OnFileSystemRenamed;
             _fileSystemWatcher.Error += OnFileSystemError;
 
-            // Enable event raising
+            // Start disabled, enable after setup
             _fileSystemWatcher.EnableRaisingEvents = true;
 
-            _logger.LogInformation($"Resource change monitoring started for: {_projectFolderPath}");
+            _logger.LogDebug($"Resource change monitoring started for: {_projectFolderPath}");
 
             return Result.Ok();
         }
@@ -90,9 +93,6 @@ public class ResourceChangeMonitor : IDisposable
         }
     }
 
-    /// <summary>
-    /// Stop monitoring the project folder.
-    /// </summary>
     public void Shutdown()
     {
         if (_isDisposed)
@@ -124,7 +124,7 @@ public class ResourceChangeMonitor : IDisposable
                 _pendingRenamed.Clear();
             }
 
-            _logger.LogInformation($"Resource change monitoring stopped for: {_projectFolderPath}");
+            _logger.LogDebug($"Resource change monitoring stopped for: {_projectFolderPath}");
         }
         catch (Exception ex)
         {
@@ -258,66 +258,84 @@ public class ResourceChangeMonitor : IDisposable
 
     #region Change Processing Methods
 
-    /// <summary>
-    /// Handle a resource creation event.
-    /// </summary>
     private void OnResourceCreated(string fullPath)
     {
-        var resourceType = GetResourceType(fullPath);
-        var relativePath = GetRelativePath(fullPath);
+        var resourceKey = GetResourceKey(fullPath);
+        if (resourceKey.IsEmpty)
+        {
+            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
+            return;
+        }
         
-        _logger.LogInformation($"Resource created: {relativePath} (Type: {resourceType})");
+        _logger.LogDebug($"Resource created: {resourceKey}");
         
-        // TODO: Broadcast ResourceCreatedMessage when event system is ready
+        _dispatcher.TryEnqueue(() =>
+        {
+            var message = new MonitoredResourceCreatedMessage(resourceKey);
+            _messengerService.Send(message);
+        });
     }
 
-    /// <summary>
-    /// Handle a resource modification event.
-    /// </summary>
     private void OnResourceChanged(string fullPath)
     {
-        var resourceType = GetResourceType(fullPath);
-        var relativePath = GetRelativePath(fullPath);
+        var resourceKey = GetResourceKey(fullPath);
+        if (resourceKey.IsEmpty)
+        {
+            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
+            return;
+        }
         
-        _logger.LogInformation($"Resource changed: {relativePath} (Type: {resourceType})");
+        _logger.LogDebug($"Resource changed: {resourceKey}");
         
-        // TODO: Broadcast ResourceChangedMessage when event system is ready
+        _dispatcher.TryEnqueue(() =>
+        {
+            var message = new MonitoredResourceChangedMessage(resourceKey);
+            _messengerService.Send(message);
+        });
     }
 
-    /// <summary>
-    /// Handle a resource deletion event.
-    /// </summary>
     private void OnResourceDeleted(string fullPath)
     {
-        // For deleted resources, we can't determine type from file system
-        var relativePath = GetRelativePath(fullPath);
+        var resourceKey = GetResourceKey(fullPath);
+        if (resourceKey.IsEmpty)
+        {
+            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
+            return;
+        }
         
-        _logger.LogInformation($"Resource deleted: {relativePath}");
+        _logger.LogDebug($"Resource deleted: {resourceKey}");
         
-        // TODO: Broadcast ResourceDeletedMessage when event system is ready
+        _dispatcher.TryEnqueue(() =>
+        {
+            var message = new MonitoredResourceDeletedMessage(resourceKey);
+            _messengerService.Send(message);
+        });
     }
 
-    /// <summary>
-    /// Handle a resource rename/move event.
-    /// </summary>
     private void OnResourceRenamed(string oldFullPath, string newFullPath)
     {
-        var resourceType = GetResourceType(newFullPath);
-        var oldRelativePath = GetRelativePath(oldFullPath);
-        var newRelativePath = GetRelativePath(newFullPath);
+        var oldResourceKey = GetResourceKey(oldFullPath);
+        var newResourceKey = GetResourceKey(newFullPath);
         
-        _logger.LogInformation($"Resource renamed: {oldRelativePath} -> {newRelativePath} (Type: {resourceType})");
+        if (oldResourceKey.IsEmpty || newResourceKey.IsEmpty)
+        {
+            // One or both paths are not in project folder - this shouldn't happen due to ShouldIgnorePath checks
+            return;
+        }
         
-        // TODO: Broadcast ResourceRenamedMessage when event system is ready
+        _logger.LogDebug($"Resource renamed: {oldResourceKey} -> {newResourceKey}");
+        
+        _dispatcher.TryEnqueue(() =>
+        {
+            var message = new MonitoredResourceRenamedMessage(oldResourceKey, newResourceKey);
+            _messengerService.Send(message);
+        });
     }
 
     #endregion
 
     #region Helper Methods
 
-    /// <summary>
-    /// Determine if a path should be ignored (e.g., temporary files, hidden files).
-    /// </summary>
     private bool ShouldIgnorePath(string fullPath)
     {
         var fileName = Path.GetFileName(fullPath);
@@ -372,14 +390,14 @@ public class ResourceChangeMonitor : IDisposable
         {
             var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
             
-            // Only ignore "celbridge" if it's directly in the project root
+            // Only ignore "celbridge" folder if it's directly in the project root
             if (firstSegment.Equals("celbridge", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
         }
         
-        // Ignore specific folders at any level (e.g., .vs, bin, obj, .git, __pycache__)
+        // Ignore specific files and folders at any level
         var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (pathParts.Any(part => part.Equals(".vs", StringComparison.OrdinalIgnoreCase) ||
                                  part.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
@@ -394,50 +412,38 @@ public class ResourceChangeMonitor : IDisposable
     }
 
     /// <summary>
-    /// Get the resource type from a file system path.
+    /// Convert an absolute path to a ResourceKey.
+    /// ResourceKeys use forward slashes as directory separators on all platforms.
+    /// Returns ResourceKey.Empty if the path is not in the project folder.
     /// </summary>
-    private string GetResourceType(string fullPath)
-    {
-        try
-        {
-            if (Directory.Exists(fullPath))
-            {
-                return "Folder";
-            }
-            else if (File.Exists(fullPath))
-            {
-                return "File";
-            }
-            else
-            {
-                return "Unknown";
-            }
-        }
-        catch (Exception)
-        {
-            return "Unknown";
-        }
-    }
-
-    /// <summary>
-    /// Convert an absolute path to a relative path from the project folder.
-    /// </summary>
-    private string GetRelativePath(string fullPath)
+    private ResourceKey GetResourceKey(string fullPath)
     {
         try
         {
             var projectFolder = _projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase))
+            if (!fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase))
             {
-                var relativePath = fullPath.Substring(projectFolder.Length)
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                return relativePath;
+                // Path is not in project folder - return empty ResourceKey
+                _logger.LogWarning($"Path is not in project folder: {fullPath}");
+                return ResourceKey.Empty;
             }
-            return fullPath;
+
+            var relativePath = fullPath.Substring(projectFolder.Length)
+                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            
+            // Convert backslashes to forward slashes for ResourceKey
+            var resourceKeyPath = relativePath.Replace(Path.DirectorySeparatorChar, '/');
+            if (Path.AltDirectorySeparatorChar != '/')
+            {
+                resourceKeyPath = resourceKeyPath.Replace(Path.AltDirectorySeparatorChar, '/');
+            }
+            
+            return new ResourceKey(resourceKeyPath);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return fullPath;
+            _logger.LogError(ex, $"Failed to convert path to ResourceKey: {fullPath}");
+            return ResourceKey.Empty;
         }
     }
 
