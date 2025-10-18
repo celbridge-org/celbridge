@@ -47,6 +47,7 @@ public class ExplorerService : IExplorerService, IDisposable
     public ResourceKey SelectedResource { get; private set; }
 
     private bool _isWorkspaceLoaded;
+    private ResourceChangeMonitor? _resourceChangeMonitor;
 
     public ExplorerService(
         IServiceProvider serviceProvider,
@@ -85,9 +86,35 @@ public class ExplorerService : IExplorerService, IDisposable
         ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
         ResourceRegistry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
 
+        // Initialize the resource change monitor
+        InitializeResourceChangeMonitor();
+
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+    }
+
+    private void InitializeResourceChangeMonitor()
+    {
+        try
+        {
+            var logger = _serviceProvider.GetRequiredService<ILogger<ResourceChangeMonitor>>();
+            _resourceChangeMonitor = new ResourceChangeMonitor(logger, _projectService);
+            
+            var initResult = _resourceChangeMonitor.Initialize();
+            if (initResult.IsFailure)
+            {
+                _logger.LogWarning(initResult, "Failed to initialize resource change monitor");
+                _resourceChangeMonitor?.Dispose();
+                _resourceChangeMonitor = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Exception occurred while initializing resource change monitor: {ex.Message}");
+            _resourceChangeMonitor?.Dispose();
+            _resourceChangeMonitor = null;
+        }
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
@@ -460,6 +487,11 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
+                
+                // Shutdown and dispose the resource change monitor
+                _resourceChangeMonitor?.Shutdown();
+                _resourceChangeMonitor?.Dispose();
+                _resourceChangeMonitor = null;
             }
 
             _disposed = true;
