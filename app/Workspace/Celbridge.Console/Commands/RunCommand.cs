@@ -32,7 +32,7 @@ public class RunCommand : CommandBase, IRunCommand
         var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
 
         var command = $"%run \"{ScriptResource}\"";
-        if (string.IsNullOrEmpty(Arguments))
+        if (!string.IsNullOrEmpty(Arguments))
         {
             command += " " + Arguments;
         }

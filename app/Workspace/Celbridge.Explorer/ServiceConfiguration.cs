@@ -21,6 +21,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<ResourceArchiver>();
+        services.AddTransient<ResourceChangeMonitor>();
 
         //
         // Register views
