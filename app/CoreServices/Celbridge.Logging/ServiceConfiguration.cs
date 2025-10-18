@@ -16,6 +16,9 @@ public static class ServiceConfiguration
             builder.ClearProviders();
             builder.SetMinimumLevel(MSLogging.LogLevel.Trace);
             builder.AddNLog("NLog.config");
+#if DEBUG
+            builder.AddDebug();
+#endif
         });
 
         //

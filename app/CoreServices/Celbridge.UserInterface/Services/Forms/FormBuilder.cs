@@ -192,6 +192,18 @@ public class FormBuilder
                 }
                 break;
 
+            case "CheckBox":
+                var checkBoxResult = CheckBoxElement.CreateCheckBox(config, this);
+                if (checkBoxResult.IsFailure)
+                {
+                    _buildErrors.Add(checkBoxResult.Error);
+                }
+                else
+                {
+                    uiElement = checkBoxResult.Value;
+                }
+                break;
+
             case "InfoBar":
                 var infoBarResult = InfoBarElement.CreateInfoBar(config, this);
                 if (infoBarResult.IsFailure)

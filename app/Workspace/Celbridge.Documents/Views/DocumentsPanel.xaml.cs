@@ -1,5 +1,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
@@ -9,20 +10,27 @@ using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
 
 public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
-    private IDocumentsLogger _logger;
+    private readonly IDocumentsLogger _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
 
     private bool _isShuttingDown = false;
 
     public DocumentsPanelViewModel ViewModel { get; }
 
-    public DocumentsPanel(IWorkspaceWrapper workspaceWrapper)
+    public DocumentsPanel(
+        IServiceProvider serviceProvider,
+        IDocumentsLogger logger,
+        IMessengerService messengerService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         InitializeComponent();
 
-        _logger = ServiceLocator.AcquireService<IDocumentsLogger>();
-        ViewModel = ServiceLocator.AcquireService<DocumentsPanelViewModel>();
+        _logger = logger;
+        _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
+        ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
         //
         // Set the data context
@@ -473,6 +481,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
                 else
                 {
+                    var savedResource = documentTab.ViewModel.FileResource;
+                    var message = new DocumentSaveRequestedMessage(savedResource);
+
+                    _messengerService.Send(message);
+
                     savedCount++;
                 }
             }

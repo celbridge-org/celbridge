@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "element": "TextBox",
+    "header": "Python Script",
+    "text": "/pythonScript",
+    "checkSpelling": false
+  },
+  {
+    "element": "TextBox",
+    "header": "Arguments",
+    "text": "/arguments",
+    "checkSpelling": false
+  },
+  {
+    "element": "Button",
+    "verticalAlignment": "Bottom",
+    "tooltip": "Run Python script",
+    "text": "Run script",
+    "icon": "Play",
+    "buttonId": "RunScript"
+  },
+  {
+    "element": "CheckBox",
+    "header": "Run script on data changes",
+    "isChecked": "/runOnDataChange"
+  }
+]
