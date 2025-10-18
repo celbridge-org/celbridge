@@ -19,3 +19,14 @@ public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 /// A message sent when an open document's resource has been renamed or moved.
 /// </summary>
 public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKey NewResource);
+
+/// <summary>
+/// A message sent when a previously modified document has been requested to save to disk.
+/// </summary>
+public record DocumentSaveRequestedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when a document save operation has completed.
+/// This message is only sent for specific document types with complex async save sequences (e.g. spreadsheets).
+/// </summary>
+public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);

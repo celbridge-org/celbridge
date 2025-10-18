@@ -4,7 +4,6 @@ using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
-using Microsoft.UI.Xaml.Hosting;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
 
@@ -134,12 +133,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.ReopenProjectTag:
-                ReopenProjectAsync();
+                _ = ReopenProjectAsync();
                 return;
 
             case NavigationConstants.SettingsTag:
                 _navigationService.NavigateToPage(SettingsPageName);
-                break;
+                return;
 
             case NavigationConstants.ExplorerTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
@@ -147,7 +146,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 {
                     _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
                 }
-                break;
+                return;
 
             case NavigationConstants.SearchTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
@@ -155,7 +154,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 {
                     _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Search);
                 }
-                break;
+                return;
 
             case NavigationConstants.DebugTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
@@ -163,7 +162,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 {
                     _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Debug);
                 }
-                break;
+                return;
 
             case NavigationConstants.RevisionControlTag:
                 _navigationService.NavigateToPage(WorkspacePageName);
@@ -171,11 +170,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 {
                     _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
                 }
-                break;
+                return;
 
             case NavigationConstants.CommunityTag:
                 _navigationService.NavigateToPage(CommunityPageName);
-                break;
+                return;
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
