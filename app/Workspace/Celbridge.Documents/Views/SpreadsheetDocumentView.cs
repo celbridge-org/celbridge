@@ -265,22 +265,12 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
     private async Task SaveSpreadsheet(string spreadsheetData)
     {
-        bool succeeded = false;
-        try
-        {
-            byte[] fileBytes = Convert.FromBase64String(spreadsheetData);
-            var filePath = ViewModel.FilePath;
+        var saveResult = await ViewModel.SaveSpreadsheetDataToFile(spreadsheetData);
 
-            await File.WriteAllBytesAsync(filePath, fileBytes);
-            succeeded = true;
-        }
-        catch (Exception ex)
+        if (saveResult.IsFailure)
         {
-            _logger.LogError("Error saving Excel file: " + ex.Message);
-        }
+            _logger.LogError(saveResult, "Failed to save spreadsheet data");
 
-        if (!succeeded)
-        {
             // Alert the user that the document failed to save
             var file = ViewModel.FilePath;
             var title = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");

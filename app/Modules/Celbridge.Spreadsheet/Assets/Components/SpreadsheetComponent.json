@@ -10,13 +10,28 @@
     "_type": {
       "type": "string",
       "const": "Data.Spreadsheet#1"
+    },
+    "pythonScript": {
+      "type": "string"
+    },
+    "arguments": {
+      "type": "string"
+    },
+    "runOnDataChange": {
+      "type": "boolean"
     }
   },
 
   "required": [
-    "_type"
+    "_type",
+    "pythonScript",
+    "arguments",
+    "runOnDataChange"
   ],
 
   "prototype": {
+    "pythonScript": "",
+    "arguments": "",
+    "runOnDataChange": false
   }
-}    
+}

@@ -1,9 +1,12 @@
+using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
 public partial class SpreadsheetDocumentViewModel : DocumentViewModel
 {
+    private readonly IMessengerService _messengerService;
+
     [ObservableProperty]
     private string _source = string.Empty;
 
@@ -15,6 +18,11 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
 
     [ObservableProperty]
     private double _saveTimer;
+
+    public SpreadsheetDocumentViewModel(IMessengerService messengerService)
+    {
+        _messengerService = messengerService;
+    }
 
     public void OnDataChanged()
     {
@@ -69,5 +77,25 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
         await Task.CompletedTask;
 
         return Result.Ok();
+    }
+
+    public async Task<Result> SaveSpreadsheetDataToFile(string spreadsheetData)
+    {
+        try
+        {
+            byte[] fileBytes = Convert.FromBase64String(spreadsheetData);
+            
+            await File.WriteAllBytesAsync(FilePath, fileBytes);
+
+            var message = new DocumentSaveCompletedMessage(FileResource);
+            _messengerService.Send(message);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to save Excel file: '{FilePath}'")
+                .WithException(ex);
+        }
     }
 }
