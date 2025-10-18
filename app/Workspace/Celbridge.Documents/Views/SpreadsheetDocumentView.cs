@@ -41,6 +41,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
         Loaded += SpreadsheetDocumentView_Loaded;
 
+        // Subscribe to reload requests from the ViewModel
+        ViewModel.ReloadRequested += ViewModel_ReloadRequested;
+
         //
         // Set the data context
         // 
@@ -211,16 +214,38 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
     {
         Guard.IsNotNull(_webView);
 
-        if (File.Exists(filePath))
+        if (!File.Exists(filePath))
         {
-            byte[] bytes = await File.ReadAllBytesAsync(filePath);
+            _logger.LogWarning($"Cannot load spreadsheet - file does not exist: {filePath}");
+            return;
+        }
+
+        try
+        {
+            // Open with FileShare.ReadWrite to allow Excel to keep the file open
+            using var fileStream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite);
+
+            byte[] bytes = new byte[fileStream.Length];
+            await fileStream.ReadAsync(bytes, 0, bytes.Length);
             string base64 = Convert.ToBase64String(bytes);
 
             _webView.CoreWebView2.PostWebMessageAsString(base64);
-        }
 
-        _webView.WebMessageReceived -= WebView_WebMessageReceived;
-        _webView.WebMessageReceived += WebView_WebMessageReceived;
+            // Ensure event handler is registered
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
+            _webView.WebMessageReceived += WebView_WebMessageReceived;
+
+            _logger.LogDebug($"Successfully loaded spreadsheet: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't crash - the spreadsheet stays in its current state
+            _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
+        }
     }
 
     private async void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -283,6 +308,12 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
     {
         Loaded -= SpreadsheetDocumentView_Loaded;
 
+        // Unsubscribe from ViewModel events
+        ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
+
+        // Cleanup ViewModel message handlers
+        ViewModel.Cleanup();
+
         if (_webView != null)
         {
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
@@ -295,5 +326,15 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         }
 
         await base.PrepareToClose();
+    }
+
+    private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
+    {
+        // Reload the spreadsheet from disk when an external change is detected
+        if (_webView != null)
+        {
+            var filePath = ViewModel.FilePath;
+            await LoadSpreadsheet(filePath);
+        }
     }
 }

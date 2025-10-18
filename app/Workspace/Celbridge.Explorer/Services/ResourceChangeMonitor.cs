@@ -186,6 +186,11 @@ public class ResourceChangeMonitor : IDisposable
         lock (_lock)
         {
             _pendingRenamed[e.OldFullPath] = e.FullPath;
+            
+            // Also track as a changed file since the content may have been updated
+            // This handles applications that use rename operations as part of their save process
+            _pendingChanged.Add(e.FullPath);
+            
             RestartDebounceTimer();
         }
     }
@@ -348,6 +353,15 @@ public class ResourceChangeMonitor : IDisposable
             return true;
         }
 
+        // Ignore Office temporary files
+        // Excel creates temp files with random hex names (e.g., "FED4B600") during save operations
+        // Excel also creates lock files like "~$filename.xlsx"
+        if (fileName.StartsWith("~$") ||  // Excel lock files
+            fileName.StartsWith("~WRL"))   // Word temporary files
+        {
+            return true;
+        }
+
         // Ignore Python temporary and cache files
         if (fileName.EndsWith(".pyc") ||          // Compiled Python files
             fileName.EndsWith(".pyo") ||          // Optimized Python files
@@ -411,11 +425,6 @@ public class ResourceChangeMonitor : IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Convert an absolute path to a ResourceKey.
-    /// ResourceKeys use forward slashes as directory separators on all platforms.
-    /// Returns ResourceKey.Empty if the path is not in the project folder.
-    /// </summary>
     private ResourceKey GetResourceKey(string fullPath)
     {
         try
