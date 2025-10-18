@@ -123,7 +123,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
             // Clean up the DocumentView state before the document closes
             UnregisterMessageHandlers();
-            DocumentView.PrepareToClose();
+            await DocumentView.PrepareToClose();
 
             return Result<bool>.Ok(true);
         }
@@ -147,7 +147,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         // Clean up the DocumentView state before the document closes
         UnregisterMessageHandlers();
-        DocumentView.PrepareToClose();
+        await DocumentView.PrepareToClose();
 
         return Result<bool>.Ok(true);
     }
