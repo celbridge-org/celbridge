@@ -52,6 +52,7 @@ public static class ServiceConfiguration
         services.AddTransient<ButtonElement>();
         services.AddTransient<ComboBoxElement>();
         services.AddTransient<InfoBarElement>();
+        services.AddTransient<CheckBoxElement>();
     }
 
     public static void Initialize()
