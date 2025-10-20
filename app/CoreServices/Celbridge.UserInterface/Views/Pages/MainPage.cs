@@ -17,8 +17,11 @@ public sealed partial class MainPage : Page
 
     public LocalizedString HomeString => _stringLocalizer.GetString($"MainPage_Home");
     public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
+    public LocalizedString NewProjectTooltipString => _stringLocalizer.GetString($"MainPage_NewProjectTooltip");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
+    public LocalizedString OpenProjectTooltipString => _stringLocalizer.GetString($"MainPage_OpenProjectTooltip");
     public LocalizedString ReloadProjectString => _stringLocalizer.GetString($"MainPage_ReloadProject");
+    public LocalizedString ReloadProjectTooltipString => _stringLocalizer.GetString($"MainPage_ReloadProjectTooltip");
     public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
     public LocalizedString ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
     public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
@@ -61,16 +64,19 @@ public sealed partial class MainPage : Page
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
                             .Tag(NavigationConstants.NewProjectTag)
-                            .Content(NewProjectString),
+                            .Content(NewProjectString)
+                            .ToolTipService(PlacementMode.Right, null, NewProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.OpenLocal))
                             .Tag(NavigationConstants.OpenProjectTag)
-                            .Content(OpenProjectString),
+                            .Content(OpenProjectString)
+                            .ToolTipService(PlacementMode.Right, null, OpenProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.Refresh))
                             .Tag(NavigationConstants.ReloadProjectTag)
                             .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
                             .Content(ReloadProjectString)
+                            .ToolTipService(PlacementMode.Right, null, ReloadProjectTooltipString)
                     )
                     .Content(HomeString),
 

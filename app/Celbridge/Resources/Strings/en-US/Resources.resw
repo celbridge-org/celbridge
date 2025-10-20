@@ -516,4 +516,13 @@ Do you wish to continue?</value>
   <data name="HomePage_NewExampleProjectTooltip" xml:space="preserve">
     <value>Create a new Celbridge project with example content</value>
   </data>
+  <data name="MainPage_NewProjectTooltip" xml:space="preserve">
+    <value>Create a new Celbridge project</value>
+  </data>
+  <data name="MainPage_OpenProjectTooltip" xml:space="preserve">
+    <value>Open an existing Celbridge project</value>
+  </data>
+  <data name="MainPage_ReloadProjectTooltip" xml:space="preserve">
+    <value>Reload the current Celbridge project</value>
+  </data>
 </root>
