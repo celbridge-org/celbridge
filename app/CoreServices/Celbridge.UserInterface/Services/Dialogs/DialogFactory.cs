@@ -41,11 +41,11 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public INewProjectDialog CreateCreateExampleProjectDialog()
+    public INewProjectDialog CreateNewExampleProjectDialog()
     {
         // %%% NOTE - Going forwards I would imagine this being a separate dialog.
         //  I would personally like to remove all the path and name selection support from the Create New dialog and make it a control,
-        //  and have it used by both the Create New Project dialog (which would have little else in it), and the Create Example Project Dialog (which would
+        //  and have it used by both the Create New Project dialog (which would have little else in it), and the Create New Project Dialog (which would
         //  have the lists of examples to select and so on, also).
         //  For now we will use a flag to change some rudimentary behaviour until this is ready to be overhauled.
         var dialog = new NewProjectDialog(NewProjectConfigType.Example);

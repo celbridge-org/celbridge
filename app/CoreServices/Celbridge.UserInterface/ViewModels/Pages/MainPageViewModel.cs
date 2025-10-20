@@ -132,8 +132,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
                 return;
 
-            case NavigationConstants.ReopenProjectTag:
-                _ = ReopenProjectAsync();
+            case NavigationConstants.ReloadProjectTag:
+                _ = ReloadProjectAsync();
                 return;
 
             case NavigationConstants.SettingsTag:
@@ -180,7 +180,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _logger.LogError($"Failed to navigate to item {tag}.");
     }
 
-    private async Task ReopenProjectAsync()
+    private async Task ReloadProjectAsync()
     {
         if (_projectService.CurrentProject is not null)
         {
