@@ -1,10 +1,10 @@
-# Markdown Examples
+# Markdown Example
 
 Celbridge supports writing documentation using the popular [markdown](https://www.markdownguide.org/) format.
 
-To create a new Markdown file, right clicking in the Explorer window and select `Add > Markdown file (.md)`.
+To create a new Markdown file, right clicking in the Explorer window and select *Add > Markdown file (.md)*.
 
-Toggle the buttons in the inspector window to switch between the editing & preview modes. The preview panel updates live as you type Markdown text. 
+Toggle the buttons in the inspector window to switch between the editing & preview modes. The preview panel updates in real-time as you type Markdown text. 
 
 Here's a quick cheat-sheet for some common Markdown elements.
 
