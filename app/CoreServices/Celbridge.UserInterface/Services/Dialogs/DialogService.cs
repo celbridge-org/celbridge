@@ -97,9 +97,9 @@ public class DialogService : IDialogService
         return showResult;
     }
 
-    public async Task<Result<NewProjectConfig>> ShowCreateExampleProjectDialogAsync()
+    public async Task<Result<NewProjectConfig>> ShowNewExampleProjectDialogAsync()
     {
-        var dialog = _dialogFactory.CreateCreateExampleProjectDialog();
+        var dialog = _dialogFactory.CreateNewExampleProjectDialog();
 
         SuppressProgressDialog(true);
         var showResult = await dialog.ShowDialogAsync();

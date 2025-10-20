@@ -10,6 +10,7 @@ public class Project : IDisposable, IProject
 {
     private const string DefaultProjectVersion = "0.1.0";
     private const string DefaultPythonVersion = "3.13.6";
+    private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
 
     private readonly ILogger<Project> _logger;
 
@@ -28,7 +29,6 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-    private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
 
 
     public Project(
@@ -91,7 +91,7 @@ public class Project : IDisposable, IProject
         }
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath, NewProjectConfigType createExampleProject)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, NewProjectConfigType configType)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
@@ -117,7 +117,7 @@ public class Project : IDisposable, IProject
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
-            if (createExampleProject == NewProjectConfigType.Standard)
+            if (configType == NewProjectConfigType.Standard)
             {
                 // Get Celbridge version
                 var utilityService = ServiceLocator.AcquireService<IUtilityService>();
@@ -131,10 +131,6 @@ public class Project : IDisposable, IProject
                 [python]
                 version = "{DefaultPythonVersion}"
                 packages = []
-
-                [python.scripts]
-                startup = ""
-
                 """;
 
                 // Todo: Populate this with project configuration options
@@ -143,20 +139,21 @@ public class Project : IDisposable, IProject
                 // %%% Change this to read the file from a file in the project build, and also to ensure we're not stomping an existing file.
                 string readMePath = projectPath + "\\readme.md";
                 var readMeText = $"""
-                ## Welcome to Celbridge
-                # This is your project.
+                # Welcome to Celbridge!
+                To get started, please see the [Celbridge documentation](https://celbridge.org).
                 """;
 
                 await File.WriteAllTextAsync(readMePath, readMeText);
             }
             else
             {
-                // Extract our Examples Zip file to the selected location.
-                var uvZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ExamplesZipAssetPath));
-                var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "examples.zip", NameCollisionOption.ReplaceExisting);
-                ZipFile.ExtractToDirectory(uvTempFile.Path, projectPath, overwriteFiles: true);
+                // Extract our Examples.zip file to the selected location.
+                var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ExamplesZipAssetPath));
+                var tempZipFile = await sourceZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "Examples.zip", NameCollisionOption.ReplaceExisting);
+                ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
 
-                File.Move(projectPath + "\\Example.celbridge", projectFilePath);
+                // Rename the celbridge project file to the selected project file name.
+                File.Move(projectPath + "\\examples.celbridge", projectFilePath);
             }
         }
         catch (Exception ex)
