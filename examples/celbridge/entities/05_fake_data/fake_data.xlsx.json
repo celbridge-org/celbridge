@@ -1,0 +1,11 @@
+{
+  "_entityVersion": 1,
+  "_components": [
+    {
+      "pythonScript": "05_fake_data/fake_data.py",
+      "arguments": "10",
+      "runOnDataChange": false,
+      "_type": "Data.Spreadsheet#1"
+    }
+  ]
+}

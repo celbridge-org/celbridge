@@ -4,7 +4,7 @@ celbridge_version = "0.0.12.0"
 
 [python]
 version = "3.13.6"
-packages = [ "numpy", "pandas", "openpyxl" ]
+packages = [ "pandas", "openpyxl", "requests", "faker" ]
 
 [python.scripts]
 startup = ""
