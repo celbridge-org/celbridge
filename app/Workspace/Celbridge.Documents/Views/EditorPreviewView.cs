@@ -5,14 +5,14 @@ using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class EditorPreviewView : UserControl, IEditorPreview, IDisposable
+public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 {
     public EditorPreviewViewModel ViewModel { get; }
 
     private WebView2? _webView;
 
     private bool _loaded = false;
-    private bool _disposed = false;
+    private bool _isClosed = false;
 
     public EditorPreviewView()
     {
@@ -199,12 +199,14 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview, IDi
         return Result<string>.Ok(unescapedHtml);
     }
 
-    public void Dispose()
+    public void PrepareToClose()
     {
-        if (_disposed)
+        if (_isClosed)
+        { 
             return;
+        }
 
-        _disposed = true;
+        _isClosed = true;
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
