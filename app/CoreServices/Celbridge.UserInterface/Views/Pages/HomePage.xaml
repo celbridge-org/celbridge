@@ -43,7 +43,8 @@
                  Margin="0,0,0,12"/>
 
       <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                       Command="{x:Bind ViewModel.NewProjectCommand}">
+                       Command="{x:Bind ViewModel.NewProjectCommand}"
+                       ToolTipService.ToolTip="{x:Bind NewProjectTooltipString}">
         <StackPanel Orientation="Horizontal">
           <SymbolIcon Symbol="NewFolder" />
           <TextBlock Margin="8 0 0 0"
@@ -52,7 +53,8 @@
       </HyperlinkButton>
 
       <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                       Command="{x:Bind ViewModel.OpenProjectCommand}">
+                       Command="{x:Bind ViewModel.OpenProjectCommand}"
+                       ToolTipService.ToolTip="{x:Bind OpenProjectTooltipString}">
         <StackPanel Orientation="Horizontal">
           <SymbolIcon Symbol="OpenLocal" />
           <TextBlock Margin="8 0 0 0"
@@ -61,7 +63,8 @@
       </HyperlinkButton>
 
       <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                       Command="{x:Bind ViewModel.NewExampleProjectCommand}">
+                       Command="{x:Bind ViewModel.NewExampleProjectCommand}"
+                       ToolTipService.ToolTip="{x:Bind NewExampleProjectTooltipString}">
         <StackPanel Orientation="Horizontal">
           <SymbolIcon Symbol="Library" />
           <TextBlock Margin="8 0 0 0"
