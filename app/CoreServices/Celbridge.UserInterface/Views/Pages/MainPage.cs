@@ -18,7 +18,7 @@ public sealed partial class MainPage : Page
     public LocalizedString HomeString => _stringLocalizer.GetString($"MainPage_Home");
     public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
-    public LocalizedString ReopenProjectString => _stringLocalizer.GetString($"MainPage_ReopenProject");
+    public LocalizedString ReloadProjectString => _stringLocalizer.GetString($"MainPage_ReloadProject");
     public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
     public LocalizedString ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
     public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
@@ -68,9 +68,9 @@ public sealed partial class MainPage : Page
                             .Content(OpenProjectString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.Refresh))
-                            .Tag(NavigationConstants.ReopenProjectTag)
+                            .Tag(NavigationConstants.ReloadProjectTag)
                             .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
-                            .Content(ReopenProjectString)
+                            .Content(ReloadProjectString)
                     )
                     .Content(HomeString),
 

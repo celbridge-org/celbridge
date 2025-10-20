@@ -61,11 +61,11 @@
       </HyperlinkButton>
 
       <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                       Command="{x:Bind ViewModel.CreateExampleProjectCommand}">
+                       Command="{x:Bind ViewModel.NewExampleProjectCommand}">
         <StackPanel Orientation="Horizontal">
           <SymbolIcon Symbol="Library" />
           <TextBlock Margin="8 0 0 0"
-                     Text="{x:Bind CreateExampleProjectString}"/>
+                     Text="{x:Bind NewExampleProjectString}"/>
         </StackPanel>
       </HyperlinkButton>
 

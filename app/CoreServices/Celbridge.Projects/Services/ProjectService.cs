@@ -71,7 +71,7 @@ public class ProjectService : IProjectService
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
 
-            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, config.ExampleProject);
+            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, config.ConfigType);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'");

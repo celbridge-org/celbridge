@@ -9,5 +9,5 @@ public enum NewProjectConfigType
 /// <summary>
 /// Configuration for a new project.
 /// </summary>
-public record NewProjectConfig(string ProjectFilePath, NewProjectConfigType ExampleProject);
+public record NewProjectConfig(string ProjectFilePath, NewProjectConfigType ConfigType);
 
