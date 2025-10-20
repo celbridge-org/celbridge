@@ -5,7 +5,7 @@ public class NavigationConstants
     public const string HomeTag = "Home";
     public const string NewProjectTag = "NewProject";
     public const string OpenProjectTag = "OpenProject";
-    public const string ReopenProjectTag = "ReopenProject";
+    public const string ReloadProjectTag = "ReloadProject";
     public const string SettingsTag = "Settings";
     public const string SearchTag = "Search";
     public const string ExplorerTag = "Explorer";

@@ -12,8 +12,11 @@ public sealed partial class HomePage : Page
     public LocalizedString SubtitleString => _stringLocalizer.GetString("HomePage_Subtitle");
     public LocalizedString StartString => _stringLocalizer.GetString("HomePage_Start");
     public LocalizedString NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
+    public LocalizedString NewProjectTooltipString => _stringLocalizer.GetString("HomePage_NewProjectTooltip");
     public LocalizedString OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
-    public LocalizedString CreateExampleProjectString => _stringLocalizer.GetString("HomePage_CreateExampleProject");
+    public LocalizedString OpenProjectTooltipString => _stringLocalizer.GetString("HomePage_OpenProjectTooltip");
+    public LocalizedString NewExampleProjectString => _stringLocalizer.GetString("HomePage_NewExampleProject");
+    public LocalizedString NewExampleProjectTooltipString => _stringLocalizer.GetString("HomePage_NewExampleProjectTooltip");
     public LocalizedString RecentString => _stringLocalizer.GetString("HomePage_Recent");
 
     public HomePageViewModel ViewModel { get; private set; }
