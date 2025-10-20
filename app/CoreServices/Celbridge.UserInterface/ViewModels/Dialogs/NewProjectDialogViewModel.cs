@@ -34,7 +34,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
-    public NewProjectConfigType CreateExampleProject { get; set; }
+    public NewProjectConfigType ConfigType { get; set; }
 
     public NewProjectDialogViewModel(
         IStringLocalizer stringLocalizer,
@@ -151,14 +151,16 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand CreateProjectCommand => new RelayCommand(CreateCommand_Execute);
-    private void CreateCommand_Execute()
+    public ICommand CreateProjectCommand => new RelayCommand(CreateProjectCommand_Execute);
+    private void CreateProjectCommand_Execute()
     {
-        var config = new NewProjectConfig(DestProjectFilePath, CreateExampleProject);
+        var config = new NewProjectConfig(DestProjectFilePath, ConfigType);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
             NewProjectConfig = config;
         }
+
+        // The dialog closes automatically after the Create button is clicked.
     }
 }

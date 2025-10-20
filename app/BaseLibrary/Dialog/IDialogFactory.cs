@@ -29,9 +29,9 @@ public interface IDialogFactory
     INewProjectDialog CreateNewProjectDialog();
 
     /// <summary>
-    /// Create a Create Example Project Dialog.
+    /// Create a New Example Project Dialog.
     /// </summary>
-    INewProjectDialog CreateCreateExampleProjectDialog();
+    INewProjectDialog CreateNewExampleProjectDialog();
 
     /// <summary>
     /// Create an Input Text Dialog.

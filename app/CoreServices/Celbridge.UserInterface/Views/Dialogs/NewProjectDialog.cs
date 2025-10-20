@@ -12,7 +12,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public NewProjectDialogViewModel ViewModel { get; }
 
     public LocalizedString TitleString => _stringLocalizer.GetString($"NewProjectDialog_Title");
-    public LocalizedString CreateExampleProjectTitleString => _stringLocalizer.GetString($"CreateExampleProjectDialog_Title");
+    public LocalizedString NewExampleProjectTitleString => _stringLocalizer.GetString($"NewExampleProjectDialog_Title");
     public LocalizedString CreateString => _stringLocalizer.GetString($"DialogButton_Create");
     public LocalizedString CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
     public LocalizedString ProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
@@ -23,7 +23,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public LocalizedString CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
     public LocalizedString SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
 
-    public NewProjectDialog(NewProjectConfigType createExampleProject = NewProjectConfigType.Standard)
+    public NewProjectDialog(NewProjectConfigType configType = NewProjectConfigType.Standard)
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
@@ -31,7 +31,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
         ViewModel = ServiceLocator.AcquireService<NewProjectDialogViewModel>();
-        ViewModel.CreateExampleProject = createExampleProject;
+        ViewModel.ConfigType = configType;
 
         var newProjectName = 
             new TextBox()
@@ -100,7 +100,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         this.DataContext(ViewModel, (dialog, vm) =>
             dialog
-                .Title(createExampleProject == NewProjectConfigType.Example ? CreateExampleProjectTitleString : TitleString)
+                .Title(configType == NewProjectConfigType.Example ? NewExampleProjectTitleString : TitleString)
                 .PrimaryButtonText(CreateString)
                 .SecondaryButtonText(CancelString)
                 .IsPrimaryButtonEnabled(x => x.Binding(() => ViewModel.IsCreateButtonEnabled).Mode(BindingMode.OneWay))

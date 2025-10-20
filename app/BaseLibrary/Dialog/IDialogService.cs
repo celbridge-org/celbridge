@@ -38,9 +38,9 @@ public interface IDialogService
     Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync();
 
     /// <summary>
-    /// Display a Create Example Project Dialog.
+    /// Display a New Example Project Dialog.
     /// </summary>
-    Task<Result<NewProjectConfig>> ShowCreateExampleProjectDialogAsync();
+    Task<Result<NewProjectConfig>> ShowNewExampleProjectDialogAsync();
 
     /// <summary>
     /// Display an Input Text Dialog.

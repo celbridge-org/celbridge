@@ -183,7 +183,7 @@
   <data name="MainPage_Community" xml:space="preserve">
     <value>Community</value>
   </data>
-    <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
+  <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project folder</value>
   </data>
   <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
@@ -198,8 +198,8 @@
   <data name="NewProjectDialog_Title" xml:space="preserve">
     <value>New project</value>
   </data>
-  <data name="CreateExampleProjectDialog_Title" xml:space="preserve">
-    <value>Create example project</value>
+  <data name="NewExampleProjectDialog_Title" xml:space="preserve">
+    <value>New example project</value>
   </data>
   <data name="ExplorerPanel_RefreshTooltip" xml:space="preserve">
     <value>Refresh project files</value>
@@ -360,8 +360,8 @@
   <data name="HomePage_OpenProject" xml:space="preserve">
     <value>Open project</value>
   </data>
-  <data name="HomePage_CreateExampleProject" xml:space="preserve">
-    <value>Create example project</value>
+  <data name="HomePage_NewExampleProject" xml:space="preserve">
+    <value>New example project</value>
   </data>
   <data name="MainPage_NewProject" xml:space="preserve">
     <value>New project</value>
@@ -369,8 +369,8 @@
   <data name="MainPage_OpenProject" xml:space="preserve">
     <value>Open project</value>
   </data>
-  <data name="MainPage_ReopenProject" xml:space="preserve">
-    <value>Reopen project</value>
+  <data name="MainPage_ReloadProject" xml:space="preserve">
+    <value>Reload project</value>
   </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
@@ -386,9 +386,6 @@
   </data>
   <data name="HomePage_NoRecentProjects" xml:space="preserve">
     <value>You have no recent projects.</value>
-  </data>
-  <data name="SettingsPage_Title" xml:space="preserve">
-    <value>Settings</value>
   </data>
   <data name="SettingsPage_ApplicationTheme" xml:space="preserve">
     <value>Application Theme</value>
@@ -509,5 +506,23 @@ Do you wish to continue?</value>
   </data>
   <data name="Theme_System" xml:space="preserve">
     <value>System Default</value>
+  </data>
+  <data name="HomePage_NewProjectTooltip" xml:space="preserve">
+    <value>Create a new Celbridge project</value>
+  </data>
+  <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
+    <value>Open an existing Celbridge project</value>
+  </data>
+  <data name="HomePage_NewExampleProjectTooltip" xml:space="preserve">
+    <value>Create a new Celbridge project with example content</value>
+  </data>
+  <data name="MainPage_NewProjectTooltip" xml:space="preserve">
+    <value>Create a new Celbridge project</value>
+  </data>
+  <data name="MainPage_OpenProjectTooltip" xml:space="preserve">
+    <value>Open an existing Celbridge project</value>
+  </data>
+  <data name="MainPage_ReloadProjectTooltip" xml:space="preserve">
+    <value>Reload the current Celbridge project</value>
   </data>
 </root>

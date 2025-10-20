@@ -37,9 +37,9 @@ public class MainMenuUtils
         }
     }
 
-    public async Task ShowCreateExampleProjectDialogAsync()
+    public async Task ShowNewExampleProjectDialogAsync()
     {
-        var showResult = await _dialogService.ShowCreateExampleProjectDialogAsync();
+        var showResult = await _dialogService.ShowNewExampleProjectDialogAsync();
         if (showResult.IsSuccess)
         {
             var projectConfig = showResult.Value;
