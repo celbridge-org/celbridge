@@ -117,7 +117,7 @@ Each release includes an example project that demonstrates the core features of 
 2. From the home menu, click `New example project`.
 
 > [!NOTE] 
-> If an existing project opens instead of the home menu, click the home button in the status bar to the left of the explorer panel. 
+> If an existing project opens instead of the home menu, click the home button in the navigation bar to the left of the explorer panel. 
 
 3. Name the project and select a location for it. 
 4. Celbridge will generate a new example project. Each folder in this project contains an example of a core feature of Celbridge. For example, the `01_markdown` folder demonstrates how to work with Markdown files. 
@@ -134,6 +134,10 @@ Each release includes an example project that demonstrates the core features of 
 7. Build and run the application.
 
 If you encounter build errors, try restarting Visual Studio. If this fails, do a clean build.
+
+## Documentation
+
+Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
 # Support
 
