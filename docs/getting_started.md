@@ -11,12 +11,12 @@ If you have no existing project, the home menu will open automatically when Celb
 
 # Creating a Project
 
-You can create and open Celbridge projects from either the **home menu**, or from the hamburger menu at the top of the status bar to the left of the main interface. 
+You can **create and open Celbridge projects** from either the **home menu**, or the **hamburger menu** at the top of the status bar to the left of the main interface. 
 
 Let's create a project from the home menu.
 
 1. Open the home menu.  
-2. Click "New project". 
+2. Click `New project`. 
 3. Name your project.
 
 > [!NOTE]
@@ -24,7 +24,7 @@ Let's create a project from the home menu.
 
 4. Choose a folder to place your project in, and select whether you want Celbridge to create a subfolder with the same name as the project. 
 
-The steps to create a project from the hamburger menu are identical: just click the menu and select "New project".
+The steps to create a project from the hamburger menu are identical: just click the menu and select `New project`.
 
 # The Celbridge Editor
 
@@ -71,7 +71,7 @@ You can easily add new Python versions and packages from the Celbridge project s
 Let's add the data analysis library [Pandas](https://pandas.pydata.org/) to our Celbridge project. 
 
 1. Open the `.celbridge` project settings file by double-clicking on it in the explorer panel.
-2. Under the `[packages]` section of the `[python]` section, type `"pandas"`. 
+2. Under the `packages` key in the `[python]` section, type `"pandas"`:
 
 ![](https://github.com/AnTulcha/Celbridge/blob/main/docs/images/project_settings.png)
 
@@ -82,13 +82,13 @@ Let's add the data analysis library [Pandas](https://pandas.pydata.org/) to our 
 
 Celbridge includes an example project that demonstrates the core features of Celbridge. Let's take a look at it. 
 
-1. From the home menu, click "New example project".
+1. From the home menu, click `New example project`.
 2. Name the project and select a location for it.
 3. Celbridge will generate a new example project. Each folder in the explorer panel of this project contains an example of a core feature of Celbridge. For example, the `01_markdown` folder demonstrates how to work with Markdown files.
 4. To get started with each feature, take a look at the `readme.md` files contained in the example folders.
 
 # Help and Support 
 
-The community forums are a great place to ask for help. You can access them at any time from the **globe button** on the status bar, or [here](https://celbridge.discourse.group/).
+The community forums are a great place to ask for help. You can access them at any time from the **globe button** in the status bar, or [here](https://celbridge.discourse.group/).
 
 To report bugs, please open a [ticket](https://github.com/celbridge-org/celbridge/issues). 
