@@ -97,6 +97,8 @@ Celbridge is an open source tool that provides a bridge between spreadsheets and
 
 # Getting Started
 
+## Installation 
+
 Celbridge is distributed as a `.msix` installer for Windows.
 
 > [!NOTE]
@@ -120,7 +122,7 @@ Each release includes an example project that demonstrates the core features of 
 4. Celbridge will generate a new example project. Each folder in this project contains an example of a core feature of Celbridge. For example, the `01_markdown` folder demonstrates how to work with Markdown files. 
 5. To get started with each feature, see the `readme.md` files contained in the example folders. 
 
-# Building From Source
+## Building From Source
 
 1. Clone the Celbridge git repo on your machine.
 2. Install the latest version of Visual Studio (the free [Community Edition](https://visualstudio.microsoft.com/vs/community/) works fine).
