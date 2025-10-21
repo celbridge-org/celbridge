@@ -114,7 +114,7 @@ Celbridge is distributed as a `.msix` installer for Windows.
 
 Each release includes an example project that demonstrates the core features of Celbridge. Access this example project as follows: 
 1. Launch Celbridge. 
-2. From the home menu, click "New example project".
+2. From the home menu, click `New example project`.
 
 > [!NOTE] 
 > If an existing project opens instead of the home menu, click the home button in the status bar to the left of the explorer panel. 
