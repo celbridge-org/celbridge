@@ -4,6 +4,7 @@
 - [Getting Started](#getting-started)
   * [Installation](#installation)
   * [Building From Source](#building-from-source)
+  * [Documentation](#documentation)
 - [Support](#support)
 - [Roadmap](#roadmap)
 - [Who are we?](#who-are-we-)
