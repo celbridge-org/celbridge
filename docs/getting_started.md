@@ -1,3 +1,6 @@
+Getting Started
+==============
+
 > [!NOTE]
 > This document assumes you've already successfully installed Celbridge. For detailed installation instructions, see the [Installation section](https://github.com/celbridge-org/celbridge?tab=readme-ov-file#installation) of the project's `README`. 
 
@@ -5,13 +8,13 @@
 
 Celbridge has two main interfaces: the **home menu**, where you create and open projects, and the **Celbridge editor**, where you work directly in a project. 
 
-If you have no existing project, the home menu will open automatically when Celbridge is launched. You can switch between the home menu and Celbridge editor using the buttons in the status bar to the left of the main interface.  
+If you have no existing project, the home menu will open automatically when Celbridge is launched. You can switch between the home menu and Celbridge editor using the buttons in the navigation bar to the left of the main interface.  
 
 ![](https://github.com/AnTulcha/Celbridge/blob/main/docs/images/home_explorer_buttons_switch.gif)*Switching between the home menu and Celbridge editor*
 
 # Creating a Project
 
-You can **create and open Celbridge projects** from either the **home menu**, or the **hamburger menu** at the top of the status bar to the left of the main interface. 
+You can **create and open Celbridge projects** from either the **home menu**, or the **hamburger menu** at the top of the navigation bar to the left of the main interface. 
 
 Let's create a project from the home menu.
 
@@ -30,13 +33,13 @@ The steps to create a project from the hamburger menu are identical: just click 
 
 Let's explore the Celbridge editor. Open the project you created in the `Creating a Project` step. From left to right, top to bottom, the sections of the Celbridge editor are as follows:
 
-## Status Bar
+## Navigation Bar
 
-* The **status bar** lets you easily switch between **different menus and project contexts**.
-* The **hamburger menu** at the top of the status bar lets you quickly create, open, or reload a project.
+* The **navigation bar** lets you easily switch between **different menus and project contexts**.
+* The **hamburger menu** at the top of the navigation bar lets you quickly create, open, or reload a project.
 * The **home button** navigates to the home menu.
 * The **explorer button** navigates to the Celbridge editor. 
-* The **globe button** opens the Celbridge community forums as a web application within Celbridge.
+* The globe-like **community button** opens the Celbridge community forums as a web application within Celbridge.
 * The **settings button** lets you change application settings.   
 
 ## Explorer Panel
@@ -89,6 +92,6 @@ Celbridge includes an example project that demonstrates the core features of Cel
 
 # Help and Support 
 
-The community forums are a great place to ask for help. You can access them at any time from the **globe button** in the status bar, or [here](https://celbridge.discourse.group/).
+The [community forums](https://celbridge.discourse.group/) are a great place to ask for help. You can access them at any time from the **community button** in the navigation bar.
 
 To report bugs, please open a [ticket](https://github.com/celbridge-org/celbridge/issues). 
