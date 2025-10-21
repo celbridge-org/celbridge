@@ -1,3 +1,14 @@
+# Table of Contents
+- [What is Celbridge?](#what-is-celbridge-)
+- [Key Features](#key-features)
+- [Getting Started](#getting-started)
+- [Building From Source](#building-from-source)
+- [Support](#support)
+- [Roadmap](#roadmap)
+- [Who are we?](#who-are-we-)
+- [Contributions](#contributions)
+- [Credits](#credits)
+
 # What is Celbridge?
 
 Celbridge is an open source tool that provides a bridge between spreadsheets and Python scripting. Edit spreadsheets and write Python scripts side-by-side in a user-friendly graphical interface, making it easy to enter, analyze, and automate your data. 
