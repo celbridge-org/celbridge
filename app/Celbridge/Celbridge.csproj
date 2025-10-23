@@ -29,7 +29,7 @@
 
     <DefaultLanguage>en-US</DefaultLanguage>
     
-    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
   </PropertyGroup>
 
   <PropertyGroup>
