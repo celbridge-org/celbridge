@@ -1,3 +1,5 @@
+# Data Cleaning Example
+
 This example demonstrates using a Python script to clean a messy data set.
 
 The script runs automatically when you edit the data, so the cleaned data is kept in sync with the messy input data.
