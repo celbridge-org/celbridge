@@ -4,7 +4,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 
 API_URL = "https://api.citybik.es/v2/networks/dublinbikes"
-OUTPUT_XLSX = "04_citybikes/citybikes.xlsx"
+OUTPUT_XLSX = "04_data_import/citybikes.xlsx"
 
 def main():
 
