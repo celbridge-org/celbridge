@@ -596,6 +596,41 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = newResource.ResourceName;
         documentTab.ViewModel.FilePath = newResourcePath;
 
+        // %%% TEST -- Ensure our renamed tab does not collide with any existing open tabs.
+        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+
+        // Check if the file is already opened
+        string fileName = System.IO.Path.GetFileName(newResourcePath);
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (newResource != tab.ViewModel.FileResource)
+            {
+                // Check for alike filenames where we need to show a differentiation of paths.
+                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
+                {
+                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
+                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                }
+            }
+        }
+
+        // Handle differentiation for alike filenames.
+        if (collidedTabs.Count > 0)
+        {
+            collidedTabs.Add(documentTab, new PathWorkEntry(newResourcePath));
+            HandleCollidedTabs(ref collidedTabs);
+
+            foreach (var tabInfo in collidedTabs)
+            {
+                // Update our display string for this tab.
+                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
+            }
+        }
+        // ---
+
         return Result.Ok();
     }
 
