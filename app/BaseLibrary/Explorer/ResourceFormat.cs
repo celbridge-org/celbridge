@@ -31,6 +31,11 @@ public enum ResourceFormat
     Python,
 
     /// <summary>
+    /// An IPython script file with the .ipy extension
+    /// </summary>
+    IPython,
+
+    /// <summary>
     /// A web app document with the .webapp extension
     /// </summary>
     WebApp
