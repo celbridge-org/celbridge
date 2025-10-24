@@ -39,6 +39,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                 .Text(x => x.Binding(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+                    .IsSpellCheckEnabled(false)
                 .MinWidth(200)
                 .PlaceholderText(ProjectNamePlaceholderString);
 
