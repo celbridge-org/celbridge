@@ -16,9 +16,14 @@ public static class ExplorerConstants
     public const string MarkdownExtension = ".md";
 
     /// <summary>
-    /// File extension for python file resources.
+    /// File extension for Python script file resources.
     /// </summary>
     public const string PythonExtension = ".py";
+
+    /// <summary>
+    /// File extension for IPython script file resources.
+    /// </summary>
+    public const string IPythonExtension = ".ipy";
 
     /// <summary>
     /// File extension for text file resources.

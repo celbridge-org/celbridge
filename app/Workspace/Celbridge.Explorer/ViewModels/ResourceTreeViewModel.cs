@@ -152,7 +152,10 @@ public partial class ResourceTreeViewModel : ObservableObject
             var resourceRegistry = _explorerService.ResourceRegistry;
             var resourceKey = resourceRegistry.GetResourceKey(fileResource);
 
-            return Path.GetExtension(resourceKey) == ExplorerConstants.PythonExtension;
+            var extension = Path.GetExtension(resourceKey);
+
+            return extension == ExplorerConstants.PythonExtension ||
+                extension == ExplorerConstants.IPythonExtension;
         }
 
         return false;
@@ -194,7 +197,10 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _explorerService.ResourceRegistry;
         var resource = resourceRegistry.GetResourceKey(scriptResource);
 
-        if (Path.GetExtension(resource) != ExplorerConstants.PythonExtension)
+        var extension = Path.GetExtension(resource);
+
+        if (extension != ExplorerConstants.PythonExtension &&
+            extension != ExplorerConstants.IPythonExtension)
         {
             // Attempting to run a non Python resource has no effect
             return;
