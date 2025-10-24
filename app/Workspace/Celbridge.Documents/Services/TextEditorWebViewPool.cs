@@ -16,7 +16,8 @@ public class TextEditorWebViewPool
     private readonly object _lock = new object();
     private bool _isInitialized = false;
     private bool _isShuttingDown = false;
-    private Task? _initializationTask;
+
+    private Task? _initializationTask = null;
 
     public TextEditorWebViewPool(int poolSize)
     {
