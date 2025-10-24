@@ -131,6 +131,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                     ResourceFormat.Excel => ExplorerConstants.ExcelExtension,
                     ResourceFormat.Markdown => ExplorerConstants.MarkdownExtension,
                     ResourceFormat.Python => ExplorerConstants.PythonExtension,
+                    ResourceFormat.IPython => ExplorerConstants.IPythonExtension,
                     ResourceFormat.WebApp => ExplorerConstants.WebAppExtension,
                     _ => ExplorerConstants.TextExtension,
                 };
