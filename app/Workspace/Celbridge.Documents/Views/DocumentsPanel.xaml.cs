@@ -4,6 +4,8 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
+using Path = System.IO.Path;
+
 namespace Celbridge.Documents.Views;
 
 using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
@@ -187,7 +189,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         public PathWorkEntry(string path)
         {
-            pathSegments = path.Split('\\');
+            pathSegments = path.Split(Path.DirectorySeparatorChar);
             currentIndex = pathSegments.Length - 2;
             displaySegments = new List<string>();
             finalDisplayString = "";
@@ -395,7 +397,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             {
                 if (outputPath.Length > 0)
                 {
-                    outputPath += "\\";
+                    outputPath += Path.DirectorySeparatorChar;
                 }
                 else
                 {
@@ -408,7 +410,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
 
             // Add file name to the end of the path.
-            outputPath += "\\" + workEntry.pathSegments[workEntry.pathSegments.Length - 1];
+            outputPath += Path.DirectorySeparatorChar + workEntry.pathSegments[workEntry.pathSegments.Length - 1];
 
             workEntry.finalDisplayString = outputPath;
         }
