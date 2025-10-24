@@ -11,6 +11,7 @@ public class Project : IDisposable, IProject
     private const string DefaultProjectVersion = "0.1.0";
     private const string DefaultPythonVersion = "3.13.6";
     private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
+    private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
 
     private readonly ILogger<Project> _logger;
 
@@ -136,14 +137,21 @@ public class Project : IDisposable, IProject
                 // Todo: Populate this with project configuration options
                 await File.WriteAllTextAsync(projectFilePath, projectTOML);
 
-                // %%% Change this to read the file from a file in the project build, and also to ensure we're not stomping an existing file.
-                string readMePath = projectPath + "\\readme.md";
-                var readMeText = $"""
-                # Welcome to Celbridge!
-                To get started, please see the [Celbridge documentation](https://celbridge.org).
-                """;
 
-                await File.WriteAllTextAsync(readMePath, readMeText);
+                // Read from a given file in the project build, and also ensure we're not stomping an existing file.
+                string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
+                if (!File.Exists(projectFilePath))
+                {
+                    var sourceWelcomeFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ReadMeMDAssetPath));
+                    var welcomeFileStream = (await sourceWelcomeFile.OpenReadAsync()).AsStreamForRead();
+                
+                    using (StreamReader reader = new StreamReader(welcomeFileStream, encoding: System.Text.Encoding.UTF8))
+                    {
+                        string fileContents = await reader.ReadToEndAsync();
+                        await File.WriteAllTextAsync(readMePath, fileContents);
+                    }
+                    welcomeFileStream.Close();
+                }
             }
             else
             {
@@ -153,7 +161,7 @@ public class Project : IDisposable, IProject
                 ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
 
                 // Rename the celbridge project file to the selected project file name.
-                File.Move(projectPath + "\\examples.celbridge", projectFilePath);
+                File.Move(projectPath + Path.DirectorySeparatorChar + "examples.celbridge", projectFilePath);
             }
         }
         catch (Exception ex)
