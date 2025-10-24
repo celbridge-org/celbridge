@@ -10,7 +10,7 @@ public sealed partial class FileViewerDocumentView : DocumentView
 
     public FileViewerDocumentViewModel ViewModel { get; }
 
-    private WebView2 _webView;
+    private WebView2? _webView;
 
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
@@ -60,5 +60,16 @@ public sealed partial class FileViewerDocumentView : DocumentView
     public override async Task<Result> LoadContent()
     {
         return await ViewModel.LoadContent();
+    }
+
+    public override async Task PrepareToClose()
+    {
+        if (_webView != null)
+        {
+            _webView.Close();
+            _webView = null;
+        }
+
+        await base.PrepareToClose();
     }
 }
