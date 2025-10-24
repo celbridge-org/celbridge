@@ -1,4 +1,5 @@
 using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
 
 namespace Celbridge.Documents.Views;
 
@@ -8,6 +9,8 @@ namespace Celbridge.Documents.Views;
 /// </summary>
 public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 {
+    private readonly ILogger<TextEditorDocumentView> _logger;
+
     public TextEditorDocumentViewModel ViewModel { get; }
 
     public bool HasUnsavedChanges => MonacoEditor.HasUnsavedChanges;
@@ -21,6 +24,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         this.InitializeComponent();
 
         ViewModel = ServiceLocator.AcquireService<TextEditorDocumentViewModel>();
+        _logger = ServiceLocator.AcquireService<ILogger<TextEditorDocumentView>>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -92,10 +96,24 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     public async Task PrepareToClose()
     {
-        await MonacoEditor.PrepareToClose();
+        async void CloseEditorViews()
+        {
+            try
+            {
+                // This is a slow async operation as it requires tearing down WebView2 instances.
+                await MonacoEditor.PrepareToClose();
+                EditorPreview.PrepareToClose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while preparing TextEditorDocumentView to close");
+            }
+        };
 
-        // Clean up the EditorPreview WebView2 control
-        EditorPreview.PrepareToClose();
+        // Quick fire-and-forget call to avoid blocking the UI thread.
+        CloseEditorViews();
+
+        await Task.CompletedTask;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
