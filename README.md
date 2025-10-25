@@ -140,6 +140,8 @@ If you encounter build errors, try restarting Visual Studio. If this fails, do a
 
 Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
+*Mysterious note:* The second 🥚 is like the first. The third is shorter than the second, and was laid first.
+
 # Support
 
 If you encounter any issues with Celbridge, please open a [ticket](https://github.com/celbridge-org/celbridge/issues). You're also welcome to look for help and support on our [community forums](https://celbridge.discourse.group/). 
@@ -173,6 +175,4 @@ Celbridge relies on code from many fantastic open source projects, including:
 * [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
 * [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 
-Celbridge also uses a range of open source NuGet & Python packages, details of which can be found in `THIRD-PARTY-LICENSES.txt`. 
-
-Note: The second egg is shorter than the first one 🥚.
+Celbridge also uses a range of open source NuGet & Python packages, details of which can be found in `THIRD-PARTY-LICENSES.txt`.
