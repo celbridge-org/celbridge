@@ -109,7 +109,7 @@
                 return;
             }
 
-            // Assume that any other message contains base 64 encoded Excel data to be edited in SpreadJS.
+            // Assume that any other message contains base 64 encoded Excel data to be loaded into SpreadJS.
             deserializeExcelData(webViewMessage)
         }
 
@@ -127,13 +127,23 @@
                 const spread = window.designer.getWorkbook();
 
                 await spread.import(file, () => {
-                    GC.Spread.Sheets.Designer.setWorkbook(spread);
-                    console.log("Excel imported from base64.");
-                }, console.error, {
+                    console.log("Base64 data import completed.");
+                    
+                    // Notify C# that the import is complete (both for initial load and reload)
+                    postWebViewMessage("import_complete");
+                }, (error) => {
+                    console.error("Import error:", error);
+                    
+                    // Even on error, notify C# that the import attempt is complete
+                    postWebViewMessage("import_complete");
+                }, {
                     fileType: GC.Spread.Sheets.FileType.excel
                 });
             } catch (err) {
                 console.error("Import failed:", err);
+                
+                // Even on error, notify C# that the import attempt is complete
+                postWebViewMessage("import_complete");
             }
         }
 
