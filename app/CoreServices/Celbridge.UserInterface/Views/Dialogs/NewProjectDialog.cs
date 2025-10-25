@@ -39,6 +39,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                 .Text(x => x.Binding(() => ViewModel.ProjectName)
                     .Mode(BindingMode.TwoWay)
                     .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
+                    .IsSpellCheckEnabled(false)
                 .MinWidth(200)
                 .PlaceholderText(ProjectNamePlaceholderString);
 
@@ -90,6 +91,11 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
                     .FontSize(12)
                     .Text(x => x.Binding(() => ViewModel.ProjectSaveLocation).Mode(BindingMode.OneWay))
                     .TextWrapping(TextWrapping.Wrap)
+                    .Width(500)
+                    .MaxWidth(500)
+                    // %%% NOTE: The width above is to ensure that we don't get the wobble as the dialog resizes, but ideally I would like
+                    //  the text block to wrap and resize vertically. So far I've only managed to get it to do this with significantly smaller widths. More attention is required on
+                    //  this to get the desired effect.
             );
 
         var stackPanel = new StackPanel()
