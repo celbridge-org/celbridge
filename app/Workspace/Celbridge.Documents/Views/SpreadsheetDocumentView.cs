@@ -23,6 +23,14 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
     private WebView2? _webView;
 
+    // Track save state to prevent race conditions
+    private bool _isSaveInProgress = false;
+    private bool _hasPendingSave = false;
+
+    // Track import state to prevent race conditions during initial load and reloads
+    private bool _isImportInProgress = false;
+    private bool _hasPendingImport = false;
+
     public SpreadsheetDocumentView(
         IServiceProvider serviceProvider,
         ILogger<SpreadsheetDocumentView> logger,
@@ -61,6 +69,17 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
     public override async Task<Result> SaveDocument()
     {
         Guard.IsNotNull(_webView);
+
+        // If a save is already in progress, mark that we need another save after this one completes
+        if (_isSaveInProgress)
+        {
+            _hasPendingSave = true;
+            _logger.LogDebug("Save already in progress, queuing pending save");
+            return Result.Ok();
+        }
+
+        _isSaveInProgress = true;
+        _hasPendingSave = false;
 
         // Send a message to request the data to be serialized and sent back as another message.
         _webView.CoreWebView2.PostWebMessageAsString("request_save");
@@ -220,6 +239,17 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
+        // If an import is already in progress, mark that we need another import after this one completes
+        if (_isImportInProgress)
+        {
+            _hasPendingImport = true;
+            _logger.LogDebug("Import already in progress, queuing pending import");
+            return;
+        }
+
+        _isImportInProgress = true;
+        _hasPendingImport = false;
+
         try
         {
             // Open with FileShare.ReadWrite to allow Excel to keep the file open
@@ -239,12 +269,15 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;
 
-            _logger.LogDebug($"Successfully loaded spreadsheet: {filePath}");
+            _logger.LogDebug($"Successfully sent spreadsheet data to SpreadJS for import: {filePath}");
         }
         catch (Exception ex)
         {
             // Log the error but don't crash - the spreadsheet stays in its current state
             _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
+            
+            // Clear the import flag so we can try again
+            _isImportInProgress = false;
         }
     }
 
@@ -281,6 +314,21 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             ViewModel.OnDataChanged();
             return;
         }
+        else if (webMessage == "import_complete")
+        {
+            // Import is complete (initial load or reload)
+            _isImportInProgress = false;
+
+            // If another file change occurred while we were importing, we need to import again
+            if (_hasPendingImport)
+            {
+                _logger.LogDebug("Processing pending import request");
+                _hasPendingImport = false;
+                var filePath = ViewModel.FilePath;
+                await LoadSpreadsheet(filePath);
+            }
+            return;
+        }
 
         // Any other message is assumed to be base 64 encoded data to avoid string processing.
         // This data was sent from the JS side in response to a "request_save" message.
@@ -301,6 +349,17 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             var title = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
             var message = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", file);
             await _dialogService.ShowAlertDialogAsync(title, message);
+        }
+
+        // Save is complete, clear the flag
+        _isSaveInProgress = false;
+
+        // If changes occurred during the save, trigger another save
+        if (_hasPendingSave)
+        {
+            _logger.LogDebug("Processing pending save request");
+            _hasPendingSave = false;
+            ViewModel.OnDataChanged(); // Re-trigger a pending save
         }
     }
 
