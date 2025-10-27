@@ -140,7 +140,7 @@ If you encounter build errors, try restarting Visual Studio. If this fails, do a
 
 Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
-*Mysterious note:* The second 🥚 is like the first. The third is shorter than the second, and was laid first.
+*Mysterious note:* The first 🥚 is like the second. The third is like the second, but shorter. The third was laid first.
 
 # Support
 
