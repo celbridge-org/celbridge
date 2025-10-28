@@ -9,7 +9,11 @@ public class UserInterfaceService : IUserInterfaceService
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
-    private Celbridge.UserInterface.Views.TitleBar? _titleBar;
+    private Views.TitleBar? _titleBar;
+
+#if WINDOWS
+    private Helpers.WindowStateHelper? _windowStateHelper;
+#endif
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
@@ -33,23 +37,15 @@ public class UserInterfaceService : IUserInterfaceService
         _xamlRoot = xamlRoot;
 
 #if WINDOWS
-        // Restore window maximized state
-        RestoreWindowState();
+        // Initialize window state management
+        _windowStateHelper = new Helpers.WindowStateHelper(_editorSettings);
+        _windowStateHelper.Initialize(_mainWindow);
 
-        // Track window state changes
-        var appWindow = GetAppWindow(_mainWindow);
-        if (appWindow != null)
-        {
-            appWindow.Changed += AppWindow_Changed;
-        }
+        // Broadcast a message whenever the main window acquires or loses focus
+        _mainWindow.Activated += MainWindow_Activated;
 #endif
 
         ApplyCurrentTheme();
-
-#if WINDOWS
-        // Broadcast a message whenever the main window acquires or loses focus (Windows only).
-        _mainWindow.Activated += MainWindow_Activated;
-#endif
     }
 
     public UserInterfaceTheme UserInterfaceTheme
@@ -95,44 +91,6 @@ public class UserInterfaceService : IUserInterfaceService
             var message = new MainWindowActivatedMessage();
             _messengerService.Send(message);
         }
-    }
-
-    private void RestoreWindowState()
-    {
-        var appWindow = GetAppWindow(_mainWindow);
-        if (appWindow == null) return;
-
-        // Restore maximized state
-        if (_editorSettings.IsWindowMaximized)
-        {
-            var presenter = appWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
-            if (presenter != null)
-            {
-                presenter.Maximize();
-            }
-        }
-    }
-
-    private void AppWindow_Changed(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowChangedEventArgs args)
-    {
-        // Save maximized state when it changes
-        if (args.DidPresenterChange)
-        {
-            var presenter = sender.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
-            if (presenter != null)
-            {
-                _editorSettings.IsWindowMaximized = presenter.State == Microsoft.UI.Windowing.OverlappedPresenterState.Maximized;
-            }
-        }
-    }
-
-    private Microsoft.UI.Windowing.AppWindow? GetAppWindow(Window? window)
-    {
-        if (window == null) return null;
-
-        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(windowHandle);
-        return Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
     }
 #endif
 
