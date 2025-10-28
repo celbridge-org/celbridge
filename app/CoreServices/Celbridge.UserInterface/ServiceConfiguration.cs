@@ -33,6 +33,11 @@ public static class ServiceConfiguration
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 
+#if WINDOWS
+        // Register WindowStateHelper for Windows platform only
+        services.AddSingleton<Helpers.WindowStateHelper>();
+#endif
+
         //
         // Register view models
         //

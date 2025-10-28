@@ -207,8 +207,8 @@ public partial class App : Application
             commandService.StopExecution();
 
             // Flush any events that are still pending in the logger
-            var logger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
-            logger.Shutdown();
+            var appLogger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
+            appLogger.Shutdown();
         };
 
         rootFrame.Loaded += (s, e) =>
@@ -224,7 +224,14 @@ public partial class App : Application
             XamlRoot xamlRoot = rootFrame.XamlRoot!;
             Guard.IsNotNull(xamlRoot);
 
-            userInterfaceService.Initialize(MainWindow, xamlRoot);
+            var initResult = userInterfaceService.Initialize(MainWindow, xamlRoot);
+            if (initResult.IsFailure)
+            {
+                logger.LogError(initResult.Error);
+                // Do not start command execution if UI initialization fails
+                // Todo: Alert the user that the application could not start and to check the logs.
+                return;
+            }
 
             // Start executing commands
             var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
