@@ -1,5 +1,6 @@
 #if WINDOWS
 
+using Celbridge.Logging;
 using Celbridge.Settings;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
@@ -10,37 +11,59 @@ namespace Celbridge.UserInterface.Helpers;
 /// <summary>
 /// Helper class to manage window maximized state and bounds persistence.
 /// </summary>
-internal sealed class WindowStateHelper
+public sealed class WindowStateHelper
 {
+    private readonly ILogger<WindowStateHelper> _logger;
     private readonly IEditorSettings _editorSettings;
     private AppWindow? _appWindow;
 
-    public WindowStateHelper(IEditorSettings editorSettings)
+    public WindowStateHelper(
+        ILogger<WindowStateHelper> logger, 
+        IEditorSettings editorSettings)
     {
+        _logger = logger;
         _editorSettings = editorSettings;
     }
 
     /// <summary>
     /// Initializes the helper with the main window and sets up state tracking.
     /// </summary>
-    public void Initialize(Window mainWindow)
+    public Result Initialize(Window mainWindow)
     {
-        _appWindow = GetAppWindow(mainWindow);
-        if (_appWindow == null)
+        _logger.LogDebug("Initializing WindowStateHelper");
+
+        try
         {
-            return;
-        }
+            _appWindow = GetAppWindow(mainWindow);
+            if (_appWindow == null)
+            {
+                return Result.Fail("Failed to get AppWindow from main window");
+            }
 
-        var presenter = _appWindow.Presenter as OverlappedPresenter;
-        if (presenter == null)
+            var presenter = _appWindow.Presenter as OverlappedPresenter;
+            if (presenter == null)
+            {
+                return Result.Fail("AppWindow presenter is not an OverlappedPresenter");
+            }
+
+            // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
+            TryRestoreWindowState();
+
+            if (_editorSettings.IsWindowMaximized)
+            {
+                presenter.Maximize();
+            }
+
+            // Track window state changes
+            _appWindow.Changed += OnAppWindowChanged;
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
         {
-            return;
+            return Result.Fail("Exception occurred during WindowStateHelper initialization")
+                .WithException(ex);
         }
-
-        TryRestoreWindowState();
-
-        // Track window state changes
-        _appWindow.Changed += OnAppWindowChanged;
     }
 
     private void TryRestoreWindowState()
@@ -53,7 +76,7 @@ internal sealed class WindowStateHelper
         // Check if we have saved window bounds (-1 indicates no saved position)
         if (_editorSettings.WindowX < 0 || _editorSettings.WindowY < 0)
         {
-            // No saved position, use default
+            _logger.LogDebug("No saved window position found, using default");
             return;
         }
 
@@ -65,7 +88,7 @@ internal sealed class WindowStateHelper
         // Validate that the title bar area is visible on screen
         if (!IsTitleBarVisible(x, y, width, height))
         {
-            // Title bar is not visible, use default placement
+            _logger.LogDebug("Saved window position is off-screen, using default placement");
             return;
         }
 
@@ -87,7 +110,6 @@ internal sealed class WindowStateHelper
             var displayAreas = DisplayArea.FindAll();
             if (displayAreas == null || displayAreas.Count == 0)
             {
-                // No displays found, return false to use default placement
                 return false;
             }
 
@@ -112,9 +134,9 @@ internal sealed class WindowStateHelper
 
             return false;
         }
-        catch
+        catch (Exception ex)
         {
-            // If anything goes wrong checking display areas, use the default window placement
+            _logger.LogWarning(ex, "Exception occurred while checking display areas");
             return false;
         }
     }
