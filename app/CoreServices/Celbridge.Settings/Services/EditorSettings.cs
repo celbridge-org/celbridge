@@ -85,4 +85,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
         set => SetValue(nameof(Theme), value);
     }
+
+    public bool IsWindowMaximized
+    {
+        get => GetValue<bool>(nameof(IsWindowMaximized), false);
+        set => SetValue(nameof(IsWindowMaximized), value);
+    }
 }

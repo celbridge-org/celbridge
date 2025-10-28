@@ -76,4 +76,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Gets or Sets the Application User Interface Theme value.
     /// </summary>
     ApplicationColorTheme Theme { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the window is maximized.
+    /// </summary>
+    bool IsWindowMaximized { get; set; }
 }
