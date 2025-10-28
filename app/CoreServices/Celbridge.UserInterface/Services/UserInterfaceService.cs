@@ -1,43 +1,86 @@
+using Celbridge.Logging;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.Services;
 
 public class UserInterfaceService : IUserInterfaceService
 {
+    private readonly ILogger<UserInterfaceService> _logger;
     private IMessengerService _messengerService;
     private IEditorSettings _editorSettings;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
-    private Celbridge.UserInterface.Views.TitleBar? _titleBar;
+    private Views.TitleBar? _titleBar;
+
+#if WINDOWS
+    private Helpers.WindowStateHelper? _windowStateHelper;
+#endif
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
     public object TitleBar => _titleBar!;
 
     public UserInterfaceService(
-        IMessengerService messengerService, 
-        IEditorSettings editorSettings)
+        ILogger<UserInterfaceService> logger,
+        IMessengerService messengerService,
+        IEditorSettings editorSettings
+#if WINDOWS
+        , Helpers.WindowStateHelper windowStateHelper
+#endif
+        )
     {
+        _logger = logger;
         _messengerService = messengerService;
         _editorSettings = editorSettings;
+#if WINDOWS
+        _windowStateHelper = windowStateHelper;
+#endif
     }
 
-    public void Initialize(Window mainWindow, XamlRoot xamlRoot)
+    public Result Initialize(object mainWindow, object xamlRoot)
     {
+        _logger.LogDebug("Initializing UserInterfaceService");
+
         // Ensure these are only set once
         Guard.IsNull(_mainWindow);
         Guard.IsNull(_xamlRoot);
 
-        _mainWindow = mainWindow;
-        _xamlRoot = xamlRoot;
+        if (mainWindow is not Window window)
+        {
+            var error = Result.Fail("MainWindow is not a Window instance");
+            _logger.LogError(error.Error);
+            return error;
+        }
 
-        ApplyCurrentTheme();
+        if (xamlRoot is not XamlRoot root)
+        {
+            var error = Result.Fail("XamlRoot is not a XamlRoot instance");
+            _logger.LogError(error.Error);
+            return error;
+        }
+
+        _mainWindow = window;
+        _xamlRoot = root;
 
 #if WINDOWS
-        // Broadcast a message whenever the main window acquires or loses focus (Windows only).
+        // Initialize window state management
+        Guard.IsNotNull(_windowStateHelper);
+        var initResult = _windowStateHelper.Initialize(_mainWindow);
+        if (initResult.IsFailure)
+        {
+            return Result.Fail("Failed to initialize window state management")
+                .WithErrors(initResult);
+        }
+
+        // Broadcast a message whenever the main window acquires or loses focus
         _mainWindow.Activated += MainWindow_Activated;
 #endif
+
+        ApplyCurrentTheme();
+        
+        _logger.LogDebug("UserInterfaceService initialized successfully");
+        return Result.Ok();
     }
 
     public UserInterfaceTheme UserInterfaceTheme
