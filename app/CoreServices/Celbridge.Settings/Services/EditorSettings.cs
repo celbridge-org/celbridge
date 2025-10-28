@@ -91,4 +91,28 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         get => GetValue<bool>(nameof(IsWindowMaximized), false);
         set => SetValue(nameof(IsWindowMaximized), value);
     }
+
+    public int WindowX
+    {
+        get => GetValue<int>(nameof(WindowX), -1);
+        set => SetValue(nameof(WindowX), value);
+    }
+
+    public int WindowY
+    {
+        get => GetValue<int>(nameof(WindowY), -1);
+        set => SetValue(nameof(WindowY), value);
+    }
+
+    public int WindowWidth
+    {
+        get => GetValue<int>(nameof(WindowWidth), 1200);
+        set => SetValue(nameof(WindowWidth), value);
+    }
+
+    public int WindowHeight
+    {
+        get => GetValue<int>(nameof(WindowHeight), 800);
+        set => SetValue(nameof(WindowHeight), value);
+    }
 }

@@ -81,4 +81,24 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Gets or sets whether the window is maximized.
     /// </summary>
     bool IsWindowMaximized { get; set; }
+
+    /// <summary>
+    /// Gets or sets the window X position.
+    /// </summary>
+    int WindowX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the window Y position.
+    /// </summary>
+    int WindowY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the window width.
+    /// </summary>
+    int WindowWidth { get; set; }
+
+    /// <summary>
+    /// Gets or sets the window height.
+    /// </summary>
+    int WindowHeight { get; set; }
 }
