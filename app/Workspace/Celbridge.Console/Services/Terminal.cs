@@ -6,7 +6,9 @@ public class Terminal : ITerminal, IDisposable
     private ConPtyTerminal _terminal = new ConPtyTerminal();
 #endif
 
+#pragma warning disable CS0067 // Event is used in Windows platform-specific code
     public event EventHandler<string>? OutputReceived;
+#pragma warning restore CS0067
 
     public string CommandBuffer { get; set; } = string.Empty;
 

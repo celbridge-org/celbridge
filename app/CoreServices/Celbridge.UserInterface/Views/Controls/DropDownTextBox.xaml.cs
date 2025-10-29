@@ -84,9 +84,9 @@ public sealed partial class DropDownTextBox : UserControl
                 break;
 
             case Windows.System.VirtualKey.Menu:
-                if (Windows.UI.Core.CoreWindow.GetForCurrentThread()
-                    .GetKeyState(Windows.System.VirtualKey.Down)
-                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+                var currentThread = Windows.UI.Core.CoreWindow.GetForCurrentThread();
+                if (currentThread?.GetKeyState(Windows.System.VirtualKey.Down)
+                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down) == true)
                 {
                     SuggestionFlyout().ShowAt(InputBox);
                     e.Handled = true;

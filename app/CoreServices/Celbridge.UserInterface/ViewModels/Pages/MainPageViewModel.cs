@@ -44,14 +44,17 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _workspaceWrapper = workspaceWrapper;
         _mainMenuUtils = mainMenuUtils;
         _projectService = projectService;
+        
+        ReturnCurrentPage = () => string.Empty;
     }
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public event Func<Type, object, Result>? OnNavigate;
 
-    // %%% Considering whether this is still required.
+#pragma warning disable CS0067 // Event is used in MainPage.cs for navigation
     public event Func<string, Result>? SelectNavigationItem;
+#pragma warning restore CS0067
 
     public delegate string ReturnCurrentPageDelegate();
 
@@ -109,7 +112,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         else
         {
             // No previous project to load, so navigate to the home page
-            _ = NavigateToHomeAsync();
+            _navigationService.NavigateToPage(HomePageName);
         }
     }
 
@@ -121,7 +124,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         switch (tag)
         {
             case NavigationConstants.HomeTag:
-                _ = NavigateToHomeAsync();
+                _navigationService.NavigateToPage(HomePageName);
                 return;
 
             case NavigationConstants.NewProjectTag:
@@ -198,11 +201,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 command.ProjectFilePath = projectPath;
             });
         }
-    }
-
-    private async Task NavigateToHomeAsync()
-    {
-        _navigationService.NavigateToPage(HomePageName);
     }
 
     public void Undo()
