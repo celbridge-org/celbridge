@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
 
@@ -9,6 +10,7 @@ namespace Celbridge.Explorer.Services;
 public class ResourceChangeMonitor : IDisposable
 {
     private readonly ILogger<ResourceChangeMonitor> _logger;
+    private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
@@ -29,11 +31,13 @@ public class ResourceChangeMonitor : IDisposable
 
     public ResourceChangeMonitor(
         ILogger<ResourceChangeMonitor> logger,
+        ICommandService commandService,
         IProjectService projectService,
         IMessengerService messengerService,
         IDispatcher dispatcher)
     {
         _logger = logger;
+        _commandService = commandService;
         _projectService = projectService;
         _messengerService = messengerService;
         _dispatcher = dispatcher;
@@ -237,10 +241,13 @@ public class ResourceChangeMonitor : IDisposable
             _pendingRenamed.Clear();
         }
 
+        bool updateResourceRegistry = false;
+
         // Process all changes
         foreach (var path in created)
         {
             OnResourceCreated(path);
+            updateResourceRegistry = true;
         }
 
         foreach (var path in changed)
@@ -251,11 +258,18 @@ public class ResourceChangeMonitor : IDisposable
         foreach (var path in deleted)
         {
             OnResourceDeleted(path);
+            updateResourceRegistry = true;
         }
 
         foreach (var kvp in renamed)
         {
             OnResourceRenamed(kvp.Key, kvp.Value);
+            updateResourceRegistry = true;
+        }
+
+        if (updateResourceRegistry)
+        {
+            _commandService.Execute<IUpdateResourcesCommand>();
         }
     }
 
