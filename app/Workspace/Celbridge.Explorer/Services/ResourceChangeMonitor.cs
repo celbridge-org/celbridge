@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Services;
 
@@ -14,6 +15,9 @@ public class ResourceChangeMonitor : IDisposable
     private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private IResourceRegistry? _resourceRegistry = null;
+
     private readonly string _projectFolderPath;
 
     private FileSystemWatcher? _fileSystemWatcher;
@@ -31,16 +35,18 @@ public class ResourceChangeMonitor : IDisposable
 
     public ResourceChangeMonitor(
         ILogger<ResourceChangeMonitor> logger,
+        IDispatcher dispatcher,
         ICommandService commandService,
         IProjectService projectService,
         IMessengerService messengerService,
-        IDispatcher dispatcher)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _dispatcher = dispatcher;
         _commandService = commandService;
         _projectService = projectService;
         _messengerService = messengerService;
-        _dispatcher = dispatcher;
+        _workspaceWrapper = workspaceWrapper;
 
         var project = _projectService.CurrentProject;
         Guard.IsNotNull(project);
@@ -83,7 +89,7 @@ public class ResourceChangeMonitor : IDisposable
             _fileSystemWatcher.Renamed += OnFileSystemRenamed;
             _fileSystemWatcher.Error += OnFileSystemError;
 
-            // Start disabled, enable after setup
+            // Start raising events once initialization has completed
             _fileSystemWatcher.EnableRaisingEvents = true;
 
             _logger.LogDebug($"Resource change monitoring started for: {_projectFolderPath}");
@@ -192,7 +198,7 @@ public class ResourceChangeMonitor : IDisposable
             _pendingRenamed[e.OldFullPath] = e.FullPath;
             
             // Also track as a changed file since the content may have been updated
-            // This handles applications that use rename operations as part of their save process
+            // This handles applications that use rename operations as part of their save process (e.g. Excel)
             _pendingChanged.Add(e.FullPath);
             
             RestartDebounceTimer();
@@ -227,9 +233,9 @@ public class ResourceChangeMonitor : IDisposable
         HashSet<string> deleted;
         Dictionary<string, string> renamed;
 
+        // Copy pending changes to local collections to avoid race conditions
         lock (_lock)
         {
-            // Copy pending changes and clear the collections
             created = new HashSet<string>(_pendingCreated);
             changed = new HashSet<string>(_pendingChanged);
             deleted = new HashSet<string>(_pendingDeleted);
@@ -243,28 +249,55 @@ public class ResourceChangeMonitor : IDisposable
 
         bool updateResourceRegistry = false;
 
-        // Process all changes
+        // Process created resources
         foreach (var path in created)
         {
             OnResourceCreated(path);
-            updateResourceRegistry = true;
+            
+            var resourceKey = GetResourceKey(path);
+            if (!ResourceExists(resourceKey))
+            {
+                // Resource is not in registry yet, registry needs to update.
+                updateResourceRegistry = true;
+            }
         }
 
+        // Process changed resources
         foreach (var path in changed)
         {
             OnResourceChanged(path);
         }
 
+        // Process deleted resources
         foreach (var path in deleted)
         {
             OnResourceDeleted(path);
-            updateResourceRegistry = true;
+            
+            var resourceKey = GetResourceKey(path);
+            if (ResourceExists(resourceKey))
+            {
+                // Resource is still in the registry, registry needs to update.
+                updateResourceRegistry = true;
+            }
         }
 
+        // Process renamed resources
         foreach (var kvp in renamed)
         {
             OnResourceRenamed(kvp.Key, kvp.Value);
-            updateResourceRegistry = true;
+            
+            var oldResourceKey = GetResourceKey(kvp.Key);
+            var newResourceKey = GetResourceKey(kvp.Value);
+            
+            var oldExists = ResourceExists(oldResourceKey);
+            var newExists = ResourceExists(newResourceKey);
+            
+            if (oldExists || !newExists)
+            {
+                // Old resource is still in the registry, or new resource is not in the registry yet.
+                // Registry needs to update.
+                updateResourceRegistry = true;
+            }
         }
 
         if (updateResourceRegistry)
@@ -354,6 +387,25 @@ public class ResourceChangeMonitor : IDisposable
     #endregion
 
     #region Helper Methods
+
+    private bool ResourceExists(ResourceKey resourceKey)
+    {
+        if (_resourceRegistry is null)
+        {
+            // Acquire the registry lazily to workaround initialization order issues
+            _resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        }
+
+        Guard.IsNotNull(_resourceRegistry);
+        
+        if (resourceKey.IsEmpty)
+        {
+            return false;
+        }
+        
+        var getResult = _resourceRegistry.GetResource(resourceKey);
+        return getResult.IsSuccess;
+    }
 
     private bool ShouldIgnorePath(string fullPath)
     {
