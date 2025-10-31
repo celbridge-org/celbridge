@@ -260,7 +260,8 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
                 FileShare.ReadWrite);
 
             byte[] bytes = new byte[fileStream.Length];
-            await fileStream.ReadAsync(bytes, 0, bytes.Length);
+            // Use ReadExactlyAsync to ensure all bytes are read (fixes CA2022 warning)
+            await fileStream.ReadExactlyAsync(bytes, CancellationToken.None);
             string base64 = Convert.ToBase64String(bytes);
 
             _webView.CoreWebView2.PostWebMessageAsString(base64);
