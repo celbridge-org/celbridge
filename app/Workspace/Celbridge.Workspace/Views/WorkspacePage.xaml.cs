@@ -123,8 +123,11 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
 
             //        var searchPanel = workspaceService.SearchService.SearchPanel as UIElement;
             var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
-            workspaceService.AddContextAreaUse(ContextAreaUse.Search, searchPanel);
-            ContextPanel.Children.Insert(1, searchPanel);
+            if (searchPanel != null)
+            {
+                workspaceService.AddContextAreaUse(ContextAreaUse.Search, searchPanel);
+                ContextPanel.Children.Insert(1, searchPanel);
+            }
             /*
             var debugPanel = workspaceService.DebugService.DebugPanel as UIElement;
             workspaceService.AddContextAreaUse(IWorkspaceService.ContextAreaUse.Debug, debugPanel);
