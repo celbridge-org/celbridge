@@ -337,14 +337,30 @@ public class DocumentsService : IDocumentsService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
         var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
         if (openDocuments is null ||
             openDocuments.Count == 0)
         {
+            // If no documents are currently open then try to open the default readme file.
+            var readmeResource = new ResourceKey("readme.md");
+
+            var readmePath = resourceRegistry.GetResourcePath(readmeResource);
+            if (CanAccessFile(readmePath))
+            {
+                // Execute a command to open the readme file.
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = readmeResource;
+                    command.ForceReload = false;
+                });
+            }
+
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        // Open the previously opened documents
 
         foreach (var resourceKey in openDocuments)
         {

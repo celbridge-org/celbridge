@@ -92,46 +92,6 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         _editorSettings.PreviousProject = ProjectFilePath;
 
-        // Opening Welcome Markdown document on opening of project if the file exists and is accessible.
-        var targetFilePath = new ResourceKey("readme.md");
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-
-        // %%% Currently we have a foible, where having differing cases in the filenames from the expected can make the case pass
-        //  the spot checks for the file being available on Windows, but then fail to load as the Loading command seems to be case sensitive.
-        var filePath = resourceRegistry.GetResourcePath(targetFilePath);
-        if (!string.IsNullOrEmpty(filePath) &&
-            File.Exists(filePath))
-        {
-            try
-            {
-                // Ensure the file is accessible.
-                //  This would be done better using DocumentsService.CanAccessFile but DocumentsService isn't created until
-                //  the explorer starts and we may be reaching here before then.
-                var fileInfo = new FileInfo(filePath);
-                using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                // Execute a command to open the HTML document.
-                _commandService.Execute<IOpenDocumentCommand>(command =>
-                {
-                    command.FileResource = targetFilePath;
-                    command.ForceReload = false;
-                });
-
-                // Execute a command to select the welcome document
-                _commandService.Execute<ISelectDocumentCommand>(command =>
-                {
-                    command.FileResource = new ResourceKey(targetFilePath);
-                });
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
-
         return Result.Ok();
     }
 
