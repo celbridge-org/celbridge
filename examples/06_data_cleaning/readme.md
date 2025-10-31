@@ -7,9 +7,10 @@ The script runs automatically when you edit the data, so the cleaned data is kep
 # Example Steps
 
 1. Open the **messy_data.xlsx** Excel document, and notice the formatting and data entry inconsistencies.
+2. Right click on **clean_data.py** and select **Run**. A **clean_data.xlsx** file is generated in the same folder as the script. 
 2. Open the **clean_data.xlsx** Excel document, and notice the clean formatting.
-3. Select the **messy_data.xlsx** document and change a number in the data. The **clean_data.py** script runs automatically.
-4. Select the **clean_data.xlsx** document again and notice the new values have been applied.
+3. Select the **messy_data.xlsx** document and change any number in the data. The **clean_data.py** script runs automatically.
+4. Select the **clean_data.xlsx** document again and notice the new values you entered in **messy_data.xlsx** have been applied.
 
 # Attribution
 
