@@ -44,8 +44,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _workspaceWrapper = workspaceWrapper;
         _mainMenuUtils = mainMenuUtils;
         _projectService = projectService;
-        
-        ReturnCurrentPage = () => string.Empty;
     }
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
@@ -58,7 +56,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public delegate string ReturnCurrentPageDelegate();
 
-    public ReturnCurrentPageDelegate ReturnCurrentPage;
+    public ReturnCurrentPageDelegate ReturnCurrentPage = () => string.Empty;
 
     public Result NavigateToPage(Type pageType)
     {
