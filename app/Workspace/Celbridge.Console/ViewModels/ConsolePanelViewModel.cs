@@ -19,8 +19,6 @@ public partial class ConsolePanelViewModel : ObservableObject
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
 
-    public event Action? LogEntryAdded;
-
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
         ILogger<ConsolePanelViewModel> logger,
