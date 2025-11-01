@@ -1,7 +1,6 @@
 """Clean a messy Excel sheet using pandas and openpyxl."""
 
 import pandas as pd
-from openpyxl.utils import get_column_letter
 
 INPUT_FILE  = "06_data_cleaning/messy_data.xlsx"
 OUTPUT_FILE = "06_data_cleaning/clean_data.xlsx"
@@ -26,9 +25,7 @@ def apply_formatting(ws, df: pd.DataFrame) -> None:
     mm_col_indices = [4, 5]  # D=4, E=5
 
     for col_idx, _ in enumerate(df.columns, start=1):
-        col_letter = get_column_letter(col_idx)
-
-        # Format cols D and E as numberic, skip the header row.
+        # Format cols D and E as numeric, skip the header row.
         if col_idx in mm_col_indices:
             for row in ws.iter_rows(
                 min_row=2, max_row=ws.max_row,
@@ -36,8 +33,10 @@ def apply_formatting(ws, df: pd.DataFrame) -> None:
             ):
                 row[0].number_format = "0.000"
 
-        # Use a fixed width for all columns
-        ws.column_dimensions[col_letter].width = fixed_width
+        # Set a fixed column width
+        column_letter = ws.cell(row=1, column=col_idx).column_letter
+        col_dim = ws.column_dimensions[column_letter]
+        col_dim.width = fixed_width
 
 
 def main() -> None:
@@ -79,7 +78,7 @@ def main() -> None:
         colC_out: colC_mm,
     })
 
-    # Save and apply formatting
+    # Save Excel and apply formatting
     with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as writer:
         sheet = "Rainfall"
         out.to_excel(writer, index=False, sheet_name=sheet)
