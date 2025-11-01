@@ -33,8 +33,9 @@ def apply_formatting(ws, df: pd.DataFrame) -> None:
             ):
                 row[0].number_format = "0.000"
 
-        # Set a fixed width using numeric index
-        col_dim = ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter]
+        # Set a fixed column width
+        column_letter = ws.cell(row=1, column=col_idx).column_letter
+        col_dim = ws.column_dimensions[column_letter]
         col_dim.width = fixed_width
 
 
@@ -77,7 +78,7 @@ def main() -> None:
         colC_out: colC_mm,
     })
 
-    # Save and apply formatting
+    # Save Excel and apply formatting
     with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as writer:
         sheet = "Rainfall"
         out.to_excel(writer, index=False, sheet_name=sheet)
