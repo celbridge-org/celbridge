@@ -16,7 +16,6 @@ public static class PythonInstaller
     private const string UVBinSubfolder = "uv_bin";
     private const string UVExecutableName = "uv.exe";
     private const string UVTempFileName = "uv.zip";
-    private const string CelbridgeWheelFileName = "celbridge-0.1.0-py3-none-any.whl";
 
     public static async Task<Result<string>> InstallPythonAsync()
     {
@@ -129,12 +128,13 @@ public static class PythonInstaller
             throw new FileNotFoundException($"uv executable not found at {uvExePath}");
         }
 
-        var celbridgeWheelPath = Path.Combine(pythonFolderPath, CelbridgeWheelFileName);
-        if (!File.Exists(celbridgeWheelPath))
+        // Find the celbridge wheel file dynamically
+        var findWheelResult = FindWheelFile(pythonFolderPath, "celbridge");
+        if (findWheelResult.IsFailure)
         {
-            throw new FileNotFoundException($"Celbridge wheel file not found at {celbridgeWheelPath}");
+            throw new FileNotFoundException(findWheelResult.Error);
         }
-
+        var celbridgeWheelPath = findWheelResult.Value;
 
         // Configure the process to run uv tool install
         // Use --force to overwrite any existing installation
@@ -186,6 +186,33 @@ public static class PythonInstaller
             }
 
             throw new InvalidOperationException(errorMessage);
+        }
+    }
+
+    private static Result<string> FindWheelFile(string folderPath, string packageName)
+    {
+        try
+        {
+            var searchPattern = $"{packageName}-*.whl";
+            var wheelFiles = Directory.GetFiles(folderPath, searchPattern, SearchOption.TopDirectoryOnly);
+
+            if (wheelFiles.Length == 0)
+            {
+                return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
+            }
+
+            if (wheelFiles.Length > 1)
+            {
+                var fileList = string.Join(", ", wheelFiles.Select(Path.GetFileName));
+                return Result<string>.Fail($"Multiple wheel files found for package '{packageName}' in '{folderPath}': {fileList}");
+            }
+
+            return Result<string>.Ok(wheelFiles[0]);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"Error searching for wheel files for package '{packageName}'")
+                .WithException(ex);
         }
     }
 
