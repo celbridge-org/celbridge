@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Diagnostics;
 
 using Path = System.IO.Path;
 
@@ -10,6 +11,12 @@ public static class PythonInstaller
     private const string PythonAssetsFolder = "Assets\\Python";
     private const string UVZipAssetPath = "ms-appx:///Assets/UV/uv-x86_64-pc-windows-msvc.zip";
     private const string BuildVersionPath = "ms-appx:///Assets/Python/build_version.txt";
+    private const string BuildVersionFileName = "build_version.txt";
+    private const string UVToolsSubfolder = "uv_tools";
+    private const string UVBinSubfolder = "uv_bin";
+    private const string UVExecutableName = "uv.exe";
+    private const string UVTempFileName = "uv.zip";
+    private const string CelbridgeWheelFileName = "celbridge-0.1.0-py3-none-any.whl";
 
     public static async Task<Result<string>> InstallPythonAsync()
     {
@@ -18,7 +25,7 @@ public static class PythonInstaller
             var localFolder = ApplicationData.Current.LocalFolder;
             var pythonFolderPath = Path.Combine(localFolder.Path, PythonFolderName);
 
-            bool needsReinstall = await CheckBuildVersionAsync(pythonFolderPath);
+            bool needsReinstall = await IsInstallRequiredAsync(pythonFolderPath);
 
             if (needsReinstall)
             {
@@ -34,15 +41,15 @@ public static class PythonInstaller
         }
     }
 
-    private static async Task<bool> CheckBuildVersionAsync(string pythonFolderPath)
+    private static async Task<bool> IsInstallRequiredAsync(string pythonFolderPath)
     {
-        // If the folder doesn't exist, we need to install
+        // If the python folder doesn't exist, we need to install
         if (!Directory.Exists(pythonFolderPath))
         {
             return true;
         }
 
-        var localBuildVersionPath = Path.Combine(pythonFolderPath, "build_version.txt");
+        var localBuildVersionPath = Path.Combine(pythonFolderPath, BuildVersionFileName);
 
         // Load the GUID text in the file at BuildVersionFilePath (i.e. from embedded asset)
         var assetBuildVersionFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(BuildVersionPath));
@@ -87,26 +94,99 @@ public static class PythonInstaller
 
         // uv handles installing the required python & package versions for the loaded project
         var uvZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(UVZipAssetPath));
-        var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "uv.zip", NameCollisionOption.ReplaceExisting);
+        var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, UVTempFileName, NameCollisionOption.ReplaceExisting);
         ZipFile.ExtractToDirectory(uvTempFile.Path, pythonFolder.Path, overwriteFiles: true);
 
         // Copy the embedded Python assets to the local Python folder
         StorageFolder installedLocation = Package.Current.InstalledLocation;
-        StorageFolder extrasFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
-        await CopyStorageFolderAsync(extrasFolder, pythonFolder.Path);
+        StorageFolder pythonAssetsFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
+        await CopyStorageFolderAsync(pythonAssetsFolder, pythonFolder.Path);
 
-        // Write the asset GUID to the local build_version.txt
-        var assetBuildVersionFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(BuildVersionPath));
-        string assetGuid;
-        using (var assetStream = await assetBuildVersionFile.OpenStreamForReadAsync())
-        using (var reader = new StreamReader(assetStream))
+        // Rename build_version.txt to a temporary file (in case the celbridge tool install step fails)
+        var versionFile = Path.Combine(pythonFolderPath, BuildVersionFileName);
+        var tempVersionFile = Path.Combine(pythonFolderPath, BuildVersionFileName + ".temp");
+        File.Move(versionFile, tempVersionFile);
+
+        // Install the celbridge package as a tool using uv
+        await InstallCelbridgeToolAsync(pythonFolderPath);
+
+        // The install process examines build_version.txt to determine if a reinstall is needed
+        // This step signals that the install completed successfully.
+        File.Move(tempVersionFile, versionFile);
+    }
+
+    private static async Task InstallCelbridgeToolAsync(string pythonFolderPath)
+    {
+        // Create directories for uv tools and binaries
+        var uvToolDir = Path.Combine(pythonFolderPath, UVToolsSubfolder);
+        var uvToolBinDir = Path.Combine(pythonFolderPath, UVBinSubfolder);
+        Directory.CreateDirectory(uvToolDir);
+        Directory.CreateDirectory(uvToolBinDir);
+
+        var uvExePath = Path.Combine(pythonFolderPath, UVExecutableName);
+        if (!File.Exists(uvExePath))
         {
-            assetGuid = await reader.ReadToEndAsync();
-            assetGuid = assetGuid.Trim();
+            throw new FileNotFoundException($"uv executable not found at {uvExePath}");
         }
 
-        var localBuildVersionPath = Path.Combine(pythonFolderPath, "build_version.txt");
-        File.WriteAllText(localBuildVersionPath, assetGuid);
+        var celbridgeWheelPath = Path.Combine(pythonFolderPath, CelbridgeWheelFileName);
+        if (!File.Exists(celbridgeWheelPath))
+        {
+            throw new FileNotFoundException($"Celbridge wheel file not found at {celbridgeWheelPath}");
+        }
+
+
+        // Configure the process to run uv tool install
+        // Use --force to overwrite any existing installation
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = uvExePath,
+            Arguments = $"tool install --force \"{celbridgeWheelPath}\"",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = pythonFolderPath
+        };
+
+        // Set environment variables for UV_TOOL_DIR and UV_TOOL_BIN_DIR
+        // These must be set in the process environment to override uv's default locations
+        processStartInfo.EnvironmentVariables["UV_TOOL_DIR"] = uvToolDir;
+        processStartInfo.EnvironmentVariables["UV_TOOL_BIN_DIR"] = uvToolBinDir;
+
+        using var process = new Process { StartInfo = processStartInfo };
+        process.Start();
+
+        // Read output and error streams
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        await process.WaitForExitAsync();
+
+        var output = await outputTask;
+        var error = await errorTask;
+
+        if (process.ExitCode != 0)
+        {
+            var errorMessage = $"Failed to install celbridge tool using uv." +
+                $"\nCommand: {uvExePath} {processStartInfo.Arguments}" +
+                $"\nWorking Directory: {pythonFolderPath}" +
+                $"\nExit Code: {process.ExitCode}" +
+                $"\nUV_TOOL_DIR: {uvToolDir}" +
+                $"\nUV_TOOL_BIN_DIR: {uvToolBinDir}";
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                errorMessage += $"\nStderr: {error}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(output))
+            {
+                errorMessage += $"\nStdout: {output}";
+            }
+
+            throw new InvalidOperationException(errorMessage);
+        }
     }
 
     private static async Task CopyStorageFolderAsync(StorageFolder sourceFolder, string destinationPath)
