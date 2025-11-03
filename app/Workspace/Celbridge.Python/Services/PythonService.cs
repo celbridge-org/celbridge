@@ -16,10 +16,14 @@ public class PythonService : IPythonService, IDisposable
     private const string UVExecutableName = "uv";
     private const string UVExecutableNameWindows = "uv.exe";
     private const string UVPythonInstallsFolderName = "uv_python_installs";
+    private const string UVToolsFolderName = "uv_tools";
+    private const string UVBinFolderName = "uv_bin";
     private const string IPythonCacheFolderName = "ipython";
 
     // Environment variable names
     private const string UVPythonInstallDirEnv = "UV_PYTHON_INSTALL_DIR";
+    private const string UVToolDirEnv = "UV_TOOL_DIR";
+    private const string UVToolBinDirEnv = "UV_TOOL_BIN_DIR";
     private const string CelbridgeVersionEnv = "CELBRIDGE_VERSION";
     private const string PythonLogLevelEnv = "PYTHON_LOG_LEVEL";
     private const string PythonLogDirEnv = "PYTHON_LOG_DIR";
@@ -108,6 +112,13 @@ public class PythonService : IPythonService, IDisposable
             var uvPythonInstallDir = Path.Combine(pythonFolder, UVPythonInstallsFolderName);
             Directory.CreateDirectory(uvPythonInstallDir);
             Environment.SetEnvironmentVariable(UVPythonInstallDirEnv, uvPythonInstallDir);
+
+            // Set UV_TOOL_DIR and UV_TOOL_BIN_DIR so the REPL process can access the installed celbridge tool
+            // e.g. !celbridge help
+            var uvToolDir = Path.Combine(pythonFolder, UVToolsFolderName);
+            var uvToolBinDir = Path.Combine(pythonFolder, UVBinFolderName);
+            Environment.SetEnvironmentVariable(UVToolDirEnv, uvToolDir);
+            Environment.SetEnvironmentVariable(UVToolBinDirEnv, uvToolBinDir);
 
             // Ensure the ipython storage dir exists
             var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, IPythonCacheFolderName);
