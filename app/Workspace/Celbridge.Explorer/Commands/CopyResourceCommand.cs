@@ -224,7 +224,9 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 return Result.Fail($"File does not exist: {filePathA}");
             }
 
-            if (File.Exists(filePathB))
+            // Check if destination exists, but allow if it's the same file (case-only rename on Windows)
+            bool isSameFile = string.Equals(filePathA, filePathB, StringComparison.OrdinalIgnoreCase);
+            if (File.Exists(filePathB) && !isSameFile)
             {
                 return Result.Fail($"File already exists: {filePathB}");
             }
@@ -311,7 +313,9 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 return Result.Fail($"Folder path does not exist: {folderPathA}");
             }
 
-            if (Directory.Exists(folderPathB))
+            // Check if destination exists, but allow if it's the same folder (case-only rename on Windows)
+            bool isSameFolder = string.Equals(folderPathA, folderPathB, StringComparison.OrdinalIgnoreCase);
+            if (Directory.Exists(folderPathB) && !isSameFolder)
             {
                 return Result.Fail($"Folder path already exists: {folderPathB}");
             }
