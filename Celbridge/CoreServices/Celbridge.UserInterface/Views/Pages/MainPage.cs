@@ -3,7 +3,9 @@
 #else
 #endif
 
+using Celbridge.Projects;
 using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.Workspace;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -24,8 +26,12 @@ public sealed partial class MainPage : Page
     public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
     public LocalizedString CommunityString => _stringLocalizer.GetString($"MainPage_Community");
 
+    private Dictionary<string, string> TagsToScriptDictionary = new();
+
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
+    private IProjectConfigService _projectConfigService;
+    private IProjectService _projectService;
 
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
@@ -35,6 +41,8 @@ public sealed partial class MainPage : Page
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        _projectService = ServiceLocator.AcquireService<IProjectService>();
+        _projectConfigService = ServiceLocator.AcquireService<IProjectConfigService>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
 
@@ -84,9 +92,9 @@ public sealed partial class MainPage : Page
                     .Name("ExplorerNavigationItem")
                     .Tag(MainPageViewModel.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
-                    .Content(HomeString)
+                    .Content(HomeString),
 #if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
-                ,new NavigationViewItem()
+                new NavigationViewItem()
                     .Icon(new FontIcon()
                             .FontFamily(symbolFontFamily)
                             .Glyph("\ue721")   // Search
@@ -111,6 +119,9 @@ public sealed partial class MainPage : Page
                     .Content(HomeString)
 
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+
+                new NavigationViewItemSeparator()
+
                 )
             .FooterMenuItems(
                 new NavigationViewItem()
@@ -173,6 +184,9 @@ public sealed partial class MainPage : Page
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
 
+        // Configure user function menu items.
+        _projectService.RegisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
         mainWindow.Content.KeyDown += (s, e) =>
@@ -211,6 +225,8 @@ public sealed partial class MainPage : Page
 
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
+
+        _projectService.UnregisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
     }
 
     private bool OnKeyDown(VirtualKey key)
@@ -294,6 +310,17 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         if (navigationItemTag != null)
         {
+            // Check if tag is a user command tag.
+            if (TagsToScriptDictionary.ContainsKey(navigationItemTag.ToString()!))
+            {
+                var script = TagsToScriptDictionary[navigationItemTag.ToString()!];
+
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
+
+                return;
+            }
+
             var tag = navigationItemTag.ToString();
             Guard.IsNotNullOrEmpty(tag);
 
@@ -318,5 +345,47 @@ public sealed partial class MainPage : Page
         _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
 //        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
         return Result.Ok();
+    }
+
+    private void BuildUserFunctionMenuItems(object sender, IProjectService.RebuildUserFunctionsUIEventArgs args)
+    {
+        TagsToScriptDictionary.Clear();
+
+        NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
+
+        AddUserFunctionMenuItems(node, _mainNavigation.MenuItems);
+    }
+
+    private void AddUserFunctionMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
+    {
+        foreach (var (k, v) in node.Nodes)
+        {
+            var newItem = new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Folder))
+                    .Name(k)
+                    .Content(k);
+
+            menuItems.Add(newItem);
+            AddUserFunctionMenuItems(v, newItem.MenuItems);
+        }
+
+        foreach (var command in node.CustomCommands)
+        {
+            Symbol icon = Symbol.Placeholder;
+            if (command.Icon is not null)
+            {
+                icon = (Symbol) Enum.Parse(typeof(Symbol), command.Icon!);
+            }
+
+            TagsToScriptDictionary.Add(command.Path!, command.Script!);
+
+            var commandItem = new NavigationViewItem()
+                .Icon(new SymbolIcon(icon))
+                .ToolTipService(PlacementMode.Right, null, command.ToolTip)
+                .Name(command.Name ?? "UserFunction")
+                .Content(command.Name ?? "UserFunction")
+                .Tag(command.Path!);
+            menuItems.Add(commandItem);
+        }
     }
 }

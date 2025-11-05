@@ -1,8 +1,10 @@
+using System.Security.Cryptography.X509Certificates;
 using Celbridge.Navigation;
+using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
-
+using Windows.Foundation;
 using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Services;
@@ -19,6 +21,7 @@ public class ProjectService : IProjectService
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
 
+    public event TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> RebuildUserFunctionsUI;
 
     public IProject? CurrentProject { get; private set; }
 
@@ -32,6 +35,21 @@ public class ProjectService : IProjectService
         _navigationService = navigationService;
         _userInterfaceService = userInterfaceService;
         _workspaceWrapper = workspaceWrapper;
+    }
+
+    public void RegisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> handler)
+    {
+        RebuildUserFunctionsUI += handler;
+    }
+
+    public void UnregisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> handler)
+    {
+        RebuildUserFunctionsUI -= handler;
+    }
+
+    public void InvokeRebuildUserFunctionsUI(NavigationBarSection navigationBarSection)
+    {
+        RebuildUserFunctionsUI?.Invoke(this, new IProjectService.RebuildUserFunctionsUIEventArgs() { NavigationBarSection = navigationBarSection });
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
