@@ -39,8 +39,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         //
         this.DataContext = ViewModel;
 
-        UpdateTabstripEnds();
-
         // Listen for property changes on the ViewModel
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -92,15 +90,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewLoaded();
+
+        UpdateTabstripEnds();
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnViewUnloaded();
-
-        Loaded -= DocumentsPanel_Loaded;
-        Unloaded -= DocumentsPanel_Unloaded;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -125,7 +122,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         else
         {
             TabView.TabStripHeader = new Grid()
-                .Width(96);
+                .Width(48);
         }
 
         if (ViewModel.IsInspectorPanelVisible)
