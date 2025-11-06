@@ -200,6 +200,7 @@ public partial class ProjectConfigService : IProjectConfigService
                     if (CheckTableHasSubTable(table))
                     {
                         var newNode = new NavigationBarSection.CustomCommandNode();
+                        newNode.Path = path;
                         node.Nodes.Add(key, newNode);
                         ExtractNavigationBarEntry(table, newNode, key, node, newPath);
                     }
@@ -216,7 +217,7 @@ public partial class ProjectConfigService : IProjectConfigService
             Icon = barEntry.TryGetValue("icon", out var icon) ? icon?.ToString() : null,
             ToolTip = barEntry.TryGetValue("tooltip", out var tooltip) ? tooltip?.ToString() : null,
             Script = barEntry.TryGetValue("script", out var script) ? script?.ToString() : null,
-            Name = name.Humanize(LetterCasing.Title),
+            Name = barEntry.TryGetValue("name", out var givenName) ? givenName?.ToString() : name.Humanize(LetterCasing.Title),
             Path = path
         };
 

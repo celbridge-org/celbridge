@@ -3,6 +3,7 @@
 #else
 #endif
 
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;
@@ -37,6 +38,7 @@ public sealed partial class MainPage : Page
     private IUserInterfaceService _userInterfaceService;
     private IProjectConfigService _projectConfigService;
     private IProjectService _projectService;
+    private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
@@ -49,6 +51,7 @@ public sealed partial class MainPage : Page
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
         _projectConfigService = ServiceLocator.AcquireService<IProjectConfigService>();
+        _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
 
@@ -329,6 +332,10 @@ public sealed partial class MainPage : Page
             if (TagsToScriptDictionary.ContainsKey(navigationItemTag.ToString()!))
             {
                 var script = TagsToScriptDictionary[navigationItemTag.ToString()!];
+                if ((script == null) || (script.Length == 0))
+                {
+                    return;
+                }
 
                 var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
                 workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
@@ -378,6 +385,9 @@ public sealed partial class MainPage : Page
 
     private void AddUserFunctionMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
     {
+        Dictionary<string, NavigationViewItem> newNodes = new();
+        Dictionary<string, string > pathToScriptDictionary = new();
+
         foreach (var (k, v) in node.Nodes)
         {
             var newItem = new NavigationViewItem()
@@ -386,12 +396,22 @@ public sealed partial class MainPage : Page
                     .Content(k);
 
             menuItems.Add(newItem);
+            string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
+            newNodes.Add(newPath, newItem);
             _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
             AddUserFunctionMenuItems(v, newItem.MenuItems);
         }
 
         foreach (var command in node.CustomCommands)
         {
+            // Check for another script already declared with the same path.
+            if (pathToScriptDictionary.ContainsKey(command.Path!))
+            {
+                // Issue a warning, and skip on to the next command.
+                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
+                continue;
+            }
+
             Symbol icon = Symbol.Placeholder;
             if (command.Icon is not null)
             {
@@ -399,6 +419,33 @@ public sealed partial class MainPage : Page
                 {
                     icon = Symbol.Placeholder;
                 }
+            }
+
+            // Check if this collides with an folder node.
+            if (newNodes.ContainsKey(command.Path!))
+            {
+                // It does!
+                NavigationViewItem item = newNodes[command.Path!];
+                if ((command.ToolTip != null) && (command.ToolTip.Length > 0))
+                {
+                    item.ToolTipService(PlacementMode.Right, null, command.ToolTip);
+                }
+
+                if (icon != Symbol.Placeholder)
+                {
+                    item.Icon = new SymbolIcon(icon);
+                }
+
+                if ((command.Name != null) && (command.Name.Length > 0))
+                {
+                    item.Content = command.Name;
+                }
+
+                // Issue a warning if a script has been supplied, that as this path overloads a folder it won't be implemented as a command.
+                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
+
+                // Skip adding a command as we're just updating the existing folder node.
+                continue;
             }
 
             TagsToScriptDictionary.Add(command.Path!, command.Script!);
