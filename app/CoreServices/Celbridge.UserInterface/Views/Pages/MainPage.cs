@@ -6,6 +6,7 @@
 using Celbridge.Projects;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;
+using Celbridge.Workspace;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -40,6 +41,7 @@ public sealed partial class MainPage : Page
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
     private Frame _contentFrame;
+    private List<KeyValuePair<IList<object>, NavigationViewItem>> _userScriptMenuItems = new();
 
     public MainPage()
     {
@@ -129,7 +131,7 @@ public sealed partial class MainPage : Page
                     .Icon(new SymbolIcon(Symbol.Upload))
                     .Tag(MainPageViewModel.RevisionControlTag) // GitHub
                     .ToolTipService(PlacementMode.Right, null, RevisionControlString)
-                    .Content(HomeString)
+                    .Content(HomeString),
 
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
 
@@ -363,6 +365,11 @@ public sealed partial class MainPage : Page
     private void BuildUserFunctionMenuItems(object sender, IProjectService.RebuildUserFunctionsUIEventArgs args)
     {
         TagsToScriptDictionary.Clear();
+        foreach (var (menuItems, menuItem) in _userScriptMenuItems)
+        {
+            menuItems.Remove(menuItem);
+        }
+        _userScriptMenuItems.Clear();
 
         NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
 
@@ -379,6 +386,7 @@ public sealed partial class MainPage : Page
                     .Content(k);
 
             menuItems.Add(newItem);
+            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
             AddUserFunctionMenuItems(v, newItem.MenuItems);
         }
 
@@ -387,7 +395,10 @@ public sealed partial class MainPage : Page
             Symbol icon = Symbol.Placeholder;
             if (command.Icon is not null)
             {
-                icon = (Symbol) Enum.Parse(typeof(Symbol), command.Icon!);
+                if (!Enum.TryParse(command.Icon, out icon))
+                {
+                    icon = Symbol.Placeholder;
+                }
             }
 
             TagsToScriptDictionary.Add(command.Path!, command.Script!);
@@ -399,6 +410,7 @@ public sealed partial class MainPage : Page
                 .Content(command.Name ?? "UserFunction")
                 .Tag(command.Path!);
             menuItems.Add(commandItem);
+            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
         }
     }
 }
