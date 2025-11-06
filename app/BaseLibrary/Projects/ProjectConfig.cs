@@ -70,6 +70,7 @@ public sealed record class NavigationBarSection
     {
         public List<CustomCommandDefinition> CustomCommands = new List<CustomCommandDefinition>();
         public Dictionary<string, CustomCommandNode> Nodes = new Dictionary<string, CustomCommandNode>();
+        public string Path = "";
     }
 
     /// <summary>
