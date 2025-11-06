@@ -44,7 +44,8 @@ public class ConsoleService : IConsoleService, IDisposable
     public void RunCommand(string command)
     {
         // Populate the CommandBuffer with the command to be executed.
-        Terminal.CommandBuffer = command;
+        var trimmedCommand = command.Trim();
+        Terminal.CommandBuffer = trimmedCommand;
 
         // Send a fake keyboard interrupt to clear the current input buffer.
         // The terminal will inject the buffered command once the input buffer has been cleared.
