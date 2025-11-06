@@ -1,6 +1,7 @@
 using System.Globalization;
 using Tomlyn;
 using Tomlyn.Model;
+using Humanizer;
 
 namespace Celbridge.Projects.Services;
 
@@ -24,6 +25,10 @@ public partial class ProjectConfigService : IProjectConfigService
             _root = (TomlTable)parse.ToModel();
             _config = MapRootToModel(_root);
 
+            // Notify Main Page to allow UI updates for user functions.
+            IProjectService projectService = ServiceLocator.AcquireService<IProjectService>();
+            projectService.InvokeRebuildUserFunctionsUI(Config.NavigationBar);
+
             return Result.Ok();
         }
         catch (Exception ex)
@@ -32,6 +37,7 @@ public partial class ProjectConfigService : IProjectConfigService
                          .WithException(ex);
         }
     }
+
 
     public ProjectConfig Config
     {
@@ -105,6 +111,7 @@ public partial class ProjectConfigService : IProjectConfigService
     {
         var projectSection = new ProjectSection();
         var pythonSection = new PythonSection();
+        var navigationBarSection = new NavigationBarSection();
 
         // [project]
         if (root.TryGetValue("project", out var projObj) && projObj is TomlTable proj)
@@ -152,7 +159,79 @@ public partial class ProjectConfigService : IProjectConfigService
             };
         }
 
-        return new ProjectConfig { Project = projectSection, Python = pythonSection };
+        // [navigation_bar]
+        if (root.TryGetValue("navigation_bar", out var barObj) && barObj is TomlTable bar)
+        {
+            ExtractNavigationBarEntry(bar, navigationBarSection.RootCustomCommandNode, "Root", null);
+        }
+
+        return new ProjectConfig { Project = projectSection, Python = pythonSection, NavigationBar = navigationBarSection };
+    }
+
+    private static bool CheckTableHasSubTable(TomlTable table)
+    {
+        foreach (var (k, v) in table)
+        {
+            if (v is TomlTable)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void ExtractNavigationBarEntry(TomlTable barEntry, NavigationBarSection.CustomCommandNode node, string name, NavigationBarSection.CustomCommandNode? previousNode, string path = "")
+    {
+        foreach (var (k, v) in barEntry)
+        {
+            var key = k.Humanize(LetterCasing.Title);
+
+            if (v is TomlTable table)
+            {
+                string newPath = path + (path.Length > 0 ? "." : "") + key;
+
+                if (node.Nodes.ContainsKey(key))
+                {
+                    ExtractNavigationBarEntry(table, node.Nodes[key], key, node, newPath);
+                }
+                else
+                {
+                    if (CheckTableHasSubTable(table))
+                    {
+                        var newNode = new NavigationBarSection.CustomCommandNode();
+                        newNode.Path = path;
+                        node.Nodes.Add(key, newNode);
+                        ExtractNavigationBarEntry(table, newNode, key, node, newPath);
+                    }
+                    else
+                    {
+                        ExtractNavigationBarEntry(table, node, key, node, newPath);
+                    }
+                }
+            }
+        }
+
+        var customCommandDefinition = new NavigationBarSection.CustomCommandDefinition()
+        {
+            Icon = barEntry.TryGetValue("icon", out var icon) ? icon?.ToString() : null,
+            ToolTip = barEntry.TryGetValue("tooltip", out var tooltip) ? tooltip?.ToString() : null,
+            Script = barEntry.TryGetValue("script", out var script) ? script?.ToString() : null,
+            Name = barEntry.TryGetValue("name", out var givenName) ? givenName?.ToString() : name.Humanize(LetterCasing.Title),
+            Path = path
+        };
+
+        if (customCommandDefinition.Icon != null || customCommandDefinition.ToolTip != null || customCommandDefinition.Script != null)
+        {
+            if (previousNode == null)
+            {
+                throw new Exception("Commands must not be unnamed on root");
+            }
+            else
+            {
+                previousNode!.CustomCommands.Add(customCommandDefinition);
+            }
+        }
     }
 
     private static string TomlValueToString(object? value) =>

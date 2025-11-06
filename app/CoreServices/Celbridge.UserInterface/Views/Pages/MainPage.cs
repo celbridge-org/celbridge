@@ -3,8 +3,11 @@
 #else
 #endif
 
+using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;
+using Celbridge.Workspace;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -29,17 +32,26 @@ public sealed partial class MainPage : Page
     public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
     public LocalizedString CommunityString => _stringLocalizer.GetString($"MainPage_Community");
 
+    private Dictionary<string, string> TagsToScriptDictionary = new();
+
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
+    private IProjectConfigService _projectConfigService;
+    private IProjectService _projectService;
+    private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
     private Frame _contentFrame;
+    private List<KeyValuePair<IList<object>, NavigationViewItem>> _userScriptMenuItems = new();
 
     public MainPage()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        _projectService = ServiceLocator.AcquireService<IProjectService>();
+        _projectConfigService = ServiceLocator.AcquireService<IProjectConfigService>();
+        _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
 
@@ -98,9 +110,9 @@ public sealed partial class MainPage : Page
                     .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
                     .Tag(NavigationConstants.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
-                    .Content(HomeString)
+                    .Content(HomeString),
 #if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
-                ,new NavigationViewItem()
+                new NavigationViewItem()
                     .Icon(new FontIcon()
                             .FontFamily(symbolFontFamily)
                             .Glyph("\ue721")   // Search
@@ -122,9 +134,12 @@ public sealed partial class MainPage : Page
                     .Icon(new SymbolIcon(Symbol.Upload))
                     .Tag(MainPageViewModel.RevisionControlTag) // GitHub
                     .ToolTipService(PlacementMode.Right, null, RevisionControlString)
-                    .Content(HomeString)
+                    .Content(HomeString),
 
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+
+                new NavigationViewItemSeparator()
+
                 )
             .FooterMenuItems(
                 new NavigationViewItem()
@@ -187,6 +202,9 @@ public sealed partial class MainPage : Page
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
 
+        // Configure user function menu items.
+        _projectService.RegisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
         mainWindow.Content.KeyDown += (s, e) =>
@@ -225,6 +243,8 @@ public sealed partial class MainPage : Page
 
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
+
+        _projectService.UnregisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
     }
 
     private bool OnKeyDown(VirtualKey key)
@@ -308,6 +328,21 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         if (navigationItemTag != null)
         {
+            // Check if tag is a user command tag.
+            if (TagsToScriptDictionary.ContainsKey(navigationItemTag.ToString()!))
+            {
+                var script = TagsToScriptDictionary[navigationItemTag.ToString()!];
+                if ((script == null) || (script.Length == 0))
+                {
+                    return;
+                }
+
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
+
+                return;
+            }
+
             var tag = navigationItemTag.ToString();
             Guard.IsNotNullOrEmpty(tag);
 
@@ -332,5 +367,97 @@ public sealed partial class MainPage : Page
         _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
 //        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
         return Result.Ok();
+    }
+
+    private void BuildUserFunctionMenuItems(object sender, IProjectService.RebuildUserFunctionsUIEventArgs args)
+    {
+        TagsToScriptDictionary.Clear();
+        foreach (var (menuItems, menuItem) in _userScriptMenuItems)
+        {
+            menuItems.Remove(menuItem);
+        }
+        _userScriptMenuItems.Clear();
+
+        NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
+
+        AddUserFunctionMenuItems(node, _mainNavigation.MenuItems);
+    }
+
+    private void AddUserFunctionMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
+    {
+        Dictionary<string, NavigationViewItem> newNodes = new();
+        Dictionary<string, string > pathToScriptDictionary = new();
+
+        foreach (var (k, v) in node.Nodes)
+        {
+            var newItem = new NavigationViewItem()
+                    .Icon(new SymbolIcon(Symbol.Folder))
+                    .Name(k)
+                    .Content(k);
+
+            menuItems.Add(newItem);
+            string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
+            newNodes.Add(newPath, newItem);
+            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
+            AddUserFunctionMenuItems(v, newItem.MenuItems);
+        }
+
+        foreach (var command in node.CustomCommands)
+        {
+            // Check for another script already declared with the same path.
+            if (pathToScriptDictionary.ContainsKey(command.Path!))
+            {
+                // Issue a warning, and skip on to the next command.
+                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
+                continue;
+            }
+
+            Symbol icon = Symbol.Placeholder;
+            if (command.Icon is not null)
+            {
+                if (!Enum.TryParse(command.Icon, out icon))
+                {
+                    icon = Symbol.Placeholder;
+                }
+            }
+
+            // Check if this collides with an folder node.
+            if (newNodes.ContainsKey(command.Path!))
+            {
+                // It does!
+                NavigationViewItem item = newNodes[command.Path!];
+                if ((command.ToolTip != null) && (command.ToolTip.Length > 0))
+                {
+                    item.ToolTipService(PlacementMode.Right, null, command.ToolTip);
+                }
+
+                if (icon != Symbol.Placeholder)
+                {
+                    item.Icon = new SymbolIcon(icon);
+                }
+
+                if ((command.Name != null) && (command.Name.Length > 0))
+                {
+                    item.Content = command.Name;
+                }
+
+                // Issue a warning if a script has been supplied, that as this path overloads a folder it won't be implemented as a command.
+                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
+
+                // Skip adding a command as we're just updating the existing folder node.
+                continue;
+            }
+
+            TagsToScriptDictionary.Add(command.Path!, command.Script!);
+
+            var commandItem = new NavigationViewItem()
+                .Icon(new SymbolIcon(icon))
+                .ToolTipService(PlacementMode.Right, null, command.ToolTip)
+                .Name(command.Name ?? "UserFunction")
+                .Content(command.Name ?? "UserFunction")
+                .Tag(command.Path!);
+            menuItems.Add(commandItem);
+            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
+        }
     }
 }
