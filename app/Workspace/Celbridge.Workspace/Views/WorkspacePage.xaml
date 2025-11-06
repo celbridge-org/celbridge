@@ -68,7 +68,7 @@
               Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
               HorizontalAlignment="Left"
               VerticalAlignment="Top"
-              Margin="48,8,0,0">
+              Margin="4">
         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                   Glyph="&#xE76C;"/>
       </Button>
