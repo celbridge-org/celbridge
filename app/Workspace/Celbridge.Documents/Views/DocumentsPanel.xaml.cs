@@ -39,9 +39,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         //
         this.DataContext = ViewModel;
 
-        // Listen for property changes on the ViewModel
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
     }
@@ -89,6 +86,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
+        // Listen for property changes on the ViewModel
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.OnViewLoaded();
 
         UpdateTabstripEnds();
