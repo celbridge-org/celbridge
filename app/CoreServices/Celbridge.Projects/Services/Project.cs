@@ -140,7 +140,7 @@ public class Project : IDisposable, IProject
 
                 // Read from a given file in the project build, and also ensure we're not stomping an existing file.
                 string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
-                if (!File.Exists(projectFilePath))
+                if (!File.Exists(readMePath))
                 {
                     var sourceWelcomeFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ReadMeMDAssetPath));
                     var welcomeFileStream = (await sourceWelcomeFile.OpenReadAsync()).AsStreamForRead();
