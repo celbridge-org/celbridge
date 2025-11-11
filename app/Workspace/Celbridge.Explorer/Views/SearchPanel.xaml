@@ -6,13 +6,156 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
+    xmlns:ui="using:Celbridge.UserInterface.Services"
+    DataContext="{x:Bind ViewModel}"
     d:DesignHeight="300"
     d:DesignWidth="400">
 
-    <Grid>
+  <UserControl.Resources>
+    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="40"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource PanelBorderBrush}"
+            BorderThickness="0,0,0,1" >
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="46"/>
+      </Grid.ColumnDefinitions>
+
       <TextBlock Grid.Column="0"
-                     Text="This is a placeholder panel"
+                     Text="Search"
                      VerticalAlignment="Center"
-                     Margin="6,0,0,0"/>
+                     Margin="48,0,0,0"/>
+
+    </Grid>
+
+    <Grid Grid.Row="1"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource PanelBorderBrush}"
+            BorderThickness="0,0,0,1" >
+
+      <Grid.RowDefinitions>
+        <RowDefinition Height="40"/>
+        <RowDefinition Height="4"/>
+        <RowDefinition Height="40"/>
+        <RowDefinition Height="4"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <TextBox  Grid.Row="0"
+                x:Name="SearchStringTextBox"
+                  Width="auto"
+                    Text="Find Text"
+                    VerticalAlignment="Center"
+                    Margin="16,0,16,0"
+                  TextChanged="SearchStringTextBox_TextChanged"
+                    Background="{ThemeResource PanelBackgroundBBrush}"
+                  BorderBrush="{ThemeResource PanelBorderBrush}"
+                  BorderThickness="0,0,0,1" />
+      
+      <!-- Replace Text is disabled for now until feature is implemented -->
+<!--
+      <TextBox Grid.Row="2"
+                  Width="auto"
+                    Text="Replace Text"
+                    VerticalAlignment="Center"
+                    Margin="16,0,16,0"
+                  Background="{ThemeResource PanelBackgroundBBrush}"
+                  BorderBrush="{ThemeResource PanelBorderBrush}"
+                  BorderThickness="0,0,0,1" />
+-->
+      <ListBox Grid.Row="4"
+                Width="auto"
+                Margin="16,0,16,0"
+                Background="{ThemeResource PanelBackgroundBBrush}"
+                BorderBrush="{ThemeResource PanelBorderBrush}"
+                BorderThickness="0,0,0,1"
+                ItemsSource="{x:Bind ViewModel.Results}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+              </Grid.RowDefinitions>
+
+              <Grid Grid.Row="0"
+                    >
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- File Type Icon -->
+                <FontIcon Grid.Column="0"
+                    FontFamily="{Binding Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
+                    Glyph="{Binding Path=Icon.FontCharacter}"
+                    Foreground="{Binding Path=Icon.FontColor}"
+                    FontSize="16"
+                    MinWidth="20"
+                    Margin="0, 0, 0, 0" />
+
+                <TextBlock Grid.Column="1"
+                            Text="{Binding FileName}"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,2"/>
+                  
+                <TextBlock Grid.Column="2"
+                            Text="{Binding FilePath}"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,2"/>
+
+                <TextBlock Grid.Column="3"
+                            Text="{Binding HitCount}"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,2"/>
+
+              </Grid>
+
+              <ListBox Grid.Row="1"
+                       ItemsSource="{Binding LineResults}"
+                       >
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                      </Grid.ColumnDefinitions>
+
+                      <TextBlock Grid.Column="0"
+                            Text="{Binding LineNumber}"
+                            VerticalAlignment="Center"
+                            Margin="32,-8,0,-8"/>
+
+                      <TextBlock Grid.Column="1"
+                            Text="{Binding Excerpt}"
+                            VerticalAlignment="Center"
+                            Margin="32,-8,0,-8"/>
+
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>        
+      </ListBox>
+
+    </Grid>
+
   </Grid>
 </UserControl>

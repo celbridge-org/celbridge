@@ -111,16 +111,17 @@ public sealed partial class MainPage : Page
                     .Tag(NavigationConstants.ExplorerTag)
                     .ToolTipService(PlacementMode.Right, null, ExplorerString)
                     .Content(HomeString),
-#if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
+
                 new NavigationViewItem()
                     .Icon(new FontIcon()
                             .FontFamily(symbolFontFamily)
                             .Glyph("\ue721")   // Search
                         )
-                    .Tag(MainPageViewModel.SearchTag)
+                    .Tag(NavigationConstants.SearchTag)
                     .ToolTipService(PlacementMode.Right, null, SearchString)
                     .Content(HomeString),
 
+#if INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
                 new NavigationViewItem()
                     .Icon(new FontIcon()
                             .FontFamily(symbolFontFamily)
@@ -135,7 +136,6 @@ public sealed partial class MainPage : Page
                     .Tag(MainPageViewModel.RevisionControlTag) // GitHub
                     .ToolTipService(PlacementMode.Right, null, RevisionControlString)
                     .Content(HomeString),
-
 #endif // INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
 
                 new NavigationViewItemSeparator()

@@ -36,6 +36,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<ExplorerPanelViewModel>();
         services.AddTransient<ResourceTreeViewModel>();
+        services.AddTransient<SearchPanelViewModel>();
 
         //
         // Register commands
