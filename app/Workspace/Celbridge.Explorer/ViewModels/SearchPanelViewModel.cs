@@ -12,6 +12,8 @@ public partial class SearchLineResults : ObservableObject
 
     [ObservableProperty]
     public string _excerpt = string.Empty;
+
+    public IResource? Resource { get; set; }
 }
 
 public partial class SearchResults : ObservableObject

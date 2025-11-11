@@ -126,6 +126,7 @@
 
               <ListBox Grid.Row="1"
                        ItemsSource="{Binding LineResults}"
+                       SelectionChanged="OnSelectionChanged"
                        >
                 <ListBox.ItemTemplate>
                   <DataTemplate>

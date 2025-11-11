@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Workspace;
@@ -12,6 +13,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
     public SearchPanelViewModel ViewModel { get; }
     private IDocumentsService _documentsService;
     private IWorkspaceWrapper _workspaceWrapper;
+    private ICommandService _commandService;
 
     public SearchPanel()
     {
@@ -21,6 +23,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
         _documentsService = ServiceLocator.AcquireService<IDocumentsService>();
         _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
     }
 
     private void SearchStringTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -38,7 +41,6 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         }
 
         IResourceRegistry resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-//        IResourceRegistry resourceRegistry = ServiceLocator.AcquireService<IResourceRegistry>();
         IFolderResource rootFolder = resourceRegistry.RootFolder;
 
         List<IResource> resources = new List<IResource>();
@@ -94,26 +96,34 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         string filePath = resourceRegistry.GetResourcePath(resource);
         if (File.Exists(filePath))
         {
-            int lineNumber = 0;
-            foreach (var line in File.ReadLines(filePath))
-            {
-                lineNumber++;
-                if (line.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            try 
+            { 
+                int lineNumber = 0;
+                foreach (var line in File.ReadLines(filePath))
                 {
-                    lineHits.Add(lineNumber, line);
-                    lineResults.Add(new SearchLineResults
+                    lineNumber++;
+                    if (line.Contains(searchString, StringComparison.OrdinalIgnoreCase))
                     {
-                        LineNumber = lineNumber,
-                        Excerpt = line.Trim()
-                    });
+                        lineHits.Add(lineNumber, line);
+                        lineResults.Add(new SearchLineResults
+                        {
+                            LineNumber = lineNumber,
+                            Excerpt = line.Trim(),
+                            Resource = resource
+                        });
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+               // %%% Quick and dirty exception catcher to stop locked files etc causing crashes.
+               //   - Revisit this to come up with something nicer.
             }
         }
 
         if (lineHits.Count() > 0)
         {
-
-            string parentFolderString = filePath; // resource.ParentFolder ? resource.ParentFolder.ToString() : "";
+            string parentFolderString = filePath.Substring(0, filePath.Length - resource.Name.Length);
             ViewModels.SearchResults searchResult = new()
             {
                 Icon = _workspaceWrapper.WorkspaceService.ExplorerService.GetIconForResource(new ResourceKey(resource.ParentFolder + " / " + resource.Name)),
@@ -124,6 +134,30 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
             };
 
             results.Add(searchResult);
+        }
+    }
+
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ListBox listbox)
+        {
+            if (listbox.SelectedItem is SearchLineResults selectedResult)
+            {
+                if (selectedResult.Resource == null)
+                {
+                    return;
+                }
+
+                var resourceKey = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.GetResourceKey(selectedResult.Resource);
+                _workspaceWrapper.WorkspaceService.ExplorerService.SelectResource(resourceKey, true);
+
+                // Execute a command to open the HTML document.
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = resourceKey;
+                    command.ForceReload = false;
+                });
+            }
         }
     }
 }
