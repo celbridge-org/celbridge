@@ -15,11 +15,13 @@
 
 Celbridge is an open source tool that provides a bridge between spreadsheets and Python scripting. Edit spreadsheets and write Python scripts side-by-side in a user-friendly graphical interface, making it easy to enter, analyze, and automate your data. 
 
+Project website: [celbridge.org](https://celbridge.org)
+
 **The goals of Celbridge are to:**
 
 * Make **common tasks with data** easier and more accessible.
 * Keep your data **local-first** and **private** by default.
-* Act as **a bridge** between Python scripting and widely used filetypes such as Excel, CSV, Markdown, JSON, HTML, CSS, etc.).
+* Act as **a bridge** between Python scripting and widely used filetypes such as Excel, CSV, Markdown, JSON, HTML, CSS, etc.
 * Support easy extensibility via **Python packages**, with a core editor application written in [.NET](https://dotnet.microsoft.com/en-us/) using [Uno Platform](https://platform.uno/).
 * Provide quick access to the **web applications** you regularly use (e.g. dashboards, support portals, docs, etc).
 
