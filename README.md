@@ -27,8 +27,8 @@ Celbridge is an open source tool that provides a bridge between spreadsheets and
 > Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 <br>
-<a href="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/celbridge.gif" alt="Celbridge screenshot GIF">
-  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/celbridge.gif?raw=true">
+<a href="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/data_import.gif" alt="Celbridge screenshot GIF">
+  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/data_import.gif?raw=true">
 </a>
 <br>
 
