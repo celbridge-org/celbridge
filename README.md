@@ -27,8 +27,8 @@ Celbridge is an open source tool that provides a bridge between spreadsheets and
 > Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
 <br>
-<a href="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/data_import.gif" alt="Celbridge screenshot GIF">
-  <img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/data_import.gif?raw=true">
+<a href="https://github.com/celbridge-org/celbridge/blob/main/docs/images/data_import.gif" alt="Celbridge screenshot GIF">
+  <img width="600" height="600" src="https://github.com/celbridge-org/celbridge/blob/main/docs/images/data_import.gif?raw=true">
 </a>
 <br>
 
@@ -60,7 +60,7 @@ Celbridge is an open source tool that provides a bridge between spreadsheets and
 * Supports all common Excel functionality, including formulas, graph and table generation, images, pivot tables, etc.
 * Does **not require Excel** to be installed on your machine.
 
-<img width="400" heigth="400" src="https://github.com/AnTulcha/Celbridge/blob/main/docs/images/excel_spreadsheet.png?raw=true">
+<img width="400" heigth="400" src="https://github.com/celbridge-org/celbridge/blob/main/docs/images/excel_spreadsheet.png?raw=true">
 
 ## File Explorer
 
@@ -106,12 +106,10 @@ Celbridge is distributed as a `.msix` installer for Windows.
 > [!NOTE]
 > Celbridge currently runs on Windows only. A macOS version is planned, and Linux/WASM versions may be possible depending on demand.
 
-1. Navigate to the [Releases](https://github.com/AnTulcha/Celbridge/releases/) page.
-2. Install the latest `.msix` version of Celbridge from the `Assets` section of the Releases page. 
-3. Install the .NET Desktop Runtime if prompted.  
-4. Run the Celbridge `.msix` installer. 
-5. When prompted, click `Install` (if this is your first time installing the program) or `Update`. 
-6. Launch Celbridge from the Start menu if it doesn't launch automatically. 
+1. Download and run the latest `.msix` installer from the [downloads page](https://www.celbridge.org/download) page of the [Celbridge.org](https://www.celbridge.org) website. 
+2. When prompted, click `Install` (if this is your first time installing the program) or `Update`. 
+3. Install the .NET Desktop Runtime if prompted by the installer.  
+4. Launch Celbridge from the Start menu, if it doesn't launch automatically. 
 
 Each release includes an example project that demonstrates the core features of Celbridge. Access this example project as follows: 
 1. Launch Celbridge. 
@@ -120,7 +118,7 @@ Each release includes an example project that demonstrates the core features of 
 > [!NOTE] 
 > If an existing project opens instead of the home menu, click the home button in the navigation bar to the left of the explorer panel. 
 
-3. Name the project and select a location for it. 
+3. Enter a name for the example project (e.g. "celbridge_examples") and select a location for it. 
 4. Celbridge will generate a new example project. Each folder in this project contains an example of a core feature of Celbridge. For example, the `01_markdown` folder demonstrates how to work with Markdown files. 
 5. To get started with each feature, see the `readme.md` files contained in the example folders. 
 
@@ -136,11 +134,13 @@ Each release includes an example project that demonstrates the core features of 
 
 If you encounter build errors, try restarting Visual Studio. If this fails, do a clean build.
 
+Note that enabling the spreadsheet editing feature in Celbridge requires a valid license for MESCIUS SpreadJS.
+
 ## Documentation
 
 Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
-*Mysterious note:* The first 🥚 is like the second. The third is like the second, but shorter. The third was laid first.
+*Mysterious note:* The first 🥚 is like the second. The second belongs to the third. The third is shorter than itself, and sits in the middle.
 
 # Support
 
