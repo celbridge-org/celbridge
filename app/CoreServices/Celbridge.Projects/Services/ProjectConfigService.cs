@@ -14,12 +14,23 @@ public partial class ProjectConfigService : IProjectConfigService
     {
         try
         {
+            if (!File.Exists(configFilePath))
+            {
+                // Config file doesn't exist - create empty config and continue
+                _root = new TomlTable();
+                _config = new ProjectConfig();
+                return Result.Ok();
+            }
+
             var text = File.ReadAllText(configFilePath);
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
             {
                 var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error(s): {errors}");
+                // Log error but don't fail - create empty config and continue
+                _root = new TomlTable();
+                _config = new ProjectConfig();
+                return Result.Fail($"TOML parse error(s): {errors}. Project loaded with empty configuration.");
             }
 
             _root = (TomlTable)parse.ToModel();
@@ -33,7 +44,10 @@ public partial class ProjectConfigService : IProjectConfigService
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to read TOML file: {configFilePath}")
+            // Log exception but don't fail - create empty config and continue
+            _root = new TomlTable();
+            _config = new ProjectConfig();
+            return Result.Fail($"Failed to read TOML file: {configFilePath}. Project loaded with empty configuration.")
                          .WithException(ex);
         }
     }

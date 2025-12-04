@@ -86,7 +86,6 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Ensure that python support files are installed
-
             var workingDir = project.ProjectFolderPath;
 
             var installResult = await PythonInstaller.InstallPythonAsync();
@@ -148,7 +147,8 @@ public class PythonService : IPythonService, IDisposable
             var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
             if (findCelbridgeWheelResult.IsFailure)
             {
-                return findCelbridgeWheelResult;
+                return Result.Fail("Failed to find celbridge wheel file")
+                    .WithErrors(findCelbridgeWheelResult);
             }
             var celbridgeWheelPath = findCelbridgeWheelResult.Value;
 
@@ -161,7 +161,8 @@ public class PythonService : IPythonService, IDisposable
             var findHostWheelResult = FindWheelFile(pythonFolder, "celbridge_host");
             if (findHostWheelResult.IsFailure)
             {
-                return findHostWheelResult;
+                return Result.Fail("Failed to find celbridge_host wheel file")
+                    .WithErrors(findHostWheelResult);
             }
             var hostWheelPath = findHostWheelResult.Value;
 
@@ -202,21 +203,39 @@ public class PythonService : IPythonService, IDisposable
                 .ToString();
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
-            terminal.Start(commandLine, workingDir);
-
-            // Create and connect RPC service
-            _rpcService = _rpcServiceFactory(pipeName);
             
-            // Wait for Python process to start RPC server (with timeout)
-            var connectResult = await _rpcService.ConnectAsync();
-            if (connectResult.IsFailure)
-            {
-                return Result.Fail("Failed to connect to Python RPC server")
-                    .WithErrors(connectResult);
-            }
+            // Start the terminal process
+            // Any errors during Python/uv initialization will be displayed in the terminal
+            terminal.Start(commandLine, workingDir);
+            _logger.LogInformation("Python terminal started successfully");
 
-            // Create Python RPC client for strongly-typed Python method calls
-            _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
+            // Create RPC service (but don't connect yet)
+            _rpcService = _rpcServiceFactory(pipeName);
+
+            // Connect to RPC in the background without blocking workspace loading
+            // The Python process needs time to start up and create the RPC server
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Wait for Python process to start RPC server (with timeout)
+                    var connectResult = await _rpcService.ConnectAsync();
+                    if (connectResult.IsFailure)
+                    {
+                        _logger.LogWarning("Failed to connect to Python RPC server: {Error}", connectResult.Error);
+                        _logger.LogWarning("Python REPL is available, but RPC features may not work until the connection is established.");
+                        return;
+                    }
+
+                    // Create Python RPC client for strongly-typed Python method calls
+                    _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
+                    _logger.LogInformation("Python RPC client connected successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Exception occurred while connecting to Python RPC server");
+                }
+            });
 
             return Result.Ok();
         }

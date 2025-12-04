@@ -67,8 +67,8 @@ public class Project : IDisposable, IProject
             var initResult = projectConfig.InitializeFromFile(projectFilePath);
             if (initResult.IsFailure)
             {
-                return Result<IProject>.Fail($"Failed to initialize project configuration")
-                    .WithErrors(initResult);
+                // Log the error but continue loading - the project config will be empty
+                project._logger.LogWarning(initResult.FirstException, "Failed to initialize project configuration: {Error}. Project loaded with empty configuration.", initResult.Error);
             }
 
             project._projectConfig = projectConfig;
