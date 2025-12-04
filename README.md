@@ -142,6 +142,9 @@ Note that enabling the spreadsheet editing feature in Celbridge requires a valid
 
 Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
+There is now a separate website for the growing documentation about the Celbridge workbench application:
+- [Celbridge-docs](https://celbridge-org.github.io/celbridge-docs/)
+
 *Mysterious note:* The first 🥚 is like the second. The second belongs to the third. The third is shorter than itself, and sits in the middle.
 
 # Support
