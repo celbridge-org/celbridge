@@ -188,6 +188,7 @@ public class PythonService : IPythonService, IDisposable
             var commandLine = new CommandLineBuilder(uvExePath)
                 .Add("run")                                 // uv run
                 .Add("--cache-dir", uvCacheDir)             // cache uv files in app data folder (not globally per-user)
+                .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
                 .Add("--python", pythonVersion!)            // python interpreter version
                 //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
                 .Add(packageArgs.ToArray())                 // specify the packages to install     
