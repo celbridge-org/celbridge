@@ -7,7 +7,7 @@ public sealed record class ProjectConfig
 {
     public ProjectSection Project { get; init; } = new();
     public CelbridgeSection Celbridge { get; init; } = new();
-    public NavigationBarSection NavigationBar { get; init; } = new();
+    public ShortcutsSection Shortcuts { get; init; } = new();
 }
 
 /// <summary>
@@ -64,7 +64,19 @@ public sealed record class CelbridgeSection
 }
 
 /// <summary>
-/// Models the [navigation_bar] section from the project config
+/// Models the [shortcuts] section from the project config.
+/// Contains shortcut definitions for various UI surfaces.
+/// </summary>
+public sealed record class ShortcutsSection
+{
+    /// <summary>
+    /// Navigation bar shortcuts.
+    /// </summary>
+    public NavigationBarSection NavigationBar { get; init; } = new();
+}
+
+/// <summary>
+/// Models the [shortcuts.navigation_bar] section from the project config
 /// </summary>
 public sealed record class NavigationBarSection
 {

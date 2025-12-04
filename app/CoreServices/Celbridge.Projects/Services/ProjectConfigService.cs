@@ -27,7 +27,7 @@ public partial class ProjectConfigService : IProjectConfigService
 
             // Notify Main Page to allow UI updates for user functions.
             IProjectService projectService = ServiceLocator.AcquireService<IProjectService>();
-            projectService.InvokeRebuildUserFunctionsUI(Config.NavigationBar);
+            projectService.InvokeRebuildUserFunctionsUI(_config.Shortcuts.NavigationBar);
 
             return Result.Ok();
         }
@@ -111,7 +111,7 @@ public partial class ProjectConfigService : IProjectConfigService
     {
         var projectSection = new ProjectSection();
         var celbridgeSection = new CelbridgeSection();
-        var navigationBarSection = new NavigationBarSection();
+        var shortcutsSection = new ShortcutsSection();
 
         // [project]
         if (root.TryGetValue("project", out var projectObject) && 
@@ -165,14 +165,23 @@ public partial class ProjectConfigService : IProjectConfigService
             };
         }
 
-        // [navigation_bar]
-        if (root.TryGetValue("navigation_bar", out var navigationBarObject) && 
-            navigationBarObject is TomlTable navigationBarTable)
+        // [shortcuts]
+        if (root.TryGetValue("shortcuts", out var shortcutsObject) &&
+            shortcutsObject is TomlTable shortcutsTable)
         {
-            ExtractNavigationBarEntry(navigationBarTable, navigationBarSection.RootCustomCommandNode, "Root", null);
+            var navigationBarSection = new NavigationBarSection();
+
+            // [shortcuts.navigation_bar]
+            if (shortcutsTable.TryGetValue("navigation_bar", out var navigationBarObject) && 
+                navigationBarObject is TomlTable navigationBarTable)
+            {
+                ExtractNavigationBarEntry(navigationBarTable, navigationBarSection.RootCustomCommandNode, "Root", null);
+            }
+
+            shortcutsSection = shortcutsSection with { NavigationBar = navigationBarSection };
         }
 
-        return new ProjectConfig { Project = projectSection, Celbridge = celbridgeSection, NavigationBar = navigationBarSection };
+        return new ProjectConfig { Project = projectSection, Celbridge = celbridgeSection, Shortcuts = shortcutsSection };
     }
 
     private static bool CheckTableHasSubTable(TomlTable table)
