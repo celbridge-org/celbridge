@@ -1,10 +1,11 @@
 [project]
+name = "examples"
 version = "0.1.0"
-celbridge_version = "0.0.12.0"
+requires-python = "3.12"
+dependencies = ["pandas", "openpyxl", "requests", "faker"]
 
-[python]
-version = "3.13.6"
-packages = [ "pandas", "openpyxl", "requests", "faker" ]
+[celbridge]
+version = "0.0.12.0"
 
 # Shortcut buttons (displayed in navigation bar)
 

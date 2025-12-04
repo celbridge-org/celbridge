@@ -72,16 +72,17 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Read python version from project config
-            var pythonConfig = project.ProjectConfig?.Config?.Python!;
+            var pythonConfig = project.ProjectConfig?.Config?.Project!;
             if (pythonConfig is null)
             {
-                return Result.Fail("Python section not specified in project config");
+                return Result.Fail("Project section not specified in project config");
             }
 
-            var pythonVersion = pythonConfig.Version;
+            // Note: uv run expects an explicit python version (e.g. "3.12") rather than a range like in pyproject.toml (e.g. ">=3.12")
+            var pythonVersion = pythonConfig.RequiresPython;
             if (string.IsNullOrWhiteSpace(pythonVersion))
             {
-                return Result.Fail("Python version not specified in project config");
+                return Result.Fail("Python version not specified in project config (requires-python field)");
             }
 
             // Ensure that python support files are installed
@@ -172,7 +173,7 @@ public class PythonService : IPythonService, IDisposable
             };
             
             // Add any additional packages specified in the project config
-            var pythonPackages = pythonConfig.Packages;
+            var pythonPackages = pythonConfig.Dependencies;
             if (pythonPackages is not null)
             {
                 foreach (var pythonPackage in pythonPackages)
