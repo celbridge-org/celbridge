@@ -16,10 +16,16 @@
              Grid.Row="0"
              Severity="Error"
              IsOpen="{x:Bind ViewModel.IsErrorBannerVisible, Mode=OneWay}"
-             IsClosable="True"
+             IsClosable="False"
              Title="{x:Bind ViewModel.ErrorBannerTitle, Mode=OneWay}"
              Message="{x:Bind ViewModel.ErrorBannerMessage, Mode=OneWay}"
-             Margin="8,8,8,0"/>
+             Margin="8,8,8,0">
+      <InfoBar.ActionButton>
+        <Button Content="Reload Project"
+                Visibility="{x:Bind ViewModel.IsReloadButtonVisible, Mode=OneWay}"
+                Click="{x:Bind ViewModel.OnReloadProjectClicked}"/>
+      </InfoBar.ActionButton>
+    </InfoBar>
 
     <WebView2 x:Name="TerminalWebView"
               Grid.Row="1"

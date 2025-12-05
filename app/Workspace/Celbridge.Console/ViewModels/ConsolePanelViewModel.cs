@@ -22,6 +22,9 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private string _errorBannerMessage = string.Empty;
 
+    [ObservableProperty]
+    private bool _isReloadButtonVisible;
+
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
@@ -52,17 +55,20 @@ public partial class ConsolePanelViewModel : ObservableObject
             case ConsoleErrorType.InvalidProjectConfig:
                 ErrorBannerTitle = "Configuration Error";
                 var configFile = message.ConfigFileName ?? "project configuration file";
-                ErrorBannerMessage = $"There was an error parsing '{configFile}'. Please check the file for syntax errors.";
+                ErrorBannerMessage = $"Please check '{configFile}' for syntax errors and then reload the project.";
+                IsReloadButtonVisible = true;
                 break;
 
             case ConsoleErrorType.PythonPreInitError:
                 ErrorBannerTitle = "Python Initialization Error";
-                ErrorBannerMessage = "Failed to initialize Python. Please check the console output for more details and verify your Python configuration.";
+                ErrorBannerMessage = "Please check '{configFile}' for configuration errors and then reload the project.";
+                IsReloadButtonVisible = true;
                 break;
 
             case ConsoleErrorType.PythonProcessExited:
                 ErrorBannerTitle = "Console Process Exited";
                 ErrorBannerMessage = "The console process has exited unexpectedly. Please reload the project to restart the console.";
+                IsReloadButtonVisible = true;
                 break;
 
             default:
@@ -70,6 +76,12 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
+    }
+
+    public void OnReloadProjectClicked()
+    {
+        // Send message to request project reload
+        _messengerService.Send<ReloadProjectMessage>();
     }
 
     public void Cleanup()

@@ -25,3 +25,8 @@ public enum ConsoleErrorType
 /// Message sent when the console fails to initialize or terminates unexpectedly.
 /// </summary>
 public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ErrorMessage, string? ConfigFileName = null);
+
+/// <summary>
+/// Message sent to request reloading the current project.
+/// </summary>
+public record ReloadProjectMessage();
