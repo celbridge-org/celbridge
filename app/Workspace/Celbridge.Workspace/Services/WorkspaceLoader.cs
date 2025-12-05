@@ -132,14 +132,14 @@ public class WorkspaceLoader
         var initTerminal = await consoleService.InitializeTerminalWindow();
         if (initTerminal.IsFailure)
         {
-            _logger.LogWarning(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
+            _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
         }
 
         var pythonService = workspaceService.PythonService;
         var initPython = await pythonService.InitializePython();
         if (initPython.IsFailure)
         {
-            _logger.LogWarning(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
+            _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
         }
 
         return Result.Ok();

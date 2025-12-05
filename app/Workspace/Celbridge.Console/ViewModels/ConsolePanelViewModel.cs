@@ -1,7 +1,10 @@
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Uno.Extensions;
+using Microsoft.Extensions.Localization;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Console.ViewModels;
 
@@ -9,6 +12,8 @@ public partial class ConsolePanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
+    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IProjectService _projectService;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -29,18 +34,35 @@ public partial class ConsolePanelViewModel : ObservableObject
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IDispatcher dispatcher,
+        IStringLocalizer stringLocalizer,
+        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
+        _stringLocalizer = stringLocalizer;
+        _projectService = projectService;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
     }
 
+    public void OnTerminalProcessExited()
+    {
+        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
+        Guard.IsNotNull(projectFilePath);
+        var projectFile = Path.GetFileName(projectFilePath);
+
+        // Broadcast a console error message.
+        // This message will be handled by OnConsoleError() in this class.
+        var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.PythonProcessError, projectFile);
+        _messengerService.Send(errorMessage);
+    }
+
     private void OnConsoleError(object recipient, ConsoleErrorMessage message)
     {
-        // Dispatch to UI thread since this may be called from a background thread
+        // This handler may be called from a background thread so ensure that the message
+        // is handled on the main UI thread.
         _dispatcher.TryEnqueue(() =>
         {
             HandleConsoleError(message);
@@ -49,26 +71,24 @@ public partial class ConsolePanelViewModel : ObservableObject
 
     private void HandleConsoleError(ConsoleErrorMessage message)
     {
+        var configFile = message.ConfigFileName ?? "project configuration file";
+
         // Set the error banner properties based on error type
         switch (message.ErrorType)
         {
             case ConsoleErrorType.InvalidProjectConfig:
-                ErrorBannerTitle = "Configuration Error";
-                var configFile = message.ConfigFileName ?? "project configuration file";
-                ErrorBannerMessage = $"Please check '{configFile}' for syntax errors and then reload the project.";
-                IsReloadButtonVisible = true;
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorMessage", configFile);
                 break;
 
             case ConsoleErrorType.PythonPreInitError:
-                ErrorBannerTitle = "Python Initialization Error";
-                ErrorBannerMessage = "Please check '{configFile}' for configuration errors and then reload the project.";
-                IsReloadButtonVisible = true;
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.PythonProcessExited:
-                ErrorBannerTitle = "Console Process Exited";
-                ErrorBannerMessage = "The console process has exited unexpectedly. Please reload the project to restart the console.";
-                IsReloadButtonVisible = true;
+            case ConsoleErrorType.PythonProcessError:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorMessage", configFile);
                 break;
 
             default:
@@ -76,6 +96,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
+        IsReloadButtonVisible = true;
     }
 
     public void OnReloadProjectClicked()

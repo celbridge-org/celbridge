@@ -83,24 +83,18 @@ public class PythonService : IPythonService, IDisposable
             var pythonConfig = project.ProjectConfig?.Config?.Project!;
             if (pythonConfig is null)
             {
-                var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.InvalidProjectConfig, 
-                    "Project section not specified in project config", 
-                    projectFileName);
+                var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
                 _messengerService.Send(errorMessage);
-                return Result.Fail("Project section not specified in project config");
+                return Result.Fail($"Project section not specified in project config '{projectFileName}'");
             }
 
             // Note: uv run expects an explicit python version (e.g. "3.12") rather than a range like in pyproject.toml (e.g. ">=3.12")
             var pythonVersion = pythonConfig.RequiresPython;
             if (string.IsNullOrWhiteSpace(pythonVersion))
             {
-                var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.InvalidProjectConfig, 
-                    "Python version not specified in project config (requires-python field)", 
-                    projectFileName);
+                var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
                 _messengerService.Send(errorMessage);
-                return Result.Fail("Python version not specified in project config (requires-python field)");
+                return Result.Fail($"Python version not specified in requires-python field in project config '{projectFileName}'");
             }
 
             // Ensure that python support files are installed

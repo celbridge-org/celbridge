@@ -2,8 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Console.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.UserInterface;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 using System.Runtime.InteropServices;
@@ -12,10 +12,10 @@ namespace Celbridge.Console.Views;
 
 public sealed partial class ConsolePanel : UserControl, IConsolePanel
 {
-    private ILogger<ConsolePanel> _logger;
-    private ICommandService _commandService;
-    private IUserInterfaceService _userInterfaceService;
-    private IMessengerService _messengerService;
+    private readonly ILogger<ConsolePanel> _logger;
+    private readonly ICommandService _commandService;
+    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IMessengerService _messengerService;
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -214,12 +214,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)
     {
-        // The UV process should normally never exit unless we're loading a different project
-        // If it exits unexpectedly, send an error message
-        var errorMessage = new ConsoleErrorMessage(
-            ConsoleErrorType.PythonProcessExited, 
-            "The console process has exited unexpectedly");
-        _messengerService.Send(errorMessage);
+        // Delegate handling to the ViewModel
+        ViewModel?.OnTerminalProcessExited();
     }
 
     public void Shutdown()

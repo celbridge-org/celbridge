@@ -18,13 +18,13 @@ public enum ConsoleErrorType
     /// <summary>
     /// The python process exited unexpectedly.
     /// </summary>
-    PythonProcessExited,
+    PythonProcessError,
 }
 
 /// <summary>
 /// Message sent when the console fails to initialize or terminates unexpectedly.
 /// </summary>
-public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ErrorMessage, string? ConfigFileName = null);
+public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileName);
 
 /// <summary>
 /// Message sent to request reloading the current project.
