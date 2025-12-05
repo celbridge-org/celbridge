@@ -9,7 +9,7 @@ namespace Celbridge.Projects.Services;
 public class Project : IDisposable, IProject
 {
     private const string DefaultProjectVersion = "0.1.0";
-    private const string DefaultPythonVersion = "3.13.6";
+    private const string DefaultPythonVersion = "3.12";
     private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
     private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
 
@@ -67,8 +67,8 @@ public class Project : IDisposable, IProject
             var initResult = projectConfig.InitializeFromFile(projectFilePath);
             if (initResult.IsFailure)
             {
-                return Result<IProject>.Fail($"Failed to initialize project configuration")
-                    .WithErrors(initResult);
+                // Log the error but continue loading - the project config will be empty
+                project._logger.LogWarning(initResult.FirstException, "Failed to initialize project configuration: {Error}. Project loaded with empty configuration.", initResult.Error);
             }
 
             project._projectConfig = projectConfig;
@@ -126,12 +126,13 @@ public class Project : IDisposable, IProject
 
                 var projectTOML = $"""
                 [project]
+                name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
                 version = "{DefaultProjectVersion}"
-                celbridge_version = "{info.AppVersion}"
+                requires-python = "{DefaultPythonVersion}"
+                dependencies = []
 
-                [python]
-                version = "{DefaultPythonVersion}"
-                packages = []
+                [celbridge]
+                version = "{info.AppVersion}"
                 """;
 
                 // Todo: Populate this with project configuration options

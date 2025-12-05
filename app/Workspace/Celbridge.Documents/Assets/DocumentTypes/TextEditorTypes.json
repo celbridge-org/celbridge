@@ -172,6 +172,7 @@
   ".tcl": "tcl",
   ".tf": "hcl",
   ".tfvars": "hcl",
+  ".toml": "ruby",
   ".ts": "typescript",
   ".tsx": "typescript",
   ".twig": "twig",

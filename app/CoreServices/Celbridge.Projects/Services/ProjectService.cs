@@ -21,7 +21,7 @@ public class ProjectService : IProjectService
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
 
-    public event TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> RebuildUserFunctionsUI;
+    public event TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs>? RebuildUserFunctionsUI;
 
     public IProject? CurrentProject { get; private set; }
 

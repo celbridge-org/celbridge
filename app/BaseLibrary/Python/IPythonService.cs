@@ -14,4 +14,9 @@ public interface IPythonService
     /// Gets the RPC client used to communicate with the Python host.
     /// </summary>
     IPythonRpcClient RpcClient { get; }
+
+    /// <summary>
+    /// Returns whether the python host is currently available to execute scripts.
+    /// </summary>
+    bool IsPythonHostAvailable { get; }
 }

@@ -2,8 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Console.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.UserInterface;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 using System.Runtime.InteropServices;
@@ -12,10 +12,10 @@ namespace Celbridge.Console.Views;
 
 public sealed partial class ConsolePanel : UserControl, IConsolePanel
 {
-    private ILogger<ConsolePanel> _logger;
-    private ICommandService _commandService;
-    private IUserInterfaceService _userInterfaceService;
-    private IMessengerService _messengerService;
+    private readonly ILogger<ConsolePanel> _logger;
+    private readonly ICommandService _commandService;
+    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IMessengerService _messengerService;
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -84,6 +84,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     public async Task<Result> InitializeTerminalWindow(ITerminal terminal)
     {
         _terminal = terminal;
+
+        // Listen for process exit events
+        _terminal.ProcessExited += OnTerminalProcessExited;
 
         await TerminalWebView.EnsureCoreWebView2Async();
 
@@ -209,9 +212,20 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         }
     }
 
+    private void OnTerminalProcessExited(object? sender, EventArgs e)
+    {
+        // Delegate handling to the ViewModel
+        ViewModel?.OnTerminalProcessExited();
+    }
+
     public void Shutdown()
     {
         _messengerService.UnregisterAll(this);
+
+        if (_terminal != null)
+        {
+            _terminal.ProcessExited -= OnTerminalProcessExited;
+        }
 
         if (TerminalWebView?.CoreWebView2 != null)
         {
@@ -224,5 +238,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         }
 
         this.Loaded -= ConsolePanel_Loaded;
+
+        // Cleanup ViewModel
+        ViewModel.Cleanup();
     }
 }

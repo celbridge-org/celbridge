@@ -19,12 +19,14 @@ public sealed class ConPtyTerminal : IDisposable
 
     private Process? _childProcess;
     private Task? _outputReaderTask;
+    private Task? _processMonitorTask;
     private CancellationTokenSource? _cancellationTokenSource;
 
     private int _cols = -1;
     private int _rows = -1;
 
     public event EventHandler<string>? OutputReceived;
+    public event EventHandler? ProcessExited;
 
     public void Start(string commandLine, string workingDir)
     {
@@ -91,6 +93,7 @@ public sealed class ConPtyTerminal : IDisposable
         _childProcess = Process.GetProcessById(pi.dwProcessId);
         _cancellationTokenSource = new CancellationTokenSource();
         _outputReaderTask = Task.Run(() => ReadOutputLoop(_cancellationTokenSource.Token));
+        _processMonitorTask = Task.Run(() => MonitorProcessExit(_cancellationTokenSource.Token));
     }
 
     private async Task ReadOutputLoop(CancellationToken cancellationToken)
@@ -124,6 +127,39 @@ public sealed class ConPtyTerminal : IDisposable
         catch (ObjectDisposedException)
         {
             // FileStream was disposed - this is expected during disposal
+        }
+    }
+
+    private async Task MonitorProcessExit(CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_childProcess == null)
+            {
+                return;
+            }
+
+            // Wait for the process to exit or cancellation
+            while (!_childProcess.HasExited && 
+                !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(100, cancellationToken);
+            }
+
+            // If the process exited (not cancelled), fire the event
+            if (!cancellationToken.IsCancellationRequested &&
+                _childProcess.HasExited)
+            {
+                ProcessExited?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation requested - this is expected during disposal
+        }
+        catch (Exception)
+        {
+            // Ignore exceptions during monitoring
         }
     }
 
@@ -196,6 +232,19 @@ public sealed class ConPtyTerminal : IDisposable
             try
             {
                 _outputReaderTask.Wait(1000);
+            }
+            catch
+            {
+                // Task may have already completed or been cancelled
+            }
+        }
+
+        // Wait for the process monitor task to complete
+        if (_processMonitorTask != null)
+        {
+            try
+            {
+                _processMonitorTask.Wait(1000);
             }
             catch
             {

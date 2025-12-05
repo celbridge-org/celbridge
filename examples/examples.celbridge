@@ -1,36 +1,37 @@
 [project]
+name = "examples"
 version = "0.1.0"
-celbridge_version = "0.0.12.0"
+requires-python = "3.12"
+dependencies = ["pandas", "openpyxl", "requests", "faker"]
 
-[python]
-version = "3.13.6"
-packages = [ "pandas", "openpyxl", "requests", "faker" ]
+[celbridge]
+version = "0.0.12.0"
 
-# Shortcut buttons (displayed in navigation bar)
+# Shortcut buttons
 
-[navigation_bar.run_examples]
+[shortcuts.navigation_bar.run_examples]
 icon="Play"
 tooltip="Run examples"
 
-[navigation_bar.run_examples.03_hello_world]
+[shortcuts.navigation_bar.run_examples.03_hello_world]
 tooltip="Run example 03_hello_world"
 script='''
 run "03_hello_world/hello_world.py" "Universe"
 '''
 
-[navigation_bar.run_examples.04_data_import]
+[shortcuts.navigation_bar.run_examples.04_data_import]
 tooltip="Run example 04_data_import"
 script='''
 run "04_data_import/data_import.py"
 '''
 
-[navigation_bar.run_examples.05_fake_data]
+[shortcuts.navigation_bar.run_examples.05_fake_data]
 tooltip="Run example 05_fake_data"
 script='''
 run "05_fake_data/fake_data.py"
 '''
 
-[navigation_bar.run_examples.06_data_cleaning]
+[shortcuts.navigation_bar.run_examples.06_data_cleaning]
 tooltip="Run example 06_data_cleaning"
 script='''
 run "06_data_cleaning/clean_data.py"
