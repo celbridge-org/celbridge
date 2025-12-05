@@ -1,3 +1,5 @@
+using Celbridge.Console;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -36,6 +38,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUtilityService _utilityService;
+    private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
     private readonly Func<string, IRpcService> _rpcServiceFactory;
     private readonly Func<IRpcService, IPythonRpcClient> _pythonRpcClientFactory;
@@ -49,6 +52,7 @@ public class PythonService : IPythonService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService,
+        IMessengerService messengerService,
         ILogger<PythonService> logger,
         Func<string, IRpcService> rpcServiceFactory,
         Func<IRpcService, IPythonRpcClient> pythonRpcClientFactory)
@@ -56,6 +60,7 @@ public class PythonService : IPythonService, IDisposable
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _utilityService = utilityService;
+        _messengerService = messengerService;
         _logger = logger;
         _rpcServiceFactory = rpcServiceFactory;
         _pythonRpcClientFactory = pythonRpcClientFactory;
@@ -71,10 +76,18 @@ public class PythonService : IPythonService, IDisposable
                 return Result.Fail("Failed to run python as no project is loaded");
             }
 
+            // Get the project file name for error messages
+            var projectFileName = Path.GetFileName(project.ProjectFilePath);
+
             // Read python version from project config
             var pythonConfig = project.ProjectConfig?.Config?.Project!;
             if (pythonConfig is null)
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.InvalidProjectConfig, 
+                    "Project section not specified in project config", 
+                    projectFileName);
+                _messengerService.Send(errorMessage);
                 return Result.Fail("Project section not specified in project config");
             }
 
@@ -82,6 +95,11 @@ public class PythonService : IPythonService, IDisposable
             var pythonVersion = pythonConfig.RequiresPython;
             if (string.IsNullOrWhiteSpace(pythonVersion))
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.InvalidProjectConfig, 
+                    "Python version not specified in project config (requires-python field)", 
+                    projectFileName);
+                _messengerService.Send(errorMessage);
                 return Result.Fail("Python version not specified in project config (requires-python field)");
             }
 
@@ -91,6 +109,10 @@ public class PythonService : IPythonService, IDisposable
             var installResult = await PythonInstaller.InstallPythonAsync();
             if (installResult.IsFailure)
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.PythonPreInitError, 
+                    "Failed to install Python support files");
+                _messengerService.Send(errorMessage);
                 return Result.Fail("Failed to ensure Python support files are installed")
                     .WithErrors(installResult);
             }
@@ -102,6 +124,10 @@ public class PythonService : IPythonService, IDisposable
             var uvExePath = Path.Combine(pythonFolder, uvFileName);
             if (!File.Exists(uvExePath))
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.PythonPreInitError, 
+                    $"uv not found at '{uvExePath}'");
+                _messengerService.Send(errorMessage);
                 return Result.Fail($"uv not found at '{uvExePath}'");
             }
 

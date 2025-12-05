@@ -85,6 +85,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     {
         _terminal = terminal;
 
+        // Listen for process exit events
+        _terminal.ProcessExited += OnTerminalProcessExited;
+
         await TerminalWebView.EnsureCoreWebView2Async();
 
         // Hide the "Inspect" context menu option
@@ -209,9 +212,24 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         }
     }
 
+    private void OnTerminalProcessExited(object? sender, EventArgs e)
+    {
+        // The UV process should normally never exit unless we're loading a different project
+        // If it exits unexpectedly, send an error message
+        var errorMessage = new ConsoleErrorMessage(
+            ConsoleErrorType.PythonProcessExited, 
+            "The console process has exited unexpectedly");
+        _messengerService.Send(errorMessage);
+    }
+
     public void Shutdown()
     {
         _messengerService.UnregisterAll(this);
+
+        if (_terminal != null)
+        {
+            _terminal.ProcessExited -= OnTerminalProcessExited;
+        }
 
         if (TerminalWebView?.CoreWebView2 != null)
         {
@@ -224,5 +242,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         }
 
         this.Loaded -= ConsolePanel_Loaded;
+
+        // Cleanup ViewModel
+        ViewModel.Cleanup();
     }
 }

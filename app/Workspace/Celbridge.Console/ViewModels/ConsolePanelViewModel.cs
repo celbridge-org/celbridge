@@ -1,62 +1,79 @@
-using Celbridge.Commands;
-using Celbridge.Logging;
-using Celbridge.Utilities;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Extensions.Localization;
-using Newtonsoft.Json;
+using Uno.Extensions;
 
 namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject
 {
-    private readonly ILogger<ConsolePanelViewModel> _logger;
-    private readonly IStringLocalizer _stringLocalizer;
-    private readonly ICommandService _commandService;
-    private readonly IUtilityService _utilityService;
-    private readonly IConsoleService _consoleService;
+    private readonly IMessengerService _messengerService;
+    private readonly IDispatcher _dispatcher;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
 
+    [ObservableProperty]
+    private bool _isErrorBannerVisible;
+
+    [ObservableProperty]
+    private string _errorBannerTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _errorBannerMessage = string.Empty;
+
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
-        ILogger<ConsolePanelViewModel> logger,
-        IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IUtilityService utilityService,
+        IMessengerService messengerService,
+        IDispatcher dispatcher,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
-        _stringLocalizer = stringLocalizer;
-        _commandService = commandService;
-        _utilityService = utilityService;
+        _messengerService = messengerService;
+        _dispatcher = dispatcher;
 
-        _consoleService = workspaceWrapper.WorkspaceService.ConsoleService;
+        // Register for console initialization error messages
+        _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
     }
 
-    private Result<LogEntry> ParseLogEntry(string json)
+    private void OnConsoleError(object recipient, ConsoleErrorMessage message)
     {
-        try
+        // Dispatch to UI thread since this may be called from a background thread
+        _dispatcher.TryEnqueue(() =>
         {
-            var logEntry = JsonConvert.DeserializeObject<LogEntry>(json);
-            if (logEntry is null)
-            {
-                return Result<LogEntry>.Fail("Failed to deserialize log entry");
-            }
-
-            return Result<LogEntry>.Ok(logEntry);
-        }
-        catch (Exception ex) 
-        {
-            return Result<LogEntry>.Fail("An exception occurred when parsing a log entry")
-                .WithException(ex);
-        }
+            HandleConsoleError(message);
+        });
     }
 
-    public ICommand ClearLogCommand => new RelayCommand(ClearLog_Executed);
-    private void ClearLog_Executed()
+    private void HandleConsoleError(ConsoleErrorMessage message)
     {
-        _commandService.Execute<IClearCommand>();
+        // Set the error banner properties based on error type
+        switch (message.ErrorType)
+        {
+            case ConsoleErrorType.InvalidProjectConfig:
+                ErrorBannerTitle = "Configuration Error";
+                var configFile = message.ConfigFileName ?? "project configuration file";
+                ErrorBannerMessage = $"There was an error parsing '{configFile}'. Please check the file for syntax errors.";
+                break;
+
+            case ConsoleErrorType.PythonPreInitError:
+                ErrorBannerTitle = "Python Initialization Error";
+                ErrorBannerMessage = "Failed to initialize Python. Please check the console output for more details and verify your Python configuration.";
+                break;
+
+            case ConsoleErrorType.PythonProcessExited:
+                ErrorBannerTitle = "Console Process Exited";
+                ErrorBannerMessage = "The console process has exited unexpectedly. Please reload the project to restart the console.";
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        IsErrorBannerVisible = true;
+    }
+
+    public void Cleanup()
+    {
+        _messengerService.UnregisterAll(this);
     }
 }

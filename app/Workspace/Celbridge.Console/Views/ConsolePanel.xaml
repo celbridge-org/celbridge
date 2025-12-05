@@ -7,7 +7,22 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <InfoBar x:Name="ErrorInfoBar"
+             Grid.Row="0"
+             Severity="Error"
+             IsOpen="{x:Bind ViewModel.IsErrorBannerVisible, Mode=OneWay}"
+             IsClosable="True"
+             Title="{x:Bind ViewModel.ErrorBannerTitle, Mode=OneWay}"
+             Message="{x:Bind ViewModel.ErrorBannerMessage, Mode=OneWay}"
+             Margin="8,8,8,0"/>
+
     <WebView2 x:Name="TerminalWebView"
+              Grid.Row="1"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
               DefaultBackgroundColor="Transparent"/>
