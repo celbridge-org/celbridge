@@ -14,12 +14,23 @@ public partial class ProjectConfigService : IProjectConfigService
     {
         try
         {
+            if (!File.Exists(configFilePath))
+            {
+                // Config file doesn't exist - create empty config and continue
+                _root = new TomlTable();
+                _config = new ProjectConfig();
+                return Result.Ok();
+            }
+
             var text = File.ReadAllText(configFilePath);
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
             {
                 var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error(s): {errors}");
+                // Log error but don't fail - create empty config and continue
+                _root = new TomlTable();
+                _config = new ProjectConfig();
+                return Result.Fail($"TOML parse error(s): {errors}. Project loaded with empty configuration.");
             }
 
             _root = (TomlTable)parse.ToModel();
@@ -27,13 +38,16 @@ public partial class ProjectConfigService : IProjectConfigService
 
             // Notify Main Page to allow UI updates for user functions.
             IProjectService projectService = ServiceLocator.AcquireService<IProjectService>();
-            projectService.InvokeRebuildUserFunctionsUI(Config.NavigationBar);
+            projectService.InvokeRebuildUserFunctionsUI(_config.Shortcuts.NavigationBar);
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to read TOML file: {configFilePath}")
+            // Log exception but don't fail - create empty config and continue
+            _root = new TomlTable();
+            _config = new ProjectConfig();
+            return Result.Fail($"Failed to read TOML file: {configFilePath}. Project loaded with empty configuration.")
                          .WithException(ex);
         }
     }
@@ -110,62 +124,78 @@ public partial class ProjectConfigService : IProjectConfigService
     private static ProjectConfig MapRootToModel(TomlTable root)
     {
         var projectSection = new ProjectSection();
-        var pythonSection = new PythonSection();
-        var navigationBarSection = new NavigationBarSection();
+        var celbridgeSection = new CelbridgeSection();
+        var shortcutsSection = new ShortcutsSection();
 
         // [project]
-        if (root.TryGetValue("project", out var projObj) && projObj is TomlTable proj)
+        if (root.TryGetValue("project", out var projectObject) && 
+            projectObject is TomlTable projectTable)
         {
-            var propsDict = new Dictionary<string, string>();
-            if (proj.TryGetValue("properties", out var propsObj) && propsObj is TomlTable props)
+            var propertiesDict = new Dictionary<string, string>();
+            if (projectTable.TryGetValue("properties", out var propertiesObject) && 
+                propertiesObject is TomlTable propertiesTable)
             {
-                foreach (var (k, v) in props)
+                foreach (var (k, v) in propertiesTable)
                 {
-                    propsDict[k] = TomlValueToString(v);
+                    propertiesDict[k] = TomlValueToString(v);
                 }
+            }
+
+            List<string>? dependencies = null;
+            if (projectTable.TryGetValue("dependencies", out var dependenciesObject) && 
+                dependenciesObject is TomlArray dependenciesArray)
+            {
+                dependencies = dependenciesArray.Select(x => x?.ToString() ?? string.Empty).ToList();
             }
 
             projectSection = projectSection with
             {
-                ProjectVersion = proj.TryGetValue("project_version", out var pv) ? pv?.ToString() : null,
-                CelbridgeVersion = proj.TryGetValue("celbridge_version", out var cv) ? cv?.ToString() : null,
-                Properties = propsDict
+                Name = projectTable.TryGetValue("name", out var name) ? name?.ToString() : null,
+                Version = projectTable.TryGetValue("version", out var version) ? version?.ToString() : null,
+                RequiresPython = projectTable.TryGetValue("requires-python", out var requiresPython) ? requiresPython?.ToString() : null,
+                Dependencies = dependencies,
+                Properties = propertiesDict
             };
         }
 
-        // [python]
-        if (root.TryGetValue("python", out var pyObj) && pyObj is TomlTable py)
+        // [celbridge]
+        if (root.TryGetValue("celbridge", out var celbridgeObject) &&
+            celbridgeObject is TomlTable celbridgeTable)
         {
-            List<string>? packages = null;
-            if (py.TryGetValue("packages", out var packagesObj) && packagesObj is TomlArray packagesArray)
-            {
-                packages = packagesArray.Select(x => x?.ToString() ?? string.Empty).ToList();
-            }
-
             var scriptsDict = new Dictionary<string, string>();
-            if (py.TryGetValue("scripts", out var scriptsObj) && scriptsObj is TomlTable scripts)
+            if (celbridgeTable.TryGetValue("scripts", out var scriptsObject) && 
+                scriptsObject is TomlTable scriptsTable)
             {
-                foreach (var (k, v) in scripts)
+                foreach (var (k, v) in scriptsTable)
                 {
                     scriptsDict[k] = v?.ToString() ?? string.Empty;
                 }
             }
 
-            pythonSection = pythonSection with
+            celbridgeSection = celbridgeSection with
             {
-                Version = py.TryGetValue("version", out var ver) ? ver?.ToString() : null,
-                Packages = packages,
+                Version = celbridgeTable.TryGetValue("version", out var ver) ? ver?.ToString() : null,
                 Scripts = scriptsDict
             };
         }
 
-        // [navigation_bar]
-        if (root.TryGetValue("navigation_bar", out var barObj) && barObj is TomlTable bar)
+        // [shortcuts]
+        if (root.TryGetValue("shortcuts", out var shortcutsObject) &&
+            shortcutsObject is TomlTable shortcutsTable)
         {
-            ExtractNavigationBarEntry(bar, navigationBarSection.RootCustomCommandNode, "Root", null);
+            var navigationBarSection = new NavigationBarSection();
+
+            // [shortcuts.navigation_bar]
+            if (shortcutsTable.TryGetValue("navigation_bar", out var navigationBarObject) && 
+                navigationBarObject is TomlTable navigationBarTable)
+            {
+                ExtractNavigationBarEntry(navigationBarTable, navigationBarSection.RootCustomCommandNode, "Root", null);
+            }
+
+            shortcutsSection = shortcutsSection with { NavigationBar = navigationBarSection };
         }
 
-        return new ProjectConfig { Project = projectSection, Python = pythonSection, NavigationBar = navigationBarSection };
+        return new ProjectConfig { Project = projectSection, Celbridge = celbridgeSection, Shortcuts = shortcutsSection };
     }
 
     private static bool CheckTableHasSubTable(TomlTable table)

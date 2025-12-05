@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -90,6 +91,11 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
         {
             OnPropertyChanged(nameof(IsWorkspaceLoaded));
+        });
+
+        _messengerService.Register<ReloadProjectMessage>(this, (r, m) =>
+        {
+         _ = ReloadProjectAsync();
         });
 
         // Register this class as the navigation provider for the application

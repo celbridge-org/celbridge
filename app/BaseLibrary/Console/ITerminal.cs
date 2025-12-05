@@ -11,6 +11,11 @@ public interface ITerminal : IDisposable
     event EventHandler<string>? OutputReceived;
 
     /// <summary>
+    /// Event fired when the terminal process has exited.
+    /// </summary>
+    event EventHandler? ProcessExited;
+
+    /// <summary>
     /// Stores a command temporarily until the system is ready to inject it into the terminal input.
     /// </summary>
     string CommandBuffer { get; set; }

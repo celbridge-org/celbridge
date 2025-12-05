@@ -4,6 +4,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
 using Celbridge.Logging;
+using Celbridge.Python;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -17,6 +18,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IExplorerService _explorerService;
     private readonly IDocumentsService _documentsService;
     private readonly IDataTransferService _dataTransferService;
+    private readonly IPythonService _pythonService;
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
@@ -32,6 +34,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
+        _pythonService = workspaceWrapper.WorkspaceService.PythonService;
     }
 
     //
@@ -48,7 +51,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         explorerService.ResourceTreeView = resourceTreeView;
 
-        _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);        
+        _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
     }
 
     public void OnUnloaded()
@@ -154,8 +157,12 @@ public partial class ResourceTreeViewModel : ObservableObject
 
             var extension = Path.GetExtension(resourceKey);
 
-            return extension == ExplorerConstants.PythonExtension ||
-                extension == ExplorerConstants.IPythonExtension;
+            if (extension == ExplorerConstants.PythonExtension ||
+                extension == ExplorerConstants.IPythonExtension)
+            {
+                // Only enable the Run option if the python host is available to run the script
+                return _pythonService.IsPythonHostAvailable;
+            }
         }
 
         return false;
