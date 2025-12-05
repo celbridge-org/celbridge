@@ -55,7 +55,7 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         // Broadcast a console error message.
         // This message will be handled by OnConsoleError() in this class.
-        var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.PythonProcessError, projectFile);
+        var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.PythonHostProcessError, projectFile);
         _messengerService.Send(errorMessage);
     }
 
@@ -81,12 +81,12 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.PythonPreInitError:
+            case ConsoleErrorType.PythonHostPreInitError:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.PythonProcessError:
+            case ConsoleErrorType.PythonHostProcessError:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorMessage", configFile);
                 break;

@@ -11,7 +11,7 @@ public sealed record class ProjectConfig
 }
 
 /// <summary>
-/// Models the [project] section from the project config.
+/// Models the [project] section from the .celbridge project config.
 /// Uses pyproject.toml naming conventions for Python-related fields.
 /// The [project] section can be copied to a pyproject.toml file for use with 
 /// the Python packaging tools such as twine. 

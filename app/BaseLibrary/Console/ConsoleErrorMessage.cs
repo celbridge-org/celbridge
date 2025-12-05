@@ -1,24 +1,24 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// Types of console initialization errors.
+/// Error states that the python console can get into.
 /// </summary>
 public enum ConsoleErrorType
 {
     /// <summary>
-    /// Failed to parse .celbridge project config file during initialization.
+    /// The .celbridge project config file doesn't exist or failed to parse.
     /// </summary>
     InvalidProjectConfig,
 
     /// <summary>
-    /// Initialization failed prior to starting the Python process.
+    /// Initialization failed prior to starting the python host process.
     /// </summary>
-    PythonPreInitError,
+    PythonHostPreInitError,
 
     /// <summary>
-    /// The python process exited unexpectedly.
+    /// The python host process exited unexpectedly.
     /// </summary>
-    PythonProcessError,
+    PythonHostProcessError,
 }
 
 /// <summary>

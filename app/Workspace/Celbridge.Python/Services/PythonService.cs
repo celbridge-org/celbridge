@@ -90,7 +90,7 @@ public class PythonService : IPythonService, IDisposable
                 return Result.Fail($"Project section not specified in project config '{projectFileName}'");
             }
 
-            // Note: uv run expects an explicit python version (e.g. "3.12") rather than a range like in pyproject.toml (e.g. ">=3.12")
+            // Note: uv run accepts a specific python version (e.g. "3.12") or a range descriptor (e.g. ">=3.12")
             var pythonVersion = pythonConfig.RequiresPython;
             if (string.IsNullOrWhiteSpace(pythonVersion))
             {
@@ -106,7 +106,7 @@ public class PythonService : IPythonService, IDisposable
             if (installResult.IsFailure)
             {
                 var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.PythonPreInitError, 
+                    ConsoleErrorType.PythonHostPreInitError, 
                     "Failed to install Python support files");
                 _messengerService.Send(errorMessage);
                 return Result.Fail("Failed to ensure Python support files are installed")
@@ -121,7 +121,7 @@ public class PythonService : IPythonService, IDisposable
             if (!File.Exists(uvExePath))
             {
                 var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.PythonPreInitError, 
+                    ConsoleErrorType.PythonHostPreInitError, 
                     $"uv not found at '{uvExePath}'");
                 _messengerService.Send(errorMessage);
                 return Result.Fail($"uv not found at '{uvExePath}'");
