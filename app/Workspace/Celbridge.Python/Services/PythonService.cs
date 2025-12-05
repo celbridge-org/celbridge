@@ -1,3 +1,5 @@
+using Celbridge.Console;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -36,6 +38,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUtilityService _utilityService;
+    private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
     private readonly Func<string, IRpcService> _rpcServiceFactory;
     private readonly Func<IRpcService, IPythonRpcClient> _pythonRpcClientFactory;
@@ -45,10 +48,13 @@ public class PythonService : IPythonService, IDisposable
 
     public IPythonRpcClient RpcClient => _pythonRpcClient!;
 
+    public bool IsPythonHostAvailable { get; private set; } = false;
+
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IUtilityService utilityService,
+        IMessengerService messengerService,
         ILogger<PythonService> logger,
         Func<string, IRpcService> rpcServiceFactory,
         Func<IRpcService, IPythonRpcClient> pythonRpcClientFactory)
@@ -56,6 +62,7 @@ public class PythonService : IPythonService, IDisposable
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _utilityService = utilityService;
+        _messengerService = messengerService;
         _logger = logger;
         _rpcServiceFactory = rpcServiceFactory;
         _pythonRpcClientFactory = pythonRpcClientFactory;
@@ -71,26 +78,37 @@ public class PythonService : IPythonService, IDisposable
                 return Result.Fail("Failed to run python as no project is loaded");
             }
 
+            // Get the project file name for error messages
+            var projectFileName = Path.GetFileName(project.ProjectFilePath);
+
             // Read python version from project config
-            var pythonConfig = project.ProjectConfig?.Config?.Python!;
+            var pythonConfig = project.ProjectConfig?.Config?.Project!;
             if (pythonConfig is null)
             {
-                return Result.Fail("Python section not specified in project config");
+                var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
+                _messengerService.Send(errorMessage);
+                return Result.Fail($"Project section not specified in project config '{projectFileName}'");
             }
 
-            var pythonVersion = pythonConfig.Version;
+            // Note: uv run accepts a specific python version (e.g. "3.12") or a range descriptor (e.g. ">=3.12")
+            var pythonVersion = pythonConfig.RequiresPython;
             if (string.IsNullOrWhiteSpace(pythonVersion))
             {
-                return Result.Fail("Python version not specified in project config");
+                var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
+                _messengerService.Send(errorMessage);
+                return Result.Fail($"Python version not specified in requires-python field in project config '{projectFileName}'");
             }
 
             // Ensure that python support files are installed
-
             var workingDir = project.ProjectFolderPath;
 
             var installResult = await PythonInstaller.InstallPythonAsync();
             if (installResult.IsFailure)
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.PythonHostPreInitError, 
+                    "Failed to install Python support files");
+                _messengerService.Send(errorMessage);
                 return Result.Fail("Failed to ensure Python support files are installed")
                     .WithErrors(installResult);
             }
@@ -102,6 +120,10 @@ public class PythonService : IPythonService, IDisposable
             var uvExePath = Path.Combine(pythonFolder, uvFileName);
             if (!File.Exists(uvExePath))
             {
+                var errorMessage = new ConsoleErrorMessage(
+                    ConsoleErrorType.PythonHostPreInitError, 
+                    $"uv not found at '{uvExePath}'");
+                _messengerService.Send(errorMessage);
                 return Result.Fail($"uv not found at '{uvExePath}'");
             }
 
@@ -147,7 +169,8 @@ public class PythonService : IPythonService, IDisposable
             var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
             if (findCelbridgeWheelResult.IsFailure)
             {
-                return findCelbridgeWheelResult;
+                return Result.Fail("Failed to find celbridge wheel file")
+                    .WithErrors(findCelbridgeWheelResult);
             }
             var celbridgeWheelPath = findCelbridgeWheelResult.Value;
 
@@ -160,7 +183,8 @@ public class PythonService : IPythonService, IDisposable
             var findHostWheelResult = FindWheelFile(pythonFolder, "celbridge_host");
             if (findHostWheelResult.IsFailure)
             {
-                return findHostWheelResult;
+                return Result.Fail("Failed to find celbridge_host wheel file")
+                    .WithErrors(findHostWheelResult);
             }
             var hostWheelPath = findHostWheelResult.Value;
 
@@ -172,7 +196,7 @@ public class PythonService : IPythonService, IDisposable
             };
             
             // Add any additional packages specified in the project config
-            var pythonPackages = pythonConfig.Packages;
+            var pythonPackages = pythonConfig.Dependencies;
             if (pythonPackages is not null)
             {
                 foreach (var pythonPackage in pythonPackages)
@@ -188,6 +212,7 @@ public class PythonService : IPythonService, IDisposable
             var commandLine = new CommandLineBuilder(uvExePath)
                 .Add("run")                                 // uv run
                 .Add("--cache-dir", uvCacheDir)             // cache uv files in app data folder (not globally per-user)
+                .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
                 .Add("--python", pythonVersion!)            // python interpreter version
                 //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
                 .Add(packageArgs.ToArray())                 // specify the packages to install     
@@ -200,21 +225,44 @@ public class PythonService : IPythonService, IDisposable
                 .ToString();
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
-            terminal.Start(commandLine, workingDir);
-
-            // Create and connect RPC service
-            _rpcService = _rpcServiceFactory(pipeName);
             
-            // Wait for Python process to start RPC server (with timeout)
-            var connectResult = await _rpcService.ConnectAsync();
-            if (connectResult.IsFailure)
-            {
-                return Result.Fail("Failed to connect to Python RPC server")
-                    .WithErrors(connectResult);
-            }
+            // Start the terminal process
+            // Any errors during Python/uv initialization will be displayed in the terminal
+            terminal.Start(commandLine, workingDir);
+            _logger.LogInformation("Python terminal started successfully");
 
-            // Create Python RPC client for strongly-typed Python method calls
-            _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
+            // Create RPC service (but don't connect yet)
+            _rpcService = _rpcServiceFactory(pipeName);
+
+            // Connect to RPC in the background without blocking workspace loading
+            // The Python process needs time to start up and create the RPC server
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Wait for Python process to start RPC server (with timeout)
+                    var connectResult = await _rpcService.ConnectAsync();
+                    if (connectResult.IsFailure)
+                    {
+                        _logger.LogWarning("Failed to connect to Python RPC server: {Error}", connectResult.Error);
+                        _logger.LogWarning("Python REPL is available, but RPC features may not work until the connection is established.");
+                        return;
+                    }
+
+                    // Create Python RPC client for strongly-typed Python method calls
+                    _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
+                    _logger.LogInformation("Python RPC client connected successfully");
+
+                    IsPythonHostAvailable = true;
+
+                    var message = new PythonHostInitializedMessage();
+                    _messengerService.Send(message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Exception occurred while connecting to Python RPC server");
+                }
+            });
 
             return Result.Ok();
         }

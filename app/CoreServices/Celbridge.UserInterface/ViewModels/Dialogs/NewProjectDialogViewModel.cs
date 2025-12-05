@@ -9,7 +9,6 @@ public partial class NewProjectDialogViewModel : ObservableObject
 {
     private const int MaxLocationLength = 80;
 
-    private readonly IStringLocalizer _stringLocalizer;
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
@@ -37,12 +36,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public NewProjectConfigType ConfigType { get; set; }
 
     public NewProjectDialogViewModel(
-        IStringLocalizer stringLocalizer,
         IEditorSettings editorSettings,
         IProjectService projectService,
         IFilePickerService filePickerService)
     {
-        _stringLocalizer = stringLocalizer;
         _editorSettings = editorSettings;
         _projectService = projectService;
         _filePickerService = filePickerService;

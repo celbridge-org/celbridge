@@ -8,6 +8,7 @@ public class Terminal : ITerminal, IDisposable
 
 #pragma warning disable CS0067 // Event is used in Windows platform-specific code
     public event EventHandler<string>? OutputReceived;
+    public event EventHandler? ProcessExited;
 #pragma warning restore CS0067
 
     public string CommandBuffer { get; set; } = string.Empty;
@@ -18,6 +19,11 @@ public class Terminal : ITerminal, IDisposable
         _terminal.OutputReceived += (sender, output) =>
         {
             OutputReceived?.Invoke(sender, output);
+        };
+
+        _terminal.ProcessExited += (sender, e) =>
+        {
+            ProcessExited?.Invoke(sender, e);
         };
 #else
         throw new NotImplementedException();

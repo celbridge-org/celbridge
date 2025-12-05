@@ -348,6 +348,12 @@
   <data name="ConsolePanel_WelcomeMessage" xml:space="preserve">
     <value>Welcome to Celbridge v{0}! Type 'Help()' for a list of available commands.</value>
   </data>
+  <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
+    <value>Project Configuration Error</value>
+  </data>
+  <data name="ConsolePanel_ProjectConfigErrorMessage" xml:space="preserve">
+    <value>Please check '{0}' for syntax errors and reload the project.</value>
+  </data>
   <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
     <value>Alert</value>
   </data>
@@ -524,5 +530,17 @@ Do you wish to continue?</value>
   </data>
   <data name="MainPage_ReloadProjectTooltip" xml:space="preserve">
     <value>Reload the current Celbridge project</value>
+  </data>
+  <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
+    <value>Python Initialization Error</value>
+  </data>
+  <data name="ConsolePanel_PythonProcessErrorTitle" xml:space="preserve">
+    <value>Python Process Error</value>
+  </data>
+  <data name="ConsolePanel_PythonProcessErrorMessage" xml:space="preserve">
+    <value>The python process has exited unexpectedly. Please check '{0}' for configuration errors and reload the project.</value>
+  </data>
+  <data name="ConsolePanel_PythonInitializationErrorMessage" xml:space="preserve">
+    <value>Please check '{0}' for configuration errors and reload the project</value>
   </data>
 </root>

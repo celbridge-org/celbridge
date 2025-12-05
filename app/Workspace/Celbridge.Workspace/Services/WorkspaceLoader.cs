@@ -126,20 +126,20 @@ public class WorkspaceLoader
         // Initialize terminal window and Python scripting
         //
 
+        // Workspace loading should continue even if terminal initialization fails
+
         var consoleService = workspaceService.ConsoleService;
         var initTerminal = await consoleService.InitializeTerminalWindow();
         if (initTerminal.IsFailure)
         {
-            return Result.Fail("Failed to initialize console terminal")
-                .WithErrors(initTerminal);
+            _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
         }
 
         var pythonService = workspaceService.PythonService;
         var initPython = await pythonService.InitializePython();
         if (initPython.IsFailure)
         {
-            return Result.Fail("Failed to initialize Python scripting")
-                .WithErrors(initPython);
+            _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
         }
 
         return Result.Ok();
