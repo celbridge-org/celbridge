@@ -48,6 +48,8 @@ public class PythonService : IPythonService, IDisposable
 
     public IPythonRpcClient RpcClient => _pythonRpcClient!;
 
+    public bool IsPythonInitialized { get; private set; } = false;
+
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
@@ -250,6 +252,11 @@ public class PythonService : IPythonService, IDisposable
                     // Create Python RPC client for strongly-typed Python method calls
                     _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
                     _logger.LogInformation("Python RPC client connected successfully");
+
+                    IsPythonInitialized = true;
+
+                    var message = new PythonInitializedMessage();
+                    _messengerService.Send(message);
                 }
                 catch (Exception ex)
                 {
