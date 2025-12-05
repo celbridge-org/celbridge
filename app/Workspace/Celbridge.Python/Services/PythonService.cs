@@ -48,7 +48,7 @@ public class PythonService : IPythonService, IDisposable
 
     public IPythonRpcClient RpcClient => _pythonRpcClient!;
 
-    public bool IsPythonInitialized { get; private set; } = false;
+    public bool IsPythonHostAvailable { get; private set; } = false;
 
     public PythonService(
         IProjectService projectService,
@@ -253,9 +253,9 @@ public class PythonService : IPythonService, IDisposable
                     _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
                     _logger.LogInformation("Python RPC client connected successfully");
 
-                    IsPythonInitialized = true;
+                    IsPythonHostAvailable = true;
 
-                    var message = new PythonInitializedMessage();
+                    var message = new PythonHostInitializedMessage();
                     _messengerService.Send(message);
                 }
                 catch (Exception ex)

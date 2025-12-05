@@ -1,6 +1,6 @@
 namespace Celbridge.Python;
 
 /// <summary>
-/// Message sent when the Python Host has initialized.
+/// Message sent when the python host has initialized.
 /// </summary>
-public record class PythonInitializedMessage();
+public record class PythonHostInitializedMessage();
