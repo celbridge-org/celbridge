@@ -391,7 +391,6 @@ public sealed partial class MainPage : Page
         foreach (var (k, v) in node.Nodes)
         {
             var newItem = new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.Folder))
                     .Name(k)
                     .Content(k);
 
@@ -412,12 +411,12 @@ public sealed partial class MainPage : Page
                 continue;
             }
 
-            Symbol icon = Symbol.Placeholder;
+            Symbol? icon = null;
             if (command.Icon is not null)
             {
-                if (!Enum.TryParse(command.Icon, out icon))
+                if (Enum.TryParse(command.Icon, out Symbol parsedIcon))
                 {
-                    icon = Symbol.Placeholder;
+                    icon = parsedIcon;
                 }
             }
 
@@ -431,9 +430,9 @@ public sealed partial class MainPage : Page
                     item.ToolTipService(PlacementMode.Right, null, command.ToolTip);
                 }
 
-                if (icon != Symbol.Placeholder)
+                if (icon.HasValue)
                 {
-                    item.Icon = new SymbolIcon(icon);
+                    item.Icon = new SymbolIcon(icon.Value);
                 }
 
                 if ((command.Name != null) && (command.Name.Length > 0))
@@ -451,11 +450,16 @@ public sealed partial class MainPage : Page
             TagsToScriptDictionary.Add(command.Path!, command.Script!);
 
             var commandItem = new NavigationViewItem()
-                .Icon(new SymbolIcon(icon))
                 .ToolTipService(PlacementMode.Right, null, command.ToolTip)
                 .Name(command.Name ?? "UserFunction")
                 .Content(command.Name ?? "UserFunction")
                 .Tag(command.Path!);
+            
+            if (icon.HasValue)
+            {
+                commandItem.Icon(new SymbolIcon(icon.Value));
+            }
+            
             menuItems.Add(commandItem);
             _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
         }
