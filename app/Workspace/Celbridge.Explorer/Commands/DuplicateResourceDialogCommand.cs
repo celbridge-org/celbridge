@@ -55,18 +55,9 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
         var resourceName = resource.Name;
 
-        Range selectedRange;
-        switch (resource)
-        {
-            case IFileResource:
-                selectedRange = new Range(0, Path.GetFileNameWithoutExtension(resourceName).Length); // Don't select extension
-                break;
-            case IFolderResource:
-                selectedRange = new Range(0, resourceName.Length);
-                break;
-            default:
-                throw new ArgumentException();
-        }
+        // Select only the filename part without the extension
+        var extensionIndex = resourceName.LastIndexOf('.');
+        var selectedRange = extensionIndex > 0 ? 0..extensionIndex : ..;
 
         var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resourceName);
 
