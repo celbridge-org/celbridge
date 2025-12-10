@@ -44,6 +44,7 @@ public sealed partial class MainPage : Page
     private NavigationView _mainNavigation;
     private Frame _contentFrame;
     private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
+    private string _currentNavigationTag = NavigationConstants.HomeTag;
 
     public MainPage()
     {
@@ -72,22 +73,26 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.GlobalNavigationButton))
                     .Name("MenuNavigationItem")
+                    .SelectsOnInvoked(false)
                     .MenuItems(
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
                             .Tag(NavigationConstants.NewProjectTag)
                             .Content(NewProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, NewProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.OpenLocal))
                             .Tag(NavigationConstants.OpenProjectTag)
                             .Content(OpenProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, OpenProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.Refresh))
                             .Tag(NavigationConstants.ReloadProjectTag)
                             .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
                             .Content(ReloadProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, ReloadProjectTooltipString)
                     )
                     .Content(HomeString),
@@ -202,6 +207,9 @@ public sealed partial class MainPage : Page
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
 
+        // Ensure correct initial navigation state
+        UpdateNavigationSelection();
+
         // Configure shortcut menu items.
         _projectService.RegisterRebuildShortcutsUI(BuildShortcutMenuItems);
 
@@ -294,9 +302,32 @@ public sealed partial class MainPage : Page
 
         if (_contentFrame.Navigate(pageType, parameter))
         {
+            // Update navigation state based on the page type
+            UpdateNavigationStateForPageType(pageType);
             return Result.Ok();
         }
         return Result.Fail($"Failed to navigate to page type {pageType}");
+    }
+
+    private void UpdateNavigationStateForPageType(Type pageType)
+    {
+        // Map page types to navigation tags
+        var pageName = pageType.Name;
+        
+        string newTag = pageName switch
+        {
+            "HomePage" => NavigationConstants.HomeTag,
+            "WorkspacePage" => NavigationConstants.ExplorerTag,
+            "SettingsPage" => NavigationConstants.SettingsTag,
+            "CommunityPage" => NavigationConstants.CommunityTag,
+            _ => _currentNavigationTag // Keep current if unknown page type
+        };
+
+        if (newTag != _currentNavigationTag)
+        {
+            _currentNavigationTag = newTag;
+            UpdateNavigationSelection();
+        }
     }
 
     private string ReturnCurrentPage()
@@ -312,10 +343,78 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void UpdateNavigationSelection()
+    {
+        // Find the navigation item that matches the current navigation tag
+        var itemToSelect = FindNavigationItemByTag(_currentNavigationTag);        
+        if (itemToSelect != null)
+        {
+            _mainNavigation.SelectedItem = itemToSelect;
+        }
+    }
+
+    private NavigationViewItem? FindNavigationItemByTag(string tag)
+    {
+        // Check settings
+        if (tag == NavigationConstants.SettingsTag)
+        {
+            return null; // Settings is handled differently
+        }
+
+        // Search through menu items
+        foreach (var item in _mainNavigation.MenuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.Tag?.ToString() == tag)
+                {
+                    return navItem;
+                }
+            }
+        }
+
+        // Search through footer items
+        foreach (var item in _mainNavigation.FooterMenuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.Tag?.ToString() == tag)
+                {
+                    return navItem;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void CloseFlyoutMenus()
+    {
+        // Close all flyout menus by recursively collapsing expanded items
+        CloseFlyoutMenusRecursive(_mainNavigation.MenuItems);
+        CloseFlyoutMenusRecursive(_mainNavigation.FooterMenuItems);
+    }
+
+    private void CloseFlyoutMenusRecursive(IList<object> menuItems)
+    {
+        foreach (var item in menuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.MenuItems.Count > 0)
+                {
+                    navItem.IsExpanded = false;
+                    CloseFlyoutMenusRecursive(navItem.MenuItems);
+                }
+            }
+        }
+    }
+
     private void OnMainPage_NavigationViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         if (args.IsSettingsInvoked)
         {
+            _currentNavigationTag = NavigationConstants.SettingsTag;
             ViewModel.OnSelectNavigationItem(NavigationConstants.SettingsTag);
             return;
         }
@@ -328,44 +427,68 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         if (navigationItemTag != null)
         {
-            // Check if tag is a user command tag.
-            if (TagsToScriptDictionary.ContainsKey(navigationItemTag.ToString()!))
+            var tag = navigationItemTag.ToString();
+            Guard.IsNotNullOrEmpty(tag);
+
+            // Check if tag is a user command tag (shortcut).
+            if (TagsToScriptDictionary.ContainsKey(tag))
             {
-                var script = TagsToScriptDictionary[navigationItemTag.ToString()!];
+                var script = TagsToScriptDictionary[tag];
                 if ((script == null) || (script.Length == 0))
                 {
                     return;
                 }
 
+                // Close flyout menus since shortcut items have SelectsOnInvoked(false)
+                CloseFlyoutMenus();
+
                 var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
                 workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
 
+                // Restore the correct navigation selection after executing shortcut
+                UpdateNavigationSelection();
                 return;
             }
 
-            var tag = navigationItemTag.ToString();
-            Guard.IsNotNullOrEmpty(tag);
+            // Check if this is a main menu command (NewProject, OpenProject, ReloadProject)
+            if (tag == NavigationConstants.NewProjectTag ||
+                tag == NavigationConstants.OpenProjectTag ||
+                tag == NavigationConstants.ReloadProjectTag)
+            {
+                // Close flyout menus since menu items have SelectsOnInvoked(false)
+                CloseFlyoutMenus();
 
+                // Execute the command
+                ViewModel.OnSelectNavigationItem(tag);
+
+                // Restore the correct navigation selection
+                UpdateNavigationSelection();
+                return;
+            }
+
+            // This is a regular navigation item
+            // Update the current navigation state
+            _currentNavigationTag = tag;
             ViewModel.OnSelectNavigationItem(tag);
-        }
-    }
-
-    public void Navigate(Type pageType, object parameter)
-    {
-        Guard.IsNotNull(_contentFrame);
-
-        if (_contentFrame.Content is null ||
-            _contentFrame.Content.GetType() != pageType)
-        {
-            _contentFrame.Navigate(pageType, parameter);
+            
+            // Ensure selection reflects the new state
+            UpdateNavigationSelection();
         }
     }
 
     public Result SelectNavigationItemByName(string navItemName)
-    {      
-        // %%% Work around for purpose of presentation until the bug with the intended line can be resolved.
-        _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
-//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
+    {
+        // Map the navigation item name to a tag
+        string tag = navItemName switch
+        {
+            "HomeNavigationItem" => NavigationConstants.HomeTag,
+            "ExplorerNavigationItem" => NavigationConstants.ExplorerTag,
+            "CommunityNavigationItem" => NavigationConstants.CommunityTag,
+            _ => NavigationConstants.HomeTag
+        };
+
+        _currentNavigationTag = tag;
+        UpdateNavigationSelection();
         return Result.Ok();
     }
 
@@ -454,7 +577,8 @@ public sealed partial class MainPage : Page
                 .ToolTipService(PlacementMode.Right, null, command.ToolTip)
                 .Name(command.Name ?? "Shortcut")
                 .Content(command.Name ?? "Shortcut")
-                .Tag(command.Path!);
+                .Tag(command.Path!)
+                .SelectsOnInvoked(false);
             
             if (icon.HasValue)
             {
