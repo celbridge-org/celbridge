@@ -36,9 +36,9 @@ public partial class ProjectConfigService : IProjectConfigService
             _root = (TomlTable)parse.ToModel();
             _config = MapRootToModel(_root);
 
-            // Notify Main Page to allow UI updates for user functions.
+            // Notify Main Page to allow UI updates for shortcuts.
             IProjectService projectService = ServiceLocator.AcquireService<IProjectService>();
-            projectService.InvokeRebuildUserFunctionsUI(_config.Shortcuts.NavigationBar);
+            projectService.InvokeRebuildShortcutsUI(_config.Shortcuts.NavigationBar);
 
             return Result.Ok();
         }
