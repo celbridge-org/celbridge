@@ -516,7 +516,8 @@ public sealed partial class MainPage : Page
             var newItem = new NavigationViewItem()
                     .Name(k)
                     .Content(k)
-                    .SelectsOnInvoked(false);
+                    .SelectsOnInvoked(false)
+                    .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspacePageActive));
 
             menuItems.Add(newItem);
             string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
@@ -578,7 +579,8 @@ public sealed partial class MainPage : Page
                 .Name(command.Name ?? "Shortcut")
                 .Content(command.Name ?? "Shortcut")
                 .Tag(command.Path!)
-                .SelectsOnInvoked(false);
+                .SelectsOnInvoked(false)
+                .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspacePageActive));
             
             if (icon.HasValue)
             {
