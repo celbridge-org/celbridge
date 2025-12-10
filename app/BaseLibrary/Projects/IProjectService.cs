@@ -33,26 +33,26 @@ public interface IProjectService
     Task<Result> UnloadProjectAsync();
 
     /// <summary>
-    /// Register our handler for rebuilding the User Functions in the UI.
+    /// Register our handler for rebuilding the Shortcuts in the UI.
     /// </summary>
-    void RegisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, RebuildUserFunctionsUIEventArgs> handler);
+    void RegisterRebuildShortcutsUI(TypedEventHandler<IProjectService, RebuildShortcutsUIEventArgs> handler);
 
     /// <summary>
-    /// Unregister our handler for rebuilding the User Functions in the UI.
+    /// Unregister our handler for rebuilding the Shortcuts in the UI.
     /// </summary>
-    void UnregisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, RebuildUserFunctionsUIEventArgs> handler);
+    void UnregisterRebuildShortcutsUI(TypedEventHandler<IProjectService, RebuildShortcutsUIEventArgs> handler);
 
     /// <summary>
-    /// Event Arguments for RebuildUserFunctionsUI event.
+    /// Event Arguments for RebuildShortcutsUI event.
     /// </summary>
-    public class RebuildUserFunctionsUIEventArgs : EventArgs
+    public class RebuildShortcutsUIEventArgs : EventArgs
     {
         // Storage for our Navigation Bar Section information from the configuration.
         public NavigationBarSection NavigationBarSection { get; set; } = new();
     }
 
     /// <summary>
-    /// Call to invoke our handler for rebuilding the User Functions in the UI.
+    /// Call to invoke our handler for rebuilding the Shortcuts in the UI.
     /// </summary>
-    void InvokeRebuildUserFunctionsUI(NavigationBarSection navigationBarSection);
+    void InvokeRebuildShortcutsUI(NavigationBarSection navigationBarSection);
 }

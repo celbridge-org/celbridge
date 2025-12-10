@@ -49,6 +49,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
+    [ObservableProperty]
+    private bool _isWorkspacePageActive;
+
     public event Func<Type, object, Result>? OnNavigate;
 
 #pragma warning disable CS0067 // Event is used in MainPage.cs for navigation
@@ -128,6 +131,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         switch (tag)
         {
             case NavigationConstants.HomeTag:
+                IsWorkspacePageActive = false;
                 _navigationService.NavigateToPage(HomePageName);
                 return;
 
@@ -144,10 +148,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.SettingsTag:
+                IsWorkspacePageActive = false;
                 _navigationService.NavigateToPage(SettingsPageName);
                 return;
 
             case NavigationConstants.ExplorerTag:
+                IsWorkspacePageActive = true;
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -156,6 +162,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.SearchTag:
+                IsWorkspacePageActive = true;
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -164,6 +171,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.DebugTag:
+                IsWorkspacePageActive = true;
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -172,6 +180,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.RevisionControlTag:
+                IsWorkspacePageActive = true;
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -180,6 +189,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.CommunityTag:
+                IsWorkspacePageActive = false;
                 _navigationService.NavigateToPage(CommunityPageName);
                 return;
         }
