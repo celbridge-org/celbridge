@@ -543,4 +543,10 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_PythonInitializationErrorMessage" xml:space="preserve">
     <value>Please check '{0}' for configuration errors and reload the project</value>
   </data>
+  <data name="ConsolePanel_ProjectChangeBannerTitle" xml:space="preserve">
+    <value>Project Configuration Changed</value>
+  </data>
+  <data name="ConsolePanel_ProjectChangeBannerMessage" xml:space="preserve">
+    <value>The Celbridge project has been modified and needs to be reloaded.</value>
+  </data>
 </root>
