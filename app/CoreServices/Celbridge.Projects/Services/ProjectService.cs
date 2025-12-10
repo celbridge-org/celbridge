@@ -21,7 +21,7 @@ public class ProjectService : IProjectService
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
 
-    public event TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs>? RebuildUserFunctionsUI;
+    public event TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs>? RebuildShortcutsUI;
 
     public IProject? CurrentProject { get; private set; }
 
@@ -37,19 +37,19 @@ public class ProjectService : IProjectService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public void RegisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> handler)
+    public void RegisterRebuildShortcutsUI(TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs> handler)
     {
-        RebuildUserFunctionsUI += handler;
+        RebuildShortcutsUI += handler;
     }
 
-    public void UnregisterRebuildUserFunctionsUI(TypedEventHandler<IProjectService, IProjectService.RebuildUserFunctionsUIEventArgs> handler)
+    public void UnregisterRebuildShortcutsUI(TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs> handler)
     {
-        RebuildUserFunctionsUI -= handler;
+        RebuildShortcutsUI -= handler;
     }
 
-    public void InvokeRebuildUserFunctionsUI(NavigationBarSection navigationBarSection)
+    public void InvokeRebuildShortcutsUI(NavigationBarSection navigationBarSection)
     {
-        RebuildUserFunctionsUI?.Invoke(this, new IProjectService.RebuildUserFunctionsUIEventArgs() { NavigationBarSection = navigationBarSection });
+        RebuildShortcutsUI?.Invoke(this, new IProjectService.RebuildShortcutsUIEventArgs() { NavigationBarSection = navigationBarSection });
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)

@@ -43,7 +43,8 @@ public sealed partial class MainPage : Page
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
     private Frame _contentFrame;
-    private List<KeyValuePair<IList<object>, NavigationViewItem>> _userScriptMenuItems = new();
+    private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
+    private string _currentNavigationTag = NavigationConstants.HomeTag;
 
     public MainPage()
     {
@@ -72,22 +73,26 @@ public sealed partial class MainPage : Page
                 new NavigationViewItem()
                     .Icon(new SymbolIcon(Symbol.GlobalNavigationButton))
                     .Name("MenuNavigationItem")
+                    .SelectsOnInvoked(false)
                     .MenuItems(
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.NewFolder))
                             .Tag(NavigationConstants.NewProjectTag)
                             .Content(NewProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, NewProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.OpenLocal))
                             .Tag(NavigationConstants.OpenProjectTag)
                             .Content(OpenProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, OpenProjectTooltipString),
                         new NavigationViewItem()
                             .Icon(new SymbolIcon(Symbol.Refresh))
                             .Tag(NavigationConstants.ReloadProjectTag)
                             .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspaceLoaded))
                             .Content(ReloadProjectString)
+                            .SelectsOnInvoked(false)
                             .ToolTipService(PlacementMode.Right, null, ReloadProjectTooltipString)
                     )
                     .Content(HomeString),
@@ -202,8 +207,11 @@ public sealed partial class MainPage : Page
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
 
-        // Configure user function menu items.
-        _projectService.RegisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+        // Ensure correct initial navigation state
+        UpdateNavigationSelection();
+
+        // Configure shortcut menu items.
+        _projectService.RegisterRebuildShortcutsUI(BuildShortcutMenuItems);
 
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
@@ -244,7 +252,7 @@ public sealed partial class MainPage : Page
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
 
-        _projectService.UnregisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+        _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
     private bool OnKeyDown(VirtualKey key)
@@ -294,9 +302,32 @@ public sealed partial class MainPage : Page
 
         if (_contentFrame.Navigate(pageType, parameter))
         {
+            // Update navigation state based on the page type
+            UpdateNavigationStateForPageType(pageType);
             return Result.Ok();
         }
         return Result.Fail($"Failed to navigate to page type {pageType}");
+    }
+
+    private void UpdateNavigationStateForPageType(Type pageType)
+    {
+        // Map page types to navigation tags
+        var pageName = pageType.Name;
+        
+        string newTag = pageName switch
+        {
+            "HomePage" => NavigationConstants.HomeTag,
+            "WorkspacePage" => NavigationConstants.ExplorerTag,
+            "SettingsPage" => NavigationConstants.SettingsTag,
+            "CommunityPage" => NavigationConstants.CommunityTag,
+            _ => _currentNavigationTag // Keep current if unknown page type
+        };
+
+        if (newTag != _currentNavigationTag)
+        {
+            _currentNavigationTag = newTag;
+            UpdateNavigationSelection();
+        }
     }
 
     private string ReturnCurrentPage()
@@ -312,10 +343,78 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void UpdateNavigationSelection()
+    {
+        // Find the navigation item that matches the current navigation tag
+        var itemToSelect = FindNavigationItemByTag(_currentNavigationTag);        
+        if (itemToSelect != null)
+        {
+            _mainNavigation.SelectedItem = itemToSelect;
+        }
+    }
+
+    private NavigationViewItem? FindNavigationItemByTag(string tag)
+    {
+        // Check settings
+        if (tag == NavigationConstants.SettingsTag)
+        {
+            return null; // Settings is handled differently
+        }
+
+        // Search through menu items
+        foreach (var item in _mainNavigation.MenuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.Tag?.ToString() == tag)
+                {
+                    return navItem;
+                }
+            }
+        }
+
+        // Search through footer items
+        foreach (var item in _mainNavigation.FooterMenuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.Tag?.ToString() == tag)
+                {
+                    return navItem;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void CloseFlyoutMenus()
+    {
+        // Close all flyout menus by recursively collapsing expanded items
+        CloseFlyoutMenusRecursive(_mainNavigation.MenuItems);
+        CloseFlyoutMenusRecursive(_mainNavigation.FooterMenuItems);
+    }
+
+    private void CloseFlyoutMenusRecursive(IList<object> menuItems)
+    {
+        foreach (var item in menuItems)
+        {
+            if (item is NavigationViewItem navItem)
+            {
+                if (navItem.MenuItems.Count > 0)
+                {
+                    navItem.IsExpanded = false;
+                    CloseFlyoutMenusRecursive(navItem.MenuItems);
+                }
+            }
+        }
+    }
+
     private void OnMainPage_NavigationViewItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         if (args.IsSettingsInvoked)
         {
+            _currentNavigationTag = NavigationConstants.SettingsTag;
             ViewModel.OnSelectNavigationItem(NavigationConstants.SettingsTag);
             return;
         }
@@ -328,62 +427,86 @@ public sealed partial class MainPage : Page
         var navigationItemTag = item.Tag;
         if (navigationItemTag != null)
         {
-            // Check if tag is a user command tag.
-            if (TagsToScriptDictionary.ContainsKey(navigationItemTag.ToString()!))
+            var tag = navigationItemTag.ToString();
+            Guard.IsNotNullOrEmpty(tag);
+
+            // Check if tag is a user command tag (shortcut).
+            if (TagsToScriptDictionary.ContainsKey(tag))
             {
-                var script = TagsToScriptDictionary[navigationItemTag.ToString()!];
+                var script = TagsToScriptDictionary[tag];
                 if ((script == null) || (script.Length == 0))
                 {
                     return;
                 }
 
+                // Close flyout menus since shortcut items have SelectsOnInvoked(false)
+                CloseFlyoutMenus();
+
                 var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
                 workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
 
+                // Restore the correct navigation selection after executing shortcut
+                UpdateNavigationSelection();
                 return;
             }
 
-            var tag = navigationItemTag.ToString();
-            Guard.IsNotNullOrEmpty(tag);
+            // Check if this is a main menu command (NewProject, OpenProject, ReloadProject)
+            if (tag == NavigationConstants.NewProjectTag ||
+                tag == NavigationConstants.OpenProjectTag ||
+                tag == NavigationConstants.ReloadProjectTag)
+            {
+                // Close flyout menus since menu items have SelectsOnInvoked(false)
+                CloseFlyoutMenus();
 
+                // Execute the command
+                ViewModel.OnSelectNavigationItem(tag);
+
+                // Restore the correct navigation selection
+                UpdateNavigationSelection();
+                return;
+            }
+
+            // This is a regular navigation item
+            // Update the current navigation state
+            _currentNavigationTag = tag;
             ViewModel.OnSelectNavigationItem(tag);
-        }
-    }
-
-    public void Navigate(Type pageType, object parameter)
-    {
-        Guard.IsNotNull(_contentFrame);
-
-        if (_contentFrame.Content is null ||
-            _contentFrame.Content.GetType() != pageType)
-        {
-            _contentFrame.Navigate(pageType, parameter);
+            
+            // Ensure selection reflects the new state
+            UpdateNavigationSelection();
         }
     }
 
     public Result SelectNavigationItemByName(string navItemName)
-    {      
-        // %%% Work around for purpose of presentation until the bug with the intended line can be resolved.
-        _mainNavigation.SelectedItem = _mainNavigation.MenuItems.ElementAt(3);
-//        _mainNavigation.SelectedItem ??= _mainNavigation.FindName(navItemName) as NavigationViewItem;
+    {
+        // Map the navigation item name to a tag
+        string tag = navItemName switch
+        {
+            "HomeNavigationItem" => NavigationConstants.HomeTag,
+            "ExplorerNavigationItem" => NavigationConstants.ExplorerTag,
+            "CommunityNavigationItem" => NavigationConstants.CommunityTag,
+            _ => NavigationConstants.HomeTag
+        };
+
+        _currentNavigationTag = tag;
+        UpdateNavigationSelection();
         return Result.Ok();
     }
 
-    private void BuildUserFunctionMenuItems(object sender, IProjectService.RebuildUserFunctionsUIEventArgs args)
+    private void BuildShortcutMenuItems(object sender, IProjectService.RebuildShortcutsUIEventArgs args)
     {
         TagsToScriptDictionary.Clear();
-        foreach (var (menuItems, menuItem) in _userScriptMenuItems)
+        foreach (var (menuItems, menuItem) in _shortcutMenuItems)
         {
             menuItems.Remove(menuItem);
         }
-        _userScriptMenuItems.Clear();
+        _shortcutMenuItems.Clear();
 
         NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
 
-        AddUserFunctionMenuItems(node, _mainNavigation.MenuItems);
+        AddShortcutMenuItems(node, _mainNavigation.MenuItems);
     }
 
-    private void AddUserFunctionMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
+    private void AddShortcutMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
     {
         Dictionary<string, NavigationViewItem> newNodes = new();
         Dictionary<string, string > pathToScriptDictionary = new();
@@ -391,15 +514,16 @@ public sealed partial class MainPage : Page
         foreach (var (k, v) in node.Nodes)
         {
             var newItem = new NavigationViewItem()
-                    .Icon(new SymbolIcon(Symbol.Folder))
                     .Name(k)
-                    .Content(k);
+                    .Content(k)
+                    .SelectsOnInvoked(false)
+                    .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspacePageActive));
 
             menuItems.Add(newItem);
             string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
             newNodes.Add(newPath, newItem);
-            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
-            AddUserFunctionMenuItems(v, newItem.MenuItems);
+            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
+            AddShortcutMenuItems(v, newItem.MenuItems);
         }
 
         foreach (var command in node.CustomCommands)
@@ -408,16 +532,16 @@ public sealed partial class MainPage : Page
             if (pathToScriptDictionary.ContainsKey(command.Path!))
             {
                 // Issue a warning, and skip on to the next command.
-                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
+                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
                 continue;
             }
 
-            Symbol icon = Symbol.Placeholder;
+            Symbol? icon = null;
             if (command.Icon is not null)
             {
-                if (!Enum.TryParse(command.Icon, out icon))
+                if (Enum.TryParse(command.Icon, out Symbol parsedIcon))
                 {
-                    icon = Symbol.Placeholder;
+                    icon = parsedIcon;
                 }
             }
 
@@ -431,9 +555,9 @@ public sealed partial class MainPage : Page
                     item.ToolTipService(PlacementMode.Right, null, command.ToolTip);
                 }
 
-                if (icon != Symbol.Placeholder)
+                if (icon.HasValue)
                 {
-                    item.Icon = new SymbolIcon(icon);
+                    item.Icon = new SymbolIcon(icon.Value);
                 }
 
                 if ((command.Name != null) && (command.Name.Length > 0))
@@ -442,7 +566,7 @@ public sealed partial class MainPage : Page
                 }
 
                 // Issue a warning if a script has been supplied, that as this path overloads a folder it won't be implemented as a command.
-                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
+                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
 
                 // Skip adding a command as we're just updating the existing folder node.
                 continue;
@@ -451,13 +575,20 @@ public sealed partial class MainPage : Page
             TagsToScriptDictionary.Add(command.Path!, command.Script!);
 
             var commandItem = new NavigationViewItem()
-                .Icon(new SymbolIcon(icon))
                 .ToolTipService(PlacementMode.Right, null, command.ToolTip)
-                .Name(command.Name ?? "UserFunction")
-                .Content(command.Name ?? "UserFunction")
-                .Tag(command.Path!);
+                .Name(command.Name ?? "Shortcut")
+                .Content(command.Name ?? "Shortcut")
+                .Tag(command.Path!)
+                .SelectsOnInvoked(false)
+                .IsEnabled(x => x.Binding(() => ViewModel.IsWorkspacePageActive));
+            
+            if (icon.HasValue)
+            {
+                commandItem.Icon(new SymbolIcon(icon.Value));
+            }
+            
             menuItems.Add(commandItem);
-            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
+            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
         }
     }
 }
