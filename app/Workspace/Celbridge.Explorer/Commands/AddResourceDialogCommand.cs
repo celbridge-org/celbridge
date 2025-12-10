@@ -77,11 +77,15 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var enterNameString = _stringLocalizer.GetString("ResourceTree_EnterName");
 
+        // Select only the filename part without the extension
+        var extensionIndex = defaultText.LastIndexOf('.');
+        var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,
             enterNameString,
             defaultText,
-            ..,
+            selectionRange,
             validator);
 
         if (showResult.IsSuccess)
