@@ -32,10 +32,4 @@ public partial class ExplorerPanelViewModel : ObservableObject
         TitleText = project.ProjectName;
 #endif
     }
-
-    public ICommand RefreshResourceTreeCommand => new RelayCommand(RefreshResourceTreeCommand_ExecuteAsync);
-    private void RefreshResourceTreeCommand_ExecuteAsync()
-    {
-        _commandService.Execute<IUpdateResourcesCommand>();
-    }
 }
