@@ -392,7 +392,8 @@ public sealed partial class MainPage : Page
         {
             var newItem = new NavigationViewItem()
                     .Name(k)
-                    .Content(k);
+                    .Content(k)
+                    .SelectsOnInvoked(false);
 
             menuItems.Add(newItem);
             string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
