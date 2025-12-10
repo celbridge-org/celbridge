@@ -23,10 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json"/>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
   </ItemGroup>
