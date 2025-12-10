@@ -43,7 +43,7 @@ public sealed partial class MainPage : Page
     private Grid _layoutRoot;
     private NavigationView _mainNavigation;
     private Frame _contentFrame;
-    private List<KeyValuePair<IList<object>, NavigationViewItem>> _userScriptMenuItems = new();
+    private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
 
     public MainPage()
     {
@@ -202,8 +202,8 @@ public sealed partial class MainPage : Page
         // Begin listening for user navigation events
         _mainNavigation.ItemInvoked += OnMainPage_NavigationViewItemInvoked;
 
-        // Configure user function menu items.
-        _projectService.RegisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+        // Configure shortcut menu items.
+        _projectService.RegisterRebuildShortcutsUI(BuildShortcutMenuItems);
 
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS
@@ -244,7 +244,7 @@ public sealed partial class MainPage : Page
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
 
-        _projectService.UnregisterRebuildUserFunctionsUI(BuildUserFunctionMenuItems);
+        _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
     private bool OnKeyDown(VirtualKey key)
@@ -369,21 +369,21 @@ public sealed partial class MainPage : Page
         return Result.Ok();
     }
 
-    private void BuildUserFunctionMenuItems(object sender, IProjectService.RebuildUserFunctionsUIEventArgs args)
+    private void BuildShortcutMenuItems(object sender, IProjectService.RebuildShortcutsUIEventArgs args)
     {
         TagsToScriptDictionary.Clear();
-        foreach (var (menuItems, menuItem) in _userScriptMenuItems)
+        foreach (var (menuItems, menuItem) in _shortcutMenuItems)
         {
             menuItems.Remove(menuItem);
         }
-        _userScriptMenuItems.Clear();
+        _shortcutMenuItems.Clear();
 
         NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
 
-        AddUserFunctionMenuItems(node, _mainNavigation.MenuItems);
+        AddShortcutMenuItems(node, _mainNavigation.MenuItems);
     }
 
-    private void AddUserFunctionMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
+    private void AddShortcutMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
     {
         Dictionary<string, NavigationViewItem> newNodes = new();
         Dictionary<string, string > pathToScriptDictionary = new();
@@ -398,8 +398,8 @@ public sealed partial class MainPage : Page
             menuItems.Add(newItem);
             string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
             newNodes.Add(newPath, newItem);
-            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
-            AddUserFunctionMenuItems(v, newItem.MenuItems);
+            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
+            AddShortcutMenuItems(v, newItem.MenuItems);
         }
 
         foreach (var command in node.CustomCommands)
@@ -408,7 +408,7 @@ public sealed partial class MainPage : Page
             if (pathToScriptDictionary.ContainsKey(command.Path!))
             {
                 // Issue a warning, and skip on to the next command.
-                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
+                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added and script will not be run.");
                 continue;
             }
 
@@ -442,7 +442,7 @@ public sealed partial class MainPage : Page
                 }
 
                 // Issue a warning if a script has been supplied, that as this path overloads a folder it won't be implemented as a command.
-                _logger.LogWarning($"User function command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
+                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing folder node; command will not be added and script will not be run." );
 
                 // Skip adding a command as we're just updating the existing folder node.
                 continue;
@@ -452,8 +452,8 @@ public sealed partial class MainPage : Page
 
             var commandItem = new NavigationViewItem()
                 .ToolTipService(PlacementMode.Right, null, command.ToolTip)
-                .Name(command.Name ?? "UserFunction")
-                .Content(command.Name ?? "UserFunction")
+                .Name(command.Name ?? "Shortcut")
+                .Content(command.Name ?? "Shortcut")
                 .Tag(command.Path!);
             
             if (icon.HasValue)
@@ -462,7 +462,7 @@ public sealed partial class MainPage : Page
             }
             
             menuItems.Add(commandItem);
-            _userScriptMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
+            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
         }
     }
 }
