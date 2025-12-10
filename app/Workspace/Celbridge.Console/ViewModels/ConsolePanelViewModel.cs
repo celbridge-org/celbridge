@@ -1,8 +1,10 @@
+using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
+using System.Security.Cryptography;
 
 using Path = System.IO.Path;
 
@@ -28,7 +30,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _errorBannerMessage = string.Empty;
 
     [ObservableProperty]
-    private bool _isReloadButtonVisible;
+    private string _projectChangeBannerTitle = string.Empty;
+    
+    [ObservableProperty]
+    private string _projectChangeBannerMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isProjectChangeBannerVisible;
+
+    private byte[]? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
@@ -42,9 +52,14 @@ public partial class ConsolePanelViewModel : ObservableObject
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
-
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
+
+        // Register for resource change messages to monitor project file changes
+        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+
+        // Store the original project file contents
+        StoreProjectFileHash();
     }
 
     public void OnTerminalProcessExited()
@@ -96,13 +111,105 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
-        IsReloadButtonVisible = true;
+
+        // Hide project change banner when error banner is shown
+        IsProjectChangeBannerVisible = false;
     }
 
     public void OnReloadProjectClicked()
     {
         // Send message to request project reload
         _messengerService.Send<ReloadProjectMessage>();
+    }
+
+    private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    {
+        // Check if the changed resource is the .celbridge project file
+        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath))
+        {
+            return;
+        }
+
+        var projectFileName = Path.GetFileName(projectFilePath);
+        var changedResourcePath = message.Resource.ToString();
+
+        if (changedResourcePath.Equals(projectFileName, StringComparison.OrdinalIgnoreCase))
+        {
+            // This handler may be called from a background thread so ensure that the message
+            // is handled on the main UI thread.
+            _dispatcher.TryEnqueue(() =>
+            {
+                CheckProjectFileChanged();
+            });
+        }
+    }
+
+    private void StoreProjectFileHash()
+    {
+        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+        {
+            _originalProjectFileHash = null;
+            return;
+        }
+
+        try
+        {
+            var fileContents = File.ReadAllText(projectFilePath);
+            _originalProjectFileHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(fileContents));
+        }
+        catch
+        {
+            _originalProjectFileHash = null;
+        }
+    }
+
+    private void CheckProjectFileChanged()
+    {
+        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var currentContents = File.ReadAllText(projectFilePath);
+            var currentHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(currentContents));
+
+            // If error banner is visible, don't show the project change banner
+            if (IsErrorBannerVisible)
+            {
+                IsProjectChangeBannerVisible = false;
+                return;
+            }
+
+            // Check if the hash has changed from the original
+            if (_originalProjectFileHash == null || 
+                !currentHash.SequenceEqual(_originalProjectFileHash))
+            {
+                // Populate the project change banner strings
+                ProjectChangeBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerTitle");
+                ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
+
+                IsProjectChangeBannerVisible = true;
+            }
+            else
+            {
+                IsProjectChangeBannerVisible = false;
+            }
+        }
+        catch
+        {
+            // If we can't read the file, hide the banner
+            IsProjectChangeBannerVisible = false;
+        }
+    }
+
+    public void OnProjectChangeBannerClosed()
+    {
+        IsProjectChangeBannerVisible = false;
     }
 
     public void Cleanup()
