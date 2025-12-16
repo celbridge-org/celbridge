@@ -6,12 +6,7 @@ namespace Celbridge.Projects;
 public interface IProjectMigrationService
 {
     /// <summary>
-    /// Check if a project needs migration.
+    /// Performs migration on a project if needed.
     /// </summary>
-    Result<bool> CheckNeedsMigration(string projectFilePath);
-
-    /// <summary>
-    /// Migrate a project to the current version.
-    /// </summary>
-    Task<Result> MigrateProjectAsync(string projectFilePath);
+    Task<Result> PerformMigrationAsync(string projectFilePath);
 }

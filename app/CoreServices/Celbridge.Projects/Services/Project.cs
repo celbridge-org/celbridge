@@ -63,24 +63,11 @@ public class Project : IDisposable, IProject
             //
 
             var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
-            var checkResult = migrationService.CheckNeedsMigration(projectFilePath);
-
-            if (checkResult.IsSuccess)
+            var migrateResult = await migrationService.PerformMigrationAsync(projectFilePath);
+            if (migrateResult.IsFailure)
             {
-                if (checkResult.Value)
-                {
-                    var migrateResult = await migrationService.MigrateProjectAsync(projectFilePath);
-                    if (migrateResult.IsFailure)
-                    {
-                        // Log a warning but continue loading - the project will need to migrated again
-                        project._logger.LogWarning(migrateResult, $"Failed to migrate project to latest version of Celbridge.");
-                    }
-                }
-            }
-            else
-            {
-                // Log a warning but continue loading - the project config will be empty
-                project._logger.LogWarning(checkResult, $"Failed to check if project needs migration: {projectFilePath}");
+                // Log a warning but continue loading - the project may need to be migrated again
+                project._logger.LogWarning(migrateResult, $"Failed to migrate project to latest version of Celbridge.");
             }
             
             //
