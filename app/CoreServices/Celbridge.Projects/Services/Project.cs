@@ -30,15 +30,13 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-
-
     public Project(
         ILogger<Project> logger)
     {
         _logger = logger;
     }
 
-    public static Result<IProject> LoadProject(string projectFilePath)
+    public static async Task<Result<IProject>> LoadProjectAsync(string projectFilePath)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath))
         {
@@ -52,11 +50,39 @@ public class Project : IDisposable, IProject
 
         try
         {
+            //
+            // Create the project object
+            //
+
             var project = ServiceLocator.AcquireService<IProject>() as Project;
             Guard.IsNotNull(project);
-
             project.PopulatePaths(projectFilePath);
 
+            //
+            // Migrate project to latest version of Celbridge
+            //
+
+            var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
+            var checkResult = migrationService.CheckNeedsMigration(projectFilePath);
+
+            if (checkResult.IsSuccess)
+            {
+                if (checkResult.Value)
+                {
+                    var migrateResult = await migrationService.MigrateProjectAsync(projectFilePath);
+                    if (migrateResult.IsFailure)
+                    {
+                        // Log a warning but continue loading - the project will need to migrated again
+                        project._logger.LogWarning(migrateResult, $"Failed to migrate project to latest version of Celbridge.");
+                    }
+                }
+            }
+            else
+            {
+                // Log a warning but continue loading - the project config will be empty
+                project._logger.LogWarning(checkResult, $"Failed to check if project needs migration: {projectFilePath}");
+            }
+            
             //
             // Load project properties from the project file
             //
@@ -67,19 +93,18 @@ public class Project : IDisposable, IProject
             var initResult = projectConfig.InitializeFromFile(projectFilePath);
             if (initResult.IsFailure)
             {
-                // Log the error but continue loading - the project config will be empty
-                project._logger.LogWarning(initResult.FirstException, "Failed to initialize project configuration: {Error}. Project loaded with empty configuration.", initResult.Error);
+                // Log a warning but continue loading - the project config will be empty
+                project._logger.LogWarning(initResult, $"Failed to initialize project configuration");
             }
 
             project._projectConfig = projectConfig;
 
             //
-            // Load project database
+            // Ensure project data folder exists
             //
 
             if (!Directory.Exists(project.ProjectDataFolderPath))
             {
-                project._logger.LogWarning($"Project data folder does not exist: '{project.ProjectDataFolderPath}'. Creating an empty folder.");
                 Directory.CreateDirectory(project.ProjectDataFolderPath);
             }
 
