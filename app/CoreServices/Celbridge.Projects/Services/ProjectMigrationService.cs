@@ -4,6 +4,32 @@ using Tomlyn;
 
 namespace Celbridge.Projects.Services;
 
+/// <summary>
+/// Represents the result of comparing a project version with the application version.
+/// </summary>
+public enum VersionComparisonState
+{
+    /// <summary>
+    /// The project version matches the application version - no migration needed.
+    /// </summary>
+    SameVersion,
+    
+    /// <summary>
+    /// The project version is older than the application version - migration needed.
+    /// </summary>
+    OlderVersion,
+    
+    /// <summary>
+    /// The project version is newer than the application version - cannot open project.
+    /// </summary>
+    NewerVersion,
+    
+    /// <summary>
+    /// Unable to determine version compatibility - cannot open project.
+    /// </summary>
+    UnresolvedVersion
+}
+
 public class ProjectMigrationService : IProjectMigrationService
 {
     private readonly ILogger<ProjectMigrationService> _logger;
@@ -48,22 +74,35 @@ public class ProjectMigrationService : IProjectMigrationService
             var envInfo = _utilityService.GetEnvironmentInfo();
             var applicationVersion = envInfo.AppVersion;
             
-            // Check if migration is needed
-            if (string.IsNullOrEmpty(projectVersion))
+            // Compare versions to determine if migration is needed
+            var versionState = CompareVersions(projectVersion, applicationVersion);
+            
+            switch (versionState)
             {
-                _logger.LogInformation("Project has no [celbridge].version - migration required");
-            }
-            else if (projectVersion == applicationVersion)
-            {
-                // No migration needed - versions match
-                return Result.Ok();
-            }
-            else
-            {
-                _logger.LogInformation(
-                    "Project migration needed: project version {ProjectVersion}, current version {CurrentVersion}",
-                    projectVersion,
-                    applicationVersion);
+                case VersionComparisonState.SameVersion:
+                    _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
+                    return Result.Ok();
+                
+                case VersionComparisonState.OlderVersion:
+                    _logger.LogInformation(
+                        "Project migration needed: project version {ProjectVersion}, current version {CurrentVersion}",
+                        projectVersion,
+                        applicationVersion);
+                    break;
+                
+                case VersionComparisonState.NewerVersion:
+                    return Result.Fail(
+                        $"This project was created with a newer version of Celbridge (v{projectVersion}). " +
+                        $"Your current version is v{applicationVersion}. Please upgrade Celbridge to open this project.");
+                
+                case VersionComparisonState.UnresolvedVersion:
+                    return Result.Fail(
+                        $"Unable to determine version compatibility. " +
+                        $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
+                        $"Cannot open this project.");
+                
+                default:
+                    return Result.Fail($"Unknown version comparison state: {versionState}");
             }
 
             // Perform migration
@@ -86,6 +125,68 @@ public class ProjectMigrationService : IProjectMigrationService
         {
             return Result.Fail("An exception occurred during project migration")
                 .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Compare two version strings in the format "major.minor.build.revision".
+    /// Returns a VersionComparisonState indicating the relationship between the versions.
+    /// </summary>
+    private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
+    {
+        // Handle empty/null project version - treat as older version needing migration
+        if (string.IsNullOrWhiteSpace(projectVersion))
+        {
+            _logger.LogInformation("Project has no version - treating as older version requiring migration");
+            return VersionComparisonState.OlderVersion;
+        }
+
+        // Handle empty/null application version - this should never happen, but fail safe
+        if (string.IsNullOrWhiteSpace(applicationVersion))
+        {
+            _logger.LogError("Application version is empty - cannot determine compatibility");
+            return VersionComparisonState.UnresolvedVersion;
+        }
+
+        try
+        {
+            var projectVer = new Version(projectVersion);
+            var appVer = new Version(applicationVersion);
+            
+            int comparison = projectVer.CompareTo(appVer);
+            
+            if (comparison < 0)
+            {
+                return VersionComparisonState.OlderVersion;
+            }
+            else if (comparison > 0)
+            {
+                return VersionComparisonState.NewerVersion;
+            }
+            else
+            {
+                return VersionComparisonState.SameVersion;
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            // Version string format is invalid
+            _logger.LogWarning(
+                ex,
+                "Failed to parse version strings - ProjectVersion: '{ProjectVersion}', ApplicationVersion: '{ApplicationVersion}'",
+                projectVersion,
+                applicationVersion);
+            return VersionComparisonState.UnresolvedVersion;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected error during version comparison
+            _logger.LogError(
+                ex,
+                "Unexpected error comparing versions - ProjectVersion: '{ProjectVersion}', ApplicationVersion: '{ApplicationVersion}'",
+                projectVersion,
+                applicationVersion);
+            return VersionComparisonState.UnresolvedVersion;
         }
     }
 
