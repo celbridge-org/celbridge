@@ -19,6 +19,18 @@ public enum ConsoleErrorType
     /// The python host process exited unexpectedly.
     /// </summary>
     PythonHostProcessError,
+
+    /// <summary>
+    /// The project was created with a newer version of Celbridge.
+    /// Python session cannot be initialized.
+    /// </summary>
+    IncompatibleAppVersion,
+
+    /// <summary>
+    /// Unable to determine project version compatibility.
+    /// Python session cannot be initialized.
+    /// </summary>
+    InvalidAppVersion,
 }
 
 /// <summary>

@@ -18,6 +18,9 @@ public class Project : IDisposable, IProject
     private IProjectConfigService? _projectConfig;
     public IProjectConfigService ProjectConfig => _projectConfig!;
 
+    private ProjectMigrationStatus _migrationStatus;
+    public ProjectMigrationStatus MigrationStatus => _migrationStatus;
+
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
 
@@ -64,10 +67,14 @@ public class Project : IDisposable, IProject
 
             var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
             var migrateResult = await migrationService.PerformMigrationAsync(projectFilePath);
-            if (migrateResult.IsFailure)
+            
+            // Store the migration status so it can be checked before Python initialization
+            project._migrationStatus = migrateResult.Status;
+            
+            if (migrateResult.OperationResult.IsFailure)
             {
-                // Log a warning but continue loading - the project may need to be migrated again
-                project._logger.LogWarning(migrateResult, $"Failed to migrate project to latest version of Celbridge.");
+                // Log a warning but continue loading - the project may need manual intervention
+                project._logger.LogWarning(migrateResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
             }
             
             //

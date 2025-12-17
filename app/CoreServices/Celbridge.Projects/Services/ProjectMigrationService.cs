@@ -43,13 +43,14 @@ public class ProjectMigrationService : IProjectMigrationService
         _utilityService = utilityService;
     }
 
-    public async Task<Result> PerformMigrationAsync(string projectFilePath)
+    public async Task<MigrationResult> PerformMigrationAsync(string projectFilePath)
     {
         try
         {
             if (!File.Exists(projectFilePath))
             {
-                return Result.Fail($"Project file does not exist: '{projectFilePath}'");
+                var errorResult = Result.Fail($"Project file does not exist: '{projectFilePath}'");
+                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
             }
 
             var text = File.ReadAllText(projectFilePath);
@@ -57,7 +58,8 @@ public class ProjectMigrationService : IProjectMigrationService
             
             if (parse.HasErrors)
             {
-                return Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
+                var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
+                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
             }
 
             var root = parse.ToModel();
@@ -81,7 +83,7 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 case VersionComparisonState.SameVersion:
                     _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
-                    return Result.Ok();
+                    return MigrationResult.Success();
                 
                 case VersionComparisonState.OlderVersion:
                     _logger.LogInformation(
@@ -91,18 +93,30 @@ public class ProjectMigrationService : IProjectMigrationService
                     break;
                 
                 case VersionComparisonState.NewerVersion:
-                    return Result.Fail(
+                {
+                    var errorResult = Result.Fail(
                         $"This project was created with a newer version of Celbridge (v{projectVersion}). " +
-                        $"Your current version is v{applicationVersion}. Please upgrade Celbridge to open this project.");
+                        $"Your current version is v{applicationVersion}. " +
+                        $"The project will load but Python initialization will be disabled. " +
+                        $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
+                    return MigrationResult.FromStatus(ProjectMigrationStatus.IncompatibleAppVersion, errorResult);
+                }
                 
                 case VersionComparisonState.UnresolvedVersion:
-                    return Result.Fail(
+                {
+                    var errorResult = Result.Fail(
                         $"Unable to determine version compatibility. " +
                         $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
-                        $"Cannot open this project.");
+                        $"The project will load but Python initialization will be disabled. " +
+                        $"Please correct the version number in the .celbridge file and reload the project.");
+                    return MigrationResult.FromStatus(ProjectMigrationStatus.InvalidAppVersion, errorResult);
+                }
                 
                 default:
-                    return Result.Fail($"Unknown version comparison state: {versionState}");
+                {
+                    var errorResult = Result.Fail($"Unknown version comparison state: {versionState}");
+                    return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                }
             }
 
             // Perform migration
@@ -118,16 +132,18 @@ public class ProjectMigrationService : IProjectMigrationService
             var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, normalizedAppVersion);
             if (writeResult.IsFailure)
             {
-                return Result.Fail($"Failed to write Celbridge version to project TOML file: '{projectFilePath}'");
+                var errorResult = Result.Fail($"Failed to write Celbridge version to project TOML file: '{projectFilePath}'");
+                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
             }
 
             _logger.LogInformation("Project migration completed successfully");
-            return Result.Ok();
+            return MigrationResult.Success();
         }
         catch (Exception ex)
         {
-            return Result.Fail("An exception occurred during project migration")
+            var errorResult = Result.Fail("An exception occurred during project migration")
                 .WithException(ex);
+            return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
         }
     }
 

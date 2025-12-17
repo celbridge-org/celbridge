@@ -1,4 +1,7 @@
+using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.Projects;
 
 namespace Celbridge.Workspace.Services;
 
@@ -136,10 +139,54 @@ public class WorkspaceLoader
         }
 
         var pythonService = workspaceService.PythonService;
-        var initPython = await pythonService.InitializePython();
-        if (initPython.IsFailure)
+        
+        // Check for version compatibility issues before initializing Python
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        
+        if (currentProject is not null)
         {
-            _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
+            var migrationStatus = currentProject.MigrationStatus;
+            
+            switch (migrationStatus)
+            {
+                case ProjectMigrationStatus.IncompatibleAppVersion:
+                    // Project version is newer than application version - cannot initialize Python
+                    _logger.LogWarning("Project version is too new - Python initialization disabled");
+                    var projectFileName = Path.GetFileName(currentProject.ProjectFilePath);
+                    var incompatibleMessage = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleAppVersion, projectFileName);
+                    var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+                    messengerService.Send(incompatibleMessage);
+                    break;
+                
+                case ProjectMigrationStatus.InvalidAppVersion:
+                    // Unable to resolve version - cannot initialize Python
+                    _logger.LogWarning("Project version is unresolved - Python initialization disabled");
+                    projectFileName = Path.GetFileName(currentProject.ProjectFilePath);
+                    var invalidMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidAppVersion, projectFileName);
+                    messengerService = ServiceLocator.AcquireService<IMessengerService>();
+                    messengerService.Send(invalidMessage);
+                    break;
+                
+                case ProjectMigrationStatus.Success:
+                    // Migration succeeded - initialize Python normally
+                    var initPython = await pythonService.InitializePython();
+                    if (initPython.IsFailure)
+                    {
+                        _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
+                    }
+                    break;
+                
+                case ProjectMigrationStatus.Failed:
+                    // Other migration errors - try to initialize Python anyway
+                    _logger.LogWarning("Project migration failed - attempting Python initialization anyway");
+                    initPython = await pythonService.InitializePython();
+                    if (initPython.IsFailure)
+                    {
+                        _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
+                    }
+                    break;
+            }
         }
 
         return Result.Ok();
