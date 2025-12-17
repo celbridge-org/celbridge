@@ -132,7 +132,7 @@ public class Project : IDisposable, IProject
 
             if (configType == NewProjectConfigType.Standard)
             {
-                // Get Celbridge version
+                // Get Celbridge version (semver format: major.minor.patch)
                 var utilityService = ServiceLocator.AcquireService<IUtilityService>();
                 var info = utilityService.GetEnvironmentInfo();
 

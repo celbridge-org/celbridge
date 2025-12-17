@@ -112,7 +112,10 @@ public class ProjectMigrationService : IProjectMigrationService
 
             await Task.CompletedTask;
 
-            var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, applicationVersion);
+            // Normalize application version to 3-part format before writing
+            var normalizedAppVersion = NormalizeVersion(applicationVersion);
+            
+            var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, normalizedAppVersion);
             if (writeResult.IsFailure)
             {
                 return Result.Fail($"Failed to write Celbridge version to project TOML file: '{projectFilePath}'");
@@ -129,8 +132,9 @@ public class ProjectMigrationService : IProjectMigrationService
     }
 
     /// <summary>
-    /// Compare two version strings in the format "major.minor.build.revision".
+    /// Compare two version strings in the format "major.minor.patch".
     /// Returns a VersionComparisonState indicating the relationship between the versions.
+    /// Handles legacy 4-part versions by normalizing them to 3-part format.
     /// </summary>
     private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
     {
@@ -150,8 +154,12 @@ public class ProjectMigrationService : IProjectMigrationService
 
         try
         {
-            var projectVer = new Version(projectVersion);
-            var appVer = new Version(applicationVersion);
+            // Normalize versions to 3-part format (major.minor.patch)
+            var normalizedProjectVersion = NormalizeVersion(projectVersion);
+            var normalizedAppVersion = NormalizeVersion(applicationVersion);
+            
+            var projectVer = new Version(normalizedProjectVersion);
+            var appVer = new Version(normalizedAppVersion);
             
             int comparison = projectVer.CompareTo(appVer);
             
@@ -188,6 +196,41 @@ public class ProjectMigrationService : IProjectMigrationService
                 applicationVersion);
             return VersionComparisonState.UnresolvedVersion;
         }
+    }
+
+    /// <summary>
+    /// Normalize a version string to 3-part format (major.minor.patch).
+    /// Version must have exactly 3 or 4 parts. If it has 4 parts, the 4th part is discarded with a warning.
+    /// Any other format will cause an exception to be thrown.
+    /// </summary>
+    private string NormalizeVersion(string versionString)
+    {
+        var parts = versionString.Split('.');
+        
+        if (parts.Length < 3 || parts.Length > 4)
+        {
+            throw new ArgumentException(
+                $"Version string must have exactly 3 or 4 parts, but '{versionString}' has {parts.Length} parts.");
+        }
+        
+        // Validate the first 3 parts are valid non-negative integers
+        if (!int.TryParse(parts[0], out int major) || major < 0 ||
+            !int.TryParse(parts[1], out int minor) || minor < 0 ||
+            !int.TryParse(parts[2], out int patch) || patch < 0)
+        {
+            throw new ArgumentException(
+                $"Version string '{versionString}' contains invalid numeric parts. All parts of the version number must be non-negative integers.");
+        }
+        
+        // If there's a 4th part, just discard it with a warning
+        if (parts.Length == 4)
+        {
+            _logger.LogWarning(
+                "Version '{Version}' uses 4-part format. Converting to 3-part format by discarding revision number.",
+                versionString);
+        }
+        
+        return $"{major}.{minor}.{patch}";
     }
 
     private async Task<Result> WriteApplicationVersionAsync(string projectFilePath, string projectVersion, string applicationVersion)
