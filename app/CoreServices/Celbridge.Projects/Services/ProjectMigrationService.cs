@@ -76,19 +76,52 @@ public class ProjectMigrationService : IProjectMigrationService
             var envInfo = _utilityService.GetEnvironmentInfo();
             var applicationVersion = envInfo.AppVersion;
             
+            // Store the original project version for logging purposes
+            var originalProjectVersion = projectVersion;
+            
             // Compare versions to determine if migration is needed
             var versionState = CompareVersions(projectVersion, applicationVersion);
+            
+            // Normalize application version to 3-part format 
+            var normalizedAppVersion = NormalizeVersion(applicationVersion);
             
             switch (versionState)
             {
                 case VersionComparisonState.SameVersion:
+                {
+                    // Even if versions are semantically the same, we should normalize the format
+                    // in the file if it differs (e.g., "0.1.4.3" should become "0.1.4")
+                    
+                    // Check if the original project version differs from the normalized version
+                    bool needsNormalization = !string.IsNullOrEmpty(originalProjectVersion) && 
+                                              originalProjectVersion != normalizedAppVersion;
+                    
+                    if (needsNormalization)
+                    {
+                        _logger.LogInformation(
+                            "Project version format needs normalization: {OriginalVersion} -> {NormalizedVersion}",
+                            originalProjectVersion,
+                            normalizedAppVersion);
+                        
+                        var normalizeResult = await WriteApplicationVersionAsync(projectFilePath, originalProjectVersion, normalizedAppVersion);
+                        if (normalizeResult.IsFailure)
+                        {
+                            var errorResult = Result.Fail($"Failed to normalize version in project file: '{projectFilePath}'");
+                            return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                        }
+                        
+                        // Return success with version information showing the normalization
+                        return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, normalizedAppVersion);
+                    }
+                    
                     _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
                     return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), projectVersion, applicationVersion);
+                }
                 
                 case VersionComparisonState.OlderVersion:
                     _logger.LogInformation(
                         "Project migration needed: project version {ProjectVersion}, current version {CurrentVersion}",
-                        projectVersion,
+                        originalProjectVersion,
                         applicationVersion);
                     break;
                 
@@ -125,11 +158,8 @@ public class ProjectMigrationService : IProjectMigrationService
             // Todo: Implement version migration logic
 
             await Task.CompletedTask;
-
-            // Normalize application version to 3-part format before writing
-            var normalizedAppVersion = NormalizeVersion(applicationVersion);
             
-            var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, normalizedAppVersion);
+            var writeResult = await WriteApplicationVersionAsync(projectFilePath, originalProjectVersion, normalizedAppVersion);
             if (writeResult.IsFailure)
             {
                 var errorResult = Result.Fail($"Failed to write Celbridge version to project TOML file: '{projectFilePath}'");
@@ -138,7 +168,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
             _logger.LogInformation("Project migration completed successfully");
             
-            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), projectVersion, normalizedAppVersion);
+            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, normalizedAppVersion);
         }
         catch (Exception ex)
         {
