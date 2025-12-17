@@ -146,7 +146,7 @@ public class WorkspaceLoader
         
         if (currentProject is not null)
         {
-            var migrationStatus = currentProject.MigrationStatus;
+            var migrationStatus = currentProject.MigrationResult.Status;
             
             switch (migrationStatus)
             {

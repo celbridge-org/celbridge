@@ -57,17 +57,8 @@ public interface IProject
     public IProjectConfigService ProjectConfig { get; }
 
     /// <summary>
-    /// Gets the migration status from when the project was loaded.
+    /// Gets the complete migration result from when the project was loaded.
+    /// Contains the migration status, old/new versions, and operation result.
     /// </summary>
-    ProjectMigrationStatus MigrationStatus { get; }
-
-    /// <summary>
-    /// Gets the old version before migration (empty if no migration occurred).
-    /// </summary>
-    string MigrationOldVersion { get; }
-
-    /// <summary>
-    /// Gets the new version after migration (empty if no migration occurred).
-    /// </summary>
-    string MigrationNewVersion { get; }
+    MigrationResult MigrationResult { get; }
 }

@@ -18,14 +18,8 @@ public class Project : IDisposable, IProject
     private IProjectConfigService? _projectConfig;
     public IProjectConfigService ProjectConfig => _projectConfig!;
 
-    private ProjectMigrationStatus _migrationStatus;
-    public ProjectMigrationStatus MigrationStatus => _migrationStatus;
-
-    private string _migrationOldVersion = string.Empty;
-    public string MigrationOldVersion => _migrationOldVersion;
-
-    private string _migrationNewVersion = string.Empty;
-    public string MigrationNewVersion => _migrationNewVersion;
+    private MigrationResult _migrationResult = MigrationResult.Success();
+    public MigrationResult MigrationResult => _migrationResult;
 
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
@@ -72,17 +66,12 @@ public class Project : IDisposable, IProject
             //
 
             var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
-            var migrateResult = await migrationService.PerformMigrationAsync(projectFilePath);
+            project._migrationResult = await migrationService.PerformMigrationAsync(projectFilePath);
             
-            // Store the migration status and version information so it can be checked before Python initialization
-            project._migrationStatus = migrateResult.Status;
-            project._migrationOldVersion = migrateResult.OldVersion;
-            project._migrationNewVersion = migrateResult.NewVersion;
-            
-            if (migrateResult.OperationResult.IsFailure)
+            if (project._migrationResult.OperationResult.IsFailure)
             {
                 // Log a warning but continue loading - the project may need manual intervention
-                project._logger.LogWarning(migrateResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
+                project._logger.LogWarning(project._migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
             }
             
             //

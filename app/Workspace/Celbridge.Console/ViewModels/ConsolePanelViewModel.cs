@@ -251,8 +251,8 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         // Only show the migration banner if there was an actual version change
-        var oldVersion = currentProject.MigrationOldVersion;
-        var newVersion = currentProject.MigrationNewVersion;
+        var oldVersion = currentProject.MigrationResult.OldVersion;
+        var newVersion = currentProject.MigrationResult.NewVersion;
         
         if (!string.IsNullOrEmpty(oldVersion) && 
             !string.IsNullOrEmpty(newVersion) && 
