@@ -83,7 +83,7 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 case VersionComparisonState.SameVersion:
                     _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
-                    return MigrationResult.Success();
+                    return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), projectVersion, applicationVersion);
                 
                 case VersionComparisonState.OlderVersion:
                     _logger.LogInformation(
@@ -137,7 +137,8 @@ public class ProjectMigrationService : IProjectMigrationService
             }
 
             _logger.LogInformation("Project migration completed successfully");
-            return MigrationResult.Success();
+            
+            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), projectVersion, normalizedAppVersion);
         }
         catch (Exception ex)
         {
@@ -336,22 +337,34 @@ public class ProjectMigrationService : IProjectMigrationService
             
             if (updatedText != originalText)
             {
-                // Remove consecutive blank lines
+                // Remove leading blank lines and collapse consecutive blank lines
                 var tidiedLines = new List<string>();
                 bool previousLineWasBlank = false;
+                bool hasSeenNonBlankLine = false;
                 
                 foreach (var line in lines)
                 {
                     bool currentLineIsBlank = string.IsNullOrWhiteSpace(line);
                     
+                    // Skip leading blank lines at the start of the document
+                    if (currentLineIsBlank && !hasSeenNonBlankLine)
+                    {
+                        continue;
+                    }
+                    
+                    // Skip consecutive blank lines
                     if (currentLineIsBlank && previousLineWasBlank)
                     {
-                        // Skip consecutive blank lines
                         continue;
                     }
                     
                     tidiedLines.Add(line);
                     previousLineWasBlank = currentLineIsBlank;
+                    
+                    if (!currentLineIsBlank)
+                    {
+                        hasSeenNonBlankLine = true;
+                    }
                 }
                 
                 updatedText = string.Join('\n', tidiedLines);

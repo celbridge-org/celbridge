@@ -561,4 +561,10 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_InvalidAppVersionMessage" xml:space="preserve">
     <value>Unable to determine project version compatibility. Python scripting has been disabled. Please correct the 'celbridge.version' property in '{0}' and reload the project.</value>
   </data>
+  <data name="ConsolePanel_MigrationBannerTitle" xml:space="preserve">
+    <value>Project Upgraded</value>
+  </data>
+  <data name="ConsolePanel_MigrationBannerMessage" xml:space="preserve">
+    <value>The project has been upgraded from version {0} to {1}</value>
+  </data>
 </root>

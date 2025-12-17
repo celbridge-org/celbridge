@@ -60,4 +60,14 @@ public interface IProject
     /// Gets the migration status from when the project was loaded.
     /// </summary>
     ProjectMigrationStatus MigrationStatus { get; }
+
+    /// <summary>
+    /// Gets the old version before migration (empty if no migration occurred).
+    /// </summary>
+    string MigrationOldVersion { get; }
+
+    /// <summary>
+    /// Gets the new version after migration (empty if no migration occurred).
+    /// </summary>
+    string MigrationNewVersion { get; }
 }

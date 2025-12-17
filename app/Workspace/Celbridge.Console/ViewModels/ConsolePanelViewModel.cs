@@ -40,6 +40,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _isProjectChangeBannerVisible;
 
+    [ObservableProperty]
+    private bool _isMigrationBannerVisible;
+
+    [ObservableProperty]
+    private string _migrationBannerTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _migrationBannerMessage = string.Empty;
+
     private byte[]? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
@@ -64,6 +73,9 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         // Store the original project file contents
         StoreProjectFileHash();
+        
+        // Check if the project was migrated and show banner if needed
+        CheckMigrationStatus();
     }
 
     public void OnTerminalProcessExited()
@@ -228,6 +240,34 @@ public partial class ConsolePanelViewModel : ObservableObject
     public void OnProjectChangeBannerClosed()
     {
         IsProjectChangeBannerVisible = false;
+    }
+
+    private void CheckMigrationStatus()
+    {
+        var currentProject = _projectService?.CurrentProject;
+        if (currentProject == null)
+        {
+            return;
+        }
+
+        // Only show the migration banner if there was an actual version change
+        var oldVersion = currentProject.MigrationOldVersion;
+        var newVersion = currentProject.MigrationNewVersion;
+        
+        if (!string.IsNullOrEmpty(oldVersion) && 
+            !string.IsNullOrEmpty(newVersion) && 
+            oldVersion != newVersion)
+        {
+            // Populate the migration banner strings
+            MigrationBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationBannerTitle");
+            MigrationBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationBannerMessage", oldVersion, newVersion);
+            IsMigrationBannerVisible = true;
+        }
+    }
+
+    public void OnMigrationBannerClosed()
+    {
+        IsMigrationBannerVisible = false;
     }
 
     public void Cleanup()

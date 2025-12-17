@@ -21,6 +21,12 @@ public class Project : IDisposable, IProject
     private ProjectMigrationStatus _migrationStatus;
     public ProjectMigrationStatus MigrationStatus => _migrationStatus;
 
+    private string _migrationOldVersion = string.Empty;
+    public string MigrationOldVersion => _migrationOldVersion;
+
+    private string _migrationNewVersion = string.Empty;
+    public string MigrationNewVersion => _migrationNewVersion;
+
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
 
@@ -68,8 +74,10 @@ public class Project : IDisposable, IProject
             var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
             var migrateResult = await migrationService.PerformMigrationAsync(projectFilePath);
             
-            // Store the migration status so it can be checked before Python initialization
+            // Store the migration status and version information so it can be checked before Python initialization
             project._migrationStatus = migrateResult.Status;
+            project._migrationOldVersion = migrateResult.OldVersion;
+            project._migrationNewVersion = migrateResult.NewVersion;
             
             if (migrateResult.OperationResult.IsFailure)
             {

@@ -10,6 +10,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
@@ -40,8 +41,17 @@
       </InfoBar.ActionButton>
     </InfoBar>
 
+    <InfoBar x:Name="MigrationInfoBar"
+             Grid.Row="2"
+             Severity="Informational"
+             IsOpen="{x:Bind ViewModel.IsMigrationBannerVisible, Mode=OneWay}"
+             IsClosable="True"
+             Title="{x:Bind ViewModel.MigrationBannerTitle, Mode=OneWay}"
+             Message="{x:Bind ViewModel.MigrationBannerMessage, Mode=OneWay}"
+             Closed="{x:Bind ViewModel.OnMigrationBannerClosed}"/>
+
     <WebView2 x:Name="TerminalWebView"
-              Grid.Row="2"
+              Grid.Row="3"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
               DefaultBackgroundColor="Transparent"/>

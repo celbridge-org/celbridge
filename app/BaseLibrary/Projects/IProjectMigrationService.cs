@@ -1,12 +1,18 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Result of a project migration operation, including status and any error details.
+/// Result of a project migration operation, including status, version information, and any error details.
 /// </summary>
-public record MigrationResult(ProjectMigrationStatus Status, Result OperationResult)
+public record MigrationResult(
+    ProjectMigrationStatus Status, 
+    Result OperationResult, 
+    string OldVersion = "", 
+    string NewVersion = "")
 {
     public static MigrationResult Success() => new(ProjectMigrationStatus.Success, Result.Ok());
     public static MigrationResult FromStatus(ProjectMigrationStatus status, Result operationResult) => new(status, operationResult);
+    public static MigrationResult WithVersions(ProjectMigrationStatus status, Result operationResult, string oldVersion, string newVersion) => 
+        new(status, operationResult, oldVersion, newVersion);
 }
 
 /// <summary>
