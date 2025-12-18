@@ -14,7 +14,7 @@ public class MigrationContext
     public required string ProjectFilePath { get; init; }
 
     /// <summary>
-    /// Directory containing the project file.
+    /// Folder containing the project file.
     /// </summary>
     public required string ProjectFolderPath { get; init; }
 
