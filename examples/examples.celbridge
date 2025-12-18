@@ -1,4 +1,5 @@
-celbridge.version = "<application-version>"
+[celbridge]
+celbridge-version = "<application-version>"
 
 [project]
 name = "examples"

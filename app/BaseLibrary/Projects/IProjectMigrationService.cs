@@ -16,12 +16,12 @@ public enum MigrationStatus
     InvalidConfig,
 
     /// <summary>
-    /// Project celbridge.version is newer than the application version.
+    /// Project celbridge-version is newer than the application version.
     /// </summary>
     IncompatibleVersion,
 
     /// <summary>
-    /// Project celbridge.version is invalid or not specified.
+    /// Project celbridge-version is invalid or not specified.
     /// </summary>
     InvalidVersion,
 
