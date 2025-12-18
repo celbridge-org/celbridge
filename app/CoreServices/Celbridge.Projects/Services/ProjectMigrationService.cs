@@ -32,6 +32,8 @@ public enum VersionComparisonState
 
 public class ProjectMigrationService : IProjectMigrationService
 {
+    private const string ApplicationVersionSentinel = "<application-version>";
+
     private readonly ILogger<ProjectMigrationService> _logger;
     private readonly IUtilityService _utilityService;
 
@@ -79,6 +81,10 @@ public class ProjectMigrationService : IProjectMigrationService
             // Store the original project version for logging purposes
             var originalProjectVersion = projectVersion;
             
+            // The sentinel value "<application-version>" means "use current version" without updating the file.
+            // This is for dev team use with example projects during development.
+            bool useSentinelVersion = projectVersion == ApplicationVersionSentinel;
+            
             // Compare versions to determine if migration is needed
             var versionState = CompareVersions(projectVersion, applicationVersion);
             
@@ -89,6 +95,17 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 case VersionComparisonState.SameVersion:
                 {
+                    // If using the "<application-version>", treat as same version but DO NOT update the project file
+                    if (useSentinelVersion)
+                    {
+                        _logger.LogInformation(
+                            "Project version is sentinel '<application-version>' - treating as current version without updating file: {CurrentVersion}",
+                            normalizedAppVersion);
+                        
+                        // Return the normalized app version for both old and new to supress the upgrade notification banner
+                        return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), normalizedAppVersion, normalizedAppVersion);
+                    }
+                    
                     // Even if versions are semantically the same, we should normalize the format
                     // in the file if it differs (e.g., "0.1.4.3" should become "0.1.4")
                     
@@ -182,17 +199,26 @@ public class ProjectMigrationService : IProjectMigrationService
     /// Compare two version strings in the format "major.minor.patch".
     /// Returns a VersionComparisonState indicating the relationship between the versions.
     /// Handles legacy 4-part versions by normalizing them to 3-part format.
+    /// The sentinel value "<application-version>" for projectVersion is treated as "use current version" - useful for dev team working with example projects.
     /// </summary>
     private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
     {
-        // Handle empty/null project version - treat as older version needing migration
+        // Handle the sentinel value "<application-version>" meaning "use current version"
+        // This allows the dev team to work with example projects during development without modifying the version in the file.
+        if (projectVersion == ApplicationVersionSentinel)
+        {
+            _logger.LogInformation("Project version '<application-version>' - using current application version");
+            return VersionComparisonState.SameVersion;
+        }
+        
+        // Handle null or whitespace-only project version - we can't safely upgarde in this case.
         if (string.IsNullOrWhiteSpace(projectVersion))
         {
-            _logger.LogInformation("Project has no version - treating as older version requiring migration");
-            return VersionComparisonState.OlderVersion;
+            _logger.LogError("Application version is empty - cannot determine compatibility");
+            return VersionComparisonState.UnresolvedVersion;
         }
 
-        // Handle empty/null application version - this should never happen, but fail safe
+        // Handle empty/null application version - this should never happen, but fail safely
         if (string.IsNullOrWhiteSpace(applicationVersion))
         {
             _logger.LogError("Application version is empty - cannot determine compatibility");

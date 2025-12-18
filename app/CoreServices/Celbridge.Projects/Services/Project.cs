@@ -178,7 +178,10 @@ public class Project : IDisposable, IProject
                 ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
 
                 // Rename the celbridge project file to the selected project file name.
-                File.Move(projectPath + Path.DirectorySeparatorChar + "examples.celbridge", projectFilePath);
+                var extractedProjectFile = projectPath + Path.DirectorySeparatorChar + "examples.celbridge";
+                File.Move(extractedProjectFile, projectFilePath);
+
+                // Todo: Replace the "<application-version>" sentinel with the current application version
             }
         }
         catch (Exception ex)
