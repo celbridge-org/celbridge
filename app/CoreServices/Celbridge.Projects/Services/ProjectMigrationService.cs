@@ -310,7 +310,6 @@ public class ProjectMigrationService : IProjectMigrationService
     {
         try
         {
-            // 1. Read in the project file text (do not parse it, we're just manipulating text)
             var originalText = await File.ReadAllTextAsync(projectFilePath);
             
             // Detect the line ending style used in the original file
@@ -321,24 +320,31 @@ public class ProjectMigrationService : IProjectMigrationService
                 .Select(line => line.TrimEnd('\r'))
                 .ToList();
             
-            // 2. Remove any existing celbridge version lines
-            var linesToRemove = new List<int>();
+            // Track the index of the existing celbridge.version line
+            int existingVersionLineIndex = -1;
             
+            // Find existing celbridge.version line
             for (int i = 0; i < lines.Count; i++)
             {
                 var trimmedLine = lines[i].Trim();
                 
-                // Always remove celbridge.version dotted key format
                 if (trimmedLine.StartsWith("celbridge.version"))
                 {
-                    _logger.LogDebug("Removing existing celbridge.version line at index {Index}", i);
-                    linesToRemove.Add(i);
-                    continue;
+                    existingVersionLineIndex = i;
+                    _logger.LogDebug("Found existing celbridge.version line at index {Index}", i);
+                    break;
                 }
+            }
+            
+            // Handle legacy [celbridge] section format (only for version "0.0.12.0")
+            if (projectVersion == "0.0.12.0")
+            {
+                var linesToRemove = new List<int>();
                 
-                // Remove legacy [celbridge] section format only if version is "0.0.12.0"
-                if (projectVersion == "0.0.12.0")
+                for (int i = 0; i < lines.Count; i++)
                 {
+                    var trimmedLine = lines[i].Trim();
+                    
                     if (trimmedLine == "[celbridge]")
                     {
                         _logger.LogDebug("Removing old [celbridge] section header at index {Index}", i);
@@ -351,86 +357,46 @@ public class ProjectMigrationService : IProjectMigrationService
                         }
                     }
                 }
-            }
-            
-            // Remove lines in reverse order to maintain indices
-            for (int i = linesToRemove.Count - 1; i >= 0; i--)
-            {
-                lines.RemoveAt(linesToRemove[i]);
-            }
-            
-            if (linesToRemove.Count > 0)
-            {
-                _logger.LogInformation("Removed {Count} old version line(s) from project file", linesToRemove.Count);
-            }
-            
-            // 3. Insert a new celbridge.version = "{applicationVersion}" line + blank line at the top of the file, after any initial comments
-            var insertionIndex = 0;
-            
-            // Find the position after any initial comments
-            for (int i = 0; i < lines.Count; i++)
-            {
-                var trimmedLine = lines[i].Trim();
                 
-                // Skip comment lines (starting with #) and empty lines at the beginning
-                if (trimmedLine.StartsWith("#") || string.IsNullOrWhiteSpace(trimmedLine))
+                // Remove legacy lines in reverse order to maintain indices
+                for (int i = linesToRemove.Count - 1; i >= 0; i--)
                 {
-                    insertionIndex = i + 1;
+                    lines.RemoveAt(linesToRemove[i]);
                 }
-                else
+                
+                if (linesToRemove.Count > 0)
                 {
-                    break;
+                    _logger.LogInformation("Removed {Count} legacy version line(s) from project file", linesToRemove.Count);
+                    
+                    // Insert new version line at the top for legacy case
+                    lines.Insert(0, $"celbridge.version = \"{applicationVersion}\"");
+                    lines.Insert(1, "");
+                    _logger.LogDebug("Inserted new celbridge.version line at top of file for legacy migration");
                 }
             }
+            else if (existingVersionLineIndex >= 0)
+            {
+                // Update existing celbridge.version line in-place
+                lines[existingVersionLineIndex] = $"celbridge.version = \"{applicationVersion}\"";
+            }
+            else
+            {
+                // No existing version line and not a legacy case - this should not happen
+                // The version should have been found during parsing in PerformMigrationAsync
+                return Result.Fail("Cannot update version: no existing celbridge.version line found in project file");
+            }
             
-            // Insert the new version line followed by a blank line
-            lines.Insert(insertionIndex, $"celbridge.version = \"{applicationVersion}\"");
-            lines.Insert(insertionIndex + 1, "");
-            _logger.LogDebug("Inserted new celbridge.version line at index {Index}", insertionIndex);
-            
-            // 4. Compare the updated text to the original text - if different, write it back to disk
+            // Reconstruct the file text with the original line ending style
             var updatedText = string.Join('\n', lines);
             
+            if (lineEnding == "\r\n")
+            {
+                updatedText = updatedText.Replace("\n", "\r\n");
+            }
+            
+            // Only write if content actually changed
             if (updatedText != originalText)
             {
-                // Remove leading blank lines and collapse consecutive blank lines
-                var tidiedLines = new List<string>();
-                bool previousLineWasBlank = false;
-                bool hasSeenNonBlankLine = false;
-                
-                foreach (var line in lines)
-                {
-                    bool currentLineIsBlank = string.IsNullOrWhiteSpace(line);
-                    
-                    // Skip leading blank lines at the start of the document
-                    if (currentLineIsBlank && !hasSeenNonBlankLine)
-                    {
-                        continue;
-                    }
-                    
-                    // Skip consecutive blank lines
-                    if (currentLineIsBlank && previousLineWasBlank)
-                    {
-                        continue;
-                    }
-                    
-                    tidiedLines.Add(line);
-                    previousLineWasBlank = currentLineIsBlank;
-                    
-                    if (!currentLineIsBlank)
-                    {
-                        hasSeenNonBlankLine = true;
-                    }
-                }
-                
-                updatedText = string.Join('\n', tidiedLines);
-                
-                // Restore the original line ending style
-                if (lineEnding == "\r\n")
-                {
-                    updatedText = updatedText.Replace("\n", "\r\n");
-                }
-                
                 await File.WriteAllTextAsync(projectFilePath, updatedText);
                 _logger.LogInformation("Updated project file with application version {ApplicationVersion}", applicationVersion);
             }
