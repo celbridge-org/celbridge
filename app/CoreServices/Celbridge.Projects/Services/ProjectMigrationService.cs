@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Utilities;
+using System.Text.RegularExpressions;
 using Tomlyn;
 
 namespace Celbridge.Projects.Services;
@@ -346,84 +347,49 @@ public class ProjectMigrationService : IProjectMigrationService
             // Detect the line ending style used in the original file
             var lineEnding = originalText.Contains("\r\n") ? "\r\n" : "\n";
             
-            // Split by newline and remove any trailing \r characters to handle mixed line endings
-            var lines = originalText.Split('\n')
-                .Select(line => line.TrimEnd('\r'))
-                .ToList();
+            var updatedText = originalText;
             
-            // Track the index of the existing celbridge.version line
-            int existingVersionLineIndex = -1;
+            // Remove legacy [celbridge] section format using a regex
+            // Matches: [celbridge] line followed by a version = "..." line
+            // Pattern: optional indentation, [celbridge], line ending, optional indentation, version = "...", line ending
+            var legacyPattern = @"^[ \t]*\[celbridge\][ \t]*\r?\n[ \t]*version[ \t]*=[ \t]*""[^""]*""[ \t]*\r?\n?";
+            var legacyMatch = Regex.Match(updatedText, legacyPattern, RegexOptions.Multiline);
             
-            // Find existing celbridge.version line (modern format)
-            for (int i = 0; i < lines.Count; i++)
-            {
-                var trimmedLine = lines[i].Trim();
-                
-                if (trimmedLine.StartsWith("celbridge.version"))
-                {
-                    existingVersionLineIndex = i;
-                    _logger.LogDebug("Found existing celbridge.version line at index {Index}", i);
-                    break;
-                }
-            }
-            
-            // Check for legacy [celbridge] section format
-            bool hasLegacyFormat = false;
-            var linesToRemove = new List<int>();
-            
-            for (int i = 0; i < lines.Count; i++)
-            {
-                var trimmedLine = lines[i].Trim();
-                
-                if (trimmedLine == "[celbridge]")
-                {
-                    hasLegacyFormat = true;
-                    _logger.LogDebug("Found legacy [celbridge] section header at index {Index}", i);
-                    linesToRemove.Add(i);
-                    
-                    // Also remove the next line if it starts with "version"
-                    if (i + 1 < lines.Count && lines[i + 1].Trim().StartsWith("version"))
-                    {
-                        _logger.LogDebug("Found legacy version property at index {Index}", i + 1);
-                        linesToRemove.Add(i + 1);
-                    }
-                }
-            }
+            bool hasLegacyFormat = legacyMatch.Success;
             
             if (hasLegacyFormat)
             {
-                // Remove legacy lines in reverse order to maintain indices
-                for (int i = linesToRemove.Count - 1; i >= 0; i--)
-                {
-                    lines.RemoveAt(linesToRemove[i]);
-                }
+                _logger.LogInformation("Removing legacy [celbridge] section from project file");
+                updatedText = Regex.Replace(updatedText, legacyPattern, "", RegexOptions.Multiline);
                 
-                _logger.LogInformation("Removed {Count} legacy version line(s) from project file", linesToRemove.Count);
-                
-                // Insert new version line at the top for legacy case
-                lines.Insert(0, $"celbridge.version = \"{applicationVersion}\"");
-                lines.Insert(1, "");
+                // Insert new version line at the top
+                updatedText = $"celbridge.version = \"{applicationVersion}\"{lineEnding}{lineEnding}{updatedText}";
                 _logger.LogDebug("Inserted new celbridge.version line at top of file for legacy migration");
-            }
-            else if (existingVersionLineIndex >= 0)
-            {
-                // Update existing celbridge.version line in-place
-                lines[existingVersionLineIndex] = $"celbridge.version = \"{applicationVersion}\"";
-                _logger.LogDebug("Updated celbridge.version line at index {Index}", existingVersionLineIndex);
             }
             else
             {
-                // No existing version line and not a legacy case - this should not happen
-                // The version should have been found during parsing in PerformMigrationAsync
-                return Result.Fail("Cannot update version: no existing celbridge.version line found in project file");
-            }
-            
-            // Reconstruct the file text with the original line ending style
-            var updatedText = string.Join('\n', lines);
-            
-            if (lineEnding == "\r\n")
-            {
-                updatedText = updatedText.Replace("\n", "\r\n");
+                // Update existing celbridge.version line (modern format)
+                // Capture leading whitespace to preserve indentation
+                var modernPattern = @"^(\s*)celbridge\.version\s*=\s*""[^""]*""";
+                var modernMatch = Regex.Match(updatedText, modernPattern, RegexOptions.Multiline);
+                
+                if (modernMatch.Success)
+                {
+                    // Preserve the original indentation from capture group 1
+                    var leadingWhitespace = modernMatch.Groups[1].Value;
+                    updatedText = Regex.Replace(
+                        updatedText, 
+                        modernPattern, 
+                        $"{leadingWhitespace}celbridge.version = \"{applicationVersion}\"",
+                        RegexOptions.Multiline);
+                    _logger.LogDebug("Updated existing celbridge.version line");
+                }
+                else
+                {
+                    // No existing version line found - this should not happen
+                    // The version should have been found during parsing in PerformMigrationAsync
+                    return Result.Fail("Cannot update version: no existing celbridge.version line found in project file");
+                }
             }
             
             // Only write if content actually changed
