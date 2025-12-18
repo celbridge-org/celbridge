@@ -11,12 +11,17 @@ public enum ProjectMigrationStatus
     Success,
     
     /// <summary>
-    /// Project version is newer than application version - Python initialization disabled.
+    /// The project config file failed to parse.
+    /// </summary>
+    InvalidConfig,
+
+    /// <summary>
+    /// Project version is newer than application version.
     /// </summary>
     IncompatibleAppVersion,
     
     /// <summary>
-    /// Unable to resolve version compatibility - Python initialization disabled.
+    /// Unable to resolve version compatibility.
     /// </summary>
     InvalidAppVersion,
     

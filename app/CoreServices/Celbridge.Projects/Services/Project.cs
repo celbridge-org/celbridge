@@ -68,11 +68,13 @@ public class Project : IDisposable, IProject
 
             var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
             project._migrationResult = await migrationService.PerformMigrationAsync(projectFilePath);
-            
-            if (project._migrationResult.OperationResult.IsFailure)
+
+            bool migrationSucceeded = project._migrationResult.OperationResult.IsSuccess;
+
+            if (!migrationSucceeded)
             {
-                // Log a warning but continue loading - the project may need manual intervention
-                project._logger.LogWarning(project._migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
+                // Log the error but continue loading the workspace
+                project._logger.LogError(project._migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
             }
             
             //
@@ -81,15 +83,17 @@ public class Project : IDisposable, IProject
 
             var projectConfig = ServiceLocator.AcquireService<IProjectConfigService>() as ProjectConfigService;
             Guard.IsNotNull(projectConfig);
-
-            var initResult = projectConfig.InitializeFromFile(projectFilePath);
-            if (initResult.IsFailure)
-            {
-                // Log a warning but continue loading - the project config will be empty
-                project._logger.LogWarning(initResult, $"Failed to initialize project configuration");
-            }
-
             project._projectConfig = projectConfig;
+
+            if (migrationSucceeded)
+            {
+                var initResult = projectConfig.InitializeFromFile(projectFilePath);
+                if (initResult.IsFailure)
+                {
+                    // Log an error but continue loading - the project config will be empty
+                    project._logger.LogError(initResult, $"Failed to initialize project configuration");
+                }
+            }
 
             //
             // Ensure project data folder exists

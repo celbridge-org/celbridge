@@ -62,7 +62,7 @@ public class ProjectMigrationService : IProjectMigrationService
             if (parse.HasErrors)
             {
                 var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(ProjectMigrationStatus.InvalidConfig, errorResult);
             }
 
             var root = parse.ToModel();
