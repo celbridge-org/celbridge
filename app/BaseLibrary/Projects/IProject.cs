@@ -1,37 +1,6 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Represents the result of a project migration operation.
-/// </summary>
-public enum ProjectMigrationStatus
-{
-    /// <summary>
-    /// Migration completed successfully or was not needed.
-    /// </summary>
-    Complete,
-    
-    /// <summary>
-    /// The project config file failed to parse.
-    /// </summary>
-    InvalidConfig,
-
-    /// <summary>
-    /// Project celbridge.version is newer than the application version.
-    /// </summary>
-    IncompatibleVersion,
-    
-    /// <summary>
-    /// Project celbridge.version is invalid or not specified.
-    /// </summary>
-    InvalidVersion,
-    
-    /// <summary>
-    /// Migration failed for other reasons.
-    /// </summary>
-    Failed
-}
-
-/// <summary>
 /// Manages all project data for a Celbridge project.
 /// </summary>
 public interface IProject

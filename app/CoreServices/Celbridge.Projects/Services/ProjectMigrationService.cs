@@ -33,7 +33,7 @@ public class ProjectMigrationService : IProjectMigrationService
             if (!File.Exists(projectFilePath))
             {
                 var errorResult = Result.Fail($"Project file does not exist: '{projectFilePath}'");
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
 
             var text = File.ReadAllText(projectFilePath);
@@ -42,7 +42,7 @@ public class ProjectMigrationService : IProjectMigrationService
             if (parse.HasErrors)
             {
                 var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
-                return MigrationResult.FromStatus(ProjectMigrationStatus.InvalidConfig, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.InvalidConfig, errorResult);
             }
 
             var root = parse.ToModel();
@@ -76,7 +76,7 @@ public class ProjectMigrationService : IProjectMigrationService
             _logger.LogError(ex, "Failed to perform project migration");
             var errorResult = Result.Fail($"Failed to execute migration")
                 .WithException(ex);
-            return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+            return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
         }
     }
 
@@ -103,13 +103,13 @@ public class ProjectMigrationService : IProjectMigrationService
                         applicationVersion);
 
                     // Return the same app version for both old and new to suppress the upgrade notification banner
-                    result = MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
+                    result = MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
                     return true;
                 }
 
                 _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
 
-                result = MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
+                result = MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
                 return true;
             }
 
@@ -131,7 +131,7 @@ public class ProjectMigrationService : IProjectMigrationService
                     $"Your current Celbridge version is v{applicationVersion}. " +
                     $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
 
-                result = MigrationResult.FromStatus(ProjectMigrationStatus.IncompatibleVersion, errorResult);
+                result = MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
                 return true;
             }
 
@@ -140,14 +140,14 @@ public class ProjectMigrationService : IProjectMigrationService
                 var errorResult = Result.Fail(
                     $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
                     $"Please correct the version number in the .celbridge file and reload the project.");
-                result = MigrationResult.FromStatus(ProjectMigrationStatus.InvalidVersion, errorResult);
+                result = MigrationResult.FromStatus(MigrationStatus.InvalidVersion, errorResult);
                 return true;
             }
 
             default:
             {
                 var errorResult = Result.Fail($"Unknown version comparison state: {versionState}");
-                result = MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                result = MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
                 return true;
             }
         }
@@ -177,11 +177,11 @@ public class ProjectMigrationService : IProjectMigrationService
                 if (writeResult.IsFailure)
                 {
                     var errorResult = Result.Fail($"Failed to write application version to project file: '{projectFilePath}'");
-                    return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                    return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
                 }
             }
                     
-            return MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), originalProjectVersion, applicationVersion);
+            return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), originalProjectVersion, applicationVersion);
         }
                 
         _logger.LogInformation($"Executing {requiredSteps.Count} migration steps");
@@ -232,7 +232,7 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 var errorResult = Result.Fail($"Migration step {step.GetType().Name} failed")
                     .WithErrors(stepResult);
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
 
             // Update the celbridge.version in the config file to reflect the new version after each step
@@ -242,7 +242,7 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 var errorResult = Result.Fail($"Failed to update version after migration step {step.GetType().Name}")
                     .WithErrors(versionUpdateResult);
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
 
             currentVersion = stepVersionString;
@@ -254,7 +254,7 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 var errorResult = Result.Fail($"Failed to read project configuration after migration step {step.GetType().Name}")
                     .WithErrors(readResult);
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
 
             context.Configuration = readResult.Value;
@@ -269,13 +269,13 @@ public class ProjectMigrationService : IProjectMigrationService
             if (writeResult.IsFailure)
             {
                 var errorResult = Result.Fail($"Failed to write final application version to project file: '{projectFilePath}'");
-                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
         }
 
         _logger.LogInformation($"Project migration completed successfully: {originalProjectVersion} >> {finalVersion}");
                 
-        return MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), originalProjectVersion, finalVersion);
+        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), originalProjectVersion, finalVersion);
     }
 
     /// <summary>

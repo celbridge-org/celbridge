@@ -148,7 +148,7 @@ public class WorkspaceLoader
         {
             var migrationResult = currentProject.MigrationResult;
             
-            if (migrationResult.Status == ProjectMigrationStatus.Complete)
+            if (migrationResult.Status == MigrationStatus.Complete)
             {
                 // Project has loaded and migration completed.
                 // We can now safely initialize Python.
@@ -176,25 +176,25 @@ public class WorkspaceLoader
         
         switch (migrationResult.Status)
         {
-            case ProjectMigrationStatus.InvalidConfig:
+            case MigrationStatus.InvalidConfig:
                 _logger.LogError("Project config is invalid - Python initialization disabled");
                 message = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
                 messengerService.Send(message);
                 break;
 
-            case ProjectMigrationStatus.IncompatibleVersion:
+            case MigrationStatus.IncompatibleVersion:
                 _logger.LogError("Project version is not compatible with application version - Python initialization disabled");
                 message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 
-            case ProjectMigrationStatus.InvalidVersion:
+            case MigrationStatus.InvalidVersion:
                 _logger.LogError("Project version is invalid - Python initialization disabled");
                 message = new ConsoleErrorMessage(ConsoleErrorType.InvalidVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 
-            case ProjectMigrationStatus.Failed:
+            case MigrationStatus.Failed:
                 _logger.LogError("Project migration failed - Python initialization disabled");
                 message = new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName);
                 messengerService.Send(message);
