@@ -123,13 +123,13 @@ public partial class ConsolePanelViewModel : ObservableObject
                 break;
 
             case ConsoleErrorType.IncompatibleVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleAppVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleAppVersionMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionMessage", configFile);
                 break;
 
             case ConsoleErrorType.InvalidVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidAppVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidAppVersionMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidVersionMessage", configFile);
                 break;
 
             case ConsoleErrorType.MigrationError:
