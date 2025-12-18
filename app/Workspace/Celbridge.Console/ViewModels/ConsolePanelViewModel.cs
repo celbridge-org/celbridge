@@ -132,6 +132,11 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidAppVersionMessage", configFile);
                 break;
 
+            case ConsoleErrorType.MigrationError:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationErrorMessage", configFile);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }

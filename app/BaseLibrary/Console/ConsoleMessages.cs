@@ -31,6 +31,12 @@ public enum ConsoleErrorType
     /// Python session cannot be initialized.
     /// </summary>
     InvalidAppVersion,
+
+    /// <summary>
+    /// Project migration failed.
+    /// Python session cannot be initialized.
+    /// </summary>
+    MigrationError,
 }
 
 /// <summary>

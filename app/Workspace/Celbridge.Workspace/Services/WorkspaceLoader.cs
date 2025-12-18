@@ -146,7 +146,13 @@ public class WorkspaceLoader
         
         if (currentProject is not null)
         {
-            var migrationStatus = currentProject.MigrationResult.Status;
+            var migrationResult = currentProject.MigrationResult;
+            var migrationStatus = migrationResult.Status;
+            
+            if (migrationResult.OperationResult.IsFailure)
+            {
+                _logger.LogError(migrationResult.OperationResult, "Project migration error");
+            }
             
             switch (migrationStatus)
             {
@@ -178,13 +184,12 @@ public class WorkspaceLoader
                     break;
                 
                 case ProjectMigrationStatus.Failed:
-                    // Other migration errors - try to initialize Python anyway
-                    _logger.LogWarning("Project migration failed - attempting Python initialization anyway");
-                    initPython = await pythonService.InitializePython();
-                    if (initPython.IsFailure)
-                    {
-                        _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
-                    }
+                    // Migration failed - cannot initialize Python
+                    _logger.LogWarning("Project migration failed - Python initialization disabled");
+                    projectFileName = Path.GetFileName(currentProject.ProjectFilePath);
+                    var migrationErrorMessage = new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName);
+                    messengerService = ServiceLocator.AcquireService<IMessengerService>();
+                    messengerService.Send(migrationErrorMessage);
                     break;
             }
         }
