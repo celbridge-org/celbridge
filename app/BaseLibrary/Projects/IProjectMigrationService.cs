@@ -52,8 +52,7 @@ public record MigrationResult(
 public interface IProjectMigrationService
 {
     /// <summary>
-    /// Performs migration on a project if needed.
-    /// Returns a MigrationResult containing the migration status and operation result.
+    /// Performs version migration on a project if needed.
     /// </summary>
     Task<MigrationResult> PerformMigrationAsync(string projectFilePath);
 }
