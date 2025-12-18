@@ -171,26 +171,32 @@ public class WorkspaceLoader
         var projectFileName = Path.GetFileName(projectFilePath);
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
+        ConsoleErrorMessage message;
+        
         switch (migrationResult.Status)
         {
             case ProjectMigrationStatus.InvalidConfig:
-                _logger.LogWarning("Project config is invalid - Python initialization disabled");
-                messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName));
+                _logger.LogError("Project config is invalid - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
+                messengerService.Send(message);
                 break;
 
             case ProjectMigrationStatus.IncompatibleAppVersion:
-                _logger.LogWarning("Project version is too new - Python initialization disabled");
-                messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.IncompatibleAppVersion, projectFileName));
+                _logger.LogError("Project version is too new - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleAppVersion, projectFileName);
+                messengerService.Send(message);
                 break;
 
             case ProjectMigrationStatus.InvalidAppVersion:
-                _logger.LogWarning("Project version is invalid - Python initialization disabled");
-                messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.InvalidAppVersion, projectFileName));
+                _logger.LogError("Project version is invalid - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidAppVersion, projectFileName);
+                messengerService.Send(message);
                 break;
 
             case ProjectMigrationStatus.Failed:
-                _logger.LogWarning("Project migration failed - Python initialization disabled");
-                messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName));
+                _logger.LogError("Project migration failed - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName);
+                messengerService.Send(message);
                 break;
         }
     }
