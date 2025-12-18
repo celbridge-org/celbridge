@@ -97,7 +97,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
     private async Task<Result> LoadProjectAsync(string projectFilePath)
     {
-        var loadResult = _projectService.LoadProject(projectFilePath);
+        var loadResult = await _projectService.LoadProjectAsync(projectFilePath);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to open project file '{projectFilePath}'")

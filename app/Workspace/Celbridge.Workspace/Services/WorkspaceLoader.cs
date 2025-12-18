@@ -1,4 +1,7 @@
+using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.Projects;
 
 namespace Celbridge.Workspace.Services;
 
@@ -136,12 +139,66 @@ public class WorkspaceLoader
         }
 
         var pythonService = workspaceService.PythonService;
-        var initPython = await pythonService.InitializePython();
-        if (initPython.IsFailure)
+        
+        // Check for version compatibility issues before initializing Python
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        
+        if (currentProject is not null)
         {
-            _logger.LogError(initPython.FirstException, "Failed to initialize Python scripting: {Error}", initPython.Error);
+            var migrationResult = currentProject.MigrationResult;
+            
+            if (migrationResult.Status == MigrationStatus.Complete)
+            {
+                // Project has loaded and migration completed.
+                // We can now safely initialize Python.
+                var pythonResult = await pythonService.InitializePython();
+                if (pythonResult.IsFailure)
+                {
+                    _logger.LogError(pythonResult, "Failed to initialize Python scripting");
+                }
+            }
+            else
+            {
+                HandleMigrationFailure(migrationResult, currentProject.ProjectFilePath);
+            }
         }
 
         return Result.Ok();
+    }
+
+    private void HandleMigrationFailure(MigrationResult migrationResult, string projectFilePath)
+    {
+        var projectFileName = Path.GetFileName(projectFilePath);
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+
+        ConsoleErrorMessage message;
+        
+        switch (migrationResult.Status)
+        {
+            case MigrationStatus.InvalidConfig:
+                _logger.LogError("Project config is invalid - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
+                messengerService.Send(message);
+                break;
+
+            case MigrationStatus.IncompatibleVersion:
+                _logger.LogError("Project version is not compatible with application version - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleVersion, projectFileName);
+                messengerService.Send(message);
+                break;
+
+            case MigrationStatus.InvalidVersion:
+                _logger.LogError("Project version is invalid - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidVersion, projectFileName);
+                messengerService.Send(message);
+                break;
+
+            case MigrationStatus.Failed:
+                _logger.LogError("Project migration failed - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName);
+                messengerService.Send(message);
+                break;
+        }
     }
 }

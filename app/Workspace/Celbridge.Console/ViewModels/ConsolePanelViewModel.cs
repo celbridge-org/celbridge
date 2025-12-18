@@ -40,6 +40,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _isProjectChangeBannerVisible;
 
+    [ObservableProperty]
+    private bool _isMigrationBannerVisible;
+
+    [ObservableProperty]
+    private string _migrationBannerTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _migrationBannerMessage = string.Empty;
+
     private byte[]? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
@@ -64,6 +73,9 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         // Store the original project file contents
         StoreProjectFileHash();
+        
+        // Check if the project was migrated and show banner if needed
+        CheckMigrationStatus();
     }
 
     public void OnTerminalProcessExited()
@@ -110,15 +122,27 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorMessage", configFile);
                 break;
 
+            case ConsoleErrorType.IncompatibleVersion:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionMessage", configFile);
+                break;
+
+            case ConsoleErrorType.InvalidVersion:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidVersionMessage", configFile);
+                break;
+
+            case ConsoleErrorType.MigrationError:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationErrorMessage", configFile);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
 
         IsErrorBannerVisible = true;
-
-        // Force the console panel to be visible when an error occurs
-        // This ensures the user can see the error banner even if they had previously collapsed the console
-        _editorSettings.IsToolsPanelVisible = true;
+        ShowToolsPanel();
 
         // Hide project change banner when error banner is shown
         IsProjectChangeBannerVisible = false;
@@ -128,6 +152,13 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Send message to request project reload
         _messengerService.Send<ReloadProjectMessage>();
+    }
+
+    private void ShowToolsPanel()
+    {
+        // Force the console panel to be visible when an error occurs
+        // This ensures the user can see the error banner even if they had previously collapsed the console
+        _editorSettings.IsToolsPanelVisible = true;
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
@@ -202,6 +233,7 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
 
                 IsProjectChangeBannerVisible = true;
+                ShowToolsPanel();
             }
             else
             {
@@ -218,6 +250,35 @@ public partial class ConsolePanelViewModel : ObservableObject
     public void OnProjectChangeBannerClosed()
     {
         IsProjectChangeBannerVisible = false;
+    }
+
+    private void CheckMigrationStatus()
+    {
+        var currentProject = _projectService?.CurrentProject;
+        if (currentProject == null)
+        {
+            return;
+        }
+
+        // Only show the migration banner if there was an actual version change
+        var oldVersion = currentProject.MigrationResult.OldVersion;
+        var newVersion = currentProject.MigrationResult.NewVersion;
+        
+        if (!string.IsNullOrEmpty(oldVersion) && 
+            !string.IsNullOrEmpty(newVersion) && 
+            oldVersion != newVersion)
+        {
+            // Populate the migration banner strings
+            MigrationBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationBannerTitle");
+            MigrationBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationBannerMessage", oldVersion, newVersion);
+            IsMigrationBannerVisible = true;
+            ShowToolsPanel(); 
+        }
+    }
+
+    public void OnMigrationBannerClosed()
+    {
+        IsMigrationBannerVisible = false;
     }
 
     public void Cleanup()

@@ -29,4 +29,10 @@ public interface IProject
     /// Gets the project configuration.
     /// </summary>
     public IProjectConfigService ProjectConfig { get; }
+
+    /// <summary>
+    /// Gets the complete migration result from when the project was loaded.
+    /// Contains the migration status, old/new versions, and operation result.
+    /// </summary>
+    MigrationResult MigrationResult { get; }
 }
