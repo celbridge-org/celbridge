@@ -104,14 +104,14 @@ public class ProjectService : IProjectService
         }
     }
 
-    public Result LoadProject(string projectFilePath)
+    public async Task<Result<IProject>> LoadProjectAsync(string projectFilePath)
     {
         try
         {
-            var loadResult = Project.LoadProject(projectFilePath);
+            var loadResult = await Project.LoadProjectAsync(projectFilePath);
             if (loadResult.IsFailure)
             {
-                return Result.Fail($"Failed to load project: {projectFilePath}")
+                return Result<IProject>.Fail($"Failed to load project: {projectFilePath}")
                     .WithErrors(loadResult);
             }
 
@@ -130,11 +130,11 @@ public class ProjectService : IProjectService
 
             _userInterfaceService.SetCurrentProjectTitle(CurrentProject.ProjectName);
 
-            return Result.Ok();
+            return Result<IProject>.Ok(CurrentProject);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when loading the project database.")
+            return Result<IProject>.Fail($"An exception occurred when loading the project database.")
                 .WithException(ex);
         }
     }

@@ -9,7 +9,6 @@ namespace Celbridge.Projects.Services;
 public class Project : IDisposable, IProject
 {
     private const string DefaultProjectVersion = "0.1.0";
-    private const string DefaultPythonVersion = "3.12";
     private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
     private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
 
@@ -17,6 +16,9 @@ public class Project : IDisposable, IProject
 
     private IProjectConfigService? _projectConfig;
     public IProjectConfigService ProjectConfig => _projectConfig!;
+
+    private MigrationResult _migrationResult = MigrationResult.Success();
+    public MigrationResult MigrationResult => _migrationResult;
 
     private string? _projectFilePath;
     public string ProjectFilePath => _projectFilePath!;
@@ -30,15 +32,13 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-
-
     public Project(
         ILogger<Project> logger)
     {
         _logger = logger;
     }
 
-    public static Result<IProject> LoadProject(string projectFilePath)
+    public static async Task<Result<IProject>> LoadProjectAsync(string projectFilePath)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath))
         {
@@ -52,34 +52,53 @@ public class Project : IDisposable, IProject
 
         try
         {
+            //
+            // Create the project object
+            //
+
             var project = ServiceLocator.AcquireService<IProject>() as Project;
             Guard.IsNotNull(project);
-
             project.PopulatePaths(projectFilePath);
 
+            //
+            // Migrate project to latest version of Celbridge
+            //
+
+            var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
+            project._migrationResult = await migrationService.PerformMigrationAsync(projectFilePath);
+
+            bool migrationSucceeded = project._migrationResult.OperationResult.IsSuccess;
+
+            if (!migrationSucceeded)
+            {
+                // Log the error but continue loading the workspace
+                project._logger.LogError(project._migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
+            }
+            
             //
             // Load project properties from the project file
             //
 
             var projectConfig = ServiceLocator.AcquireService<IProjectConfigService>() as ProjectConfigService;
             Guard.IsNotNull(projectConfig);
-
-            var initResult = projectConfig.InitializeFromFile(projectFilePath);
-            if (initResult.IsFailure)
-            {
-                // Log the error but continue loading - the project config will be empty
-                project._logger.LogWarning(initResult.FirstException, "Failed to initialize project configuration: {Error}. Project loaded with empty configuration.", initResult.Error);
-            }
-
             project._projectConfig = projectConfig;
 
+            if (migrationSucceeded)
+            {
+                var initResult = projectConfig.InitializeFromFile(projectFilePath);
+                if (initResult.IsFailure)
+                {
+                    // Log an error but continue loading - the project config will be empty
+                    project._logger.LogError(initResult, $"Failed to initialize project configuration");
+                }
+            }
+
             //
-            // Load project database
+            // Ensure project data folder exists
             //
 
             if (!Directory.Exists(project.ProjectDataFolderPath))
             {
-                project._logger.LogWarning($"Project data folder does not exist: '{project.ProjectDataFolderPath}'. Creating an empty folder.");
                 Directory.CreateDirectory(project.ProjectDataFolderPath);
             }
 
@@ -118,28 +137,26 @@ public class Project : IDisposable, IProject
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
+            // Get Celbridge application version
+            var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+            var appVersion = utilityService.GetEnvironmentInfo().AppVersion;
+
             if (configType == NewProjectConfigType.Standard)
             {
-                // Get Celbridge version
-                var utilityService = ServiceLocator.AcquireService<IUtilityService>();
-                var info = utilityService.GetEnvironmentInfo();
-
                 var projectTOML = $"""
+                [celbridge]
+                celbridge-version = "{appVersion}"
+
                 [project]
                 name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
                 version = "{DefaultProjectVersion}"
-                requires-python = "{DefaultPythonVersion}"
+                requires-python = "{ProjectConstants.DefaultPythonVersion}"
                 dependencies = []
-
-                [celbridge]
-                version = "{info.AppVersion}"
                 """;
 
-                // Todo: Populate this with project configuration options
                 await File.WriteAllTextAsync(projectFilePath, projectTOML);
 
-
-                // Read from a given file in the project build, and also ensure we're not stomping an existing file.
+                // Create a readme.md file in the project, if it doesn't already exist.
                 string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
                 if (!File.Exists(readMePath))
                 {
@@ -161,8 +178,15 @@ public class Project : IDisposable, IProject
                 var tempZipFile = await sourceZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "Examples.zip", NameCollisionOption.ReplaceExisting);
                 ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
 
+                // Update the extracted examples.celbridge project file with actual values
+                var extractedProjectFile = projectPath + Path.DirectorySeparatorChar + "examples.celbridge";
+                var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
+                projectFileContents = projectFileContents.Replace("<application-version>", appVersion);
+                projectFileContents = projectFileContents.Replace("<python-version>", ProjectConstants.DefaultPythonVersion);
+                await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
+
                 // Rename the celbridge project file to the selected project file name.
-                File.Move(projectPath + Path.DirectorySeparatorChar + "examples.celbridge", projectFilePath);
+                File.Move(extractedProjectFile, projectFilePath);
             }
         }
         catch (Exception ex)
