@@ -21,20 +21,18 @@ public enum ConsoleErrorType
     PythonHostProcessError,
 
     /// <summary>
-    /// The project was created with a newer version of Celbridge.
-    /// Python session cannot be initialized.
+    /// The current version of Celbridge is incompatible with the project version.
+    /// This typically indicates that the project was created with a newer version of Celbridge.
     /// </summary>
-    IncompatibleAppVersion,
+    IncompatibleVersion,
 
     /// <summary>
-    /// Unable to determine project version compatibility.
-    /// Python session cannot be initialized.
+    /// The project version is invalid or not specified.
     /// </summary>
-    InvalidAppVersion,
+    InvalidVersion,
 
     /// <summary>
     /// Project migration failed.
-    /// Python session cannot be initialized.
     /// </summary>
     MigrationError,
 }

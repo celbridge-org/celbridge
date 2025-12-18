@@ -9,7 +9,7 @@ public record MigrationResult(
     string OldVersion = "", 
     string NewVersion = "")
 {
-    public static MigrationResult Success() => new(ProjectMigrationStatus.Success, Result.Ok());
+    public static MigrationResult Success() => new(ProjectMigrationStatus.Complete, Result.Ok());
     public static MigrationResult FromStatus(ProjectMigrationStatus status, Result operationResult) => new(status, operationResult);
     public static MigrationResult WithVersions(ProjectMigrationStatus status, Result operationResult, string oldVersion, string newVersion) => 
         new(status, operationResult, oldVersion, newVersion);

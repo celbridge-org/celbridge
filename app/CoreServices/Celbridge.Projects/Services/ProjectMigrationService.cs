@@ -103,13 +103,13 @@ public class ProjectMigrationService : IProjectMigrationService
                         applicationVersion);
 
                     // Return the same app version for both old and new to suppress the upgrade notification banner
-                    result = MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), applicationVersion, applicationVersion);
+                    result = MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
                     return true;
                 }
 
                 _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
 
-                result = MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), applicationVersion, applicationVersion);
+                result = MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
                 return true;
             }
 
@@ -131,7 +131,7 @@ public class ProjectMigrationService : IProjectMigrationService
                     $"Your current Celbridge version is v{applicationVersion}. " +
                     $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
 
-                result = MigrationResult.FromStatus(ProjectMigrationStatus.IncompatibleAppVersion, errorResult);
+                result = MigrationResult.FromStatus(ProjectMigrationStatus.IncompatibleVersion, errorResult);
                 return true;
             }
 
@@ -140,7 +140,7 @@ public class ProjectMigrationService : IProjectMigrationService
                 var errorResult = Result.Fail(
                     $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
                     $"Please correct the version number in the .celbridge file and reload the project.");
-                result = MigrationResult.FromStatus(ProjectMigrationStatus.InvalidAppVersion, errorResult);
+                result = MigrationResult.FromStatus(ProjectMigrationStatus.InvalidVersion, errorResult);
                 return true;
             }
 
@@ -181,7 +181,7 @@ public class ProjectMigrationService : IProjectMigrationService
                 }
             }
                     
-            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, applicationVersion);
+            return MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), originalProjectVersion, applicationVersion);
         }
                 
         _logger.LogInformation($"Executing {requiredSteps.Count} migration steps");
@@ -275,7 +275,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
         _logger.LogInformation($"Project migration completed successfully: {originalProjectVersion} >> {finalVersion}");
                 
-        return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, finalVersion);
+        return MigrationResult.WithVersions(ProjectMigrationStatus.Complete, Result.Ok(), originalProjectVersion, finalVersion);
     }
 
     /// <summary>

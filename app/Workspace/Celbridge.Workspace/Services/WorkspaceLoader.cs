@@ -148,9 +148,10 @@ public class WorkspaceLoader
         {
             var migrationResult = currentProject.MigrationResult;
             
-            if (migrationResult.Status == ProjectMigrationStatus.Success)
+            if (migrationResult.Status == ProjectMigrationStatus.Complete)
             {
-                // Project has loaded and migration succeeded - we can now initialize Python
+                // Project has loaded and migration completed.
+                // We can now safely initialize Python.
                 var pythonResult = await pythonService.InitializePython();
                 if (pythonResult.IsFailure)
                 {
@@ -181,15 +182,15 @@ public class WorkspaceLoader
                 messengerService.Send(message);
                 break;
 
-            case ProjectMigrationStatus.IncompatibleAppVersion:
-                _logger.LogError("Project version is too new - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleAppVersion, projectFileName);
+            case ProjectMigrationStatus.IncompatibleVersion:
+                _logger.LogError("Project version is not compatible with application version - Python initialization disabled");
+                message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 
-            case ProjectMigrationStatus.InvalidAppVersion:
+            case ProjectMigrationStatus.InvalidVersion:
                 _logger.LogError("Project version is invalid - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidAppVersion, projectFileName);
+                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 

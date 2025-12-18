@@ -8,7 +8,7 @@ public enum ProjectMigrationStatus
     /// <summary>
     /// Migration completed successfully or was not needed.
     /// </summary>
-    Success,
+    Complete,
     
     /// <summary>
     /// The project config file failed to parse.
@@ -16,14 +16,14 @@ public enum ProjectMigrationStatus
     InvalidConfig,
 
     /// <summary>
-    /// Project version is newer than application version.
+    /// Project celbridge.version is newer than the application version.
     /// </summary>
-    IncompatibleAppVersion,
+    IncompatibleVersion,
     
     /// <summary>
-    /// Unable to resolve version compatibility.
+    /// Project celbridge.version is invalid or not specified.
     /// </summary>
-    InvalidAppVersion,
+    InvalidVersion,
     
     /// <summary>
     /// Migration failed for other reasons.

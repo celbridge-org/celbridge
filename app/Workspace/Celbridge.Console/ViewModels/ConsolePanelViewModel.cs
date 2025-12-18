@@ -122,12 +122,12 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.IncompatibleAppVersion:
+            case ConsoleErrorType.IncompatibleVersion:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleAppVersionTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleAppVersionMessage", configFile);
                 break;
 
-            case ConsoleErrorType.InvalidAppVersion:
+            case ConsoleErrorType.InvalidVersion:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidAppVersionTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidAppVersionMessage", configFile);
                 break;
