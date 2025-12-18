@@ -158,8 +158,6 @@ public class ProjectMigrationService : IProjectMigrationService
         // Perform migration using step-based approach
         _logger.LogInformation($"Starting project migration for: {projectFilePath}");
 
-        var originalProjectVersion = projectVersion;
-
         var projectVer = new Version(NormalizeVersion(projectVersion));
         var applicationVer = new Version(applicationVersion);
 
@@ -171,9 +169,9 @@ public class ProjectMigrationService : IProjectMigrationService
             _logger.LogInformation("No migration steps required");
                     
             // We still need to update the version number if it differs
-            if (originalProjectVersion != applicationVersion)
+            if (projectVersion != applicationVersion)
             {
-                var writeResult = await WriteApplicationVersionAsync(projectFilePath, originalProjectVersion, applicationVersion);
+                var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, applicationVersion);
                 if (writeResult.IsFailure)
                 {
                     var errorResult = Result.Fail($"Failed to write application version to project file: '{projectFilePath}'");
@@ -181,7 +179,7 @@ public class ProjectMigrationService : IProjectMigrationService
                 }
             }
                     
-            return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), originalProjectVersion, applicationVersion);
+            return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), projectVersion, applicationVersion);
         }
                 
         _logger.LogInformation($"Executing {requiredSteps.Count} migration steps");
@@ -217,12 +215,12 @@ public class ProjectMigrationService : IProjectMigrationService
             ProjectDataFolderPath = projectDataFolderPath,
             Configuration = root,
             Logger = _logger,
-            OriginalVersion = originalProjectVersion,
+            OriginalVersion = projectVersion,
             WriteProjectFileAsync = writeProjectFileAsync
         };
                 
         // Execute migration steps in order
-        string currentVersion = originalProjectVersion;
+        string currentVersion = projectVersion;
         foreach (var step in requiredSteps)
         {
             _logger.LogInformation($"Applying migration step: {step.GetType().Name} (Target: {step.TargetVersion})");
@@ -273,9 +271,9 @@ public class ProjectMigrationService : IProjectMigrationService
             }
         }
 
-        _logger.LogInformation($"Project migration completed successfully: {originalProjectVersion} >> {finalVersion}");
+        _logger.LogInformation($"Project migration completed successfully: {projectVersion} >> {finalVersion}");
                 
-        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), originalProjectVersion, finalVersion);
+        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), projectVersion, finalVersion);
     }
 
     /// <summary>
