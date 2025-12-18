@@ -8,8 +8,9 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
+    public const string DefaultPythonVersion = "3.12";
+
     private const string DefaultProjectVersion = "0.1.0";
-    private const string DefaultPythonVersion = "3.12";
     private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
     private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
 
@@ -141,19 +142,17 @@ public class Project : IDisposable, IProject
                 var info = utilityService.GetEnvironmentInfo();
 
                 var projectTOML = $"""
+                celbridge.version = "{info.AppVersion}"
+
                 [project]
                 name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
                 version = "{DefaultProjectVersion}"
                 requires-python = "{DefaultPythonVersion}"
                 dependencies = []
-
-                [celbridge]
-                version = "{info.AppVersion}"
                 """;
 
                 // Todo: Populate this with project configuration options
                 await File.WriteAllTextAsync(projectFilePath, projectTOML);
-
 
                 // Read from a given file in the project build, and also ensure we're not stomping an existing file.
                 string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
