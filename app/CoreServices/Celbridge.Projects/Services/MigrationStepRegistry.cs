@@ -71,24 +71,15 @@ public class MigrationStepRegistry
     /// Get all migration steps that need to be executed to bring a project from
     /// the specified version up to the target version (or latest if no target specified).
     /// </summary>
-    public List<IMigrationStep> GetRequiredSteps(Version currentVersion, Version? targetVersion = null)
+    public List<IMigrationStep> GetRequiredSteps(Version currentVersion, Version targetVersion)
     {
         if (!_initialized)
         {
             Initialize();
         }
 
-        var requiredSteps = _steps
-            .Where(s => s.TargetVersion > currentVersion)
+        return _steps
+            .Where(s => s.TargetVersion > currentVersion && s.TargetVersion <= targetVersion)
             .ToList();
-
-        if (targetVersion != null)
-        {
-            requiredSteps = requiredSteps
-                .Where(s => s.TargetVersion <= targetVersion)
-                .ToList();
-        }
-
-        return requiredSteps;
     }
 }
