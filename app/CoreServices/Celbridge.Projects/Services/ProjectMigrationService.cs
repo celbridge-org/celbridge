@@ -54,11 +54,19 @@ public class ProjectMigrationService : IProjectMigrationService
             {
                 projectVersion = existingVersion;
             }
-            // Fall back to pre-v0.1.5 format for backwards compatibility during migration
-            else if (JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
+
+            // Provide limited backwards compatibility for pre-v0.1.5 version format to support migration
+            if (string.IsNullOrEmpty(projectVersion) &&
+                JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
                 legacyVersionNode is string legacyVersion)
             {
-                projectVersion = legacyVersion;
+                // Only populate the project version if the legacy version < v0.1.5
+                var versionA = new Version(legacyVersion);
+                var versionB = new Version("0.1.5");
+                if (versionA < versionB)
+                {
+                    projectVersion = legacyVersion;
+                }
             }
 
             // Get current application version
