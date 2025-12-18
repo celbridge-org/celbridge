@@ -142,10 +142,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
-
-        // Force the console panel to be visible when an error occurs
-        // This ensures the user can see the error banner even if they had previously collapsed the console
-        _editorSettings.IsToolsPanelVisible = true;
+        ShowToolsPanel();
 
         // Hide project change banner when error banner is shown
         IsProjectChangeBannerVisible = false;
@@ -155,6 +152,13 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Send message to request project reload
         _messengerService.Send<ReloadProjectMessage>();
+    }
+
+    private void ShowToolsPanel()
+    {
+        // Force the console panel to be visible when an error occurs
+        // This ensures the user can see the error banner even if they had previously collapsed the console
+        _editorSettings.IsToolsPanelVisible = true;
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
@@ -229,6 +233,7 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
 
                 IsProjectChangeBannerVisible = true;
+                ShowToolsPanel();
             }
             else
             {
@@ -267,6 +272,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             MigrationBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationBannerTitle");
             MigrationBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationBannerMessage", oldVersion, newVersion);
             IsMigrationBannerVisible = true;
+            ShowToolsPanel(); 
         }
     }
 
