@@ -19,6 +19,22 @@ public enum ConsoleErrorType
     /// The python host process exited unexpectedly.
     /// </summary>
     PythonHostProcessError,
+
+    /// <summary>
+    /// The current version of Celbridge is incompatible with the project version.
+    /// This typically indicates that the project was created with a newer version of Celbridge.
+    /// </summary>
+    IncompatibleVersion,
+
+    /// <summary>
+    /// The project version is invalid or not specified.
+    /// </summary>
+    InvalidVersion,
+
+    /// <summary>
+    /// Project migration failed.
+    /// </summary>
+    MigrationError,
 }
 
 /// <summary>

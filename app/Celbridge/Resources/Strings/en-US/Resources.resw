@@ -549,4 +549,28 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_ProjectChangeBannerMessage" xml:space="preserve">
     <value>The Celbridge project has been modified and needs to be reloaded.</value>
   </data>
+  <data name="ConsolePanel_IncompatibleVersionTitle" xml:space="preserve">
+    <value>Incompatible Project Version</value>
+  </data>
+  <data name="ConsolePanel_IncompatibleVersionMessage" xml:space="preserve">
+    <value>This project was created with a newer version of Celbridge. Python scripting has been disabled. Please upgrade Celbridge and reload the project.</value>
+  </data>
+  <data name="ConsolePanel_InvalidVersionTitle" xml:space="preserve">
+    <value>Invalid Project Version</value>
+  </data>
+  <data name="ConsolePanel_InvalidVersionMessage" xml:space="preserve">
+    <value>Unable to determine project version compatibility. Python scripting has been disabled. Please correct the 'celbridge.version' property in '{0}' and reload the project.</value>
+  </data>
+  <data name="ConsolePanel_MigrationBannerTitle" xml:space="preserve">
+    <value>Project Upgraded</value>
+  </data>
+  <data name="ConsolePanel_MigrationBannerMessage" xml:space="preserve">
+    <value>The project has been upgraded from version {0} to {1}</value>
+  </data>
+  <data name="ConsolePanel_MigrationErrorMessage" xml:space="preserve">
+    <value>Failed to migrate the project to the current version of Celbridge. Check the log for more information.</value>
+  </data>
+  <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
+    <value>Project Migration Error</value>
+  </data>
 </root>

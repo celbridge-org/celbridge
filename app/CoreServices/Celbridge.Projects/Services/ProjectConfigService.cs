@@ -148,11 +148,21 @@ public partial class ProjectConfigService : IProjectConfigService
                 dependencies = dependenciesArray.Select(x => x?.ToString() ?? string.Empty).ToList();
             }
 
+            string? requiresPythonValue = null;
+            if (projectTable.TryGetValue("requires-python", out var requiresPython))
+            {
+                requiresPythonValue = requiresPython?.ToString();
+                if (requiresPythonValue == "<python-version>")
+                {
+                    requiresPythonValue = ProjectConstants.DefaultPythonVersion;
+                }
+            }
+
             projectSection = projectSection with
             {
                 Name = projectTable.TryGetValue("name", out var name) ? name?.ToString() : null,
-                Version = projectTable.TryGetValue("version", out var version) ? version?.ToString() : null,
-                RequiresPython = projectTable.TryGetValue("requires-python", out var requiresPython) ? requiresPython?.ToString() : null,
+                Version = projectTable.TryGetValue("version", out var pythonVersion) ? pythonVersion?.ToString() : null,
+                RequiresPython = requiresPythonValue,
                 Dependencies = dependencies,
                 Properties = propertiesDict
             };
@@ -174,7 +184,7 @@ public partial class ProjectConfigService : IProjectConfigService
 
             celbridgeSection = celbridgeSection with
             {
-                Version = celbridgeTable.TryGetValue("version", out var ver) ? ver?.ToString() : null,
+                Version = celbridgeTable.TryGetValue("celbridge-version", out var celbridgeVersion) ? celbridgeVersion?.ToString() : null,
                 Scripts = scriptsDict
             };
         }
