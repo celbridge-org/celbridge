@@ -4,8 +4,9 @@ using System.Text.RegularExpressions;
 namespace Celbridge.Projects.MigrationSteps;
 
 /// <summary>
-/// This migration handles the format change introduced in version 0.1.5 where the project
-/// version format was standardized, e.g. celbridge.version = "0.1.5"
+/// The version format was standardized in v0.1.5 to the following format.
+/// [celbridge]
+/// celbridge-version = "0.1.5"
 /// </summary>
 public class MigrationStep_0_1_5 : IMigrationStep
 {
@@ -15,28 +16,29 @@ public class MigrationStep_0_1_5 : IMigrationStep
     {
         var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
         
-        // Check for legacy [celbridge] section format using a regex
+        // Check for legacy [celbridge] section format with "version" property (4-digit format)
         // Matches: [celbridge] line followed by a version = "..." line
-        // Pattern: optional indentation, [celbridge], line ending, optional indentation, version = "...", line ending
-        var legacyPattern = @"^[ \t]*\[celbridge\][ \t]*\r?\n[ \t]*version[ \t]*=[ \t]*""[^""]*""[ \t]*\r?\n?";
+        var legacyPattern = @"^[ \t]*\[celbridge\][ \t]*\r?\n[ \t]*version[ \t]*=[ \t]*""([^""]*)""[ \t]*\r?\n?";
         var legacyMatch = Regex.Match(originalText, legacyPattern, RegexOptions.Multiline);
         
-        bool hasLegacyFormat = legacyMatch.Success;
-        
-        if (hasLegacyFormat)
+        if (legacyMatch.Success)
         {
-            context.Logger.LogInformation("Converting legacy [celbridge] section format to celbridge.version format");
+            context.Logger.LogInformation("Converting legacy [celbridge] version property to celbridge-version format");
+
+            // Extract the old version string and convert from legacy 4-digit format to new 3-digit format for v0.1.5
+            var oldVersion = legacyMatch.Groups[1].Value;
+            var newVersion = "0.1.5";
             
-            // Replace the legacy section with modern dotted notation at the same position
-            // This preserves the position in the file and any surrounding content
+            // Replace with new format: [celbridge].celbridge-version property
+
             var updatedText = Regex.Replace(
                 originalText, 
                 legacyPattern, 
-                $"celbridge.version = \"{TargetVersion}\"\n",
+                $"[celbridge]\ncelbridge-version = \"{newVersion}\"\n",
                 RegexOptions.Multiline);
             
             await File.WriteAllTextAsync(context.ProjectFilePath, updatedText);
-            context.Logger.LogInformation("Converted legacy [celbridge] section to celbridge.version format");
+            context.Logger.LogInformation("Converted legacy version property to celbridge-version format");
         }
         
         return Result.Ok();

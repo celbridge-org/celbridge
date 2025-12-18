@@ -47,12 +47,18 @@ public class ProjectMigrationService : IProjectMigrationService
 
             var root = parse.ToModel();
 
-            // Get project version from celbridge.version
+            // Get project version from [celbridge].celbridge-version property
             var projectVersion = string.Empty;
-            if (JsonPointerToml.TryResolve(root, "/celbridge/version", out var versionNode, out _) &&
+            if (JsonPointerToml.TryResolve(root, "/celbridge/celbridge-version", out var versionNode, out _) &&
                 versionNode is string existingVersion)
             {
                 projectVersion = existingVersion;
+            }
+            // Fall back to pre-v0.1.5 format for backwards compatibility during migration
+            else if (JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
+                legacyVersionNode is string legacyVersion)
+            {
+                projectVersion = legacyVersion;
             }
 
             // Get current application version
@@ -233,7 +239,7 @@ public class ProjectMigrationService : IProjectMigrationService
                 return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
 
-            // Update the celbridge.version in the config file to reflect the new version after each step
+            // Update the celbridge-version in the config file to reflect the new version after each step
             var stepVersionString = step.TargetVersion.ToString();
             var versionUpdateResult = await WriteApplicationVersionAsync(projectFilePath, currentVersion, stepVersionString);
             if (versionUpdateResult.IsFailure)
@@ -258,7 +264,7 @@ public class ProjectMigrationService : IProjectMigrationService
             context.Configuration = readResult.Value;
         }
 
-        // Update the celbridge.version in the config file to reflect the current application version
+        // Update the celbridge-version in the config file to reflect the current application version
         // Only modify the file if it's not already at the required version
         var finalVersion = applicationVersion;
         if (currentVersion != finalVersion)
@@ -411,9 +417,9 @@ public class ProjectMigrationService : IProjectMigrationService
             
             var updatedText = normalizedText;
             
-            // Update existing celbridge.version line (modern format)
-            // Capture leading whitespace to preserve indentation
-            var pattern = @"^(\s*)celbridge\.version\s*=\s*""[^""]*""";
+            // Update existing celbridge-version line in [celbridge] section
+            // Pattern matches: optional whitespace, celbridge-version, =, quoted version
+            var pattern = @"^(\s*)celbridge-version\s*=\s*""[^""]*""";
             var match = Regex.Match(updatedText, pattern, RegexOptions.Multiline);
             
             if (match.Success)
@@ -423,14 +429,14 @@ public class ProjectMigrationService : IProjectMigrationService
                 updatedText = Regex.Replace(
                     updatedText, 
                     pattern, 
-                    $"{leadingWhitespace}celbridge.version = \"{applicationVersion}\"",
+                    $"{leadingWhitespace}celbridge-version = \"{applicationVersion}\"",
                     RegexOptions.Multiline);
             }
             else
             {
-                // No existing version line found
-                // This should only happen if the file is corrupted
-                return Result.Fail("Cannot update version: no celbridge.version line found in project file");
+                // No existing celbridge-version line found
+                // This should only happen if the file is corrupted or in old format
+                return Result.Fail("Cannot update version: no celbridge-version line found in project file");
             }
             
             // Only write if content actually changed

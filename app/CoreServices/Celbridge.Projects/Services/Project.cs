@@ -8,8 +8,6 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
-    public const string DefaultPythonVersion = "3.12";
-
     private const string DefaultProjectVersion = "0.1.0";
     private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
     private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
@@ -146,12 +144,13 @@ public class Project : IDisposable, IProject
             if (configType == NewProjectConfigType.Standard)
             {
                 var projectTOML = $"""
-                celbridge.version = "{appVersion}"
+                [celbridge]
+                celbridge-version = "{appVersion}"
 
                 [project]
                 name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
                 version = "{DefaultProjectVersion}"
-                requires-python = "{DefaultPythonVersion}"
+                requires-python = "{ProjectConstants.DefaultPythonVersion}"
                 dependencies = []
                 """;
 
@@ -183,7 +182,7 @@ public class Project : IDisposable, IProject
                 var extractedProjectFile = projectPath + Path.DirectorySeparatorChar + "examples.celbridge";
                 var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
                 projectFileContents = projectFileContents.Replace("<application-version>", appVersion);
-                projectFileContents = projectFileContents.Replace("<python-version>", DefaultPythonVersion);
+                projectFileContents = projectFileContents.Replace("<python-version>", ProjectConstants.DefaultPythonVersion);
                 await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
 
                 // Rename the celbridge project file to the selected project file name.
