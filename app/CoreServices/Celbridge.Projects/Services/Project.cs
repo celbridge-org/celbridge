@@ -135,14 +135,14 @@ public class Project : IDisposable, IProject
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
+            // Get Celbridge application version
+            var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+            var appVersion = utilityService.GetEnvironmentInfo().AppVersion;
+
             if (configType == NewProjectConfigType.Standard)
             {
-                // Get Celbridge version (semver format: major.minor.patch)
-                var utilityService = ServiceLocator.AcquireService<IUtilityService>();
-                var info = utilityService.GetEnvironmentInfo();
-
                 var projectTOML = $"""
-                celbridge.version = "{info.AppVersion}"
+                celbridge.version = "{appVersion}"
 
                 [project]
                 name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
@@ -151,10 +151,9 @@ public class Project : IDisposable, IProject
                 dependencies = []
                 """;
 
-                // Todo: Populate this with project configuration options
                 await File.WriteAllTextAsync(projectFilePath, projectTOML);
 
-                // Read from a given file in the project build, and also ensure we're not stomping an existing file.
+                // Create a readme.md file in the project, if it doesn't already exist.
                 string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
                 if (!File.Exists(readMePath))
                 {
@@ -176,11 +175,15 @@ public class Project : IDisposable, IProject
                 var tempZipFile = await sourceZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "Examples.zip", NameCollisionOption.ReplaceExisting);
                 ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
 
-                // Rename the celbridge project file to the selected project file name.
+                // Update the extracted examples.celbridge project file with actual values
                 var extractedProjectFile = projectPath + Path.DirectorySeparatorChar + "examples.celbridge";
-                File.Move(extractedProjectFile, projectFilePath);
+                var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
+                projectFileContents = projectFileContents.Replace("<application-version>", appVersion);
+                projectFileContents = projectFileContents.Replace("<python-version>", DefaultPythonVersion);
+                await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
 
-                // Todo: Replace the "<application-version>" sentinel with the current application version
+                // Rename the celbridge project file to the selected project file name.
+                File.Move(extractedProjectFile, projectFilePath);
             }
         }
         catch (Exception ex)
