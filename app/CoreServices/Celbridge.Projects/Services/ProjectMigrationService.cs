@@ -172,11 +172,42 @@ public class ProjectMigrationService : IProjectMigrationService
             // Perform migration
             _logger.LogInformation($"Starting project migration for: {projectFilePath}");
 
-            // Todo: Implement version migration logic
+            // Determine target version based on project version
+            // Projects prior to 0.1 should be migrated to 0.1.5 specifically
+            string targetVersion;
+            try
+            {
+                var projectVer = new Version(NormalizeVersion(originalProjectVersion));
+                var minVersion = new Version("0.1.5");
+                
+                if (projectVer.CompareTo(minVersion) < 0)
+                {
+                    // Project is prior to 0.1, migrate to 0.1.5
+                    targetVersion = "0.1.5";
+                    _logger.LogInformation(
+                        "Project version {ProjectVersion} is prior to 0.1 - migrating to version {TargetVersion}",
+                        originalProjectVersion,
+                        targetVersion);
+                }
+                else
+                {
+                    // Project is 0.1 or later, migrate to current application version
+                    targetVersion = normalizedAppVersion;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to compare project version for migration");
+                var errorResult = Result.Fail($"Failed to determine target version for migration")
+                    .WithException(ex);
+                return MigrationResult.FromStatus(ProjectMigrationStatus.Failed, errorResult);
+            }
+
+            // Todo: Implement version-specific migration logic here
 
             await Task.CompletedTask;
             
-            var writeResult = await WriteApplicationVersionAsync(projectFilePath, originalProjectVersion, normalizedAppVersion);
+            var writeResult = await WriteApplicationVersionAsync(projectFilePath, originalProjectVersion, targetVersion);
             if (writeResult.IsFailure)
             {
                 var errorResult = Result.Fail($"Failed to write Celbridge version to project TOML file: '{projectFilePath}'");
@@ -185,7 +216,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
             _logger.LogInformation("Project migration completed successfully");
             
-            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, normalizedAppVersion);
+            return MigrationResult.WithVersions(ProjectMigrationStatus.Success, Result.Ok(), originalProjectVersion, targetVersion);
         }
         catch (Exception ex)
         {
@@ -323,7 +354,7 @@ public class ProjectMigrationService : IProjectMigrationService
             // Track the index of the existing celbridge.version line
             int existingVersionLineIndex = -1;
             
-            // Find existing celbridge.version line
+            // Find existing celbridge.version line (modern format)
             for (int i = 0; i < lines.Count; i++)
             {
                 var trimmedLine = lines[i].Trim();
@@ -336,48 +367,49 @@ public class ProjectMigrationService : IProjectMigrationService
                 }
             }
             
-            // Handle legacy [celbridge] section format (only for version "0.0.12.0")
-            if (projectVersion == "0.0.12.0")
+            // Check for legacy [celbridge] section format
+            bool hasLegacyFormat = false;
+            var linesToRemove = new List<int>();
+            
+            for (int i = 0; i < lines.Count; i++)
             {
-                var linesToRemove = new List<int>();
+                var trimmedLine = lines[i].Trim();
                 
-                for (int i = 0; i < lines.Count; i++)
+                if (trimmedLine == "[celbridge]")
                 {
-                    var trimmedLine = lines[i].Trim();
+                    hasLegacyFormat = true;
+                    _logger.LogDebug("Found legacy [celbridge] section header at index {Index}", i);
+                    linesToRemove.Add(i);
                     
-                    if (trimmedLine == "[celbridge]")
+                    // Also remove the next line if it starts with "version"
+                    if (i + 1 < lines.Count && lines[i + 1].Trim().StartsWith("version"))
                     {
-                        _logger.LogDebug("Removing old [celbridge] section header at index {Index}", i);
-                        linesToRemove.Add(i);
-                        // Also remove the next line if it starts with "version"
-                        if (i + 1 < lines.Count && lines[i + 1].Trim().StartsWith("version"))
-                        {
-                            _logger.LogDebug("Removing old version property at index {Index}", i + 1);
-                            linesToRemove.Add(i + 1);
-                        }
+                        _logger.LogDebug("Found legacy version property at index {Index}", i + 1);
+                        linesToRemove.Add(i + 1);
                     }
                 }
-                
+            }
+            
+            if (hasLegacyFormat)
+            {
                 // Remove legacy lines in reverse order to maintain indices
                 for (int i = linesToRemove.Count - 1; i >= 0; i--)
                 {
                     lines.RemoveAt(linesToRemove[i]);
                 }
                 
-                if (linesToRemove.Count > 0)
-                {
-                    _logger.LogInformation("Removed {Count} legacy version line(s) from project file", linesToRemove.Count);
-                    
-                    // Insert new version line at the top for legacy case
-                    lines.Insert(0, $"celbridge.version = \"{applicationVersion}\"");
-                    lines.Insert(1, "");
-                    _logger.LogDebug("Inserted new celbridge.version line at top of file for legacy migration");
-                }
+                _logger.LogInformation("Removed {Count} legacy version line(s) from project file", linesToRemove.Count);
+                
+                // Insert new version line at the top for legacy case
+                lines.Insert(0, $"celbridge.version = \"{applicationVersion}\"");
+                lines.Insert(1, "");
+                _logger.LogDebug("Inserted new celbridge.version line at top of file for legacy migration");
             }
             else if (existingVersionLineIndex >= 0)
             {
                 // Update existing celbridge.version line in-place
                 lines[existingVersionLineIndex] = $"celbridge.version = \"{applicationVersion}\"";
+                _logger.LogDebug("Updated celbridge.version line at index {Index}", existingVersionLineIndex);
             }
             else
             {
