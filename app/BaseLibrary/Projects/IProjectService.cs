@@ -23,9 +23,9 @@ public interface IProjectService
     Task<Result> CreateProjectAsync(NewProjectConfig config);
 
     /// <summary>
-    /// Load the project file at the specified path.
+    /// Load the project file at the specified path with migration support.
     /// </summary>
-    Result LoadProject(string projectFilePath);
+    Task<Result<IProject>> LoadProjectAsync(string projectFilePath);
 
     /// <summary>
     /// Unload the current loaded project.

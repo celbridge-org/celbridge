@@ -1,11 +1,11 @@
+[celbridge]
+celbridge-version = "<application-version>"
+
 [project]
 name = "examples"
 version = "0.1.0"
-requires-python = "3.12"
+requires-python = "<python-version>"
 dependencies = ["pandas", "openpyxl", "requests", "faker"]
-
-[celbridge]
-version = "0.0.12.0"
 
 # Shortcut buttons
 
@@ -36,3 +36,4 @@ tooltip="Run example 06_data_cleaning"
 script='''
 run "06_data_cleaning/clean_data.py"
 '''
+
