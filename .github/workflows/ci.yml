@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Run Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Linux runner - faster and cross-platform compatible
 
     steps:
       - name: Checkout code
@@ -21,12 +21,15 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
+        working-directory: ./app
         run: dotnet restore
 
       - name: Build solution
+        working-directory: ./app
         run: dotnet build --no-restore --configuration Release
 
       - name: Run tests
+        working-directory: ./app
         run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Publish test results
