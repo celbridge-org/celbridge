@@ -11,11 +11,14 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
