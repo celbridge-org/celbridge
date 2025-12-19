@@ -7,15 +7,15 @@ on:
     branches: [main]  # Run on PRs targeting main
 
 jobs:
-test:
-  name: Run Unit Tests
-  runs-on: ubuntu-latest  # Linux runner - faster and cross-platform compatible
-  permissions:
-    contents: read
-    checks: write
-    pull-requests: write
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest  # Linux runner - faster and cross-platform compatible
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
-  steps:
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
