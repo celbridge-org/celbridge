@@ -17,7 +17,7 @@ public class ResourceKeyTests
         // Check invalid paths fail
         //
 
-        ResourceKey.IsValidSegment("Invalid\"Segment").Should().BeFalse();
+        ResourceKey.IsValidSegment("Invalid\0Segment").Should().BeFalse();
         ResourceKey.IsValidKey(@"C:\\AbsolutePath").Should().BeFalse();
         ResourceKey.IsValidKey(@"\AbsolutePath").Should().BeFalse();
         ResourceKey.IsValidKey(@"/Some/Path/File.txt").Should().BeFalse();
