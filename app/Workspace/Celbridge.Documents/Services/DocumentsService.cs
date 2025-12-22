@@ -148,7 +148,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
         if (string.IsNullOrEmpty(extension))
         {
-            return DocumentViewType.UnsupportedFormat;
+            // Assume files with no extension are text documents
+            return DocumentViewType.TextDocument;
         }
 
         return _fileTypeHelper.GetDocumentViewType(extension);
