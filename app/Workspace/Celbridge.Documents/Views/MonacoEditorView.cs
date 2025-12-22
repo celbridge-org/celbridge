@@ -25,6 +25,9 @@ public sealed partial class MonacoEditorView : DocumentView
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
+        // Subscribe to reload requests from the ViewModel
+        ViewModel.ReloadRequested += ViewModel_ReloadRequested;
+
         // Set the data context
         // The webview is not created until LoadContent is called, so we can pool webviews
 
@@ -142,6 +145,12 @@ public sealed partial class MonacoEditorView : DocumentView
             _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
         }
 
+        // Unsubscribe from ViewModel events
+        ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
+
+        // Cleanup ViewModel message handlers
+        ViewModel.Cleanup();
+
         // Release the webview back to the pool.
         // TextEditorWebViewPool is not exposed via the public interface
         var documentsService = _documentsService as DocumentsService;
@@ -215,5 +224,19 @@ public sealed partial class MonacoEditorView : DocumentView
         }
 
         return Result<string>.Fail("Failed to read text data");
+    }
+
+    private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
+    {
+        // Reload the document from disk when an external change is detected
+        if (_webView != null)
+        {
+            var loadResult = await ViewModel.LoadDocument();
+            if (loadResult.IsSuccess)
+            {
+                var text = loadResult.Value;
+                _webView.CoreWebView2.PostWebMessageAsString(text);
+            }
+        }
     }
 }
