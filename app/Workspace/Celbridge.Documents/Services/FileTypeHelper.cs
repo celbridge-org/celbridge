@@ -8,9 +8,11 @@ public class FileTypeHelper
 {
     private const string TextEditorTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextEditorTypes.json";
     private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
+    private const string PlaintextLanguage = "plaintext";
 
     private Dictionary<string, string> _extensionToLanguage = new();
     private List<string> _fileViewerExtensions = new();
+    private HashSet<string> _binaryFileExtensions = new();
 
     public Result Initialize()
     {
@@ -26,9 +28,22 @@ public class FileTypeHelper
             return loadWebResult;
         }
 
+        // Initialize the set of supported binary file extensions.
+        // These are binary formats that have specific viewer support
+        _binaryFileExtensions.Add(ExplorerConstants.ExcelExtension);
+
+        // All file viewer extensions are considered binary files.
+        foreach (var ext in _fileViewerExtensions)
+        {
+            _binaryFileExtensions.Add(ext);
+        }
+
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Gets the document view type based on the file extension.
+    /// </summary>
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
         if (fileExtension == ExplorerConstants.WebAppExtension)
@@ -46,33 +61,69 @@ public class FileTypeHelper
             return DocumentViewType.FileViewer;
         }
 
-        var documentLanguage = GetTextEditorLanguage(fileExtension);
-        if (!string.IsNullOrEmpty(documentLanguage))
-        {
-            return DocumentViewType.TextDocument;
-        }
-
-        return DocumentViewType.UnsupportedFormat;
+        // For both recognized text extensions and unrecognized extensions,
+        // return TextDocument. Unrecognized extensions will use the "plaintext" language.
+        return DocumentViewType.TextDocument;
     }
 
+    /// <summary>
+    /// Gets the text editor language for a file extension.
+    /// Returns "plaintext" for empty or unrecognized file extensions.
+    /// </summary>
     public string GetTextEditorLanguage(string fileExtension)
     {
-        if (string.IsNullOrEmpty(fileExtension))
-        {
-            return string.Empty;
-        }
-
-        if (_extensionToLanguage.TryGetValue(fileExtension,out var language))
+        if (!string.IsNullOrEmpty(fileExtension) &&
+            _extensionToLanguage.TryGetValue(fileExtension, out var language))
         {
             return language;
         }
 
-        return string.Empty;
+        return PlaintextLanguage;
     }
 
     public bool IsWebViewerFile(string fileExtension)
     {
         return _fileViewerExtensions.Contains(fileExtension);
+    }
+
+    /// <summary>
+    /// Checks if a file extension corresponds to a supported binary format.
+    /// Supported binary formats include spreadsheets (.xlsx) and file viewer types (images, audio, video, etc.).
+    /// </summary>
+    public bool IsSupportedBinaryExtension(string fileExtension)
+    {
+        return _binaryFileExtensions.Contains(fileExtension);
+    }
+
+    /// <summary>
+    /// Determines if a file extension is recognized (either as a text editor type or a supported binary type).
+    /// </summary>
+    public bool IsRecognizedExtension(string fileExtension)
+    {
+        if (string.IsNullOrEmpty(fileExtension))
+        {
+            return false;
+        }
+
+        // Check for web app extension
+        if (fileExtension == ExplorerConstants.WebAppExtension)
+        {
+            return true;
+        }
+
+        // Check if it's a known text editor type
+        if (_extensionToLanguage.ContainsKey(fileExtension))
+        {
+            return true;
+        }
+
+        // Check if it's a supported binary type
+        if (_binaryFileExtensions.Contains(fileExtension))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private Result LoadTextEditorTypes()
