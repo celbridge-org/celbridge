@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Explorer;
+namespace Celbridge.Explorer;
 
 /// <summary>
 /// A data structure representing the resources in the project folder.
@@ -37,6 +37,12 @@ public interface IResourceRegistry
     /// The path will be generated even if the resource does not exist yet in the project.
     /// </summary>
     string GetResourcePath(ResourceKey resource);
+
+    /// <summary>
+    /// Normalizes the resource key so that it matches the exact casing as it exists on disk.
+    /// Fails if no resource matching the resource key is found in the project (case-insensitive comparison).
+    /// </summary>
+    Result<ResourceKey> NormalizeResourceKey(ResourceKey resourceKey);
 
     /// <summary>
     /// Returns the resource with the specified resource key.

@@ -347,15 +347,23 @@ public class DocumentsService : IDocumentsService, IDisposable
             // If no documents are currently open then try to open the default readme file.
             var readmeResource = new ResourceKey("readme.md");
 
-            var readmePath = resourceRegistry.GetResourcePath(readmeResource);
-            if (CanAccessFile(readmePath))
+            // Normalize the resource key to match the actual casing on disk
+            var normalizeResult = resourceRegistry.NormalizeResourceKey(readmeResource);
+            if (normalizeResult.IsSuccess)
             {
-                // Execute a command to open the readme file.
-                _commandService.Execute<IOpenDocumentCommand>(command =>
+                var normalizedResource = normalizeResult.Value;
+                var readmePath = resourceRegistry.GetResourcePath(normalizedResource);
+                if (CanAccessFile(readmePath))
                 {
-                    command.FileResource = readmeResource;
-                    command.ForceReload = false;
-                });
+                    // Todo: Force the file to open in preview mode (we want the user to read it, not edit it).
+
+                    // Execute a command to open the readme file.
+                    _commandService.Execute<IOpenDocumentCommand>(command =>
+                    {
+                        command.FileResource = normalizedResource;
+                        command.ForceReload = false;
+                    });
+                }
             }
 
             return;

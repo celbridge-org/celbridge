@@ -371,6 +371,102 @@ public class ResourceRegistry : IResourceRegistry
         return ExpandedFolders.Contains(folderResource);
     }
 
+    public Result<ResourceKey> NormalizeResourceKey(ResourceKey resourceKey)
+    {
+        try
+        {
+            var resourcePath = GetResourcePath(resourceKey);
+            
+            if (!File.Exists(resourcePath) && !Directory.Exists(resourcePath))
+            {
+                return Result.Fail($"Resource does not exist: '{resourceKey}'");
+            }
+
+            var realPathResult = GetRealPath(resourcePath);
+            if (realPathResult.IsFailure)
+            {
+                return Result.Fail($"Failed to get actual path casing for: '{resourcePath}'")
+                    .WithErrors(realPathResult);
+            }
+            var realPath = realPathResult.Value;
+
+            var normalizedResult = GetResourceKey(realPath);
+            if (normalizedResult.IsFailure)
+            {
+                return Result.Fail($"Failed to normalize resource key: '{resourceKey}'")
+                    .WithErrors(normalizedResult);
+            }
+            var normalizedKey = normalizedResult.Value;
+
+            return normalizedKey;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"An exception occurred when normalizing resource key '{resourceKey}'.")
+                .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Returns the actual case-sensitive path from the file system.
+    /// Fails if the file does not exist.
+    /// </summary>
+    private static Result<string> GetRealPath(string path)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return Result<string>.Fail("Path is null or empty");
+            }
+
+            // Get the full path first
+            var fullPath = Path.GetFullPath(path);
+            
+            // Start with the root (e.g., "C:\")
+            var root = Path.GetPathRoot(fullPath);
+            if (root == null)
+            {
+                return Result<string>.Fail($"Could not determine path root for: '{fullPath}'");
+            }
+
+            // If the path is just the root, return it as-is
+            if (fullPath.Equals(root, StringComparison.OrdinalIgnoreCase))
+            {
+                return Result<string>.Ok(fullPath);
+            }
+
+            // Get the relative path after the root
+            var relativePath = fullPath.Substring(root.Length);
+            var segments = relativePath.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, 
+                                            StringSplitOptions.RemoveEmptyEntries);
+
+            // Build up the corrected path segment by segment
+            var currentPath = root;
+            foreach (var segment in segments)
+            {
+                // Try to find the actual entry with correct casing
+                var entries = Directory.GetFileSystemEntries(currentPath, segment);
+                
+                if (entries.Length == 0)
+                {
+                    // This shouldn't happen since we verified the path exists, but handle it gracefully
+                    return Result<string>.Fail($"Path segment not found: '{segment}' in '{currentPath}'");
+                }
+
+                // Use the first match (there should only be one on case-insensitive systems)
+                currentPath = entries[0];
+            }
+
+            return Result<string>.Ok(currentPath);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"An exception occurred when getting actual path casing")
+                .WithException(ex);
+        }
+    }
+
     // Remove hidden folders from a list of folder paths
     private static void RemoveHiddenFolders(List<string> folderPaths, bool isRootFolder)
     {
