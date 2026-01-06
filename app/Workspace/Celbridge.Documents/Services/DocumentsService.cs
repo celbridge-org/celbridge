@@ -146,10 +146,26 @@ public class DocumentsService : IDocumentsService, IDisposable
     public DocumentViewType GetDocumentViewType(ResourceKey fileResource)
     {
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
-        if (string.IsNullOrEmpty(extension))
+
+        // For unrecognized extensions (including empty), check if the file is text
+        if (!_fileTypeHelper.IsRecognizedExtension(extension))
         {
-            // Assume files with no extension are text documents
-            return DocumentViewType.TextDocument;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            var filePath = resourceRegistry.GetResourcePath(fileResource);
+
+            var result = TextBinarySniffer.IsTextFile(filePath);
+            if (result.IsFailure)
+            {
+                // Failed to determine if the file is text
+                return DocumentViewType.UnsupportedFormat;
+            }
+            var isTextFile = result.Value;
+
+            if (!isTextFile)
+            {
+                // We determined the file type, but it's not a text file.
+                return DocumentViewType.UnsupportedFormat;
+            }
         }
 
         return _fileTypeHelper.GetDocumentViewType(extension);
@@ -158,11 +174,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     public string GetDocumentLanguage(ResourceKey fileResource)
     {
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
-        if (string.IsNullOrEmpty(extension))
-        {
-            return string.Empty;
-        }
-
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
