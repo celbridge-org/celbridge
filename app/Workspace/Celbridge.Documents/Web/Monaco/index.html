@@ -15,133 +15,138 @@
 </head>
 <body>
     <div id="container"></div>
+
+    <!-- Step 1: Load Monaco Editor AMD Loader -->
     <script src="./min/vs/loader.js"></script>
+
     <script>
-        require.config({ paths: { 'vs': './min/vs' } });
-    </script>
-    <script src="./min/vs/editor/editor.main.nls.js"></script>
-    <script src="./min/vs/editor/editor.main.js"></script>
-    <script>
+        // Monaco Editor initialization for Celbridge WebView integration
+        // IIFE prevents polluting global scope with internal functions
+        (function() {
+            'use strict';
 
-        // Text updates from Uno (e.g. after loading a text file) are sent from Uno via the WebViewMessage API
-        function listenForWebViewMessages() {
-            if (!window.isWebView) {
-                return;
-            }
-
-            // Windows (WebView2)
-            if (window.chrome && typeof chrome.webview !== undefined) {
-                window.chrome.webview.addEventListener('message', event => {
-                    setTextData(event.data);
-                });
-            }
-            // Android
-            else if (window.unoWebView) {
-                window.unoWebViewReceiveMessage = function (data) {
-                    setTextData(data);
-                };
-            }
-            // iOS and macOS (WebKit)
-            else if (window.webkit && typeof webkit.messageHandlers !== undefined) {
-                window.webkit.messageHandlers.unoWebViewReceiveMessage = function (data) {
-                    setTextData(data);
-                };
-            }
-        }
-
-        // Text updates from Monaco (e.g. after typing some text in the editor) are sent to Uno 
-        // via the WebViewMessage API
-        function postWebViewMessage(message) {
-            if (!window.isWebView) {
-                return;
-            }
-
-            // Handle WebViews that are implemented using different browsers / platforms.
-            try {
-                if (window.hasOwnProperty("chrome") && typeof chrome.webview !== undefined) {
-                    // Windows
-                    // This causes an exception when run in a browser rather than a WebView
-                    // As a workaround, we set the window.isWebView variable from the Uno side.
-                    chrome.webview.postMessage(message);
-                } else if (window.hasOwnProperty("unoWebView")) {
-                    // Android
-                    unoWebView.postMessage(JSON.stringify(message));
-                } else if (window.hasOwnProperty("webkit") && typeof webkit.messageHandlers !== undefined) {
-                    // iOS and macOS
-                    webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
-                }
-            }
-            catch (ex) {
-                console.error('Error:', ex);
-                // alert("Error occurred: " + ex);
-            }
-        }
-
-        function getTextData() {
-            return window.editor.getValue();
-        }
-
-        // Receive text data from Uno and display it in the Monaco Editor
-        function setTextData(text) {
-            if (!window.isWebView) {
-                return;
-            }
-            window.editor.setValue(text);
-
-            // Set a flag to indicate that the text data has been initialized
-            window.initializedTextData = true
-        }
-
-        function setLanguage(language) {
-            monaco.editor.setModelLanguage(window.editor.getModel(), language);
-        }
-
-        function initMonacoEditor() {
-            window.editor = monaco.editor.create(document.getElementById('container'), {
-                language: "plaintext",
-                automaticLayout: true,
-                theme: window.theme || "vs-light",
-                minimap: { autohide: true },
-                wordWrap: "on"
+            // Configure AMD loader and load Monaco
+            require.config({ paths: { 'vs': './min/vs' } });
+            require(['vs/editor/editor.main'], function() {
+                initializeEditor();
             });
 
-            // Set the appropriate EOL depending on the platform
-            const isWindows = /windows/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent);
-            const model = window.editor.getModel();
+            function initializeEditor() {
+                window.editor = monaco.editor.create(document.getElementById('container'), {
+                    language: 'plaintext',
+                    automaticLayout: true,
+                    theme: window.theme || 'vs-light',
+                    minimap: { autohide: true },
+                    wordWrap: 'on'
+                });
 
-            model.setEOL(isWindows
-                ? monaco.editor.EndOfLineSequence.CRLF
-                : monaco.editor.EndOfLineSequence.LF
-            );
+                setupLineEndings();
+                setupContentChangeListener();
+                setupWebViewCommunication();
+                setupKeyboardShortcuts();
 
-            window.editor.getModel().onDidChangeContent((event) => {
+                postWebViewMessage('editor_ready');
+            }
+
+            function setupLineEndings() {
+                const isWindows = /windows/i.test(
+                    navigator.userAgentData?.platform || 
+                    navigator.platform || 
+                    navigator.userAgent
+                );
+                
+                const model = window.editor.getModel();
+                model.setEOL(isWindows 
+                    ? monaco.editor.EndOfLineSequence.CRLF 
+                    : monaco.editor.EndOfLineSequence.LF
+                );
+            }
+
+            function setupContentChangeListener() {
+                window.editor.getModel().onDidChangeContent((event) => {
+                    if (window.isWebView && window.initializedTextData) {
+                        postWebViewMessage('did_change_content');
+                    }
+                });
+            }
+
+            // WebView communication for Uno Platform
+            function setupWebViewCommunication() {
                 if (!window.isWebView) {
                     return;
                 }
 
-                if (!window.initializedTextData)
-                {
-                    // Don't report text changes until after the text data has been initialized
+                if (window.chrome && typeof chrome.webview !== 'undefined') {
+                    window.chrome.webview.addEventListener('message', event => {
+                        handleWebViewMessage(event.data);
+                    });
+                }
+                else if (window.unoWebView) {
+                    window.unoWebViewReceiveMessage = function(data) {
+                        handleWebViewMessage(data);
+                    };
+                }
+                else if (window.webkit && typeof webkit.messageHandlers !== 'undefined') {
+                    window.webkit.messageHandlers.unoWebViewReceiveMessage = function(data) {
+                        handleWebViewMessage(data);
+                    };
+                }
+            }
+
+            function handleWebViewMessage(data) {
+                setTextData(data);
+            }
+
+            function postWebViewMessage(message) {
+                if (!window.isWebView) {
                     return;
                 }
 
-                // Send text data from Monaco Editor to Uno
-                postWebViewMessage("did_change_content");
-            });
-        }
-
-        // Listen for focus mode key press
-        window.addEventListener('keydown', function (event) {
-            if (event.key === 'F4') {
-                event.preventDefault(); // Prevent Monaco from handling F4
-                window.chrome.webview.postMessage('toggle_focus_mode');
+                try {
+                    if (window.chrome && typeof chrome.webview !== 'undefined') {
+                        chrome.webview.postMessage(message);
+                    }
+                    else if (window.unoWebView) {
+                        unoWebView.postMessage(JSON.stringify(message));
+                    }
+                    else if (window.webkit && typeof webkit.messageHandlers !== 'undefined') {
+                        webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
+                    }
+                }
+                catch (ex) {
+                    console.error('Failed to send message to WebView host:', ex);
+                }
             }
-        });
 
-        initMonacoEditor();
-        listenForWebViewMessages();
-        postWebViewMessage("editor_ready"); // Tell Uno that the editor is initialized
+            function setupKeyboardShortcuts() {
+                window.addEventListener('keydown', function(event) {
+                    if (event.key === 'F4') {
+                        event.preventDefault();
+                        if (window.chrome && window.chrome.webview) {
+                            window.chrome.webview.postMessage('toggle_focus_mode');
+                        }
+                    }
+                });
+            }
 
+            // Public API - called by Uno Platform via ExecuteScriptAsync
+            window.getTextData = function() {
+                return window.editor.getValue();
+            };
+
+            window.setTextData = function(text) {
+                if (!window.isWebView) {
+                    return;
+                }
+                window.editor.setValue(text);
+                window.initializedTextData = true;
+            };
+
+            window.setLanguage = function(language) {
+                monaco.editor.setModelLanguage(window.editor.getModel(), language);
+            };
+
+        })();
     </script>
 </body>
 </html>
