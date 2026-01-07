@@ -41,11 +41,6 @@ public partial class DocumentTab : TabViewItem
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
-        InitializeContextMenuStrings();
-    }
-
-    private void InitializeContextMenuStrings()
-    {
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
         CloseOthersMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseOthers");
         CloseToTheRightMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseRight");
@@ -137,6 +132,8 @@ public partial class DocumentTab : TabViewItem
 
     private TabView? FindParentTabView()
     {
+        // WinUI does not provide a built-in way to get the parent TabView from a TabViewItem, so
+        // we have to walk up the visual tree ourselves.
         DependencyObject? current = this;
         while (current != null)
         {
