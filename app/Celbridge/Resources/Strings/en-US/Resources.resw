@@ -336,9 +336,6 @@
   <data name="WorkspacePage_EnterFocusModeTooltip" xml:space="preserve">
     <value>Enter focus mode (F4)</value>
   </data>
-  <data name="StatusPanel_SelectResourceTooltip" xml:space="preserve">
-    <value>Select resource in explorer panel</value>
-  </data>
   <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
     <value>Console</value>
   </data>
@@ -501,9 +498,6 @@ Do you wish to continue?</value>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
   </data>
-  <data name="InspectorPanel_SelectResource" xml:space="preserve">
-    <value>Select resource in Explorer</value>
-  </data>
   <data name="Theme_Light" xml:space="preserve">
     <value>Light</value>
   </data>
@@ -572,5 +566,29 @@ Do you wish to continue?</value>
   </data>
   <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
+  </data>
+  <data name="DocumentTab_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="DocumentTab_CloseOthers" xml:space="preserve">
+    <value>Close others</value>
+  </data>
+  <data name="DocumentTab_CloseRight" xml:space="preserve">
+    <value>Close to the right</value>
+  </data>
+  <data name="DocumentTab_CloseLeft" xml:space="preserve">
+    <value>Close to the left</value>
+  </data>
+  <data name="DocumentTab_CloseAll" xml:space="preserve">
+    <value>Close all</value>
+  </data>
+  <data name="DocumentTab_SelectFile" xml:space="preserve">
+    <value>Select file</value>
+  </data>
+  <data name="StatusPanel_SelectFileTooltip" xml:space="preserve">
+    <value>Select file</value>
+  </data>
+  <data name="InspectorPanel_SelectFile" xml:space="preserve">
+    <value>Select file</value>
   </data>
 </root>
