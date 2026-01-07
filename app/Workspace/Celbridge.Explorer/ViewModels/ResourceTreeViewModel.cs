@@ -195,6 +195,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
+    public void RefreshExplorer()
+    {
+        _commandService.Execute<IUpdateResourcesCommand>();
+    }
+
     //
     // Resource editing
     //

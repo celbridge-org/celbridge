@@ -114,13 +114,88 @@
     <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
                                     FolderTemplate="{StaticResource FolderTemplate}"
                                     FileTemplate="{StaticResource FileTemplate}" />
+
+    <!-- Add File MenuFlyout for toolbar button -->
+    <MenuFlyout x:Name="AddFileMenuFlyout"
+                Placement="Bottom">
+      <MenuFlyoutItem Text="{x:Bind AddPythonScriptString}"
+                      Tag="{x:Bind explorer:ResourceFormat.Python}"
+                      Click="ToolbarAddFile_Click" />
+      <MenuFlyoutItem Text="{x:Bind AddExcelString}"
+                      Tag="{x:Bind explorer:ResourceFormat.Excel}"
+                      Click="ToolbarAddFile_Click" />
+      <MenuFlyoutItem Text="{x:Bind AddMarkdownString}"
+                      Tag="{x:Bind explorer:ResourceFormat.Markdown}"
+                      Click="ToolbarAddFile_Click" />
+      <MenuFlyoutItem Text="{x:Bind AddWebAppString}"
+                      Tag="{x:Bind explorer:ResourceFormat.WebApp}"
+                      Click="ToolbarAddFile_Click" />
+      <MenuFlyoutItem Text="{x:Bind AddTextFileString}"
+                      Tag="{x:Bind explorer:ResourceFormat.Text}"
+                      Click="ToolbarAddFile_Click" />
+    </MenuFlyout>
   </UserControl.Resources>
 
-  <ScrollViewer VerticalScrollBarVisibility="Auto"
-                Grid.Row="3"
-                VerticalAlignment="Stretch"
-                ContextFlyout="{StaticResource ResourceContextMenu}">
-    <muxc:TreeView x:Name="ResourcesTreeView"
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Toolbar -->
+    <StackPanel Grid.Row="0"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,4,8,4"
+                Spacing="2">
+      <Button x:Name="AddFileButton"
+              ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="6"
+              Flyout="{StaticResource AddFileMenuFlyout}">
+        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE8E5;"
+                  FontSize="16" />
+      </Button>
+      <Button x:Name="AddFolderButton"
+              ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="6"
+              Click="ToolbarAddFolder_Click">
+        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE8F4;"
+                  FontSize="16" />
+      </Button>
+      <Button x:Name="RefreshExplorerButton"
+              ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="6"
+              Click="ToolbarRefreshExplorer_Click">
+        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE72C;"
+                  FontSize="16" />
+      </Button>
+      <Button x:Name="CollapseFoldersButton"
+              ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="6"
+              Click="ToolbarCollapseFolders_Click">
+        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE92D;"
+                  FontSize="16" />
+      </Button>
+    </StackPanel>
+
+    <!-- Resource Tree View -->
+    <ScrollViewer Grid.Row="1"
+                  VerticalScrollBarVisibility="Auto"
+                  VerticalAlignment="Stretch"
+                  ContextFlyout="{StaticResource ResourceContextMenu}">
+      <muxc:TreeView x:Name="ResourcesTreeView"
                    ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
                    CanReorderItems="True"
                    SelectionMode="Single"
@@ -130,5 +205,6 @@
                    DragOver="ResourcesTreeView_DragOver"
                    Drop="ResourcesTreeView_Drop"
                    SelectionChanged="ResourcesTreeView_SelectionChanged" />
-  </ScrollViewer>
+    </ScrollViewer>
+  </Grid>
 </UserControl>

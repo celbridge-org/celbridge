@@ -597,4 +597,16 @@ Do you wish to continue?</value>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
   </data>
+  <data name="ResourceTreeToolbar_AddFileTooltip" xml:space="preserve">
+    <value>Add file</value>
+  </data>
+  <data name="ResourceTreeToolbar_AddFolderTooltip" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+  <data name="ResourceTreeToolbar_RefreshExplorerTooltip" xml:space="preserve">
+    <value>Refresh explorer</value>
+  </data>
+  <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
+    <value>Collapse folders</value>
+  </data>
 </root>
