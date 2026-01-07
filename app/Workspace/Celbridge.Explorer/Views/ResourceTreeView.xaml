@@ -183,7 +183,7 @@
                 Padding="6"
                 Flyout="{StaticResource AddFileMenuFlyout}">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE8E5;"
+                    Glyph="&#xE710;"
                     FontSize="16" />
         </Button>
         <Button x:Name="AddFolderButton"
@@ -213,7 +213,7 @@
                 Padding="6"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE92D;"
+                    Glyph="&#xE169;"
                     FontSize="16" />
         </Button>
       </StackPanel>
