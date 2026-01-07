@@ -179,5 +179,6 @@ Celbridge relies on code from many fantastic open source projects, including:
 * [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
 * [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
 * [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
+* [fluentui-system-icons](https://github.com/microsoft/fluentui-system-icons)
 
 Celbridge also uses a range of open source NuGet & Python packages, details of which can be found in `THIRD-PARTY-LICENSES.txt`.

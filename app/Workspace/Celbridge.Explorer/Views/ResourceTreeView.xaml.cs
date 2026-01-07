@@ -31,6 +31,13 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private LocalizedString OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
     private LocalizedString OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
 
+    // Toolbar tooltip strings
+    private LocalizedString AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
+    private LocalizedString AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
+    private LocalizedString RefreshExplorerTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_RefreshExplorerTooltip");
+    private LocalizedString CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
+    private LocalizedString ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
+
     public ResourceTreeView()
     {
         this.InitializeComponent();
@@ -675,5 +682,108 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         var selectedResource = _resourceRegistry.GetResourceKey(resource);
         ViewModel.OnSelectedResourceChanged(selectedResource);
+    }
+
+    //
+    // Toolbar event handlers
+    //
+
+    private void ToolbarAddFile_Click(object sender, RoutedEventArgs e)
+    {
+        var format = ResourceFormat.Text;
+        var tagObject = (sender as MenuFlyoutItem)?.Tag;
+        if (tagObject is ResourceFormat selectedFileType)
+        {
+            format = selectedFileType;
+        }
+
+        var destFolder = GetSelectedResourceFolder();
+        ViewModel.ShowAddResourceDialog(ResourceType.File, format, destFolder);
+    }
+
+    private void ToolbarAddFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var destFolder = GetSelectedResourceFolder();
+        ViewModel.ShowAddResourceDialog(ResourceType.Folder, ResourceFormat.Folder, destFolder);
+    }
+
+    private void ToolbarRefreshExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.RefreshExplorer();
+    }
+
+    private void ToolbarCollapseFolders_Click(object sender, RoutedEventArgs e)
+    {
+        CollapseAllFolders();
+    }
+
+    private void ToolbarProjectSettings_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenProjectSettings();
+    }
+
+    /// <summary>
+    /// Returns the folder resource for the currently selected resource.
+    /// If a file is selected, returns its parent folder.
+    /// If a folder is selected, returns that folder.
+    /// If nothing is selected, returns null (indicating root folder).
+    /// </summary>
+    private IFolderResource? GetSelectedResourceFolder()
+    {
+        var selectedItem = ResourcesTreeView.SelectedItem as TreeViewNode;
+        if (selectedItem?.Content is IFolderResource folderResource)
+        {
+            return folderResource;
+        }
+        else if (selectedItem?.Content is IFileResource fileResource)
+        {
+            return fileResource.ParentFolder;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Collapses all folders in the tree view, including nested children.
+    /// </summary>
+    private void CollapseAllFolders()
+    {
+        CollapseNodesRecursively(ResourcesTreeView.RootNodes);
+    }
+
+    /// <summary>
+    /// Sets the visibility of the toolbar based on whether the panel is active (has focus or mouse is over it).
+    /// </summary>
+    public void SetToolbarVisible(bool isVisible)
+    {
+        if (isVisible)
+        {
+            ToolbarFadeIn.Begin();
+        }
+        else
+        {
+            ToolbarFadeOut.Begin();
+        }
+    }
+
+    private void CollapseNodesRecursively(IList<TreeViewNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Content is IFolderResource folderResource)
+            {
+                if (node.IsExpanded)
+                {
+                    // Collapse children first
+                    CollapseNodesRecursively(node.Children);
+
+                    // Then collapse this node
+                    node.IsExpanded = false;
+
+                    // Update the folder state in the registry
+                    folderResource.IsExpanded = false;
+                    ViewModel.SetFolderIsExpanded(folderResource, false);
+                }
+            }
+        }
     }
 }
