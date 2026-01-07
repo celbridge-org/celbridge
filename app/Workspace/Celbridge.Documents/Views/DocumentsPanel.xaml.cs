@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
@@ -15,6 +16,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly ICommandService _commandService;
 
     private bool _isShuttingDown = false;
 
@@ -24,12 +26,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IServiceProvider serviceProvider,
         IDocumentsLogger logger,
         IMessengerService messengerService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         InitializeComponent();
 
         _logger = logger;
         _messengerService = messengerService;
+        _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
@@ -242,6 +246,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
+        documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
         // must be populated at this point.
@@ -432,6 +437,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
                 if (didClose)
                 {
+                    documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
                     TabView.TabItems.Remove(documentTab);
                 }
 
@@ -641,6 +647,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var documentTab = tabItem as DocumentTab;
             Guard.IsNotNull(documentTab);
 
+            // Unsubscribe from context menu events
+            documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
+
             var documentView = documentTab.Content as IDocumentView;
             if (documentView != null)
             {
@@ -651,5 +660,180 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         TabView.TabItems.Clear();
+    }
+
+    private void OnDocumentTabContextMenuAction(DocumentTab tab, DocumentTabMenuAction action)
+    {
+        switch (action)
+        {
+            case DocumentTabMenuAction.Close:
+                CloseTab(tab);
+                break;
+            case DocumentTabMenuAction.CloseOthers:
+                CloseOtherTabs(tab);
+                break;
+            case DocumentTabMenuAction.CloseOthersRight:
+                CloseOtherTabsRight(tab);
+                break;
+            case DocumentTabMenuAction.CloseOthersLeft:
+                CloseOtherTabsLeft(tab);
+                break;
+            case DocumentTabMenuAction.CloseAll:
+                CloseAllTabs();
+                break;
+            case DocumentTabMenuAction.CopyResourceKey:
+                CopyResourceKeyForTab(tab);
+                break;
+            case DocumentTabMenuAction.CopyFilePath:
+                CopyFilePathForTab(tab);
+                break;
+            case DocumentTabMenuAction.SelectFile:
+                SelectFileForTab(tab);
+                break;
+            case DocumentTabMenuAction.OpenFileExplorer:
+                OpenFileExplorerForTab(tab);
+                break;
+            case DocumentTabMenuAction.OpenApplication:
+                OpenApplicationForTab(tab);
+                break;
+        }
+    }
+
+    private void CloseTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+        ViewModel.OnCloseDocumentRequested(fileResource);
+    }
+
+    private void CloseOtherTabs(DocumentTab keepTab)
+    {
+        var tabsToClose = new List<DocumentTab>();
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            if (documentTab != null && documentTab != keepTab)
+            {
+                tabsToClose.Add(documentTab);
+            }
+        }
+
+        foreach (var tab in tabsToClose)
+        {
+            var fileResource = tab.ViewModel.FileResource;
+            ViewModel.OnCloseDocumentRequested(fileResource);
+        }
+    }
+
+    private void CloseOtherTabsRight(DocumentTab referenceTab)
+    {
+        var tabIndex = TabView.TabItems.IndexOf(referenceTab);
+        if (tabIndex < 0) return;
+
+        var tabsToClose = new List<DocumentTab>();
+        for (int i = tabIndex + 1; i < TabView.TabItems.Count; i++)
+        {
+            var documentTab = TabView.TabItems[i] as DocumentTab;
+            if (documentTab != null)
+            {
+                tabsToClose.Add(documentTab);
+            }
+        }
+
+        foreach (var tab in tabsToClose)
+        {
+            var fileResource = tab.ViewModel.FileResource;
+            ViewModel.OnCloseDocumentRequested(fileResource);
+        }
+    }
+
+    private void CloseOtherTabsLeft(DocumentTab referenceTab)
+    {
+        var tabIndex = TabView.TabItems.IndexOf(referenceTab);
+        if (tabIndex < 0) return;
+
+        var tabsToClose = new List<DocumentTab>();
+        for (int i = 0; i < tabIndex; i++)
+        {
+            var documentTab = TabView.TabItems[i] as DocumentTab;
+            if (documentTab != null)
+            {
+                tabsToClose.Add(documentTab);
+            }
+        }
+
+        foreach (var tab in tabsToClose)
+        {
+            var fileResource = tab.ViewModel.FileResource;
+            ViewModel.OnCloseDocumentRequested(fileResource);
+        }
+    }
+
+    private void CloseAllTabs()
+    {
+        var tabsToClose = new List<DocumentTab>();
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            if (documentTab != null)
+            {
+                tabsToClose.Add(documentTab);
+            }
+        }
+
+        foreach (var tab in tabsToClose)
+        {
+            var fileResource = tab.ViewModel.FileResource;
+            ViewModel.OnCloseDocumentRequested(fileResource);
+        }
+    }
+
+    private void SelectFileForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        _commandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = fileResource;
+            command.ShowExplorerPanel = true;
+        });
+    }
+
+    private void CopyResourceKeyForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+        var resourceKey = fileResource.ToString();
+
+        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        dataPackage.SetText(resourceKey);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+    }
+
+    private void CopyFilePathForTab(DocumentTab tab)
+    {
+        var filePath = tab.ViewModel.FilePath;
+
+        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        dataPackage.SetText(filePath);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+    }
+
+    private void OpenFileExplorerForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        _commandService.Execute<IOpenFileManagerCommand>(command =>
+        {
+            command.Resource = fileResource;
+        });
+    }
+
+    private void OpenApplicationForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        _commandService.Execute<IOpenApplicationCommand>(command =>
+        {
+            command.Resource = fileResource;
+        });
     }
 }
