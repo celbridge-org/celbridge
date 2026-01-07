@@ -23,15 +23,13 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private LocalizedString AddPythonScriptString => _stringLocalizer.GetString("ResourceTree_AddFile_PythonScript");
     private LocalizedString AddWebAppString => _stringLocalizer.GetString("ResourceTree_AddFile_WebApp");
     private LocalizedString AddTextFileString => _stringLocalizer.GetString("ResourceTree_AddFile_TextFile");
-    private LocalizedString EditString => _stringLocalizer.GetString("ResourceTree_Edit");
     private LocalizedString CutString => _stringLocalizer.GetString("ResourceTree_Cut");
     private LocalizedString CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
     private LocalizedString PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
     private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private LocalizedString RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
-    private LocalizedString OpenInString => _stringLocalizer.GetString("ResourceTree_OpenIn");
-    private LocalizedString OpenInExplorerString => _stringLocalizer.GetString("ResourceTree_OpenInExplorer");
-    private LocalizedString OpenInApplicationString => _stringLocalizer.GetString("ResourceTree_OpenInApplication");
+    private LocalizedString OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
+    private LocalizedString OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
 
     public ResourceTreeView()
     {
@@ -395,14 +393,14 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         ViewModel.ShowRenameResourceDialog(resource);
     }
 
-    private void ResourceContextMenu_OpenInExplorer(object sender, RoutedEventArgs e)
+    private void ResourceContextMenu_OpenFileExplorer(object sender, RoutedEventArgs e)
     {
         // A null resource here indicates the root folder
         var resource = AcquireContextMenuResource(sender);
         ViewModel.OpenResourceInExplorer(resource);
     }
 
-    private void ResourceContextMenu_OpenInApplication(object sender, RoutedEventArgs e)
+    private void ResourceContextMenu_OpenApplication(object sender, RoutedEventArgs e)
     {
         // A null resource here indicates the root folder
         var resource = AcquireContextMenuResource(sender);

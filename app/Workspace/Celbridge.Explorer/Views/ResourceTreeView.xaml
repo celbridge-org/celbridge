@@ -24,6 +24,9 @@
                       Click="ResourceContextMenu_Open"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
       <MenuFlyoutSubItem Text="{x:Bind AddString}">
+        <MenuFlyoutSubItem.Icon>
+          <SymbolIcon Symbol="Add" />
+        </MenuFlyoutSubItem.Icon>
         <MenuFlyoutItem Text="{x:Bind FolderString}"
                         Icon="Folder"
                         Click="ResourceContextMenu_AddFolder" />
@@ -43,34 +46,32 @@
                         Tag="{x:Bind explorer:ResourceFormat.Text}"
                         Click="ResourceContextMenu_AddFile" />        
       </MenuFlyoutSubItem>
-      <MenuFlyoutSubItem Text="{x:Bind EditString}">
-        <MenuFlyoutItem Text="{x:Bind CutString}"
-                        Icon="Cut"
-                        Click="ResourceContextMenu_Cut"
-                        IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
-        <MenuFlyoutItem Text="{x:Bind CopyString}"
-                        Icon="Copy"
-                        Click="ResourceContextMenu_Copy"
-                        IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
-        <MenuFlyoutItem Text="{x:Bind PasteString}"
-                        Icon="Paste"
-                        Click="ResourceContextMenu_Paste"
-                        IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}" />
-        <MenuFlyoutItem Text="{x:Bind DeleteString}"
-                        Icon="Delete"
-                        Click="ResourceContextMenu_Delete"
-                        IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
-        <MenuFlyoutItem Text="{x:Bind RenameString}"
-                        Icon="Edit"
-                        Click="ResourceContextMenu_Rename"
-                        IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
-      </MenuFlyoutSubItem>
-      <MenuFlyoutSubItem Text="{x:Bind OpenInString}">
-        <MenuFlyoutItem Text="{x:Bind OpenInExplorerString}"
-                        Click="ResourceContextMenu_OpenInExplorer"/>
-        <MenuFlyoutItem Text="{x:Bind OpenInApplicationString}"
-                        Click="ResourceContextMenu_OpenInApplication"/>
-      </MenuFlyoutSubItem>
+      <MenuFlyoutSeparator />
+      <MenuFlyoutItem Text="{x:Bind CutString}"
+                      Icon="Cut"
+                      Click="ResourceContextMenu_Cut"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutItem Text="{x:Bind CopyString}"
+                      Icon="Copy"
+                      Click="ResourceContextMenu_Copy"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutItem Text="{x:Bind PasteString}"
+                      Icon="Paste"
+                      Click="ResourceContextMenu_Paste"
+                      IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}" />
+      <MenuFlyoutItem Text="{x:Bind DeleteString}"
+                      Icon="Delete"
+                      Click="ResourceContextMenu_Delete"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutItem Text="{x:Bind RenameString}"
+                      Icon="Edit"
+                      Click="ResourceContextMenu_Rename"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutSeparator />
+      <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
+                      Click="ResourceContextMenu_OpenFileExplorer"/>
+      <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
+                      Click="ResourceContextMenu_OpenApplication"/>
     </MenuFlyout>
 
     <DataTemplate x:Key="FolderTemplate"
