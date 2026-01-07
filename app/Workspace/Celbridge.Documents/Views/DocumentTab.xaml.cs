@@ -107,4 +107,45 @@ public partial class DocumentTab : TabViewItem
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenApplication);
     }
+
+    private void TabContextMenu_Opening(object sender, object e)
+    {
+        // Find the parent TabView to get tab count and position
+        var tabView = FindParentTabView();
+        if (tabView is null)
+        {
+            return;
+        }
+
+        int tabCount = tabView.TabItems.Count;
+        int tabIndex = tabView.TabItems.IndexOf(this);
+
+        // Only show "Close Others" if there are at least 2 other tabs to close
+        CloseOthersMenuItem.Visibility = tabCount > 2 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Only show "Close All" if there are at least 2 tabs to close
+        CloseAllMenuItem.Visibility = tabCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Only show "Close to the Right" if there are tabs to the right of this tab
+        bool hasTabsToRight = tabIndex >= 0 && tabIndex < tabCount - 1;
+        CloseToTheRightMenuItem.Visibility = hasTabsToRight ? Visibility.Visible : Visibility.Collapsed;
+
+        // Only show "Close to the Left" if there are tabs to the left of this tab
+        bool hasTabsToLeft = tabIndex > 0;
+        CloseToTheLeftMenuItem.Visibility = hasTabsToLeft ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private TabView? FindParentTabView()
+    {
+        DependencyObject? current = this;
+        while (current != null)
+        {
+            if (current is TabView tabView)
+            {
+                return tabView;
+            }
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
+    }
 }

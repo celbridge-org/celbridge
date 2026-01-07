@@ -15,7 +15,7 @@
     </muxc:TabViewItem.Resources>
 
     <muxc:TabViewItem.ContextFlyout>
-        <MenuFlyout x:Name="TabContextMenu">
+        <MenuFlyout x:Name="TabContextMenu" Opening="TabContextMenu_Opening">
             <MenuFlyoutItem x:Name="CloseMenuItem" Click="ContextMenu_Close" />
             <MenuFlyoutItem x:Name="CloseOthersMenuItem" Click="ContextMenu_CloseOthers" />
             <MenuFlyoutItem x:Name="CloseToTheRightMenuItem" Click="ContextMenu_CloseToTheRight" />
