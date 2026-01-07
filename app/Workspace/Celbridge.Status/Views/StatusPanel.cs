@@ -33,7 +33,7 @@ public partial class StatusPanel : UserControl, IStatusPanel
             );
 
         // Set tooltip for select resource button
-        var tooltip = _stringLocalizer.GetString("StatusPanel_SelectResourceTooltip");
+        var tooltip = _stringLocalizer.GetString("StatusPanel_SelectFileTooltip");
         ToolTipService.SetToolTip(selectDocumentButton, tooltip);
         ToolTipService.SetPlacement(selectDocumentButton, PlacementMode.Top);
 
