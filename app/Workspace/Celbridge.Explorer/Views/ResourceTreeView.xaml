@@ -176,10 +176,17 @@
       <StackPanel Grid.Column="1"
                   Orientation="Horizontal"
                   Spacing="0">
+        <StackPanel.Resources>
+          <!-- Button theme resources are overridden on the parent to give all child buttons the same hover behaviour -->
+          <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+          <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SystemListLowColor}" />
+          <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SystemListMediumColor}" />
+          <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+          <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+          <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+        </StackPanel.Resources>
         <Button x:Name="AddFileButton"
                 ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
-                Background="Transparent"
-                BorderThickness="0"
                 Padding="4"
                 Flyout="{StaticResource AddFileMenuFlyout}">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
@@ -188,8 +195,6 @@
         </Button>
         <Button x:Name="AddFolderButton"
                 ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
-                Background="Transparent"
-                BorderThickness="0"
                 Padding="4"
                 Click="ToolbarAddFolder_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
@@ -199,8 +204,6 @@
         <!-- Not sure if this is really needed - add it back if anyone complains
         <Button x:Name="RefreshExplorerButton"
                 ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
-                Background="Transparent"
-                BorderThickness="0"
                 Padding="4"
                 Click="ToolbarRefreshExplorer_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
@@ -210,8 +213,6 @@
         -->
         <Button x:Name="CollapseFoldersButton"
                 ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
-                Background="Transparent"
-                BorderThickness="0"
                 Padding="4"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
@@ -220,8 +221,6 @@
         </Button>
         <Button x:Name="ProjectSettingsButton"
                 ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
-                Background="Transparent"
-                BorderThickness="0"
                 Padding="4"
                 Click="ToolbarProjectSettings_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
