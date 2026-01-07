@@ -42,12 +42,7 @@
     <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Update="Views\Pages\HomePage.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
+    <EmbeddedResource Include="Assets\Fonts\FluentUISystemIcons\FluentSystemIcons-Regular.ttf" />
   </ItemGroup>
 
 </Project>
