@@ -14,6 +14,23 @@
         <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
     </muxc:TabViewItem.Resources>
 
+    <muxc:TabViewItem.ContextFlyout>
+        <MenuFlyout x:Name="TabContextMenu" Opening="TabContextMenu_Opening">
+            <MenuFlyoutItem x:Name="CloseMenuItem" Click="ContextMenu_Close" />
+            <MenuFlyoutItem x:Name="CloseOthersMenuItem" Click="ContextMenu_CloseOthers" />
+            <MenuFlyoutItem x:Name="CloseToTheRightMenuItem" Click="ContextMenu_CloseToTheRight" />
+            <MenuFlyoutItem x:Name="CloseToTheLeftMenuItem" Click="ContextMenu_CloseToTheLeft" />
+            <MenuFlyoutItem x:Name="CloseAllMenuItem" Click="ContextMenu_CloseAll" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="CopyResourceKeyMenuItem" Click="ContextMenu_CopyResourceKey" />
+            <MenuFlyoutItem x:Name="CopyFilePathMenuItem" Click="ContextMenu_CopyFilePath" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
+            <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
+            <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
+        </MenuFlyout>
+    </muxc:TabViewItem.ContextFlyout>
+
     <muxc:TabViewItem.Header>
         <StackPanel Orientation="Horizontal">
 

@@ -55,7 +55,7 @@
         <Button x:Name="NavigateToButton"
                 Padding="1"
                 Command="{x:Bind ViewModel.NavigateToResourceCommand}"
-                ToolTipService.ToolTip="{x:Bind SelectResourceString}">
+                ToolTipService.ToolTip="{x:Bind SelectFileString}">
           <FontIcon FontFamily="{StaticResource FontAwesomeFontFamily}"
                     Glyph="&#xF05B;"/>
         </Button>
