@@ -79,8 +79,8 @@
       <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
                          DoubleTapped="TreeViewItem_DoubleTapped">
         <StackPanel Orientation="Horizontal">
-          <FontIcon FontFamily="{StaticResource OctIconsFontFamily}"
-                    Glyph="&#xF016;"
+          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE776;"
                     FontSize="16"
                     Margin="0 4 6 0"
                     VerticalAlignment="Center"
@@ -159,8 +159,8 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <FontIcon Grid.Column="0"
-                  FontFamily="{StaticResource OctIconsFontFamily}"
-                  Glyph="&#xF016;"
+                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE8D5;"
                   FontSize="16"
                   Margin="0,0,6,0"
                   VerticalAlignment="Center"
@@ -175,7 +175,7 @@
       <!-- Toolbar Buttons -->
       <StackPanel Grid.Column="1"
                   Orientation="Horizontal"
-                  Spacing="2">
+                  Spacing="0">
         <Button x:Name="AddFileButton"
                 ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
                 Background="Transparent"
@@ -183,8 +183,8 @@
                 Padding="6"
                 Flyout="{StaticResource AddFileMenuFlyout}">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE710;"
-                    FontSize="16" />
+                    Glyph="&#xE7C3;"
+                    FontSize="18" />
         </Button>
         <Button x:Name="AddFolderButton"
                 ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
@@ -194,7 +194,7 @@
                 Click="ToolbarAddFolder_Click">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                     Glyph="&#xE8F4;"
-                    FontSize="16" />
+                    FontSize="18" />
         </Button>
         <Button x:Name="RefreshExplorerButton"
                 ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
@@ -203,8 +203,8 @@
                 Padding="6"
                 Click="ToolbarRefreshExplorer_Click">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE72C;"
-                    FontSize="16" />
+                    Glyph="&#xE8F7;"
+                    FontSize="18" />
         </Button>
         <Button x:Name="CollapseFoldersButton"
                 ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
@@ -213,8 +213,8 @@
                 Padding="6"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE169;"
-                    FontSize="16" />
+                    Glyph="&#xE71D;"
+                    FontSize="18" />
         </Button>
       </StackPanel>
     </Grid>
