@@ -14,6 +14,20 @@
     Background="{ThemeResource ApplicationBackgroundBrush}">
 
   <UserControl.Resources>
+    <!-- Storyboard animations for toolbar fade in/out -->
+    <Storyboard x:Name="ToolbarFadeIn">
+      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
+                       Storyboard.TargetProperty="Opacity"
+                       To="1"
+                       Duration="0:0:0.15" />
+    </Storyboard>
+    <Storyboard x:Name="ToolbarFadeOut">
+      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
+                       Storyboard.TargetProperty="Opacity"
+                       To="0"
+                       Duration="0:0:0.15" />
+    </Storyboard>
+
     <MenuFlyout x:Name="ResourceContextMenu"
                 Placement="RightEdgeAlignedTop"
                 Opening="ResourceContextMenu_Opening">
@@ -173,9 +187,11 @@
       </Grid>
 
       <!-- Toolbar Buttons -->
-      <StackPanel Grid.Column="1"
+      <StackPanel x:Name="ToolbarPanel"
+                  Grid.Column="1"
                   Orientation="Horizontal"
-                  Spacing="0">
+                  Spacing="0"
+                  Opacity="0">
         <StackPanel.Resources>
           <!-- Button theme resources are overridden on the parent to give all child buttons the same hover behaviour -->
           <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
@@ -216,7 +232,7 @@
                 Padding="4"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xF0621;"
+                    Glyph="&#xF418;"
                     FontSize="20" />
         </Button>
         <Button x:Name="ProjectSettingsButton"

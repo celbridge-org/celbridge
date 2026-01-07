@@ -750,6 +750,21 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         CollapseNodesRecursively(ResourcesTreeView.RootNodes);
     }
 
+    /// <summary>
+    /// Sets the visibility of the toolbar based on whether the panel is active (has focus or mouse is over it).
+    /// </summary>
+    public void SetToolbarVisible(bool isVisible)
+    {
+        if (isVisible)
+        {
+            ToolbarFadeIn.Begin();
+        }
+        else
+        {
+            ToolbarFadeOut.Begin();
+        }
+    }
+
     private void CollapseNodesRecursively(IList<TreeViewNode> nodes)
     {
         foreach (var node in nodes)
