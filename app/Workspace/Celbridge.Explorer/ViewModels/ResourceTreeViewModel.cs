@@ -4,6 +4,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,10 +23,16 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
+    /// <summary>
+    /// The name of the project folder displayed at the top of the tree view.
+    /// </summary>
+    public string ProjectFolderName { get; }
+
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
+        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -35,6 +42,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _pythonService = workspaceWrapper.WorkspaceService.PythonService;
+
+        // Get the project folder name from the current project
+        ProjectFolderName = projectService.CurrentProject?.ProjectName ?? string.Empty;
     }
 
     //
@@ -192,6 +202,34 @@ public partial class ResourceTreeViewModel : ObservableObject
             command.FolderResource = folderResource;
             command.Expanded = isExpanded;
             command.UpdateResources = false; // TreeView has already expanded the folder node, no need to update it again.
+        });
+    }
+
+    public void RefreshExplorer()
+    {
+        _commandService.Execute<IUpdateResourcesCommand>();
+    }
+
+    public void OpenProjectSettings()
+    {
+        // Get the project file path and open it as a document
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        if (currentProject is null)
+        {
+            return;
+        }
+
+        // Get the project file name (e.g., "myproject.celbridge")
+        var projectFilePath = currentProject.ProjectFilePath;
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        // Create a resource key for the project file
+        var fileResource = new ResourceKey(projectFileName);
+
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
         });
     }
 
