@@ -142,53 +142,82 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- Toolbar -->
-    <StackPanel Grid.Row="0"
-                Orientation="Horizontal"
-                HorizontalAlignment="Right"
-                Margin="0,4,8,4"
-                Spacing="2">
-      <Button x:Name="AddFileButton"
-              ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="6"
-              Flyout="{StaticResource AddFileMenuFlyout}">
-        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE8E5;"
-                  FontSize="16" />
-      </Button>
-      <Button x:Name="AddFolderButton"
-              ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="6"
-              Click="ToolbarAddFolder_Click">
-        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE8F4;"
-                  FontSize="16" />
-      </Button>
-      <Button x:Name="RefreshExplorerButton"
-              ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="6"
-              Click="ToolbarRefreshExplorer_Click">
-        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE72C;"
-                  FontSize="16" />
-      </Button>
-      <Button x:Name="CollapseFoldersButton"
-              ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="6"
-              Click="ToolbarCollapseFolders_Click">
-        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE92D;"
-                  FontSize="16" />
-      </Button>
-    </StackPanel>
+    <!-- Project Name and Toolbar Row -->
+    <Grid Grid.Row="0"
+          Margin="8,4,8,4">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Project Folder Name -->
+      <Grid Grid.Column="0"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <FontIcon Grid.Column="0"
+                  FontFamily="{StaticResource OctIconsFontFamily}"
+                  Glyph="&#xF016;"
+                  FontSize="16"
+                  Margin="0,0,6,0"
+                  VerticalAlignment="Center"
+                  Foreground="#FFCC40" />
+        <TextBlock Grid.Column="1"
+                   Text="{x:Bind ViewModel.ProjectFolderName, Mode=OneWay}"
+                   VerticalAlignment="Center"
+                   FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" />
+      </Grid>
+
+      <!-- Toolbar Buttons -->
+      <StackPanel Grid.Column="1"
+                  Orientation="Horizontal"
+                  Spacing="2">
+        <Button x:Name="AddFileButton"
+                ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="6"
+                Flyout="{StaticResource AddFileMenuFlyout}">
+          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE8E5;"
+                    FontSize="16" />
+        </Button>
+        <Button x:Name="AddFolderButton"
+                ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="6"
+                Click="ToolbarAddFolder_Click">
+          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE8F4;"
+                    FontSize="16" />
+        </Button>
+        <Button x:Name="RefreshExplorerButton"
+                ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="6"
+                Click="ToolbarRefreshExplorer_Click">
+          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE72C;"
+                    FontSize="16" />
+        </Button>
+        <Button x:Name="CollapseFoldersButton"
+                ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="6"
+                Click="ToolbarCollapseFolders_Click">
+          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE92D;"
+                    FontSize="16" />
+        </Button>
+      </StackPanel>
+    </Grid>
 
     <!-- Resource Tree View -->
     <ScrollViewer Grid.Row="1"

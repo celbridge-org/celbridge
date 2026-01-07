@@ -4,6 +4,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Services;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,10 +23,16 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
+    /// <summary>
+    /// The name of the project folder displayed at the top of the tree view.
+    /// </summary>
+    public string ProjectFolderName { get; }
+
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
+        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -35,6 +42,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _pythonService = workspaceWrapper.WorkspaceService.PythonService;
+
+        // Get the project folder name from the current project
+        ProjectFolderName = projectService.CurrentProject?.ProjectName ?? string.Empty;
     }
 
     //
