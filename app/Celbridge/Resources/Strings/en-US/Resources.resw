@@ -609,4 +609,7 @@ Do you wish to continue?</value>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse folders</value>
   </data>
+  <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
+    <value>Open project settings</value>
+  </data>
 </root>

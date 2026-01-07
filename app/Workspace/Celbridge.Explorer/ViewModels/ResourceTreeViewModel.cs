@@ -210,6 +210,29 @@ public partial class ResourceTreeViewModel : ObservableObject
         _commandService.Execute<IUpdateResourcesCommand>();
     }
 
+    public void OpenProjectSettings()
+    {
+        // Get the project file path and open it as a document
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        if (currentProject is null)
+        {
+            return;
+        }
+
+        // Get the project file name (e.g., "myproject.celbridge")
+        var projectFilePath = currentProject.ProjectFilePath;
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        // Create a resource key for the project file
+        var fileResource = new ResourceKey(projectFileName);
+
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+        });
+    }
+
     //
     // Resource editing
     //

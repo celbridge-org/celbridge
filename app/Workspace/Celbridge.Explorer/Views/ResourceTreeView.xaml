@@ -196,6 +196,7 @@
                     Glyph="&#xE645;"
                     FontSize="20" />
         </Button>
+        <!-- Not sure if this is really needed - add it back if anyone complains
         <Button x:Name="RefreshExplorerButton"
                 ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
                 Background="Transparent"
@@ -206,15 +207,26 @@
                     Glyph="&#xF06AE;"
                     FontSize="20" />
         </Button>
+        -->
         <Button x:Name="CollapseFoldersButton"
                 ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
                 Background="Transparent"
                 BorderThickness="0"
-                Padding="6"
+                Padding="4"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
                     Glyph="&#xF0621;"
-                    FontSize="18" />
+                    FontSize="20" />
+        </Button>
+        <Button x:Name="ProjectSettingsButton"
+                ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="4"
+                Click="ToolbarProjectSettings_Click">
+          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
+                    Glyph="&#xF6AB;"
+                    FontSize="20" />
         </Button>
       </StackPanel>
     </Grid>

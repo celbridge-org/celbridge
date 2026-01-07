@@ -36,6 +36,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private LocalizedString AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
     private LocalizedString RefreshExplorerTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_RefreshExplorerTooltip");
     private LocalizedString CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
+    private LocalizedString ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 
     public ResourceTreeView()
     {
@@ -714,6 +715,11 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private void ToolbarCollapseFolders_Click(object sender, RoutedEventArgs e)
     {
         CollapseAllFolders();
+    }
+
+    private void ToolbarProjectSettings_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenProjectSettings();
     }
 
     /// <summary>
