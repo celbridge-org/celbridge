@@ -591,4 +591,16 @@ Do you wish to continue?</value>
   <data name="InspectorPanel_SelectFile" xml:space="preserve">
     <value>Select file</value>
   </data>
+  <data name="DocumentTab_CopyResourceKey" xml:space="preserve">
+    <value>Copy resource key</value>
+  </data>
+  <data name="DocumentTab_CopyFilePath" xml:space="preserve">
+    <value>Copy file path</value>
+  </data>
+  <data name="DocumentTab_OpenFileExplorer" xml:space="preserve">
+    <value>Open in File Explorer</value>
+  </data>
+  <data name="DocumentTab_OpenApplication" xml:space="preserve">
+    <value>Open with application</value>
+  </data>
 </root>

@@ -22,7 +22,12 @@
             <MenuFlyoutItem x:Name="CloseToTheLeftMenuItem" Click="ContextMenu_CloseToTheLeft" />
             <MenuFlyoutItem x:Name="CloseAllMenuItem" Click="ContextMenu_CloseAll" />
             <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="CopyResourceKeyMenuItem" Click="ContextMenu_CopyResourceKey" />
+            <MenuFlyoutItem x:Name="CopyFilePathMenuItem" Click="ContextMenu_CopyFilePath" />
+            <MenuFlyoutSeparator />
             <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
+            <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
+            <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 

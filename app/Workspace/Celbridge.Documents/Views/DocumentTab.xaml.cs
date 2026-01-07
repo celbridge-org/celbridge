@@ -13,7 +13,11 @@ public enum DocumentTabMenuAction
     CloseOthersRight,
     CloseOthersLeft,
     CloseAll,
-    SelectFile
+    CopyResourceKey,
+    CopyFilePath,
+    SelectFile,
+    OpenFileExplorer,
+    OpenApplication
 }
 
 // I've tried writing this class using a C# Markup class subclassed from TabViewItem, but it didn't work.
@@ -47,7 +51,11 @@ public partial class DocumentTab : TabViewItem
         CloseToTheRightMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseRight");
         CloseToTheLeftMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseLeft");
         CloseAllMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseAll");
+        CopyResourceKeyMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyResourceKey");
+        CopyFilePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFilePath");
         SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
+        OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileExplorer");
+        OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
     }
 
     private void ContextMenu_Close(object sender, RoutedEventArgs e)
@@ -78,5 +86,25 @@ public partial class DocumentTab : TabViewItem
     private void ContextMenu_SelectFile(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.SelectFile);
+    }
+
+    private void ContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyResourceKey);
+    }
+
+    private void ContextMenu_CopyFilePath(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyFilePath);
+    }
+
+    private void ContextMenu_OpenFileExplorer(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenFileExplorer);
+    }
+
+    private void ContextMenu_OpenApplication(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenApplication);
     }
 }

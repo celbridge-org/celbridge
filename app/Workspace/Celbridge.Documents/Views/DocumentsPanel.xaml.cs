@@ -681,8 +681,20 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.CloseAll:
                 CloseAllTabs();
                 break;
+            case DocumentTabMenuAction.CopyResourceKey:
+                CopyResourceKeyForTab(tab);
+                break;
+            case DocumentTabMenuAction.CopyFilePath:
+                CopyFilePathForTab(tab);
+                break;
             case DocumentTabMenuAction.SelectFile:
                 SelectFileForTab(tab);
+                break;
+            case DocumentTabMenuAction.OpenFileExplorer:
+                OpenFileExplorerForTab(tab);
+                break;
+            case DocumentTabMenuAction.OpenApplication:
+                OpenApplicationForTab(tab);
                 break;
         }
     }
@@ -783,6 +795,45 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             command.Resource = fileResource;
             command.ShowExplorerPanel = true;
+        });
+    }
+
+    private void CopyResourceKeyForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+        var resourceKey = fileResource.ToString();
+
+        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        dataPackage.SetText(resourceKey);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+    }
+
+    private void CopyFilePathForTab(DocumentTab tab)
+    {
+        var filePath = tab.ViewModel.FilePath;
+
+        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        dataPackage.SetText(filePath);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+    }
+
+    private void OpenFileExplorerForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        _commandService.Execute<IOpenFileManagerCommand>(command =>
+        {
+            command.Resource = fileResource;
+        });
+    }
+
+    private void OpenApplicationForTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        _commandService.Execute<IOpenApplicationCommand>(command =>
+        {
+            command.Resource = fileResource;
         });
     }
 }
