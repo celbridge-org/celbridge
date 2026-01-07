@@ -276,9 +276,6 @@
   <data name="ResourceTree_Add" xml:space="preserve">
     <value>Add</value>
   </data>
-  <data name="ResourceTree_Edit" xml:space="preserve">
-    <value>Edit</value>
-  </data>
   <data name="ResourceTree_AddFile" xml:space="preserve">
     <value>Add file</value>
   </data>
@@ -317,9 +314,6 @@
   </data>
   <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
     <value>Enter a name for the new copy:</value>
-  </data>
-  <data name="ResourceTree_Open" xml:space="preserve">
-    <value>Open</value>
   </data>
   <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
     <value>Copy resource key to clipboard</value>
@@ -402,14 +396,11 @@
   <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
     <value>The project will be saved at this location.</value>
   </data>
-  <data name="ResourceTree_OpenIn" xml:space="preserve">
-    <value>Open in</value>
+  <data name="ResourceTree_OpenFileExplorer" xml:space="preserve">
+    <value>Open in File Explorer</value>
   </data>
-  <data name="ResourceTree_OpenInExplorer" xml:space="preserve">
-    <value>File Explorer</value>
-  </data>
-  <data name="ResourceTree_OpenInApplication" xml:space="preserve">
-    <value>Associated application</value>
+  <data name="ResourceTree_OpenApplication" xml:space="preserve">
+    <value>Open with application</value>
   </data>
   <data name="WebInspector_StartURL" xml:space="preserve">
     <value>Start URL</value>
@@ -602,5 +593,8 @@ Do you wish to continue?</value>
   </data>
   <data name="DocumentTab_OpenApplication" xml:space="preserve">
     <value>Open with application</value>
+  </data>
+  <data name="ResourceTree_Open" xml:space="preserve">
+    <value>Open</value>
   </data>
 </root>
