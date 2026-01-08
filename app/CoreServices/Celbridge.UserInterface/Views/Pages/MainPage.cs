@@ -14,23 +14,24 @@ using Windows.UI.Core;
 
 namespace Celbridge.UserInterface.Views;
 
-public sealed partial class MainPage : Page
+public partial class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; private set; }
 
-    public LocalizedString HomeString => _stringLocalizer.GetString($"MainPage_Home");
-    public LocalizedString NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
-    public LocalizedString NewProjectTooltipString => _stringLocalizer.GetString($"MainPage_NewProjectTooltip");
-    public LocalizedString OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
-    public LocalizedString OpenProjectTooltipString => _stringLocalizer.GetString($"MainPage_OpenProjectTooltip");
-    public LocalizedString ReloadProjectString => _stringLocalizer.GetString($"MainPage_ReloadProject");
-    public LocalizedString ReloadProjectTooltipString => _stringLocalizer.GetString($"MainPage_ReloadProjectTooltip");
-    public LocalizedString CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
-    public LocalizedString ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
-    public LocalizedString SearchString => _stringLocalizer.GetString($"MainPage_Search");
-    public LocalizedString DebugString => _stringLocalizer.GetString($"MainPage_Debug");
-    public LocalizedString RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
-    public LocalizedString CommunityString => _stringLocalizer.GetString($"MainPage_Community");
+    public string HomeString => _stringLocalizer.GetString($"MainPage_Home");
+    public string NewProjectString => _stringLocalizer.GetString($"MainPage_NewProject");
+    public string NewProjectTooltipString => _stringLocalizer.GetString($"MainPage_NewProjectTooltip");
+    public string OpenProjectString => _stringLocalizer.GetString($"MainPage_OpenProject");
+    public string OpenProjectTooltipString => _stringLocalizer.GetString($"MainPage_OpenProjectTooltip");
+    public string ReloadProjectString => _stringLocalizer.GetString($"MainPage_ReloadProject");
+    public string ReloadProjectTooltipString => _stringLocalizer.GetString($"MainPage_ReloadProjectTooltip");
+    public string CloseProjectString => _stringLocalizer.GetString($"MainPage_CloseProject");
+    public string ExplorerString => _stringLocalizer.GetString($"MainPage_Explorer");
+    public string SearchString => _stringLocalizer.GetString($"MainPage_Search");
+    public string DebugString => _stringLocalizer.GetString($"MainPage_Debug");
+    public string RevisionControlString => _stringLocalizer.GetString($"MainPage_RevisionControl");
+    public string CommunityString => _stringLocalizer.GetString($"MainPage_Community");
+
 
     private Dictionary<string, string> TagsToScriptDictionary = new();
 
