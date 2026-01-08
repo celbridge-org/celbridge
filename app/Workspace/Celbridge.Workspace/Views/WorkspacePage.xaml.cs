@@ -37,29 +37,18 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
 
     private void ApplyPanelButtonTooltips()
     {
-        // Explorer panel 
-        ToolTipService.SetToolTip(ShowContextPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowContextPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideContextPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideContextPanelButton, PlacementMode.Bottom);
+        // Panel visibility toolbar tooltips
+        ToolTipService.SetToolTip(ToggleExplorerPanelButton, _stringLocalizer["WorkspacePage_ToggleExplorerPanelTooltip"]);
+        ToolTipService.SetPlacement(ToggleExplorerPanelButton, PlacementMode.Bottom);
 
-        // Inspector panel 
-        ToolTipService.SetToolTip(ShowInspectorPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowInspectorPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideInspectorPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideInspectorPanelButton, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(ToggleToolsPanelButton, _stringLocalizer["WorkspacePage_ToggleToolsPanelTooltip"]);
+        ToolTipService.SetPlacement(ToggleToolsPanelButton, PlacementMode.Bottom);
 
-        // Tools panel 
-        ToolTipService.SetToolTip(ShowToolsPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowToolsPanelButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(HideToolsPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideToolsPanelButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(ToggleInspectorPanelButton, _stringLocalizer["WorkspacePage_ToggleInspectorPanelTooltip"]);
+        ToolTipService.SetPlacement(ToggleInspectorPanelButton, PlacementMode.Bottom);
 
-        // Focus mode button
-        ToolTipService.SetToolTip(EnterFocusModeButton, _stringLocalizer["WorkspacePage_EnterFocusModeTooltip"]);
-        ToolTipService.SetPlacement(EnterFocusModeButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(ExitFocusModeButton, _stringLocalizer["WorkspacePage_ExitFocusModeTooltip"]);
-        ToolTipService.SetPlacement(ExitFocusModeButton, PlacementMode.Top);
+        ToolTipService.SetToolTip(ToggleFocusModeButton, _stringLocalizer["WorkspacePage_ToggleFocusModeTooltip"]);
+        ToolTipService.SetPlacement(ToggleFocusModeButton, PlacementMode.Bottom);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -91,7 +80,6 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             }
 
             UpdatePanels();
-            UpdateFocusModeButton();
 
             ContextPanel.SizeChanged += (s, e) => ViewModel.ContextPanelWidth = (float)e.NewSize.Width;
             InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
@@ -190,29 +178,14 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             case nameof(ViewModel.IsContextPanelVisible):
             case nameof(ViewModel.IsInspectorPanelVisible):
             case nameof(ViewModel.IsToolsPanelVisible):
-                UpdatePanels();
-                break;
             case nameof(ViewModel.IsFocusModeActive):
-                UpdateFocusModeButton();
+                UpdatePanels();
                 break;
         }
     }
 
     private void UpdatePanels()
     {
-        //
-        // Update button visibility based on panel visibility state
-        //
-
-        ShowContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
-        ShowInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
-        ShowToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
         //
         // Update panel and splitter visibility based on the panel visibility state
         //
@@ -261,22 +234,62 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             ToolsPanelRow.MinHeight = 0;
             ToolsPanelRow.Height = new GridLength(0);
         }
+
+        //
+        // Update toolbar button icons based on panel visibility state
+        // Show filled rectangle when panel is visible, divider line when collapsed
+        //
+
+        // Find the icon elements within the button content
+        var explorerFill = FindDescendant<Rectangle>(ToggleExplorerPanelButton, "ExplorerPanelFill");
+        var explorerDivider = FindDescendant<Line>(ToggleExplorerPanelButton, "ExplorerPanelDivider");
+        if (explorerFill != null && explorerDivider != null)
+        {
+            explorerFill.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+            explorerDivider.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        var toolsFill = FindDescendant<Rectangle>(ToggleToolsPanelButton, "ToolsPanelFill");
+        var toolsDivider = FindDescendant<Line>(ToggleToolsPanelButton, "ToolsPanelDivider");
+        if (toolsFill != null && toolsDivider != null)
+        {
+            toolsFill.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+            toolsDivider.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        var inspectorFill = FindDescendant<Rectangle>(ToggleInspectorPanelButton, "InspectorPanelFill");
+        var inspectorDivider = FindDescendant<Line>(ToggleInspectorPanelButton, "InspectorPanelDivider");
+        if (inspectorFill != null && inspectorDivider != null)
+        {
+            inspectorFill.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+            inspectorDivider.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        ToggleFocusModeIcon.Glyph = ViewModel.IsFocusModeActive ? "\uE92C" : "\uE92D";
     }
 
-    private void UpdateFocusModeButton()
+    private T? FindDescendant<T>(DependencyObject parent, string name) where T : FrameworkElement
     {
-        if (ViewModel.IsFocusModeActive)
+        if (parent == null) return null;
+
+        var childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < childCount; i++)
         {
-            // Show the exit focus mode button
-            EnterFocusModeButton.Visibility = Visibility.Collapsed;
-            ExitFocusModeButton.Visibility = Visibility.Visible;
+            var child = VisualTreeHelper.GetChild(parent, i);
+            
+            if (child is T element && element.Name == name)
+            {
+                return element;
+            }
+
+            var result = FindDescendant<T>(child, name);
+            if (result != null)
+            {
+                return result;
+            }
         }
-        else
-        {
-            // Show the enter focus mode button
-            EnterFocusModeButton.Visibility = Visibility.Visible;
-            ExitFocusModeButton.Visibility = Visibility.Collapsed;
-        }
+
+        return null;
     }
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)

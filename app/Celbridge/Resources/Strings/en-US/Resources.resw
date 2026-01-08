@@ -564,4 +564,16 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyFilePath" xml:space="preserve">
     <value>Copy file path</value>
   </data>
+  <data name="WorkspacePage_ToggleExplorerPanelTooltip" xml:space="preserve">
+    <value>Toggle Explorer panel</value>
+  </data>
+  <data name="WorkspacePage_ToggleToolsPanelTooltip" xml:space="preserve">
+    <value>Toggle Console panel</value>
+  </data>
+  <data name="WorkspacePage_ToggleInspectorPanelTooltip" xml:space="preserve">
+    <value>Toggle Inspector panel</value>
+  </data>
+  <data name="WorkspacePage_ToggleFocusModeTooltip" xml:space="preserve">
+    <value>Toggle all panels</value>
+  </data>
 </root>

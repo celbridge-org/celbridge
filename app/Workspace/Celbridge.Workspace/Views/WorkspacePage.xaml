@@ -33,28 +33,6 @@
           BorderThickness="2,0,2,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Grid x:Name="ContextMasterArea"
-              >
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Would prefer to call this 'ContextWorkPanel' - Will rename this once the layout is settled. -->
-        <Grid x:Name="InnerContextPanel"
-                Grid.Column="0">
-          
-          <Button x:Name="HideContextPanelButton"
-              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,3,2,0">
-            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76B;"/>
-          </Button>
-
-        </Grid>
-      </Grid>
     </Grid>
 
     <!-- Documents Panel -->
@@ -64,23 +42,110 @@
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
 
-      <Button x:Name="ShowContextPanelButton"
-              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top"
-              Margin="4">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76C;"/>
-      </Button>
-
-      <Button x:Name="ShowInspectorPanelButton"
-              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,4,0,0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76B;"/>
-      </Button>
+      <!-- Panel Visibility Toolbar -->
+      <StackPanel x:Name="PanelVisibilityToolbar"
+                  Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Top"
+                  Margin="0,4,4,0">
+        
+        <!-- Explorer Panel Toggle (Left sidebar icon) -->
+        <Button x:Name="ToggleExplorerPanelButton"
+                Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
+                Margin="2,0"
+                Padding="6">
+          <Viewbox Width="16" Height="16">
+            <Grid Width="16" Height="16">
+              <!-- Outer frame -->
+              <Rectangle Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" 
+                         StrokeThickness="1.2" 
+                         RadiusX="1" RadiusY="1"/>
+              <!-- Left panel - filled when active -->
+              <Rectangle x:Name="ExplorerPanelFill"
+                         Width="5" Height="14" 
+                         HorizontalAlignment="Left" 
+                         VerticalAlignment="Center"
+                         Margin="1,0,0,0"
+                         Fill="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+              <!-- Left panel divider - shown when collapsed -->
+              <Line x:Name="ExplorerPanelDivider"
+                    X1="6.5" Y1="2" X2="6.5" Y2="14"
+                    Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                    StrokeThickness="1.2"
+                    Visibility="Collapsed"/>
+            </Grid>
+          </Viewbox>
+        </Button>
+        
+        <!-- Tools Panel Toggle (Bottom panel icon) -->
+        <Button x:Name="ToggleToolsPanelButton"
+                Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
+                Margin="2,0"
+                Padding="6">
+          <Viewbox Width="16" Height="16">
+            <Grid Width="16" Height="16">
+              <!-- Outer frame -->
+              <Rectangle Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" 
+                         StrokeThickness="1.2" 
+                         RadiusX="1" RadiusY="1"/>
+              <!-- Bottom panel - filled when active -->
+              <Rectangle x:Name="ToolsPanelFill"
+                         Width="14" Height="5" 
+                         HorizontalAlignment="Center" 
+                         VerticalAlignment="Bottom"
+                         Margin="0,0,0,1"
+                         Fill="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+              <!-- Bottom panel divider - shown when collapsed -->
+              <Line x:Name="ToolsPanelDivider"
+                    X1="2" Y1="9.5" X2="14" Y2="9.5"
+                    Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                    StrokeThickness="1.2"
+                    Visibility="Collapsed"/>
+            </Grid>
+          </Viewbox>
+        </Button>
+        
+        <!-- Inspector Panel Toggle (Right sidebar icon) -->
+        <Button x:Name="ToggleInspectorPanelButton"
+                Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
+                Margin="2,0">
+          <Viewbox Width="16" Height="16">
+            <Grid Width="16" Height="16">
+              <!-- Outer frame -->
+              <Rectangle Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" 
+                         StrokeThickness="1.2" 
+                         RadiusX="1" RadiusY="1"/>
+              <!-- Right panel - filled when active -->
+              <Rectangle x:Name="InspectorPanelFill"
+                         Width="5" Height="14" 
+                         HorizontalAlignment="Right" 
+                         VerticalAlignment="Center"
+                         Margin="0,0,1,0"
+                         Fill="{ThemeResource SystemControlForegroundBaseHighBrush}"/>
+              <!-- Right panel divider - shown when collapsed -->
+              <Line x:Name="InspectorPanelDivider"
+                    X1="9.5" Y1="2" X2="9.5" Y2="14"
+                    Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                    StrokeThickness="1.2"
+                    Visibility="Collapsed"/>
+            </Grid>
+          </Viewbox>
+        </Button>
+        
+        <!-- Focus Mode Toggle -->
+        <Button x:Name="ToggleFocusModeButton"
+                Command="{x:Bind ViewModel.ToggleFocusModeCommand}"
+                Margin="2,0">
+          <Button.KeyboardAccelerators>
+            <KeyboardAccelerator Key="F4" />
+          </Button.KeyboardAccelerators>
+          <FontIcon x:Name="ToggleFocusModeIcon"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    Glyph="&#xE92D;"
+                    FontSize="16"/>
+        </Button>
+        
+      </StackPanel>
     </Grid>
 
     <!-- Inspector Panel -->
@@ -94,16 +159,6 @@
           BorderThickness="2,0,2,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Button x:Name="HideInspectorPanelButton"
-              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,3,2,0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76C;"/>
-      </Button>
-
     </Grid>
 
     <!-- Tools Panel -->
@@ -121,22 +176,11 @@
       <Grid Grid.Row="0"
             Background="{ThemeResource PanelBackgroundABrush}"
             BorderBrush="{ThemeResource PanelBorderBrush}"
-            BorderThickness="0,0,0,1"
-            ColumnDefinitions="Auto, *, Auto">
+            BorderThickness="0,0,0,1">
 
-        <TextBlock Grid.Column="0"
-                   Text="{x:Bind ToolsPanelTitle}"
+        <TextBlock Text="{x:Bind ToolsPanelTitle}"
                    VerticalAlignment="Center"
                    Margin="6,0,0,0"/>
-
-        <Button x:Name="HideToolsPanelButton"
-                Grid.Column="2"
-                Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center">
-          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE70D;"/>
-        </Button>
       </Grid>      
       <Grid x:Name="ToolsContent"
             Grid.Row="1"/>
@@ -151,47 +195,6 @@
           BorderThickness="0,1,0,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Button x:Name="ExitFocusModeButton"
-              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
-              HorizontalAlignment="Left"
-              Margin="2">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE92C;" />
-        <Button.KeyboardAccelerators>
-          <KeyboardAccelerator Key="F4"/>
-        </Button.KeyboardAccelerators>
-      </Button>
-
-      <Button x:Name="EnterFocusModeButton"
-              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
-              HorizontalAlignment="Left"
-              Margin="2">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE92D;" />
-        <Button.KeyboardAccelerators>
-          <KeyboardAccelerator Key="F4"/>
-        </Button.KeyboardAccelerators>
-      </Button>
-
-      <!-- Render a solid rectangle behind the button to avoid overlapping visually -->
-      <Grid x:Name="ShowToolsPanelButton"
-            Background="{ThemeResource PanelBackgroundBBrush}"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Center"
-            Width="44"
-            Height="32"
-            Margin="0"
-            Canvas.ZIndex="10">
-        <Button Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Margin="0">
-          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                    Glyph="&#xE70E;"/>
-        </Button>
-      </Grid>
-
     </Grid>
 
     <!-- Grid splitters -->

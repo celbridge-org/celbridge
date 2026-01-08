@@ -3,6 +3,7 @@ using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
@@ -14,9 +15,16 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IDocumentsService _documentsService;
 
+    [ObservableProperty]
+    private bool _isFocusModeActive;
+
     public bool IsExplorerPanelVisible => _editorSettings.IsContextPanelVisible;
 
     public bool IsInspectorPanelVisible => _editorSettings.IsInspectorPanelVisible;
+
+    public string EnterFocusModeTooltip { get; } = "Enter Focus Mode (F4)";
+
+    public string ExitFocusModeTooltip { get; } = "Exit Focus Mode (F4)";
 
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
@@ -35,6 +43,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var settings = _editorSettings as INotifyPropertyChanged;
         Guard.IsNotNull(settings);
         settings.PropertyChanged += EditorSettings_PropertyChanged;
+        
+        UpdateIsFocusModeActive();
     }
 
     public void OnViewUnloaded()
@@ -65,11 +75,26 @@ public partial class DocumentsPanelViewModel : ObservableObject
         if (e.PropertyName == nameof(IEditorSettings.IsContextPanelVisible))
         {
             OnPropertyChanged(nameof(IsExplorerPanelVisible));
+            UpdateIsFocusModeActive();
         }
         else if (e.PropertyName == nameof(IEditorSettings.IsInspectorPanelVisible))
         {
             OnPropertyChanged(nameof(IsInspectorPanelVisible));
+            UpdateIsFocusModeActive();
         }
+    }
+
+    private void UpdateIsFocusModeActive()
+    {
+        IsFocusModeActive =
+            !_editorSettings.IsContextPanelVisible &&
+            !_editorSettings.IsInspectorPanelVisible;
+    }
+
+    public IRelayCommand ToggleFocusModeCommand => new RelayCommand(ToggleFocusMode_Executed);
+    private void ToggleFocusMode_Executed()
+    {
+        _commandService.Execute<IToggleFocusModeCommand>();
     }
 
     public void OnCloseDocumentRequested(ResourceKey fileResource)

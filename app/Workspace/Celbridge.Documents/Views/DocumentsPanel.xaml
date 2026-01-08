@@ -6,12 +6,14 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     DataContext="{x:Bind ViewModel}">
-  <TabView
-        x:Name="TabView"
-        IsAddTabButtonVisible="False"
-        TabWidthMode="SizeToContent"
-        VerticalAlignment="Stretch"
-        TabCloseRequested="TabView_CloseRequested"
-        SelectionChanged="TabView_SelectionChanged"
-        TabItemsChanged="TabView_TabItemsChanged" />
+  <Grid>
+    <TabView
+          x:Name="TabView"
+          IsAddTabButtonVisible="False"
+          TabWidthMode="SizeToContent"
+          VerticalAlignment="Stretch"
+          TabCloseRequested="TabView_CloseRequested"
+          SelectionChanged="TabView_SelectionChanged"
+          TabItemsChanged="TabView_TabItemsChanged" />
+  </Grid>
 </UserControl>
