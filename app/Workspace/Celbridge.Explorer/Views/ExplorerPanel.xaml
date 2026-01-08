@@ -5,12 +5,14 @@
   xmlns:local="using:Celbridge.Explorer.Views"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
+  Background="Transparent"
   PointerEntered="UserControl_PointerEntered"
   PointerExited="UserControl_PointerExited"
   GotFocus="UserControl_GotFocus"
   LostFocus="UserControl_LostFocus">
 
-<Grid VerticalAlignment="Stretch">
+  <Grid VerticalAlignment="Stretch"
+        Background="Transparent">
     <Grid.RowDefinitions>
       <RowDefinition Height="40"/>
       <RowDefinition Height="*"/>
