@@ -57,42 +57,4 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
             command.Resource = Resource; 
         });
     }
-
-    public IRelayCommand OpenDocumentCommand => new RelayCommand(OpenDocument_Executed);
-    private void OpenDocument_Executed()
-    {
-        // Execute a command to open the web document. Force the document to reload if it is already open.
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = Resource;
-            command.ForceReload = true;
-        });
-    }
-
-    public IRelayCommand DeleteDocumentCommand => new RelayCommand(DeleteDocument_Executed);
-    private void DeleteDocument_Executed()
-    {
-        // Execute a command to show the delete resource dialog
-        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resource = Resource;
-        });
-    }
-
-    public IRelayCommand OpenResourceInExplorerCommand => new RelayCommand(OpenResourceInExplorer_Executed);
-    private void OpenResourceInExplorer_Executed()
-    {
-        // Execute a command to open the resource in the system file manager
-        _commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = Resource;
-        });
-    }
-
-    public IRelayCommand OpenResourceInApplicationCommand => new RelayCommand(OpenResourceInApplication_Executed);
-    public void OpenResourceInApplication_Executed()
-    {
-        // This will execute a command to open the resource in an application.
-        _explorerService.OpenResource(Resource);
-    }
 }
