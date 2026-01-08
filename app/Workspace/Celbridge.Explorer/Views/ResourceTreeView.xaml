@@ -35,16 +35,16 @@
       <MenuFlyoutItem Text="{x:Bind OpenString}"
                       Click="ResourceContextMenu_Open"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
+
       <MenuFlyoutItem Text="{x:Bind AddFileString}"
+                      Icon="Page2"
                       Click="ResourceContextMenu_AddFile">
-        <MenuFlyoutItem.Icon>
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE4DA;" />
-        </MenuFlyoutItem.Icon>
       </MenuFlyoutItem>
+
       <MenuFlyoutItem Text="{x:Bind AddFolderString}"
                       Icon="Folder"
-                      Click="ResourceContextMenu_AddFolder" />
+                      Click="ResourceContextMenu_AddFolder">
+      </MenuFlyoutItem>
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind CutString}"
                       Icon="Cut"
@@ -170,7 +170,7 @@
                 Padding="4"
                 Click="ToolbarAddFile_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE4DA;"
+                    Glyph="&#xE4DE;"
                     FontSize="20" />
         </Button>
         <Button x:Name="AddFolderButton"
@@ -196,7 +196,7 @@
                 Padding="4"
                 Click="ToolbarCollapseFolders_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xF418;"
+                    Glyph="&#xE660;"
                     FontSize="20" />
         </Button>
         <Button x:Name="ProjectSettingsButton"
