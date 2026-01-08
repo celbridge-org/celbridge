@@ -25,6 +25,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private string RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
     private string OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
     private string OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
+    private string CopyResourceKeyString => _stringLocalizer.GetString("ResourceTree_CopyResourceKey");
+    private string CopyFilePathString => _stringLocalizer.GetString("ResourceTree_CopyFilePath");
 
     // Toolbar tooltip strings
     private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
@@ -400,6 +402,22 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         var resource = AcquireContextMenuResource(sender);
 
         ViewModel.OpenResourceInApplication(resource);
+    }
+
+    private void ResourceContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
+    {
+        var resource = AcquireContextMenuResource(sender);
+        Guard.IsNotNull(resource);
+
+        ViewModel.CopyResourceKeyToClipboard(resource);
+    }
+
+    private void ResourceContextMenu_CopyFilePath(object sender, RoutedEventArgs e)
+    {
+        var resource = AcquireContextMenuResource(sender);
+        Guard.IsNotNull(resource);
+
+        ViewModel.CopyFilePathToClipboard(resource);
     }
 
     private void ResourcesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
