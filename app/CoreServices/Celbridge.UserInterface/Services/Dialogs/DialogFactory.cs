@@ -65,4 +65,18 @@ public class DialogFactory : IDialogFactory
 
         return dialog;
     }
+
+    public INewFileDialog CreateNewFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
+    {
+        var dialog = new NewFileDialog
+        {
+            TitleText = titleText,
+            HeaderText = headerText,
+        };
+
+        dialog.ViewModel.Validator = validator;
+        dialog.SetDefaultFileName(defaultFileName, selectionRange);
+
+        return dialog;
+    }
 }
