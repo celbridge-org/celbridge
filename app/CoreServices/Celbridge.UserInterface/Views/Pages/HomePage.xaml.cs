@@ -8,16 +8,16 @@ public sealed partial class HomePage : Page
 {
     private IStringLocalizer _stringLocalizer;
 
-    private LocalizedString TitleString => _stringLocalizer.GetString("HomePage_Title");
-    private LocalizedString SubtitleString => _stringLocalizer.GetString("HomePage_Subtitle");
-    private LocalizedString StartString => _stringLocalizer.GetString("HomePage_Start");
-    private LocalizedString NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
-    private LocalizedString NewProjectTooltipString => _stringLocalizer.GetString("HomePage_NewProjectTooltip");
-    private LocalizedString OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
-    private LocalizedString OpenProjectTooltipString => _stringLocalizer.GetString("HomePage_OpenProjectTooltip");
-    private LocalizedString NewExampleProjectString => _stringLocalizer.GetString("HomePage_NewExampleProject");
-    private LocalizedString NewExampleProjectTooltipString => _stringLocalizer.GetString("HomePage_NewExampleProjectTooltip");
-    private LocalizedString RecentString => _stringLocalizer.GetString("HomePage_Recent");
+    private string TitleString => _stringLocalizer.GetString("HomePage_Title");
+    private string SubtitleString => _stringLocalizer.GetString("HomePage_Subtitle");
+    private string StartString => _stringLocalizer.GetString("HomePage_Start");
+    private string NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
+    private string NewProjectTooltipString => _stringLocalizer.GetString("HomePage_NewProjectTooltip");
+    private string OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
+    private string OpenProjectTooltipString => _stringLocalizer.GetString("HomePage_OpenProjectTooltip");
+    private string NewExampleProjectString => _stringLocalizer.GetString("HomePage_NewExampleProject");
+    private string NewExampleProjectTooltipString => _stringLocalizer.GetString("HomePage_NewExampleProjectTooltip");
+    private string RecentString => _stringLocalizer.GetString("HomePage_Recent");
 
     public HomePageViewModel ViewModel { get; private set; }
 

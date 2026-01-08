@@ -21,9 +21,9 @@ public sealed partial class NewFileDialog : ContentDialog, INewFileDialog
         set => ViewModel.HeaderText = value;
     }
 
-    private LocalizedString CreateString => _stringLocalizer.GetString($"DialogButton_Create");
-    private LocalizedString CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
-    private LocalizedString FileTypeString => _stringLocalizer.GetString($"NewFileDialog_FileType");
+    private string CreateString => _stringLocalizer.GetString($"DialogButton_Create");
+    private string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
+    private string FileTypeString => _stringLocalizer.GetString($"NewFileDialog_FileType");
 
     private bool _pressedEnter;
     private Range _selectionRange;

@@ -21,8 +21,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         set => ViewModel.HeaderText = value;
     }
 
-    private LocalizedString OkString => _stringLocalizer.GetString($"DialogButton_Ok");
-    private LocalizedString CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
+    private string OkString => _stringLocalizer.GetString($"DialogButton_Ok");
+    private string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
 
     private bool _pressedEnter;
 

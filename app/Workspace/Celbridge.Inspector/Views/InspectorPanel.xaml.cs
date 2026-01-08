@@ -14,7 +14,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     public InspectorPanelViewModel ViewModel { get; }
 
-    private LocalizedString TitleString => _stringLocalizer.GetString("InspectorPanel_Title");
+    private string TitleString => _stringLocalizer.GetString("InspectorPanel_Title");
 
     public InspectorPanel()
     {
