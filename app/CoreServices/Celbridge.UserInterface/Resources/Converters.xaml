@@ -1,0 +1,11 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:converters="using:Celbridge.UserInterface.Services">
+
+    <!-- Converts a boolean value to an opacity value (true = 1.0, false = 0.0) -->
+    <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
+    
+    <!-- Converts a boolean value to a Visibility value (true = Visible, false = Collapsed) -->
+    <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+</ResourceDictionary>

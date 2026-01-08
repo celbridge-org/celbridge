@@ -9,9 +9,9 @@ public partial class WebInspector : UserControl, IInspector
     private readonly IStringLocalizer _stringLocalizer;
 
     public WebInspectorViewModel ViewModel => (DataContext as WebInspectorViewModel)!;
-    private LocalizedString StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
-    private LocalizedString AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
-    private LocalizedString OpenURLTooltipString => _stringLocalizer.GetString("WebInspector_OpenURLTooltip");
+    private string StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
+    private string AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
+    private string OpenURLTooltipString => _stringLocalizer.GetString("WebInspector_OpenURLTooltip");
 
     private TextBox? _urlTextBox;
 

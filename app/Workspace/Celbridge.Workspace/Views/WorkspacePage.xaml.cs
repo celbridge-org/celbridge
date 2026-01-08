@@ -13,7 +13,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
 
     public WorkspacePageViewModel ViewModel { get; }
 
-    private LocalizedString ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
+    private string ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
 
     private bool Initialised = false;
 

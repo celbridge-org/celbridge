@@ -22,7 +22,7 @@
       <TextBlock Grid.Column="0"
                  Margin="6,0,0,0"
                  VerticalAlignment="Center"
-                 Text="{x:Bind TitleString.Value}" />
+                 Text="{x:Bind TitleString}" />
     </Grid>
     
     <local:EntityEditor x:Name="EntityEditor"

@@ -21,19 +21,7 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
 
         ViewModel = ServiceLocator.AcquireService<ProgressDialogViewModel>();
 
-        this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Center)
-                .VerticalAlignment(VerticalAlignment.Center)
-                .Children(
-                    new ProgressBar()
-                        .Width(200)
-                        .Height(20)
-                        .IsIndeterminate(true)
-                        )
-                )
-            );
+        this.InitializeComponent();
     }
 
     public void ShowDialog()

@@ -37,7 +37,8 @@ public class DialogFactory : IDialogFactory
 
     public INewProjectDialog CreateNewProjectDialog()
     {
-        var dialog = new NewProjectDialog(NewProjectConfigType.Standard);
+        var dialog = new NewProjectDialog();
+        dialog.Initialize(NewProjectConfigType.Standard);
         return dialog;
     }
 
@@ -48,7 +49,8 @@ public class DialogFactory : IDialogFactory
         //  and have it used by both the Create New Project dialog (which would have little else in it), and the Create New Project Dialog (which would
         //  have the lists of examples to select and so on, also).
         //  For now we will use a flag to change some rudimentary behaviour until this is ready to be overhauled.
-        var dialog = new NewProjectDialog(NewProjectConfigType.Example);
+        var dialog = new NewProjectDialog();
+        dialog.Initialize(NewProjectConfigType.Example);
         return dialog;
     }
 
