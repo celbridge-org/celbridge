@@ -430,6 +430,30 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
+    public void CopyResourceKeyToClipboard(IResource resource)
+    {
+        var resourceRegistry = _explorerService.ResourceRegistry;
+        var resourceKey = resourceRegistry.GetResourceKey(resource);
+
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = resourceKey;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    public void CopyFilePathToClipboard(IResource resource)
+    {
+        var resourceRegistry = _explorerService.ResourceRegistry;
+        var filePath = resourceRegistry.GetResourcePath(resource);
+
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = filePath;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
     public async Task<Result> ImportResources(List<string> sourcePaths, IResource? destResource)
     {
         if (destResource is null)
