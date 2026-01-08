@@ -5,7 +5,7 @@ public sealed partial class TitleBar : UserControl
     private readonly IMessengerService _messengerService;
     private IStringLocalizer _stringLocalizer;
 
-    public LocalizedString ApplicationNameString => _stringLocalizer.GetString("ApplicationName");
+    private string ApplicationNameString => _stringLocalizer.GetString("ApplicationName");
 
     public TitleBar()
     {
