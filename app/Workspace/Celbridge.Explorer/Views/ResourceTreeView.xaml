@@ -67,10 +67,18 @@
                       Click="ResourceContextMenu_Rename"
                       IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
       <MenuFlyoutSeparator />
+      <MenuFlyoutItem Text="{x:Bind CopyResourceKeyString}"
+                      Click="ResourceContextMenu_CopyResourceKey"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutItem Text="{x:Bind CopyFilePathString}"
+                      Click="ResourceContextMenu_CopyFilePath"
+                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
                       Click="ResourceContextMenu_OpenFileExplorer"/>
       <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
-                      Click="ResourceContextMenu_OpenApplication"/>
+                      Click="ResourceContextMenu_OpenApplication"
+                      IsEnabled="{x:Bind ViewModel.IsFileResourceSelected, Mode=OneWay}"/>
     </MenuFlyout>
 
     <DataTemplate x:Key="FolderTemplate"
