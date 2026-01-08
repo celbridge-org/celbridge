@@ -32,20 +32,7 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 
         ViewModel = ServiceLocator.AcquireService<ConfirmationDialogViewModel>();
 
-        this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .PrimaryButtonText(OkString)
-            .SecondaryButtonText(CancelString)
-            .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Left)
-                .VerticalAlignment(VerticalAlignment.Center)
-                .Children(
-                    new TextBlock()
-                        .Text(x => x.Binding(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
-                        .TextWrapping(TextWrapping.WrapWholeWords)
-                    )
-                )
-            );
+        this.InitializeComponent();
     }
 
     public async Task<bool> ShowDialogAsync()
@@ -60,7 +47,3 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         return false;
     }
 }
-
-
-
-

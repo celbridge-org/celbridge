@@ -31,19 +31,7 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 
         ViewModel = ServiceLocator.AcquireService<AlertDialogViewModel>();
 
-        this.DataContext(ViewModel, (dialog, vm) => dialog
-            .Title(x => x.Binding(() => ViewModel.TitleText).Mode(BindingMode.OneWay))
-            .CloseButtonText(OkString)
-            .Content(new Grid()
-                .HorizontalAlignment(HorizontalAlignment.Left)
-                .VerticalAlignment(VerticalAlignment.Center)
-                .Children(
-                    new TextBlock()
-                        .Text(x => x.Binding(() => ViewModel.MessageText).Mode(BindingMode.OneWay))
-                        .TextWrapping(TextWrapping.WrapWholeWords)
-                    )
-                )
-            );
+        this.InitializeComponent();
     }
 
     public async Task ShowDialogAsync()
@@ -51,7 +39,3 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
         await ShowAsync();
     }
 }
-
-
-
-

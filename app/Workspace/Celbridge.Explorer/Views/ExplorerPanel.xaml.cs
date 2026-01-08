@@ -12,8 +12,6 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanelViewModel ViewModel { get; }
 
-    public LocalizedString RefreshTooltipString => _stringLocalizer.GetString("ExplorerPanel_RefreshTooltip");
-
     public ExplorerPanel()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();

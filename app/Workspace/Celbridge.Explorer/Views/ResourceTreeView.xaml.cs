@@ -14,24 +14,24 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private IResourceRegistry? _resourceRegistry;
 
     public ResourceTreeViewModel ViewModel { get; }
-    private LocalizedString RunString => _stringLocalizer.GetString("ResourceTree_Run");
-    private LocalizedString OpenString => _stringLocalizer.GetString("ResourceTree_Open");
-    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
-    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private LocalizedString CutString => _stringLocalizer.GetString("ResourceTree_Cut");
-    private LocalizedString CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
-    private LocalizedString PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
-    private LocalizedString DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
-    private LocalizedString RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
-    private LocalizedString OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
-    private LocalizedString OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
+    private string RunString => _stringLocalizer.GetString("ResourceTree_Run");
+    private string OpenString => _stringLocalizer.GetString("ResourceTree_Open");
+    private string AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private string AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
+    private string CutString => _stringLocalizer.GetString("ResourceTree_Cut");
+    private string CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
+    private string PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
+    private string DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
+    private string RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
+    private string OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
+    private string OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
 
     // Toolbar tooltip strings
-    private LocalizedString AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
-    private LocalizedString AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
-    private LocalizedString RefreshExplorerTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_RefreshExplorerTooltip");
-    private LocalizedString CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
-    private LocalizedString ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
+    private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
+    private string AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
+    private string RefreshExplorerTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_RefreshExplorerTooltip");
+    private string CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
+    private string ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 
     public ResourceTreeView()
     {
