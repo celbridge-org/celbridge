@@ -113,6 +113,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isResourceOnClipboard;
 
+    /// <summary>
+    /// Set to true if the selected context menu item is a file resource (not a folder) that can be opened with an application.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isFileResourceSelected;
+
     private async Task UpdateContextMenuOptions(IResource? resource)
     {
         // Some context menu options are only available if a resource is selected
@@ -123,6 +129,9 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // The Run context menu option is only available for script resources that can be executed
         IsExecutableResourceSelected = IsResourceExecutable(resource);
+
+        // The "Open with Application" context menu option is only available for file resources (not folders)
+        IsFileResourceSelected = resource is IFileResource;
 
         // The Paste context menu option is only available if there is a resource on the clipboard
         bool isResourceOnClipboard = false;

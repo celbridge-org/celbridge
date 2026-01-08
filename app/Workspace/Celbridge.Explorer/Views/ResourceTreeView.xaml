@@ -70,7 +70,8 @@
       <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
                       Click="ResourceContextMenu_OpenFileExplorer"/>
       <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
-                      Click="ResourceContextMenu_OpenApplication"/>
+                      Click="ResourceContextMenu_OpenApplication"
+                      IsEnabled="{x:Bind ViewModel.IsFileResourceSelected, Mode=OneWay}"/>
     </MenuFlyout>
 
     <DataTemplate x:Key="FolderTemplate"
