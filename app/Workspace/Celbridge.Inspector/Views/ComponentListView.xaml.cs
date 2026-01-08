@@ -14,10 +14,10 @@ public partial class ComponentListView : UserControl, IInspector
     private ILogger<ComponentListView> _logger;
     private IStringLocalizer _stringLocalizer;
 
-    public LocalizedString AddComponentTooltipString => _stringLocalizer.GetString("EntityInspector_AddComponentTooltip");
-    public LocalizedString ContextMenuAddTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Add");
-    public LocalizedString ContextMenuDeleteTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Delete");
-    public LocalizedString ContextMenuDuplicateTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Duplicate");
+    private LocalizedString AddComponentTooltipString => _stringLocalizer.GetString("EntityInspector_AddComponentTooltip");
+    private LocalizedString ContextMenuAddTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Add");
+    private LocalizedString ContextMenuDeleteTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Delete");
+    private LocalizedString ContextMenuDuplicateTooltipString => _stringLocalizer.GetString("EntityInspector_ContextMenu_Duplicate");
 
     public ComponentListViewModel ViewModel { get; private set; }
 

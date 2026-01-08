@@ -12,8 +12,8 @@ public sealed partial class SettingsPage : PersistentPage
     private readonly IEditorSettings _editorSettings;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IUserInterfaceService _userInterfaceService;
-    public LocalizedString TitleString => _stringLocalizer.GetString($"SettingsPage_Title");
-    public LocalizedString ApplicationThemeString => _stringLocalizer.GetString($"SettingsPage_ApplicationTheme");
+    private LocalizedString TitleString => _stringLocalizer.GetString($"SettingsPage_Title");
+    private LocalizedString ApplicationThemeString => _stringLocalizer.GetString($"SettingsPage_ApplicationTheme");
 
     public SettingsPage()
     {
