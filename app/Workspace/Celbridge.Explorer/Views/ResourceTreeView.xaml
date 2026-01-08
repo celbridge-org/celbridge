@@ -37,29 +37,16 @@
       <MenuFlyoutItem Text="{x:Bind OpenString}"
                       Click="ResourceContextMenu_Open"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
-      <MenuFlyoutSubItem Text="{x:Bind AddString}">
-        <MenuFlyoutSubItem.Icon>
-          <SymbolIcon Symbol="Add" />
-        </MenuFlyoutSubItem.Icon>
-        <MenuFlyoutItem Text="{x:Bind FolderString}"
-                        Icon="Folder"
-                        Click="ResourceContextMenu_AddFolder" />
-        <MenuFlyoutItem Text="{x:Bind AddPythonScriptString}"
-                        Tag="{x:Bind explorer:ResourceFormat.Python}"
-                        Click="ResourceContextMenu_AddFile" />
-        <MenuFlyoutItem Text="{x:Bind AddExcelString}"
-                        Tag="{x:Bind explorer:ResourceFormat.Excel}"
-                        Click="ResourceContextMenu_AddFile" />
-        <MenuFlyoutItem Text="{x:Bind AddMarkdownString}"
-                        Tag="{x:Bind explorer:ResourceFormat.Markdown}"
-                        Click="ResourceContextMenu_AddFile" />
-        <MenuFlyoutItem Text="{x:Bind AddWebAppString}"
-                        Tag="{x:Bind explorer:ResourceFormat.WebApp}"
-                        Click="ResourceContextMenu_AddFile" />
-        <MenuFlyoutItem Text="{x:Bind AddTextFileString}"
-                        Tag="{x:Bind explorer:ResourceFormat.Text}"
-                        Click="ResourceContextMenu_AddFile" />        
-      </MenuFlyoutSubItem>
+      <MenuFlyoutItem Text="{x:Bind AddFileString}"
+                      Click="ResourceContextMenu_AddFile">
+        <MenuFlyoutItem.Icon>
+          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
+                    Glyph="&#xE4DA;" />
+        </MenuFlyoutItem.Icon>
+      </MenuFlyoutItem>
+      <MenuFlyoutItem Text="{x:Bind AddFolderString}"
+                      Icon="Folder"
+                      Click="ResourceContextMenu_AddFolder" />
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind CutString}"
                       Icon="Cut"
@@ -128,26 +115,6 @@
     <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
                                     FolderTemplate="{StaticResource FolderTemplate}"
                                     FileTemplate="{StaticResource FileTemplate}" />
-
-    <!-- Add File MenuFlyout for toolbar button -->
-    <MenuFlyout x:Name="AddFileMenuFlyout"
-                Placement="Bottom">
-      <MenuFlyoutItem Text="{x:Bind AddPythonScriptString}"
-                      Tag="{x:Bind explorer:ResourceFormat.Python}"
-                      Click="ToolbarAddFile_Click" />
-      <MenuFlyoutItem Text="{x:Bind AddExcelString}"
-                      Tag="{x:Bind explorer:ResourceFormat.Excel}"
-                      Click="ToolbarAddFile_Click" />
-      <MenuFlyoutItem Text="{x:Bind AddMarkdownString}"
-                      Tag="{x:Bind explorer:ResourceFormat.Markdown}"
-                      Click="ToolbarAddFile_Click" />
-      <MenuFlyoutItem Text="{x:Bind AddWebAppString}"
-                      Tag="{x:Bind explorer:ResourceFormat.WebApp}"
-                      Click="ToolbarAddFile_Click" />
-      <MenuFlyoutItem Text="{x:Bind AddTextFileString}"
-                      Tag="{x:Bind explorer:ResourceFormat.Text}"
-                      Click="ToolbarAddFile_Click" />
-    </MenuFlyout>
   </UserControl.Resources>
 
   <Grid>
@@ -204,7 +171,7 @@
         <Button x:Name="AddFileButton"
                 ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
                 Padding="4"
-                Flyout="{StaticResource AddFileMenuFlyout}">
+                Click="ToolbarAddFile_Click">
           <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
                     Glyph="&#xE4DA;"
                     FontSize="20" />

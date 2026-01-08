@@ -37,4 +37,9 @@ public interface IDialogFactory
     /// Create an Input Text Dialog.
     /// </summary>
     IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
+
+    /// <summary>
+    /// Create a New File Dialog.
+    /// </summary>
+    INewFileDialog CreateNewFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
 }
