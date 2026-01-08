@@ -131,8 +131,7 @@
 
       <!-- Project Folder Name -->
       <Grid Grid.Column="0"
-            VerticalAlignment="Center"
-            IsHitTestVisible="False">
+            VerticalAlignment="Center">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
