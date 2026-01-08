@@ -16,13 +16,8 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     public ResourceTreeViewModel ViewModel { get; }
     private LocalizedString RunString => _stringLocalizer.GetString("ResourceTree_Run");
     private LocalizedString OpenString => _stringLocalizer.GetString("ResourceTree_Open");
-    private LocalizedString AddString => _stringLocalizer.GetString("ResourceTree_Add");
-    private LocalizedString FolderString => _stringLocalizer.GetString("ResourceTree_Folder");
-    private LocalizedString AddExcelString => _stringLocalizer.GetString("ResourceTree_AddFile_Excel");
-    private LocalizedString AddMarkdownString => _stringLocalizer.GetString("ResourceTree_AddFile_Markdown");
-    private LocalizedString AddPythonScriptString => _stringLocalizer.GetString("ResourceTree_AddFile_PythonScript");
-    private LocalizedString AddWebAppString => _stringLocalizer.GetString("ResourceTree_AddFile_WebApp");
-    private LocalizedString AddTextFileString => _stringLocalizer.GetString("ResourceTree_AddFile_TextFile");
+    private LocalizedString AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
+    private LocalizedString AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
     private LocalizedString CutString => _stringLocalizer.GetString("ResourceTree_Cut");
     private LocalizedString CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
     private LocalizedString PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
@@ -313,19 +308,19 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         if (resource is IFolderResource destFolder)
         {
             // Add a folder to the selected folder
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, ResourceFormat.Folder, destFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
         }
         else if (resource is IFileResource destFile)
         {
             // Add a folder to the folder containing the selected file
             Guard.IsNotNull(destFile.ParentFolder);
 
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, ResourceFormat.Folder, destFile.ParentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFile.ParentFolder);
         }
         else
         {
             // Add a folder resource to the root folder
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, ResourceFormat.Folder, null);
+            ViewModel.ShowAddResourceDialog(ResourceType.Folder, null);
         }
     }
 
@@ -333,17 +328,10 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     {
         var resource = AcquireContextMenuResource(sender);
 
-        var format = ResourceFormat.Text;
-        var tagObject = (sender as MenuFlyoutItem)?.Tag;
-        if (tagObject is ResourceFormat selectedFileType)
-        {
-            format = selectedFileType;
-        }
-
         if (resource is IFolderResource destFolder)
         {
             // Add a file to the selected folder
-            ViewModel.ShowAddResourceDialog(ResourceType.File, format, destFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
             return;
         }
         else if (resource is IFileResource destFile)
@@ -351,12 +339,12 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             Guard.IsNotNull(destFile.ParentFolder);
 
             // Add a file to the folder containing the selected file
-            ViewModel.ShowAddResourceDialog(ResourceType.File, format, destFile.ParentFolder);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, destFile.ParentFolder);
         }
         else
         {
             // Add a file resource to the root folder
-            ViewModel.ShowAddResourceDialog(ResourceType.File, format, null);
+            ViewModel.ShowAddResourceDialog(ResourceType.File, null);
         }
     }
 
@@ -690,21 +678,14 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     private void ToolbarAddFile_Click(object sender, RoutedEventArgs e)
     {
-        var format = ResourceFormat.Text;
-        var tagObject = (sender as MenuFlyoutItem)?.Tag;
-        if (tagObject is ResourceFormat selectedFileType)
-        {
-            format = selectedFileType;
-        }
-
         var destFolder = GetSelectedResourceFolder();
-        ViewModel.ShowAddResourceDialog(ResourceType.File, format, destFolder);
+        ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
     }
 
     private void ToolbarAddFolder_Click(object sender, RoutedEventArgs e)
     {
         var destFolder = GetSelectedResourceFolder();
-        ViewModel.ShowAddResourceDialog(ResourceType.Folder, ResourceFormat.Folder, destFolder);
+        ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
     }
 
     private void ToolbarRefreshExplorer_Click(object sender, RoutedEventArgs e)

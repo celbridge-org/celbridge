@@ -101,4 +101,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Gets or sets the window height.
     /// </summary>
     int WindowHeight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the file extension of the last file created via the Add File dialog.
+    /// </summary>
+    string PreviousNewFileExtension { get; set; }
 }

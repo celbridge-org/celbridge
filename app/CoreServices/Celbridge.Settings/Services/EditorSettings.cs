@@ -115,4 +115,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         get => GetValue<int>(nameof(WindowHeight), 800);
         set => SetValue(nameof(WindowHeight), value);
     }
+
+    public string PreviousNewFileExtension
+    {
+        get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
+        set => SetValue(nameof(PreviousNewFileExtension), value);
+    }
 }
