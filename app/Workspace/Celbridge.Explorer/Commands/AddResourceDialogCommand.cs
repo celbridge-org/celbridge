@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -11,7 +12,6 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
-    public ResourceFormat ResourceFormat { get; set; }
     public ResourceKey DestFolderResource { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
@@ -36,14 +36,21 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        return await ShowAddResourceDialogAsync();
+        if (ResourceType == ResourceType.File)
+        {
+            return await ShowAddFileDialogAsync();
+        }
+        else
+        {
+            return await ShowAddFolderDialogAsync();
+        }
     }
 
-    private async Task<Result> ShowAddResourceDialogAsync()
+    private async Task<Result> ShowAddFileDialogAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
+            return Result.Fail($"Failed to show add file dialog because workspace is not loaded");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
@@ -60,8 +67,70 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
         }
 
-        var defaultStringKey = ResourceType == ResourceType.File ? "ResourceTree_DefaultFileName" : "ResourceTree_DefaultFolderName";
-        var getDefaultResult = FindDefaultResourceName(defaultStringKey, parentFolder);
+        var getDefaultResult = FindDefaultFileName(parentFolder);
+        if (getDefaultResult.IsFailure)
+        {
+            return Result.Fail()
+                .WithErrors(getDefaultResult);
+        }
+        var defaultFileName = getDefaultResult.Value;
+
+        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
+        validator.ParentFolder = parentFolder;
+
+        var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
+        var enterNameString = _stringLocalizer.GetString("ResourceTree_EnterName");
+
+        // Select only the filename part without the extension
+        var extensionIndex = defaultFileName.LastIndexOf('.');
+        var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+
+        var showResult = await _dialogService.ShowNewFileDialogAsync(
+            titleString,
+            enterNameString,
+            defaultFileName,
+            selectionRange,
+            validator);
+
+        if (showResult.IsSuccess)
+        {
+            var config = showResult.Value;
+            var newResource = DestFolderResource.Combine(config.FileName);
+
+            // Execute a command to add the resource
+            _commandService.Execute<IAddResourceCommand>(command =>
+            {
+                command.ResourceType = ResourceType.File;
+                command.DestResource = newResource;
+                command.OpenAfterAdding = true;
+            });
+        }
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> ShowAddFolderDialogAsync()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail($"Failed to show add folder dialog because workspace is not loaded");
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+
+        var getResult = resourceRegistry.GetResource(DestFolderResource);
+        if (getResult.IsFailure)
+        {
+            return Result.Fail(getResult.Error);
+        }
+
+        var parentFolder = getResult.Value as IFolderResource;
+        if (parentFolder is null)
+        {
+            return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
+        }
+
+        var getDefaultResult = FindDefaultFolderName(parentFolder);
         if (getDefaultResult.IsFailure)
         {
             return Result.Fail()
@@ -72,14 +141,11 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
 
-        var titleStringKey = ResourceType == ResourceType.File ? "ResourceTree_AddFile" : "ResourceTree_AddFolder";
-        var titleString = _stringLocalizer.GetString(titleStringKey);
-
+        var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
         var enterNameString = _stringLocalizer.GetString("ResourceTree_EnterName");
 
-        // Select only the filename part without the extension
-        var extensionIndex = defaultText.LastIndexOf('.');
-        var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+        // Select the entire folder name
+        var selectionRange = ..;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,
@@ -97,9 +163,9 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             // Execute a command to add the resource
             _commandService.Execute<IAddResourceCommand>(command =>
             {
-                command.ResourceType = ResourceType;
+                command.ResourceType = ResourceType.Folder;
                 command.DestResource = newResource;
-                command.OpenAfterAdding = true;
+                command.OpenAfterAdding = false;
             });
         }
 
@@ -107,9 +173,9 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     }
 
     /// <summary>
-    /// Find a localized default resource name that doesn't clash with an existing resource on disk. 
+    /// Find a default folder name that doesn't clash with an existing folder on disk. 
     /// </summary>
-    private Result<string> FindDefaultResourceName(string stringKey, IFolderResource? parentFolder)
+    private Result<string> FindDefaultFolderName(IFolderResource? parentFolder)
     {
         if (parentFolder is null)
         {
@@ -118,45 +184,64 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
-        string defaultResourceName = string.Empty;
-        int resourceNumber = 1;
+        string defaultFolderName = string.Empty;
+        int folderNumber = 1;
         while (true)
         {
             var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
-            var candidateName = _stringLocalizer.GetString(stringKey, resourceNumber).ToString();
-
-            // Default to the appropriate file extension for the specified file format.
-            var extension = Path.GetExtension(candidateName);
-            if (!string.IsNullOrEmpty(extension))
-            {
-                var newExtension = ResourceFormat switch
-                {
-                    ResourceFormat.Folder => string.Empty,
-                    ResourceFormat.Excel => ExplorerConstants.ExcelExtension,
-                    ResourceFormat.Markdown => ExplorerConstants.MarkdownExtension,
-                    ResourceFormat.Python => ExplorerConstants.PythonExtension,
-                    ResourceFormat.IPython => ExplorerConstants.IPythonExtension,
-                    ResourceFormat.WebApp => ExplorerConstants.WebAppExtension,
-                    _ => ExplorerConstants.TextExtension,
-                };
-
-                if (newExtension != extension)
-                {
-                    candidateName = Path.ChangeExtension(candidateName, newExtension);
-                }
-            }
+            var candidateName = _stringLocalizer.GetString("ResourceTree_DefaultFolderName", folderNumber).ToString();
 
             var candidatePath = Path.Combine(parentFolderPath, candidateName);
             if (!Directory.Exists(candidatePath) &&
                 !File.Exists(candidatePath))
             {
-                defaultResourceName = candidateName;
+                defaultFolderName = candidateName;
                 break;
             }
-            resourceNumber++;
+            folderNumber++;
         }
 
-        return Result<string>.Ok(defaultResourceName);
+        return Result<string>.Ok(defaultFolderName);
+    }
+
+    /// <summary>
+    /// Find a default file name that doesn't clash with an existing file on disk. 
+    /// Uses the previously saved file extension from settings.
+    /// </summary>
+    private Result<string> FindDefaultFileName(IFolderResource? parentFolder)
+    {
+        if (parentFolder is null)
+        {
+            return Result<string>.Fail("Parent folder is null");
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
+
+        // Get the previously saved extension
+        var extension = editorSettings.PreviousNewFileExtension;
+
+        string defaultFileName = string.Empty;
+        int fileNumber = 1;
+        while (true)
+        {
+            var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
+            var candidateName = _stringLocalizer.GetString("ResourceTree_DefaultFileName", fileNumber).ToString();
+
+            // Replace the default extension with the preferred extension
+            candidateName = Path.ChangeExtension(candidateName, extension);
+
+            var candidatePath = Path.Combine(parentFolderPath, candidateName);
+            if (!Directory.Exists(candidatePath) &&
+                !File.Exists(candidatePath))
+            {
+                defaultFileName = candidateName;
+                break;
+            }
+            fileNumber++;
+        }
+
+        return Result<string>.Ok(defaultFileName);
     }
 
     //

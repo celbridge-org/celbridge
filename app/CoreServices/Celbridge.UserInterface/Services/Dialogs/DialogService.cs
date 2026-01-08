@@ -120,4 +120,17 @@ public class DialogService : IDialogService
 
         return showResult;
     }
+
+    public async Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
+    {
+        var dialog = _dialogFactory.CreateNewFileDialog(titleText, headerText, defaultFileName, selectionRange, validator);
+
+        SuppressProgressDialog(true);
+
+        var showResult = await dialog.ShowDialogAsync();
+
+        SuppressProgressDialog(false);
+
+        return showResult;
+    }
 }
