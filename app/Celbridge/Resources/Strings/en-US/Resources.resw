@@ -132,24 +132,6 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
-  <data name="ResourceTree_AddFile_TextFile" xml:space="preserve">
-    <value>Text file (.txt, .json, .html, ...)</value>
-  </data>
-  <data name="ResourceTree_AddFile_WebApp" xml:space="preserve">
-    <value>Web application file  (.webapp)</value>
-  </data>
-  <data name="ResourceTree_AddFile_Excel" xml:space="preserve">
-    <value>Excel file (.xlsx)</value>
-  </data>
-  <data name="ResourceTree_AddFile_Markdown" xml:space="preserve">
-    <value>Markdown file (.md)</value>
-  </data>
-  <data name="ResourceTree_AddFile_PythonScript" xml:space="preserve">
-    <value>Python script (.py)</value>
-  </data>
-  <data name="ResourceTree_Folder" xml:space="preserve">
-    <value>Folder</value>
-  </data>
   <data name="ResourceTree_EnterName" xml:space="preserve">
     <value>Enter name</value>
   </data>
@@ -216,12 +198,6 @@
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
-  <data name="ResourceTree_AddFileFailed" xml:space="preserve">
-    <value>Failed to add file '{0}'</value>
-  </data>
-  <data name="ResourceTree_AddFolderFailed" xml:space="preserve">
-    <value>Failed to add folder '{0}'</value>
-  </data>
   <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>
@@ -239,9 +215,6 @@
   </data>
   <data name="ResourceTree_CopyResource" xml:space="preserve">
     <value>Copy resource</value>
-  </data>
-  <data name="ResourceTree_RenameFolder" xml:space="preserve">
-    <value>Rename</value>
   </data>
   <data name="ResourceTree_RenameResource" xml:space="preserve">
     <value>Rename {0}</value>
@@ -273,26 +246,8 @@
   <data name="ResourceTree_Paste" xml:space="preserve">
     <value>Paste</value>
   </data>
-  <data name="ResourceTree_Add" xml:space="preserve">
-    <value>Add</value>
-  </data>
   <data name="ResourceTree_AddFile" xml:space="preserve">
     <value>Add file</value>
-  </data>
-  <data name="ResourceTree_AddFolder" xml:space="preserve">
-    <value>Add folder</value>
-  </data>
-  <data name="ResourceTree_PasteResourceFailed" xml:space="preserve">
-    <value>Failed to paste to '{0}'</value>
-  </data>
-  <data name="ResourceTree_UndoPasteResourceFailed" xml:space="preserve">
-    <value>Failed to undo paste to '{0}'</value>
-  </data>
-  <data name="ResourceTree_UndoAddFileFailed" xml:space="preserve">
-    <value>Failed to undo add file '{0}'</value>
-  </data>
-  <data name="ResourceTree_UndoAddFolderFailed" xml:space="preserve">
-    <value>Failed to undo add folder '{0}'</value>
   </data>
   <data name="ResourceTree_UndoDeleteFileFailed" xml:space="preserve">
     <value>Failed to undo delete file '{0}'</value>
@@ -332,12 +287,6 @@
   </data>
   <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
     <value>Console</value>
-  </data>
-  <data name="ConsolePanel_ExecuteCommandTooltip" xml:space="preserve">
-    <value>Execute the entered text as a console command (Enter)</value>
-  </data>
-  <data name="ConsolePanel_WelcomeMessage" xml:space="preserve">
-    <value>Welcome to Celbridge v{0}! Type 'Help()' for a list of available commands.</value>
   </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
@@ -381,9 +330,6 @@
   <data name="HomePage_Recent" xml:space="preserve">
     <value>Recent</value>
   </data>
-  <data name="HomePage_NoRecentProjects" xml:space="preserve">
-    <value>You have no recent projects.</value>
-  </data>
   <data name="SettingsPage_ApplicationTheme" xml:space="preserve">
     <value>Application Theme</value>
   </data>
@@ -410,18 +356,6 @@
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>
-  </data>
-  <data name="InspectorPanel_ShowEditorAndPreviewTooltip" xml:space="preserve">
-    <value>Show editor and preview </value>
-  </data>
-  <data name="InspectorPanel_ShowEditorTooltip" xml:space="preserve">
-    <value>Show editor only</value>
-  </data>
-  <data name="InspectorPanel_ShowPreviewTooltip" xml:space="preserve">
-    <value>Show preview only</value>
-  </data>
-  <data name="InspectorPanel_OpenDocumentTooltip" xml:space="preserve">
-    <value>Open document</value>
   </data>
   <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
     <value>Add a new component</value>
@@ -488,15 +422,6 @@ Do you wish to continue?</value>
   </data>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
-  </data>
-  <data name="Theme_Light" xml:space="preserve">
-    <value>Light</value>
-  </data>
-  <data name="Theme_Dark" xml:space="preserve">
-    <value>Dark</value>
-  </data>
-  <data name="Theme_System" xml:space="preserve">
-    <value>System Default</value>
   </data>
   <data name="HomePage_NewProjectTooltip" xml:space="preserve">
     <value>Create a new Celbridge project</value>
@@ -603,9 +528,6 @@ Do you wish to continue?</value>
   <data name="ResourceTreeToolbar_AddFolderTooltip" xml:space="preserve">
     <value>Add folder</value>
   </data>
-  <data name="ResourceTreeToolbar_RefreshExplorerTooltip" xml:space="preserve">
-    <value>Refresh explorer</value>
-  </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse folders</value>
   </data>
@@ -632,5 +554,8 @@ Do you wish to continue?</value>
   </data>
   <data name="NewFileDialog_FileType_Other" xml:space="preserve">
     <value>Other file (any extension)</value>
+  </data>
+  <data name="ResourceTree_AddFolder" xml:space="preserve">
+    <value>Add folder</value>
   </data>
 </root>

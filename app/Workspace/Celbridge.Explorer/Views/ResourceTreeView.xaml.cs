@@ -29,7 +29,6 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     // Toolbar tooltip strings
     private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
     private string AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
-    private string RefreshExplorerTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_RefreshExplorerTooltip");
     private string CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
     private string ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 

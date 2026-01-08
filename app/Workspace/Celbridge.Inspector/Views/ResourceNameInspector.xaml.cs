@@ -9,11 +9,6 @@ public sealed partial class ResourceNameInspector : UserControl, IInspector
 
     public ResourceNameInspectorViewModel ViewModel => (DataContext as ResourceNameInspectorViewModel)!;
 
-    private string OpenString => _stringLocalizer.GetString("ResourceTree_Open");
-    private string OpenInString => _stringLocalizer.GetString("ResourceTree_OpenIn");
-    private string OpenInExplorerString => _stringLocalizer.GetString("ResourceTree_OpenInExplorer");
-    private string OpenInApplicationString => _stringLocalizer.GetString("ResourceTree_OpenInApplication");
-    private string DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
     private string SelectFileString => _stringLocalizer.GetString("InspectorPanel_SelectFile");
     
     public ResourceKey Resource

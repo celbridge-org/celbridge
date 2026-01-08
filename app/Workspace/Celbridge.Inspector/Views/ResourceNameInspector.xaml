@@ -49,40 +49,14 @@
     <Grid Grid.Column="1"
           Margin="0 0 8 0"
           VerticalAlignment="Top">
-      <StackPanel Orientation="Horizontal">
-        <Button x:Name="NavigateToButton"
-                Padding="1"
-                Command="{x:Bind ViewModel.NavigateToResourceCommand}"
-                ToolTipService.ToolTip="{x:Bind SelectFileString}">
-          <FontIcon FontFamily="{StaticResource FontAwesomeFontFamily}"
-                    Glyph="&#xF05B;"/>
-        </Button>
-
-        <Button x:Name="ElipsisFlyoutMenuButton"
-                Margin="8 0 0 0"
-                Width="24"
-                Height="24"
-                Padding="0"
-                BorderThickness="0"
-                Background="Transparent">
-          <FontIcon FontFamily="Segoe MDL2 Assets"
-                    Glyph="&#xE712;"/>
-          <Button.Flyout>
-            <MenuFlyout x:Name="ResourceNameInspectorElipsisMenu">
-              <MenuFlyoutItem Text="{x:Bind OpenString}"
-                              Command="{x:Bind ViewModel.OpenDocumentCommand}" />
-              <MenuFlyoutItem Text="{x:Bind DeleteString}"
-                              Command="{x:Bind ViewModel.DeleteDocumentCommand}" />
-              <MenuFlyoutSubItem Text="{x:Bind OpenInString}">
-                <MenuFlyoutItem Text="{x:Bind OpenInExplorerString}"
-                                Command="{x:Bind ViewModel.OpenResourceInExplorerCommand}" />
-                <MenuFlyoutItem Text="{x:Bind OpenInApplicationString}"
-                                Command="{x:Bind ViewModel.OpenResourceInApplicationCommand}" />
-              </MenuFlyoutSubItem>
-            </MenuFlyout>
-          </Button.Flyout>
-        </Button>
-      </StackPanel>
+      <Button x:Name="NavigateToButton"
+              Padding="1"
+              Command="{x:Bind ViewModel.NavigateToResourceCommand}"
+              ToolTipService.ToolTip="{x:Bind SelectFileString}">
+        <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
+                    Glyph="&#xE85D;"
+                    FontSize="20" />
+      </Button>
     </Grid>
 
   </Grid>
