@@ -13,11 +13,6 @@ public interface IAddResourceDialogCommand : IExecutableCommand
     ResourceType ResourceType { get; set; }
 
     /// <summary>
-    /// The file format of the resource to add (.txt, .xlsx, .md, etc.)
-    /// </summary>
-    ResourceFormat ResourceFormat { get; set; }
-
-    /// <summary>
     /// Resource key for the folder which will contain the new resource.
     /// </summary>
     ResourceKey DestFolderResource { get; set; }

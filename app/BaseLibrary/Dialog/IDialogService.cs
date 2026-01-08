@@ -46,4 +46,9 @@ public interface IDialogService
     /// Display an Input Text Dialog.
     /// </summary>
     Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
+
+    /// <summary>
+    /// Display a New File Dialog with file type selection.
+    /// </summary>
+    Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
 }
