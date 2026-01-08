@@ -558,4 +558,10 @@ Do you wish to continue?</value>
   <data name="ResourceTree_AddFolder" xml:space="preserve">
     <value>Add folder</value>
   </data>
+  <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
+    <value>Copy resource key</value>
+  </data>
+  <data name="ResourceTree_CopyFilePath" xml:space="preserve">
+    <value>Copy file path</value>
+  </data>
 </root>

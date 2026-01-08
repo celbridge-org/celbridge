@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
@@ -803,18 +804,22 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var fileResource = tab.ViewModel.FileResource;
         var resourceKey = fileResource.ToString();
 
-        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-        dataPackage.SetText(resourceKey);
-        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = resourceKey;
+            command.TransferMode = DataTransferMode.Copy;
+        });
     }
 
     private void CopyFilePathForTab(DocumentTab tab)
     {
         var filePath = tab.ViewModel.FilePath;
 
-        var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-        dataPackage.SetText(filePath);
-        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = filePath;
+            command.TransferMode = DataTransferMode.Copy;
+        });
     }
 
     private void OpenFileExplorerForTab(DocumentTab tab)
