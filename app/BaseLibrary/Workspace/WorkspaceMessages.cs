@@ -32,3 +32,13 @@ public record SetWorkspacePagePersistenceMessage(bool isPersistant);
 /// </summary>
 public record UnloadWorkspacePageMessage();
 
+/// <summary>
+/// Sent when the workspace page becomes the active page in the navigation view.
+/// </summary>
+public record WorkspacePageActivatedMessage();
+
+/// <summary>
+/// Sent when the user navigates away from the workspace page to another page.
+/// </summary>
+public record WorkspacePageDeactivatedMessage();
+

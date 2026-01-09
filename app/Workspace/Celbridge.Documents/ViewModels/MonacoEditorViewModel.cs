@@ -121,9 +121,9 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         SaveTimer = SaveDelay;
     }
 
-    public void ToggleFocusMode()
+    public void ToggleAllPanels()
     {
-        _commandService.Execute<IToggleFocusModeCommand>();
+        _commandService.Execute<IToggleAllPanelsCommand>();
     }
 
     public void NavigateToURL(string url)
