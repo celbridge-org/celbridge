@@ -2,11 +2,11 @@ using Celbridge.Commands;
 
 namespace Celbridge.Workspace.Commands;
 
-public class ToggleFocusModeCommand : CommandBase, IToggleFocusModeCommand
+public class ToggleAllPanelsCommand : CommandBase, IToggleAllPanelsCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ToggleFocusModeCommand(IWorkspaceWrapper workspaceWrapper)
+    public ToggleAllPanelsCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -20,7 +20,7 @@ public class ToggleFocusModeCommand : CommandBase, IToggleFocusModeCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
 
-        workspaceService.ToggleFocusMode();
+        workspaceService.ToggleAllPanels();
 
         await Task.CompletedTask;
 

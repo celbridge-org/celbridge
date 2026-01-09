@@ -32,16 +32,16 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(InspectorPanelWidth), value);
     }
 
-    public bool IsToolsPanelVisible
+    public bool IsConsolePanelVisible
     {
-        get => GetValue<bool>(nameof(IsToolsPanelVisible), true);
-        set => SetValue(nameof(IsToolsPanelVisible), value);
+        get => GetValue<bool>(nameof(IsConsolePanelVisible), true);
+        set => SetValue(nameof(IsConsolePanelVisible), value);
     }
 
-    public float ToolsPanelHeight
+    public float ConsolePanelHeight
     {
-        get => GetValue<float>(nameof(ToolsPanelHeight), 300 );  // %%% Need to find way of reading height of application window here.
-        set => SetValue(nameof(ToolsPanelHeight), value);
+        get => GetValue<float>(nameof(ConsolePanelHeight), 300 );  // %%% Need to find way of reading height of application window here.
+        set => SetValue(nameof(ConsolePanelHeight), value);
     }
 
     public float DetailPanelHeight

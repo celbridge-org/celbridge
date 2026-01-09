@@ -82,9 +82,9 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Toggle focus mode on/off by hiding and showing the workspace panels.
+    /// Toggle all workspace panels. If any panel is collapsed, expand all panels. Otherwise, collapse all panels.
     /// </summary>
-    void ToggleFocusMode();
+    void ToggleAllPanels();
 
     /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.

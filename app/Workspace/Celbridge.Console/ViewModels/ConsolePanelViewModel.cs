@@ -65,6 +65,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
         _editorSettings = editorSettings;
+
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
 
@@ -158,7 +159,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Force the console panel to be visible when an error occurs
         // This ensures the user can see the error banner even if they had previously collapsed the console
-        _editorSettings.IsToolsPanelVisible = true;
+        _editorSettings.IsConsolePanelVisible = true;
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)

@@ -21,9 +21,9 @@ public enum WorkspacePanel
     Documents,
 
     /// <summary>
-    /// The Tools panel.
+    /// The Console panel.
     /// </summary>
-    Tools,
+    Console,
 
     /// <summary>
     /// The Status panel.
