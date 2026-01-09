@@ -44,8 +44,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private bool _workspaceStateIsDirty;
 
-    private bool _showToolsPanelOnExitFocusMode;
-
     public WorkspaceService(
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
@@ -82,35 +80,26 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
-    public void ToggleFocusMode()
+    public void ToggleAllPanels()
     {
-        // Are we in focus mode?
-        bool isFocusModeActive = !_editorSettings.IsContextPanelVisible &&
-            !_editorSettings.IsInspectorPanelVisible;
+        // Check if any panels are collapsed
+        bool anyPanelCollapsed = !_editorSettings.IsContextPanelVisible ||
+            !_editorSettings.IsInspectorPanelVisible ||
+            !_editorSettings.IsConsolePanelVisible;
 
-        if (isFocusModeActive)
+        if (anyPanelCollapsed)
         {
-            // Exit focus mode
+            // Expand all panels
             _editorSettings.IsContextPanelVisible = true;
             _editorSettings.IsInspectorPanelVisible = true;
-
-            if (_showToolsPanelOnExitFocusMode)
-            {
-                // Make the tools panel visible only if the flag was set when we entered focus mode
-                _editorSettings.IsToolsPanelVisible = true;
-                _showToolsPanelOnExitFocusMode = false;
-            }
+            _editorSettings.IsConsolePanelVisible = true;
         }
         else
         {
-            // Enter focus mode
-
-            // Remember if we should make the tools panel visible when we exit focus mode
-            _showToolsPanelOnExitFocusMode = _editorSettings.IsToolsPanelVisible;
-
+            // Collapse all panels
             _editorSettings.IsContextPanelVisible = false;
             _editorSettings.IsInspectorPanelVisible = false;
-            _editorSettings.IsToolsPanelVisible = false;
+            _editorSettings.IsConsolePanelVisible = false;
         }
     }
 

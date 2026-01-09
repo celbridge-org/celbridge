@@ -131,7 +131,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         switch (tag)
         {
             case NavigationConstants.HomeTag:
-                IsWorkspacePageActive = false;
+                SetWorkspacePageActive(false);
                 _navigationService.NavigateToPage(HomePageName);
                 return;
 
@@ -148,12 +148,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.SettingsTag:
-                IsWorkspacePageActive = false;
+                SetWorkspacePageActive(false);
                 _navigationService.NavigateToPage(SettingsPageName);
                 return;
 
             case NavigationConstants.ExplorerTag:
-                IsWorkspacePageActive = true;
+                SetWorkspacePageActive(true);
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -162,7 +162,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.SearchTag:
-                IsWorkspacePageActive = true;
+                SetWorkspacePageActive(true);
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -171,7 +171,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.DebugTag:
-                IsWorkspacePageActive = true;
+                SetWorkspacePageActive(true);
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -180,7 +180,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.RevisionControlTag:
-                IsWorkspacePageActive = true;
+                SetWorkspacePageActive(true);
                 _navigationService.NavigateToPage(WorkspacePageName);
                 if (_workspaceWrapper.IsWorkspacePageLoaded)
                 {
@@ -189,12 +189,31 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
                 return;
 
             case NavigationConstants.CommunityTag:
-                IsWorkspacePageActive = false;
+                SetWorkspacePageActive(false);
                 _navigationService.NavigateToPage(CommunityPageName);
                 return;
         }
 
         _logger.LogError($"Failed to navigate to item {tag}.");
+    }
+
+    private void SetWorkspacePageActive(bool isActive)
+    {
+        if (IsWorkspacePageActive != isActive)
+        {
+            IsWorkspacePageActive = isActive;
+            
+            if (isActive)
+            {
+                var message = new WorkspacePageActivatedMessage();
+                _messengerService.Send(message);
+            }
+            else
+            {
+                var message = new WorkspacePageDeactivatedMessage();
+                _messengerService.Send(message);
+            }
+        }
     }
 
     private async Task ReloadProjectAsync()

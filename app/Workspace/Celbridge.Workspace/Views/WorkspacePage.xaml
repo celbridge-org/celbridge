@@ -20,11 +20,11 @@
     
     <Grid.RowDefinitions>
       <RowDefinition Height="*"/>
-      <RowDefinition x:Name="ToolsPanelRow" Height="Auto" MinHeight="100"/>
+      <RowDefinition x:Name="ConsolePanelRow" Height="Auto" MinHeight="100"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Explorer Panel -->
+    <!-- Context Panel -->
     <Grid x:Name="ContextPanel"
           Grid.RowSpan="3"
           MinWidth="100"
@@ -33,28 +33,6 @@
           BorderThickness="2,0,2,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Grid x:Name="ContextMasterArea"
-              >
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Would prefer to call this 'ContextWorkPanel' - Will rename this once the layout is settled. -->
-        <Grid x:Name="InnerContextPanel"
-                Grid.Column="0">
-          
-          <Button x:Name="HideContextPanelButton"
-              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,3,2,0">
-            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76B;"/>
-          </Button>
-
-        </Grid>
-      </Grid>
     </Grid>
 
     <!-- Documents Panel -->
@@ -63,24 +41,6 @@
           Background="{ThemeResource ApplicationBackgroundBrush}"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Button x:Name="ShowContextPanelButton"
-              Command="{x:Bind ViewModel.ToggleExplorerPanelCommand}"
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top"
-              Margin="4">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76C;"/>
-      </Button>
-
-      <Button x:Name="ShowInspectorPanelButton"
-              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,4,0,0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76B;"/>
-      </Button>
     </Grid>
 
     <!-- Inspector Panel -->
@@ -94,52 +54,18 @@
           BorderThickness="2,0,2,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Button x:Name="HideInspectorPanelButton"
-              Command="{x:Bind ViewModel.ToggleInspectorPanelCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,3,2,0">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE76C;"/>
-      </Button>
-
     </Grid>
 
-    <!-- Tools Panel -->
-    <Grid x:Name="ToolsPanel"
+    <!-- Console Panel -->
+    <Grid x:Name="ConsolePanel"
           Grid.Column="1"
           Grid.Row="1"
-          RowDefinitions="40, *"
           MinHeight="100"
           Background="{ThemeResource PanelBackgroundBBrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0,2,0,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Grid Grid.Row="0"
-            Background="{ThemeResource PanelBackgroundABrush}"
-            BorderBrush="{ThemeResource PanelBorderBrush}"
-            BorderThickness="0,0,0,1"
-            ColumnDefinitions="Auto, *, Auto">
-
-        <TextBlock Grid.Column="0"
-                   Text="{x:Bind ToolsPanelTitle}"
-                   VerticalAlignment="Center"
-                   Margin="6,0,0,0"/>
-
-        <Button x:Name="HideToolsPanelButton"
-                Grid.Column="2"
-                Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center">
-          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE70D;"/>
-        </Button>
-      </Grid>      
-      <Grid x:Name="ToolsContent"
-            Grid.Row="1"/>
     </Grid>
 
     <!-- Status Panel -->
@@ -151,47 +77,6 @@
           BorderThickness="0,1,0,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
-
-      <Button x:Name="ExitFocusModeButton"
-              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
-              HorizontalAlignment="Left"
-              Margin="2">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE92C;" />
-        <Button.KeyboardAccelerators>
-          <KeyboardAccelerator Key="F4"/>
-        </Button.KeyboardAccelerators>
-      </Button>
-
-      <Button x:Name="EnterFocusModeButton"
-              Command="{x:Bind ViewModel.ToggleFocusModeCommand}"             
-              HorizontalAlignment="Left"
-              Margin="2">
-        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  Glyph="&#xE92D;" />
-        <Button.KeyboardAccelerators>
-          <KeyboardAccelerator Key="F4"/>
-        </Button.KeyboardAccelerators>
-      </Button>
-
-      <!-- Render a solid rectangle behind the button to avoid overlapping visually -->
-      <Grid x:Name="ShowToolsPanelButton"
-            Background="{ThemeResource PanelBackgroundBBrush}"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Center"
-            Width="44"
-            Height="32"
-            Margin="0"
-            Canvas.ZIndex="10">
-        <Button Command="{x:Bind ViewModel.ToggleToolsPanelCommand}"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Margin="0">
-          <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                    Glyph="&#xE70E;"/>
-        </Button>
-      </Grid>
-
     </Grid>
 
     <!-- Grid splitters -->
@@ -212,7 +97,7 @@
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
 
-    <controls:GridSplitter x:Name="ToolsPanelSplitter"
+    <controls:GridSplitter x:Name="ConsolePanelSplitter"
                            Grid.Column="1"
                            Grid.Row="1"
                            Grid.RowSpan="1"
