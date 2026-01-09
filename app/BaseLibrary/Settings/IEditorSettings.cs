@@ -28,14 +28,14 @@ public interface IEditorSettings : INotifyPropertyChanged
     float InspectorPanelWidth { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the tools panel is visible.
+    /// Gets or sets a value indicating whether the console panel is visible.
     /// </summary>
-    bool IsToolsPanelVisible { get; set; }
+    bool IsConsolePanelVisible { get; set; }
 
     /// <summary>
-    /// Gets or sets the height of the tools panel.
+    /// Gets or sets the height of the console panel.
     /// </summary>
-    float ToolsPanelHeight { get; set; }
+    float ConsolePanelHeight { get; set; }
 
     /// <summary>
     /// Gets or sets the height of the detail panel.

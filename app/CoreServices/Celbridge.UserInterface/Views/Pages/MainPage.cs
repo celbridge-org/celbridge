@@ -197,6 +197,14 @@ public partial class MainPage : Page
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(titleBar);
 
+        // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
+        // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
+        var appWindow = mainWindow.AppWindow;
+        if (appWindow?.TitleBar != null)
+        {
+            appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
+        }
+
         _userInterfaceService.RegisterTitleBar(titleBar);
 #endif
 

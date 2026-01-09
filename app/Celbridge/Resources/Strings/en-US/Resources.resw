@@ -273,19 +273,7 @@
   <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
     <value>Copy resource key to clipboard</value>
   </data>
-  <data name="WorkspacePage_ShowPanelTooltip" xml:space="preserve">
-    <value>Show panel</value>
-  </data>
-  <data name="WorkspacePage_ExitFocusModeTooltip" xml:space="preserve">
-    <value>Exit focus mode (F4)</value>
-  </data>
-  <data name="WorkspacePage_HidePanelTooltip" xml:space="preserve">
-    <value>Hide panel</value>
-  </data>
-  <data name="WorkspacePage_EnterFocusModeTooltip" xml:space="preserve">
-    <value>Enter focus mode (F4)</value>
-  </data>
-  <data name="ToolsPanel_ConsoleTitle" xml:space="preserve">
+  <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
@@ -564,16 +552,13 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyFilePath" xml:space="preserve">
     <value>Copy file path</value>
   </data>
-  <data name="WorkspacePage_ToggleExplorerPanelTooltip" xml:space="preserve">
-    <value>Toggle Explorer panel</value>
+  <data name="PanelToolbar_ToggleExplorerTooltip" xml:space="preserve">
+    <value>Toggle Explorer panel (F4: toggle all)</value>
   </data>
-  <data name="WorkspacePage_ToggleToolsPanelTooltip" xml:space="preserve">
-    <value>Toggle Console panel</value>
+  <data name="PanelToolbar_ToggleConsoleTooltip" xml:space="preserve">
+    <value>Toggle Console panel (F4: toggle all)</value>
   </data>
-  <data name="WorkspacePage_ToggleInspectorPanelTooltip" xml:space="preserve">
-    <value>Toggle Inspector panel</value>
-  </data>
-  <data name="WorkspacePage_ToggleFocusModeTooltip" xml:space="preserve">
-    <value>Toggle all panels</value>
+  <data name="PanelToolbar_ToggleInspectorTooltip" xml:space="preserve">
+    <value>Toggle Inspector panel (F4: toggle all)</value>
   </data>
 </root>

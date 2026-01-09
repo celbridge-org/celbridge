@@ -5,8 +5,6 @@ namespace Celbridge.Explorer.Views;
 
 public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 {
-    private readonly IStringLocalizer _stringLocalizer;
-
     private bool _isPointerOver;
     private bool _hasFocus;
 
@@ -14,7 +12,6 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanel()
     {
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<ExplorerPanelViewModel>();
 
         InitializeComponent();

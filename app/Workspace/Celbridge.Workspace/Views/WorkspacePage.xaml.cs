@@ -13,8 +13,6 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
 
     public WorkspacePageViewModel ViewModel { get; }
 
-    private string ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
-
     private bool Initialised = false;
 
     public WorkspacePage()
@@ -26,29 +24,11 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        ApplyPanelButtonTooltips();
-
         DataContext = ViewModel;
 
         Loaded += WorkspacePage_Loaded;
 
         Unloaded += WorkspacePage_Unloaded;
-    }
-
-    private void ApplyPanelButtonTooltips()
-    {
-        // Panel visibility toolbar tooltips
-        ToolTipService.SetToolTip(ToggleExplorerPanelButton, _stringLocalizer["WorkspacePage_ToggleExplorerPanelTooltip"]);
-        ToolTipService.SetPlacement(ToggleExplorerPanelButton, PlacementMode.Bottom);
-
-        ToolTipService.SetToolTip(ToggleToolsPanelButton, _stringLocalizer["WorkspacePage_ToggleToolsPanelTooltip"]);
-        ToolTipService.SetPlacement(ToggleToolsPanelButton, PlacementMode.Bottom);
-
-        ToolTipService.SetToolTip(ToggleInspectorPanelButton, _stringLocalizer["WorkspacePage_ToggleInspectorPanelTooltip"]);
-        ToolTipService.SetPlacement(ToggleInspectorPanelButton, PlacementMode.Bottom);
-
-        ToolTipService.SetToolTip(ToggleFocusModeButton, _stringLocalizer["WorkspacePage_ToggleFocusModeTooltip"]);
-        ToolTipService.SetPlacement(ToggleFocusModeButton, PlacementMode.Bottom);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -64,7 +44,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         {
             var leftPanelWidth = ViewModel.ContextPanelWidth;
             var rightPanelWidth = ViewModel.InspectorPanelWidth;
-            var bottomPanelHeight = ViewModel.ToolsPanelHeight;
+            var bottomPanelHeight = ViewModel.ConsolePanelHeight;
 
             if (leftPanelWidth > 0)
             {
@@ -76,14 +56,14 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             }
             if (bottomPanelHeight > 0)
             {
-                ToolsPanelRow.Height = new GridLength(bottomPanelHeight);
+                ConsolePanelRow.Height = new GridLength(bottomPanelHeight);
             }
 
             UpdatePanels();
 
             ContextPanel.SizeChanged += (s, e) => ViewModel.ContextPanelWidth = (float)e.NewSize.Width;
             InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
-            ToolsPanel.SizeChanged += (s, e) => ViewModel.ToolsPanelHeight = (float)e.NewSize.Height;
+            ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
 
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -99,9 +79,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             var message = new WorkspaceWillPopulatePanelsMessage();
             _messengerService.Send(message);
 
-            // Insert the child panels at the start of the children collection so that the panel toggle
-            // buttons take priority for accepting input.
-
+            // Populate the context panel with explorer and search panels
             var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
             if (explorerPanel != null)
             {
@@ -126,13 +104,13 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             ContextPanel.Children.Insert(3, revisionControlPanel);
             */
             var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
-            DocumentsPanel.Children.Insert(0, documentsPanel);
+            DocumentsPanel.Children.Add(documentsPanel);
 
             var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
             InspectorPanel.Children.Add(inspectorPanel);
 
             var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-            ToolsContent.Children.Add(consolePanel);
+            ConsolePanel.Children.Add(consolePanel);
 
             var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
             StatusPanel.Children.Add(statusPanel);
@@ -177,8 +155,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         {
             case nameof(ViewModel.IsContextPanelVisible):
             case nameof(ViewModel.IsInspectorPanelVisible):
-            case nameof(ViewModel.IsToolsPanelVisible):
-            case nameof(ViewModel.IsFocusModeActive):
+            case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
                 break;
         }
@@ -220,76 +197,20 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             InspectorPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.IsToolsPanelVisible)
+        if (ViewModel.IsConsolePanelVisible)
         {
-            ToolsPanelSplitter.Visibility = Visibility.Visible;
-            ToolsPanel.Visibility = Visibility.Visible;
-            ToolsPanelRow.MinHeight = 100;
-            ToolsPanelRow.Height = new GridLength(ViewModel.ToolsPanelHeight);
+            ConsolePanelSplitter.Visibility = Visibility.Visible;
+            ConsolePanel.Visibility = Visibility.Visible;
+            ConsolePanelRow.MinHeight = 100;
+            ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
         }
         else
         {
-            ToolsPanelSplitter.Visibility = Visibility.Collapsed;
-            ToolsPanel.Visibility = Visibility.Collapsed;
-            ToolsPanelRow.MinHeight = 0;
-            ToolsPanelRow.Height = new GridLength(0);
+            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
+            ConsolePanel.Visibility = Visibility.Collapsed;
+            ConsolePanelRow.MinHeight = 0;
+            ConsolePanelRow.Height = new GridLength(0);
         }
-
-        //
-        // Update toolbar button icons based on panel visibility state
-        // Show filled rectangle when panel is visible, divider line when collapsed
-        //
-
-        // Find the icon elements within the button content
-        var explorerFill = FindDescendant<Rectangle>(ToggleExplorerPanelButton, "ExplorerPanelFill");
-        var explorerDivider = FindDescendant<Line>(ToggleExplorerPanelButton, "ExplorerPanelDivider");
-        if (explorerFill != null && explorerDivider != null)
-        {
-            explorerFill.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-            explorerDivider.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        var toolsFill = FindDescendant<Rectangle>(ToggleToolsPanelButton, "ToolsPanelFill");
-        var toolsDivider = FindDescendant<Line>(ToggleToolsPanelButton, "ToolsPanelDivider");
-        if (toolsFill != null && toolsDivider != null)
-        {
-            toolsFill.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-            toolsDivider.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        var inspectorFill = FindDescendant<Rectangle>(ToggleInspectorPanelButton, "InspectorPanelFill");
-        var inspectorDivider = FindDescendant<Line>(ToggleInspectorPanelButton, "InspectorPanelDivider");
-        if (inspectorFill != null && inspectorDivider != null)
-        {
-            inspectorFill.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-            inspectorDivider.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        ToggleFocusModeIcon.Glyph = ViewModel.IsFocusModeActive ? "\uE92C" : "\uE92D";
-    }
-
-    private T? FindDescendant<T>(DependencyObject parent, string name) where T : FrameworkElement
-    {
-        if (parent == null) return null;
-
-        var childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            
-            if (child is T element && element.Name == name)
-            {
-                return element;
-            }
-
-            var result = FindDescendant<T>(child, name);
-            if (result != null)
-            {
-                return result;
-            }
-        }
-
-        return null;
     }
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)
