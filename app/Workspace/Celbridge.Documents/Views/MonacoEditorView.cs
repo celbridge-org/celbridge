@@ -172,7 +172,7 @@ public sealed partial class MonacoEditorView : DocumentView
         }
         else if (message == "toggle_focus_mode")
         {
-            ViewModel.ToggleFocusMode();
+            ViewModel.ToggleAllPanels();
         }
     }
 

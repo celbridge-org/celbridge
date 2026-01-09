@@ -13,8 +13,6 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
 
     public WorkspacePageViewModel ViewModel { get; }
 
-    private string ToolsPanelTitle => _stringLocalizer.GetString("ToolsPanel_ConsoleTitle");
-
     private bool Initialised = false;
 
     public WorkspacePage()
@@ -26,40 +24,11 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        ApplyPanelButtonTooltips();
-
         DataContext = ViewModel;
 
         Loaded += WorkspacePage_Loaded;
 
         Unloaded += WorkspacePage_Unloaded;
-    }
-
-    private void ApplyPanelButtonTooltips()
-    {
-        // Explorer panel 
-        ToolTipService.SetToolTip(ShowContextPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowContextPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideContextPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideContextPanelButton, PlacementMode.Bottom);
-
-        // Inspector panel 
-        ToolTipService.SetToolTip(ShowInspectorPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowInspectorPanelButton, PlacementMode.Bottom);
-        ToolTipService.SetToolTip(HideInspectorPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideInspectorPanelButton, PlacementMode.Bottom);
-
-        // Tools panel 
-        ToolTipService.SetToolTip(ShowToolsPanelButton, _stringLocalizer["WorkspacePage_ShowPanelTooltip"]);
-        ToolTipService.SetPlacement(ShowToolsPanelButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(HideToolsPanelButton, _stringLocalizer["WorkspacePage_HidePanelTooltip"]);
-        ToolTipService.SetPlacement(HideToolsPanelButton, PlacementMode.Top);
-
-        // Focus mode button
-        ToolTipService.SetToolTip(EnterFocusModeButton, _stringLocalizer["WorkspacePage_EnterFocusModeTooltip"]);
-        ToolTipService.SetPlacement(EnterFocusModeButton, PlacementMode.Top);
-        ToolTipService.SetToolTip(ExitFocusModeButton, _stringLocalizer["WorkspacePage_ExitFocusModeTooltip"]);
-        ToolTipService.SetPlacement(ExitFocusModeButton, PlacementMode.Top);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -75,7 +44,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         {
             var leftPanelWidth = ViewModel.ContextPanelWidth;
             var rightPanelWidth = ViewModel.InspectorPanelWidth;
-            var bottomPanelHeight = ViewModel.ToolsPanelHeight;
+            var bottomPanelHeight = ViewModel.ConsolePanelHeight;
 
             if (leftPanelWidth > 0)
             {
@@ -87,15 +56,14 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             }
             if (bottomPanelHeight > 0)
             {
-                ToolsPanelRow.Height = new GridLength(bottomPanelHeight);
+                ConsolePanelRow.Height = new GridLength(bottomPanelHeight);
             }
 
             UpdatePanels();
-            UpdateFocusModeButton();
 
             ContextPanel.SizeChanged += (s, e) => ViewModel.ContextPanelWidth = (float)e.NewSize.Width;
             InspectorPanel.SizeChanged += (s, e) => ViewModel.InspectorPanelWidth = (float)e.NewSize.Width;
-            ToolsPanel.SizeChanged += (s, e) => ViewModel.ToolsPanelHeight = (float)e.NewSize.Height;
+            ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
 
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -111,9 +79,7 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             var message = new WorkspaceWillPopulatePanelsMessage();
             _messengerService.Send(message);
 
-            // Insert the child panels at the start of the children collection so that the panel toggle
-            // buttons take priority for accepting input.
-
+            // Populate the context panel with explorer and search panels
             var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
             if (explorerPanel != null)
             {
@@ -138,13 +104,13 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             ContextPanel.Children.Insert(3, revisionControlPanel);
             */
             var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
-            DocumentsPanel.Children.Insert(0, documentsPanel);
+            DocumentsPanel.Children.Add(documentsPanel);
 
             var inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
             InspectorPanel.Children.Add(inspectorPanel);
 
             var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-            ToolsContent.Children.Add(consolePanel);
+            ConsolePanel.Children.Add(consolePanel);
 
             var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
             StatusPanel.Children.Add(statusPanel);
@@ -189,30 +155,14 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
         {
             case nameof(ViewModel.IsContextPanelVisible):
             case nameof(ViewModel.IsInspectorPanelVisible):
-            case nameof(ViewModel.IsToolsPanelVisible):
+            case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
-                break;
-            case nameof(ViewModel.IsFocusModeActive):
-                UpdateFocusModeButton();
                 break;
         }
     }
 
     private void UpdatePanels()
     {
-        //
-        // Update button visibility based on panel visibility state
-        //
-
-        ShowContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideContextPanelButton.Visibility = ViewModel.IsContextPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
-        ShowInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideInspectorPanelButton.Visibility = ViewModel.IsInspectorPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
-        ShowToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
-        HideToolsPanelButton.Visibility = ViewModel.IsToolsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
         //
         // Update panel and splitter visibility based on the panel visibility state
         //
@@ -247,35 +197,19 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             InspectorPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.IsToolsPanelVisible)
+        if (ViewModel.IsConsolePanelVisible)
         {
-            ToolsPanelSplitter.Visibility = Visibility.Visible;
-            ToolsPanel.Visibility = Visibility.Visible;
-            ToolsPanelRow.MinHeight = 100;
-            ToolsPanelRow.Height = new GridLength(ViewModel.ToolsPanelHeight);
+            ConsolePanelSplitter.Visibility = Visibility.Visible;
+            ConsolePanel.Visibility = Visibility.Visible;
+            ConsolePanelRow.MinHeight = 100;
+            ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
         }
         else
         {
-            ToolsPanelSplitter.Visibility = Visibility.Collapsed;
-            ToolsPanel.Visibility = Visibility.Collapsed;
-            ToolsPanelRow.MinHeight = 0;
-            ToolsPanelRow.Height = new GridLength(0);
-        }
-    }
-
-    private void UpdateFocusModeButton()
-    {
-        if (ViewModel.IsFocusModeActive)
-        {
-            // Show the exit focus mode button
-            EnterFocusModeButton.Visibility = Visibility.Collapsed;
-            ExitFocusModeButton.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            // Show the enter focus mode button
-            EnterFocusModeButton.Visibility = Visibility.Visible;
-            ExitFocusModeButton.Visibility = Visibility.Collapsed;
+            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
+            ConsolePanel.Visibility = Visibility.Collapsed;
+            ConsolePanelRow.MinHeight = 0;
+            ConsolePanelRow.Height = new GridLength(0);
         }
     }
 

@@ -28,9 +28,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    [ObservableProperty]
-    private bool _isFocusModeActive;
-
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
@@ -56,27 +53,12 @@ public partial class WorkspacePageViewModel : ObservableObject
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
         _workspaceLoader = workspaceLoader;
-
-        UpdateIsFocusModeActive();
     }
 
     private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Forward editor setting change notifications to this View Model class
         OnPropertyChanged(e);
-
-        if (e.PropertyName == nameof(IsContextPanelVisible) ||
-            e.PropertyName == nameof(IsInspectorPanelVisible))
-        {
-            UpdateIsFocusModeActive();
-        }
-    }
-
-    private void UpdateIsFocusModeActive()
-    {
-        IsFocusModeActive =
-            !_editorSettings.IsContextPanelVisible &&
-            !_editorSettings.IsInspectorPanelVisible;
     }
 
     public float ContextPanelWidth
@@ -91,10 +73,10 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.InspectorPanelWidth = value;
     }
 
-    public float ToolsPanelHeight
+    public float ConsolePanelHeight
     {
-        get => _editorSettings.ToolsPanelHeight;
-        set => _editorSettings.ToolsPanelHeight = value;
+        get => _editorSettings.ConsolePanelHeight;
+        set => _editorSettings.ConsolePanelHeight = value;
     }
 
     public bool IsContextPanelVisible
@@ -109,34 +91,10 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.IsInspectorPanelVisible = value;
     }
 
-    public bool IsToolsPanelVisible
+    public bool IsConsolePanelVisible
     {
-        get => _editorSettings.IsToolsPanelVisible;
-        set => _editorSettings.IsToolsPanelVisible = value;
-    }
-
-    public ICommand ToggleExplorerPanelCommand => new RelayCommand(ToggleExplorerPanel_Executed);
-    private void ToggleExplorerPanel_Executed()
-    {
-        _editorSettings.IsContextPanelVisible = !_editorSettings.IsContextPanelVisible;
-    }
-
-    public ICommand ToggleInspectorPanelCommand => new RelayCommand(ToggleInspectorPanel_Executed);
-    private void ToggleInspectorPanel_Executed()
-    {
-        _editorSettings.IsInspectorPanelVisible = !_editorSettings.IsInspectorPanelVisible;
-    }
-
-    public ICommand ToggleToolsPanelCommand => new RelayCommand(ToggleToolsPanel_Executed);
-    private void ToggleToolsPanel_Executed()
-    {
-        _editorSettings.IsToolsPanelVisible = !_editorSettings.IsToolsPanelVisible;
-    }
-
-    public ICommand ToggleFocusModeCommand => new RelayCommand(ToggleFocusMode_Executed);
-    private void ToggleFocusMode_Executed()
-    {
-        _commandService.Execute<IToggleFocusModeCommand>();
+        get => _editorSettings.IsConsolePanelVisible;
+        set => _editorSettings.IsConsolePanelVisible = value;
     }
 
     public void OnWorkspacePageUnloaded()

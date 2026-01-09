@@ -4,9 +4,9 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
-using System.Runtime.InteropServices;
 
 namespace Celbridge.Console.Views;
 
@@ -16,6 +16,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     private readonly ICommandService _commandService;
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
     public ConsolePanelViewModel ViewModel { get; }
 
@@ -30,6 +33,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
         // Monitor theme changes via messenger
@@ -68,7 +73,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             {
                 TerminalWebView.CoreWebView2.PostWebMessageAsString(themeMessage);
             }
-            catch (COMException ex)
+            catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send theme change message to terminal");
             }
@@ -205,7 +210,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         {
             TerminalWebView.CoreWebView2.PostWebMessageAsString(text);
         }
-        catch (COMException ex)
+        catch (Exception ex)
         {
             // Speculative fix for a rare crash on application exit.
             _logger.LogWarning(ex, "An error occurred when posting a message to WebView2");
