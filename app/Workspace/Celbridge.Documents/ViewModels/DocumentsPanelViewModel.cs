@@ -3,7 +3,6 @@ using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;

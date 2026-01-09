@@ -35,7 +35,6 @@ public sealed partial class TitleBar : UserControl
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _mainWindow = userInterfaceService.MainWindow as Window;
 
-
         // Initial update of interactive regions after layout
         DispatcherQueue.TryEnqueue(() =>
         {
@@ -144,9 +143,8 @@ public sealed partial class TitleBar : UserControl
 
     /// <summary>
     /// Call this method after the toolbar becomes visible and has been laid out
-    /// to update the interactive regions for the title bar.
-    /// This prevents double clicks on the panel toggles registering as double clicks on
-    /// the title bar.
+    /// to update the interactive regions for the title bar.This prevents double 
+    /// clicks on the panel toggles registering as double clicks on the title bar.
     /// </summary>
     public void RefreshInteractiveRegions()
     {

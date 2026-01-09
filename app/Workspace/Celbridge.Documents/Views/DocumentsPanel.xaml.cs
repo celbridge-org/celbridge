@@ -4,7 +4,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 using Windows.Foundation.Collections;
 
 using Path = System.IO.Path;
@@ -19,7 +18,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly ICommandService _commandService;
-    private readonly IStringLocalizer _stringLocalizer;
 
     private bool _isShuttingDown = false;
 
@@ -30,8 +28,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IDocumentsLogger logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IStringLocalizer stringLocalizer)
+        IWorkspaceWrapper workspaceWrapper)
     {
         InitializeComponent();
 
@@ -39,7 +36,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        _stringLocalizer = stringLocalizer;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -95,42 +91,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        // Listen for property changes on the ViewModel
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.OnViewLoaded();
-
-        UpdateTabstripEnds();
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.OnViewUnloaded();
-    }
-
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ViewModel.IsExplorerPanelVisible))
-        {
-            UpdateTabstripEnds();
-        }
-    }
-
-    private void UpdateTabstripEnds()
-    {
-        // When the left workspace panel is hidden, the panel visibility toggle button may overlap the
-        // TabStrip at the top of the center panel. To fix this, we dynamically add an invisible TabStripHeader
-        // which adjusts the position of the tabs so that they don't overlap the toggle button.
-
-        if (ViewModel.IsExplorerPanelVisible)
-        {
-            TabView.TabStripHeader = null;
-        }
-        else
-        {
-            TabView.TabStripHeader = new Grid()
-                .Width(48);
-        }
     }
 
     public List<ResourceKey> GetOpenDocuments()
