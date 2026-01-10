@@ -137,32 +137,35 @@ public interface IEditorSettings : INotifyPropertyChanged
     string PreviousNewFileExtension { get; set; }
 
     // ========================================
-    // Zen Mode State
+    // Layout Mode State
     // ========================================
-    // Zen Mode hides all panels to maximize the editor area. These properties track
-    // the active Zen Mode state and save the panel visibility before entering Zen Mode
-    // so it can be restored when exiting.
+    // Layout modes control the window state and panel visibility.
+    // - Windowed: Not fullscreen, all panels and titlebar visible
+    // - FullScreen: Fullscreen with all panels and titlebar visible
+    // - ZenMode: Fullscreen, only documents panel (including tab bar) visible
+    // - Presenter: Fullscreen with only document content visible (no tab bar)
 
     /// <summary>
-    /// Gets or sets whether Zen Mode is currently active.
+    /// Gets or sets the current layout mode.
+    /// Note: This is persisted but the application always starts in Windowed mode.
     /// </summary>
-    bool IsZenModeActive { get; set; }
+    LayoutMode LayoutMode { get; set; }
 
     /// <summary>
-    /// Gets or sets the Context panel visibility before entering Zen Mode.
-    /// Used to restore the panel state when exiting Zen Mode.
+    /// Gets or sets the Context panel visibility before entering a fullscreen mode.
+    /// Used to restore the panel state when returning to Windowed mode.
     /// </summary>
-    bool ZenModePreContextPanelVisible { get; set; }
+    bool FullscreenPreContextPanelVisible { get; set; }
 
     /// <summary>
-    /// Gets or sets the Inspector panel visibility before entering Zen Mode.
-    /// Used to restore the panel state when exiting Zen Mode.
+    /// Gets or sets the Inspector panel visibility before entering a fullscreen mode.
+    /// Used to restore the panel state when returning to Windowed mode.
     /// </summary>
-    bool ZenModePreInspectorPanelVisible { get; set; }
+    bool FullscreenPreInspectorPanelVisible { get; set; }
 
     /// <summary>
-    /// Gets or sets the Console panel visibility before entering Zen Mode.
-    /// Used to restore the panel state when exiting Zen Mode.
+    /// Gets or sets the Console panel visibility before entering a fullscreen mode.
+    /// Used to restore the panel state when returning to Windowed mode.
     /// </summary>
-    bool ZenModePreConsolePanelVisible { get; set; }
+    bool FullscreenPreConsolePanelVisible { get; set; }
 }

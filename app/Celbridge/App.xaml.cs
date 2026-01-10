@@ -28,7 +28,7 @@ public partial class App : Application
     protected IHost? Host { get; private set; }
 
 #if WINDOWS
-    private ZenModeToolbar? _zenModeToolbar;
+    private FullscreenToolbar? _fullscreenToolbar;
 #endif
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -177,6 +177,20 @@ public partial class App : Application
         // Initialize the Core Services
         InitializeCoreServices();
 
+        // Ensure the application always starts in Windowed mode, regardless of
+        // what layout mode was saved from the previous session.
+#if WINDOWS
+        {
+            var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
+            if (editorSettings.LayoutMode != LayoutMode.Windowed)
+            {
+                // Don't trigger UI updates yet - just reset the persisted value
+                // The UI will read the correct value when it initializes
+                editorSettings.LayoutMode = LayoutMode.Windowed;
+            }
+        }
+#endif
+
         // Initialize loaded modules
         var moduleService = Host.Services.GetRequiredService<IModuleService>();
         var initializeResult = moduleService.InitializeModules();
@@ -200,11 +214,11 @@ public partial class App : Application
             rootGrid.Children.Add(rootFrame);
 
 #if WINDOWS
-            // Add the Zen Mode toolbar overlay (appears when in fullscreen Zen Mode)
-            _zenModeToolbar = new ZenModeToolbar();
-            rootGrid.Children.Add(_zenModeToolbar);
+            // Add the Fullscreen toolbar overlay (appears in fullscreen modes)
+            _fullscreenToolbar = new FullscreenToolbar();
+            rootGrid.Children.Add(_fullscreenToolbar);
 
-            // Track mouse movement for Zen Mode toolbar
+            // Track mouse movement for Fullscreen toolbar
             rootGrid.PointerMoved += OnRootGrid_PointerMoved;
 #endif
 
@@ -337,10 +351,10 @@ public partial class App : Application
 #if WINDOWS
     private void OnRootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        if (_zenModeToolbar != null && MainWindow?.Content != null)
+        if (_fullscreenToolbar != null && MainWindow?.Content != null)
         {
             var position = e.GetCurrentPoint(MainWindow.Content).Position;
-            _zenModeToolbar.OnPointerMoved(position.Y);
+            _fullscreenToolbar.OnPointerMoved(position.Y);
         }
     }
 #endif

@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
+using Celbridge.Settings;
 
 namespace Celbridge.Workspace;
 
@@ -76,9 +77,9 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Toggle Zen Mode. Entering Zen Mode hides all panels and saves their state. Exiting Zen Mode restores the previous panel state.
+    /// Sets the layout mode for the workspace.
     /// </summary>
-    void ToggleZenMode();
+    void SetLayoutMode(LayoutMode layoutMode);
 
     /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.

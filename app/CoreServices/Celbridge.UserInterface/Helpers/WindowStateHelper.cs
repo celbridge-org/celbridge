@@ -2,6 +2,7 @@
 
 using Celbridge.Logging;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 using WinRT.Interop;
@@ -9,19 +10,23 @@ using WinRT.Interop;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Helper class to manage window maximized state and bounds persistence.
+/// Helper class to manage window maximized state, bounds persistence, and fullscreen modes.
 /// </summary>
 public sealed class WindowStateHelper
 {
     private readonly ILogger<WindowStateHelper> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private AppWindow? _appWindow;
+    private OverlappedPresenter? _overlappedPresenter;
 
     public WindowStateHelper(
-        ILogger<WindowStateHelper> logger, 
+        ILogger<WindowStateHelper> logger,
+        IMessengerService messengerService,
         IEditorSettings editorSettings)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _editorSettings = editorSettings;
     }
 
@@ -40,8 +45,8 @@ public sealed class WindowStateHelper
                 return Result.Fail("Failed to get AppWindow from main window");
             }
 
-            var presenter = _appWindow.Presenter as OverlappedPresenter;
-            if (presenter == null)
+            _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
+            if (_overlappedPresenter == null)
             {
                 return Result.Fail("AppWindow presenter is not an OverlappedPresenter");
             }
@@ -51,11 +56,14 @@ public sealed class WindowStateHelper
 
             if (_editorSettings.IsWindowMaximized)
             {
-                presenter.Maximize();
+                _overlappedPresenter.Maximize();
             }
 
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
+
+            // Listen for layout mode changes to handle fullscreen
+            _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
             return Result.Ok();
         }
@@ -63,6 +71,57 @@ public sealed class WindowStateHelper
         {
             return Result.Fail("Exception occurred during WindowStateHelper initialization")
                 .WithException(ex);
+        }
+    }
+
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
+    {
+        ApplyLayoutMode(message.LayoutMode);
+    }
+
+    /// <summary>
+    /// Applies the specified layout mode to the window.
+    /// </summary>
+    public void ApplyLayoutMode(LayoutMode layoutMode)
+    {
+        if (_appWindow == null)
+        {
+            return;
+        }
+
+        try
+        {
+            switch (layoutMode)
+            {
+                case LayoutMode.Windowed:
+                    // Exit fullscreen - restore to overlapped presenter
+                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.Overlapped)
+                    {
+                        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+                        
+                        // Get the new presenter and restore maximized state if needed
+                        _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
+                        if (_overlappedPresenter != null && _editorSettings.IsWindowMaximized)
+                        {
+                            _overlappedPresenter.Maximize();
+                        }
+                    }
+                    break;
+
+                case LayoutMode.FullScreen:
+                case LayoutMode.ZenMode:
+                case LayoutMode.Presenter:
+                    // Enter fullscreen mode
+                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
+                    {
+                        _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+                    }
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to apply layout mode: {layoutMode}");
         }
     }
 
@@ -155,16 +214,20 @@ public sealed class WindowStateHelper
             args.DidPositionChange || 
             args.DidPresenterChange)
         {
-            var presenter = sender.Presenter as OverlappedPresenter;
-            if (presenter != null)
+            // Only track state when using overlapped presenter (windowed mode)
+            if (sender.Presenter.Kind == AppWindowPresenterKind.Overlapped)
             {
-                bool isMaximized = presenter.State == OverlappedPresenterState.Maximized;
-                _editorSettings.IsWindowMaximized = isMaximized;
-
-                // Only save bounds when not maximized or minimized
-                if (presenter.State == OverlappedPresenterState.Restored)
+                var presenter = sender.Presenter as OverlappedPresenter;
+                if (presenter != null)
                 {
-                    SaveWindowBounds();
+                    bool isMaximized = presenter.State == OverlappedPresenterState.Maximized;
+                    _editorSettings.IsWindowMaximized = isMaximized;
+
+                    // Only save bounds when not maximized or minimized
+                    if (presenter.State == OverlappedPresenterState.Restored)
+                    {
+                        SaveWindowBounds();
+                    }
                 }
             }
         }

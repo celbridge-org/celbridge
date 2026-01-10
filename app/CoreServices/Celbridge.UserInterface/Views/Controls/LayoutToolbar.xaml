@@ -1,11 +1,11 @@
 ﻿<UserControl
-    x:Class="Celbridge.UserInterface.Views.PanelToggleToolbar"
+    x:Class="Celbridge.UserInterface.Views.LayoutToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:icons="using:Celbridge.UserInterface.Views.PanelIcons">
 
-    <StackPanel x:Name="PanelVisibilityToolbar"
+    <StackPanel x:Name="ApplicationLayoutToolbar"
                 Orientation="Horizontal"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center">
@@ -74,19 +74,54 @@
 
                         <MenuFlyoutSeparator/>
 
-                        <!-- Zen Mode Toggle -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="ZenModeLabel" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="ZenModeToggle"
-                                      Grid.Column="1"
-                                      Checked="ZenModeToggle_Changed"
-                                      Unchecked="ZenModeToggle_Changed"
-                                      MinWidth="0"/>
-                        </Grid>
+                        <!-- Layout Mode Selection -->
+                        <TextBlock x:Name="LayoutModeHeader" 
+                                   FontWeight="SemiBold" 
+                                   Margin="0,4,0,8"/>
+                        
+                        <RadioButton x:Name="WindowedModeRadio"
+                                     GroupName="LayoutMode"
+                                     Checked="LayoutModeRadio_Checked">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE737;"
+                                          FontSize="14"/>
+                                <TextBlock x:Name="WindowedModeLabel" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        
+                        <RadioButton x:Name="FullScreenModeRadio"
+                                     GroupName="LayoutMode"
+                                     Checked="LayoutModeRadio_Checked">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE740;"
+                                          FontSize="14"/>
+                                <TextBlock x:Name="FullScreenModeLabel" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        
+                        <RadioButton x:Name="ZenModeRadio"
+                                     GroupName="LayoutMode"
+                                     Checked="LayoutModeRadio_Checked">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE78B;"
+                                          FontSize="14"/>
+                                <TextBlock x:Name="ZenModeRadioLabel" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        
+                        <RadioButton x:Name="PresenterModeRadio"
+                                     GroupName="LayoutMode"
+                                     Checked="LayoutModeRadio_Checked">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE7F4;"
+                                          FontSize="14"/>
+                                <TextBlock x:Name="PresenterModeLabel" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
                         <MenuFlyoutSeparator/>
 

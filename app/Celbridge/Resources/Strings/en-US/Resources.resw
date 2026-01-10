@@ -552,31 +552,43 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyFilePath" xml:space="preserve">
     <value>Copy file path</value>
   </data>
-  <data name="PanelToolbar_ToggleExplorerTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleExplorerTooltip" xml:space="preserve">
     <value>Toggle Explorer panel</value>
   </data>
-  <data name="PanelToolbar_ToggleConsoleTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
     <value>Toggle Console panel</value>
   </data>
-  <data name="PanelToolbar_ToggleInspectorTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleInspectorTooltip" xml:space="preserve">
     <value>Toggle Inspector panel</value>
   </data>
-  <data name="PanelToolbar_CustomizeLayoutTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize layout</value>
   </data>
-  <data name="PanelToolbar_ExplorerPanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_ExplorerPanelLabel" xml:space="preserve">
     <value>Explorer panel</value>
   </data>
-  <data name="PanelToolbar_ConsolePanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_ConsolePanelLabel" xml:space="preserve">
     <value>Console panel</value>
   </data>
-  <data name="PanelToolbar_InspectorPanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_InspectorPanelLabel" xml:space="preserve">
     <value>Inspector panel</value>
   </data>
-  <data name="PanelToolbar_ResetLayoutButton" xml:space="preserve">
+  <data name="LayoutToolbar_ResetLayoutButton" xml:space="preserve">
     <value>Reset layout</value>
   </data>
-  <data name="PanelToolbar_ZenModeLabel" xml:space="preserve">
+  <data name="LayoutToolbar_ZenModeLabel" xml:space="preserve">
     <value>Zen mode</value>
+  </data>
+  <data name="LayoutToolbar_LayoutModeLabel" xml:space="preserve">
+    <value>Layout mode</value>
+  </data>
+  <data name="LayoutToolbar_WindowedLabel" xml:space="preserve">
+    <value>Windowed</value>
+  </data>
+  <data name="LayoutToolbar_FullScreen" xml:space="preserve">
+    <value>Full screen</value>
+  </data>
+  <data name="LayoutToolbar_PresenterLabel" xml:space="preserve">
+    <value>Presenter</value>
   </data>
 </root>

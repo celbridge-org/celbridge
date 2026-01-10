@@ -125,28 +125,32 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
-    public bool IsZenModeActive
+    // ========================================
+    // Layout Mode Properties
+    // ========================================
+
+    public LayoutMode LayoutMode
     {
-        get => GetValue<bool>(nameof(IsZenModeActive), false);
-        set => SetValue(nameof(IsZenModeActive), value);
+        get => GetValue<LayoutMode>(nameof(LayoutMode), LayoutMode.Windowed);
+        set => SetValue(nameof(LayoutMode), value);
     }
 
-    public bool ZenModePreContextPanelVisible
+    public bool FullscreenPreContextPanelVisible
     {
-        get => GetValue<bool>(nameof(ZenModePreContextPanelVisible), true);
-        set => SetValue(nameof(ZenModePreContextPanelVisible), value);
+        get => GetValue<bool>(nameof(FullscreenPreContextPanelVisible), true);
+        set => SetValue(nameof(FullscreenPreContextPanelVisible), value);
     }
 
-    public bool ZenModePreInspectorPanelVisible
+    public bool FullscreenPreInspectorPanelVisible
     {
-        get => GetValue<bool>(nameof(ZenModePreInspectorPanelVisible), true);
-        set => SetValue(nameof(ZenModePreInspectorPanelVisible), value);
+        get => GetValue<bool>(nameof(FullscreenPreInspectorPanelVisible), true);
+        set => SetValue(nameof(FullscreenPreInspectorPanelVisible), value);
     }
 
-    public bool ZenModePreConsolePanelVisible
+    public bool FullscreenPreConsolePanelVisible
     {
-        get => GetValue<bool>(nameof(ZenModePreConsolePanelVisible), true);
-        set => SetValue(nameof(ZenModePreConsolePanelVisible), value);
+        get => GetValue<bool>(nameof(FullscreenPreConsolePanelVisible), true);
+        set => SetValue(nameof(FullscreenPreConsolePanelVisible), value);
     }
 
     public void ResetPanelLayout()

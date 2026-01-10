@@ -5,6 +5,7 @@
 
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;
 using Celbridge.Workspace;
@@ -202,8 +203,8 @@ public partial class MainPage : Page
         _userInterfaceService.RegisterTitleBar(_titleBar);
 #endif
 
-        // Register for Zen Mode changes
-        _messengerService.Register<ZenModeChangedMessage>(this, OnZenModeChanged);
+        // Register for layout mode changes
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
@@ -263,37 +264,17 @@ public partial class MainPage : Page
         _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
-    private void OnZenModeChanged(object recipient, ZenModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        var mainWindow = _userInterfaceService.MainWindow as Window;
-        Guard.IsNotNull(mainWindow);
-
 #if WINDOWS
-        var appWindow = mainWindow.AppWindow;
-        if (appWindow != null)
+        // Show/hide the title bar based on layout mode
+        // In Windowed and FullScreen modes, the title bar is visible
+        // In ZenMode and Presenter modes, the title bar is hidden
+        if (_titleBar != null)
         {
-            if (message.IsZenModeActive)
-            {
-                // Enter fullscreen mode
-                appWindow.SetPresenter(Microsoft.UI.Windowing.AppWindowPresenterKind.FullScreen);
-                
-                // Hide the title bar
-                if (_titleBar != null)
-                {
-                    _titleBar.Visibility = Visibility.Collapsed;
-                }
-            }
-            else
-            {
-                // Exit fullscreen mode
-                appWindow.SetPresenter(Microsoft.UI.Windowing.AppWindowPresenterKind.Default);
-                
-                // Show the title bar
-                if (_titleBar != null)
-                {
-                    _titleBar.Visibility = Visibility.Visible;
-                }
-            }
+            bool showTitleBar = message.LayoutMode == LayoutMode.Windowed || 
+                                message.LayoutMode == LayoutMode.FullScreen;
+            _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
         }
 #endif
     }

@@ -3,6 +3,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
@@ -18,6 +19,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly ICommandService _commandService;
+    private readonly IEditorSettings _editorSettings;
 
     private bool _isShuttingDown = false;
 
@@ -28,7 +30,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IDocumentsLogger logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IEditorSettings editorSettings)
     {
         InitializeComponent();
 
@@ -36,6 +39,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _editorSettings = editorSettings;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -92,11 +96,99 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewLoaded();
+        
+        // Listen for layout mode changes to show/hide tab strip in Presenter mode
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+        
+        // Apply initial tab strip visibility based on current layout mode
+        UpdateTabStripVisibility(_editorSettings.LayoutMode);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
+        _messengerService.Unregister<LayoutModeChangedMessage>(this);
+    }
+
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
+    {
+        UpdateTabStripVisibility(message.LayoutMode);
+    }
+
+    private void UpdateTabStripVisibility(LayoutMode layoutMode)
+    {
+        // In Presenter mode, hide the tab strip to show only the document content
+        // In all other modes, show the tab strip
+        bool showTabStrip = layoutMode != LayoutMode.Presenter;
+        
+        // Find the TabStrip element within the TabView template and set its visibility
+        // The TabView's tab strip is in a Grid row that we can collapse
+        if (TabView.IsLoaded)
+        {
+            try
+            {
+                // From testing this, it appears we have to do both of these in order to hide/show the tab strip reliably
+
+                // Use a style to control the tab strip visibility
+                // This approach modifies the TabView's internal template
+                var tabListView = FindDescendant<ListView>(TabView);
+                if (tabListView != null)
+                {
+                    tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                // Also try to find and hide the tab strip container
+                var tabStripContainer = FindDescendantByName(TabView, "TabContainerGrid");
+                if (tabStripContainer is FrameworkElement container)
+                {
+                    container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+            catch
+            {
+                // Silently handle any template traversal errors
+            }
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent) where T : class
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T result)
+            {
+                return result;
+            }
+            
+            var descendant = FindDescendant<T>(child);
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+        return null;
+    }
+
+    private static DependencyObject? FindDescendantByName(DependencyObject parent, string name)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement element && element.Name == name)
+            {
+                return element;
+            }
+            
+            var descendant = FindDescendantByName(child, name);
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+        return null;
     }
 
     public List<ResourceKey> GetOpenDocuments()

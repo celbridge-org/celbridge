@@ -81,50 +81,49 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
-    public void ToggleZenMode()
+    public void SetLayoutMode(LayoutMode layoutMode)
     {
-        // Check if all panels are already collapsed
-        bool allPanelsCollapsed = !_editorSettings.IsContextPanelVisible &&
-            !_editorSettings.IsInspectorPanelVisible &&
-            !_editorSettings.IsConsolePanelVisible;
+        var currentMode = _editorSettings.LayoutMode;
+        
+        if (currentMode == layoutMode)
+        {
+            return;
+        }
 
-        if (_editorSettings.IsZenModeActive)
+        // If leaving Windowed mode, save current panel state
+        if (currentMode == LayoutMode.Windowed)
         {
-            // Exit Zen Mode - restore previous panel state
-            _editorSettings.IsContextPanelVisible = _editorSettings.ZenModePreContextPanelVisible;
-            _editorSettings.IsInspectorPanelVisible = _editorSettings.ZenModePreInspectorPanelVisible;
-            _editorSettings.IsConsolePanelVisible = _editorSettings.ZenModePreConsolePanelVisible;
-            _editorSettings.IsZenModeActive = false;
-            
-            // Notify UI that Zen Mode has been exited
-            var message = new ZenModeChangedMessage(false);
-            _messengerService.Send(message);
+            _editorSettings.FullscreenPreContextPanelVisible = _editorSettings.IsContextPanelVisible;
+            _editorSettings.FullscreenPreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
+            _editorSettings.FullscreenPreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
         }
-        else if (allPanelsCollapsed)
+
+        // Apply the new layout mode
+        _editorSettings.LayoutMode = layoutMode;
+
+        // Apply panel visibility based on the new mode
+        switch (layoutMode)
         {
-            // Special case: If all panels are already collapsed, don't enter Zen Mode.
-            // Instead, restore all panels (similar behavior to VS Code).
-            _editorSettings.IsContextPanelVisible = true;
-            _editorSettings.IsInspectorPanelVisible = true;
-            _editorSettings.IsConsolePanelVisible = true;
+            case LayoutMode.Windowed:
+            case LayoutMode.FullScreen:
+                // Restore panel visibility when returning to Windowed or FullScreen mode
+                _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
+                _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
+                _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
+                break;
+
+            case LayoutMode.ZenMode:
+            case LayoutMode.Presenter:
+                // Hide all panels in Zen Mode and Presenter mode
+                _editorSettings.IsContextPanelVisible = false;
+                _editorSettings.IsInspectorPanelVisible = false;
+                _editorSettings.IsConsolePanelVisible = false;
+                break;
         }
-        else
-        {
-            // Enter Zen Mode - save current state and hide all panels
-            _editorSettings.ZenModePreContextPanelVisible = _editorSettings.IsContextPanelVisible;
-            _editorSettings.ZenModePreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
-            _editorSettings.ZenModePreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
-            _editorSettings.IsZenModeActive = true;
-            
-            // Hide all panels
-            _editorSettings.IsContextPanelVisible = false;
-            _editorSettings.IsInspectorPanelVisible = false;
-            _editorSettings.IsConsolePanelVisible = false;
-            
-            // Notify UI that Zen Mode has been entered
-            var message = new ZenModeChangedMessage(true);
-            _messengerService.Send(message);
-        }
+
+        // Notify UI about the layout mode change
+        var message = new LayoutModeChangedMessage(layoutMode);
+        _messengerService.Send(message);
     }
 
     public void SetWorkspaceStateIsDirty()

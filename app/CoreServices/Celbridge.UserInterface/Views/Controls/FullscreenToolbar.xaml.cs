@@ -7,10 +7,10 @@ using Microsoft.UI.Xaml.Media.Animation;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// A minimal toolbar that appears at the top of the screen in Zen Mode when the mouse moves near the top edge.
-/// Provides a simple "Exit Fullscreen" button to exit Zen Mode.
+/// A minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge.
+/// Provides a simple "Exit Fullscreen" button to return to Windowed mode.
 /// </summary>
-public sealed partial class ZenModeToolbar : UserControl
+public sealed partial class FullscreenToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -18,7 +18,7 @@ public sealed partial class ZenModeToolbar : UserControl
     
     private readonly DispatcherTimer _hideTimer;
     
-    private bool _isZenModeActive;
+    private bool _isFullscreenModeActive;
     private bool _isToolbarVisible;
     private bool _isMouseOverToolbar;
     
@@ -27,7 +27,7 @@ public sealed partial class ZenModeToolbar : UserControl
     private const double ANIMATION_DURATION_MS = 150; // animation speed
     private const double TOOLBAR_HEIGHT = 36; // height of the toolbar
 
-    public ZenModeToolbar()
+    public FullscreenToolbar()
     {
         this.InitializeComponent();
 
@@ -49,38 +49,46 @@ public sealed partial class ZenModeToolbar : UserControl
         ToolbarContainer.PointerEntered += ToolbarContainer_PointerEntered;
         ToolbarContainer.PointerExited += ToolbarContainer_PointerExited;
 
-        Loaded += ZenModeToolbar_Loaded;
-        Unloaded += ZenModeToolbar_Unloaded;
+        Loaded += FullscreenToolbar_Loaded;
+        Unloaded += FullscreenToolbar_Unloaded;
     }
 
-    private void ZenModeToolbar_Loaded(object sender, RoutedEventArgs e)
+    private void FullscreenToolbar_Loaded(object sender, RoutedEventArgs e)
     {
-        // Register for Zen Mode changes
-        _messengerService.Register<ZenModeChangedMessage>(this, OnZenModeChanged);
+        // Register for Layout Mode changes
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
         
-        // Check if already in Zen Mode
-        _isZenModeActive = _editorSettings.IsZenModeActive;
+        // Check if already in a fullscreen mode
+        UpdateFullscreenState();
     }
 
-    private void ZenModeToolbar_Unloaded(object sender, RoutedEventArgs e)
+    private void FullscreenToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         _hideTimer.Stop();
         ToolbarContainer.PointerEntered -= ToolbarContainer_PointerEntered;
         ToolbarContainer.PointerExited -= ToolbarContainer_PointerExited;
-        Loaded -= ZenModeToolbar_Loaded;
-        Unloaded -= ZenModeToolbar_Unloaded;
+        Loaded -= FullscreenToolbar_Loaded;
+        Unloaded -= FullscreenToolbar_Unloaded;
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnZenModeChanged(object recipient, ZenModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        _isZenModeActive = message.IsZenModeActive;
+        UpdateFullscreenState();
 
-        if (!_isZenModeActive)
+        if (!_isFullscreenModeActive)
         {
-            // Exiting Zen Mode - hide toolbar immediately
+            // Exiting fullscreen mode - hide toolbar immediately
             HideToolbar(animate: false);
         }
+    }
+
+    private void UpdateFullscreenState()
+    {
+        var layoutMode = _editorSettings.LayoutMode;
+        _isFullscreenModeActive = layoutMode == LayoutMode.FullScreen || 
+                                  layoutMode == LayoutMode.ZenMode || 
+                                  layoutMode == LayoutMode.Presenter;
     }
 
     /// <summary>
@@ -88,7 +96,7 @@ public sealed partial class ZenModeToolbar : UserControl
     /// </summary>
     public void OnPointerMoved(double yPosition)
     {
-        if (!_isZenModeActive)
+        if (!_isFullscreenModeActive)
         {
             return;
         }
@@ -111,7 +119,7 @@ public sealed partial class ZenModeToolbar : UserControl
     {
         _isMouseOverToolbar = false;
         // Hide immediately when mouse leaves toolbar (short delay for smooth UX)
-        if (_isZenModeActive && _isToolbarVisible)
+        if (_isFullscreenModeActive && _isToolbarVisible)
         {
             _hideTimer.Stop();
             // Use a very short delay so it doesn't feel jarring
@@ -126,8 +134,8 @@ public sealed partial class ZenModeToolbar : UserControl
         // Reset interval to normal
         _hideTimer.Interval = TimeSpan.FromSeconds(AUTO_HIDE_DELAY_SECONDS);
 
-        // Only hide if not hovering over toolbar and still in Zen Mode
-        if (_isZenModeActive && !_isMouseOverToolbar)
+        // Only hide if not hovering over toolbar and still in fullscreen mode
+        if (_isFullscreenModeActive && !_isMouseOverToolbar)
         {
             HideToolbar(animate: true);
         }
@@ -205,8 +213,21 @@ public sealed partial class ZenModeToolbar : UserControl
         }
     }
 
-    private void ExitButton_Click(object sender, RoutedEventArgs e)
+    private void ToolbarContainer_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _commandService.Execute<IToggleZenModeCommand>();
+        // Clicking anywhere on the toolbar exits fullscreen mode
+        // This handles cases where other UI elements (e.g., screen sharing notifications) might block the exit button
+        ExitFullscreen();
+        e.Handled = true;
+    }
+
+    private void ExitFullscreen()
+    {
+        // Return to Windowed mode
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            workspaceWrapper.WorkspaceService.SetLayoutMode(LayoutMode.Windowed);
+        }
     }
 }
