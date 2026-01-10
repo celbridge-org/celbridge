@@ -68,9 +68,9 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public INewFileDialog CreateNewFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
+    public IAddFileDialog CreateAddFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
     {
-        var dialog = new NewFileDialog
+        var dialog = new AddFileDialog
         {
             TitleText = titleText,
             HeaderText = headerText,
