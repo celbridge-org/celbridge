@@ -7,7 +7,7 @@ namespace Celbridge.UserInterface.ViewModels;
 
 public record FileTypeItem(string DisplayName, ResourceFormat Format, string Extension);
 
-public partial class NewFileDialogViewModel : ObservableObject
+public partial class AddFileDialogViewModel : ObservableObject
 {
     private readonly IEditorSettings _editorSettings;
     private readonly IStringLocalizer _stringLocalizer;
@@ -50,7 +50,7 @@ public partial class NewFileDialogViewModel : ObservableObject
     /// </summary>
     public string PreviousFileExtension => _editorSettings.PreviousNewFileExtension;
 
-    public NewFileDialogViewModel(
+    public AddFileDialogViewModel(
         IEditorSettings editorSettings,
         IStringLocalizer stringLocalizer)
     {
@@ -59,12 +59,12 @@ public partial class NewFileDialogViewModel : ObservableObject
 
         FileTypes =
         [
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Python"), ResourceFormat.Python, ExplorerConstants.PythonExtension),
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Excel"), ResourceFormat.Excel, ExplorerConstants.ExcelExtension),
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_WebApp"), ResourceFormat.WebApp, ExplorerConstants.WebAppExtension),
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
-            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Python"), ResourceFormat.Python, ExplorerConstants.PythonExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Excel"), ResourceFormat.Excel, ExplorerConstants.ExcelExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebApp"), ResourceFormat.WebApp, ExplorerConstants.WebAppExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
         // Select the dropdown based on the previously saved extension
@@ -76,10 +76,10 @@ public partial class NewFileDialogViewModel : ObservableObject
         // If extension matches a known type, select it; otherwise select "Other"
         _selectedFileTypeIndex = index >= 0 ? index : OtherFileTypeIndex;
 
-        PropertyChanged += NewFileDialogViewModel_PropertyChanged;
+        PropertyChanged += AddFileDialogViewModel_PropertyChanged;
     }
 
-    private void NewFileDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void AddFileDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isUpdatingFromCode)
         {
