@@ -1,4 +1,6 @@
+using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -26,6 +28,7 @@ public enum DocumentTabMenuAction
 public partial class DocumentTab : TabViewItem
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
 
     public DocumentTabViewModel ViewModel { get; }
 
@@ -39,6 +42,7 @@ public partial class DocumentTab : TabViewItem
         this.InitializeComponent();
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
@@ -144,5 +148,11 @@ public partial class DocumentTab : TabViewItem
             current = VisualTreeHelper.GetParent(current);
         }
         return null;
+    }
+
+    private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        _commandService.Execute<IToggleAllPanelsCommand>();
+        e.Handled = true;
     }
 }
