@@ -522,25 +522,25 @@ Do you wish to continue?</value>
   <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
     <value>Open project settings</value>
   </data>
-  <data name="NewFileDialog_FileType" xml:space="preserve">
+  <data name="AddFileDialog_FileType" xml:space="preserve">
     <value>File type</value>
   </data>
-  <data name="NewFileDialog_FileType_Python" xml:space="preserve">
+  <data name="AddFileDialog_FileType_Python" xml:space="preserve">
     <value>Python script (.py)</value>
   </data>
-  <data name="NewFileDialog_FileType_Excel" xml:space="preserve">
+  <data name="AddFileDialog_FileType_Excel" xml:space="preserve">
     <value>Excel file (.xlsx)</value>
   </data>
-  <data name="NewFileDialog_FileType_Markdown" xml:space="preserve">
+  <data name="AddFileDialog_FileType_Markdown" xml:space="preserve">
     <value>Markdown file (.md)</value>
   </data>
-  <data name="NewFileDialog_FileType_WebApp" xml:space="preserve">
+  <data name="AddFileDialog_FileType_WebApp" xml:space="preserve">
     <value>Web application file (.webapp)</value>
   </data>
-  <data name="NewFileDialog_FileType_Text" xml:space="preserve">
+  <data name="AddFileDialog_FileType_Text" xml:space="preserve">
     <value>Text file (.txt)</value>
   </data>
-  <data name="NewFileDialog_FileType_Other" xml:space="preserve">
+  <data name="AddFileDialog_FileType_Other" xml:space="preserve">
     <value>Other file (any extension)</value>
   </data>
   <data name="ResourceTree_AddFolder" xml:space="preserve">

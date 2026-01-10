@@ -39,7 +39,7 @@ public interface IDialogFactory
     IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
 
     /// <summary>
-    /// Create a New File Dialog.
+    /// Create an Add File Dialog.
     /// </summary>
-    INewFileDialog CreateNewFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
+    IAddFileDialog CreateAddFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
 }

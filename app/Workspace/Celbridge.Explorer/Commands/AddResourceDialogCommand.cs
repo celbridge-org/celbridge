@@ -85,7 +85,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var extensionIndex = defaultFileName.LastIndexOf('.');
         var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
 
-        var showResult = await _dialogService.ShowNewFileDialogAsync(
+        var showResult = await _dialogService.ShowAddFileDialogAsync(
             titleString,
             enterNameString,
             defaultFileName,
