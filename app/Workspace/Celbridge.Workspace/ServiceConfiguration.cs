@@ -23,7 +23,6 @@ public static class ServiceConfiguration
         GenerativeAI.ServiceConfiguration.ConfigureServices(services);
         Inspector.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
-        Status.ServiceConfiguration.ConfigureServices(services);
 
         //
         // Register services
