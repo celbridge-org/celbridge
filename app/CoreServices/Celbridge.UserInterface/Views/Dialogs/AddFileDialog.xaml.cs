@@ -3,11 +3,11 @@ using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
 
-public sealed partial class NewFileDialog : ContentDialog, INewFileDialog
+public sealed partial class AddFileDialog : ContentDialog, IAddFileDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    public NewFileDialogViewModel ViewModel { get; }
+    public AddFileDialogViewModel ViewModel { get; }
 
     public string TitleText
     {
@@ -23,19 +23,19 @@ public sealed partial class NewFileDialog : ContentDialog, INewFileDialog
 
     private string CreateString => _stringLocalizer.GetString($"DialogButton_Create");
     private string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
-    private string FileTypeString => _stringLocalizer.GetString($"NewFileDialog_FileType");
+    private string FileTypeString => _stringLocalizer.GetString($"AddFileDialog_FileType");
 
     private bool _pressedEnter;
     private Range _selectionRange;
 
-    public NewFileDialog()
+    public AddFileDialog()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
-        ViewModel = ServiceLocator.AcquireService<NewFileDialogViewModel>();
+        ViewModel = ServiceLocator.AcquireService<AddFileDialogViewModel>();
 
         this.InitializeComponent();
 
@@ -64,7 +64,7 @@ public sealed partial class NewFileDialog : ContentDialog, INewFileDialog
         }
     }
 
-    public async Task<Result<NewFileConfig>> ShowDialogAsync()
+    public async Task<Result<AddFileConfig>> ShowDialogAsync()
     {
         var contentDialogResult = await ShowAsync();
         if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
@@ -72,11 +72,11 @@ public sealed partial class NewFileDialog : ContentDialog, INewFileDialog
             // Save the extension preference for next time
             ViewModel.SaveFileExtensionPreference();
             
-            var config = new NewFileConfig(ViewModel.FileName, ViewModel.SelectedFileType);
-            return Result<NewFileConfig>.Ok(config);
+            var config = new AddFileConfig(ViewModel.FileName, ViewModel.SelectedFileType);
+            return Result<AddFileConfig>.Ok(config);
         }
 
-        return Result<NewFileConfig>.Fail("Dialog was cancelled");
+        return Result<AddFileConfig>.Fail("Dialog was cancelled");
     }
 
     public void SetDefaultFileName(string defaultFileName, Range selectionRange)
