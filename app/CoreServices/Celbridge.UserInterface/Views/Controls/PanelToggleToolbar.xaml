@@ -74,6 +74,22 @@
 
                         <MenuFlyoutSeparator/>
 
+                        <!-- Zen Mode Toggle -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ZenModeLabel" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="ZenModeToggle"
+                                      Grid.Column="1"
+                                      Checked="ZenModeToggle_Changed"
+                                      Unchecked="ZenModeToggle_Changed"
+                                      MinWidth="0"/>
+                        </Grid>
+
+                        <MenuFlyoutSeparator/>
+
                         <!-- Reset Layout Button -->
                         <Button x:Name="ResetLayoutButton"
                                 Click="ResetLayoutButton_Click"

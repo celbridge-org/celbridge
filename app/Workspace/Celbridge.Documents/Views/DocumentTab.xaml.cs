@@ -152,7 +152,8 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        _commandService.Execute<IToggleAllPanelsCommand>();
+        // Double-clicking a document tab toggles Zen Mode
+        _commandService.Execute<IToggleZenModeCommand>();
         e.Handled = true;
     }
 }

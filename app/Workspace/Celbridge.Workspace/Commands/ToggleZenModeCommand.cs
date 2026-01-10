@@ -2,11 +2,11 @@ using Celbridge.Commands;
 
 namespace Celbridge.Workspace.Commands;
 
-public class ToggleAllPanelsCommand : CommandBase, IToggleAllPanelsCommand
+public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ToggleAllPanelsCommand(IWorkspaceWrapper workspaceWrapper)
+    public ToggleZenModeCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -20,7 +20,7 @@ public class ToggleAllPanelsCommand : CommandBase, IToggleAllPanelsCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
 
-        workspaceService.ToggleAllPanels();
+        workspaceService.ToggleZenMode();
 
         await Task.CompletedTask;
 

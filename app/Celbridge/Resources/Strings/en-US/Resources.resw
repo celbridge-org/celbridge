@@ -576,4 +576,7 @@ Do you wish to continue?</value>
   <data name="PanelToolbar_ResetLayoutButton" xml:space="preserve">
     <value>Reset layout</value>
   </data>
+  <data name="PanelToolbar_ZenModeLabel" xml:space="preserve">
+    <value>Zen mode</value>
+  </data>
 </root>

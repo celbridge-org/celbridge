@@ -77,23 +77,38 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
-    public void ToggleAllPanels()
+    public void ToggleZenMode()
     {
-        // Check if any panels are collapsed
-        bool anyPanelCollapsed = !_editorSettings.IsContextPanelVisible ||
-            !_editorSettings.IsInspectorPanelVisible ||
+        // Check if all panels are already collapsed
+        bool allPanelsCollapsed = !_editorSettings.IsContextPanelVisible &&
+            !_editorSettings.IsInspectorPanelVisible &&
             !_editorSettings.IsConsolePanelVisible;
 
-        if (anyPanelCollapsed)
+        if (_editorSettings.IsZenModeActive)
         {
-            // Expand all panels
+            // Exit Zen Mode - restore previous panel state
+            _editorSettings.IsContextPanelVisible = _editorSettings.ZenModePreContextPanelVisible;
+            _editorSettings.IsInspectorPanelVisible = _editorSettings.ZenModePreInspectorPanelVisible;
+            _editorSettings.IsConsolePanelVisible = _editorSettings.ZenModePreConsolePanelVisible;
+            _editorSettings.IsZenModeActive = false;
+        }
+        else if (allPanelsCollapsed)
+        {
+            // Special case: If all panels are already collapsed, don't enter Zen Mode.
+            // Instead, restore all panels (similar behavior to VS Code).
             _editorSettings.IsContextPanelVisible = true;
             _editorSettings.IsInspectorPanelVisible = true;
             _editorSettings.IsConsolePanelVisible = true;
         }
         else
         {
-            // Collapse all panels
+            // Enter Zen Mode - save current state and hide all panels
+            _editorSettings.ZenModePreContextPanelVisible = _editorSettings.IsContextPanelVisible;
+            _editorSettings.ZenModePreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
+            _editorSettings.ZenModePreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
+            _editorSettings.IsZenModeActive = true;
+            
+            // Hide all panels
             _editorSettings.IsContextPanelVisible = false;
             _editorSettings.IsInspectorPanelVisible = false;
             _editorSettings.IsConsolePanelVisible = false;

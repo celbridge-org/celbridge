@@ -10,6 +10,7 @@ public sealed partial class PanelToggleToolbar : UserControl
     private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
+    private bool _isUpdatingCheckboxes = false;
 
     public PanelToggleToolbar()
     {
@@ -63,6 +64,7 @@ public sealed partial class PanelToggleToolbar : UserControl
         ExplorerPanelLabel.Text = _stringLocalizer.GetString("PanelToolbar_ExplorerPanelLabel");
         ConsolePanelLabel.Text = _stringLocalizer.GetString("PanelToolbar_ConsolePanelLabel");
         InspectorPanelLabel.Text = _stringLocalizer.GetString("PanelToolbar_InspectorPanelLabel");
+        ZenModeLabel.Text = _stringLocalizer.GetString("PanelToolbar_ZenModeLabel");
         ResetLayoutButtonText.Text = _stringLocalizer.GetString("PanelToolbar_ResetLayoutButton");
     }
 
@@ -76,6 +78,7 @@ public sealed partial class PanelToggleToolbar : UserControl
             case nameof(IEditorSettings.ContextPanelWidth):
             case nameof(IEditorSettings.InspectorPanelWidth):
             case nameof(IEditorSettings.ConsolePanelHeight):
+            case nameof(IEditorSettings.IsZenModeActive):
                 UpdatePanelIcons();
                 UpdateCheckBoxes();
                 break;
@@ -84,9 +87,18 @@ public sealed partial class PanelToggleToolbar : UserControl
 
     private void UpdateCheckBoxes()
     {
-        ExplorerPanelToggle.IsChecked = _editorSettings.IsContextPanelVisible;
-        ConsolePanelToggle.IsChecked = _editorSettings.IsConsolePanelVisible;
-        InspectorPanelToggle.IsChecked = _editorSettings.IsInspectorPanelVisible;
+        _isUpdatingCheckboxes = true;
+        try
+        {
+            ExplorerPanelToggle.IsChecked = _editorSettings.IsContextPanelVisible;
+            ConsolePanelToggle.IsChecked = _editorSettings.IsConsolePanelVisible;
+            InspectorPanelToggle.IsChecked = _editorSettings.IsInspectorPanelVisible;
+            UpdateZenModeCheckbox();
+        }
+        finally
+        {
+            _isUpdatingCheckboxes = false;
+        }
     }
 
     private void UpdatePanelIcons()
@@ -99,21 +111,39 @@ public sealed partial class PanelToggleToolbar : UserControl
     private void ToggleExplorerPanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsContextPanelVisible = !_editorSettings.IsContextPanelVisible;
+        
+        // If user manually shows a panel while in Zen Mode, exit Zen Mode
+        if (_editorSettings.IsZenModeActive && _editorSettings.IsContextPanelVisible)
+        {
+            _editorSettings.IsZenModeActive = false;
+        }
     }
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsConsolePanelVisible = !_editorSettings.IsConsolePanelVisible;
+        
+        // If user manually shows a panel while in Zen Mode, exit Zen Mode
+        if (_editorSettings.IsZenModeActive && _editorSettings.IsConsolePanelVisible)
+        {
+            _editorSettings.IsZenModeActive = false;
+        }
     }
 
     private void ToggleInspectorPanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsInspectorPanelVisible = !_editorSettings.IsInspectorPanelVisible;
+        
+        // If user manually shows a panel while in Zen Mode, exit Zen Mode
+        if (_editorSettings.IsZenModeActive && _editorSettings.IsInspectorPanelVisible)
+        {
+            _editorSettings.IsZenModeActive = false;
+        }
     }
 
     private void ToggleAllPanelsAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        _commandService.Execute<IToggleAllPanelsCommand>();
+        _commandService.Execute<IToggleZenModeCommand>();
         args.Handled = true;
     }
 
@@ -129,25 +159,58 @@ public sealed partial class PanelToggleToolbar : UserControl
 
     private void ExplorerPanelToggle_Changed(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingCheckboxes)
+        {
+            return;
+        }
+
         if (ExplorerPanelToggle.IsChecked != _editorSettings.IsContextPanelVisible)
         {
             _editorSettings.IsContextPanelVisible = ExplorerPanelToggle.IsChecked == true;
+            
+            // If user manually shows a panel while in Zen Mode, exit Zen Mode
+            if (_editorSettings.IsZenModeActive && ExplorerPanelToggle.IsChecked == true)
+            {
+                _editorSettings.IsZenModeActive = false;
+            }
         }
     }
 
     private void ConsolePanelToggle_Changed(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingCheckboxes)
+        {
+            return;
+        }
+
         if (ConsolePanelToggle.IsChecked != _editorSettings.IsConsolePanelVisible)
         {
             _editorSettings.IsConsolePanelVisible = ConsolePanelToggle.IsChecked == true;
+            
+            // If user manually shows a panel while in Zen Mode, exit Zen Mode
+            if (_editorSettings.IsZenModeActive && ConsolePanelToggle.IsChecked == true)
+            {
+                _editorSettings.IsZenModeActive = false;
+            }
         }
     }
 
     private void InspectorPanelToggle_Changed(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingCheckboxes)
+        {
+            return;
+        }
+
         if (InspectorPanelToggle.IsChecked != _editorSettings.IsInspectorPanelVisible)
         {
             _editorSettings.IsInspectorPanelVisible = InspectorPanelToggle.IsChecked == true;
+            
+            // If user manually shows a panel while in Zen Mode, exit Zen Mode
+            if (_editorSettings.IsZenModeActive && InspectorPanelToggle.IsChecked == true)
+            {
+                _editorSettings.IsZenModeActive = false;
+            }
         }
     }
 
@@ -155,5 +218,21 @@ public sealed partial class PanelToggleToolbar : UserControl
     {
         _editorSettings.ResetPanelLayout();
         PanelLayoutFlyout.Hide();
+    }
+
+    private void ZenModeToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingCheckboxes)
+        {
+            return;
+        }
+
+        _commandService.Execute<IToggleZenModeCommand>();
+    }
+
+    private void UpdateZenModeCheckbox()
+    {
+        // Zen mode checkbox is checked only when explicitly in Zen Mode
+        ZenModeToggle.IsChecked = _editorSettings.IsZenModeActive;
     }
 }

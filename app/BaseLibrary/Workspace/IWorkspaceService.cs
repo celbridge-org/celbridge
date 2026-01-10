@@ -76,9 +76,9 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Toggle all workspace panels. If any panel is collapsed, expand all panels. Otherwise, collapse all panels.
+    /// Toggle Zen Mode. Entering Zen Mode hides all panels and saves their state. Exiting Zen Mode restores the previous panel state.
     /// </summary>
-    void ToggleAllPanels();
+    void ToggleZenMode();
 
     /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.

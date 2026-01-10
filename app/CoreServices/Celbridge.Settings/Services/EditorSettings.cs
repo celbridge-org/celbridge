@@ -125,6 +125,30 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
+    public bool IsZenModeActive
+    {
+        get => GetValue<bool>(nameof(IsZenModeActive), false);
+        set => SetValue(nameof(IsZenModeActive), value);
+    }
+
+    public bool ZenModePreContextPanelVisible
+    {
+        get => GetValue<bool>(nameof(ZenModePreContextPanelVisible), true);
+        set => SetValue(nameof(ZenModePreContextPanelVisible), value);
+    }
+
+    public bool ZenModePreInspectorPanelVisible
+    {
+        get => GetValue<bool>(nameof(ZenModePreInspectorPanelVisible), true);
+        set => SetValue(nameof(ZenModePreInspectorPanelVisible), value);
+    }
+
+    public bool ZenModePreConsolePanelVisible
+    {
+        get => GetValue<bool>(nameof(ZenModePreConsolePanelVisible), true);
+        set => SetValue(nameof(ZenModePreConsolePanelVisible), value);
+    }
+
     public void ResetPanelLayout()
     {
         IsContextPanelVisible = true;

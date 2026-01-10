@@ -123,7 +123,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
 
     public void ToggleAllPanels()
     {
-        _commandService.Execute<IToggleAllPanelsCommand>();
+        _commandService.Execute<IToggleZenModeCommand>();
     }
 
     public void NavigateToURL(string url)

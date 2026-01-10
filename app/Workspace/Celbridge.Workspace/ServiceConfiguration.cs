@@ -46,7 +46,7 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        services.AddTransient<IToggleAllPanelsCommand, ToggleAllPanelsCommand>();
+        services.AddTransient<IToggleZenModeCommand, ToggleZenModeCommand>();
         services.AddTransient<IAlertCommand, AlertCommand>();
 
     }
