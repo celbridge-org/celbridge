@@ -7,7 +7,6 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
-using Celbridge.Status;
 
 namespace Celbridge.Workspace;
 
@@ -50,11 +49,6 @@ public interface IWorkspaceService
     /// Returns the Inspector Service associated with the workspace.
     /// </summary>
     IInspectorService InspectorService { get; }
-
-    /// <summary>
-    /// Returns the Status Service associated with the workspace.
-    /// </summary>
-    IStatusService StatusService { get; }
 
     /// <summary>
     /// Returns the Data Transfer Service associated with the workspace.

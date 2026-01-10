@@ -112,9 +112,6 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
             ConsolePanel.Children.Add(consolePanel);
 
-            var statusPanel = workspaceService.StatusService.StatusPanel as UIElement;
-            StatusPanel.Children.Add(statusPanel);
-
             workspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
 
             _ = ViewModel.LoadWorkspaceAsync();
