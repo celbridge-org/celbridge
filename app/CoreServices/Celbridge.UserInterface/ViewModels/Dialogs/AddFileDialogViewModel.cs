@@ -195,6 +195,9 @@ public partial class AddFileDialogViewModel : ObservableObject
         _isUpdatingFromCode = true;
         FileName = defaultFileName;
         _isUpdatingFromCode = false;
+
+        // Update validation state after setting the default filename
+        UpdateValidationState();
     }
 
     /// <summary>
