@@ -1,9 +1,12 @@
-using Celbridge.UserInterface;
-
 namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
 {
+    private const float DefaultContextPanelWidth = 300f;
+    private const float DefaultInspectorPanelWidth = 300f;
+    private const float DefaultConsolePanelHeight = 350f;
+    private const float DefaultDetailPanelHeight = 250f;
+
     public EditorSettings(ISettingsGroup settingsGroup)
         : base(settingsGroup, nameof(EditorSettings))
     {}
@@ -16,7 +19,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float ContextPanelWidth
     {
-        get => GetValue<float>(nameof(ContextPanelWidth), 300);
+        get => GetValue<float>(nameof(ContextPanelWidth), DefaultContextPanelWidth);
         set => SetValue(nameof(ContextPanelWidth), value);
     }
 
@@ -28,7 +31,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float InspectorPanelWidth
     {
-        get => GetValue<float>(nameof(InspectorPanelWidth), 300);
+        get => GetValue<float>(nameof(InspectorPanelWidth), DefaultInspectorPanelWidth);
         set => SetValue(nameof(InspectorPanelWidth), value);
     }
 
@@ -40,13 +43,13 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float ConsolePanelHeight
     {
-        get => GetValue<float>(nameof(ConsolePanelHeight), 350);
+        get => GetValue<float>(nameof(ConsolePanelHeight), DefaultConsolePanelHeight);
         set => SetValue(nameof(ConsolePanelHeight), value);
     }
 
     public float DetailPanelHeight
     {
-        get => GetValue<float>(nameof(DetailPanelHeight), 250);
+        get => GetValue<float>(nameof(DetailPanelHeight), DefaultDetailPanelHeight);
         set => SetValue(nameof(DetailPanelHeight), value);
     }
 
@@ -120,5 +123,15 @@ public class EditorSettings : ObservableSettings, IEditorSettings
     {
         get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
         set => SetValue(nameof(PreviousNewFileExtension), value);
+    }
+
+    public void ResetPanelLayout()
+    {
+        IsContextPanelVisible = true;
+        ContextPanelWidth = DefaultContextPanelWidth;
+        IsInspectorPanelVisible = true;
+        InspectorPanelWidth = DefaultInspectorPanelWidth;
+        IsConsolePanelVisible = true;
+        ConsolePanelHeight = DefaultConsolePanelHeight;
     }
 }

@@ -73,6 +73,11 @@ public interface IEditorSettings : INotifyPropertyChanged
     void Reset();
 
     /// <summary>
+    /// Resets the panel layout to default visibility and sizes.
+    /// </summary>
+    void ResetPanelLayout();
+
+    /// <summary>
     /// Gets or Sets the Application User Interface Theme value.
     /// </summary>
     ApplicationColorTheme Theme { get; set; }

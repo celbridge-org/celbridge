@@ -561,4 +561,19 @@ Do you wish to continue?</value>
   <data name="PanelToolbar_ToggleInspectorTooltip" xml:space="preserve">
     <value>Toggle Inspector panel (F4: toggle all)</value>
   </data>
+  <data name="PanelToolbar_CustomizeLayoutTooltip" xml:space="preserve">
+    <value>Customize layout</value>
+  </data>
+  <data name="PanelToolbar_ExplorerPanelLabel" xml:space="preserve">
+    <value>Explorer panel</value>
+  </data>
+  <data name="PanelToolbar_ConsolePanelLabel" xml:space="preserve">
+    <value>Console panel</value>
+  </data>
+  <data name="PanelToolbar_InspectorPanelLabel" xml:space="preserve">
+    <value>Inspector panel</value>
+  </data>
+  <data name="PanelToolbar_ResetLayoutButton" xml:space="preserve">
+    <value>Reset layout</value>
+  </data>
 </root>
