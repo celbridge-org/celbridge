@@ -3,7 +3,13 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:Celbridge.UserInterface.Views">
+    xmlns:controls="using:Celbridge.UserInterface.Views"
+    xmlns:services="using:Celbridge.UserInterface.Services">
+
+    <UserControl.Resources>
+        <services:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
+        <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
 
     <Grid x:Name="MainGrid"
           HorizontalAlignment="Stretch"
@@ -34,6 +40,7 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <Image Source="ms-appx:///Assets/Images/title_icon.png"
@@ -48,12 +55,25 @@
                    HorizontalAlignment="Left"
                    VerticalAlignment="Center"/>
 
+        <!-- Save Icon - positioned to the left of panel toggle toolbar -->
+        <FontIcon x:Name="SaveIcon"
+                  Grid.Column="3"
+                  Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Center"
+                  Margin="0,0,16,0"
+                  Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                  FontSize="18"
+                  Glyph="&#xE74E;"/>
+
         <!-- Panel Toggle Toolbar - positioned on the right side of the title bar, leaving space for system caption buttons -->
         <controls:PanelToggleToolbar x:Name="PanelToolbar"
-                                     Grid.Column="3"
-                                     Visibility="Collapsed"
+                                     Grid.Column="4"
+                                     Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                      HorizontalAlignment="Right"
                                      VerticalAlignment="Center"
                                      Margin="0,0,144,0"/>
   </Grid>
 </UserControl>
+

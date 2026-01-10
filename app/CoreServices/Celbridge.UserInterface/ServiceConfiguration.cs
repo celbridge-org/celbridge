@@ -6,6 +6,7 @@ using Celbridge.Navigation;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.Services.Forms;
+using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.UserInterface.ViewModels.Forms;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views;
@@ -45,6 +46,7 @@ public static class ServiceConfiguration
         services.AddTransient<MainPageViewModel>();
         services.AddTransient<HomePageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
+        services.AddTransient<TitleBarViewModel>();
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();

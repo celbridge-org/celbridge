@@ -10,7 +10,6 @@ using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
-using Celbridge.Status;
 
 namespace Celbridge.Workspace.Services;
 
@@ -34,7 +33,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 //  public IDebugService DebugService { get; }
 //  public IRevisionControlService RevisionControlService { get; }
 
-    public IStatusService StatusService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
@@ -63,7 +61,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
-        StatusService = serviceProvider.GetRequiredService<IStatusService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
@@ -216,7 +213,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();
-                (StatusService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
                 (GenerativeAIService as IDisposable)!.Dispose();
