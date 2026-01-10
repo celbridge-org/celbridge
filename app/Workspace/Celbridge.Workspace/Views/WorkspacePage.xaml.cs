@@ -155,6 +155,24 @@ public sealed partial class WorkspacePage : Celbridge.UserInterface.Views.Persis
             case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
                 break;
+            case nameof(ViewModel.ContextPanelWidth):
+                if (ViewModel.IsContextPanelVisible && ViewModel.ContextPanelWidth > 0)
+                {
+                    ContextPanelColumn.Width = new GridLength(ViewModel.ContextPanelWidth);
+                }
+                break;
+            case nameof(ViewModel.InspectorPanelWidth):
+                if (ViewModel.IsInspectorPanelVisible && ViewModel.InspectorPanelWidth > 0)
+                {
+                    InspectorPanelColumn.Width = new GridLength(ViewModel.InspectorPanelWidth);
+                }
+                break;
+            case nameof(ViewModel.ConsolePanelHeight):
+                if (ViewModel.IsConsolePanelVisible && ViewModel.ConsolePanelHeight > 0)
+                {
+                    ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
+                }
+                break;
         }
     }
 
