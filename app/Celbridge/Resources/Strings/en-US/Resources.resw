@@ -553,13 +553,13 @@ Do you wish to continue?</value>
     <value>Copy file path</value>
   </data>
   <data name="PanelToolbar_ToggleExplorerTooltip" xml:space="preserve">
-    <value>Toggle Explorer panel (F4: toggle all)</value>
+    <value>Toggle Explorer panel</value>
   </data>
   <data name="PanelToolbar_ToggleConsoleTooltip" xml:space="preserve">
-    <value>Toggle Console panel (F4: toggle all)</value>
+    <value>Toggle Console panel</value>
   </data>
   <data name="PanelToolbar_ToggleInspectorTooltip" xml:space="preserve">
-    <value>Toggle Inspector panel (F4: toggle all)</value>
+    <value>Toggle Inspector panel</value>
   </data>
   <data name="PanelToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize layout</value>

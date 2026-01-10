@@ -27,6 +27,10 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
+#if WINDOWS
+    private ZenModeToolbar? _zenModeToolbar;
+#endif
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Catch all types of unhandled exceptions
@@ -186,19 +190,35 @@ public partial class App : Application
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
-        if (MainWindow.Content is not Frame rootFrame)
+        if (MainWindow.Content is not Grid rootGrid || rootGrid.Name != "RootContainer")
         {
             // Create a Frame to act as the navigation context and navigate to the first page
-            rootFrame = new Frame();
+            var rootFrame = new Frame();
 
-            // Place the frame in the current Window
-            MainWindow.Content = rootFrame;
+            // Create a root container Grid to hold both the Frame and the ZenModeToolbar overlay
+            rootGrid = new Grid { Name = "RootContainer" };
+            rootGrid.Children.Add(rootFrame);
+
+#if WINDOWS
+            // Add the Zen Mode toolbar overlay (appears when in fullscreen Zen Mode)
+            _zenModeToolbar = new ZenModeToolbar();
+            rootGrid.Children.Add(_zenModeToolbar);
+
+            // Track mouse movement for Zen Mode toolbar
+            rootGrid.PointerMoved += OnRootGrid_PointerMoved;
+#endif
+
+            // Place the grid in the current Window
+            MainWindow.Content = rootGrid;
 
             // Set the title (visible in light mode)
             var localizer = Host.Services.GetRequiredService<IStringLocalizer>();
             var applicationNameString = localizer.GetString("ApplicationName");
             MainWindow.Title = localizer[applicationNameString];
         }
+
+        // Get the Frame from the root grid
+        var contentFrame = (MainWindow.Content as Grid)?.Children.OfType<Frame>().FirstOrDefault();
 
         MainWindow.Closed += (s, e) =>
         {
@@ -214,42 +234,53 @@ public partial class App : Application
             // Flush any events that are still pending in the logger
             var appLogger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
             appLogger.Shutdown();
-        };
 
-        rootFrame.Loaded += (s, e) =>
-        {
-            //
-            // Initialize the user interface and page navigation services
-            // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
-            //
-
-            var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
-            Guard.IsNotNull(userInterfaceService);
-
-            XamlRoot xamlRoot = rootFrame.XamlRoot!;
-            Guard.IsNotNull(xamlRoot);
-
-            var initResult = userInterfaceService.Initialize(MainWindow, xamlRoot);
-            if (initResult.IsFailure)
+#if WINDOWS
+            // Clean up mouse tracking
+            if (MainWindow.Content is Grid grid)
             {
-                logger.LogError(initResult.Error);
-                // Do not start command execution if UI initialization fails
-                // Todo: Alert the user that the application could not start and to check the logs.
-                return;
+                grid.PointerMoved -= OnRootGrid_PointerMoved;
             }
-
-            // Start executing commands
-            var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
-            Guard.IsNotNull(commandService);
-            commandService.StartExecution();
+#endif
         };
 
-        if (rootFrame.Content == null)
+        if (contentFrame != null)
         {
-            // When the navigation stack isn't restored navigate to the first page,
-            // configuring the new page by passing required information as a navigation
-            // parameter
-            rootFrame.Navigate(typeof(MainPage), args.Arguments);
+            contentFrame.Loaded += (s, e) =>
+            {
+                //
+                // Initialize the user interface and page navigation services
+                // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
+                //
+
+                var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
+                Guard.IsNotNull(userInterfaceService);
+
+                XamlRoot xamlRoot = contentFrame.XamlRoot!;
+                Guard.IsNotNull(xamlRoot);
+
+                var initResult = userInterfaceService.Initialize(MainWindow, xamlRoot);
+                if (initResult.IsFailure)
+                {
+                    logger.LogError(initResult.Error);
+                    // Do not start command execution if UI initialization fails
+                    // Todo: Alert the user that the application could not start and to check the logs.
+                    return;
+                }
+
+                // Start executing commands
+                var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
+                Guard.IsNotNull(commandService);
+                commandService.StartExecution();
+            };
+
+            if (contentFrame.Content == null)
+            {
+                // When the navigation stack isn't restored navigate to the first page,
+                // configuring the new page by passing required information as a navigation
+                // parameter
+                contentFrame.Navigate(typeof(MainPage), args.Arguments);
+            }
         }
 
         // Ensure the current window is active
@@ -302,6 +333,17 @@ public partial class App : Application
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
         logger.LogError(exception, "An unhandled exception occurred");
     }
+
+#if WINDOWS
+    private void OnRootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (_zenModeToolbar != null && MainWindow?.Content != null)
+        {
+            var position = e.GetCurrentPoint(MainWindow.Content).Position;
+            _zenModeToolbar.OnPointerMoved(position.Y);
+        }
+    }
+#endif
 
 
     /// <summary>

@@ -37,8 +37,8 @@ public partial class MainPage : Page
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
-    private IProjectConfigService _projectConfigService;
     private IProjectService _projectService;
+    private IMessengerService _messengerService;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
@@ -47,12 +47,16 @@ public partial class MainPage : Page
     private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
     private string _currentNavigationTag = NavigationConstants.HomeTag;
 
+#if WINDOWS
+    private TitleBar? _titleBar;
+#endif
+
     public MainPage()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
-        _projectConfigService = ServiceLocator.AcquireService<IProjectConfigService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -174,16 +178,6 @@ public partial class MainPage : Page
         Unloaded += OnMainPage_Unloaded;
     }
 
-    private void MainNavigation_Loaded(object sender, RoutedEventArgs e)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void MainPage_Loaded(object sender, RoutedEventArgs e)
-    {
-        throw new NotImplementedException();
-    }
-
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
         var mainWindow = _userInterfaceService.MainWindow as Window;
@@ -191,11 +185,11 @@ public partial class MainPage : Page
 
 #if WINDOWS
         // Setup the custom title bar (Windows only)
-        var titleBar = new TitleBar();
-        _layoutRoot.Children.Add(titleBar);
+        _titleBar = new TitleBar();
+        _layoutRoot.Children.Add(_titleBar);
 
         mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
+        mainWindow.SetTitleBar(_titleBar);
 
         // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
         // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
@@ -205,8 +199,11 @@ public partial class MainPage : Page
             appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
         }
 
-        _userInterfaceService.RegisterTitleBar(titleBar);
+        _userInterfaceService.RegisterTitleBar(_titleBar);
 #endif
+
+        // Register for Zen Mode changes
+        _messengerService.Register<ZenModeChangedMessage>(this, OnZenModeChanged);
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
@@ -252,6 +249,8 @@ public partial class MainPage : Page
 
         // Unregister all event handlers to avoid memory leaks
 
+        _messengerService.UnregisterAll(this);
+
         ViewModel.OnNavigate -= OnViewModel_Navigate;
         ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
         ViewModel.ReturnCurrentPage = ReturnCurrentPage;
@@ -264,6 +263,41 @@ public partial class MainPage : Page
         _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
+    private void OnZenModeChanged(object recipient, ZenModeChangedMessage message)
+    {
+        var mainWindow = _userInterfaceService.MainWindow as Window;
+        Guard.IsNotNull(mainWindow);
+
+#if WINDOWS
+        var appWindow = mainWindow.AppWindow;
+        if (appWindow != null)
+        {
+            if (message.IsZenModeActive)
+            {
+                // Enter fullscreen mode
+                appWindow.SetPresenter(Microsoft.UI.Windowing.AppWindowPresenterKind.FullScreen);
+                
+                // Hide the title bar
+                if (_titleBar != null)
+                {
+                    _titleBar.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                // Exit fullscreen mode
+                appWindow.SetPresenter(Microsoft.UI.Windowing.AppWindowPresenterKind.Default);
+                
+                // Show the title bar
+                if (_titleBar != null)
+                {
+                    _titleBar.Visibility = Visibility.Visible;
+                }
+            }
+        }
+#endif
+    }
+
     private bool OnKeyDown(VirtualKey key)
     {
         // Use the HasFlag method to check if the control key is down.
@@ -273,6 +307,14 @@ public partial class MainPage : Page
 
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
+
+        // F11 toggles Zen Mode / Fullscreen (universal shortcut)
+        if (key == VirtualKey.F11)
+        {
+            var commandService = ServiceLocator.AcquireService<Commands.ICommandService>();
+            commandService.Execute<IToggleZenModeCommand>();
+            return true;
+        }
 
         // All platforms redo shortcut
         if (control && shift && key == VirtualKey.Z)

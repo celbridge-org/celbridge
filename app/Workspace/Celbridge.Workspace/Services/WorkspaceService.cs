@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
@@ -19,6 +20,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IEditorSettings _editorSettings;
+    private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
@@ -46,10 +48,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
         IEditorSettings editorSettings,
+        IMessengerService messengerService,
         IProjectService projectService)
     {
         _logger = logger;
         _editorSettings = editorSettings;
+        _messengerService = messengerService;
 
         ContextAreaUsageDetails = new ContextAreaUsage();
 
@@ -91,6 +95,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             _editorSettings.IsInspectorPanelVisible = _editorSettings.ZenModePreInspectorPanelVisible;
             _editorSettings.IsConsolePanelVisible = _editorSettings.ZenModePreConsolePanelVisible;
             _editorSettings.IsZenModeActive = false;
+            
+            // Notify UI that Zen Mode has been exited
+            var message = new ZenModeChangedMessage(false);
+            _messengerService.Send(message);
         }
         else if (allPanelsCollapsed)
         {
@@ -112,6 +120,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             _editorSettings.IsContextPanelVisible = false;
             _editorSettings.IsInspectorPanelVisible = false;
             _editorSettings.IsConsolePanelVisible = false;
+            
+            // Notify UI that Zen Mode has been entered
+            var message = new ZenModeChangedMessage(true);
+            _messengerService.Send(message);
         }
     }
 

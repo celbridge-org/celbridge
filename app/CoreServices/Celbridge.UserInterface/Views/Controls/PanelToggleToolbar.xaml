@@ -112,9 +112,6 @@
                 Padding="6"
                 Background="Transparent"
                 BorderThickness="0">
-            <Button.KeyboardAccelerators>
-                <KeyboardAccelerator Key="F4" Invoked="ToggleAllPanelsAccelerator_Invoked" />
-            </Button.KeyboardAccelerators>
             <icons:ExplorerPanelIcon x:Name="ExplorerPanelIcon"/>
         </Button>
         
