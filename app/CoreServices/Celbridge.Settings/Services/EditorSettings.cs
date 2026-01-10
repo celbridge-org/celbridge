@@ -16,7 +16,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float ContextPanelWidth
     {
-        get => GetValue<float>(nameof(ContextPanelWidth), 250);
+        get => GetValue<float>(nameof(ContextPanelWidth), 300);
         set => SetValue(nameof(ContextPanelWidth), value);
     }
 
@@ -28,7 +28,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float InspectorPanelWidth
     {
-        get => GetValue<float>(nameof(InspectorPanelWidth), 250);
+        get => GetValue<float>(nameof(InspectorPanelWidth), 300);
         set => SetValue(nameof(InspectorPanelWidth), value);
     }
 
@@ -40,13 +40,13 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float ConsolePanelHeight
     {
-        get => GetValue<float>(nameof(ConsolePanelHeight), 300 );  // %%% Need to find way of reading height of application window here.
+        get => GetValue<float>(nameof(ConsolePanelHeight), 350);
         set => SetValue(nameof(ConsolePanelHeight), value);
     }
 
     public float DetailPanelHeight
     {
-        get => GetValue<float>(nameof(DetailPanelHeight), 200);
+        get => GetValue<float>(nameof(DetailPanelHeight), 250);
         set => SetValue(nameof(DetailPanelHeight), value);
     }
 
