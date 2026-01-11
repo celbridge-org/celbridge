@@ -77,9 +77,9 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Sets the layout mode for the workspace.
+    /// Sets the window layout for the workspace.
     /// </summary>
-    void SetLayoutMode(LayoutMode layoutMode);
+    void SetWindowLayout(WindowLayout windowLayout);
 
     /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.

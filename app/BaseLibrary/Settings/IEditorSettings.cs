@@ -79,16 +79,16 @@ public interface IEditorSettings : INotifyPropertyChanged
     string PreviousNewFileExtension { get; set; }
 
     // ========================================
-    // Layout Mode State
+    // Window Layout State
     // ========================================
 
     /// <summary>
-    /// Gets or sets the current layout mode.
+    /// Gets or sets the current window layout.
     /// Note: This setting is persisted but the application always starts 
     /// in Windowed mode regardless of the persisted value. This property
-    /// allows clients to listen for changes to the LayoutMode at runtime.
+    /// allows clients to listen for changes to the WindowLayout at runtime.
     /// </summary>
-    LayoutMode LayoutMode { get; set; }
+    WindowLayout WindowLayout { get; set; }
 
     /// <summary>
     /// Gets or sets the Context panel visibility before entering a fullscreen mode.

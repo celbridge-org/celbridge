@@ -87,7 +87,7 @@ public sealed partial class LayoutToolbar : UserControl
                 UpdatePanelIcons();
                 UpdateCheckBoxes();
                 break;
-            case nameof(IEditorSettings.LayoutMode):
+            case nameof(IEditorSettings.WindowLayout):
                 UpdatePanelIcons();
                 UpdateCheckBoxes();
                 UpdateLayoutModeRadios();
@@ -115,11 +115,11 @@ public sealed partial class LayoutToolbar : UserControl
         _isUpdatingUI = true;
         try
         {
-            var layoutMode = _editorSettings.LayoutMode;
-            WindowedModeRadio.IsChecked = layoutMode == LayoutMode.Windowed;
-            FullScreenModeRadio.IsChecked = layoutMode == LayoutMode.FullScreen;
-            ZenModeRadio.IsChecked = layoutMode == LayoutMode.ZenMode;
-            PresenterModeRadio.IsChecked = layoutMode == LayoutMode.Presenter;
+            var windowLayout = _editorSettings.WindowLayout;
+            WindowedModeRadio.IsChecked = windowLayout == WindowLayout.Windowed;
+            FullScreenModeRadio.IsChecked = windowLayout == WindowLayout.FullScreen;
+            ZenModeRadio.IsChecked = windowLayout == WindowLayout.ZenMode;
+            PresenterModeRadio.IsChecked = windowLayout == WindowLayout.Presenter;
         }
         finally
         {
@@ -141,7 +141,7 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsContextPanelVisible)
         {
-            SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
         }
     }
 
@@ -152,7 +152,7 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsConsolePanelVisible)
         {
-            SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
         }
     }
 
@@ -163,14 +163,14 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsInspectorPanelVisible)
         {
-            SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
         }
     }
 
     private bool IsFullscreenModeWithHiddenPanels()
     {
-        var mode = _editorSettings.LayoutMode;
-        return mode == LayoutMode.ZenMode || mode == LayoutMode.Presenter;
+        var layout = _editorSettings.WindowLayout;
+        return layout == WindowLayout.ZenMode || layout == WindowLayout.Presenter;
     }
 
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -197,7 +197,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && ExplorerPanelToggle.IsChecked == true)
             {
-                SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
             }
         }
     }
@@ -216,7 +216,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && ConsolePanelToggle.IsChecked == true)
             {
-                SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
             }
         }
     }
@@ -235,7 +235,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && InspectorPanelToggle.IsChecked == true)
             {
-                SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
             }
         }
     }
@@ -245,9 +245,9 @@ public sealed partial class LayoutToolbar : UserControl
         _editorSettings.ResetPanelState();
         
         // Also reset to Windowed mode
-        if (_editorSettings.LayoutMode != LayoutMode.Windowed)
+        if (_editorSettings.WindowLayout != WindowLayout.Windowed)
         {
-            SetLayoutModeViaWorkspace(LayoutMode.Windowed);
+            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
         }
         
         PanelLayoutFlyout.Hide();
@@ -260,23 +260,23 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        LayoutMode newMode;
+        WindowLayout newLayout;
         
         if (ReferenceEquals(sender, WindowedModeRadio))
         {
-            newMode = LayoutMode.Windowed;
+            newLayout = WindowLayout.Windowed;
         }
         else if (ReferenceEquals(sender, FullScreenModeRadio))
         {
-            newMode = LayoutMode.FullScreen;
+            newLayout = WindowLayout.FullScreen;
         }
         else if (ReferenceEquals(sender, ZenModeRadio))
         {
-            newMode = LayoutMode.ZenMode;
+            newLayout = WindowLayout.ZenMode;
         }
         else if (ReferenceEquals(sender, PresenterModeRadio))
         {
-            newMode = LayoutMode.Presenter;
+            newLayout = WindowLayout.Presenter;
         }
         else
         {
@@ -284,17 +284,17 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        if (_editorSettings.LayoutMode != newMode)
+        if (_editorSettings.WindowLayout != newLayout)
         {
-            SetLayoutModeViaWorkspace(newMode);
+            SetWindowLayoutViaWorkspace(newLayout);
         }
     }
 
-    private void SetLayoutModeViaWorkspace(LayoutMode layoutMode)
+    private void SetWindowLayoutViaWorkspace(WindowLayout windowLayout)
     {
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _workspaceWrapper.WorkspaceService.SetLayoutMode(layoutMode);
+            _workspaceWrapper.WorkspaceService.SetWindowLayout(windowLayout);
         }
     }
 }

@@ -1,5 +1,3 @@
-using Celbridge.Settings;
-
 namespace Celbridge.Workspace;
 
 /// <summary>
@@ -43,9 +41,3 @@ public record WorkspacePageActivatedMessage();
 /// Sent when the user navigates away from the workspace page to another page.
 /// </summary>
 public record WorkspacePageDeactivatedMessage();
-
-/// <summary>
-/// Message sent when the layout mode changes.
-/// </summary>
-public record LayoutModeChangedMessage(LayoutMode LayoutMode);
-

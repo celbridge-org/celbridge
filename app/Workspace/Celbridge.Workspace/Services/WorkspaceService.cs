@@ -11,6 +11,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Services;
 
@@ -81,39 +82,39 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
     }
 
-    public void SetLayoutMode(LayoutMode layoutMode)
+    public void SetWindowLayout(WindowLayout windowLayout)
     {
-        var currentMode = _editorSettings.LayoutMode;
+        var currentLayout = _editorSettings.WindowLayout;
         
-        if (currentMode == layoutMode)
+        if (currentLayout == windowLayout)
         {
             return;
         }
 
         // If leaving Windowed mode, save current panel state
-        if (currentMode == LayoutMode.Windowed)
+        if (currentLayout == WindowLayout.Windowed)
         {
             _editorSettings.FullscreenPreContextPanelVisible = _editorSettings.IsContextPanelVisible;
             _editorSettings.FullscreenPreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
             _editorSettings.FullscreenPreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
         }
 
-        // Apply the new layout mode
-        _editorSettings.LayoutMode = layoutMode;
+        // Apply the new window layout
+        _editorSettings.WindowLayout = windowLayout;
 
-        // Apply panel visibility based on the new mode
-        switch (layoutMode)
+        // Apply panel visibility based on the new layout
+        switch (windowLayout)
         {
-            case LayoutMode.Windowed:
-            case LayoutMode.FullScreen:
+            case WindowLayout.Windowed:
+            case WindowLayout.FullScreen:
                 // Restore panel visibility when returning to Windowed or FullScreen mode
                 _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
                 _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
                 _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
                 break;
 
-            case LayoutMode.ZenMode:
-            case LayoutMode.Presenter:
+            case WindowLayout.ZenMode:
+            case WindowLayout.Presenter:
                 // Hide all panels in Zen Mode and Presenter mode
                 _editorSettings.IsContextPanelVisible = false;
                 _editorSettings.IsInspectorPanelVisible = false;
@@ -121,8 +122,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 break;
         }
 
-        // Notify UI about the layout mode change
-        var message = new LayoutModeChangedMessage(layoutMode);
+        // Notify UI about the window layout change
+        var message = new WindowLayoutChangedMessage(windowLayout);
         _messengerService.Send(message);
     }
 

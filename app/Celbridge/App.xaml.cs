@@ -178,15 +178,15 @@ public partial class App : Application
         InitializeCoreServices();
 
         // Ensure the application always starts in Windowed mode, regardless of
-        // what layout mode was saved from the previous session.
+        // what window layout was saved from the previous session.
 #if WINDOWS
         {
             var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
-            if (editorSettings.LayoutMode != LayoutMode.Windowed)
+            if (editorSettings.WindowLayout != WindowLayout.Windowed)
             {
                 // Don't trigger UI updates yet - just reset the persisted value
                 // The UI will read the correct value when it initializes
-                editorSettings.LayoutMode = LayoutMode.Windowed;
+                editorSettings.WindowLayout = WindowLayout.Windowed;
             }
         }
 #endif
@@ -209,7 +209,7 @@ public partial class App : Application
             // Create a Frame to act as the navigation context and navigate to the first page
             var rootFrame = new Frame();
 
-            // Create a root container Grid to hold both the Frame and the ZenModeToolbar overlay
+            // Create a root container Grid to hold both the Frame and the FullscreenToolbar overlay
             rootGrid = new Grid { Name = "RootContainer" };
             rootGrid.Children.Add(rootFrame);
 

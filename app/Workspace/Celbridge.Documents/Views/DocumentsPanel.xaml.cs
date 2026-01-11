@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
@@ -97,29 +98,29 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         ViewModel.OnViewLoaded();
         
-        // Listen for layout mode changes to show/hide tab strip in Presenter mode
-        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+        // Listen for window layout changes to show/hide tab strip in Presenter mode
+        _messengerService.Register<WindowLayoutChangedMessage>(this, OnWindowLayoutChanged);
         
-        // Apply initial tab strip visibility based on current layout mode
-        UpdateTabStripVisibility(_editorSettings.LayoutMode);
+        // Apply initial tab strip visibility based on current window layout
+        UpdateTabStripVisibility(_editorSettings.WindowLayout);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
-        _messengerService.Unregister<LayoutModeChangedMessage>(this);
+        _messengerService.Unregister<WindowLayoutChangedMessage>(this);
     }
 
-    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
+    private void OnWindowLayoutChanged(object recipient, WindowLayoutChangedMessage message)
     {
-        UpdateTabStripVisibility(message.LayoutMode);
+        UpdateTabStripVisibility(message.WindowLayout);
     }
 
-    private void UpdateTabStripVisibility(LayoutMode layoutMode)
+    private void UpdateTabStripVisibility(WindowLayout windowLayout)
     {
         // In Presenter mode, hide the tab strip to show only the document content
         // In all other modes, show the tab strip
-        bool showTabStrip = layoutMode != LayoutMode.Presenter;
+        bool showTabStrip = windowLayout != WindowLayout.Presenter;
         
         // Find the TabStrip element within the TabView template and set its visibility
         // The TabView's tab strip is in a Grid row that we can collapse

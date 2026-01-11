@@ -24,12 +24,12 @@ public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var currentMode = _editorSettings.LayoutMode;
+        var currentLayout = _editorSettings.WindowLayout;
 
         // Toggle between Windowed and ZenMode
         // If in any fullscreen mode, return to Windowed
         // If in Windowed mode, enter ZenMode
-        if (currentMode == LayoutMode.Windowed)
+        if (currentLayout == WindowLayout.Windowed)
         {
             // Check if all panels are already collapsed
             bool allPanelsCollapsed = !_editorSettings.IsContextPanelVisible &&
@@ -46,13 +46,13 @@ public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
             }
             else
             {
-                workspaceService.SetLayoutMode(LayoutMode.ZenMode);
+                workspaceService.SetWindowLayout(WindowLayout.ZenMode);
             }
         }
         else
         {
             // Exit any fullscreen mode back to Windowed
-            workspaceService.SetLayoutMode(LayoutMode.Windowed);
+            workspaceService.SetWindowLayout(WindowLayout.Windowed);
         }
 
         await Task.CompletedTask;

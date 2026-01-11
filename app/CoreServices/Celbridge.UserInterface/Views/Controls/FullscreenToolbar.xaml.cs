@@ -55,8 +55,8 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void FullscreenToolbar_Loaded(object sender, RoutedEventArgs e)
     {
-        // Register for Layout Mode changes
-        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+        // Register for Window Layout changes
+        _messengerService.Register<WindowLayoutChangedMessage>(this, OnWindowLayoutChanged);
         
         // Check if already in a fullscreen mode
         UpdateFullscreenState();
@@ -72,7 +72,7 @@ public sealed partial class FullscreenToolbar : UserControl
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
+    private void OnWindowLayoutChanged(object recipient, WindowLayoutChangedMessage message)
     {
         UpdateFullscreenState();
 
@@ -85,10 +85,10 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void UpdateFullscreenState()
     {
-        var layoutMode = _editorSettings.LayoutMode;
-        _isFullscreenModeActive = layoutMode == LayoutMode.FullScreen || 
-                                  layoutMode == LayoutMode.ZenMode || 
-                                  layoutMode == LayoutMode.Presenter;
+        var windowLayout = _editorSettings.WindowLayout;
+        _isFullscreenModeActive = windowLayout == WindowLayout.FullScreen || 
+                                  windowLayout == WindowLayout.ZenMode || 
+                                  windowLayout == WindowLayout.Presenter;
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ public sealed partial class FullscreenToolbar : UserControl
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (workspaceWrapper.IsWorkspacePageLoaded)
         {
-            workspaceWrapper.WorkspaceService.SetLayoutMode(LayoutMode.Windowed);
+            workspaceWrapper.WorkspaceService.SetWindowLayout(WindowLayout.Windowed);
         }
     }
 }

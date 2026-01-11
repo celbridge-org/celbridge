@@ -203,8 +203,8 @@ public partial class MainPage : Page
         _userInterfaceService.RegisterTitleBar(_titleBar);
 #endif
 
-        // Register for layout mode changes
-        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+        // Register for window layout changes
+        _messengerService.Register<WindowLayoutChangedMessage>(this, OnWindowLayoutChanged);
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
@@ -264,16 +264,16 @@ public partial class MainPage : Page
         _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
-    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
+    private void OnWindowLayoutChanged(object recipient, WindowLayoutChangedMessage message)
     {
 #if WINDOWS
-        // Show/hide the title bar based on layout mode
+        // Show/hide the title bar based on window layout
         // In Windowed and FullScreen modes, the title bar is visible
         // In ZenMode and Presenter modes, the title bar is hidden
         if (_titleBar != null)
         {
-            bool showTitleBar = message.LayoutMode == LayoutMode.Windowed || 
-                                message.LayoutMode == LayoutMode.FullScreen;
+            bool showTitleBar = message.WindowLayout == WindowLayout.Windowed || 
+                                message.WindowLayout == WindowLayout.FullScreen;
             _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
         }
 #endif
