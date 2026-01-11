@@ -78,6 +78,22 @@ public sealed partial class LayoutToolbar : UserControl
         var inspectorTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleInspectorTooltip");
         ToolTipService.SetToolTip(ToggleInspectorPanelButton, inspectorTooltip);
         ToolTipService.SetPlacement(ToggleInspectorPanelButton, PlacementMode.Bottom);
+
+        var windowedModeTooltip = _stringLocalizer.GetString("LayoutToolbar_WindowedModeTooltip");
+        ToolTipService.SetToolTip(WindowedModeRadio, windowedModeTooltip);
+        ToolTipService.SetPlacement(WindowedModeRadio, PlacementMode.Bottom);
+
+        var fullScreenModeTooltip = _stringLocalizer.GetString("LayoutToolbar_FullScreenModeTooltip");
+        ToolTipService.SetToolTip(FullScreenModeRadio, fullScreenModeTooltip);
+        ToolTipService.SetPlacement(FullScreenModeRadio, PlacementMode.Bottom);
+
+        var zenModeTooltip = _stringLocalizer.GetString("LayoutToolbar_ZenModeTooltip");
+        ToolTipService.SetToolTip(ZenModeRadio, zenModeTooltip);
+        ToolTipService.SetPlacement(ZenModeRadio, PlacementMode.Bottom);
+
+        var presenterModeTooltip = _stringLocalizer.GetString("LayoutToolbar_PresenterModeTooltip");
+        ToolTipService.SetToolTip(PresenterModeRadio, presenterModeTooltip);
+        ToolTipService.SetPlacement(PresenterModeRadio, PlacementMode.Bottom);
     }
 
     private void ApplyLabels()

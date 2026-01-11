@@ -600,4 +600,16 @@ Do you wish to continue?</value>
   <data name="Theme_System" xml:space="preserve">
     <value>System</value>
   </data>
+  <data name="LayoutToolbar_WindowedModeTooltip" xml:space="preserve">
+    <value>Standard window with all panels and toolbars enabled</value>
+  </data>
+  <data name="LayoutToolbar_FullScreenModeTooltip" xml:space="preserve">
+    <value>Maximize the window for more working space</value>
+  </data>
+  <data name="LayoutToolbar_ZenModeTooltip" xml:space="preserve">
+    <value>Distraction-free mode with only the document editor visible</value>
+  </data>
+  <data name="LayoutToolbar_PresenterModeTooltip" xml:space="preserve">
+    <value>Full screen presentation mode for displaying content</value>
+  </data>
 </root>
