@@ -591,4 +591,13 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_PresenterLabel" xml:space="preserve">
     <value>Presenter</value>
   </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Theme_System" xml:space="preserve">
+    <value>System</value>
+  </data>
 </root>
