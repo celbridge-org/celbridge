@@ -242,7 +242,7 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
     {
-        _editorSettings.ResetPanelLayout();
+        _editorSettings.ResetPanelState();
         
         // Also reset to Windowed mode
         if (_editorSettings.LayoutMode != LayoutMode.Windowed)

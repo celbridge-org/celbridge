@@ -8,43 +8,13 @@ namespace Celbridge.Settings;
 public interface IEditorSettings : INotifyPropertyChanged
 {
     // ========================================
-    // Panel Visibility and Dimensions
+    // Settings Management
     // ========================================
 
     /// <summary>
-    /// Gets or sets a value indicating whether the Context panel is visible.
+    /// Resets the settings to their default values.
     /// </summary>
-    bool IsContextPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the Context panel.
-    /// </summary>
-    float ContextPanelWidth { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the inspector panel is visible.
-    /// </summary>
-    bool IsInspectorPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the inspector panel.
-    /// </summary>
-    float InspectorPanelWidth { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the console panel is visible.
-    /// </summary>
-    bool IsConsolePanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the height of the console panel.
-    /// </summary>
-    float ConsolePanelHeight { get; set; }
-
-    /// <summary>
-    /// Gets or sets the height of the detail panel.
-    /// </summary>
-    float DetailPanelHeight { get; set; }
+    void Reset();
 
     // ========================================
     // Previous Paths and History
@@ -64,34 +34,6 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Gets or sets the list of recent projects.
     /// </summary>
     List<string> RecentProjects { get; set; }
-
-    // ========================================
-    // API Keys
-    // ========================================
-
-    /// <summary>
-    /// Gets or sets the OpenAI key.
-    /// </summary>
-    string OpenAIKey { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Sheets API key.
-    /// </summary>
-    string SheetsAPIKey { get; set; }
-
-    // ========================================
-    // Layout Management
-    // ========================================
-
-    /// <summary>
-    /// Resets the settings to their default values.
-    /// </summary>
-    void Reset();
-
-    /// <summary>
-    /// Resets the panel layout to default visibility and sizes.
-    /// </summary>
-    void ResetPanelLayout();
 
     // ========================================
     // Application Theme
@@ -139,15 +81,12 @@ public interface IEditorSettings : INotifyPropertyChanged
     // ========================================
     // Layout Mode State
     // ========================================
-    // Layout modes control the window state and panel visibility.
-    // - Windowed: Not fullscreen, all panels and titlebar visible
-    // - FullScreen: Fullscreen with all panels and titlebar visible
-    // - ZenMode: Fullscreen, only documents panel (including tab bar) visible
-    // - Presenter: Fullscreen with only document content visible (no tab bar)
 
     /// <summary>
     /// Gets or sets the current layout mode.
-    /// Note: This is persisted but the application always starts in Windowed mode.
+    /// Note: This setting is persisted but the application always starts 
+    /// in Windowed mode regardless of the persisted value. This property
+    /// allows clients to listen for changes to the LayoutMode at runtime.
     /// </summary>
     LayoutMode LayoutMode { get; set; }
 
@@ -168,4 +107,48 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Used to restore the panel state when returning to Windowed mode.
     /// </summary>
     bool FullscreenPreConsolePanelVisible { get; set; }
+
+    // ========================================
+    // Panel State
+    // ========================================
+
+    /// <summary>
+    /// Resets the panel layout to default visibility and sizes.
+    /// </summary>
+    void ResetPanelState();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the Context panel is visible.
+    /// </summary>
+    bool IsContextPanelVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets the width of the Context panel.
+    /// </summary>
+    float ContextPanelWidth { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the inspector panel is visible.
+    /// </summary>
+    bool IsInspectorPanelVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets the width of the inspector panel.
+    /// </summary>
+    float InspectorPanelWidth { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the console panel is visible.
+    /// </summary>
+    bool IsConsolePanelVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets the height of the console panel.
+    /// </summary>
+    float ConsolePanelHeight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the height of the detail panel.
+    /// </summary>
+    float DetailPanelHeight { get; set; }
 }

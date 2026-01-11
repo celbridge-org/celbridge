@@ -11,48 +11,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         : base(settingsGroup, nameof(EditorSettings))
     {}
 
-    public bool IsContextPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsContextPanelVisible), true);
-        set => SetValue(nameof(IsContextPanelVisible), value);
-    }
-
-    public float ContextPanelWidth
-    {
-        get => GetValue<float>(nameof(ContextPanelWidth), DefaultContextPanelWidth);
-        set => SetValue(nameof(ContextPanelWidth), value);
-    }
-
-    public bool IsInspectorPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsInspectorPanelVisible), true);
-        set => SetValue(nameof(IsInspectorPanelVisible), value);
-    }
-
-    public float InspectorPanelWidth
-    {
-        get => GetValue<float>(nameof(InspectorPanelWidth), DefaultInspectorPanelWidth);
-        set => SetValue(nameof(InspectorPanelWidth), value);
-    }
-
-    public bool IsConsolePanelVisible
-    {
-        get => GetValue<bool>(nameof(IsConsolePanelVisible), true);
-        set => SetValue(nameof(IsConsolePanelVisible), value);
-    }
-
-    public float ConsolePanelHeight
-    {
-        get => GetValue<float>(nameof(ConsolePanelHeight), DefaultConsolePanelHeight);
-        set => SetValue(nameof(ConsolePanelHeight), value);
-    }
-
-    public float DetailPanelHeight
-    {
-        get => GetValue<float>(nameof(DetailPanelHeight), DefaultDetailPanelHeight);
-        set => SetValue(nameof(DetailPanelHeight), value);
-    }
-
     public string PreviousNewProjectFolderPath
     {
         get => GetValue<string>(nameof(PreviousNewProjectFolderPath), string.Empty);
@@ -69,18 +27,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
     {
         get => GetValue<List<string>>(nameof(RecentProjects), new List<string>());
         set => SetValue(nameof(RecentProjects), value);
-    }
-
-    public string OpenAIKey
-    {
-        get => GetValue<string>(nameof(OpenAIKey), string.Empty);
-        set => SetValue(nameof(OpenAIKey), value);
-    }
-
-    public string SheetsAPIKey
-    {
-        get => GetValue<string>(nameof(SheetsAPIKey), string.Empty);
-        set => SetValue(nameof(SheetsAPIKey), value);
     }
 
     public ApplicationColorTheme Theme 
@@ -125,10 +71,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
-    // ========================================
-    // Layout Mode Properties
-    // ========================================
-
     public LayoutMode LayoutMode
     {
         get => GetValue<LayoutMode>(nameof(LayoutMode), LayoutMode.Windowed);
@@ -153,7 +95,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(FullscreenPreConsolePanelVisible), value);
     }
 
-    public void ResetPanelLayout()
+    public void ResetPanelState()
     {
         IsContextPanelVisible = true;
         ContextPanelWidth = DefaultContextPanelWidth;
@@ -161,5 +103,47 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         InspectorPanelWidth = DefaultInspectorPanelWidth;
         IsConsolePanelVisible = true;
         ConsolePanelHeight = DefaultConsolePanelHeight;
+    }
+
+    public bool IsContextPanelVisible
+    {
+        get => GetValue<bool>(nameof(IsContextPanelVisible), true);
+        set => SetValue(nameof(IsContextPanelVisible), value);
+    }
+
+    public float ContextPanelWidth
+    {
+        get => GetValue<float>(nameof(ContextPanelWidth), DefaultContextPanelWidth);
+        set => SetValue(nameof(ContextPanelWidth), value);
+    }
+
+    public bool IsInspectorPanelVisible
+    {
+        get => GetValue<bool>(nameof(IsInspectorPanelVisible), true);
+        set => SetValue(nameof(IsInspectorPanelVisible), value);
+    }
+
+    public float InspectorPanelWidth
+    {
+        get => GetValue<float>(nameof(InspectorPanelWidth), DefaultInspectorPanelWidth);
+        set => SetValue(nameof(InspectorPanelWidth), value);
+    }
+
+    public bool IsConsolePanelVisible
+    {
+        get => GetValue<bool>(nameof(IsConsolePanelVisible), true);
+        set => SetValue(nameof(IsConsolePanelVisible), value);
+    }
+
+    public float ConsolePanelHeight
+    {
+        get => GetValue<float>(nameof(ConsolePanelHeight), DefaultConsolePanelHeight);
+        set => SetValue(nameof(ConsolePanelHeight), value);
+    }
+
+    public float DetailPanelHeight
+    {
+        get => GetValue<float>(nameof(DetailPanelHeight), DefaultDetailPanelHeight);
+        set => SetValue(nameof(DetailPanelHeight), value);
     }
 }
