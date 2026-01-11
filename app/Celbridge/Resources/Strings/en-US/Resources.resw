@@ -579,8 +579,8 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_ZenModeLabel" xml:space="preserve">
     <value>Zen mode</value>
   </data>
-  <data name="LayoutToolbar_LayoutModeLabel" xml:space="preserve">
-    <value>Layout mode</value>
+  <data name="LayoutToolbar_WindowModeLabel" xml:space="preserve">
+    <value>Window mode</value>
   </data>
   <data name="LayoutToolbar_WindowedLabel" xml:space="preserve">
     <value>Windowed</value>

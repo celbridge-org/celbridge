@@ -21,64 +21,8 @@
             <Button.Flyout>
                 <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom">
                     <StackPanel Width="250" Spacing="8">
-                        <!-- Panel Toggles Section (only visible on Workspace page) -->
-                        <StackPanel x:Name="PanelTogglesSection" Spacing="8">
-                            <!-- Explorer Panel Toggle -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <icons:ExplorerPanelIcon/>
-                                    <TextBlock x:Name="ExplorerPanelLabel" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <CheckBox x:Name="ExplorerPanelToggle"
-                                          Grid.Column="1"
-                                          Checked="ExplorerPanelToggle_Changed"
-                                          Unchecked="ExplorerPanelToggle_Changed"
-                                          MinWidth="0"/>
-                            </Grid>
-
-                            <!-- Console Panel Toggle -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <icons:ConsolePanelIcon/>
-                                    <TextBlock x:Name="ConsolePanelLabel" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <CheckBox x:Name="ConsolePanelToggle"
-                                          Grid.Column="1"
-                                          Checked="ConsolePanelToggle_Changed"
-                                          Unchecked="ConsolePanelToggle_Changed"
-                                          MinWidth="0"/>
-                            </Grid>
-
-                            <!-- Inspector Panel Toggle -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <icons:InspectorPanelIcon/>
-                                    <TextBlock x:Name="InspectorPanelLabel" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <CheckBox x:Name="InspectorPanelToggle"
-                                          Grid.Column="1"
-                                          Checked="InspectorPanelToggle_Changed"
-                                          Unchecked="InspectorPanelToggle_Changed"
-                                          MinWidth="0"/>
-                            </Grid>
-
-                            <MenuFlyoutSeparator/>
-                        </StackPanel>
-
-                        <!-- Layout Mode Selection -->
-                        <TextBlock x:Name="LayoutModeHeader" 
+                        <!-- Window Mode Selection -->
+                        <TextBlock x:Name="WindowModeHeader" 
                                    FontWeight="SemiBold" 
                                    Margin="0,4,0,8"/>
                         
@@ -126,17 +70,14 @@
                             </StackPanel>
                         </RadioButton>
 
-                        <!-- Reset Layout Section (only visible on Workspace page) -->
-                        <StackPanel x:Name="ResetLayoutSection" Spacing="8">
-                            <MenuFlyoutSeparator/>
+                        <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
 
-                            <!-- Reset Layout Button -->
-                            <Button x:Name="ResetLayoutButton"
-                                    Click="ResetLayoutButton_Click"
-                                    HorizontalAlignment="Stretch">
-                                <TextBlock x:Name="ResetLayoutButtonText"/>
-                            </Button>
-                        </StackPanel>
+                        <!-- Reset Layout Button (only visible on Workspace page) -->
+                        <Button x:Name="ResetLayoutButton"
+                                Click="ResetLayoutButton_Click"
+                                HorizontalAlignment="Stretch">
+                            <TextBlock x:Name="ResetLayoutButtonText"/>
+                        </Button>
                     </StackPanel>
                 </Flyout>
             </Button.Flyout>

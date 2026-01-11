@@ -1,5 +1,4 @@
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using System.ComponentModel;
 
 namespace Celbridge.UserInterface.Views;
@@ -32,7 +31,6 @@ public sealed partial class LayoutToolbar : UserControl
         ApplyTooltips();
         ApplyLabels();
         UpdatePanelIcons();
-        UpdateCheckBoxes();
         UpdateLayoutModeRadios();
         UpdatePanelToggleVisibility();
         _editorSettings.PropertyChanged += EditorSettings_PropertyChanged;
@@ -55,12 +53,12 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelToggleVisibility()
     {
-        // Show panel toggle buttons and flyout sections only on the Workspace page
+        // Show panel toggle buttons and reset layout controls only on the Workspace page
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
         
         PanelToggleButtons.Visibility = visibility;
-        PanelTogglesSection.Visibility = visibility;
-        ResetLayoutSection.Visibility = visibility;
+        ResetLayoutSeparator.Visibility = visibility;
+        ResetLayoutButton.Visibility = visibility;
     }
 
     private void ApplyTooltips()
@@ -84,12 +82,9 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ApplyLabels()
     {
-        ExplorerPanelLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ExplorerPanelLabel");
-        ConsolePanelLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ConsolePanelLabel");
-        InspectorPanelLabel.Text = _stringLocalizer.GetString("LayoutToolbar_InspectorPanelLabel");
         ResetLayoutButtonText.Text = _stringLocalizer.GetString("LayoutToolbar_ResetLayoutButton");
 
-        LayoutModeHeader.Text = _stringLocalizer.GetString("LayoutToolbar_LayoutModeLabel");
+        WindowModeHeader.Text = _stringLocalizer.GetString("LayoutToolbar_WindowModeLabel");
         WindowedModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_WindowedLabel");
         FullScreenModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FullScreen");
         ZenModeRadioLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ZenModeLabel");
@@ -107,28 +102,11 @@ public sealed partial class LayoutToolbar : UserControl
             case nameof(IEditorSettings.InspectorPanelWidth):
             case nameof(IEditorSettings.ConsolePanelHeight):
                 UpdatePanelIcons();
-                UpdateCheckBoxes();
                 break;
             case nameof(IEditorSettings.WindowLayout):
                 UpdatePanelIcons();
-                UpdateCheckBoxes();
                 UpdateLayoutModeRadios();
                 break;
-        }
-    }
-
-    private void UpdateCheckBoxes()
-    {
-        _isUpdatingUI = true;
-        try
-        {
-            ExplorerPanelToggle.IsChecked = _editorSettings.IsContextPanelVisible;
-            ConsolePanelToggle.IsChecked = _editorSettings.IsConsolePanelVisible;
-            InspectorPanelToggle.IsChecked = _editorSettings.IsInspectorPanelVisible;
-        }
-        finally
-        {
-            _isUpdatingUI = false;
         }
     }
 
@@ -203,63 +181,6 @@ public sealed partial class LayoutToolbar : UserControl
     private void PanelLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         PanelLayoutFlyout.ShowAt(PanelLayoutButton);
-    }
-
-    private void ExplorerPanelToggle_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingUI)
-        {
-            return;
-        }
-
-        if (ExplorerPanelToggle.IsChecked != _editorSettings.IsContextPanelVisible)
-        {
-            _editorSettings.IsContextPanelVisible = ExplorerPanelToggle.IsChecked == true;
-            
-            // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-            if (IsFullscreenModeWithHiddenPanels() && ExplorerPanelToggle.IsChecked == true)
-            {
-                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-            }
-        }
-    }
-
-    private void ConsolePanelToggle_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingUI)
-        {
-            return;
-        }
-
-        if (ConsolePanelToggle.IsChecked != _editorSettings.IsConsolePanelVisible)
-        {
-            _editorSettings.IsConsolePanelVisible = ConsolePanelToggle.IsChecked == true;
-            
-            // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-            if (IsFullscreenModeWithHiddenPanels() && ConsolePanelToggle.IsChecked == true)
-            {
-                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-            }
-        }
-    }
-
-    private void InspectorPanelToggle_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingUI)
-        {
-            return;
-        }
-
-        if (InspectorPanelToggle.IsChecked != _editorSettings.IsInspectorPanelVisible)
-        {
-            _editorSettings.IsInspectorPanelVisible = InspectorPanelToggle.IsChecked == true;
-            
-            // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-            if (IsFullscreenModeWithHiddenPanels() && InspectorPanelToggle.IsChecked == true)
-            {
-                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-            }
-        }
     }
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
