@@ -16,3 +16,8 @@ public record MainWindowDeactivatedMessage();
 /// Message sent when the window layout changes.
 /// </summary>
 public record WindowLayoutChangedMessage(WindowLayout WindowLayout);
+
+/// <summary>
+/// Sent when the active application page changes.
+/// </summary>
+public record ActivePageChangedMessage(ApplicationPage ActivePage);

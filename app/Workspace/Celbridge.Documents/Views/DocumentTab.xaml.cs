@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 

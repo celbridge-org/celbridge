@@ -292,7 +292,7 @@ public partial class MainPage : Page
         // F11 toggles Zen Mode / Fullscreen (universal shortcut)
         if (key == VirtualKey.F11)
         {
-            var commandService = ServiceLocator.AcquireService<Commands.ICommandService>();
+            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
             commandService.Execute<IToggleZenModeCommand>();
             return true;
         }

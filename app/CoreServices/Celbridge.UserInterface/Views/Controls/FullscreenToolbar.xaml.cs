@@ -1,7 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Messaging;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.UserInterface.Views;
@@ -224,10 +222,7 @@ public sealed partial class FullscreenToolbar : UserControl
     private void ExitFullscreen()
     {
         // Return to Windowed mode
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            workspaceWrapper.WorkspaceService.SetWindowLayout(WindowLayout.Windowed);
-        }
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
     }
 }

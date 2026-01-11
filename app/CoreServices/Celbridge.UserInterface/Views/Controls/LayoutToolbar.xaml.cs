@@ -7,17 +7,20 @@ namespace Celbridge.UserInterface.Views;
 public sealed partial class LayoutToolbar : UserControl
 {
     private readonly IEditorSettings _editorSettings;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
     private bool _isUpdatingUI = false;
+    private bool _isOnWorkspacePage = false;
 
     public LayoutToolbar()
     {
         InitializeComponent();
 
         _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
-        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         Loaded += LayoutToolbar_Loaded;
@@ -31,14 +34,33 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
         UpdateCheckBoxes();
         UpdateLayoutModeRadios();
+        UpdatePanelToggleVisibility();
         _editorSettings.PropertyChanged += EditorSettings_PropertyChanged;
+        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
     }
 
     private void LayoutToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         _editorSettings.PropertyChanged -= EditorSettings_PropertyChanged;
+        _messengerService.UnregisterAll(this);
         Loaded -= LayoutToolbar_Loaded;
         Unloaded -= LayoutToolbar_Unloaded;
+    }
+
+    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
+    {
+        _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
+        UpdatePanelToggleVisibility();
+    }
+
+    private void UpdatePanelToggleVisibility()
+    {
+        // Show panel toggle buttons and flyout sections only on the Workspace page
+        var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
+        
+        PanelToggleButtons.Visibility = visibility;
+        PanelTogglesSection.Visibility = visibility;
+        ResetLayoutSection.Visibility = visibility;
     }
 
     private void ApplyTooltips()
@@ -141,7 +163,7 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsContextPanelVisible)
         {
-            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
         }
     }
 
@@ -152,7 +174,7 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsConsolePanelVisible)
         {
-            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
         }
     }
 
@@ -163,7 +185,7 @@ public sealed partial class LayoutToolbar : UserControl
         // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
         if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsInspectorPanelVisible)
         {
-            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
         }
     }
 
@@ -197,7 +219,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && ExplorerPanelToggle.IsChecked == true)
             {
-                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
             }
         }
     }
@@ -216,7 +238,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && ConsolePanelToggle.IsChecked == true)
             {
-                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
             }
         }
     }
@@ -235,7 +257,7 @@ public sealed partial class LayoutToolbar : UserControl
             // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
             if (IsFullscreenModeWithHiddenPanels() && InspectorPanelToggle.IsChecked == true)
             {
-                SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+                _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
             }
         }
     }
@@ -247,7 +269,7 @@ public sealed partial class LayoutToolbar : UserControl
         // Also reset to Windowed mode
         if (_editorSettings.WindowLayout != WindowLayout.Windowed)
         {
-            SetWindowLayoutViaWorkspace(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
         }
         
         PanelLayoutFlyout.Hide();
@@ -286,15 +308,7 @@ public sealed partial class LayoutToolbar : UserControl
 
         if (_editorSettings.WindowLayout != newLayout)
         {
-            SetWindowLayoutViaWorkspace(newLayout);
-        }
-    }
-
-    private void SetWindowLayoutViaWorkspace(WindowLayout windowLayout)
-    {
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            _workspaceWrapper.WorkspaceService.SetWindowLayout(windowLayout);
+            _userInterfaceService.SetWindowLayout(newLayout);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Security.Cryptography;

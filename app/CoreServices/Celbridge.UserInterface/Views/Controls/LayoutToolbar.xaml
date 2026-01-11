@@ -21,58 +21,61 @@
             <Button.Flyout>
                 <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom">
                     <StackPanel Width="250" Spacing="8">
-                        <!-- Explorer Panel Toggle -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <icons:ExplorerPanelIcon/>
-                                <TextBlock x:Name="ExplorerPanelLabel" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <CheckBox x:Name="ExplorerPanelToggle"
-                                      Grid.Column="1"
-                                      Checked="ExplorerPanelToggle_Changed"
-                                      Unchecked="ExplorerPanelToggle_Changed"
-                                      MinWidth="0"/>
-                        </Grid>
+                        <!-- Panel Toggles Section (only visible on Workspace page) -->
+                        <StackPanel x:Name="PanelTogglesSection" Spacing="8">
+                            <!-- Explorer Panel Toggle -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <icons:ExplorerPanelIcon/>
+                                    <TextBlock x:Name="ExplorerPanelLabel" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <CheckBox x:Name="ExplorerPanelToggle"
+                                          Grid.Column="1"
+                                          Checked="ExplorerPanelToggle_Changed"
+                                          Unchecked="ExplorerPanelToggle_Changed"
+                                          MinWidth="0"/>
+                            </Grid>
 
-                        <!-- Console Panel Toggle -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <icons:ConsolePanelIcon/>
-                                <TextBlock x:Name="ConsolePanelLabel" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <CheckBox x:Name="ConsolePanelToggle"
-                                      Grid.Column="1"
-                                      Checked="ConsolePanelToggle_Changed"
-                                      Unchecked="ConsolePanelToggle_Changed"
-                                      MinWidth="0"/>
-                        </Grid>
+                            <!-- Console Panel Toggle -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <icons:ConsolePanelIcon/>
+                                    <TextBlock x:Name="ConsolePanelLabel" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <CheckBox x:Name="ConsolePanelToggle"
+                                          Grid.Column="1"
+                                          Checked="ConsolePanelToggle_Changed"
+                                          Unchecked="ConsolePanelToggle_Changed"
+                                          MinWidth="0"/>
+                            </Grid>
 
-                        <!-- Inspector Panel Toggle -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <icons:InspectorPanelIcon/>
-                                <TextBlock x:Name="InspectorPanelLabel" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <CheckBox x:Name="InspectorPanelToggle"
-                                      Grid.Column="1"
-                                      Checked="InspectorPanelToggle_Changed"
-                                      Unchecked="InspectorPanelToggle_Changed"
-                                      MinWidth="0"/>
-                        </Grid>
+                            <!-- Inspector Panel Toggle -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <icons:InspectorPanelIcon/>
+                                    <TextBlock x:Name="InspectorPanelLabel" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <CheckBox x:Name="InspectorPanelToggle"
+                                          Grid.Column="1"
+                                          Checked="InspectorPanelToggle_Changed"
+                                          Unchecked="InspectorPanelToggle_Changed"
+                                          MinWidth="0"/>
+                            </Grid>
 
-                        <MenuFlyoutSeparator/>
+                            <MenuFlyoutSeparator/>
+                        </StackPanel>
 
                         <!-- Layout Mode Selection -->
                         <TextBlock x:Name="LayoutModeHeader" 
@@ -123,14 +126,17 @@
                             </StackPanel>
                         </RadioButton>
 
-                        <MenuFlyoutSeparator/>
+                        <!-- Reset Layout Section (only visible on Workspace page) -->
+                        <StackPanel x:Name="ResetLayoutSection" Spacing="8">
+                            <MenuFlyoutSeparator/>
 
-                        <!-- Reset Layout Button -->
-                        <Button x:Name="ResetLayoutButton"
-                                Click="ResetLayoutButton_Click"
-                                HorizontalAlignment="Stretch">
-                            <TextBlock x:Name="ResetLayoutButtonText"/>
-                        </Button>
+                            <!-- Reset Layout Button -->
+                            <Button x:Name="ResetLayoutButton"
+                                    Click="ResetLayoutButton_Click"
+                                    HorizontalAlignment="Stretch">
+                                <TextBlock x:Name="ResetLayoutButtonText"/>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </Flyout>
             </Button.Flyout>
@@ -139,38 +145,41 @@
                       FontSize="18" />
         </Button>
         
-        <!-- Explorer Panel Toggle (Left sidebar icon) -->
-        <Button x:Name="ToggleExplorerPanelButton"
-                Click="ToggleExplorerPanelButton_Click"
-                DoubleTapped="Button_DoubleTapped"
-                Margin="2,0"
-                Padding="6"
-                Background="Transparent"
-                BorderThickness="0">
-            <icons:ExplorerPanelIcon x:Name="ExplorerPanelIcon"/>
-        </Button>
-        
-        <!-- Console Panel Toggle (Bottom panel icon) -->
-        <Button x:Name="ToggleConsolePanelButton"
-                Click="ToggleConsolePanelButton_Click"
-                DoubleTapped="Button_DoubleTapped"
-                Margin="2,0"
-                Padding="6"
-                Background="Transparent"
-                BorderThickness="0">
-            <icons:ConsolePanelIcon x:Name="ConsolePanelIcon"/>
-        </Button>
-        
-        <!-- Inspector Panel Toggle (Right sidebar icon) -->
-        <Button x:Name="ToggleInspectorPanelButton"
-                Click="ToggleInspectorPanelButton_Click"
-                DoubleTapped="Button_DoubleTapped"
-                Margin="2,0"
-                Padding="6"
-                Background="Transparent"
-                BorderThickness="0">
-            <icons:InspectorPanelIcon x:Name="InspectorPanelIcon"/>
-        </Button>
+        <!-- Panel Toggle Buttons (only visible on Workspace page) -->
+        <StackPanel x:Name="PanelToggleButtons" Orientation="Horizontal">
+            <!-- Explorer Panel Toggle (Left sidebar icon) -->
+            <Button x:Name="ToggleExplorerPanelButton"
+                    Click="ToggleExplorerPanelButton_Click"
+                    DoubleTapped="Button_DoubleTapped"
+                    Margin="2,0"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderThickness="0">
+                <icons:ExplorerPanelIcon x:Name="ExplorerPanelIcon"/>
+            </Button>
+            
+            <!-- Console Panel Toggle (Bottom panel icon) -->
+            <Button x:Name="ToggleConsolePanelButton"
+                    Click="ToggleConsolePanelButton_Click"
+                    DoubleTapped="Button_DoubleTapped"
+                    Margin="2,0"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderThickness="0">
+                <icons:ConsolePanelIcon x:Name="ConsolePanelIcon"/>
+            </Button>
+            
+            <!-- Inspector Panel Toggle (Right sidebar icon) -->
+            <Button x:Name="ToggleInspectorPanelButton"
+                    Click="ToggleInspectorPanelButton_Click"
+                    DoubleTapped="Button_DoubleTapped"
+                    Margin="2,0"
+                    Padding="6"
+                    Background="Transparent"
+                    BorderThickness="0">
+                <icons:InspectorPanelIcon x:Name="InspectorPanelIcon"/>
+            </Button>
+        </StackPanel>
         
     </StackPanel>
 </UserControl>

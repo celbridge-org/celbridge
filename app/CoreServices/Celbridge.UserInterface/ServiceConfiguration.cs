@@ -3,6 +3,7 @@ using Celbridge.FilePicker;
 using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.Services.Forms;
@@ -38,6 +39,12 @@ public static class ServiceConfiguration
         // Register WindowStateHelper for Windows platform only
         services.AddSingleton<Helpers.WindowStateHelper>();
 #endif
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<IToggleZenModeCommand, ToggleZenModeCommand>();
 
         //
         // Register view models

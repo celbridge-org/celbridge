@@ -12,6 +12,7 @@ public class UserInterfaceService : IUserInterfaceService
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
     private Views.TitleBar? _titleBar;
+    private ApplicationPage _activePage = ApplicationPage.None;
 
 #if WINDOWS
     private Helpers.WindowStateHelper? _windowStateHelper;
@@ -20,6 +21,7 @@ public class UserInterfaceService : IUserInterfaceService
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
     public object TitleBar => _titleBar!;
+    public ApplicationPage ActivePage => _activePage;
 
     public UserInterfaceService(
         ILogger<UserInterfaceService> logger,
@@ -180,5 +182,60 @@ public class UserInterfaceService : IUserInterfaceService
         // Notify all components that the theme has changed
         var message = new ThemeChangedMessage(UserInterfaceTheme);
         _messengerService.Send(message);
+    }
+
+    public void SetActivePage(ApplicationPage page)
+    {
+        if (_activePage != page)
+        {
+            _activePage = page;
+            var message = new ActivePageChangedMessage(page);
+            _messengerService.Send(message);
+        }
+    }
+
+    public void SetWindowLayout(WindowLayout windowLayout)
+    {
+        var currentLayout = _editorSettings.WindowLayout;
+
+        if (currentLayout == windowLayout)
+        {
+            return;
+        }
+
+        // If leaving Windowed mode, save current panel state
+        if (currentLayout == WindowLayout.Windowed)
+        {
+            _editorSettings.FullscreenPreContextPanelVisible = _editorSettings.IsContextPanelVisible;
+            _editorSettings.FullscreenPreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
+            _editorSettings.FullscreenPreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
+        }
+
+        // Apply the new window layout
+        _editorSettings.WindowLayout = windowLayout;
+
+        // Apply panel visibility based on the new layout
+        switch (windowLayout)
+        {
+            case WindowLayout.Windowed:
+            case WindowLayout.FullScreen:
+                // Restore panel visibility when returning to Windowed or FullScreen mode
+                _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
+                _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
+                _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
+                break;
+
+            case WindowLayout.ZenMode:
+            case WindowLayout.Presenter:
+                // Hide all panels in Zen Mode and Presenter mode
+                _editorSettings.IsContextPanelVisible = false;
+                _editorSettings.IsInspectorPanelVisible = false;
+                _editorSettings.IsConsolePanelVisible = false;
+                break;
+        }
+
+        // Notify UI about the window layout change
+        var layoutMessage = new WindowLayoutChangedMessage(windowLayout);
+        _messengerService.Send(layoutMessage);
     }
 }
