@@ -32,6 +32,10 @@ ProjectPanel_SourceControlTooltip = "Source Control"
 
 LayoutToolbar_SwapPanelsLabel = "Swap Left/Right Panels"
 
+Key	Value
+TitleBar_Home	Home
+TitleBar_HomeTooltip	Go to Home
+
 ---
 
 ## Implementation Plan

@@ -92,13 +92,11 @@
                     </NavigationViewItem.MenuItems>
                 </NavigationViewItem>
 
-                <!-- Workspace -->
-                <NavigationViewItem x:Name="WorkspaceNavItem"
-                                    Tag="Workspace"
-                                    IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}">
+                <!-- Home -->
+                <NavigationViewItem x:Name="HomeNavItem"
+                                    Tag="Home">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xEC50;"/>
+                        <SymbolIcon Symbol="Home"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
@@ -118,17 +116,22 @@
                         <SymbolIcon Symbol="Setting"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+
+                <!-- Workspace - shows project name when loaded -->
+                <NavigationViewItem x:Name="WorkspaceNavItem"
+                                    Tag="Workspace"
+                                    Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
+                                    IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xEC50;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <!-- Empty content - navigation doesn't display content here -->
             <Grid/>
         </NavigationView>
-
-        <TextBlock x:Name="ProjectNameText"
-                   Grid.Column="2"
-                   Margin="8,0,0,0"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <FontIcon x:Name="SaveIcon"

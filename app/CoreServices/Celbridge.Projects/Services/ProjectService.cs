@@ -16,7 +16,6 @@ public class ProjectService : IProjectService
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly INavigationService _navigationService;
-    private readonly IUserInterfaceService _userInterfaceService;
 
     private const string EmptyPageName = "EmptyPage";
     private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
@@ -28,12 +27,10 @@ public class ProjectService : IProjectService
     public ProjectService(
         IEditorSettings editorSettings,
         INavigationService navigationService,
-        IUserInterfaceService userInterfaceService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _editorSettings = editorSettings;
         _navigationService = navigationService;
-        _userInterfaceService = userInterfaceService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -127,8 +124,6 @@ public class ProjectService : IProjectService
                 recentProjects.RemoveAt(recentProjects.Count - 1);
             }
             _editorSettings.RecentProjects = recentProjects;
-
-            _userInterfaceService.SetCurrentProjectTitle(CurrentProject.ProjectName);
 
             return Result<IProject>.Ok(CurrentProject);
         }

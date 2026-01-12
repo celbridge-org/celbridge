@@ -140,12 +140,6 @@ public class UserInterfaceService : IUserInterfaceService
         }
     }
 
-    public void SetCurrentProjectTitle(string currentProjectTitle)
-    {
-        Guard.IsNotNull(_titleBar);
-        _titleBar.SetProjectTitle(currentProjectTitle);
-    }
-
     public void ApplyCurrentTheme()
     {
         var theme = _editorSettings.Theme;

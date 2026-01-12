@@ -1,5 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Navigation;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -10,6 +11,7 @@ public partial class TitleBarViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -25,11 +27,13 @@ public partial class TitleBarViewModel : ObservableObject
     public TitleBarViewModel(
         IMessengerService messengerService,
         INavigationService navigationService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService)
     {
         _messengerService = messengerService;
         _navigationService = navigationService;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
     }
 
     public void OnLoaded()
@@ -64,11 +68,26 @@ public partial class TitleBarViewModel : ObservableObject
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         OnPropertyChanged(nameof(IsWorkspaceLoaded));
+        UpdateProjectTitle();
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         OnPropertyChanged(nameof(IsWorkspaceLoaded));
+        ProjectTitle = string.Empty;
+    }
+
+    private void UpdateProjectTitle()
+    {
+        var currentProject = _projectService.CurrentProject;
+        if (currentProject != null)
+        {
+            ProjectTitle = currentProject.ProjectName;
+        }
+        else
+        {
+            ProjectTitle = string.Empty;
+        }
     }
 
     /// <summary>

@@ -99,17 +99,19 @@ public sealed partial class TitleBar : UserControl
         var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
         ToolTipService.SetToolTip(SettingsNavItem, settingsTooltip);
         ToolTipService.SetPlacement(SettingsNavItem, PlacementMode.Bottom);
+
+        var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
+        ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
+        ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
     }
 
     private void ApplyLabels()
     {
-        MenuNavItem.Content = _stringLocalizer.GetString("TitleBar_Menu");
+        // Icons-only mode: labels are only shown in tooltips
+        // Menu sub-items still show labels in the flyout
         NewProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_NewProject");
         OpenProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_OpenProject");
         ReloadProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_ReloadProject");
-        WorkspaceNavItem.Content = _stringLocalizer.GetString("TitleBar_Workspace");
-        CommunityNavItem.Content = _stringLocalizer.GetString("TitleBar_Community");
-        SettingsNavItem.Content = _stringLocalizer.GetString("TitleBar_Settings");
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -152,12 +154,14 @@ public sealed partial class TitleBar : UserControl
                 case ApplicationPage.Community:
                     TitleBarNavigation.SelectedItem = CommunityNavItem;
                     break;
-                case ApplicationPage.Settings:
+            case ApplicationPage.Settings:
                     TitleBarNavigation.SelectedItem = SettingsNavItem;
                     break;
                 case ApplicationPage.Home:
+                    TitleBarNavigation.SelectedItem = HomeNavItem;
+                    break;
                 default:
-                    // Clear selection for Home or unknown pages
+                    // Clear selection for unknown pages
                     TitleBarNavigation.SelectedItem = null;
                     break;
             }
@@ -228,6 +232,10 @@ public sealed partial class TitleBar : UserControl
 
                 case NavigationConstants.SettingsTag:
                     ViewModel.OnNavigationItemSelected(NavigationConstants.SettingsTag);
+                    break;
+
+                case NavigationConstants.HomeTag:
+                    ViewModel.OnNavigationItemSelected(NavigationConstants.HomeTag);
                     break;
             }
         }
@@ -319,11 +327,6 @@ public sealed partial class TitleBar : UserControl
             // Silently ignore any errors
         }
 #endif
-    }
-
-    public void SetProjectTitle(string title)
-    {
-        ProjectNameText.Text = title;
     }
 
     /// <summary>
