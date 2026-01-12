@@ -9,10 +9,6 @@ namespace Celbridge.UserInterface.Services;
 /// </summary>
 public class LayoutManager : ILayoutManager
 {
-    private const float DefaultContextPanelWidth = 300f;
-    private const float DefaultInspectorPanelWidth = 300f;
-    private const float DefaultConsolePanelHeight = 350f;
-
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
@@ -205,9 +201,9 @@ public class LayoutManager : ILayoutManager
     private Result HandleResetLayout()
     {
         // Reset panel sizes
-        _editorSettings.ContextPanelWidth = DefaultContextPanelWidth;
-        _editorSettings.InspectorPanelWidth = DefaultInspectorPanelWidth;
-        _editorSettings.ConsolePanelHeight = DefaultConsolePanelHeight;
+        _editorSettings.ContextPanelWidth = UserInterfaceConstants.ContextPanelWidth;
+        _editorSettings.InspectorPanelWidth = UserInterfaceConstants.InspectorPanelWidth;
+        _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
 
         // Reset preferred visibility to all panels
         _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;

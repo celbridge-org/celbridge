@@ -190,13 +190,17 @@ public partial class App : Application
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
-        if (MainWindow.Content is not Grid rootGrid || rootGrid.Name != "RootContainer")
+        if (MainWindow.Content is not Grid rootGrid || 
+            rootGrid.Name != "RootContainer")
         {
             // Create a Frame to act as the navigation context and navigate to the first page
             var rootFrame = new Frame();
 
             // Create a root container Grid to hold both the Frame and the FullscreenToolbar overlay
-            rootGrid = new Grid { Name = "RootContainer" };
+            rootGrid = new Grid 
+            { 
+                Name = "RootContainer" 
+            };
             rootGrid.Children.Add(rootFrame);
 
 #if WINDOWS
