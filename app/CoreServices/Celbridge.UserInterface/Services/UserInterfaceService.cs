@@ -194,47 +194,47 @@ public class UserInterfaceService : IUserInterfaceService
         }
     }
 
-    public void SetWindowLayout(WindowLayout windowLayout)
+    public void SetWindowMode(WindowMode windowMode)
     {
-        var currentLayout = _editorSettings.WindowLayout;
+        var currentMode = _editorSettings.WindowMode;
 
-        if (currentLayout == windowLayout)
+        if (currentMode == windowMode)
         {
             return;
         }
 
         // If leaving Windowed mode, save current panel state
-        if (currentLayout == WindowLayout.Windowed)
+        if (currentMode == WindowMode.Windowed)
         {
             _editorSettings.FullscreenPreContextPanelVisible = _editorSettings.IsContextPanelVisible;
             _editorSettings.FullscreenPreInspectorPanelVisible = _editorSettings.IsInspectorPanelVisible;
             _editorSettings.FullscreenPreConsolePanelVisible = _editorSettings.IsConsolePanelVisible;
         }
 
-        // Apply the new window layout
-        _editorSettings.WindowLayout = windowLayout;
+        // Apply the new window mode
+        _editorSettings.WindowMode = windowMode;
 
-        // Apply panel visibility based on the new layout
+        // Apply panel visibility based on the new mode
         // Note: When switching between FullScreen and ZenMode, we preserve current panel state
         // because Zen Mode is essentially FullScreen with all panels collapsed.
         bool isTransitionBetweenFullScreenAndZenMode = 
-            (currentLayout == WindowLayout.FullScreen && windowLayout == WindowLayout.ZenMode) ||
-            (currentLayout == WindowLayout.ZenMode && windowLayout == WindowLayout.FullScreen);
+            (currentMode == WindowMode.FullScreen && windowMode == WindowMode.ZenMode) ||
+            (currentMode == WindowMode.ZenMode && windowMode == WindowMode.FullScreen);
 
         if (!isTransitionBetweenFullScreenAndZenMode)
         {
-            switch (windowLayout)
+            switch (windowMode)
             {
-                case WindowLayout.Windowed:
-                case WindowLayout.FullScreen:
+                case WindowMode.Windowed:
+                case WindowMode.FullScreen:
                     // Restore panel visibility when returning to Windowed or FullScreen mode
                     _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
                     _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
                     _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
                     break;
 
-                case WindowLayout.ZenMode:
-                case WindowLayout.Presenter:
+                case WindowMode.ZenMode:
+                case WindowMode.Presenter:
                     // Hide all panels in Zen Mode and Presenter mode
                     _editorSettings.IsContextPanelVisible = false;
                     _editorSettings.IsInspectorPanelVisible = false;
@@ -243,8 +243,8 @@ public class UserInterfaceService : IUserInterfaceService
             }
         }
 
-        // Notify UI about the window layout change
-        var layoutMessage = new WindowLayoutChangedMessage(windowLayout);
-        _messengerService.Send(layoutMessage);
+        // Notify UI about the window mode change
+        var modeMessage = new WindowModeChangedMessage(windowMode);
+        _messengerService.Send(modeMessage);
     }
 }

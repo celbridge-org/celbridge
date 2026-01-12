@@ -71,10 +71,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
-    public WindowLayout WindowLayout
+    public WindowMode WindowMode
     {
-        get => GetValue<WindowLayout>(nameof(WindowLayout), WindowLayout.Windowed);
-        set => SetValue(nameof(WindowLayout), value);
+        get => GetValue<WindowMode>(nameof(WindowMode), WindowMode.Windowed);
+        set => SetValue(nameof(WindowMode), value);
     }
 
     public bool FullscreenPreContextPanelVisible

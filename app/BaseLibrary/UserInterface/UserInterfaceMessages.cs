@@ -13,9 +13,9 @@ public record MainWindowActivatedMessage();
 public record MainWindowDeactivatedMessage();
 
 /// <summary>
-/// Message sent when the window layout changes.
+/// Message sent when the window mode changes.
 /// </summary>
-public record WindowLayoutChangedMessage(WindowLayout WindowLayout);
+public record WindowModeChangedMessage(WindowMode WindowMode);
 
 /// <summary>
 /// Sent when the active application page changes.

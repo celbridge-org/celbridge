@@ -18,12 +18,12 @@ public class ToggleFullScreenCommand : CommandBase, IToggleFullScreenCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var currentLayout = _editorSettings.WindowLayout;
+        var currentMode = _editorSettings.WindowMode;
 
-        // Toggle between Windowed and ZenMode (full screen)
+        // Toggle between Windowed and ZenMode
         // If in any fullscreen mode, return to Windowed
-        // If in Windowed mode, enter ZenMode (full screen)
-        if (currentLayout == WindowLayout.Windowed)
+        // If in Windowed mode, enter ZenMode
+        if (currentMode == WindowMode.Windowed)
         {
             // Only check panel state when on the Workspace page
             if (_userInterfaceService.ActivePage == ApplicationPage.Workspace)
@@ -44,12 +44,12 @@ public class ToggleFullScreenCommand : CommandBase, IToggleFullScreenCommand
                 }
             }
 
-            _userInterfaceService.SetWindowLayout(WindowLayout.ZenMode);
+            _userInterfaceService.SetWindowMode(WindowMode.ZenMode);
         }
         else
         {
             // Exit any fullscreen mode back to Windowed
-            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowMode(WindowMode.Windowed);
         }
 
         await Task.CompletedTask;

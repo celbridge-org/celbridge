@@ -98,29 +98,29 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         ViewModel.OnViewLoaded();
         
-        // Listen for window layout changes to show/hide tab strip in Presenter mode
-        _messengerService.Register<WindowLayoutChangedMessage>(this, OnWindowLayoutChanged);
+        // Listen for window mode changes to show/hide tab strip in Presenter mode
+        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         
-        // Apply initial tab strip visibility based on current window layout
-        UpdateTabStripVisibility(_editorSettings.WindowLayout);
+        // Apply initial tab strip visibility based on current window mode
+        UpdateTabStripVisibility(_editorSettings.WindowMode);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
-        _messengerService.Unregister<WindowLayoutChangedMessage>(this);
+        _messengerService.Unregister<WindowModeChangedMessage>(this);
     }
 
-    private void OnWindowLayoutChanged(object recipient, WindowLayoutChangedMessage message)
+    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
-        UpdateTabStripVisibility(message.WindowLayout);
+        UpdateTabStripVisibility(message.WindowMode);
     }
 
-    private void UpdateTabStripVisibility(WindowLayout windowLayout)
+    private void UpdateTabStripVisibility(WindowMode windowMode)
     {
         // In Presenter mode, hide the tab strip to show only the document content
         // In all other modes, show the tab strip
-        bool showTabStrip = windowLayout != WindowLayout.Presenter;
+        bool showTabStrip = windowMode != WindowMode.Presenter;
         
         // Find the TabStrip element within the TabView template and set its visibility
         // The TabView's tab strip is in a Grid row that we can collapse

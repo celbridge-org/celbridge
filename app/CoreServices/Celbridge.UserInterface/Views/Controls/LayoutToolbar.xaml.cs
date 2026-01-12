@@ -31,7 +31,7 @@ public sealed partial class LayoutToolbar : UserControl
         ApplyTooltips();
         ApplyLabels();
         UpdatePanelIcons();
-        UpdateLayoutModeRadios();
+        UpdateWindowModeRadios();
         UpdatePanelToggleVisibility();
         _editorSettings.PropertyChanged += EditorSettings_PropertyChanged;
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
@@ -119,23 +119,23 @@ public sealed partial class LayoutToolbar : UserControl
             case nameof(IEditorSettings.ConsolePanelHeight):
                 UpdatePanelIcons();
                 break;
-            case nameof(IEditorSettings.WindowLayout):
+            case nameof(IEditorSettings.WindowMode):
                 UpdatePanelIcons();
-                UpdateLayoutModeRadios();
+                UpdateWindowModeRadios();
                 break;
         }
     }
 
-    private void UpdateLayoutModeRadios()
+    private void UpdateWindowModeRadios()
     {
         _isUpdatingUI = true;
         try
         {
-            var windowLayout = _editorSettings.WindowLayout;
-            WindowedModeRadio.IsChecked = windowLayout == WindowLayout.Windowed;
-            FullScreenModeRadio.IsChecked = windowLayout == WindowLayout.FullScreen;
-            ZenModeRadio.IsChecked = windowLayout == WindowLayout.ZenMode;
-            PresenterModeRadio.IsChecked = windowLayout == WindowLayout.Presenter;
+            var windowMode = _editorSettings.WindowMode;
+            WindowedModeRadio.IsChecked = windowMode == WindowMode.Windowed;
+            FullScreenModeRadio.IsChecked = windowMode == WindowMode.FullScreen;
+            ZenModeRadio.IsChecked = windowMode == WindowMode.ZenMode;
+            PresenterModeRadio.IsChecked = windowMode == WindowMode.Presenter;
         }
         finally
         {
@@ -169,26 +169,26 @@ public sealed partial class LayoutToolbar : UserControl
     }
 
     /// <summary>
-    /// Updates the window layout based on current panel visibility state.
+    /// Updates the window mode based on current panel visibility state.
     /// - In Zen Mode: showing any panel switches to FullScreen
     /// - In FullScreen or Zen Mode: hiding all panels switches to Zen Mode
     /// </summary>
     private void UpdateWindowLayoutBasedOnPanelState()
     {
-        var currentLayout = _editorSettings.WindowLayout;
+        var currentMode = _editorSettings.WindowMode;
         bool anyPanelVisible = _editorSettings.IsContextPanelVisible || 
                                _editorSettings.IsInspectorPanelVisible || 
                                _editorSettings.IsConsolePanelVisible;
 
-        if (currentLayout == WindowLayout.ZenMode && anyPanelVisible)
+        if (currentMode == WindowMode.ZenMode && anyPanelVisible)
         {
             // In Zen Mode and showing a panel: switch to FullScreen
-            _userInterfaceService.SetWindowLayout(WindowLayout.FullScreen);
+            _userInterfaceService.SetWindowMode(WindowMode.FullScreen);
         }
-        else if (currentLayout == WindowLayout.FullScreen && !anyPanelVisible)
+        else if (currentMode == WindowMode.FullScreen && !anyPanelVisible)
         {
             // In FullScreen and all panels hidden: switch to Zen Mode
-            _userInterfaceService.SetWindowLayout(WindowLayout.ZenMode);
+            _userInterfaceService.SetWindowMode(WindowMode.ZenMode);
         }
     }
 
@@ -207,38 +207,38 @@ public sealed partial class LayoutToolbar : UserControl
         _editorSettings.ResetPanelState();
         
         // Also reset to Windowed mode
-        if (_editorSettings.WindowLayout != WindowLayout.Windowed)
+        if (_editorSettings.WindowMode != WindowMode.Windowed)
         {
-            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
+            _userInterfaceService.SetWindowMode(WindowMode.Windowed);
         }
         
         PanelLayoutFlyout.Hide();
     }
 
-    private void LayoutModeRadio_Checked(object sender, RoutedEventArgs e)
+    private void WindowModeRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingUI)
         {
             return;
         }
 
-        WindowLayout newLayout;
+        WindowMode newMode;
         
         if (ReferenceEquals(sender, WindowedModeRadio))
         {
-            newLayout = WindowLayout.Windowed;
+            newMode = WindowMode.Windowed;
         }
         else if (ReferenceEquals(sender, FullScreenModeRadio))
         {
-            newLayout = WindowLayout.FullScreen;
+            newMode = WindowMode.FullScreen;
         }
         else if (ReferenceEquals(sender, ZenModeRadio))
         {
-            newLayout = WindowLayout.ZenMode;
+            newMode = WindowMode.ZenMode;
         }
         else if (ReferenceEquals(sender, PresenterModeRadio))
         {
-            newLayout = WindowLayout.Presenter;
+            newMode = WindowMode.Presenter;
         }
         else
         {
@@ -246,9 +246,9 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        if (_editorSettings.WindowLayout != newLayout)
+        if (_editorSettings.WindowMode != newMode)
         {
-            _userInterfaceService.SetWindowLayout(newLayout);
+            _userInterfaceService.SetWindowMode(newMode);
         }
     }
 }

@@ -49,9 +49,9 @@ public interface IUserInterfaceService
     void SetActivePage(ApplicationPage page);
 
     /// <summary>
-    /// Sets the window layout mode and broadcasts an WindowLayoutChangedMessage.
+    /// Sets the window mode and broadcasts a WindowModeChangedMessage.
     /// </summary>
-    void SetWindowLayout(WindowLayout windowLayout);
+    void SetWindowMode(WindowMode windowMode);
 
     /// <summary>
     /// Applies the currently selected theme to the UserInterface.

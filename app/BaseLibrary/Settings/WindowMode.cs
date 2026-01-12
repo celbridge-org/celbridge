@@ -1,9 +1,9 @@
 namespace Celbridge.Settings;
 
 /// <summary>
-/// Defines the 4 mutually exclusive window layouts for the application.
+/// Defines the 4 mutually exclusive window modes for the application.
 /// </summary>
-public enum WindowLayout
+public enum WindowMode
 {
     /// <summary>
     /// Not fullscreen, all panels and titlebar visible.

@@ -178,15 +178,15 @@ public partial class App : Application
         InitializeCoreServices();
 
         // Ensure the application always starts in Windowed mode, regardless of
-        // what window layout was saved from the previous session.
+        // what window mode was saved from the previous session.
 #if WINDOWS
         {
             var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
-            if (editorSettings.WindowLayout != WindowLayout.Windowed)
+            if (editorSettings.WindowMode != WindowMode.Windowed)
             {
                 // Don't trigger UI updates yet - just reset the persisted value
                 // The UI will read the correct value when it initializes
-                editorSettings.WindowLayout = WindowLayout.Windowed;
+                editorSettings.WindowMode = WindowMode.Windowed;
             }
         }
 #endif

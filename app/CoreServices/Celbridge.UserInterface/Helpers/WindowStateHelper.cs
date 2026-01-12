@@ -62,8 +62,8 @@ public sealed class WindowStateHelper
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
 
-            // Listen for window layout changes to handle fullscreen
-            _messengerService.Register<WindowLayoutChangedMessage>(this, OnWindowLayoutChanged);
+            // Listen for window mode changes to handle fullscreen
+            _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
 
             return Result.Ok();
         }
@@ -74,15 +74,15 @@ public sealed class WindowStateHelper
         }
     }
 
-    private void OnWindowLayoutChanged(object recipient, WindowLayoutChangedMessage message)
+    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
-        ApplyWindowLayout(message.WindowLayout);
+        ApplyWindowMode(message.WindowMode);
     }
 
     /// <summary>
-    /// Applies the specified window layout to the window.
+    /// Applies the specified window mode to the window.
     /// </summary>
-    public void ApplyWindowLayout(WindowLayout windowLayout)
+    public void ApplyWindowMode(WindowMode windowMode)
     {
         if (_appWindow == null)
         {
@@ -91,9 +91,9 @@ public sealed class WindowStateHelper
 
         try
         {
-            switch (windowLayout)
+            switch (windowMode)
             {
-                case WindowLayout.Windowed:
+                case WindowMode.Windowed:
                     // Exit fullscreen - restore to overlapped presenter
                     if (_appWindow.Presenter.Kind != AppWindowPresenterKind.Overlapped)
                     {
@@ -108,9 +108,9 @@ public sealed class WindowStateHelper
                     }
                     break;
 
-                case WindowLayout.FullScreen:
-                case WindowLayout.ZenMode:
-                case WindowLayout.Presenter:
+                case WindowMode.FullScreen:
+                case WindowMode.ZenMode:
+                case WindowMode.Presenter:
                     // Enter fullscreen mode
                     if (_appWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
                     {
@@ -121,7 +121,7 @@ public sealed class WindowStateHelper
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to apply window layout: {windowLayout}");
+            _logger.LogError(ex, $"Failed to apply window mode: {windowMode}");
         }
     }
 
