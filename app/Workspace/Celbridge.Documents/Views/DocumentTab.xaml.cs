@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -152,7 +153,11 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        _commandService.Execute<IToggleAllPanelsCommand>();
+        // Double-clicking a document tab toggles fullscreen layout
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.ToggleLayout;
+        });
         e.Handled = true;
     }
 }

@@ -1,5 +1,6 @@
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
+using Celbridge.UserInterface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
@@ -32,14 +33,14 @@ public class EditorSettingsTests
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Check the default value system is working
-        editorSettings.IsContextPanelVisible.Should().BeTrue();
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.All);
 
         // Set a property
-        editorSettings.IsContextPanelVisible = false;
-        editorSettings.IsContextPanelVisible.Should().BeFalse();
+        editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.Context;
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.Context);
 
         // Reset the property to default
         editorSettings.Reset();
-        editorSettings.IsContextPanelVisible.Should().BeTrue();
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.All);
     }
 }

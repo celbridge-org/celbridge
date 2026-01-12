@@ -41,4 +41,3 @@ public record WorkspacePageActivatedMessage();
 /// Sent when the user navigates away from the workspace page to another page.
 /// </summary>
 public record WorkspacePageDeactivatedMessage();
-

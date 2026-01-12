@@ -18,14 +18,34 @@ public sealed partial class ConsolePanelIcon : UserControl
     public ConsolePanelIcon()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // Apply the current IsActivePanel state when the control loads
+        UpdateVisibility(IsActivePanel);
+        Loaded -= OnLoaded;
     }
 
     private static void OnIsActivePanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var icon = (ConsolePanelIcon)d;
         var isActive = (bool)e.NewValue;
+        icon.UpdateVisibility(isActive);
+    }
+
+    private void UpdateVisibility(bool isActive)
+    {
+        // Check if elements exist before updating (they may not exist if control hasn't loaded yet)
+        if (PanelFill != null)
+        {
+            PanelFill.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
+        }
         
-        icon.PanelFill.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
-        icon.PanelDivider.Visibility = isActive ? Visibility.Collapsed : Visibility.Visible;
+        if (PanelDivider != null)
+        {
+            PanelDivider.Visibility = isActive ? Visibility.Collapsed : Visibility.Visible;
+        }
     }
 }

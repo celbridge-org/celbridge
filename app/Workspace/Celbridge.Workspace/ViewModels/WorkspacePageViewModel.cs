@@ -1,10 +1,9 @@
-using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Workspace.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -18,8 +17,8 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
+    private readonly ILayoutManager _layoutManager;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
     private readonly WorkspaceLoader _workspaceLoader;
@@ -27,39 +26,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     private IProgressDialogToken? _progressDialogToken;
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
-
-    public WorkspacePageViewModel(
-        IWorkspaceLogger logger,
-        IServiceProvider serviceProvider,
-        IMessengerService messengerService,
-        IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IEditorSettings editorSettings,
-        IDialogService dialogService,
-        WorkspaceLoader workspaceLoader)
-    {
-        _logger = logger;
-        _messengerService = messengerService;
-        _stringLocalizer = stringLocalizer;
-        _commandService = commandService;
-        _editorSettings = editorSettings;
-        _dialogService = dialogService;
-        _workspaceLoader = workspaceLoader;
-
-        _editorSettings.PropertyChanged += OnSettings_PropertyChanged;
-
-        // Create the workspace service and notify the user interface service
-        _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
-        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
-        _messengerService.Send(message);
-        _workspaceLoader = workspaceLoader;
-    }
-
-    private void OnSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // Forward editor setting change notifications to this View Model class
-        OnPropertyChanged(e);
-    }
 
     public float ContextPanelWidth
     {
@@ -79,27 +45,72 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.ConsolePanelHeight = value;
     }
 
-    public bool IsContextPanelVisible
+    public bool IsFullScreen => _layoutManager.IsFullScreen;
+
+    public bool IsContextPanelVisible => _layoutManager.IsContextPanelVisible;
+
+    public bool IsInspectorPanelVisible => _layoutManager.IsInspectorPanelVisible;
+
+    public bool IsConsolePanelVisible => _layoutManager.IsConsolePanelVisible;
+
+    public WorkspacePageViewModel(
+        IWorkspaceLogger logger,
+        IServiceProvider serviceProvider,
+        IMessengerService messengerService,
+        IStringLocalizer stringLocalizer,
+        IEditorSettings editorSettings,
+        ILayoutManager layoutManager,
+        IDialogService dialogService,
+        WorkspaceLoader workspaceLoader)
     {
-        get => _editorSettings.IsContextPanelVisible;
-        set => _editorSettings.IsContextPanelVisible = value;
+        _logger = logger;
+        _messengerService = messengerService;
+        _stringLocalizer = stringLocalizer;
+        _editorSettings = editorSettings;
+        _layoutManager = layoutManager;
+        _dialogService = dialogService;
+        _workspaceLoader = workspaceLoader;
+
+        _editorSettings.PropertyChanged += OnEditorSettings_PropertyChanged;
+        
+        // Listen for layout manager state changes via messages
+        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+        _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
+
+        // Create the workspace service and notify the user interface service
+        _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
+        var message = new WorkspaceServiceCreatedMessage(_workspaceService);
+        _messengerService.Send(message);
+        _workspaceLoader = workspaceLoader;
     }
 
-    public bool IsInspectorPanelVisible
+    private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        get => _editorSettings.IsInspectorPanelVisible;
-        set => _editorSettings.IsInspectorPanelVisible = value;
+        // Forward editor setting change notifications for panel sizes
+        OnPropertyChanged(e);
     }
 
-    public bool IsConsolePanelVisible
+    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
-        get => _editorSettings.IsConsolePanelVisible;
-        set => _editorSettings.IsConsolePanelVisible = value;
+        // Notify that IsFullScreen might have changed
+        OnPropertyChanged(nameof(IsFullScreen));
+    }
+
+    private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
+    {
+        // Notify that panel visibility properties have changed
+        OnPropertyChanged(nameof(IsContextPanelVisible));
+        OnPropertyChanged(nameof(IsInspectorPanelVisible));
+        OnPropertyChanged(nameof(IsConsolePanelVisible));
     }
 
     public void OnWorkspacePageUnloaded()
     {
-        _editorSettings.PropertyChanged -= OnSettings_PropertyChanged;
+        _editorSettings.PropertyChanged -= OnEditorSettings_PropertyChanged;
+        
+        // Unregister message handlers
+        _messengerService.Unregister<WindowModeChangedMessage>(this);
+        _messengerService.Unregister<PanelVisibilityChangedMessage>(this);
 
         // Dispose the workspace service
         // This disposes all the sub-services and releases all resources held by the workspace.

@@ -12,6 +12,7 @@ public class UserInterfaceService : IUserInterfaceService
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
     private Views.TitleBar? _titleBar;
+    private ApplicationPage _activePage = ApplicationPage.None;
 
 #if WINDOWS
     private Helpers.WindowStateHelper? _windowStateHelper;
@@ -20,6 +21,7 @@ public class UserInterfaceService : IUserInterfaceService
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
     public object TitleBar => _titleBar!;
+    public ApplicationPage ActivePage => _activePage;
 
     public UserInterfaceService(
         ILogger<UserInterfaceService> logger,
@@ -180,5 +182,15 @@ public class UserInterfaceService : IUserInterfaceService
         // Notify all components that the theme has changed
         var message = new ThemeChangedMessage(UserInterfaceTheme);
         _messengerService.Send(message);
+    }
+
+    public void SetActivePage(ApplicationPage page)
+    {
+        if (_activePage != page)
+        {
+            _activePage = page;
+            var message = new ActivePageChangedMessage(page);
+            _messengerService.Send(message);
+        }
     }
 }

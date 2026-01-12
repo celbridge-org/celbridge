@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Security.Cryptography;
@@ -121,9 +122,12 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         SaveTimer = SaveDelay;
     }
 
-    public void ToggleAllPanels()
+    public void ToggleLayout()
     {
-        _commandService.Execute<IToggleAllPanelsCommand>();
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.ToggleLayout;
+        });
     }
 
     public void NavigateToURL(string url)
