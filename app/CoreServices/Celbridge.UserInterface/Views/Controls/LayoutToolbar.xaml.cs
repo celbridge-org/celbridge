@@ -153,40 +153,43 @@ public sealed partial class LayoutToolbar : UserControl
     private void ToggleExplorerPanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsContextPanelVisible = !_editorSettings.IsContextPanelVisible;
-        
-        // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-        if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsContextPanelVisible)
-        {
-            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-        }
+        UpdateWindowLayoutBasedOnPanelState();
     }
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsConsolePanelVisible = !_editorSettings.IsConsolePanelVisible;
-        
-        // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-        if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsConsolePanelVisible)
-        {
-            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-        }
+        UpdateWindowLayoutBasedOnPanelState();
     }
 
     private void ToggleInspectorPanelButton_Click(object sender, RoutedEventArgs e)
     {
         _editorSettings.IsInspectorPanelVisible = !_editorSettings.IsInspectorPanelVisible;
-        
-        // If user manually shows a panel while in a fullscreen mode that hides panels, exit to Windowed
-        if (IsFullscreenModeWithHiddenPanels() && _editorSettings.IsInspectorPanelVisible)
-        {
-            _userInterfaceService.SetWindowLayout(WindowLayout.Windowed);
-        }
+        UpdateWindowLayoutBasedOnPanelState();
     }
 
-    private bool IsFullscreenModeWithHiddenPanels()
+    /// <summary>
+    /// Updates the window layout based on current panel visibility state.
+    /// - In Zen Mode: showing any panel switches to FullScreen
+    /// - In FullScreen or Zen Mode: hiding all panels switches to Zen Mode
+    /// </summary>
+    private void UpdateWindowLayoutBasedOnPanelState()
     {
-        var layout = _editorSettings.WindowLayout;
-        return layout == WindowLayout.ZenMode || layout == WindowLayout.Presenter;
+        var currentLayout = _editorSettings.WindowLayout;
+        bool anyPanelVisible = _editorSettings.IsContextPanelVisible || 
+                               _editorSettings.IsInspectorPanelVisible || 
+                               _editorSettings.IsConsolePanelVisible;
+
+        if (currentLayout == WindowLayout.ZenMode && anyPanelVisible)
+        {
+            // In Zen Mode and showing a panel: switch to FullScreen
+            _userInterfaceService.SetWindowLayout(WindowLayout.FullScreen);
+        }
+        else if (currentLayout == WindowLayout.FullScreen && !anyPanelVisible)
+        {
+            // In FullScreen and all panels hidden: switch to Zen Mode
+            _userInterfaceService.SetWindowLayout(WindowLayout.ZenMode);
+        }
     }
 
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

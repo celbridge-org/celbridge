@@ -215,23 +215,32 @@ public class UserInterfaceService : IUserInterfaceService
         _editorSettings.WindowLayout = windowLayout;
 
         // Apply panel visibility based on the new layout
-        switch (windowLayout)
-        {
-            case WindowLayout.Windowed:
-            case WindowLayout.FullScreen:
-                // Restore panel visibility when returning to Windowed or FullScreen mode
-                _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
-                _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
-                _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
-                break;
+        // Note: When switching between FullScreen and ZenMode, we preserve current panel state
+        // because Zen Mode is essentially FullScreen with all panels collapsed.
+        bool isTransitionBetweenFullScreenAndZenMode = 
+            (currentLayout == WindowLayout.FullScreen && windowLayout == WindowLayout.ZenMode) ||
+            (currentLayout == WindowLayout.ZenMode && windowLayout == WindowLayout.FullScreen);
 
-            case WindowLayout.ZenMode:
-            case WindowLayout.Presenter:
-                // Hide all panels in Zen Mode and Presenter mode
-                _editorSettings.IsContextPanelVisible = false;
-                _editorSettings.IsInspectorPanelVisible = false;
-                _editorSettings.IsConsolePanelVisible = false;
-                break;
+        if (!isTransitionBetweenFullScreenAndZenMode)
+        {
+            switch (windowLayout)
+            {
+                case WindowLayout.Windowed:
+                case WindowLayout.FullScreen:
+                    // Restore panel visibility when returning to Windowed or FullScreen mode
+                    _editorSettings.IsContextPanelVisible = _editorSettings.FullscreenPreContextPanelVisible;
+                    _editorSettings.IsInspectorPanelVisible = _editorSettings.FullscreenPreInspectorPanelVisible;
+                    _editorSettings.IsConsolePanelVisible = _editorSettings.FullscreenPreConsolePanelVisible;
+                    break;
+
+                case WindowLayout.ZenMode:
+                case WindowLayout.Presenter:
+                    // Hide all panels in Zen Mode and Presenter mode
+                    _editorSettings.IsContextPanelVisible = false;
+                    _editorSettings.IsInspectorPanelVisible = false;
+                    _editorSettings.IsConsolePanelVisible = false;
+                    break;
+            }
         }
 
         // Notify UI about the window layout change
