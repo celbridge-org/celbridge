@@ -13,13 +13,6 @@ public class LayoutManager : ILayoutManager
     private const float DefaultInspectorPanelWidth = 300f;
     private const float DefaultConsolePanelHeight = 350f;
 
-    // Default window geometry values
-    // Use -1 for position to indicate "use system default placement"
-    public const int DefaultWindowX = -1;
-    public const int DefaultWindowY = -1;
-    public const int DefaultWindowWidth = 1200;
-    public const int DefaultWindowHeight = 800;
-
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
@@ -219,11 +212,12 @@ public class LayoutManager : ILayoutManager
         // Reset preferred visibility to all panels
         _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
 
-        // Reset window geometry to default values
-        _editorSettings.PreferredWindowX = DefaultWindowX;
-        _editorSettings.PreferredWindowY = DefaultWindowY;
-        _editorSettings.PreferredWindowWidth = DefaultWindowWidth;
-        _editorSettings.PreferredWindowHeight = DefaultWindowHeight;
+        // Reset preferred window geometry
+        _editorSettings.UsePreferredWindowGeometry = false;
+        _editorSettings.PreferredWindowX = 0;
+        _editorSettings.PreferredWindowY = 0;
+        _editorSettings.PreferredWindowWidth = 0;
+        _editorSettings.PreferredWindowHeight = 0;
         _editorSettings.IsWindowMaximized = false;
 
         // Show all panels. This change should persist.
@@ -233,6 +227,11 @@ public class LayoutManager : ILayoutManager
         if (WindowMode != WindowMode.Windowed)
         {
             SetWindowModeInternal(WindowMode.Windowed);
+        }
+        else
+        {
+            // Already in Windowed mode, but need to sync window state (e.g., restore from maximized)
+            _messengerService.Send(new RestoreWindowStateMessage());
         }
 
         return Result.Ok();

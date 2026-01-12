@@ -37,6 +37,12 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
+    public bool UsePreferredWindowGeometry
+    {
+        get => GetValue<bool>(nameof(UsePreferredWindowGeometry), false);
+        set => SetValue(nameof(UsePreferredWindowGeometry), value);
+    }
+
     public bool IsWindowMaximized
     {
         get => GetValue<bool>(nameof(IsWindowMaximized), false);
@@ -45,25 +51,25 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public int PreferredWindowX
     {
-        get => GetValue<int>(nameof(PreferredWindowX), -1);
+        get => GetValue<int>(nameof(PreferredWindowX), 0);
         set => SetValue(nameof(PreferredWindowX), value);
     }
 
     public int PreferredWindowY
     {
-        get => GetValue<int>(nameof(PreferredWindowY), -1);
+        get => GetValue<int>(nameof(PreferredWindowY), 0);
         set => SetValue(nameof(PreferredWindowY), value);
     }
 
     public int PreferredWindowWidth
     {
-        get => GetValue<int>(nameof(PreferredWindowWidth), 1200);
+        get => GetValue<int>(nameof(PreferredWindowWidth), 0);
         set => SetValue(nameof(PreferredWindowWidth), value);
     }
 
     public int PreferredWindowHeight
     {
-        get => GetValue<int>(nameof(PreferredWindowHeight), 800);
+        get => GetValue<int>(nameof(PreferredWindowHeight), 0);
         set => SetValue(nameof(PreferredWindowHeight), value);
     }
 

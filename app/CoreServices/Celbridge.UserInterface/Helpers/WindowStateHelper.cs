@@ -66,6 +66,9 @@ public sealed class WindowStateHelper
             // Listen for window mode changes to handle fullscreen
             _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
 
+            // Listen for requests to restore window state (e.g., after layout reset)
+            _messengerService.Register<RestoreWindowStateMessage>(this, OnRestoreWindowState);
+
             return Result.Ok();
         }
         catch (Exception ex)
@@ -78,6 +81,44 @@ public sealed class WindowStateHelper
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
         ApplyWindowMode(message.WindowMode);
+    }
+
+    private void OnRestoreWindowState(object recipient, RestoreWindowStateMessage message)
+    {
+        SyncWindowState();
+    }
+
+    /// <summary>
+    /// Synchronizes the window's maximized/restored state with the current editor settings.
+    /// </summary>
+    private void SyncWindowState()
+    {
+        if (_overlappedPresenter == null || _appWindow?.Presenter.Kind != AppWindowPresenterKind.Overlapped)
+        {
+            return;
+        }
+
+        try
+        {
+            _isApplyingWindowMode = true;
+
+            if (_editorSettings.IsWindowMaximized)
+            {
+                _overlappedPresenter.Maximize();
+            }
+            else
+            {
+                _overlappedPresenter.Restore();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to sync window state");
+        }
+        finally
+        {
+            _isApplyingWindowMode = false;
+        }
     }
 
     /// <summary>
@@ -139,10 +180,10 @@ public sealed class WindowStateHelper
             return;
         }
 
-        // Check if we have saved window bounds (-1 indicates no saved position)
-        if (_editorSettings.PreferredWindowX < 0 || _editorSettings.PreferredWindowY < 0)
+        // Check if we should use saved window geometry
+        if (!_editorSettings.UsePreferredWindowGeometry)
         {
-            _logger.LogDebug("No saved window position found, using default");
+            _logger.LogDebug("UsePreferredWindowGeometry is false, using default window placement");
             return;
         }
 
@@ -261,6 +302,9 @@ public sealed class WindowStateHelper
         _editorSettings.PreferredWindowY = position.Y;
         _editorSettings.PreferredWindowWidth = size.Width;
         _editorSettings.PreferredWindowHeight = size.Height;
+
+        // Mark that we now have valid saved geometry to restore on next startup
+        _editorSettings.UsePreferredWindowGeometry = true;
     }
 
     private static AppWindow? GetAppWindow(Window? window)

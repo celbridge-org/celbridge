@@ -47,6 +47,12 @@ public interface IEditorSettings : INotifyPropertyChanged
     // ========================================
 
     /// <summary>
+    /// Indicates whether saved window geometry should be used on startup.
+    /// When false, the OS default window position and size will be used.
+    /// </summary>
+    bool UsePreferredWindowGeometry { get; set; }
+
+    /// <summary>
     /// Is the the window maximized.
     /// </summary>
     bool IsWindowMaximized { get; set; }

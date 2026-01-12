@@ -26,3 +26,9 @@ public record WindowModeChangedMessage(WindowMode WindowMode);
 /// Message sent when the panel visibility changes.
 /// </summary>
 public record PanelVisibilityChangedMessage(PanelVisibilityFlags PanelVisibility);
+
+/// <summary>
+/// Message sent to request the window state (maximized/restored) to be synchronized
+/// with the current editor settings.
+/// </summary>
+public record RestoreWindowStateMessage();
