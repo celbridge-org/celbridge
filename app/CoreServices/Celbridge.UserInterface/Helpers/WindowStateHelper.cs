@@ -2,6 +2,7 @@
 
 using Celbridge.Logging;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 using WinRT.Interop;
@@ -9,19 +10,24 @@ using WinRT.Interop;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Helper class to manage window maximized state and bounds persistence.
+/// Helper class to manage window maximized state, bounds persistence, and fullscreen modes.
 /// </summary>
 public sealed class WindowStateHelper
 {
     private readonly ILogger<WindowStateHelper> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
     private AppWindow? _appWindow;
+    private OverlappedPresenter? _overlappedPresenter;
+    private bool _isApplyingWindowMode;
 
     public WindowStateHelper(
-        ILogger<WindowStateHelper> logger, 
+        ILogger<WindowStateHelper> logger,
+        IMessengerService messengerService,
         IEditorSettings editorSettings)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _editorSettings = editorSettings;
     }
 
@@ -40,8 +46,8 @@ public sealed class WindowStateHelper
                 return Result.Fail("Failed to get AppWindow from main window");
             }
 
-            var presenter = _appWindow.Presenter as OverlappedPresenter;
-            if (presenter == null)
+            _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
+            if (_overlappedPresenter == null)
             {
                 return Result.Fail("AppWindow presenter is not an OverlappedPresenter");
             }
@@ -51,11 +57,17 @@ public sealed class WindowStateHelper
 
             if (_editorSettings.IsWindowMaximized)
             {
-                presenter.Maximize();
+                _overlappedPresenter.Maximize();
             }
 
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
+
+            // Listen for window mode changes to handle fullscreen
+            _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+
+            // Listen for requests to restore window state (e.g., after layout reset)
+            _messengerService.Register<RestoreWindowStateMessage>(this, OnRestoreWindowState);
 
             return Result.Ok();
         }
@@ -66,6 +78,101 @@ public sealed class WindowStateHelper
         }
     }
 
+    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    {
+        ApplyWindowMode(message.WindowMode);
+    }
+
+    private void OnRestoreWindowState(object recipient, RestoreWindowStateMessage message)
+    {
+        SyncWindowState();
+    }
+
+    /// <summary>
+    /// Synchronizes the window's maximized/restored state with the current editor settings.
+    /// </summary>
+    private void SyncWindowState()
+    {
+        if (_overlappedPresenter == null || _appWindow?.Presenter.Kind != AppWindowPresenterKind.Overlapped)
+        {
+            return;
+        }
+
+        try
+        {
+            _isApplyingWindowMode = true;
+
+            if (_editorSettings.IsWindowMaximized)
+            {
+                _overlappedPresenter.Maximize();
+            }
+            else
+            {
+                _overlappedPresenter.Restore();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to sync window state");
+        }
+        finally
+        {
+            _isApplyingWindowMode = false;
+        }
+    }
+
+    /// <summary>
+    /// Applies the specified window mode to the window.
+    /// </summary>
+    public void ApplyWindowMode(WindowMode windowMode)
+    {
+        if (_appWindow == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _isApplyingWindowMode = true;
+
+            switch (windowMode)
+            {
+                case WindowMode.Windowed:
+                    // Exit fullscreen - restore to overlapped presenter
+                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.Overlapped)
+                    {
+                        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+                        
+                        // Get the new presenter and restore maximized state if needed
+                        _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
+                        if (_overlappedPresenter != null && _editorSettings.IsWindowMaximized)
+                        {
+                            _overlappedPresenter.Maximize();
+                        }
+                    }
+                    break;
+
+                case WindowMode.FullScreen:
+                case WindowMode.ZenMode:
+                case WindowMode.Presenter:
+                    // Enter fullscreen mode
+                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
+                    {
+                        _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+                    }
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to apply window mode: {windowMode}");
+        }
+        finally
+        {
+            _isApplyingWindowMode = false;
+        }
+    }
+
     private void TryRestoreWindowState()
     {
         if (_appWindow == null)
@@ -73,17 +180,17 @@ public sealed class WindowStateHelper
             return;
         }
 
-        // Check if we have saved window bounds (-1 indicates no saved position)
-        if (_editorSettings.WindowX < 0 || _editorSettings.WindowY < 0)
+        // Check if we should use saved window geometry
+        if (!_editorSettings.UsePreferredWindowGeometry)
         {
-            _logger.LogDebug("No saved window position found, using default");
+            _logger.LogDebug("UsePreferredWindowGeometry is false, using default window placement");
             return;
         }
 
-        int x = _editorSettings.WindowX;
-        int y = _editorSettings.WindowY;
-        int width = _editorSettings.WindowWidth;
-        int height = _editorSettings.WindowHeight;
+        int x = _editorSettings.PreferredWindowX;
+        int y = _editorSettings.PreferredWindowY;
+        int width = _editorSettings.PreferredWindowWidth;
+        int height = _editorSettings.PreferredWindowHeight;
 
         // Validate that the title bar area is visible on screen
         if (!IsTitleBarVisible(x, y, width, height))
@@ -151,20 +258,31 @@ public sealed class WindowStateHelper
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        // Ignore changes while we're in the middle of applying a window mode change
+        // to avoid saving fullscreen dimensions as the preferred window bounds.
+        if (_isApplyingWindowMode)
+        {
+            return;
+        }
+
         if (args.DidSizeChange || 
             args.DidPositionChange || 
             args.DidPresenterChange)
         {
-            var presenter = sender.Presenter as OverlappedPresenter;
-            if (presenter != null)
+            // Only track state when using overlapped presenter (windowed mode)
+            if (sender.Presenter.Kind == AppWindowPresenterKind.Overlapped)
             {
-                bool isMaximized = presenter.State == OverlappedPresenterState.Maximized;
-                _editorSettings.IsWindowMaximized = isMaximized;
-
-                // Only save bounds when not maximized or minimized
-                if (presenter.State == OverlappedPresenterState.Restored)
+                var presenter = sender.Presenter as OverlappedPresenter;
+                if (presenter != null)
                 {
-                    SaveWindowBounds();
+                    bool isMaximized = presenter.State == OverlappedPresenterState.Maximized;
+                    _editorSettings.IsWindowMaximized = isMaximized;
+
+                    // Only save bounds when not maximized or minimized
+                    if (presenter.State == OverlappedPresenterState.Restored)
+                    {
+                        SaveWindowBounds();
+                    }
                 }
             }
         }
@@ -180,10 +298,13 @@ public sealed class WindowStateHelper
         var position = _appWindow.Position;
         var size = _appWindow.Size;
 
-        _editorSettings.WindowX = position.X;
-        _editorSettings.WindowY = position.Y;
-        _editorSettings.WindowWidth = size.Width;
-        _editorSettings.WindowHeight = size.Height;
+        _editorSettings.PreferredWindowX = position.X;
+        _editorSettings.PreferredWindowY = position.Y;
+        _editorSettings.PreferredWindowWidth = size.Width;
+        _editorSettings.PreferredWindowHeight = size.Height;
+
+        // Mark that we now have valid saved geometry to restore on next startup
+        _editorSettings.UsePreferredWindowGeometry = true;
     }
 
     private static AppWindow? GetAppWindow(Window? window)

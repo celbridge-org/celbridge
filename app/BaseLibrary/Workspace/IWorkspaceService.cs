@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
+using Celbridge.Settings;
 
 namespace Celbridge.Workspace;
 
@@ -74,11 +75,6 @@ public interface IWorkspaceService
     /// The most recently focussed workspace panel.
     /// </summary>
     WorkspacePanel ActivePanel { get; }
-
-    /// <summary>
-    /// Toggle all workspace panels. If any panel is collapsed, expand all panels. Otherwise, collapse all panels.
-    /// </summary>
-    void ToggleAllPanels();
 
     /// <summary>
     /// Set a flag to indicate that the workspace state is dirty and needs to be saved.
