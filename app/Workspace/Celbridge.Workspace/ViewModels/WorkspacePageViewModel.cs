@@ -27,13 +27,14 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    public float ContextPanelWidth
+    // Panel width/height properties now use Primary/Secondary naming
+    public float PrimaryPanelWidth
     {
         get => _editorSettings.ContextPanelWidth;
         set => _editorSettings.ContextPanelWidth = value;
     }
 
-    public float InspectorPanelWidth
+    public float SecondaryPanelWidth
     {
         get => _editorSettings.InspectorPanelWidth;
         set => _editorSettings.InspectorPanelWidth = value;
@@ -47,9 +48,10 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public bool IsFullScreen => _layoutManager.IsFullScreen;
 
-    public bool IsContextPanelVisible => _layoutManager.IsContextPanelVisible;
+    // Panel visibility properties now use Primary/Secondary naming
+    public bool IsPrimaryPanelVisible => _layoutManager.IsContextPanelVisible;
 
-    public bool IsInspectorPanelVisible => _layoutManager.IsInspectorPanelVisible;
+    public bool IsSecondaryPanelVisible => _layoutManager.IsInspectorPanelVisible;
 
     public bool IsConsolePanelVisible => _layoutManager.IsConsolePanelVisible;
 
@@ -86,8 +88,19 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Forward editor setting change notifications for panel sizes
-        OnPropertyChanged(e);
+        // Map old property names to new ones for panel sizes
+        switch (e.PropertyName)
+        {
+            case nameof(IEditorSettings.ContextPanelWidth):
+                OnPropertyChanged(nameof(PrimaryPanelWidth));
+                break;
+            case nameof(IEditorSettings.InspectorPanelWidth):
+                OnPropertyChanged(nameof(SecondaryPanelWidth));
+                break;
+            default:
+                OnPropertyChanged(e);
+                break;
+        }
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
@@ -99,8 +112,8 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
     {
         // Notify that panel visibility properties have changed
-        OnPropertyChanged(nameof(IsContextPanelVisible));
-        OnPropertyChanged(nameof(IsInspectorPanelVisible));
+        OnPropertyChanged(nameof(IsPrimaryPanelVisible));
+        OnPropertyChanged(nameof(IsSecondaryPanelVisible));
         OnPropertyChanged(nameof(IsConsolePanelVisible));
     }
 

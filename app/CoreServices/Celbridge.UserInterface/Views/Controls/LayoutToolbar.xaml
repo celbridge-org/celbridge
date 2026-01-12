@@ -70,6 +70,15 @@
                             </StackPanel>
                         </RadioButton>
 
+                        <MenuFlyoutSeparator x:Name="PanelOptionsSeparator"/>
+
+                        <!-- Swap Panels Toggle (only visible on Workspace page) -->
+                        <CheckBox x:Name="SwapPanelsCheckBox"
+                                  Checked="SwapPanelsCheckBox_Changed"
+                                  Unchecked="SwapPanelsCheckBox_Changed">
+                            <TextBlock x:Name="SwapPanelsLabel"/>
+                        </CheckBox>
+
                         <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
 
                         <!-- Reset Layout Button (only visible on Workspace page) -->

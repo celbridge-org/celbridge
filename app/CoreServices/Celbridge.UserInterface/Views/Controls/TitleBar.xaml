@@ -49,10 +49,85 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
+        <!-- Horizontal Navigation View for app-level navigation -->
+        <NavigationView x:Name="TitleBarNavigation"
+                        Grid.Column="1"
+                        IsPaneToggleButtonVisible="False"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        PaneDisplayMode="Top"
+                        Background="Transparent"
+                        SelectionChanged="TitleBarNavigation_SelectionChanged">
+            <NavigationView.MenuItems>
+                <!-- Main Menu with flyout -->
+                <NavigationViewItem x:Name="MenuNavItem"
+                                    Tag="Menu"
+                                    SelectsOnInvoked="False">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="GlobalNavigationButton"/>
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.MenuItems>
+                        <NavigationViewItem x:Name="NewProjectNavItem"
+                                            Tag="NewProject"
+                                            SelectsOnInvoked="False">
+                            <NavigationViewItem.Icon>
+                                <SymbolIcon Symbol="NewFolder"/>
+                            </NavigationViewItem.Icon>
+                        </NavigationViewItem>
+                        <NavigationViewItem x:Name="OpenProjectNavItem"
+                                            Tag="OpenProject"
+                                            SelectsOnInvoked="False">
+                            <NavigationViewItem.Icon>
+                                <SymbolIcon Symbol="OpenLocal"/>
+                            </NavigationViewItem.Icon>
+                        </NavigationViewItem>
+                        <NavigationViewItem x:Name="ReloadProjectNavItem"
+                                            Tag="ReloadProject"
+                                            IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}"
+                                            SelectsOnInvoked="False">
+                            <NavigationViewItem.Icon>
+                                <SymbolIcon Symbol="Refresh"/>
+                            </NavigationViewItem.Icon>
+                        </NavigationViewItem>
+                    </NavigationViewItem.MenuItems>
+                </NavigationViewItem>
+
+                <!-- Workspace -->
+                <NavigationViewItem x:Name="WorkspaceNavItem"
+                                    Tag="Workspace"
+                                    IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xEC50;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Community -->
+                <NavigationViewItem x:Name="CommunityNavItem"
+                                    Tag="Community">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xE12B;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Settings -->
+                <NavigationViewItem x:Name="SettingsNavItem"
+                                    Tag="Settings">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Setting"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <!-- Empty content - navigation doesn't display content here -->
+            <Grid/>
+        </NavigationView>
+
         <TextBlock x:Name="ProjectNameText"
-                   Grid.Column="1"
+                   Grid.Column="2"
                    Margin="8,0,0,0"
-                   HorizontalAlignment="Left"
+                   HorizontalAlignment="Center"
                    VerticalAlignment="Center"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->

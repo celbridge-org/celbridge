@@ -1,0 +1,69 @@
+﻿<UserControl
+    x:Class="Celbridge.Workspace.Views.ProjectPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+    <Grid x:Name="LayoutRoot">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Vertical Navigation Bar -->
+        <NavigationView x:Name="ProjectNavigation"
+                        Grid.Column="0"
+                        IsPaneToggleButtonVisible="False"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        PaneDisplayMode="LeftCompact"
+                        CompactPaneLength="40"
+                        Background="{ThemeResource PanelBackgroundABrush}"
+                        SelectionChanged="ProjectNavigation_SelectionChanged">
+            <NavigationView.MenuItems>
+                <!-- Explorer -->
+                <NavigationViewItem x:Name="ExplorerNavItem"
+                                    Tag="Explorer"
+                                    IsSelected="True">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xEC50;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Search -->
+                <NavigationViewItem x:Name="SearchNavItem"
+                                    Tag="Search">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xE721;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Debug (placeholder) -->
+                <NavigationViewItem x:Name="DebugNavItem"
+                                    Tag="Debug"
+                                    IsEnabled="False">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xEBE8;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Source Control (placeholder) -->
+                <NavigationViewItem x:Name="SourceControlNavItem"
+                                    Tag="SourceControl"
+                                    IsEnabled="False">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Upload"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <!-- Content area for the selected panel -->
+            <Grid x:Name="ContentArea"
+                  Background="{ThemeResource PanelBackgroundABrush}">
+            </Grid>
+        </NavigationView>
+    </Grid>
+</UserControl>

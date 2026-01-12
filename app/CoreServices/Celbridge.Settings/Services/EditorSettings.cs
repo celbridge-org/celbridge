@@ -103,4 +103,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
         set => SetValue(nameof(Theme), value);
     }
+
+    public bool SwapPrimarySecondaryPanels
+    {
+        get => GetValue<bool>(nameof(SwapPrimarySecondaryPanels), false);
+        set => SetValue(nameof(SwapPrimarySecondaryPanels), value);
+    }
 }

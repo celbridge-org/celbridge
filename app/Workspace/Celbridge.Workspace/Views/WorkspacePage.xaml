@@ -13,9 +13,9 @@
   <Grid x:Name="LayoutRoot">
     
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="ContextPanelColumn" Width="Auto" MinWidth="100"/>
+      <ColumnDefinition x:Name="PrimaryPanelColumn" Width="Auto" MinWidth="100"/>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition x:Name="InspectorPanelColumn" Width="Auto" MinWidth="100"/>
+      <ColumnDefinition x:Name="SecondaryPanelColumn" Width="Auto" MinWidth="100"/>
     </Grid.ColumnDefinitions>
     
     <Grid.RowDefinitions>
@@ -23,13 +23,13 @@
       <RowDefinition x:Name="ConsolePanelRow" Height="Auto" MinHeight="100"/>
     </Grid.RowDefinitions>
 
-    <!-- Context Panel -->
-    <Grid x:Name="ContextPanel"
+    <!-- Primary Panel (contains ProjectPanel by default, or Inspector when swapped) -->
+    <Grid x:Name="PrimaryPanel"
           Grid.RowSpan="2"
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="2,0,2,0"
+          BorderThickness="0,0,2,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
     </Grid>
@@ -42,15 +42,15 @@
           PointerPressed="Panel_PointerPressed">
     </Grid>
 
-    <!-- Inspector Panel -->
-    <Grid x:Name="InspectorPanel"
+    <!-- Secondary Panel (contains Inspector by default, or ProjectPanel when swapped) -->
+    <Grid x:Name="SecondaryPanel"
           Grid.Column="2"
           Grid.Row="0"
           Grid.RowSpan="2"
           MinWidth="100"
           Background="{ThemeResource PanelBackgroundABrush}"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="2,0,2,0"
+          BorderThickness="2,0,0,0"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
     </Grid>
@@ -69,7 +69,7 @@
 
     <!-- Grid splitters -->
 
-    <controls:GridSplitter x:Name="ContextPanelSplitter"
+    <controls:GridSplitter x:Name="PrimaryPanelSplitter"
                            Grid.Column="0"
                            Grid.RowSpan="2"
                            HorizontalAlignment="Right"
@@ -77,7 +77,7 @@
                            ResizeBehavior="BasedOnAlignment"
                            Foreground="{ThemeResource PanelBackgroundBBrush}"/>
 
-    <controls:GridSplitter x:Name="InspectorPanelSplitter"
+    <controls:GridSplitter x:Name="SecondaryPanelSplitter"
                            Grid.Column="2"
                            Grid.RowSpan="2"
                            HorizontalAlignment="Left"

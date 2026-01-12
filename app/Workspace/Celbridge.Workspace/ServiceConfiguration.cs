@@ -38,6 +38,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<WorkspacePageViewModel>();
+        services.AddTransient<ProjectPanelViewModel>();
 
         //
         // Register commands

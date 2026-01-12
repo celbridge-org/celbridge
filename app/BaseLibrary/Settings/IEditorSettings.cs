@@ -114,4 +114,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Application user interface theme.
     /// </summary>
     ApplicationColorTheme Theme { get; set; }
+
+    /// <summary>
+    /// When true, swaps the Primary (left) and Secondary (right) panel contents.
+    /// </summary>
+    bool SwapPrimarySecondaryPanels { get; set; }
 }

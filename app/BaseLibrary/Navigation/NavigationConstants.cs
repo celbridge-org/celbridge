@@ -12,4 +12,5 @@ public class NavigationConstants
     public const string CommunityTag = "Community";
     public const string DebugTag = "Debug";
     public const string RevisionControlTag = "RevisionControl";
+    public const string WorkspaceTag = "Workspace";
 }

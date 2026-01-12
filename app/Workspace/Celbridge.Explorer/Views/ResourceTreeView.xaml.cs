@@ -121,7 +121,11 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     public async Task<Result> SetSelectedResource(ResourceKey resource)
     {
-        Guard.IsNotNull(_resourceRegistry);
+        // If the resource registry hasn't been set yet (tree not populated), return early
+        if (_resourceRegistry is null)
+        {
+            return Result.Ok();
+        }
 
         if (resource.IsEmpty)
         {
