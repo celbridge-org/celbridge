@@ -55,7 +55,8 @@ public sealed partial class FullscreenToolbar : UserControl
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         
         // Check if already in a fullscreen mode
-        UpdateFullscreenState();
+        _isFullscreenModeActive = _layoutManager.IsFullScreen;
+
     }
 
     private void FullscreenToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -77,12 +78,6 @@ public sealed partial class FullscreenToolbar : UserControl
             // Exiting fullscreen mode - hide toolbar immediately
             HideToolbar(animate: false);
         }
-    }
-
-    private void UpdateFullscreenState()
-    {
-        // Get the current window mode from the layout manager
-        _isFullscreenModeActive = _layoutManager.IsFullScreen;
     }
 
     /// <summary>

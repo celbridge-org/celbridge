@@ -326,8 +326,11 @@ public class ExplorerService : IExplorerService, IDisposable
 
         if (showExplorerPanel)
         {
-            var layoutManager = _serviceProvider.GetRequiredService<ILayoutManager>();
-            layoutManager.SetPanelVisibility(PanelVisibilityFlags.Context, true);
+            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+            {
+                command.Panels = PanelVisibilityFlags.Context;
+                command.IsVisible = true;
+            });
         }
 
         return Result.Ok();

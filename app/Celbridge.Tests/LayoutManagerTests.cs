@@ -179,18 +179,25 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ToggleLayout_FromWindowedWithAllPanelsCollapsed_RestoresAllPanels()
+    public void ToggleLayout_FromWindowedWithAllPanelsCollapsed_MaintainsNoPanel()
     {
         // Manually collapse all panels while in Windowed mode
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Context, false);
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Inspector, false);
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
 
+        // Toggle to ZenMode
         var result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
 
         result.IsSuccess.Should().BeTrue();
+        _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
+        
+        // Toggle back to Windowed - should restore the persisted preference (None)
+        result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        
+        result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
     }
 
     #endregion
@@ -367,7 +374,7 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetPanelVisibility_ToNone_DoesNotUpdatePreferredPanelVisibility()
+    public void SetPanelVisibility_ToNone_UpdatesPreferredPanelVisibility()
     {
         _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
         _editorSettings.ClearReceivedCalls();
@@ -377,10 +384,11 @@ public class LayoutManagerTests
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Inspector, false);
         _editorSettings.ClearReceivedCalls();
 
-        // The last panel being hidden should NOT persist None as preference
+        // The last panel being hidden SHOULD persist None as preference
+        // because the user explicitly chose to hide all panels
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
 
-        _editorSettings.DidNotReceive().PreferredPanelVisibility = PanelVisibilityFlags.None;
+        _editorSettings.Received().PreferredPanelVisibility = PanelVisibilityFlags.None;
     }
 
     #endregion

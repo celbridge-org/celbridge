@@ -46,6 +46,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<ISetLayoutCommand, SetLayoutCommand>();
+        services.AddTransient<ISetPanelVisibilityCommand, SetPanelVisibilityCommand>();
 
         //
         // Register view models

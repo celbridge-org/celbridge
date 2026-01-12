@@ -1,7 +1,7 @@
+using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,7 +18,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IDispatcher _dispatcher;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly ICommandService _commandService;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -59,13 +59,13 @@ public partial class ConsolePanelViewModel : ObservableObject
         IStringLocalizer stringLocalizer,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        ILayoutManager layoutManager)
+        ICommandService commandService)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
-        _layoutManager = layoutManager;
+        _commandService = commandService;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
@@ -160,7 +160,11 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Force the console panel to be visible when an error occurs
         // This ensures the user can see the error banner even if they had previously collapsed the console
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, true);
+        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        {
+            command.Panels = PanelVisibilityFlags.Console;
+            command.IsVisible = true;
+        });
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)

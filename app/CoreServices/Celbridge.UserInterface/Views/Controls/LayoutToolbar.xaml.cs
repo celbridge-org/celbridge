@@ -145,17 +145,35 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ToggleExplorerPanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Context);
+        // Use command to toggle panel visibility
+        var isVisible = !_layoutManager.IsContextPanelVisible;
+        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        {
+            command.Panels = PanelVisibilityFlags.Context;
+            command.IsVisible = isVisible;
+        });
     }
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Console);
+        // Use command to toggle panel visibility
+        var isVisible = !_layoutManager.IsConsolePanelVisible;
+        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        {
+            command.Panels = PanelVisibilityFlags.Console;
+            command.IsVisible = isVisible;
+        });
     }
 
     private void ToggleInspectorPanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Inspector);
+        // Use command to toggle panel visibility
+        var isVisible = !_layoutManager.IsInspectorPanelVisible;
+        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        {
+            command.Panels = PanelVisibilityFlags.Inspector;
+            command.IsVisible = isVisible;
+        });
     }
 
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
