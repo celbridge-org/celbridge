@@ -1,14 +1,10 @@
-using Celbridge.Settings;
-using System.ComponentModel;
-
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class LayoutToolbar : UserControl
 {
-    private readonly IEditorSettings _editorSettings;
-    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ILayoutManager _layoutManager;
 
     private bool _isUpdatingUI = false;
     private bool _isOnWorkspacePage = false;
@@ -17,10 +13,9 @@ public sealed partial class LayoutToolbar : UserControl
     {
         InitializeComponent();
 
-        _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
-        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
 
         Loaded += LayoutToolbar_Loaded;
         Unloaded += LayoutToolbar_Unloaded;
@@ -33,13 +28,15 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
         UpdateWindowModeRadios();
         UpdatePanelToggleVisibility();
-        _editorSettings.PropertyChanged += EditorSettings_PropertyChanged;
+        
+        // Register for layout manager state change messages
+        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+        _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
     }
 
     private void LayoutToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
-        _editorSettings.PropertyChanged -= EditorSettings_PropertyChanged;
         _messengerService.UnregisterAll(this);
         Loaded -= LayoutToolbar_Loaded;
         Unloaded -= LayoutToolbar_Unloaded;
@@ -107,23 +104,15 @@ public sealed partial class LayoutToolbar : UserControl
         PresenterModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_PresenterLabel");
     }
 
-    private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
-        switch (e.PropertyName)
-        {
-            case nameof(IEditorSettings.IsContextPanelVisible):
-            case nameof(IEditorSettings.IsInspectorPanelVisible):
-            case nameof(IEditorSettings.IsConsolePanelVisible):
-            case nameof(IEditorSettings.ContextPanelWidth):
-            case nameof(IEditorSettings.InspectorPanelWidth):
-            case nameof(IEditorSettings.ConsolePanelHeight):
-                UpdatePanelIcons();
-                break;
-            case nameof(IEditorSettings.WindowMode):
-                UpdatePanelIcons();
-                UpdateWindowModeRadios();
-                break;
-        }
+        UpdatePanelIcons();
+        UpdateWindowModeRadios();
+    }
+
+    private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
+    {
+        UpdatePanelIcons();
     }
 
     private void UpdateWindowModeRadios()
@@ -131,7 +120,7 @@ public sealed partial class LayoutToolbar : UserControl
         _isUpdatingUI = true;
         try
         {
-            var windowMode = _editorSettings.WindowMode;
+            var windowMode = _layoutManager.WindowMode;
             WindowedModeRadio.IsChecked = windowMode == WindowMode.Windowed;
             FullScreenModeRadio.IsChecked = windowMode == WindowMode.FullScreen;
             ZenModeRadio.IsChecked = windowMode == WindowMode.ZenMode;
@@ -145,51 +134,24 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelIcons()
     {
-        ExplorerPanelIcon.IsActivePanel = _editorSettings.IsContextPanelVisible;
-        ConsolePanelIcon.IsActivePanel = _editorSettings.IsConsolePanelVisible;
-        InspectorPanelIcon.IsActivePanel = _editorSettings.IsInspectorPanelVisible;
+        ExplorerPanelIcon.IsActivePanel = _layoutManager.IsContextPanelVisible;
+        ConsolePanelIcon.IsActivePanel = _layoutManager.IsConsolePanelVisible;
+        InspectorPanelIcon.IsActivePanel = _layoutManager.IsInspectorPanelVisible;
     }
 
     private void ToggleExplorerPanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _editorSettings.IsContextPanelVisible = !_editorSettings.IsContextPanelVisible;
-        UpdateWindowLayoutBasedOnPanelState();
+        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Context);
     }
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _editorSettings.IsConsolePanelVisible = !_editorSettings.IsConsolePanelVisible;
-        UpdateWindowLayoutBasedOnPanelState();
+        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Console);
     }
 
     private void ToggleInspectorPanelButton_Click(object sender, RoutedEventArgs e)
     {
-        _editorSettings.IsInspectorPanelVisible = !_editorSettings.IsInspectorPanelVisible;
-        UpdateWindowLayoutBasedOnPanelState();
-    }
-
-    /// <summary>
-    /// Updates the window mode based on current panel visibility state.
-    /// - In Zen Mode: showing any panel switches to FullScreen
-    /// - In FullScreen or Zen Mode: hiding all panels switches to Zen Mode
-    /// </summary>
-    private void UpdateWindowLayoutBasedOnPanelState()
-    {
-        var currentMode = _editorSettings.WindowMode;
-        bool anyPanelVisible = _editorSettings.IsContextPanelVisible || 
-                               _editorSettings.IsInspectorPanelVisible || 
-                               _editorSettings.IsConsolePanelVisible;
-
-        if (currentMode == WindowMode.ZenMode && anyPanelVisible)
-        {
-            // In Zen Mode and showing a panel: switch to FullScreen
-            _userInterfaceService.SetWindowMode(WindowMode.FullScreen);
-        }
-        else if (currentMode == WindowMode.FullScreen && !anyPanelVisible)
-        {
-            // In FullScreen and all panels hidden: switch to Zen Mode
-            _userInterfaceService.SetWindowMode(WindowMode.ZenMode);
-        }
+        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Inspector);
     }
 
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -204,14 +166,7 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
     {
-        _editorSettings.ResetPanelState();
-        
-        // Also reset to Windowed mode
-        if (_editorSettings.WindowMode != WindowMode.Windowed)
-        {
-            _userInterfaceService.SetWindowMode(WindowMode.Windowed);
-        }
-        
+        _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
         PanelLayoutFlyout.Hide();
     }
 
@@ -222,33 +177,29 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        WindowMode newMode;
+        LayoutTransition transition;
         
         if (ReferenceEquals(sender, WindowedModeRadio))
         {
-            newMode = WindowMode.Windowed;
+            transition = LayoutTransition.EnterWindowed;
         }
         else if (ReferenceEquals(sender, FullScreenModeRadio))
         {
-            newMode = WindowMode.FullScreen;
+            transition = LayoutTransition.EnterFullScreen;
         }
         else if (ReferenceEquals(sender, ZenModeRadio))
         {
-            newMode = WindowMode.ZenMode;
+            transition = LayoutTransition.EnterZenMode;
         }
         else if (ReferenceEquals(sender, PresenterModeRadio))
         {
-            newMode = WindowMode.Presenter;
+            transition = LayoutTransition.EnterPresenterMode;
         }
         else
         {
-            // Should never happen, but default to Windowed if sender is unexpected
             return;
         }
 
-        if (_editorSettings.WindowMode != newMode)
-        {
-            _userInterfaceService.SetWindowMode(newMode);
-        }
+        _layoutManager.RequestTransition(transition);
     }
 }

@@ -326,7 +326,8 @@ public class ExplorerService : IExplorerService, IDisposable
 
         if (showExplorerPanel)
         {
-            _editorSettings.IsContextPanelVisible = true;
+            var layoutManager = _serviceProvider.GetRequiredService<ILayoutManager>();
+            layoutManager.SetPanelVisibility(PanelVisibilityFlags.Context, true);
         }
 
         return Result.Ok();

@@ -12,7 +12,7 @@ public sealed partial class FullscreenToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ILayoutManager _layoutManager;
     
     private readonly DispatcherTimer _hideTimer;
     
@@ -31,7 +31,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
+        _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
 
         this.VerticalAlignment = VerticalAlignment.Top;
         this.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -83,10 +83,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void UpdateFullscreenState()
     {
-        var windowMode = _editorSettings.WindowMode;
-        _isFullscreenModeActive = windowMode == WindowMode.FullScreen || 
-                                  windowMode == WindowMode.ZenMode || 
-                                  windowMode == WindowMode.Presenter;
+        _isFullscreenModeActive = _layoutManager.IsFullScreen;
     }
 
     /// <summary>
@@ -222,7 +219,6 @@ public sealed partial class FullscreenToolbar : UserControl
     private void ExitFullscreen()
     {
         // Return to Windowed mode
-        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        userInterfaceService.SetWindowMode(WindowMode.Windowed);
+        _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
     }
 }

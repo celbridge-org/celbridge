@@ -1,7 +1,7 @@
-namespace Celbridge.Settings;
+namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Defines the 4 mutually exclusive window modes for the application.
+/// Defines the window modes for the application.
 /// </summary>
 public enum WindowMode
 {

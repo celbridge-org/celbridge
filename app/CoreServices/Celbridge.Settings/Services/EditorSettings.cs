@@ -1,3 +1,5 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
@@ -29,10 +31,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(RecentProjects), value);
     }
 
-    public ApplicationColorTheme Theme 
+    public string PreviousNewFileExtension
     {
-        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
-        set => SetValue(nameof(Theme), value);
+        get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
+        set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
     public bool IsWindowMaximized
@@ -41,74 +43,34 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(IsWindowMaximized), value);
     }
 
-    public int WindowX
+    public int PreferredWindowX
     {
-        get => GetValue<int>(nameof(WindowX), -1);
-        set => SetValue(nameof(WindowX), value);
+        get => GetValue<int>(nameof(PreferredWindowX), -1);
+        set => SetValue(nameof(PreferredWindowX), value);
     }
 
-    public int WindowY
+    public int PreferredWindowY
     {
-        get => GetValue<int>(nameof(WindowY), -1);
-        set => SetValue(nameof(WindowY), value);
+        get => GetValue<int>(nameof(PreferredWindowY), -1);
+        set => SetValue(nameof(PreferredWindowY), value);
     }
 
-    public int WindowWidth
+    public int PreferredWindowWidth
     {
-        get => GetValue<int>(nameof(WindowWidth), 1200);
-        set => SetValue(nameof(WindowWidth), value);
+        get => GetValue<int>(nameof(PreferredWindowWidth), 1200);
+        set => SetValue(nameof(PreferredWindowWidth), value);
     }
 
-    public int WindowHeight
+    public int PreferredWindowHeight
     {
-        get => GetValue<int>(nameof(WindowHeight), 800);
-        set => SetValue(nameof(WindowHeight), value);
+        get => GetValue<int>(nameof(PreferredWindowHeight), 800);
+        set => SetValue(nameof(PreferredWindowHeight), value);
     }
 
-    public string PreviousNewFileExtension
+    public PanelVisibilityFlags PreferredPanelVisibility
     {
-        get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
-        set => SetValue(nameof(PreviousNewFileExtension), value);
-    }
-
-    public WindowMode WindowMode
-    {
-        get => GetValue<WindowMode>(nameof(WindowMode), WindowMode.Windowed);
-        set => SetValue(nameof(WindowMode), value);
-    }
-
-    public bool FullscreenPreContextPanelVisible
-    {
-        get => GetValue<bool>(nameof(FullscreenPreContextPanelVisible), true);
-        set => SetValue(nameof(FullscreenPreContextPanelVisible), value);
-    }
-
-    public bool FullscreenPreInspectorPanelVisible
-    {
-        get => GetValue<bool>(nameof(FullscreenPreInspectorPanelVisible), true);
-        set => SetValue(nameof(FullscreenPreInspectorPanelVisible), value);
-    }
-
-    public bool FullscreenPreConsolePanelVisible
-    {
-        get => GetValue<bool>(nameof(FullscreenPreConsolePanelVisible), true);
-        set => SetValue(nameof(FullscreenPreConsolePanelVisible), value);
-    }
-
-    public void ResetPanelState()
-    {
-        IsContextPanelVisible = true;
-        ContextPanelWidth = DefaultContextPanelWidth;
-        IsInspectorPanelVisible = true;
-        InspectorPanelWidth = DefaultInspectorPanelWidth;
-        IsConsolePanelVisible = true;
-        ConsolePanelHeight = DefaultConsolePanelHeight;
-    }
-
-    public bool IsContextPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsContextPanelVisible), true);
-        set => SetValue(nameof(IsContextPanelVisible), value);
+        get => GetValue<PanelVisibilityFlags>(nameof(PreferredPanelVisibility), PanelVisibilityFlags.All);
+        set => SetValue(nameof(PreferredPanelVisibility), value);
     }
 
     public float ContextPanelWidth
@@ -117,22 +79,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(ContextPanelWidth), value);
     }
 
-    public bool IsInspectorPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsInspectorPanelVisible), true);
-        set => SetValue(nameof(IsInspectorPanelVisible), value);
-    }
-
     public float InspectorPanelWidth
     {
         get => GetValue<float>(nameof(InspectorPanelWidth), DefaultInspectorPanelWidth);
         set => SetValue(nameof(InspectorPanelWidth), value);
-    }
-
-    public bool IsConsolePanelVisible
-    {
-        get => GetValue<bool>(nameof(IsConsolePanelVisible), true);
-        set => SetValue(nameof(IsConsolePanelVisible), value);
     }
 
     public float ConsolePanelHeight
@@ -145,5 +95,11 @@ public class EditorSettings : ObservableSettings, IEditorSettings
     {
         get => GetValue<float>(nameof(DetailPanelHeight), DefaultDetailPanelHeight);
         set => SetValue(nameof(DetailPanelHeight), value);
+    }
+
+    public ApplicationColorTheme Theme
+    {
+        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
+        set => SetValue(nameof(Theme), value);
     }
 }

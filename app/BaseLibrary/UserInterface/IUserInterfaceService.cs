@@ -1,5 +1,3 @@
-using Celbridge.Settings;
-
 namespace Celbridge.UserInterface;
 
 /// <summary>
@@ -47,11 +45,6 @@ public interface IUserInterfaceService
     /// Sets the active application page and broadcasts an ActivePageChangedMessage.
     /// </summary>
     void SetActivePage(ApplicationPage page);
-
-    /// <summary>
-    /// Sets the window mode and broadcasts a WindowModeChangedMessage.
-    /// </summary>
-    void SetWindowMode(WindowMode windowMode);
 
     /// <summary>
     /// Applies the currently selected theme to the UserInterface.

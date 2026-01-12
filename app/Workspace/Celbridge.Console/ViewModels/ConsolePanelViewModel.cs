@@ -2,6 +2,7 @@ using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -17,7 +18,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IDispatcher _dispatcher;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ILayoutManager _layoutManager;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -58,13 +59,13 @@ public partial class ConsolePanelViewModel : ObservableObject
         IStringLocalizer stringLocalizer,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IEditorSettings editorSettings)
+        ILayoutManager layoutManager)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
-        _editorSettings = editorSettings;
+        _layoutManager = layoutManager;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
@@ -159,7 +160,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Force the console panel to be visible when an error occurs
         // This ensures the user can see the error banner even if they had previously collapsed the console
-        _editorSettings.IsConsolePanelVisible = true;
+        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, true);
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)

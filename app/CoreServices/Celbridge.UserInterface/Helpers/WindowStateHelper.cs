@@ -133,16 +133,16 @@ public sealed class WindowStateHelper
         }
 
         // Check if we have saved window bounds (-1 indicates no saved position)
-        if (_editorSettings.WindowX < 0 || _editorSettings.WindowY < 0)
+        if (_editorSettings.PreferredWindowX < 0 || _editorSettings.PreferredWindowY < 0)
         {
             _logger.LogDebug("No saved window position found, using default");
             return;
         }
 
-        int x = _editorSettings.WindowX;
-        int y = _editorSettings.WindowY;
-        int width = _editorSettings.WindowWidth;
-        int height = _editorSettings.WindowHeight;
+        int x = _editorSettings.PreferredWindowX;
+        int y = _editorSettings.PreferredWindowY;
+        int width = _editorSettings.PreferredWindowWidth;
+        int height = _editorSettings.PreferredWindowHeight;
 
         // Validate that the title bar area is visible on screen
         if (!IsTitleBarVisible(x, y, width, height))
@@ -243,10 +243,10 @@ public sealed class WindowStateHelper
         var position = _appWindow.Position;
         var size = _appWindow.Size;
 
-        _editorSettings.WindowX = position.X;
-        _editorSettings.WindowY = position.Y;
-        _editorSettings.WindowWidth = size.Width;
-        _editorSettings.WindowHeight = size.Height;
+        _editorSettings.PreferredWindowX = position.X;
+        _editorSettings.PreferredWindowY = position.Y;
+        _editorSettings.PreferredWindowWidth = size.Width;
+        _editorSettings.PreferredWindowHeight = size.Height;
     }
 
     private static AppWindow? GetAppWindow(Window? window)

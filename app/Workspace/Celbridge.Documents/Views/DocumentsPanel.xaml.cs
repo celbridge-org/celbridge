@@ -3,7 +3,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
@@ -20,7 +19,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly ICommandService _commandService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ILayoutManager _layoutManager;
 
     private bool _isShuttingDown = false;
 
@@ -32,7 +31,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IEditorSettings editorSettings)
+        ILayoutManager layoutManager)
     {
         InitializeComponent();
 
@@ -40,7 +39,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        _editorSettings = editorSettings;
+        _layoutManager = layoutManager;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -96,13 +95,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.OnViewLoaded();
-        
         // Listen for window mode changes to show/hide tab strip in Presenter mode
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         
         // Apply initial tab strip visibility based on current window mode
-        UpdateTabStripVisibility(_editorSettings.WindowMode);
+        UpdateTabStripVisibility(_layoutManager.WindowMode);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)

@@ -1,3 +1,4 @@
+using Celbridge.UserInterface;
 using System.ComponentModel;
 
 namespace Celbridge.Settings;
@@ -21,134 +22,90 @@ public interface IEditorSettings : INotifyPropertyChanged
     // ========================================
 
     /// <summary>
-    /// Gets or sets the previous new project folder path.
+    /// The previously specified new project folder path.
     /// </summary>
     string PreviousNewProjectFolderPath { get; set; }
 
     /// <summary>
-    /// Gets or sets the previous project.
+    /// The previously loaded Celbridge project file.
     /// </summary>
     string PreviousProject { get; set; }
 
     /// <summary>
-    /// Gets or sets the list of recent projects.
+    /// The list of recently loaded project files.
     /// </summary>
     List<string> RecentProjects { get; set; }
 
-    // ========================================
-    // Application Theme
-    // ========================================
-
     /// <summary>
-    /// Gets or Sets the Application User Interface Theme value.
-    /// </summary>
-    ApplicationColorTheme Theme { get; set; }
-
-    // ========================================
-    // Window State and Position
-    // ========================================
-
-    /// <summary>
-    /// Gets or sets whether the window is maximized.
-    /// </summary>
-    bool IsWindowMaximized { get; set; }
-
-    /// <summary>
-    /// Gets or sets the window X position.
-    /// </summary>
-    int WindowX { get; set; }
-
-    /// <summary>
-    /// Gets or sets the window Y position.
-    /// </summary>
-    int WindowY { get; set; }
-
-    /// <summary>
-    /// Gets or sets the window width.
-    /// </summary>
-    int WindowWidth { get; set; }
-
-    /// <summary>
-    /// Gets or sets the window height.
-    /// </summary>
-    int WindowHeight { get; set; }
-
-    /// <summary>
-    /// Gets or sets the file extension of the last file created via the Add File dialog.
+    /// The file extension of the previously created file via the Add File dialog.
     /// </summary>
     string PreviousNewFileExtension { get; set; }
 
     // ========================================
-    // Window Mode State
+    // Window Geometry
+    // Applies to non-maximized windowed mode only.
     // ========================================
 
     /// <summary>
-    /// Gets or sets the current window mode.
-    /// Note: This setting is persisted but the application always starts 
-    /// in Windowed mode regardless of the persisted value. This property
-    /// allows clients to listen for changes to the WindowMode at runtime.
+    /// Is the the window maximized.
     /// </summary>
-    WindowMode WindowMode { get; set; }
+    bool IsWindowMaximized { get; set; }
 
     /// <summary>
-    /// Gets or sets the Context panel visibility before entering a fullscreen mode.
-    /// Used to restore the panel state when returning to Windowed mode.
+    /// Preferred window X position when in non-maximized windowed mode.
     /// </summary>
-    bool FullscreenPreContextPanelVisible { get; set; }
+    int PreferredWindowX { get; set; }
 
     /// <summary>
-    /// Gets or sets the Inspector panel visibility before entering a fullscreen mode.
-    /// Used to restore the panel state when returning to Windowed mode.
+    /// Preferred window Y position when in non-maximized windowed mode.
     /// </summary>
-    bool FullscreenPreInspectorPanelVisible { get; set; }
+    int PreferredWindowY { get; set; }
 
     /// <summary>
-    /// Gets or sets the Console panel visibility before entering a fullscreen mode.
-    /// Used to restore the panel state when returning to Windowed mode.
+    /// Preferred window width when in non-maximized windowed mode.
     /// </summary>
-    bool FullscreenPreConsolePanelVisible { get; set; }
+    int PreferredWindowWidth { get; set; }
+
+    /// <summary>
+    /// Preferred window height when in non-maximized windowed mode.
+    /// </summary>
+    int PreferredWindowHeight { get; set; }
 
     // ========================================
     // Panel State
     // ========================================
 
     /// <summary>
-    /// Resets the panel layout to default visibility and sizes.
+    /// Preferred panel visibility.
     /// </summary>
-    void ResetPanelState();
+    PanelVisibilityFlags PreferredPanelVisibility { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the Context panel is visible.
-    /// </summary>
-    bool IsContextPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the Context panel.
+    /// Width of the Context panel.
     /// </summary>
     float ContextPanelWidth { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the inspector panel is visible.
-    /// </summary>
-    bool IsInspectorPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the inspector panel.
+    /// Width of the Inspector panel.
     /// </summary>
     float InspectorPanelWidth { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the console panel is visible.
-    /// </summary>
-    bool IsConsolePanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the height of the console panel.
+    /// Height of the Console panel.
     /// </summary>
     float ConsolePanelHeight { get; set; }
 
     /// <summary>
-    /// Gets or sets the height of the detail panel.
+    /// Height of the detail panel.
     /// </summary>
     float DetailPanelHeight { get; set; }
+
+    // ========================================
+    // Settings Page Options
+    // ========================================
+
+    /// <summary>
+    /// Application user interface theme.
+    /// </summary>
+    ApplicationColorTheme Theme { get; set; }
 }

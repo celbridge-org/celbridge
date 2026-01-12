@@ -13,11 +13,16 @@ public record MainWindowActivatedMessage();
 public record MainWindowDeactivatedMessage();
 
 /// <summary>
+/// Sent when the active application page changes.
+/// </summary>
+public record ActivePageChangedMessage(ApplicationPage ActivePage);
+
+/// <summary>
 /// Message sent when the window mode changes.
 /// </summary>
 public record WindowModeChangedMessage(WindowMode WindowMode);
 
 /// <summary>
-/// Sent when the active application page changes.
+/// Message sent when the panel visibility changes.
 /// </summary>
-public record ActivePageChangedMessage(ApplicationPage ActivePage);
+public record PanelVisibilityChangedMessage(PanelVisibilityFlags PanelVisibility);

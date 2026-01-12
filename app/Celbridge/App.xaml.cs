@@ -177,20 +177,6 @@ public partial class App : Application
         // Initialize the Core Services
         InitializeCoreServices();
 
-        // Ensure the application always starts in Windowed mode, regardless of
-        // what window mode was saved from the previous session.
-#if WINDOWS
-        {
-            var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
-            if (editorSettings.WindowMode != WindowMode.Windowed)
-            {
-                // Don't trigger UI updates yet - just reset the persisted value
-                // The UI will read the correct value when it initializes
-                editorSettings.WindowMode = WindowMode.Windowed;
-            }
-        }
-#endif
-
         // Initialize loaded modules
         var moduleService = Host.Services.GetRequiredService<IModuleService>();
         var initializeResult = moduleService.InitializeModules();
