@@ -189,10 +189,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             return;
         }
 
-        // Handle Zen Mode toggle request from the terminal
-        if (message == "toggle_zen_mode")
+        // Handle Full Screen toggle request from the terminal
+        if (message == "toggle_full_screen")
         {
-            _commandService.Execute<IToggleZenModeCommand>();
+            _commandService.Execute<IToggleFullScreenCommand>();
             return;
         }
 

@@ -172,12 +172,9 @@ public sealed partial class MonacoEditorView : DocumentView
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
         }
-        else if (message == "toggle_focus_mode")
+        else if (message == "toggle_full_screen")
         {
-        }
-        else if (message == "toggle_zen_mode")
-        {
-            ViewModel.ToggleZenMode();
+            ViewModel.ToggleFullScreen();
         }
     }
 

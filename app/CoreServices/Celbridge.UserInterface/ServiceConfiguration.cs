@@ -44,7 +44,7 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IToggleZenModeCommand, ToggleZenModeCommand>();
+        services.AddTransient<IToggleFullScreenCommand, ToggleFullScreenCommand>();
 
         //
         // Register view models

@@ -120,11 +120,11 @@
 
             function setupKeyboardShortcuts() {
                 window.addEventListener('keydown', function(event) {
-                    // F11 toggles Zen Mode
+                    // F11 toggles Full Screen
                     if (event.key === 'F11') {
                         event.preventDefault();
                         if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_zen_mode');
+                            window.chrome.webview.postMessage('toggle_full_screen');
                         }
                     }
                 });

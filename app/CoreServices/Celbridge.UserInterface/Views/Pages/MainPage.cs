@@ -290,11 +290,11 @@ public partial class MainPage : Page
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
 
-        // F11 toggles Zen Mode / Fullscreen (universal shortcut)
+        // F11 shortcut toggles Full Screen
         if (key == VirtualKey.F11)
         {
             var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
-            commandService.Execute<IToggleZenModeCommand>();
+            commandService.Execute<IToggleFullScreenCommand>();
             return true;
         }
 

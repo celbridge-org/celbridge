@@ -292,9 +292,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "toggle_zen_mode")
+        if (webMessage == "toggle_full_screen")
         {
-            _commandService.Execute<IToggleZenModeCommand>();
+            _commandService.Execute<IToggleFullScreenCommand>();
             return;
         }
         else if (webMessage == "load_excel_data")

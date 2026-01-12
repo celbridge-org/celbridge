@@ -185,14 +185,14 @@ public sealed partial class WebAppDocumentView : DocumentView
         _webView.WebMessageReceived -= WebView_WebMessageReceived;
         _webView.WebMessageReceived += WebView_WebMessageReceived;
 
-        // Inject JavaScript to handle F11 key for Zen Mode toggle.
+        // Inject JavaScript to handle F11 key for full screen toggle.
         await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
             (function() {
                 window.addEventListener('keydown', function(event) {
                     if (event.key === 'F11') {
                         event.preventDefault();
                         if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_zen_mode');
+                            window.chrome.webview.postMessage('toggle_full_screen');
                         }
                     }
                 });
@@ -205,9 +205,9 @@ public sealed partial class WebAppDocumentView : DocumentView
     private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var message = args.TryGetWebMessageAsString();
-        if (message == "toggle_zen_mode")
+        if (message == "toggle_full_screen")
         {
-            _commandService.Execute<IToggleZenModeCommand>();
+            _commandService.Execute<IToggleFullScreenCommand>();
         }
     }
 

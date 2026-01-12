@@ -107,11 +107,11 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
-            // F11 toggles Zen Mode
+            // F11 toggles Full Screen
             if (ev.key === 'F11') {
                 ev.preventDefault?.();
                 if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage('toggle_zen_mode');
+                    window.chrome.webview.postMessage('toggle_full_screen');
                 }
                 return false; // consume the event
             }

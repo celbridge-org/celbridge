@@ -185,11 +185,11 @@
         }
 
         function setupKeyboardShortcuts() {
-            // Listen for F11 key to toggle Zen Mode
+            // Listen for F11 key to toggle Full Screen
             window.addEventListener('keydown', function(event) {
                 if (event.key === 'F11') {
                     event.preventDefault();
-                    postWebViewMessage('toggle_zen_mode');
+                    postWebViewMessage('toggle_full_screen');
                 }
             });
         }

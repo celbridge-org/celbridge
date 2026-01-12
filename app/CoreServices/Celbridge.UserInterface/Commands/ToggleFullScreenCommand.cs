@@ -3,12 +3,12 @@ using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.Commands;
 
-public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
+public class ToggleFullScreenCommand : CommandBase, IToggleFullScreenCommand
 {
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IEditorSettings _editorSettings;
 
-    public ToggleZenModeCommand(
+    public ToggleFullScreenCommand(
         IUserInterfaceService userInterfaceService,
         IEditorSettings editorSettings)
     {
@@ -20,9 +20,9 @@ public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
     {
         var currentLayout = _editorSettings.WindowLayout;
 
-        // Toggle between Windowed and ZenMode
+        // Toggle between Windowed and ZenMode (full screen)
         // If in any fullscreen mode, return to Windowed
-        // If in Windowed mode, enter ZenMode
+        // If in Windowed mode, enter ZenMode (full screen)
         if (currentLayout == WindowLayout.Windowed)
         {
             // Only check panel state when on the Workspace page
@@ -36,7 +36,7 @@ public class ToggleZenModeCommand : CommandBase, IToggleZenModeCommand
                 if (allPanelsCollapsed)
                 {
                     // Special case: If all panels are already collapsed in Windowed mode,
-                    // don't enter Zen Mode. Instead, restore all panels (similar to VS Code).
+                    // don't enter full screen. Instead, restore all panels (similar to VS Code).
                     _editorSettings.IsContextPanelVisible = true;
                     _editorSettings.IsInspectorPanelVisible = true;
                     _editorSettings.IsConsolePanelVisible = true;
