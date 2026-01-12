@@ -5,7 +5,6 @@ namespace Celbridge.UserInterface.Views;
 
 /// <summary>
 /// A minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge.
-/// Provides a simple "Exit Fullscreen" button to return to Windowed mode.
 /// </summary>
 public sealed partial class FullscreenToolbar : UserControl
 {

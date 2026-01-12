@@ -205,8 +205,6 @@ public class LayoutManager : ILayoutManager
         _editorSettings.InspectorPanelWidth = UserInterfaceConstants.InspectorPanelWidth;
         _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
 
-        // Reset preferred visibility to all panels
-        _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
 
         // Reset preferred window geometry
         _editorSettings.UsePreferredWindowGeometry = false;
@@ -216,8 +214,10 @@ public class LayoutManager : ILayoutManager
         _editorSettings.PreferredWindowHeight = 0;
         _editorSettings.IsWindowMaximized = false;
 
-        // Show all panels. This change should persist.
+        // Reset preferred visibility to all panels
+        // Doing this both ways to be double sure
         UpdatePanelVisibility(PanelVisibilityFlags.All, shouldPersist: true);
+        _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
 
         // Return to Windowed mode if in fullscreen
         if (WindowMode != WindowMode.Windowed)

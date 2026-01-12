@@ -46,12 +46,6 @@ public sealed partial class LayoutToolbar : UserControl
         Unloaded -= LayoutToolbar_Unloaded;
     }
 
-    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
-    {
-        _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
-        UpdatePanelToggleVisibility();
-    }
-
     private void UpdatePanelToggleVisibility()
     {
         // Show panel toggle buttons and reset layout controls only on the Workspace page
@@ -106,6 +100,12 @@ public sealed partial class LayoutToolbar : UserControl
         FullScreenModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FullScreen");
         ZenModeRadioLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ZenModeLabel");
         PresenterModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_PresenterLabel");
+    }
+
+    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
+    {
+        _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
+        UpdatePanelToggleVisibility();
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)

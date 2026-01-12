@@ -3,8 +3,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge -->
-    <!-- Clicking anywhere on the toolbar exits fullscreen, not just the button, to handle cases where UI elements might block the button -->
+    <!--
+    Minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge.
+    Clicking anywhere on the toolbar exits fullscreen.
+    -->
     <Grid x:Name="ToolbarContainer"
           Height="36"
           Background="{ThemeResource PanelBackgroundBBrush}"
