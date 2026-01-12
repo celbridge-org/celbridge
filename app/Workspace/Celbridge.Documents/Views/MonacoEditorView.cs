@@ -1,9 +1,11 @@
-using System.Text.Json;
+using Celbridge.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using System.Text.Json;
 
 namespace Celbridge.Documents.Views;
 
@@ -172,7 +174,10 @@ public sealed partial class MonacoEditorView : DocumentView
         }
         else if (message == "toggle_focus_mode")
         {
-            ViewModel.ToggleAllPanels();
+        }
+        else if (message == "toggle_zen_mode")
+        {
+            ViewModel.ToggleZenMode();
         }
     }
 

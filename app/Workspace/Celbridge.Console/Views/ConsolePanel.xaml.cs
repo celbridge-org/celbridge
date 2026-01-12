@@ -184,8 +184,19 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     {
         string message = args.TryGetWebMessageAsString();
 
-        if (_terminal is not null &&
-            !string.IsNullOrEmpty(message))
+        if (string.IsNullOrEmpty(message))
+        {
+            return;
+        }
+
+        // Handle Zen Mode toggle request from the terminal
+        if (message == "toggle_zen_mode")
+        {
+            _commandService.Execute<IToggleZenModeCommand>();
+            return;
+        }
+
+        if (_terminal is not null)
         {
             if (message.StartsWith("console_size,"))
             {

@@ -268,12 +268,13 @@ public partial class MainPage : Page
     {
 #if WINDOWS
         // Show/hide the title bar based on window layout
-        // In Windowed and FullScreen modes, the title bar is visible
-        // In ZenMode and Presenter modes, the title bar is hidden
+        // In Windowed, FullScreen, and ZenMode modes, the title bar is visible
+        // In Presenter mode, the title bar is hidden
         if (_titleBar != null)
         {
             bool showTitleBar = message.WindowLayout == WindowLayout.Windowed || 
-                                message.WindowLayout == WindowLayout.FullScreen;
+                                message.WindowLayout == WindowLayout.FullScreen ||
+                                message.WindowLayout == WindowLayout.ZenMode;
             _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
         }
 #endif

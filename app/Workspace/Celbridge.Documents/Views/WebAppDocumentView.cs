@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.UserInterface;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -180,7 +181,34 @@ public sealed partial class WebAppDocumentView : DocumentView
         _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
         _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
 
+        // Listen for messages from the WebView (used for keyboard shortcut handling)
+        _webView.WebMessageReceived -= WebView_WebMessageReceived;
+        _webView.WebMessageReceived += WebView_WebMessageReceived;
+
+        // Inject JavaScript to handle F11 key for Zen Mode toggle.
+        await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+            (function() {
+                window.addEventListener('keydown', function(event) {
+                    if (event.key === 'F11') {
+                        event.preventDefault();
+                        if (window.chrome && window.chrome.webview) {
+                            window.chrome.webview.postMessage('toggle_zen_mode');
+                        }
+                    }
+                });
+            })();
+        ");
+
         return await ViewModel.LoadContent();
+    }
+
+    private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        var message = args.TryGetWebMessageAsString();
+        if (message == "toggle_zen_mode")
+        {
+            _commandService.Execute<IToggleZenModeCommand>();
+        }
     }
 
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
@@ -202,6 +230,8 @@ public sealed partial class WebAppDocumentView : DocumentView
 
         if (_webView != null)
         {
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
+            
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;

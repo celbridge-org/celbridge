@@ -1,4 +1,6 @@
+using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
 
 using Path = System.IO.Path;
@@ -9,6 +11,8 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 {
     public EditorPreviewViewModel ViewModel { get; }
 
+    private readonly ICommandService _commandService;
+
     private WebView2? _webView;
 
     private bool _loaded = false;
@@ -17,6 +21,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     public EditorPreviewView()
     {
         ViewModel = ServiceLocator.AcquireService<EditorPreviewViewModel>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -96,6 +101,20 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 
         await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
+        // Inject JavaScript to handle F11 key for Zen Mode toggle.
+        await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+            (function() {
+                window.addEventListener('keydown', function(event) {
+                    if (event.key === 'F11') {
+                        event.preventDefault();
+                        if (window.chrome && window.chrome.webview) {
+                            window.chrome.webview.postMessage('toggle_zen_mode');
+                        }
+                    }
+                });
+            })();
+        ");
+
         _webView.NavigationCompleted += WebView_NavigationCompleted;
 
         _webView.CoreWebView2.Navigate("http://Preview/index.html");
@@ -111,9 +130,19 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         // Any further navigation is caused by the user clicking on links in the preview pane.
         _webView.NavigationStarting += WebView_NavigationStarting;
         _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
+        _webView.WebMessageReceived += WebView_WebMessageReceived;
 
         // Display the webview
         Content = _webView;
+    }
+
+    private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        var message = args.TryGetWebMessageAsString();
+        if (message == "toggle_zen_mode")
+        {
+            _commandService.Execute<IToggleZenModeCommand>();
+        }
     }
 
     private async void WebView_NavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
@@ -214,6 +243,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         {
             _webView.NavigationCompleted -= WebView_NavigationCompleted;
             _webView.NavigationStarting -= WebView_NavigationStarting;
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
             
             if (_webView.CoreWebView2 != null)
             {

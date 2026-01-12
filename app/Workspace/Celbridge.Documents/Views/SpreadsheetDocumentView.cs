@@ -3,6 +3,7 @@ using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
@@ -291,7 +292,12 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "load_excel_data")
+        if (webMessage == "toggle_zen_mode")
+        {
+            _commandService.Execute<IToggleZenModeCommand>();
+            return;
+        }
+        else if (webMessage == "load_excel_data")
         {
             // This will discard any pending changes so ask user to confirm
 

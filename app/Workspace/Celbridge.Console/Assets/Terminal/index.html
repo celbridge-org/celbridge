@@ -107,6 +107,15 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
+            // F11 toggles Zen Mode
+            if (ev.key === 'F11') {
+                ev.preventDefault?.();
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage('toggle_zen_mode');
+                }
+                return false; // consume the event
+            }
+
             // Copy: if there's a selection, ctl-c copies it to the clipboard
             if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
                 if (term.hasSelection()) {

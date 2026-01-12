@@ -122,7 +122,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         SaveTimer = SaveDelay;
     }
 
-    public void ToggleAllPanels()
+    public void ToggleZenMode()
     {
         _commandService.Execute<IToggleZenModeCommand>();
     }

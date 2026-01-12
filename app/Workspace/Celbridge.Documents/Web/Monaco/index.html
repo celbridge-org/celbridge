@@ -120,10 +120,11 @@
 
             function setupKeyboardShortcuts() {
                 window.addEventListener('keydown', function(event) {
-                    if (event.key === 'F4') {
+                    // F11 toggles Zen Mode
+                    if (event.key === 'F11') {
                         event.preventDefault();
                         if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_focus_mode');
+                            window.chrome.webview.postMessage('toggle_zen_mode');
                         }
                     }
                 });
