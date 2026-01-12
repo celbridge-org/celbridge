@@ -326,7 +326,11 @@ public class ExplorerService : IExplorerService, IDisposable
 
         if (showExplorerPanel)
         {
-            _editorSettings.IsContextPanelVisible = true;
+            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+            {
+                command.Panels = PanelVisibilityFlags.Context;
+                command.IsVisible = true;
+            });
         }
 
         return Result.Ok();

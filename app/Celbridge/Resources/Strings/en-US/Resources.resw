@@ -552,28 +552,64 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyFilePath" xml:space="preserve">
     <value>Copy file path</value>
   </data>
-  <data name="PanelToolbar_ToggleExplorerTooltip" xml:space="preserve">
-    <value>Toggle Explorer panel (F4: toggle all)</value>
+  <data name="LayoutToolbar_ToggleExplorerTooltip" xml:space="preserve">
+    <value>Toggle Explorer panel</value>
   </data>
-  <data name="PanelToolbar_ToggleConsoleTooltip" xml:space="preserve">
-    <value>Toggle Console panel (F4: toggle all)</value>
+  <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
+    <value>Toggle Console panel</value>
   </data>
-  <data name="PanelToolbar_ToggleInspectorTooltip" xml:space="preserve">
-    <value>Toggle Inspector panel (F4: toggle all)</value>
+  <data name="LayoutToolbar_ToggleInspectorTooltip" xml:space="preserve">
+    <value>Toggle Inspector panel</value>
   </data>
-  <data name="PanelToolbar_CustomizeLayoutTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize layout</value>
   </data>
-  <data name="PanelToolbar_ExplorerPanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_ExplorerPanelLabel" xml:space="preserve">
     <value>Explorer panel</value>
   </data>
-  <data name="PanelToolbar_ConsolePanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_ConsolePanelLabel" xml:space="preserve">
     <value>Console panel</value>
   </data>
-  <data name="PanelToolbar_InspectorPanelLabel" xml:space="preserve">
+  <data name="LayoutToolbar_InspectorPanelLabel" xml:space="preserve">
     <value>Inspector panel</value>
   </data>
-  <data name="PanelToolbar_ResetLayoutButton" xml:space="preserve">
+  <data name="LayoutToolbar_ResetLayoutButton" xml:space="preserve">
     <value>Reset layout</value>
+  </data>
+  <data name="LayoutToolbar_ZenModeLabel" xml:space="preserve">
+    <value>Zen mode</value>
+  </data>
+  <data name="LayoutToolbar_WindowModeLabel" xml:space="preserve">
+    <value>Window mode</value>
+  </data>
+  <data name="LayoutToolbar_WindowedLabel" xml:space="preserve">
+    <value>Windowed</value>
+  </data>
+  <data name="LayoutToolbar_FullScreen" xml:space="preserve">
+    <value>Full screen</value>
+  </data>
+  <data name="LayoutToolbar_PresenterLabel" xml:space="preserve">
+    <value>Presenter</value>
+  </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Theme_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="LayoutToolbar_WindowedModeTooltip" xml:space="preserve">
+    <value>Standard window with all panels and toolbars enabled</value>
+  </data>
+  <data name="LayoutToolbar_FullScreenModeTooltip" xml:space="preserve">
+    <value>Maximize the window for more working space</value>
+  </data>
+  <data name="LayoutToolbar_ZenModeTooltip" xml:space="preserve">
+    <value>Distraction-free mode with only the document editor visible</value>
+  </data>
+  <data name="LayoutToolbar_PresenterModeTooltip" xml:space="preserve">
+    <value>Full screen presentation mode for displaying content</value>
   </data>
 </root>

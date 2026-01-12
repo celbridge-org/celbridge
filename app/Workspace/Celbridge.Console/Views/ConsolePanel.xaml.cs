@@ -184,8 +184,22 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     {
         string message = args.TryGetWebMessageAsString();
 
-        if (_terminal is not null &&
-            !string.IsNullOrEmpty(message))
+        if (string.IsNullOrEmpty(message))
+        {
+            return;
+        }
+
+        // Handle full screen toggle request from the terminal
+        if (message == "toggle_layout")
+        {
+            _commandService.Execute<ISetLayoutCommand>(command =>
+            {
+                command.Transition = LayoutTransition.ToggleLayout;
+            });
+            return;
+        }
+
+        if (_terminal is not null)
         {
             if (message.StartsWith("console_size,"))
             {

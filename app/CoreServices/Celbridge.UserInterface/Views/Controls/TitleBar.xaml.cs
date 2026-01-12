@@ -34,7 +34,7 @@ public sealed partial class TitleBar : UserControl
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Update interactive regions when toolbar size changes
-        PanelToolbar.SizeChanged += OnPanelToolbar_SizeChanged;
+        LayoutToolbar.SizeChanged += OnLayoutToolbar_SizeChanged;
 
         // Cache the main window reference
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
@@ -53,7 +53,7 @@ public sealed partial class TitleBar : UserControl
 
         // Unregister all event handlers to avoid memory leaks
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        PanelToolbar.SizeChanged -= OnPanelToolbar_SizeChanged;
+        LayoutToolbar.SizeChanged -= OnLayoutToolbar_SizeChanged;
 
         Loaded -= OnTitleBar_Loaded;
         Unloaded -= OnTitleBar_Unloaded;
@@ -80,7 +80,7 @@ public sealed partial class TitleBar : UserControl
         VisualStateManager.GoToState(this, "Inactive", false);
     }
 
-    private void OnPanelToolbar_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void OnLayoutToolbar_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         // Update interactive regions whenever the toolbar size changes
         if (ViewModel.IsWorkspaceActive && e.NewSize.Width > 0)
@@ -110,17 +110,17 @@ public sealed partial class TitleBar : UserControl
             var nonClientInputSrc = Microsoft.UI.Input.InputNonClientPointerSource.GetForWindowId(appWindow.Id);
             var scale = _mainWindow.Content.XamlRoot?.RasterizationScale ?? 1.0;
 
-            // Add passthrough region for the panel toolbar if workspace is active
-            if (ViewModel.IsWorkspaceActive && PanelToolbar.ActualWidth > 0)
+            // Add passthrough region for the layout toolbar if workspace is active
+            if (ViewModel.IsWorkspaceActive && LayoutToolbar.ActualWidth > 0)
             {
-                var toolbarTransform = PanelToolbar.TransformToVisual(_mainWindow.Content);
+                var toolbarTransform = LayoutToolbar.TransformToVisual(_mainWindow.Content);
                 var toolbarPosition = toolbarTransform.TransformPoint(new Windows.Foundation.Point(0, 0));
                 
                 var rect = new Windows.Graphics.RectInt32(
                     (int)(toolbarPosition.X * scale),
                     (int)(toolbarPosition.Y * scale),
-                    (int)(PanelToolbar.ActualWidth * scale),
-                    (int)(PanelToolbar.ActualHeight * scale)
+                    (int)(LayoutToolbar.ActualWidth * scale),
+                    (int)(LayoutToolbar.ActualHeight * scale)
                 );
 
                 nonClientInputSrc.SetRegionRects(Microsoft.UI.Input.NonClientRegionKind.Passthrough, [rect]);

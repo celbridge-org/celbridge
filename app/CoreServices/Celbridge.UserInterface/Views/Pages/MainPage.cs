@@ -5,6 +5,7 @@
 
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;
 using Celbridge.Workspace;
@@ -37,8 +38,8 @@ public partial class MainPage : Page
 
     private IStringLocalizer _stringLocalizer;
     private IUserInterfaceService _userInterfaceService;
-    private IProjectConfigService _projectConfigService;
     private IProjectService _projectService;
+    private IMessengerService _messengerService;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
@@ -47,12 +48,16 @@ public partial class MainPage : Page
     private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
     private string _currentNavigationTag = NavigationConstants.HomeTag;
 
+#if WINDOWS
+    private TitleBar? _titleBar;
+#endif
+
     public MainPage()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
-        _projectConfigService = ServiceLocator.AcquireService<IProjectConfigService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -174,16 +179,6 @@ public partial class MainPage : Page
         Unloaded += OnMainPage_Unloaded;
     }
 
-    private void MainNavigation_Loaded(object sender, RoutedEventArgs e)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void MainPage_Loaded(object sender, RoutedEventArgs e)
-    {
-        throw new NotImplementedException();
-    }
-
     private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
         var mainWindow = _userInterfaceService.MainWindow as Window;
@@ -191,11 +186,11 @@ public partial class MainPage : Page
 
 #if WINDOWS
         // Setup the custom title bar (Windows only)
-        var titleBar = new TitleBar();
-        _layoutRoot.Children.Add(titleBar);
+        _titleBar = new TitleBar();
+        _layoutRoot.Children.Add(_titleBar);
 
         mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
+        mainWindow.SetTitleBar(_titleBar);
 
         // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
         // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
@@ -205,8 +200,11 @@ public partial class MainPage : Page
             appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
         }
 
-        _userInterfaceService.RegisterTitleBar(titleBar);
+        _userInterfaceService.RegisterTitleBar(_titleBar);
 #endif
+
+        // Register for window mode changes
+        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
         ViewModel.SelectNavigationItem += SelectNavigationItemByName;
@@ -252,6 +250,8 @@ public partial class MainPage : Page
 
         // Unregister all event handlers to avoid memory leaks
 
+        _messengerService.UnregisterAll(this);
+
         ViewModel.OnNavigate -= OnViewModel_Navigate;
         ViewModel.SelectNavigationItem -= SelectNavigationItemByName;
         ViewModel.ReturnCurrentPage = ReturnCurrentPage;
@@ -264,6 +264,22 @@ public partial class MainPage : Page
         _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
     }
 
+    private void OnWindowLayoutChanged(object recipient, WindowModeChangedMessage message)
+    {
+#if WINDOWS
+        // Show/hide the title bar based on window mode
+        // In Windowed, FullScreen, and ZenMode modes, the title bar is visible
+        // In Presenter mode, the title bar is hidden
+        if (_titleBar != null)
+        {
+            bool showTitleBar = message.WindowMode == WindowMode.Windowed || 
+                                message.WindowMode == WindowMode.FullScreen ||
+                                message.WindowMode == WindowMode.ZenMode;
+            _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
+        }
+#endif
+    }
+
     private bool OnKeyDown(VirtualKey key)
     {
         // Use the HasFlag method to check if the control key is down.
@@ -273,6 +289,18 @@ public partial class MainPage : Page
 
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
+
+        // F11 shortcut toggles fullscreen mode
+        if (key == VirtualKey.F11)
+        {
+            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
+            commandService.Execute<ISetLayoutCommand>(command =>
+            {
+                command.Transition = LayoutTransition.ToggleLayout;
+            });
+
+            return true;
+        }
 
         // All platforms redo shortcut
         if (control && shift && key == VirtualKey.Z)
