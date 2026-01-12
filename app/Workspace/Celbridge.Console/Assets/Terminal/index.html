@@ -107,11 +107,11 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
-            // F11 toggles Full Screen
+            // F11 toggles full screen layout
             if (ev.key === 'F11') {
                 ev.preventDefault?.();
                 if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage('toggle_full_screen');
+                    window.chrome.webview.postMessage('toggle_layout');
                 }
                 return false; // consume the event
             }

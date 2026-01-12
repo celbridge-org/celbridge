@@ -2,18 +2,20 @@ using Celbridge.Commands;
 
 namespace Celbridge.UserInterface.Commands;
 
-public class ToggleFullScreenCommand : CommandBase, IToggleFullScreenCommand
+public class SetLayoutCommand : CommandBase, ISetLayoutCommand
 {
     private readonly ILayoutManager _layoutManager;
 
-    public ToggleFullScreenCommand(ILayoutManager layoutManager)
+    public LayoutTransition Transition { get; set; }
+
+    public SetLayoutCommand(ILayoutManager layoutManager)
     {
         _layoutManager = layoutManager;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        var result = _layoutManager.RequestTransition(Transition);
         
         await Task.CompletedTask;
 

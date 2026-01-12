@@ -83,8 +83,8 @@ public class LayoutManager : ILayoutManager
             case LayoutTransition.EnterPresenterMode:
                 return TransitionToPresenterMode();
 
-            case LayoutTransition.ToggleZenMode:
-                return HandleToggleZenMode();
+            case LayoutTransition.ToggleLayout:
+                return HandleToggleLayout();
 
             case LayoutTransition.ResetLayout:
                 return HandleResetLayout();
@@ -105,7 +105,8 @@ public class LayoutManager : ILayoutManager
             return;
         }
 
-        UpdatePanelVisibility(newVisibility);
+        // This is a user-initiated change, so it should should persist
+        UpdatePanelVisibility(newVisibility, shouldPersist: true);
 
         // Handle mode transitions based on panel visibility changes
         if (WindowMode == WindowMode.ZenMode && newVisibility != PanelVisibilityFlags.None)
@@ -133,8 +134,9 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in Windowed mode
         }
 
-        // Restore preferred panel visibility
-        UpdatePanelVisibility(_editorSettings.PreferredPanelVisibility);
+        // Restore the preferred panel visibility configuration.
+        // No need to persist this change, we're just restoring the saved state.
+        UpdatePanelVisibility(_editorSettings.PreferredPanelVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.Windowed);
 
         return Result.Ok();
@@ -147,8 +149,9 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in FullScreen mode
         }
 
-        // Restore preferred panel visibility
-        UpdatePanelVisibility(_editorSettings.PreferredPanelVisibility);
+        // Restore the preferred panel visibility configuration.
+        // No need to persist this change, we're just restoring the saved state.
+        UpdatePanelVisibility(_editorSettings.PreferredPanelVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.FullScreen);
 
         return Result.Ok();
@@ -161,8 +164,9 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in ZenMode
         }
 
-        // Hide all panels
-        UpdatePanelVisibility(PanelVisibilityFlags.None);
+        // Hide all panels temporarily
+        // Don't persist this change as it's only temporary.
+        UpdatePanelVisibility(PanelVisibilityFlags.None, shouldPersist: false);
         SetWindowModeInternal(WindowMode.ZenMode);
 
         return Result.Ok();
@@ -175,28 +179,20 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in Presenter mode
         }
 
-        // Hide all panels
-        UpdatePanelVisibility(PanelVisibilityFlags.None);
+        // Hide all panels temporarily
+        // Don't persist this change as it's only temporary.
+        UpdatePanelVisibility(PanelVisibilityFlags.None, shouldPersist: false);
         SetWindowModeInternal(WindowMode.Presenter);
 
         return Result.Ok();
     }
 
-    private Result HandleToggleZenMode()
+    private Result HandleToggleLayout()
     {
         if (WindowMode == WindowMode.Windowed)
         {
-            // Check if all panels are already collapsed
-            if (PanelVisibility == PanelVisibilityFlags.None)
-            {
-                // Special case: all panels collapsed in Windowed mode
-                // Restore all panels instead of entering ZenMode
-                UpdatePanelVisibility(PanelVisibilityFlags.All);
-                _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
-                return Result.Ok();
-            }
-
-            // Enter ZenMode
+            // Enter fullscreen
+            // We actually use ZenMode rather than FullScreen as this provides a better user experience.
             return TransitionToZenMode();
         }
         else
@@ -216,8 +212,8 @@ public class LayoutManager : ILayoutManager
         // Reset preferred visibility to all panels
         _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
 
-        // Show all panels
-        UpdatePanelVisibility(PanelVisibilityFlags.All);
+        // Show all panels. This change should persist.
+        UpdatePanelVisibility(PanelVisibilityFlags.All, shouldPersist: true);
 
         // Return to Windowed mode if in fullscreen
         if (WindowMode != WindowMode.Windowed)
@@ -228,7 +224,7 @@ public class LayoutManager : ILayoutManager
         return Result.Ok();
     }
 
-    private void UpdatePanelVisibility(PanelVisibilityFlags newVisibility)
+    private void UpdatePanelVisibility(PanelVisibilityFlags newVisibility, bool shouldPersist)
     {
         if (PanelVisibility == newVisibility)
         {
@@ -238,21 +234,18 @@ public class LayoutManager : ILayoutManager
         var oldVisibility = PanelVisibility;
         PanelVisibility = newVisibility;
 
-        // Update persisted preference when user manually changes panels in Windowed mode
-        // or when transitioning to Windowed/FullScreen modes
-        if (WindowMode == WindowMode.Windowed || WindowMode == WindowMode.FullScreen)
+        // Only persist if explicitly requested (user-initiated changes)
+        // and not in Presenter mode (temporary presentation state)
+        if (shouldPersist && WindowMode != WindowMode.Presenter)
         {
-            if (newVisibility != PanelVisibilityFlags.None)
-            {
-                _editorSettings.PreferredPanelVisibility = newVisibility;
-            }
+            _editorSettings.PreferredPanelVisibility = newVisibility;
         }
 
         // Broadcast the change
         var message = new PanelVisibilityChangedMessage(newVisibility);
         _messengerService.Send(message);
 
-        _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility}");
+        _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility} (persist: {shouldPersist})");
     }
 
     private void SetWindowModeInternal(WindowMode newMode)

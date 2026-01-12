@@ -292,9 +292,12 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "toggle_full_screen")
+        if (webMessage == "toggle_layout")
         {
-            _commandService.Execute<IToggleFullScreenCommand>();
+            _commandService.Execute<ISetLayoutCommand>(command =>
+            { 
+                command.Transition = LayoutTransition.ToggleLayout; 
+            });
             return;
         }
         else if (webMessage == "load_excel_data")

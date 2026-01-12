@@ -108,7 +108,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
                     if (event.key === 'F11') {
                         event.preventDefault();
                         if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_full_screen');
+                            window.chrome.webview.postMessage('toggle_layout');
                         }
                     }
                 });
@@ -139,9 +139,12 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var message = args.TryGetWebMessageAsString();
-        if (message == "toggle_full_screen")
+        if (message == "toggle_layout")
         {
-            _commandService.Execute<IToggleFullScreenCommand>();
+            _commandService.Execute<ISetLayoutCommand>(command =>
+            {
+                command.Transition = LayoutTransition.ToggleLayout;
+            });
         }
     }
 

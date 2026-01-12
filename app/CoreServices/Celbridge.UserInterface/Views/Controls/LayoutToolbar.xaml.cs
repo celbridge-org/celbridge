@@ -1,9 +1,12 @@
+using Celbridge.Commands;
+
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class LayoutToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
 
     private bool _isUpdatingUI = false;
@@ -15,6 +18,7 @@ public sealed partial class LayoutToolbar : UserControl
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
         _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
 
         Loaded += LayoutToolbar_Loaded;
@@ -166,7 +170,10 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
     {
-        _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.ResetLayout;
+        });
         PanelLayoutFlyout.Hide();
     }
 
@@ -200,6 +207,9 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        _layoutManager.RequestTransition(transition);
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = transition;
+        });
     }
 }

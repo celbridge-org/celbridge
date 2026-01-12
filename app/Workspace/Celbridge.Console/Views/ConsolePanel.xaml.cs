@@ -189,10 +189,13 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             return;
         }
 
-        // Handle Full Screen toggle request from the terminal
-        if (message == "toggle_full_screen")
+        // Handle full screen toggle request from the terminal
+        if (message == "toggle_layout")
         {
-            _commandService.Execute<IToggleFullScreenCommand>();
+            _commandService.Execute<ISetLayoutCommand>(command =>
+            {
+                command.Transition = LayoutTransition.ToggleLayout;
+            });
             return;
         }
 

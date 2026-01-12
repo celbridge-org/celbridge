@@ -45,7 +45,7 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IToggleFullScreenCommand, ToggleFullScreenCommand>();
+        services.AddTransient<ISetLayoutCommand, SetLayoutCommand>();
 
         //
         // Register view models

@@ -290,11 +290,15 @@ public partial class MainPage : Page
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
 
-        // F11 shortcut toggles Full Screen
+        // F11 shortcut toggles fullscreen mode
         if (key == VirtualKey.F11)
         {
             var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
-            commandService.Execute<IToggleFullScreenCommand>();
+            commandService.Execute<ISetLayoutCommand>(command =>
+            {
+                command.Transition = LayoutTransition.ToggleLayout;
+            });
+
             return true;
         }
 

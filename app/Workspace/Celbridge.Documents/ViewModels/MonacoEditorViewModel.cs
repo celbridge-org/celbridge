@@ -122,9 +122,12 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         SaveTimer = SaveDelay;
     }
 
-    public void ToggleFullScreen()
+    public void ToggleLayout()
     {
-        _commandService.Execute<IToggleFullScreenCommand>();
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.ToggleLayout;
+        });
     }
 
     public void NavigateToURL(string url)

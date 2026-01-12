@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Settings;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.UserInterface.Views;
@@ -13,7 +12,6 @@ public sealed partial class FullscreenToolbar : UserControl
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
-    
     private readonly DispatcherTimer _hideTimer;
     
     private bool _isFullscreenModeActive;
@@ -72,7 +70,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
-        UpdateFullscreenState();
+        _isFullscreenModeActive = message.WindowMode != WindowMode.Windowed;
 
         if (!_isFullscreenModeActive)
         {
@@ -83,6 +81,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void UpdateFullscreenState()
     {
+        // Get the current window mode from the layout manager
         _isFullscreenModeActive = _layoutManager.IsFullScreen;
     }
 
@@ -218,7 +217,10 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void ExitFullscreen()
     {
-        // Return to Windowed mode
-        _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
+        // Return to Windowed mode using SetLayoutCommand
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.EnterWindowed;
+        });
     }
 }
