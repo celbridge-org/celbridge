@@ -3,6 +3,7 @@ using Celbridge.FilePicker;
 using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.Services.Forms;
@@ -28,6 +29,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<ILayoutManager, LayoutManager>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IFormService, FormService>();
@@ -38,6 +40,13 @@ public static class ServiceConfiguration
         // Register WindowStateHelper for Windows platform only
         services.AddSingleton<Helpers.WindowStateHelper>();
 #endif
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<ISetLayoutCommand, SetLayoutCommand>();
+        services.AddTransient<ISetPanelVisibilityCommand, SetPanelVisibilityCommand>();
 
         //
         // Register view models

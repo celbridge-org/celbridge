@@ -107,6 +107,15 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
+            // F11 toggles full screen layout
+            if (ev.key === 'F11') {
+                ev.preventDefault?.();
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage('toggle_layout');
+                }
+                return false; // consume the event
+            }
+
             // Copy: if there's a selection, ctl-c copies it to the clipboard
             if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
                 if (term.hasSelection()) {

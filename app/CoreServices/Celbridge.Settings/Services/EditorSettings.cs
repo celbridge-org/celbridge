@@ -1,57 +1,12 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Settings.Services;
 
 public class EditorSettings : ObservableSettings, IEditorSettings
 {
-    private const float DefaultContextPanelWidth = 300f;
-    private const float DefaultInspectorPanelWidth = 300f;
-    private const float DefaultConsolePanelHeight = 350f;
-    private const float DefaultDetailPanelHeight = 250f;
-
     public EditorSettings(ISettingsGroup settingsGroup)
         : base(settingsGroup, nameof(EditorSettings))
     {}
-
-    public bool IsContextPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsContextPanelVisible), true);
-        set => SetValue(nameof(IsContextPanelVisible), value);
-    }
-
-    public float ContextPanelWidth
-    {
-        get => GetValue<float>(nameof(ContextPanelWidth), DefaultContextPanelWidth);
-        set => SetValue(nameof(ContextPanelWidth), value);
-    }
-
-    public bool IsInspectorPanelVisible
-    {
-        get => GetValue<bool>(nameof(IsInspectorPanelVisible), true);
-        set => SetValue(nameof(IsInspectorPanelVisible), value);
-    }
-
-    public float InspectorPanelWidth
-    {
-        get => GetValue<float>(nameof(InspectorPanelWidth), DefaultInspectorPanelWidth);
-        set => SetValue(nameof(InspectorPanelWidth), value);
-    }
-
-    public bool IsConsolePanelVisible
-    {
-        get => GetValue<bool>(nameof(IsConsolePanelVisible), true);
-        set => SetValue(nameof(IsConsolePanelVisible), value);
-    }
-
-    public float ConsolePanelHeight
-    {
-        get => GetValue<float>(nameof(ConsolePanelHeight), DefaultConsolePanelHeight);
-        set => SetValue(nameof(ConsolePanelHeight), value);
-    }
-
-    public float DetailPanelHeight
-    {
-        get => GetValue<float>(nameof(DetailPanelHeight), DefaultDetailPanelHeight);
-        set => SetValue(nameof(DetailPanelHeight), value);
-    }
 
     public string PreviousNewProjectFolderPath
     {
@@ -71,22 +26,16 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(RecentProjects), value);
     }
 
-    public string OpenAIKey
+    public string PreviousNewFileExtension
     {
-        get => GetValue<string>(nameof(OpenAIKey), string.Empty);
-        set => SetValue(nameof(OpenAIKey), value);
+        get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
+        set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
-    public string SheetsAPIKey
+    public bool UsePreferredWindowGeometry
     {
-        get => GetValue<string>(nameof(SheetsAPIKey), string.Empty);
-        set => SetValue(nameof(SheetsAPIKey), value);
-    }
-
-    public ApplicationColorTheme Theme 
-    {
-        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
-        set => SetValue(nameof(Theme), value);
+        get => GetValue<bool>(nameof(UsePreferredWindowGeometry), false);
+        set => SetValue(nameof(UsePreferredWindowGeometry), value);
     }
 
     public bool IsWindowMaximized
@@ -95,43 +44,63 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(IsWindowMaximized), value);
     }
 
-    public int WindowX
+    public int PreferredWindowX
     {
-        get => GetValue<int>(nameof(WindowX), -1);
-        set => SetValue(nameof(WindowX), value);
+        get => GetValue<int>(nameof(PreferredWindowX), 0);
+        set => SetValue(nameof(PreferredWindowX), value);
     }
 
-    public int WindowY
+    public int PreferredWindowY
     {
-        get => GetValue<int>(nameof(WindowY), -1);
-        set => SetValue(nameof(WindowY), value);
+        get => GetValue<int>(nameof(PreferredWindowY), 0);
+        set => SetValue(nameof(PreferredWindowY), value);
     }
 
-    public int WindowWidth
+    public int PreferredWindowWidth
     {
-        get => GetValue<int>(nameof(WindowWidth), 1200);
-        set => SetValue(nameof(WindowWidth), value);
+        get => GetValue<int>(nameof(PreferredWindowWidth), 0);
+        set => SetValue(nameof(PreferredWindowWidth), value);
     }
 
-    public int WindowHeight
+    public int PreferredWindowHeight
     {
-        get => GetValue<int>(nameof(WindowHeight), 800);
-        set => SetValue(nameof(WindowHeight), value);
+        get => GetValue<int>(nameof(PreferredWindowHeight), 0);
+        set => SetValue(nameof(PreferredWindowHeight), value);
     }
 
-    public string PreviousNewFileExtension
+    public PanelVisibilityFlags PreferredPanelVisibility
     {
-        get => GetValue<string>(nameof(PreviousNewFileExtension), ".py");
-        set => SetValue(nameof(PreviousNewFileExtension), value);
+        get => GetValue<PanelVisibilityFlags>(nameof(PreferredPanelVisibility), PanelVisibilityFlags.All);
+        set => SetValue(nameof(PreferredPanelVisibility), value);
     }
 
-    public void ResetPanelLayout()
+    public float ContextPanelWidth
     {
-        IsContextPanelVisible = true;
-        ContextPanelWidth = DefaultContextPanelWidth;
-        IsInspectorPanelVisible = true;
-        InspectorPanelWidth = DefaultInspectorPanelWidth;
-        IsConsolePanelVisible = true;
-        ConsolePanelHeight = DefaultConsolePanelHeight;
+        get => GetValue<float>(nameof(ContextPanelWidth), UserInterfaceConstants.ContextPanelWidth);
+        set => SetValue(nameof(ContextPanelWidth), value);
+    }
+
+    public float InspectorPanelWidth
+    {
+        get => GetValue<float>(nameof(InspectorPanelWidth), UserInterfaceConstants.InspectorPanelWidth);
+        set => SetValue(nameof(InspectorPanelWidth), value);
+    }
+
+    public float ConsolePanelHeight
+    {
+        get => GetValue<float>(nameof(ConsolePanelHeight), UserInterfaceConstants.ConsolePanelHeight);
+        set => SetValue(nameof(ConsolePanelHeight), value);
+    }
+
+    public float DetailPanelHeight
+    {
+        get => GetValue<float>(nameof(DetailPanelHeight), UserInterfaceConstants.DetailPanelHeight);
+        set => SetValue(nameof(DetailPanelHeight), value);
+    }
+
+    public ApplicationColorTheme Theme
+    {
+        get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
+        set => SetValue(nameof(Theme), value);
     }
 }

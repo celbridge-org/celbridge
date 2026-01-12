@@ -1,3 +1,4 @@
+using Celbridge.UserInterface;
 using System.ComponentModel;
 
 namespace Celbridge.Settings;
@@ -7,108 +8,110 @@ namespace Celbridge.Settings;
 /// </summary>
 public interface IEditorSettings : INotifyPropertyChanged
 {
-    /// <summary>
-    /// Gets or sets a value indicating whether the Context panel is visible.
-    /// </summary>
-    bool IsContextPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the Context panel.
-    /// </summary>
-    float ContextPanelWidth { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the inspector panel is visible.
-    /// </summary>
-    bool IsInspectorPanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the width of the inspector panel.
-    /// </summary>
-    float InspectorPanelWidth { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the console panel is visible.
-    /// </summary>
-    bool IsConsolePanelVisible { get; set; }
-
-    /// <summary>
-    /// Gets or sets the height of the console panel.
-    /// </summary>
-    float ConsolePanelHeight { get; set; }
-
-    /// <summary>
-    /// Gets or sets the height of the detail panel.
-    /// </summary>
-    float DetailPanelHeight { get; set; }
-
-    /// <summary>
-    /// Gets or sets the previous new project folder path.
-    /// </summary>
-    string PreviousNewProjectFolderPath { get; set; }
-
-    /// <summary>
-    /// Gets or sets the previous project.
-    /// </summary>
-    string PreviousProject { get; set; }
-
-    /// <summary>
-    /// Gets or sets the list of recent projects.
-    /// </summary>
-    List<string> RecentProjects { get; set; }
-
-    /// <summary>
-    /// Gets or sets the OpenAI key.
-    /// </summary>
-    string OpenAIKey { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Sheets API key.
-    /// </summary>
-    string SheetsAPIKey { get; set; }
+    // ========================================
+    // Settings Management
+    // ========================================
 
     /// <summary>
     /// Resets the settings to their default values.
     /// </summary>
     void Reset();
 
-    /// <summary>
-    /// Resets the panel layout to default visibility and sizes.
-    /// </summary>
-    void ResetPanelLayout();
+    // ========================================
+    // Previous Paths and History
+    // ========================================
 
     /// <summary>
-    /// Gets or Sets the Application User Interface Theme value.
+    /// The previously specified new project folder path.
     /// </summary>
-    ApplicationColorTheme Theme { get; set; }
+    string PreviousNewProjectFolderPath { get; set; }
 
     /// <summary>
-    /// Gets or sets whether the window is maximized.
+    /// The previously loaded Celbridge project file.
+    /// </summary>
+    string PreviousProject { get; set; }
+
+    /// <summary>
+    /// The list of recently loaded project files.
+    /// </summary>
+    List<string> RecentProjects { get; set; }
+
+    /// <summary>
+    /// The file extension of the previously created file via the Add File dialog.
+    /// </summary>
+    string PreviousNewFileExtension { get; set; }
+
+    // ========================================
+    // Window Geometry
+    // Applies to non-maximized windowed mode only.
+    // ========================================
+
+    /// <summary>
+    /// Indicates whether saved window geometry should be used on startup.
+    /// When false, the OS default window position and size will be used.
+    /// </summary>
+    bool UsePreferredWindowGeometry { get; set; }
+
+    /// <summary>
+    /// Is the the window maximized.
     /// </summary>
     bool IsWindowMaximized { get; set; }
 
     /// <summary>
-    /// Gets or sets the window X position.
+    /// Preferred window X position when in non-maximized windowed mode.
     /// </summary>
-    int WindowX { get; set; }
+    int PreferredWindowX { get; set; }
 
     /// <summary>
-    /// Gets or sets the window Y position.
+    /// Preferred window Y position when in non-maximized windowed mode.
     /// </summary>
-    int WindowY { get; set; }
+    int PreferredWindowY { get; set; }
 
     /// <summary>
-    /// Gets or sets the window width.
+    /// Preferred window width when in non-maximized windowed mode.
     /// </summary>
-    int WindowWidth { get; set; }
+    int PreferredWindowWidth { get; set; }
 
     /// <summary>
-    /// Gets or sets the window height.
+    /// Preferred window height when in non-maximized windowed mode.
     /// </summary>
-    int WindowHeight { get; set; }
+    int PreferredWindowHeight { get; set; }
+
+    // ========================================
+    // Panel State
+    // ========================================
 
     /// <summary>
-    /// Gets or sets the file extension of the last file created via the Add File dialog.
+    /// Preferred panel visibility.
     /// </summary>
-    string PreviousNewFileExtension { get; set; }
+    PanelVisibilityFlags PreferredPanelVisibility { get; set; }
+
+    /// <summary>
+    /// Width of the Context panel.
+    /// </summary>
+    float ContextPanelWidth { get; set; }
+
+    /// <summary>
+    /// Width of the Inspector panel.
+    /// </summary>
+    float InspectorPanelWidth { get; set; }
+
+    /// <summary>
+    /// Height of the Console panel.
+    /// </summary>
+    float ConsolePanelHeight { get; set; }
+
+    /// <summary>
+    /// Height of the detail panel.
+    /// </summary>
+    float DetailPanelHeight { get; set; }
+
+    // ========================================
+    // Settings Page Options
+    // ========================================
+
+    /// <summary>
+    /// Application user interface theme.
+    /// </summary>
+    ApplicationColorTheme Theme { get; set; }
 }

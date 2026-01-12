@@ -4,8 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Documents.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    DataContext="{x:Bind ViewModel}">
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
   <TabView x:Name="TabView"
            IsAddTabButtonVisible="False"
            TabWidthMode="SizeToContent"

@@ -7,9 +7,11 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Services;
 
@@ -19,6 +21,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IEditorSettings _editorSettings;
+    private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
@@ -46,10 +49,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
         IEditorSettings editorSettings,
+        IMessengerService messengerService,
         IProjectService projectService)
     {
         _logger = logger;
         _editorSettings = editorSettings;
+        _messengerService = messengerService;
 
         ContextAreaUsageDetails = new ContextAreaUsage();
 
@@ -75,29 +80,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
-    }
-
-    public void ToggleAllPanels()
-    {
-        // Check if any panels are collapsed
-        bool anyPanelCollapsed = !_editorSettings.IsContextPanelVisible ||
-            !_editorSettings.IsInspectorPanelVisible ||
-            !_editorSettings.IsConsolePanelVisible;
-
-        if (anyPanelCollapsed)
-        {
-            // Expand all panels
-            _editorSettings.IsContextPanelVisible = true;
-            _editorSettings.IsInspectorPanelVisible = true;
-            _editorSettings.IsConsolePanelVisible = true;
-        }
-        else
-        {
-            // Collapse all panels
-            _editorSettings.IsContextPanelVisible = false;
-            _editorSettings.IsInspectorPanelVisible = false;
-            _editorSettings.IsConsolePanelVisible = false;
-        }
     }
 
     public void SetWorkspaceStateIsDirty()
