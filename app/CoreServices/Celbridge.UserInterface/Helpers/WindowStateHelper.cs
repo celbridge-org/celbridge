@@ -19,6 +19,7 @@ public sealed class WindowStateHelper
     private readonly IEditorSettings _editorSettings;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
+    private bool _isApplyingWindowMode;
 
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
@@ -91,6 +92,8 @@ public sealed class WindowStateHelper
 
         try
         {
+            _isApplyingWindowMode = true;
+
             switch (windowMode)
             {
                 case WindowMode.Windowed:
@@ -122,6 +125,10 @@ public sealed class WindowStateHelper
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Failed to apply window mode: {windowMode}");
+        }
+        finally
+        {
+            _isApplyingWindowMode = false;
         }
     }
 
@@ -210,6 +217,13 @@ public sealed class WindowStateHelper
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        // Ignore changes while we're in the middle of applying a window mode change
+        // to avoid saving fullscreen dimensions as the preferred window bounds.
+        if (_isApplyingWindowMode)
+        {
+            return;
+        }
+
         if (args.DidSizeChange || 
             args.DidPositionChange || 
             args.DidPresenterChange)
