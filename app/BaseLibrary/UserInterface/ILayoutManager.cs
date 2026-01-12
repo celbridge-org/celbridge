@@ -12,6 +12,7 @@ public interface ILayoutManager
     /// Current window mode.
     /// </summary>
     WindowMode WindowMode { get; }
+
     /// <summary>
     /// Whether the window is currently in a fullscreen mode.
     /// </summary>
