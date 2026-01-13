@@ -117,11 +117,15 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
+                <!-- Separator before Workspace -->
+                <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
+                                             Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
                 <!-- Workspace - shows project name when loaded -->
                 <NavigationViewItem x:Name="WorkspaceNavItem"
                                     Tag="Workspace"
                                     Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
-                                    IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}">
+                                    Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                   Glyph="&#xEC50;"/>

@@ -1,5 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -36,6 +37,7 @@ public sealed partial class TitleBar : UserControl
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivated);
         _messengerService.Register<MainWindowDeactivatedMessage>(this, OnMainWindowDeactivated);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         // Listen to ViewModel property changes to update interactive regions
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -53,6 +55,11 @@ public sealed partial class TitleBar : UserControl
         {
             UpdateInteractiveRegions();
         });
+    }
+
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    {
+        UpdateNavigationSelection(ApplicationPage.Workspace);
     }
 
     private void OnTitleBar_Unloaded(object sender, RoutedEventArgs e)
