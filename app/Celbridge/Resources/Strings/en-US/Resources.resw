@@ -147,7 +147,7 @@
   <data name="MainPage_CloseProject" xml:space="preserve">
     <value>Close project</value>
   </data>
-  <data name="MainPage_Home" xml:space="preserve">
+  <data name="TitleBar_HomeTooltip" xml:space="preserve">
     <value>Home</value>
   </data>
   <data name="MainPage_Explorer" xml:space="preserve">
@@ -162,7 +162,7 @@
   <data name="MainPage_RevisionControl" xml:space="preserve">
     <value>Version Control</value>
   </data>
-  <data name="MainPage_Community" xml:space="preserve">
+  <data name="TitleBar_CommunityTooltip" xml:space="preserve">
     <value>Community</value>
   </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
@@ -297,13 +297,13 @@
   <data name="HomePage_NewExampleProject" xml:space="preserve">
     <value>New example project</value>
   </data>
-  <data name="MainPage_NewProject" xml:space="preserve">
+  <data name="MainMenu_NewProject" xml:space="preserve">
     <value>New project</value>
   </data>
-  <data name="MainPage_OpenProject" xml:space="preserve">
+  <data name="MainMenu_OpenProject" xml:space="preserve">
     <value>Open project</value>
   </data>
-  <data name="MainPage_ReloadProject" xml:space="preserve">
+  <data name="MainMenu_ReloadProject" xml:space="preserve">
     <value>Reload project</value>
   </data>
   <data name="HomePage_Start" xml:space="preserve">
@@ -420,14 +420,14 @@ Do you wish to continue?</value>
   <data name="HomePage_NewExampleProjectTooltip" xml:space="preserve">
     <value>Create a new Celbridge project with example content</value>
   </data>
-  <data name="MainPage_NewProjectTooltip" xml:space="preserve">
+  <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
     <value>Create a new Celbridge project</value>
   </data>
-  <data name="MainPage_OpenProjectTooltip" xml:space="preserve">
+  <data name="MainMenu_OpenProjectTooltip" xml:space="preserve">
     <value>Open an existing Celbridge project</value>
   </data>
-  <data name="MainPage_ReloadProjectTooltip" xml:space="preserve">
-    <value>Reload the current Celbridge project</value>
+  <data name="MainMenu_ReloadProjectTooltip" xml:space="preserve">
+    <value>Reload the current project</value>
   </data>
   <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
     <value>Python Initialization Error</value>
@@ -611,5 +611,14 @@ Do you wish to continue?</value>
   </data>
   <data name="LayoutToolbar_PresenterModeTooltip" xml:space="preserve">
     <value>Full screen presentation mode for displaying content</value>
+  </data>
+  <data name="TitleBar_SettingsTooltip" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="TitleBar_WorkspaceTooltip" xml:space="preserve">
+    <value>Workspace</value>
+  </data>
+  <data name="TitleBar_MainMenuTooltip" xml:space="preserve">
+    <value>Main menu</value>
   </data>
 </root>

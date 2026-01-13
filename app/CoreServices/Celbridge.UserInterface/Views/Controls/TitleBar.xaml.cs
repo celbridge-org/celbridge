@@ -72,25 +72,25 @@ public sealed partial class TitleBar : UserControl
 
     private void ApplyTooltips()
     {
-        var menuTooltip = _stringLocalizer.GetString("TitleBar_MenuTooltip");
+        var menuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
         ToolTipService.SetToolTip(MenuNavItem, menuTooltip);
         ToolTipService.SetPlacement(MenuNavItem, PlacementMode.Bottom);
 
-        var newProjectTooltip = _stringLocalizer.GetString("TitleBar_NewProjectTooltip");
+        var newProjectTooltip = _stringLocalizer.GetString("MainMenu_NewProjectTooltip");
         ToolTipService.SetToolTip(NewProjectNavItem, newProjectTooltip);
         ToolTipService.SetPlacement(NewProjectNavItem, PlacementMode.Right);
 
-        var openProjectTooltip = _stringLocalizer.GetString("TitleBar_OpenProjectTooltip");
+        var openProjectTooltip = _stringLocalizer.GetString("MainMenu_OpenProjectTooltip");
         ToolTipService.SetToolTip(OpenProjectNavItem, openProjectTooltip);
         ToolTipService.SetPlacement(OpenProjectNavItem, PlacementMode.Right);
 
-        var reloadProjectTooltip = _stringLocalizer.GetString("TitleBar_ReloadProjectTooltip");
+        var reloadProjectTooltip = _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip");
         ToolTipService.SetToolTip(ReloadProjectNavItem, reloadProjectTooltip);
         ToolTipService.SetPlacement(ReloadProjectNavItem, PlacementMode.Right);
 
-        var workspaceTooltip = _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
-        ToolTipService.SetToolTip(WorkspaceNavItem, workspaceTooltip);
-        ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
+        var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
+        ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
+        ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
 
         var communityTooltip = _stringLocalizer.GetString("TitleBar_CommunityTooltip");
         ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
@@ -100,18 +100,17 @@ public sealed partial class TitleBar : UserControl
         ToolTipService.SetToolTip(SettingsNavItem, settingsTooltip);
         ToolTipService.SetPlacement(SettingsNavItem, PlacementMode.Bottom);
 
-        var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
-        ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
-        ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
+        var workspaceTooltip = _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
+        ToolTipService.SetToolTip(WorkspaceNavItem, workspaceTooltip);
+        ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
     }
 
     private void ApplyLabels()
     {
-        // Icons-only mode: labels are only shown in tooltips
-        // Menu sub-items still show labels in the flyout
-        NewProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_NewProject");
-        OpenProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_OpenProject");
-        ReloadProjectNavItem.Content = _stringLocalizer.GetString("TitleBar_ReloadProject");
+        // Menu sub-items show labels in the flyout
+        NewProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_NewProject");
+        OpenProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_OpenProject");
+        ReloadProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_ReloadProject");
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
