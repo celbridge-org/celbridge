@@ -26,7 +26,7 @@ public enum ProjectPanelView
     Debug,
 
     /// <summary>
-    /// The Version Control view for source control operations.
+    /// The Source Control view for source control operations.
     /// </summary>
-    VersionControl
+    SourceControl
 }

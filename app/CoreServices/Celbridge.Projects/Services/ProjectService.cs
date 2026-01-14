@@ -1,7 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
-using Windows.Foundation;
 
 using Path = System.IO.Path;
 
@@ -17,8 +16,6 @@ public class ProjectService : IProjectService
 
     private const string EmptyPageTag = "Empty";
 
-    public event TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs>? RebuildShortcutsUI;
-
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
@@ -29,21 +26,6 @@ public class ProjectService : IProjectService
         _editorSettings = editorSettings;
         _navigationService = navigationService;
         _workspaceWrapper = workspaceWrapper;
-    }
-
-    public void RegisterRebuildShortcutsUI(TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs> handler)
-    {
-        RebuildShortcutsUI += handler;
-    }
-
-    public void UnregisterRebuildShortcutsUI(TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs> handler)
-    {
-        RebuildShortcutsUI -= handler;
-    }
-
-    public void InvokeRebuildShortcutsUI(NavigationBarSection navigationBarSection)
-    {
-        RebuildShortcutsUI?.Invoke(this, new IProjectService.RebuildShortcutsUIEventArgs() { NavigationBarSection = navigationBarSection });
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)

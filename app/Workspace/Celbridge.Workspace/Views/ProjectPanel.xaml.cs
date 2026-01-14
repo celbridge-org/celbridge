@@ -1,6 +1,6 @@
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;
 
@@ -12,8 +12,7 @@ public sealed partial class ProjectPanel : UserControl
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
 
-    private Dictionary<string, string> _tagsToScriptDictionary = new();
-    private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
+    private ShortcutMenuBuilder? _shortcutMenuBuilder;
     private UIElement? _explorerPanel;
     private UIElement? _searchPanel;
 
@@ -38,14 +37,19 @@ public sealed partial class ProjectPanel : UserControl
     {
         ApplyTooltips();
 
-        // Register for shortcut menu rebuilds
-        _projectService.RegisterRebuildShortcutsUI(BuildShortcutMenuItems);
+        // Build shortcut menu items from the current project configuration
+        var currentProject = _projectService.CurrentProject;
+        if (currentProject != null)
+        {
+            var navigationBarSection = currentProject.ProjectConfig.Config.Shortcuts.NavigationBar;
+            var logger = ServiceLocator.AcquireService<ILogger<ShortcutMenuBuilder>>();
+            _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
+            _shortcutMenuBuilder.BuildShortcutMenuItems(navigationBarSection.RootCustomCommandNode, ProjectNavigation.MenuItems);
+        }
     }
 
     private void ProjectPanel_Unloaded(object sender, RoutedEventArgs e)
     {
-        _projectService.UnregisterRebuildShortcutsUI(BuildShortcutMenuItems);
-
         Loaded -= ProjectPanel_Loaded;
         Unloaded -= ProjectPanel_Unloaded;
     }
@@ -96,7 +100,7 @@ public sealed partial class ProjectPanel : UserControl
             }
 
             // Check if this is a shortcut command
-            if (_tagsToScriptDictionary.TryGetValue(tag, out var script))
+            if (_shortcutMenuBuilder?.TryGetScript(tag, out var script) == true)
             {
                 if (!string.IsNullOrEmpty(script))
                 {
@@ -107,27 +111,20 @@ public sealed partial class ProjectPanel : UserControl
             }
 
             // Handle built-in navigation items
-            switch (tag)
+            if (Enum.TryParse<ProjectPanelView>(tag, out var view) && view != ProjectPanelView.None)
             {
-                case "Explorer":
-                    ShowPanel(_explorerPanel, _searchPanel);
-                    NotifyProjectPanelViewChange(ProjectPanelView.Explorer);
-                    break;
+                switch (view)
+                {
+                    case ProjectPanelView.Explorer:
+                        ShowPanel(_explorerPanel, _searchPanel);
+                        break;
 
-                case "Search":
-                    ShowPanel(_searchPanel, _explorerPanel);
-                    NotifyProjectPanelViewChange(ProjectPanelView.Search);
-                    break;
+                    case ProjectPanelView.Search:
+                        ShowPanel(_searchPanel, _explorerPanel);
+                        break;
+                }
 
-                case "Debug":
-                    // Placeholder - Debug panel not yet implemented
-                    NotifyProjectPanelViewChange(ProjectPanelView.Debug);
-                    break;
-
-                case "SourceControl":
-                    // Placeholder - Source Control panel not yet implemented
-                    NotifyProjectPanelViewChange(ProjectPanelView.VersionControl);
-                    break;
+                NotifyProjectPanelViewChange(view);
             }
         }
     }
@@ -165,104 +162,6 @@ public sealed partial class ProjectPanel : UserControl
                 ProjectNavigation.SelectedItem = navItem;
                 return;
             }
-        }
-    }
-
-    private void BuildShortcutMenuItems(object sender, IProjectService.RebuildShortcutsUIEventArgs args)
-    {
-        _tagsToScriptDictionary.Clear();
-        foreach (var (menuItems, menuItem) in _shortcutMenuItems)
-        {
-            menuItems.Remove(menuItem);
-        }
-        _shortcutMenuItems.Clear();
-
-        NavigationBarSection.CustomCommandNode node = args.NavigationBarSection.RootCustomCommandNode;
-        AddShortcutMenuItems(node, ProjectNavigation.MenuItems);
-    }
-
-    private void AddShortcutMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
-    {
-        Dictionary<string, NavigationViewItem> newNodes = new();
-        Dictionary<string, string> pathToScriptDictionary = new();
-
-        foreach (var (k, v) in node.Nodes)
-        {
-            var newItem = new NavigationViewItem()
-            {
-                Name = k,
-                Content = k
-            };
-
-            menuItems.Add(newItem);
-            string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
-            newNodes.Add(newPath, newItem);
-            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
-            AddShortcutMenuItems(v, newItem.MenuItems);
-        }
-
-        foreach (var command in node.CustomCommands)
-        {
-            if (pathToScriptDictionary.ContainsKey(command.Path!))
-            {
-                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added.");
-                continue;
-            }
-
-            Symbol? icon = null;
-            if (command.Icon is not null)
-            {
-                if (Enum.TryParse(command.Icon, out Symbol parsedIcon))
-                {
-                    icon = parsedIcon;
-                }
-            }
-
-            if (newNodes.ContainsKey(command.Path!))
-            {
-                NavigationViewItem item = newNodes[command.Path!];
-                if (!string.IsNullOrEmpty(command.ToolTip))
-                {
-                    ToolTipService.SetToolTip(item, command.ToolTip);
-                    ToolTipService.SetPlacement(item, PlacementMode.Right);
-                }
-
-                if (icon.HasValue)
-                {
-                    item.Icon = new SymbolIcon(icon.Value);
-                }
-
-                if (!string.IsNullOrEmpty(command.Name))
-                {
-                    item.Content = command.Name;
-                }
-
-                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with a folder node.");
-                continue;
-            }
-
-            _tagsToScriptDictionary.Add(command.Path!, command.Script!);
-
-            var commandItem = new NavigationViewItem
-            {
-                Name = command.Name ?? "Shortcut",
-                Content = command.Name ?? "Shortcut",
-                Tag = command.Path!
-            };
-
-            if (!string.IsNullOrEmpty(command.ToolTip))
-            {
-                ToolTipService.SetToolTip(commandItem, command.ToolTip);
-                ToolTipService.SetPlacement(commandItem, PlacementMode.Right);
-            }
-
-            if (icon.HasValue)
-            {
-                commandItem.Icon = new SymbolIcon(icon.Value);
-            }
-
-            menuItems.Add(commandItem);
-            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
         }
     }
 }
