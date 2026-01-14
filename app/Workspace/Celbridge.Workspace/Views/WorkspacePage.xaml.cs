@@ -11,7 +11,6 @@ public sealed partial class WorkspacePage : Page
 {
     private readonly IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
-    private readonly IEditorSettings _editorSettings;
 
     public WorkspacePageViewModel ViewModel { get; }
 
@@ -27,7 +26,6 @@ public sealed partial class WorkspacePage : Page
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
-        _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
 
         DataContext = ViewModel;
 
@@ -95,9 +93,6 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        // Register for messages
-        _messengerService.Register<PanelSwapChangedMessage>(this, OnPanelSwapChanged);
-
         //
         // Populate the workspace panels.
         //
@@ -135,8 +130,16 @@ public sealed partial class WorkspacePage : Page
         var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
         ConsolePanel.Children.Add(consolePanel);
 
-        // Apply initial panel swap setting
-        ApplyPanelSwap(_editorSettings.SwapPrimarySecondaryPanels);
+        // Add panels to their default positions
+        // ProjectPanel in Primary (left), Inspector in Secondary (right)
+        if (_projectPanel != null)
+        {
+            PrimaryPanel.Children.Add(_projectPanel);
+        }
+        if (_inspectorPanel != null)
+        {
+            SecondaryPanel.Children.Add(_inspectorPanel);
+        }
 
         // Show the Explorer view by default
         workspaceService.ProjectPanelService.ShowView(ProjectPanelView.Explorer);
@@ -161,9 +164,6 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
-        // Unregister message handlers
-        _messengerService.Unregister<PanelSwapChangedMessage>(this);
-
         // Close all open documents and clean up their WebView2 resources
         var documentsPanel = workspaceService.DocumentsService.DocumentsPanel;
         documentsPanel?.Shutdown();
@@ -175,43 +175,6 @@ public sealed partial class WorkspacePage : Page
         ViewModel.OnWorkspacePageUnloaded();
 
         _initialized = false;
-    }
-
-    private void OnPanelSwapChanged(object recipient, PanelSwapChangedMessage message)
-    {
-        ApplyPanelSwap(message.IsSwapped);
-    }
-
-    private void ApplyPanelSwap(bool isSwapped)
-    {
-        // Remove panels from their current containers
-        PrimaryPanel.Children.Clear();
-        SecondaryPanel.Children.Clear();
-
-        if (isSwapped)
-        {
-            // Swapped: Inspector in Primary, ProjectPanel in Secondary
-            if (_inspectorPanel != null)
-            {
-                PrimaryPanel.Children.Add(_inspectorPanel);
-            }
-            if (_projectPanel != null)
-            {
-                SecondaryPanel.Children.Add(_projectPanel);
-            }
-        }
-        else
-        {
-            // Default: ProjectPanel in Primary, Inspector in Secondary
-            if (_projectPanel != null)
-            {
-                PrimaryPanel.Children.Add(_projectPanel);
-            }
-            if (_inspectorPanel != null)
-            {
-                SecondaryPanel.Children.Add(_inspectorPanel);
-            }
-        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

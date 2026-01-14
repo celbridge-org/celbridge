@@ -34,7 +34,6 @@ public sealed partial class LayoutToolbar : UserControl
         ApplyLabels();
         UpdatePanelIcons();
         UpdateWindowModeRadios();
-        UpdateSwapPanelsCheckBox();
         UpdatePanelToggleVisibility();
         
         // Register for layout manager state change messages
@@ -56,8 +55,6 @@ public sealed partial class LayoutToolbar : UserControl
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
         
         PanelToggleButtons.Visibility = visibility;
-        PanelOptionsSeparator.Visibility = visibility;
-        SwapPanelsCheckBox.Visibility = visibility;
         ResetLayoutSeparator.Visibility = visibility;
         ResetLayoutButton.Visibility = visibility;
     }
@@ -106,8 +103,6 @@ public sealed partial class LayoutToolbar : UserControl
         FullScreenModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FullScreen");
         ZenModeRadioLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ZenModeLabel");
         PresenterModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_PresenterLabel");
-
-        SwapPanelsLabel.Text = _stringLocalizer.GetString("LayoutToolbar_SwapPanelsLabel");
     }
 
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
@@ -137,19 +132,6 @@ public sealed partial class LayoutToolbar : UserControl
             FullScreenModeRadio.IsChecked = windowMode == WindowMode.FullScreen;
             ZenModeRadio.IsChecked = windowMode == WindowMode.ZenMode;
             PresenterModeRadio.IsChecked = windowMode == WindowMode.Presenter;
-        }
-        finally
-        {
-            _isUpdatingUI = false;
-        }
-    }
-
-    private void UpdateSwapPanelsCheckBox()
-    {
-        _isUpdatingUI = true;
-        try
-        {
-            SwapPanelsCheckBox.IsChecked = _editorSettings.SwapPrimarySecondaryPanels;
         }
         finally
         {
@@ -197,20 +179,6 @@ public sealed partial class LayoutToolbar : UserControl
         });
     }
 
-    private void SwapPanelsCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingUI)
-        {
-            return;
-        }
-
-        var isSwapped = SwapPanelsCheckBox.IsChecked ?? false;
-        _editorSettings.SwapPrimarySecondaryPanels = isSwapped;
-
-        // Send message to notify WorkspacePage to swap panels
-        _messengerService.Send(new PanelSwapChangedMessage(isSwapped));
-    }
-
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         e.Handled = true;
@@ -218,17 +186,11 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void PanelLayoutButton_Click(object sender, RoutedEventArgs e)
     {
-        // Update swap checkbox state before showing flyout
-        UpdateSwapPanelsCheckBox();
         PanelLayoutFlyout.ShowAt(PanelLayoutButton);
     }
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
     {
-        // Also reset the swap setting
-        _editorSettings.SwapPrimarySecondaryPanels = false;
-        _messengerService.Send(new PanelSwapChangedMessage(false));
-
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
             command.Transition = LayoutTransition.ResetLayout;

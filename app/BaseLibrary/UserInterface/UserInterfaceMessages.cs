@@ -1,5 +1,3 @@
-using Celbridge.Settings;
-
 namespace Celbridge.UserInterface;
 
 /// <summary>
@@ -32,8 +30,3 @@ public record PanelVisibilityChangedMessage(PanelVisibilityFlags PanelVisibility
 /// with the current editor settings.
 /// </summary>
 public record RestoreWindowStateMessage();
-
-/// <summary>
-/// Message sent when the primary/secondary panel swap setting changes.
-/// </summary>
-public record PanelSwapChangedMessage(bool IsSwapped);
