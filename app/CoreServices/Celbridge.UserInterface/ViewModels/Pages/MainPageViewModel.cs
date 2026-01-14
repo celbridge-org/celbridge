@@ -8,8 +8,6 @@ namespace Celbridge.UserInterface.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    private const string HomePageName = "HomePage";
-
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
@@ -81,7 +79,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         else
         {
             // No previous project to load, so navigate to the home page
-            _navigationService.NavigateToPage(HomePageName);
+            _navigationService.NavigateToPage(NavigationConstants.HomeTag);
         }
     }
 

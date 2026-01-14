@@ -1,10 +1,8 @@
-using System.Security.Cryptography.X509Certificates;
 using Celbridge.Navigation;
-using Celbridge.Projects;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Windows.Foundation;
+
 using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Services;
@@ -17,8 +15,7 @@ public class ProjectService : IProjectService
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly INavigationService _navigationService;
 
-    private const string EmptyPageName = "EmptyPage";
-    private const string WorkspacePageInstanceName = "WorkspacePageName";  // Different to name used to specify the page, due to XAML/WPF constraints.
+    private const string EmptyPageTag = "Empty";
 
     public event TypedEventHandler<IProjectService, IProjectService.RebuildShortcutsUIEventArgs>? RebuildShortcutsUI;
 
@@ -142,26 +139,47 @@ public class ProjectService : IProjectService
             return Result.Ok();
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        // The logic here is quite complicated because we need to teardown the workspace in the
+        // unloaded callback of the Workspace Page, and there are multiple code paths to consider.
+
+        // The workspace page uses NavigationCacheMode.Required, so it stays loaded in memory
+        // even when the user navigates to other pages like Home or Community.
+        // We need to ensure proper cleanup of the workspace page.
+        if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail("Failed to unload project data because no project is loaded");
-        }
+            // Navigate to the Workspace page first to make it the active/visible page.
+            // This is necessary because OnNavigatingFrom (which handles cleanup) only runs
+            // when navigating away from the currently visible page.
+            var navResult = _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag);
+            if (navResult.IsFailure)
+            {
+                return Result.Fail("Failed to navigate to workspace page for cleanup")
+                    .WithErrors(navResult);
+            }
 
-        // Todo: Notify the workspace that it is about to close.
-        // The workspace may want to perform some operations (e.g. save changes) before we close it.
+            // Give the UI enough time to complete the navigation and render.
+            // This ensures the Workspace page is fully active before we navigate away.
+            await Task.Delay(100);
 
-        // Call the manual unloading for any persistent pages we have active which are not in focus.
-        //  - If a PersistentPage is the current page, then switching away from it will cause it to be unloaded (as we have disabled the cache by this point),
-        //      if not however, then the page will need explicitly unloading.
-        _navigationService.UnloadPersistantUnfocusedPages();
+            // Signal that the workspace page should perform cleanup when it unloads.
+            // This must be called AFTER navigating to the Workspace page, because
+            // NavigateToPage clears the cleanup flag after each navigation.
+            _navigationService.RequestWorkspacePageCleanup();
 
-        // Force the Workspace page to unload by navigating to an empty page.
-        _navigationService.NavigateToPage(EmptyPageName);
+            // Now navigate to the empty page to trigger OnNavigatingFrom on the WorkspacePage,
+            // which will disable caching and allow proper cleanup on unload.
+            navResult = _navigationService.NavigateToPage(EmptyPageTag);
+            if (navResult.IsFailure)
+            {
+                return Result.Fail("Failed to navigate to empty page for workspace cleanup")
+                    .WithErrors(navResult);
+            }
 
-        // Wait until the workspace is fully unloaded
-        while (_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            await Task.Delay(50);
+            // Wait until the workspace is fully unloaded
+            while (_workspaceWrapper.IsWorkspacePageLoaded)
+            {
+                await Task.Delay(50);
+            }
         }
 
         var disposableProject = CurrentProject as IDisposable;

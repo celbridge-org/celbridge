@@ -6,6 +6,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
+/// <summary>
+/// ViewModel for the TitleBar control, handling navigation between top-level pages.
+/// </summary>
 public partial class TitleBarViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
@@ -91,12 +94,11 @@ public partial class TitleBarViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Called when a navigation item is selected in the TitleBar navigation.
-    /// Routes to the appropriate navigation service method.
+    /// Navigates to a top-level page using the navigation tag.
     /// </summary>
-    public void OnNavigationItemSelected(string tag)
+    public void NavigateToPage(string tag)
     {
-        _navigationService.NavigateByTag(tag);
+        _navigationService.NavigateToPage(tag);
     }
 }
 

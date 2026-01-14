@@ -72,6 +72,11 @@ public interface IWorkspaceService
     IActivityService ActivityService { get; }
 
     /// <summary>
+    /// Returns the Project Panel Service for managing ProjectPanel views.
+    /// </summary>
+    IProjectPanelService ProjectPanelService { get; }
+
+    /// <summary>
     /// The most recently focussed workspace panel.
     /// </summary>
     WorkspacePanel ActivePanel { get; }
@@ -85,19 +90,4 @@ public interface IWorkspaceService
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
-
-    /// <summary>
-    /// Clear all currently stored Context Area Uses.
-    /// </summary>
-    void ClearContextAreaUses();
-
-    /// <summary>
-    /// Set the current Context Area Usage to the Usage given
-    /// </summary>
-    void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse);
-
-    /// <summary>
-    /// Adds the given UIElement to the available map of Context Area Usages, keyed by the given ContextAreaUse.
-    /// </summary>
-    void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element);
 }

@@ -57,40 +57,10 @@
                         IsSettingsVisible="False"
                         PaneDisplayMode="Top"
                         Background="Transparent"
-                        SelectionChanged="TitleBarNavigation_SelectionChanged">
+                        SelectionChanged="TitleBarNavigation_SelectionChanged"
+                        ItemInvoked="TitleBarNavigation_ItemInvoked">
             <NavigationView.MenuItems>
-                <!-- Main Menu with flyout -->
-                <NavigationViewItem x:Name="MenuNavItem"
-                                    Tag="Menu"
-                                    SelectsOnInvoked="False">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="GlobalNavigationButton"/>
-                    </NavigationViewItem.Icon>
-                    <NavigationViewItem.MenuItems>
-                        <NavigationViewItem x:Name="NewProjectNavItem"
-                                            Tag="NewProject"
-                                            SelectsOnInvoked="False">
-                            <NavigationViewItem.Icon>
-                                <SymbolIcon Symbol="NewFolder"/>
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                        <NavigationViewItem x:Name="OpenProjectNavItem"
-                                            Tag="OpenProject"
-                                            SelectsOnInvoked="False">
-                            <NavigationViewItem.Icon>
-                                <SymbolIcon Symbol="OpenLocal"/>
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                        <NavigationViewItem x:Name="ReloadProjectNavItem"
-                                            Tag="ReloadProject"
-                                            IsEnabled="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay}"
-                                            SelectsOnInvoked="False">
-                            <NavigationViewItem.Icon>
-                                <SymbolIcon Symbol="Refresh"/>
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                    </NavigationViewItem.MenuItems>
-                </NavigationViewItem>
+                <!-- Main Menu is added programmatically -->
 
                 <!-- Home -->
                 <NavigationViewItem x:Name="HomeNavItem"

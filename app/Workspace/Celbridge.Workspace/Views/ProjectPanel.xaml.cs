@@ -1,6 +1,5 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;
@@ -110,24 +109,24 @@ public sealed partial class ProjectPanel : UserControl
             // Handle built-in navigation items
             switch (tag)
             {
-                case NavigationConstants.ExplorerTag:
+                case "Explorer":
                     ShowPanel(_explorerPanel, _searchPanel);
-                    NotifyContextAreaUsage(ContextAreaUse.Explorer);
+                    NotifyProjectPanelViewChange(ProjectPanelView.Explorer);
                     break;
 
-                case NavigationConstants.SearchTag:
+                case "Search":
                     ShowPanel(_searchPanel, _explorerPanel);
-                    NotifyContextAreaUsage(ContextAreaUse.Search);
+                    NotifyProjectPanelViewChange(ProjectPanelView.Search);
                     break;
 
-                case NavigationConstants.DebugTag:
+                case "Debug":
                     // Placeholder - Debug panel not yet implemented
-                    NotifyContextAreaUsage(ContextAreaUse.Debug);
+                    NotifyProjectPanelViewChange(ProjectPanelView.Debug);
                     break;
 
                 case "SourceControl":
                     // Placeholder - Source Control panel not yet implemented
-                    NotifyContextAreaUsage(ContextAreaUse.VersionControl);
+                    NotifyProjectPanelViewChange(ProjectPanelView.VersionControl);
                     break;
             }
         }
@@ -145,12 +144,12 @@ public sealed partial class ProjectPanel : UserControl
         }
     }
 
-    private void NotifyContextAreaUsage(ContextAreaUse contextAreaUse)
+    private void NotifyProjectPanelViewChange(ProjectPanelView view)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (workspaceWrapper.IsWorkspacePageLoaded)
         {
-            workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(contextAreaUse);
+            workspaceWrapper.WorkspaceService.ProjectPanelService.ShowView(view);
         }
     }
 

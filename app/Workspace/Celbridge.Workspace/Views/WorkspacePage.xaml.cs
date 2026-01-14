@@ -1,20 +1,21 @@
 using Celbridge.Messaging;
+using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
-using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Console.Views;
 
 namespace Celbridge.Workspace.Views;
 
-public sealed partial class WorkspacePage : UserInterface.Views.PersistentPage
+public sealed partial class WorkspacePage : Page
 {
     private readonly IMessengerService _messengerService;
+    private readonly INavigationService _navigationService;
     private readonly IEditorSettings _editorSettings;
 
     public WorkspacePageViewModel ViewModel { get; }
 
-    private bool Initialised = false;
+    private bool _initialized = false;
     private ProjectPanel? _projectPanel;
     private UIElement? _inspectorPanel;
 
@@ -25,12 +26,15 @@ public sealed partial class WorkspacePage : UserInterface.Views.PersistentPage
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _navigationService = ServiceLocator.AcquireService<INavigationService>();
         _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
 
         DataContext = ViewModel;
 
-        Loaded += WorkspacePage_Loaded;
+        // Enable caching so the page persists during navigation
+        NavigationCacheMode = NavigationCacheMode.Required;
 
+        Loaded += WorkspacePage_Loaded;
         Unloaded += WorkspacePage_Unloaded;
     }
 
@@ -39,99 +43,120 @@ public sealed partial class WorkspacePage : UserInterface.Views.PersistentPage
         ViewModel.LoadProjectCancellationToken = e.Parameter as CancellationTokenSource;
     }
 
-    private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
+    protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
     {
-        // Only execute this functionality if we have Cache Mode set to Disabled.
-        //  - This means we are purposefully wanted to rebuild the Workspace (Intentional Project Load, rather than UI context switch).
-        if ((!Initialised) || (NavigationCacheMode == NavigationCacheMode.Disabled))
+        // Check if cleanup was requested before navigation occurs
+        if (_navigationService.IsWorkspacePageCleanupPending)
         {
-            var primaryPanelWidth = ViewModel.PrimaryPanelWidth;
-            var secondaryPanelWidth = ViewModel.SecondaryPanelWidth;
-            var bottomPanelHeight = ViewModel.ConsolePanelHeight;
-
-            if (primaryPanelWidth > 0)
-            {
-                PrimaryPanelColumn.Width = new GridLength(primaryPanelWidth);
-            }
-            if (secondaryPanelWidth > 0)
-            {
-                SecondaryPanelColumn.Width = new GridLength(secondaryPanelWidth);
-            }
-            if (bottomPanelHeight > 0)
-            {
-                ConsolePanelRow.Height = new GridLength(bottomPanelHeight);
-            }
-
-            UpdatePanels();
-
-            PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
-            SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
-            ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
-
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-            // Register for panel swap changes
-            _messengerService.Register<PanelSwapChangedMessage>(this, OnPanelSwapChanged);
-
-            //
-            // Populate the workspace panels.
-            //
-
-            var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-            var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
-            Guard.IsNotNull(workspaceService);
-
-            // Send a message to tell services to initialize their workspace panels
-            var message = new WorkspaceWillPopulatePanelsMessage();
-            _messengerService.Send(message);
-
-            // Create the ProjectPanel
-            _projectPanel = new ProjectPanel();
-
-            // Get the explorer and search panels from the workspace service
-            var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
-            var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
-
-            if (explorerPanel != null && searchPanel != null)
-            {
-                // Add context area uses to workspace service
-                workspaceService.AddContextAreaUse(ContextAreaUse.Explorer, explorerPanel);
-                workspaceService.AddContextAreaUse(ContextAreaUse.Search, searchPanel);
-
-                // Populate the ProjectPanel with explorer and search panels
-                _projectPanel.PopulatePanels(explorerPanel, searchPanel);
-            }
-
-            var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
-            DocumentsPanel.Children.Add(documentsPanel);
-
-            _inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
-
-            var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-            ConsolePanel.Children.Add(consolePanel);
-
-            // Apply initial panel swap setting
-            ApplyPanelSwap(_editorSettings.SwapPrimarySecondaryPanels);
-
-            workspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
-
-            _ = ViewModel.LoadWorkspaceAsync();
-
-            Initialised = true;
+            // Disable caching so the page will be cleaned up on unload
+            NavigationCacheMode = NavigationCacheMode.Disabled;
         }
 
-        // Reset our cache status to required.
-        NavigationCacheMode = NavigationCacheMode.Required;
+        base.OnNavigatingFrom(e);
+    }
+
+    private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Only execute initialization if this is the first load or if we're rebuilding after cache clear
+        if (!_initialized || NavigationCacheMode == NavigationCacheMode.Disabled)
+        {
+            InitializeWorkspace();
+            _initialized = true;
+
+            // Re-enable caching after initialization
+            NavigationCacheMode = NavigationCacheMode.Required;
+        }
+    }
+
+    private void InitializeWorkspace()
+    {
+        var primaryPanelWidth = ViewModel.PrimaryPanelWidth;
+        var secondaryPanelWidth = ViewModel.SecondaryPanelWidth;
+        var bottomPanelHeight = ViewModel.ConsolePanelHeight;
+
+        if (primaryPanelWidth > 0)
+        {
+            PrimaryPanelColumn.Width = new GridLength(primaryPanelWidth);
+        }
+        if (secondaryPanelWidth > 0)
+        {
+            SecondaryPanelColumn.Width = new GridLength(secondaryPanelWidth);
+        }
+        if (bottomPanelHeight > 0)
+        {
+            ConsolePanelRow.Height = new GridLength(bottomPanelHeight);
+        }
+
+        UpdatePanels();
+
+        PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
+        SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
+        ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        // Register for messages
+        _messengerService.Register<PanelSwapChangedMessage>(this, OnPanelSwapChanged);
+
+        //
+        // Populate the workspace panels.
+        //
+
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        var workspaceService = workspaceWrapper.WorkspaceService;
+        Guard.IsNotNull(workspaceService);
+
+        // Send a message to tell services to initialize their workspace panels
+        var message = new WorkspaceWillPopulatePanelsMessage();
+        _messengerService.Send(message);
+
+        // Create the ProjectPanel
+        _projectPanel = new ProjectPanel();
+
+        // Get the explorer and search panels from the workspace service
+        var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
+        var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
+
+        if (explorerPanel != null && searchPanel != null)
+        {
+            // Register panels with the project panel service for view management
+            workspaceService.ProjectPanelService.RegisterView(ProjectPanelView.Explorer, explorerPanel);
+            workspaceService.ProjectPanelService.RegisterView(ProjectPanelView.Search, searchPanel);
+
+            // Populate the ProjectPanel with explorer and search panels
+            _projectPanel.PopulatePanels(explorerPanel, searchPanel);
+        }
+
+        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
+        DocumentsPanel.Children.Add(documentsPanel);
+
+        _inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
+
+        var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
+        ConsolePanel.Children.Add(consolePanel);
+
+        // Apply initial panel swap setting
+        ApplyPanelSwap(_editorSettings.SwapPrimarySecondaryPanels);
+
+        // Show the Explorer view by default
+        workspaceService.ProjectPanelService.ShowView(ProjectPanelView.Explorer);
+
+        _ = ViewModel.LoadWorkspaceAsync();
     }
 
     private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
+        // Only perform cleanup if the cache has been disabled (intentional unload)
+        if (NavigationCacheMode == NavigationCacheMode.Disabled)
+        {
+            PerformCleanup();
+        }
     }
 
-    public override void PageUnloadInternal()
+    private void PerformCleanup()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var workspaceService = workspaceWrapper.WorkspaceService as WorkspaceService;
+        var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -148,6 +173,8 @@ public sealed partial class WorkspacePage : UserInterface.Views.PersistentPage
         consolePanel?.Shutdown();
 
         ViewModel.OnWorkspacePageUnloaded();
+
+        _initialized = false;
     }
 
     private void OnPanelSwapChanged(object recipient, PanelSwapChangedMessage message)
@@ -271,41 +298,30 @@ public sealed partial class WorkspacePage : UserInterface.Views.PersistentPage
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)
     {
-        FrameworkElement? frameworkElement = sender as FrameworkElement;
-        if (frameworkElement is not null)
+        if (sender is FrameworkElement frameworkElement && 
+            frameworkElement.Tag is string panelTag &&
+            !string.IsNullOrEmpty(panelTag))
         {
-            var panelName = frameworkElement?.Name;
-            if (!string.IsNullOrEmpty(panelName))
-            {
-                SetActivePanel(panelName);
-            }
+            SetActivePanel(panelTag);
         }
     }
 
     private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        FrameworkElement? frameworkElement = sender as FrameworkElement;
-        if (frameworkElement is not null)
+        if (sender is FrameworkElement frameworkElement && 
+            frameworkElement.Tag is string panelTag &&
+            !string.IsNullOrEmpty(panelTag))
         {
-            var panelName = frameworkElement?.Name;
-            if (!string.IsNullOrEmpty(panelName))
-            {
-                SetActivePanel(panelName);
-            }
+            SetActivePanel(panelTag);
         }
     }
 
-    private void SetActivePanel(string panelName)
+    private void SetActivePanel(string panelTag)
     {
-        // Map new panel names to workspace panel enum
-        WorkspacePanel panel = panelName switch
+        if (!Enum.TryParse<WorkspacePanel>(panelTag, out var panel))
         {
-            "PrimaryPanel" => WorkspacePanel.Explorer, // Primary panel contains the ProjectPanel with Explorer
-            "SecondaryPanel" => WorkspacePanel.Inspector,
-            "DocumentsPanel" => WorkspacePanel.Documents,
-            "ConsolePanel" => WorkspacePanel.Console,
-            _ => WorkspacePanel.Documents
-        };
+            throw new ArgumentException($"Invalid panel tag: '{panelTag}'. Tag must match a WorkspacePanel enum value.");
+        }
 
         ViewModel.SetActivePanel(panel);
     }

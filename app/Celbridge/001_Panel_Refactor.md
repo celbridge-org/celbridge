@@ -21,9 +21,11 @@ TitleBar_Menu = "Menu"
 TitleBar_NewProject = "New Project"
 TitleBar_OpenProject = "Open Project"
 TitleBar_ReloadProject = "Reload Project"
-TitleBar_Workspace = "Workspace"
-TitleBar_Community = "Community"
-TitleBar_Settings = "Settings"
+
+TitleBar_HomeTooltip	Home
+TitleBar_CommunityTooltip = "Community"
+TitleBar_SettingsTooltip = "Settings"
+TitleBar_WorkspaceTooltip = "Workspace"
 
 ProjectPanel_ExplorerTooltip = "Explorer"
 ProjectPanel_SearchTooltip = "Search"
@@ -31,10 +33,6 @@ ProjectPanel_DebugTooltip = "Debug"
 ProjectPanel_SourceControlTooltip = "Source Control"
 
 LayoutToolbar_SwapPanelsLabel = "Swap Left/Right Panels"
-
-Key	Value
-TitleBar_Home	Home
-TitleBar_HomeTooltip	Go to Home
 
 ---
 

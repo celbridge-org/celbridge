@@ -1,49 +1,40 @@
-using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Navigation;
-using Celbridge.Projects;
-using Celbridge.UserInterface.Views;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 
+/// <summary>
+/// Internal record to track page registration info.
+/// </summary>
+internal record PageInfo(Type PageType, ApplicationPage AppPage);
+
+/// <summary>
+/// Service responsible for top-level application page navigation.
+/// </summary>
 public class NavigationService : INavigationService
 {
-    private const string HomePageName = "HomePage";
-    private const string SettingsPageName = "SettingsPage";
-    private const string WorkspacePageName = "WorkspacePage";
-    private const string CommunityPageName = "CommunityPage";
-
     private readonly Logging.ILogger<NavigationService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly MainMenuUtils _mainMenuUtils;
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
 
-    private readonly Dictionary<string, Type> _pageTypes = new();
+    private readonly Dictionary<string, PageInfo> _pages = new();
 
     public NavigationService(
         Logging.ILogger<NavigationService> logger,
         IMessengerService messengerService,
-        ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IUserInterfaceService userInterfaceService,
-        MainMenuUtils mainMenuUtils)
+        IUserInterfaceService userInterfaceService)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _userInterfaceService = userInterfaceService;
-        _mainMenuUtils = mainMenuUtils;
     }
 
-    // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
-    // instance is not available until the Main Page has finished loading. This method is used to set this dependency.
+    /// <summary>
+    /// Sets the navigation provider. Called by MainPage after it has loaded.
+    /// </summary>
     public void SetNavigationProvider(INavigationProvider navigationProvider)
     {
         Guard.IsNotNull(navigationProvider);
@@ -51,140 +42,80 @@ public class NavigationService : INavigationService
         _navigationProvider = navigationProvider;
     }
 
-    public Result RegisterPage(string pageName, Type pageType)
+    public Result RegisterPage(string tag, Type pageType)
     {
-        if (_pageTypes.ContainsKey(pageName))
+        return RegisterPage(tag, pageType, ApplicationPage.None);
+    }
+
+    /// <summary>
+    /// Registers a page with an ApplicationPage mapping for UI state tracking.
+    /// </summary>
+    public Result RegisterPage(string tag, Type pageType, ApplicationPage appPage)
+    {
+        if (_pages.ContainsKey(tag))
         {
-            return Result.Fail($"Failed to register page name '{pageName}' because it is already registered.");
+            return Result.Fail($"Failed to register page tag '{tag}' because it is already registered.");
         }
 
         if (!pageType.IsAssignableTo(typeof(Page)))
         {
-            return Result.Fail($"Failed to register page name '{pageName}' because the type '{pageType}' does not inherit from Page.");
+            return Result.Fail($"Failed to register page tag '{tag}' because the type '{pageType}' does not inherit from Page.");
         }
 
-        _pageTypes[pageName] = pageType;
+        _pages[tag] = new PageInfo(pageType, appPage);
 
         return Result.Ok();
     }
 
-    public Result UnregisterPage(string pageName)
+    public Result UnregisterPage(string tag)
     {
-        if (!_pageTypes.ContainsKey(pageName))
+        if (!_pages.ContainsKey(tag))
         {
-            return Result.Fail($"Failed to unregister page name '{pageName}' because it is not registered.");
+            return Result.Fail($"Failed to unregister page tag '{tag}' because it is not registered.");
         }
 
-        _pageTypes.Remove(pageName);
+        _pages.Remove(tag);
 
         return Result.Ok();
     }
 
-    public Result NavigateToPage(string pageName)
+    public Result NavigateToPage(string tag)
     {
-        return NavigateToPage(pageName, string.Empty);
+        return NavigateToPage(tag, string.Empty);
     }
 
-    public Result NavigateToPage(string pageName, object parameter)
+    public Result NavigateToPage(string tag, object parameter)
     {
         Guard.IsNotNull(_navigationProvider);
 
-        // Resolve the page type by looking up the page name
-        if (!_pageTypes.TryGetValue(pageName, out var pageType))
+        if (!_pages.TryGetValue(tag, out var pageInfo))
         {
-            var errorMessage = $"Failed to navigage to content page '{pageName}' because it is not registered.";
+            var errorMessage = $"Failed to navigate to page '{tag}' because it is not registered.";
             _logger.LogError(errorMessage);
-
             return Result.Fail(errorMessage);
         }
 
-        // Navigate using the resolved page type
-        var navigateResult = _navigationProvider.NavigateToPage(pageType, parameter);
+        // Update application page state (skip if None)
+        if (pageInfo.AppPage != ApplicationPage.None)
+        {
+            SetActivePage(pageInfo.AppPage);
+        }
+
+        var navigateResult = _navigationProvider.NavigateToPage(pageInfo.PageType, parameter);
         if (navigateResult.IsFailure)
         {
             _logger.LogError(navigateResult.Error);
+            return navigateResult;
         }
 
-        return navigateResult;
-    }
+        // Clear the cleanup flag after successful navigation
+        IsWorkspacePageCleanupPending = false;
 
-    public Result NavigateByTag(string tag)
-    {
-        switch (tag)
-        {
-            case NavigationConstants.HomeTag:
-                SetActivePage(ApplicationPage.Home);
-                return NavigateToPage(HomePageName);
-
-            case NavigationConstants.NewProjectTag:
-                _ = _mainMenuUtils.ShowNewProjectDialogAsync();
-                return Result.Ok();
-
-            case NavigationConstants.OpenProjectTag:
-                _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
-                return Result.Ok();
-
-            case NavigationConstants.ReloadProjectTag:
-                _ = ReloadProjectAsync();
-                return Result.Ok();
-
-            case NavigationConstants.SettingsTag:
-                SetActivePage(ApplicationPage.Settings);
-                return NavigateToPage(SettingsPageName);
-
-            case NavigationConstants.WorkspaceTag:
-                SetActivePage(ApplicationPage.Workspace);
-                return NavigateToPage(WorkspacePageName);
-
-            case NavigationConstants.ExplorerTag:
-                SetActivePage(ApplicationPage.Workspace);
-                var explorerResult = NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
-                }
-                return explorerResult;
-
-            case NavigationConstants.SearchTag:
-                SetActivePage(ApplicationPage.Workspace);
-                var searchResult = NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Search);
-                }
-                return searchResult;
-
-            case NavigationConstants.DebugTag:
-                SetActivePage(ApplicationPage.Workspace);
-                var debugResult = NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Debug);
-                }
-                return debugResult;
-
-            case NavigationConstants.RevisionControlTag:
-                SetActivePage(ApplicationPage.Workspace);
-                var revisionResult = NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
-                }
-                return revisionResult;
-
-            case NavigationConstants.CommunityTag:
-                SetActivePage(ApplicationPage.Community);
-                return NavigateToPage(CommunityPageName);
-
-            default:
-                _logger.LogError($"Unknown navigation tag: {tag}");
-                return Result.Fail($"Unknown navigation tag: {tag}");
-        }
+        return Result.Ok();
     }
 
     private void SetActivePage(ApplicationPage page)
     {
-        // Send workspace-specific messages for backward compatibility
         bool isWorkspacePage = page == ApplicationPage.Workspace;
 
         if (isWorkspacePage)
@@ -196,38 +127,13 @@ public class NavigationService : INavigationService
             _messengerService.Send(new WorkspacePageDeactivatedMessage());
         }
 
-        // Set the active page in the UserInterfaceService (sends ActivePageChangedMessage)
         _userInterfaceService.SetActivePage(page);
     }
 
-    private async Task ReloadProjectAsync()
+    public bool IsWorkspacePageCleanupPending { get; private set; }
+
+    public void RequestWorkspacePageCleanup()
     {
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        if (projectService.CurrentProject is not null)
-        {
-            // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
-            ClearPersistenceOfAllLoadedPages();
-
-            string projectPath = projectService.CurrentProject.ProjectFilePath;
-
-            // Close any loaded project.
-            // This will fail if there's no project currently open, but we can just ignore that.
-            await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
-
-            _commandService.Execute<ILoadProjectCommand>((command) =>
-            {
-                command.ProjectFilePath = projectPath;
-            });
-        }
-    }
-
-    public void ClearPersistenceOfAllLoadedPages()
-    {
-        PersistentPage.ClearPersistenceOfAllLoadedPages();
-    }
-
-    public void UnloadPersistantUnfocusedPages()
-    {
-        PersistentPage.UnloadPersistantUnfocusedPages(NavigationProvider.GetCurrentPageName());
+        IsWorkspacePageCleanupPending = true;
     }
 }

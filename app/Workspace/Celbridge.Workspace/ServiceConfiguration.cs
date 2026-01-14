@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Navigation;
+using Celbridge.UserInterface;
 using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
@@ -30,6 +31,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
+        services.AddTransient<IProjectPanelService, ProjectPanelService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
 
@@ -53,7 +55,13 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = ServiceLocator.AcquireService<INavigationService>();
-        navigationService.RegisterPage(nameof(WorkspacePage), typeof(WorkspacePage));
+        var navigationService = ServiceLocator.AcquireService<INavigationService>() as UserInterface.Services.NavigationService;
+        Guard.IsNotNull(navigationService);
+
+        // Register the WorkspacePage with the NaviagtionService
+        navigationService.RegisterPage(
+            NavigationConstants.WorkspaceTag,
+            typeof(WorkspacePage),
+            ApplicationPage.Workspace);
     }
 }

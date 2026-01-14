@@ -1,16 +1,27 @@
 namespace Celbridge.Navigation;
 
-public class NavigationConstants
+/// <summary>
+/// Navigation tags for top-level application pages.
+/// </summary>
+public static class NavigationConstants
 {
+    /// <summary>
+    /// Tag for the Home page.
+    /// </summary>
     public const string HomeTag = "Home";
-    public const string NewProjectTag = "NewProject";
-    public const string OpenProjectTag = "OpenProject";
-    public const string ReloadProjectTag = "ReloadProject";
+
+    /// <summary>
+    /// Tag for the Settings page.
+    /// </summary>
     public const string SettingsTag = "Settings";
-    public const string SearchTag = "Search";
-    public const string ExplorerTag = "Explorer";
+
+    /// <summary>
+    /// Tag for the Community page.
+    /// </summary>
     public const string CommunityTag = "Community";
-    public const string DebugTag = "Debug";
-    public const string RevisionControlTag = "RevisionControl";
+
+    /// <summary>
+    /// Tag for the Workspace page.
+    /// </summary>
     public const string WorkspaceTag = "Workspace";
 }

@@ -9,6 +9,7 @@ public sealed partial class TitleBar : UserControl
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private Window? _mainWindow;
+    private MainMenu? _mainMenu;
 
     public TitleBarViewModel ViewModel { get; }
 
@@ -30,10 +31,15 @@ public sealed partial class TitleBar : UserControl
     {
         ViewModel.OnLoaded();
 
-        ApplyTooltips();
-        ApplyLabels();
+        // Create and add the MainMenu control
+        _mainMenu = new MainMenu();
+        _mainMenu.OnLoaded();
+        _mainMenu.MenuItemInvoked += OnMainMenu_ItemInvoked;
+        TitleBarNavigation.MenuItems.Insert(0, _mainMenu.GetMenuNavItem());
 
-        // Register for workspace activation messages to handle visual states
+        ApplyTooltips();
+
+        // Register for window mode changes
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivated);
         _messengerService.Register<MainWindowDeactivatedMessage>(this, OnMainWindowDeactivated);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
@@ -71,6 +77,12 @@ public sealed partial class TitleBar : UserControl
         LayoutToolbar.SizeChanged -= OnLayoutToolbar_SizeChanged;
         TitleBarNavigation.SizeChanged -= OnTitleBarNavigation_SizeChanged;
 
+        if (_mainMenu != null)
+        {
+            _mainMenu.MenuItemInvoked -= OnMainMenu_ItemInvoked;
+            _mainMenu.OnUnloaded();
+        }
+
         Loaded -= OnTitleBar_Loaded;
         Unloaded -= OnTitleBar_Unloaded;
 
@@ -79,22 +91,6 @@ public sealed partial class TitleBar : UserControl
 
     private void ApplyTooltips()
     {
-        var menuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
-        ToolTipService.SetToolTip(MenuNavItem, menuTooltip);
-        ToolTipService.SetPlacement(MenuNavItem, PlacementMode.Bottom);
-
-        var newProjectTooltip = _stringLocalizer.GetString("MainMenu_NewProjectTooltip");
-        ToolTipService.SetToolTip(NewProjectNavItem, newProjectTooltip);
-        ToolTipService.SetPlacement(NewProjectNavItem, PlacementMode.Right);
-
-        var openProjectTooltip = _stringLocalizer.GetString("MainMenu_OpenProjectTooltip");
-        ToolTipService.SetToolTip(OpenProjectNavItem, openProjectTooltip);
-        ToolTipService.SetPlacement(OpenProjectNavItem, PlacementMode.Right);
-
-        var reloadProjectTooltip = _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip");
-        ToolTipService.SetToolTip(ReloadProjectNavItem, reloadProjectTooltip);
-        ToolTipService.SetPlacement(ReloadProjectNavItem, PlacementMode.Right);
-
         var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
         ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
         ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
@@ -110,14 +106,6 @@ public sealed partial class TitleBar : UserControl
         var workspaceTooltip = _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
         ToolTipService.SetToolTip(WorkspaceNavItem, workspaceTooltip);
         ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
-    }
-
-    private void ApplyLabels()
-    {
-        // Menu sub-items show labels in the flyout
-        NewProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_NewProject");
-        OpenProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_OpenProject");
-        ReloadProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_ReloadProject");
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -160,7 +148,7 @@ public sealed partial class TitleBar : UserControl
                 case ApplicationPage.Community:
                     TitleBarNavigation.SelectedItem = CommunityNavItem;
                     break;
-            case ApplicationPage.Settings:
+                case ApplicationPage.Settings:
                     TitleBarNavigation.SelectedItem = SettingsNavItem;
                     break;
                 case ApplicationPage.Home:
@@ -206,45 +194,23 @@ public sealed partial class TitleBar : UserControl
                 return;
             }
 
-            // Handle navigation based on tag
-            switch (tag)
-            {
-                case "Menu":
-                    // Menu item just opens its flyout, no navigation needed
-                    break;
-
-                case NavigationConstants.NewProjectTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.NewProjectTag);
-                    CloseFlyoutMenus();
-                    break;
-
-                case NavigationConstants.OpenProjectTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.OpenProjectTag);
-                    CloseFlyoutMenus();
-                    break;
-
-                case NavigationConstants.ReloadProjectTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.ReloadProjectTag);
-                    CloseFlyoutMenus();
-                    break;
-
-                case NavigationConstants.WorkspaceTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.WorkspaceTag);
-                    break;
-
-                case NavigationConstants.CommunityTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.CommunityTag);
-                    break;
-
-                case NavigationConstants.SettingsTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.SettingsTag);
-                    break;
-
-                case NavigationConstants.HomeTag:
-                    ViewModel.OnNavigationItemSelected(NavigationConstants.HomeTag);
-                    break;
-            }
+            ViewModel.NavigateToPage(tag);
         }
+    }
+
+    private void TitleBarNavigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        // Delegate menu item handling to the MainMenu control
+        if (args.InvokedItemContainer is NavigationViewItem invokedItem)
+        {
+            _mainMenu?.HandleItemInvoked(invokedItem);
+        }
+    }
+
+    private void OnMainMenu_ItemInvoked(object? sender, EventArgs e)
+    {
+        // Close all flyout menus when a menu item is invoked
+        CloseFlyoutMenus();
     }
 
     private void CloseFlyoutMenus()

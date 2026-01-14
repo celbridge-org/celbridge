@@ -12,9 +12,6 @@ namespace Celbridge.Projects.Commands;
 
 public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
-    private const string HomePageName = "HomePage";
-    private const string WorkspacePageName = "WorkspacePage";
-
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -52,20 +49,9 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 
         if (_projectService.CurrentProject?.ProjectFilePath == ProjectFilePath)
         {
-            // The project is already loaded.
-
-            // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
-            if (_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag("Explorer");
-            }
-
-            // We can just early out here as we're already in the expected end state.
+            // The project is already loaded - we can just early out.
             return Result.Ok();
         }
-
-        // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
-        _navigationService.ClearPersistenceOfAllLoadedPages();
 
         // Close any loaded project.
         // This will fail if there's no project currently open, but we can just ignore that.
@@ -84,7 +70,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
             await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
             // Return to the home page so the user can decide what to do next
-            _navigationService.NavigateToPage(HomePageName);
+            _navigationService.NavigateToPage(NavigationConstants.HomeTag);
 
             return Result.Fail($"Failed to load project: '{ProjectFilePath}'")
                 .WithErrors(loadResult);
@@ -105,7 +91,7 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         }
 
         var loadPageCancelationToken = new CancellationTokenSource();
-        _navigationService.NavigateToPage(WorkspacePageName, loadPageCancelationToken);
+        _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag, loadPageCancelationToken);
 
         // Wait until the workspace page either loads or cancels loading due to an error
         while (!_workspaceWrapper.IsWorkspacePageLoaded &&
@@ -117,12 +103,6 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         if (loadPageCancelationToken.IsCancellationRequested)
         {
             return Result.Fail("Failed to open project because an error occured");
-        }
-
-        // Ensure our Navigation Pane is focused on Explorer to match the presentation of the panels.
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            _navigationService.NavigationProvider.SelectNavigationItemByNavigationTag(NavigationConstants.ExplorerTag);
         }
 
         return Result.Ok();

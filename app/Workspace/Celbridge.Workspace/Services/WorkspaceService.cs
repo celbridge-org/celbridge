@@ -11,7 +11,6 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Services;
 
@@ -40,6 +39,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
     public IActivityService ActivityService { get; }
+    public IProjectPanelService ProjectPanelService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
 
@@ -56,8 +56,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _editorSettings = editorSettings;
         _messengerService = messengerService;
 
-        ContextAreaUsageDetails = new ContextAreaUsage();
-
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
@@ -70,6 +68,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
+        ProjectPanelService = serviceProvider.GetRequiredService<IProjectPanelService>();
 
         //
         // Let the workspace settings service know where to find the workspace settings database
@@ -161,23 +160,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
-    }
-
-    protected ContextAreaUsage ContextAreaUsageDetails;
-
-    public void ClearContextAreaUses()
-    {
-        ContextAreaUsageDetails = new ContextAreaUsage();
-    }
-
-    public void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse)
-    {
-        ContextAreaUsageDetails.SetUsage(contextAreaUse);
-    }
-
-    public void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element)
-    {
-        ContextAreaUsageDetails.Add(contextAreaUse, element);
     }
 
     protected virtual void Dispose(bool disposing)

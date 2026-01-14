@@ -3,9 +3,9 @@ using Celbridge.Settings;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The very beginnings of the Settings Page.
+/// The Settings Page for configuring application preferences.
 /// </summary>
-public sealed partial class SettingsPage : PersistentPage
+public sealed partial class SettingsPage : Page
 {
     private readonly Dictionary<ApplicationColorTheme, string> _themeToNameLookupDictionary = new();
 
@@ -34,8 +34,6 @@ public sealed partial class SettingsPage : PersistentPage
             _themeToNameLookupDictionary.Add(themeEntry, localizedName);
         }
 
-        Persistence = PersistenceLevel.Eternal;
-
         this.InitializeComponent();
 
         // Set up our Theme options and default selection.
@@ -45,13 +43,17 @@ public sealed partial class SettingsPage : PersistentPage
 
         ApplicationThemeComboBox.Loaded += ApplicationThemeComboBox_Loaded;
         ApplicationThemeComboBox.SelectionChanged += ApplicationThemeComboBox_SelectionChanged;
+
+        Unloaded += SettingsPage_Unloaded;
     }
 
-    public override void PageUnloadInternal()
+    private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
         ApplicationThemeComboBox.Loaded -= ApplicationThemeComboBox_Loaded;
         ApplicationThemeComboBox.SelectionChanged -= ApplicationThemeComboBox_SelectionChanged;
+        Unloaded -= SettingsPage_Unloaded;
     }
+
     private void ApplicationThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ComboBox? comboBox = sender as ComboBox;
