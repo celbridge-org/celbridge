@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Projects;
@@ -44,6 +45,7 @@ public partial class MainMenuViewModel : ObservableObject
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
+        _messengerService.Register<ReloadProjectMessage>(this, OnReloadProject);
 
         IsWorkspaceLoaded = _workspaceWrapper.IsWorkspacePageLoaded;
     }
@@ -61,6 +63,11 @@ public partial class MainMenuViewModel : ObservableObject
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         IsWorkspaceLoaded = false;
+    }
+
+    private void OnReloadProject(object recipient, ReloadProjectMessage message)
+    {
+        _ = ReloadProjectAsync();
     }
 
     public void NewProject()
