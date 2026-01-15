@@ -17,8 +17,7 @@
                 Margin="2,2,0,0"
                 Padding="6"
                 Background="Transparent"
-                BorderThickness="0"
-                IsTabStop="False">
+                BorderThickness="0">
             <Button.Flyout>
                 <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom">
                     <StackPanel Width="250" Spacing="8">
@@ -96,8 +95,7 @@
                     Margin="2,0"
                     Padding="6"
                     Background="Transparent"
-                    BorderThickness="0"
-                    IsTabStop="False">
+                    BorderThickness="0">
                 <icons:ExplorerPanelIcon x:Name="ExplorerPanelIcon"/>
             </Button>
             
@@ -108,8 +106,7 @@
                     Margin="2,0"
                     Padding="6"
                     Background="Transparent"
-                    BorderThickness="0"
-                    IsTabStop="False">
+                    BorderThickness="0">
                 <icons:ConsolePanelIcon x:Name="ConsolePanelIcon"/>
             </Button>
             
@@ -120,8 +117,7 @@
                     Margin="2,0"
                     Padding="6"
                     Background="Transparent"
-                    BorderThickness="0"
-                    IsTabStop="False">
+                    BorderThickness="0">
                 <icons:InspectorPanelIcon x:Name="InspectorPanelIcon"/>
             </Button>
         </StackPanel>
