@@ -25,12 +25,22 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
       <TextBlock Grid.Column="0"
                  Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
                  Margin="12,0,0,0"
                  VerticalAlignment="Center"/>
+
+      <!-- Explorer Toolbar -->
+      <local:ExplorerToolbar x:Name="ExplorerToolbar"
+                             Grid.Column="2"
+                             VerticalAlignment="Center"
+                             Margin="0,0,8,0"
+                             AddFileClicked="ExplorerToolbar_AddFileClicked"
+                             AddFolderClicked="ExplorerToolbar_AddFolderClicked"
+                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
     </Grid>
 
     <!-- Resource Tree View -->

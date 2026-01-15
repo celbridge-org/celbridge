@@ -12,6 +12,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 {
     private readonly IStringLocalizer _stringLocalizer;
     private IResourceRegistry? _resourceRegistry;
+    private bool _isPopulating;
 
     public ResourceTreeViewModel ViewModel { get; }
     private string RunString => _stringLocalizer.GetString("ResourceTree_Run");
@@ -27,12 +28,6 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     private string OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
     private string CopyResourceKeyString => _stringLocalizer.GetString("ResourceTree_CopyResourceKey");
     private string CopyFilePathString => _stringLocalizer.GetString("ResourceTree_CopyFilePath");
-
-    // Toolbar tooltip strings
-    private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
-    private string AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
-    private string CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
-    private string ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 
     public ResourceTreeView()
     {
@@ -60,46 +55,63 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
     public async Task<Result> PopulateTreeView(IResourceRegistry resourceRegistry)
     {
-        _resourceRegistry = resourceRegistry;
-
-        // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
-        // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
-
-        var rootFolder = _resourceRegistry.RootFolder;
-        var rootNodes = ResourcesTreeView.RootNodes;
-
-        // Make a note of the currently selected resource
-        var selectedResourceKey = GetSelectedResource();
+        // Prevent concurrent population which causes duplicate resources in the tree view.
+        // This can happen because OnLoaded calls PopulateTreeView, and shortly after,
+        // WorkspaceLoader.LoadWorkspaceAsync also calls UpdateResourcesAsync which calls PopulateTreeView.
+        // The Task.Delay(10) below creates a window where a second call can interleave.
+        if (_isPopulating)
+        {
+            return Result.Ok();
+        }
+        _isPopulating = true;
 
         try
         {
-            // Clear existing nodes
-            rootNodes.Clear();
+            _resourceRegistry = resourceRegistry;
 
-            // I don't know why, but if this delay is not here, the TreeView can get into a corrupted state with
-            // resources missing their icons. This happens in particular when undo/redoing resource operations quickly.
-            // I tried many combinations of clearing the nodes, calling UpdateLayout() and using rootNodes.ReplaceWith().
-            // This is the only solution that has worked consistently.
-            // I tried reducing the delay down to 1ms, but that still caused the issue.
-            // Unfortunately this causes a visible flicker when updating the TreeView, but it's more important that it works robustly.
-            await Task.Delay(10);
+            // Note: This method is called while loading the workspace, so workspaceWrapper.IsWorkspacePageLoaded
+            // may be false here. This is ok, because the ResourceRegistry has been initialized at this point.
 
-            // Recursively populate the Tree View
-            PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+            var rootFolder = _resourceRegistry.RootFolder;
+            var rootNodes = ResourcesTreeView.RootNodes;
+
+            // Make a note of the currently selected resource
+            var selectedResourceKey = GetSelectedResource();
+
+            try
+            {
+                // Clear existing nodes
+                rootNodes.Clear();
+
+                // I don't know why, but if this delay is not here, the TreeView can get into a corrupted state with
+                // resources missing their icons. This happens in particular when undo/redoing resource operations quickly.
+                // I tried many combinations of clearing the nodes, calling UpdateLayout() and using rootNodes.ReplaceWith().
+                // This is the only solution that has worked consistently.
+                // I tried reducing the delay down to 1ms, but that still caused the issue.
+                // Unfortunately this causes a visible flicker when updating the TreeView, but it's more important that it works robustly.
+                await Task.Delay(10);
+
+                // Recursively populate the Tree View
+                PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"An exception occurred when populating the tree view.")
+                    .WithException(ex); ;
+            }
+
+            // Attempt to re-select the previously selected resource
+            if (_resourceRegistry.GetResource(selectedResourceKey) != null)
+            {
+                await SetSelectedResource(selectedResourceKey);
+            }
+
+            return Result.Ok();
         }
-        catch (Exception ex)
+        finally
         {
-            return Result.Fail($"An exception occurred when populating the tree view.")
-                .WithException(ex); ;
+            _isPopulating = false;
         }
-
-        // Attempt to re-select the previously selected resource
-        if (_resourceRegistry.GetResource(selectedResourceKey) != null)
-        {
-            await SetSelectedResource(selectedResourceKey);
-        }
-
-        return Result.Ok();
     }
 
     public ResourceKey GetSelectedResource()
@@ -694,34 +706,25 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     }
 
     //
-    // Toolbar event handlers
+    // Public methods for toolbar actions (called from ExplorerPanel)
     //
 
-    private void ToolbarAddFile_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Adds a file to the currently selected folder (or root if nothing selected).
+    /// </summary>
+    public void AddFileToSelectedFolder()
     {
         var destFolder = GetSelectedResourceFolder();
         ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
     }
 
-    private void ToolbarAddFolder_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Adds a folder to the currently selected folder (or root if nothing selected).
+    /// </summary>
+    public void AddFolderToSelectedFolder()
     {
         var destFolder = GetSelectedResourceFolder();
         ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
-    }
-
-    private void ToolbarRefreshExplorer_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.RefreshExplorer();
-    }
-
-    private void ToolbarCollapseFolders_Click(object sender, RoutedEventArgs e)
-    {
-        CollapseAllFolders();
-    }
-
-    private void ToolbarProjectSettings_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.OpenProjectSettings();
     }
 
     /// <summary>
@@ -747,24 +750,9 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     /// <summary>
     /// Collapses all folders in the tree view, including nested children.
     /// </summary>
-    private void CollapseAllFolders()
+    public void CollapseAllFolders()
     {
         CollapseNodesRecursively(ResourcesTreeView.RootNodes);
-    }
-
-    /// <summary>
-    /// Sets the visibility of the toolbar based on whether the panel is active (has focus or mouse is over it).
-    /// </summary>
-    public void SetToolbarVisible(bool isVisible)
-    {
-        if (isVisible)
-        {
-            ToolbarFadeIn.Begin();
-        }
-        else
-        {
-            ToolbarFadeOut.Begin();
-        }
     }
 
     private void CollapseNodesRecursively(IList<TreeViewNode> nodes)
