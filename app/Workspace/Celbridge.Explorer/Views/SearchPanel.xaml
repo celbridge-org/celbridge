@@ -5,10 +5,27 @@
     xmlns:local="using:Celbridge.Explorer.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <Grid>
-      <TextBlock Grid.Column="0"
-                     Text="This is a placeholder panel"
-                     VerticalAlignment="Center"
-                     Margin="6,0,0,0"/>
+  <Grid VerticalAlignment="Stretch"
+        Background="Transparent">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="40"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title Bar -->
+    <Grid Grid.Row="0"
+          BorderBrush="{ThemeResource PanelBorderBrush}"
+          BorderThickness="0,0,0,1">
+      <TextBlock Text="Search"
+                 Margin="12,0,0,0"
+                 VerticalAlignment="Center"/>
+    </Grid>
+
+    <!-- Search Content -->
+    <Grid Grid.Row="1"
+          Padding="12,8,8,8">
+      <TextBlock Text="This is a placeholder panel"
+                 VerticalAlignment="Top"/>
+    </Grid>
   </Grid>
 </UserControl>

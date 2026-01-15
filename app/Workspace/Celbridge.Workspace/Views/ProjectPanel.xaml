@@ -6,7 +6,7 @@
 
     <Grid x:Name="LayoutRoot">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="50"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -17,7 +17,7 @@
                         IsBackButtonVisible="Collapsed"
                         IsSettingsVisible="False"
                         PaneDisplayMode="LeftCompact"
-                        CompactPaneLength="40"
+                        CompactPaneLength="48"
                         Background="{ThemeResource PanelBackgroundABrush}"
                         SelectionChanged="ProjectNavigation_SelectionChanged">
             <NavigationView.MenuItems>
@@ -59,11 +59,12 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-
-            <!-- Content area for the selected panel -->
-            <Grid x:Name="ContentArea"
-                  Background="{ThemeResource PanelBackgroundABrush}">
-            </Grid>
         </NavigationView>
+
+        <!-- Content area for the selected panel -->
+        <Grid x:Name="ContentArea"
+              Grid.Column="1"
+              Background="{ThemeResource PanelBackgroundABrush}">
+        </Grid>
     </Grid>
 </UserControl>
