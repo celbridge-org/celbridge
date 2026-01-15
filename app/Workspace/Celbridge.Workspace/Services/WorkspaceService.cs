@@ -29,17 +29,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
-
-//  Future support:    
-//  public ISearchService SearchService { get; }
-//  public IDebugService DebugService { get; }
-//  public IRevisionControlService RevisionControlService { get; }
-
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
     public IActivityService ActivityService { get; }
-    public IProjectPanelService ProjectPanelService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
 
@@ -68,7 +61,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
-        ProjectPanelService = serviceProvider.GetRequiredService<IProjectPanelService>();
 
         //
         // Let the workspace settings service know where to find the workspace settings database

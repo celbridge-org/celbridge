@@ -114,12 +114,9 @@ public sealed partial class WorkspacePage : Page
 
         if (explorerPanel != null && searchPanel != null)
         {
-            // Register panels with the project panel service for view management
-            workspaceService.ProjectPanelService.RegisterView(ProjectPanelView.Explorer, explorerPanel);
-            workspaceService.ProjectPanelService.RegisterView(ProjectPanelView.Search, searchPanel);
-
-            // Populate the ProjectPanel with explorer and search panels
-            _projectPanel.PopulatePanels(explorerPanel, searchPanel);
+            // Register panels with the ProjectPanel UI control
+            _projectPanel.RegisterPanel(ProjectPanelTab.Explorer, explorerPanel);
+            _projectPanel.RegisterPanel(ProjectPanelTab.Search, searchPanel);
         }
 
         var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
@@ -141,8 +138,8 @@ public sealed partial class WorkspacePage : Page
             SecondaryPanel.Children.Add(_inspectorPanel);
         }
 
-        // Show the Explorer view by default
-        workspaceService.ProjectPanelService.ShowView(ProjectPanelView.Explorer);
+        // Show the Explorer tab by default
+        _projectPanel?.ShowTab(ProjectPanelTab.Explorer);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }

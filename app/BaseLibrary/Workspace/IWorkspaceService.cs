@@ -72,11 +72,6 @@ public interface IWorkspaceService
     IActivityService ActivityService { get; }
 
     /// <summary>
-    /// Returns the Project Panel Service for managing ProjectPanel views.
-    /// </summary>
-    IProjectPanelService ProjectPanelService { get; }
-
-    /// <summary>
     /// The most recently focussed workspace panel.
     /// </summary>
     WorkspacePanel ActivePanel { get; }

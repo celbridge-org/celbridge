@@ -31,7 +31,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
-        services.AddTransient<IProjectPanelService, ProjectPanelService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
 

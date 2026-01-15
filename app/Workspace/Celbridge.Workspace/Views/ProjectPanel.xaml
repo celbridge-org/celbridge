@@ -33,24 +33,26 @@
 
                 <!-- Search -->
                 <NavigationViewItem x:Name="SearchNavItem"
-                                    Tag="Search">
+                                    Tag="Search"
+                                    Visibility="Collapsed">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                   Glyph="&#xE721;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
-                <!-- Debug (placeholder) -->
+                <!-- Debug -->
                 <NavigationViewItem x:Name="DebugNavItem"
                                     Tag="Debug"
-                                    IsEnabled="False">
+                                    IsEnabled="False"
+                                    Visibility="Collapsed">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                   Glyph="&#xEBE8;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
-                <!-- Source Control (placeholder) -->
+                <!-- Source Control -->
                 <NavigationViewItem x:Name="SourceControlNavItem"
                                     Tag="SourceControl"
                                     IsEnabled="False">

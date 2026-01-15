@@ -13,8 +13,13 @@ public sealed partial class ProjectPanel : UserControl
     private readonly IProjectService _projectService;
 
     private ShortcutMenuBuilder? _shortcutMenuBuilder;
-    private UIElement? _explorerPanel;
-    private UIElement? _searchPanel;
+    private readonly Dictionary<ProjectPanelTab, UIElement> _panels = new();
+    private ProjectPanelTab _currentTab = ProjectPanelTab.None;
+
+    /// <summary>
+    /// Gets the currently active panel tab.
+    /// </summary>
+    public ProjectPanelTab CurrentTab => _currentTab;
 
     public ProjectPanelViewModel ViewModel { get; }
 
@@ -74,19 +79,78 @@ public sealed partial class ProjectPanel : UserControl
     }
 
     /// <summary>
-    /// Populates the ProjectPanel with the explorer and search panels from the workspace service.
+    /// Registers a panel with the panel manager.
     /// </summary>
-    public void PopulatePanels(UIElement explorerPanel, UIElement searchPanel)
+    public void RegisterPanel(ProjectPanelTab tab, UIElement panel)
     {
-        _explorerPanel = explorerPanel;
-        _searchPanel = searchPanel;
+        if (tab == ProjectPanelTab.None)
+        {
+            _logger.LogWarning("Cannot register panel with ProjectPanelTab.None");
+            return;
+        }
 
-        // Add both panels to the content area, initially only explorer is visible
-        ContentArea.Children.Add(_explorerPanel);
-        ContentArea.Children.Add(_searchPanel);
+        if (_panels.ContainsKey(tab))
+        {
+            _logger.LogWarning($"Panel for {tab} is already registered. Replacing with new panel.");
+            ContentArea.Children.Remove(_panels[tab]);
+        }
 
-        _searchPanel.Visibility = Visibility.Collapsed;
-        _explorerPanel.Visibility = Visibility.Visible;
+        _panels[tab] = panel;
+        ContentArea.Children.Add(panel);
+        panel.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Unregisters a panel from the panel manager.
+    /// </summary>
+    public void UnregisterPanel(ProjectPanelTab tab)
+    {
+        if (_panels.TryGetValue(tab, out var panel))
+        {
+            ContentArea.Children.Remove(panel);
+            _panels.Remove(tab);
+
+            // If we removed the currently visible panel, show another one
+            if (_currentTab == tab)
+            {
+                var nextTab = _panels.Keys.FirstOrDefault(t => t != ProjectPanelTab.None);
+                if (nextTab != ProjectPanelTab.None)
+                {
+                    ShowTab(nextTab);
+                }
+                else
+                {
+                    _currentTab = ProjectPanelTab.None;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shows the specified panel tab and hides all others.
+    /// </summary>
+    public void ShowTab(ProjectPanelTab tab)
+    {
+        if (tab == ProjectPanelTab.None)
+        {
+            return;
+        }
+
+        if (!_panels.TryGetValue(tab, out var panelToShow))
+        {
+            _logger.LogWarning($"No panel registered for tab: {tab}");
+            return;
+        }
+
+        // Hide all panels
+        foreach (var panel in _panels.Values)
+        {
+            panel.Visibility = Visibility.Collapsed;
+        }
+
+        // Show the requested panel
+        panelToShow.Visibility = Visibility.Visible;
+        _currentTab = tab;
     }
 
     private void ProjectNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -111,42 +175,10 @@ public sealed partial class ProjectPanel : UserControl
             }
 
             // Handle built-in navigation items
-            if (Enum.TryParse<ProjectPanelView>(tag, out var view) && view != ProjectPanelView.None)
+            if (Enum.TryParse<ProjectPanelTab>(tag, out var tab) && tab != ProjectPanelTab.None)
             {
-                switch (view)
-                {
-                    case ProjectPanelView.Explorer:
-                        ShowPanel(_explorerPanel, _searchPanel);
-                        break;
-
-                    case ProjectPanelView.Search:
-                        ShowPanel(_searchPanel, _explorerPanel);
-                        break;
-                }
-
-                NotifyProjectPanelViewChange(view);
+                ShowTab(tab);
             }
-        }
-    }
-
-    private void ShowPanel(UIElement? panelToShow, UIElement? panelToHide)
-    {
-        if (panelToHide != null)
-        {
-            panelToHide.Visibility = Visibility.Collapsed;
-        }
-        if (panelToShow != null)
-        {
-            panelToShow.Visibility = Visibility.Visible;
-        }
-    }
-
-    private void NotifyProjectPanelViewChange(ProjectPanelView view)
-    {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            workspaceWrapper.WorkspaceService.ProjectPanelService.ShowView(view);
         }
     }
 
