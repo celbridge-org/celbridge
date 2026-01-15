@@ -33,8 +33,7 @@
 
                 <!-- Search -->
                 <NavigationViewItem x:Name="SearchNavItem"
-                                    Tag="Search"
-                                    Visibility="Collapsed">
+                                    Tag="Search">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                   Glyph="&#xE721;"/>
@@ -55,7 +54,8 @@
                 <!-- Source Control -->
                 <NavigationViewItem x:Name="SourceControlNavItem"
                                     Tag="SourceControl"
-                                    IsEnabled="False">
+                                    IsEnabled="False"
+                                    Visibility="Collapsed">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Upload"/>
                     </NavigationViewItem.Icon>
