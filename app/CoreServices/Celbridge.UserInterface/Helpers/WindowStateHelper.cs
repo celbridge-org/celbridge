@@ -20,6 +20,7 @@ public sealed class WindowStateHelper
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
+    private bool _isTransitioningFromFullscreen;
     private AppWindowPresenterKind _previousPresenterKind;
 
     public WindowStateHelper(
@@ -283,6 +284,10 @@ public sealed class WindowStateHelper
             if (_previousPresenterKind == AppWindowPresenterKind.FullScreen && 
                 currentPresenterKind == AppWindowPresenterKind.Overlapped)
             {
+                // Mark that we're transitioning from fullscreen
+                // This prevents saving the fullscreen dimensions as preferred window bounds
+                _isTransitioningFromFullscreen = true;
+                
                 // Notify the layout system that we've exited fullscreen via drag
                 // This ensures the UI state is synchronized with the window state
                 _messengerService.Send(new ExitedFullscreenViaDragMessage());
@@ -306,9 +311,19 @@ public sealed class WindowStateHelper
                     _editorSettings.IsWindowMaximized = isMaximized;
 
                     // Only save bounds when not maximized or minimized
-                    if (presenter.State == OverlappedPresenterState.Restored)
+                    // Also skip if we're transitioning from fullscreen to avoid saving fullscreen
+                    // dimensions (happens when the user drags the window out of fullscreen)
+                    if (presenter.State == OverlappedPresenterState.Restored && 
+                        !_isTransitioningFromFullscreen)
                     {
                         SaveWindowBounds();
+                    }
+                    
+                    // Clear the transition flag after the first restored state is processed
+                    // The next size/position change will be the actual windowed dimensions
+                    if (_isTransitioningFromFullscreen && presenter.State == OverlappedPresenterState.Restored)
+                    {
+                        _isTransitioningFromFullscreen = false;
                     }
                 }
             }
