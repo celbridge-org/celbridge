@@ -41,6 +41,8 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="144"/><!-- Space for window caption buttons -->
         </Grid.ColumnDefinitions>
 
         <Image Source="ms-appx:///Assets/Images/title_icon.png"
@@ -79,14 +81,6 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
-                <!-- Settings -->
-                <NavigationViewItem x:Name="SettingsNavItem"
-                                    Tag="Settings">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Setting"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-
                 <!-- Separator before Workspace -->
                 <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
                                              Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
@@ -119,12 +113,23 @@
                   FontSize="18"
                   Glyph="&#xE74E;"/>
 
-        <!-- Layout Toolbar - positioned on the right side of the title bar, leaving space for system caption buttons -->
+        <!-- Layout Toolbar - positioned on the right side of the title bar -->
         <controls:LayoutToolbar x:Name="LayoutToolbar"
                                 Grid.Column="4"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
-                                Margin="0,0,144,0"/>
+                                Margin="0,0,8,0"/>
+
+        <!-- Settings Button - positioned between layout toolbar and window controls -->
+        <Button x:Name="SettingsButton"
+                Grid.Column="5"
+                Click="SettingsButton_Click"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="12,8"
+                VerticalAlignment="Center">
+            <SymbolIcon Symbol="Setting"/>
+        </Button>
   </Grid>
 </UserControl>
 

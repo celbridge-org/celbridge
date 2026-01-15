@@ -114,6 +114,11 @@ public partial class MainMenuViewModel : ObservableObject
         _navigationService.NavigateToPage(NavigationConstants.HomeTag);
     }
 
+    public void NavigateToSettings()
+    {
+        _navigationService.NavigateToPage(NavigationConstants.SettingsTag);
+    }
+
     public void ExitApplication()
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();

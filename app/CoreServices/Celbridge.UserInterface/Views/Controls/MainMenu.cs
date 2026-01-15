@@ -16,6 +16,7 @@ public class MainMenu
     private readonly NavigationViewItem _openProjectNavItem;
     private readonly NavigationViewItem _reloadProjectNavItem;
     private readonly NavigationViewItem _closeProjectNavItem;
+    private readonly NavigationViewItem _settingsNavItem;
     private readonly NavigationViewItem _exitNavItem;
 
     public MainMenuViewModel ViewModel { get; }
@@ -59,6 +60,13 @@ public class MainMenu
         };
         _closeProjectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
 
+        _settingsNavItem = new NavigationViewItem
+        {
+            Tag = "Settings",
+            Icon = new SymbolIcon(Symbol.Setting)
+        };
+        _settingsNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+
         _exitNavItem = new NavigationViewItem
         {
             Tag = "Exit",
@@ -78,6 +86,8 @@ public class MainMenu
         _menuNavItem.MenuItems.Add(_openProjectNavItem);
         _menuNavItem.MenuItems.Add(_reloadProjectNavItem);
         _menuNavItem.MenuItems.Add(_closeProjectNavItem);
+        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+        _menuNavItem.MenuItems.Add(_settingsNavItem);
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
         _menuNavItem.MenuItems.Add(_exitNavItem);
 
@@ -136,6 +146,10 @@ public class MainMenu
         ToolTipService.SetToolTip(_closeProjectNavItem, closeProjectTooltip);
         ToolTipService.SetPlacement(_closeProjectNavItem, PlacementMode.Right);
 
+        var settingsTooltip = _stringLocalizer.GetString("MainMenu_SettingsTooltip");
+        ToolTipService.SetToolTip(_settingsNavItem, settingsTooltip);
+        ToolTipService.SetPlacement(_settingsNavItem, PlacementMode.Right);
+
         var exitTooltip = _stringLocalizer.GetString("MainMenu_ExitTooltip");
         ToolTipService.SetToolTip(_exitNavItem, exitTooltip);
         ToolTipService.SetPlacement(_exitNavItem, PlacementMode.Right);
@@ -147,6 +161,7 @@ public class MainMenu
         _openProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_OpenProject");
         _reloadProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_ReloadProject");
         _closeProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_CloseProject");
+        _settingsNavItem.Content = _stringLocalizer.GetString("MainMenu_Settings");
         _exitNavItem.Content = _stringLocalizer.GetString("MainMenu_Exit");
     }
 
@@ -185,6 +200,11 @@ public class MainMenu
 
             case "CloseProject":
                 _ = ViewModel.CloseProjectAsync();
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case "Settings":
+                ViewModel.NavigateToSettings();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 

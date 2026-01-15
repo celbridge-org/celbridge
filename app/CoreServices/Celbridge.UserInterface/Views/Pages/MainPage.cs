@@ -1,8 +1,3 @@
-#if DEBUG
-//#define INCLUDE_PLACEHOLDER_NAVIGATION_BUTTONS
-#else
-#endif
-
 using Celbridge.Logging;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.Navigation;

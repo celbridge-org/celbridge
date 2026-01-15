@@ -51,6 +51,7 @@ public sealed partial class TitleBar : UserControl
         // Update interactive regions when toolbar size changes
         LayoutToolbar.SizeChanged += OnLayoutToolbar_SizeChanged;
         TitleBarNavigation.SizeChanged += OnTitleBarNavigation_SizeChanged;
+        SettingsButton.SizeChanged += OnSettingsButton_SizeChanged;
 
         // Cache the main window reference
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
@@ -76,6 +77,7 @@ public sealed partial class TitleBar : UserControl
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnLayoutToolbar_SizeChanged;
         TitleBarNavigation.SizeChanged -= OnTitleBarNavigation_SizeChanged;
+        SettingsButton.SizeChanged -= OnSettingsButton_SizeChanged;
 
         if (_mainMenu != null)
         {
@@ -99,13 +101,13 @@ public sealed partial class TitleBar : UserControl
         ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
         ToolTipService.SetPlacement(CommunityNavItem, PlacementMode.Bottom);
 
-        var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
-        ToolTipService.SetToolTip(SettingsNavItem, settingsTooltip);
-        ToolTipService.SetPlacement(SettingsNavItem, PlacementMode.Bottom);
-
         var workspaceTooltip = _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
         ToolTipService.SetToolTip(WorkspaceNavItem, workspaceTooltip);
         ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
+
+        var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
+        ToolTipService.SetToolTip(SettingsButton, settingsTooltip);
+        ToolTipService.SetPlacement(SettingsButton, PlacementMode.Bottom);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -149,7 +151,8 @@ public sealed partial class TitleBar : UserControl
                     TitleBarNavigation.SelectedItem = CommunityNavItem;
                     break;
                 case ApplicationPage.Settings:
-                    TitleBarNavigation.SelectedItem = SettingsNavItem;
+                    // Settings is no longer in the navigation view, clear selection
+                    TitleBarNavigation.SelectedItem = null;
                     break;
                 case ApplicationPage.Home:
                     TitleBarNavigation.SelectedItem = HomeNavItem;
@@ -182,6 +185,20 @@ public sealed partial class TitleBar : UserControl
         {
             UpdateInteractiveRegions();
         }
+    }
+
+    private void OnSettingsButton_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Update interactive regions whenever the settings button size changes
+        if (e.NewSize.Width > 0)
+        {
+            UpdateInteractiveRegions();
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.NavigateToPage("Settings");
     }
 
     private void TitleBarNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -282,6 +299,20 @@ public sealed partial class TitleBar : UserControl
                     (int)(toolbarPosition.Y * scale),
                     (int)(LayoutToolbar.ActualWidth * scale),
                     (int)(LayoutToolbar.ActualHeight * scale)
+                ));
+            }
+
+            // Add passthrough region for the settings button
+            if (SettingsButton.ActualWidth > 0)
+            {
+                var settingsTransform = SettingsButton.TransformToVisual(_mainWindow.Content);
+                var settingsPosition = settingsTransform.TransformPoint(new Windows.Foundation.Point(0, 0));
+
+                regions.Add(new Windows.Graphics.RectInt32(
+                    (int)(settingsPosition.X * scale),
+                    (int)(settingsPosition.Y * scale),
+                    (int)(SettingsButton.ActualWidth * scale),
+                    (int)(SettingsButton.ActualHeight * scale)
                 ));
             }
 

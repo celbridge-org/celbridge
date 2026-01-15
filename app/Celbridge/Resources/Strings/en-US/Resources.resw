@@ -625,7 +625,7 @@ Do you wish to continue?</value>
     <value>Close project</value>
   </data>
   <data name="MainMenu_CloseProjectTooltip" xml:space="preserve">
-    <value>Close the currently open project</value>
+    <value>Close the current project</value>
   </data>
   <data name="MainMenu_Exit" xml:space="preserve">
     <value>Exit</value>
@@ -635,5 +635,11 @@ Do you wish to continue?</value>
   </data>
   <data name="FullScreenToolbar_ExitFullscreen" xml:space="preserve">
     <value>Exit fullscreen</value>
+  </data>
+  <data name="MainMenu_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="MainMenu_SettingsTooltip" xml:space="preserve">
+    <value>Open application settings</value>
   </data>
 </root>
