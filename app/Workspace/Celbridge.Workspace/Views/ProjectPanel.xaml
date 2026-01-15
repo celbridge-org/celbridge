@@ -41,7 +41,8 @@
 
                     <!-- Search -->
                     <NavigationViewItem x:Name="SearchNavItem"
-                                        Tag="Search">
+                                        Tag="Search"
+                                        Visibility="Collapsed">
                         <NavigationViewItem.Icon>
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       Glyph="&#xE721;"/>
