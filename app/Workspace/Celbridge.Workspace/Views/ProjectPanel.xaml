@@ -10,58 +10,79 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Vertical Navigation Bar -->
-        <NavigationView x:Name="ProjectNavigation"
-                        Grid.Column="0"
-                        IsPaneToggleButtonVisible="False"
-                        IsBackButtonVisible="Collapsed"
-                        IsSettingsVisible="False"
-                        PaneDisplayMode="LeftCompact"
-                        CompactPaneLength="48"
-                        Background="{ThemeResource PanelBackgroundABrush}"
-                        SelectionChanged="ProjectNavigation_SelectionChanged">
-            <NavigationView.MenuItems>
-                <!-- Explorer -->
-                <NavigationViewItem x:Name="ExplorerNavItem"
-                                    Tag="Explorer"
-                                    IsSelected="True">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xEC50;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
+        <!-- Navigation Bar Container -->
+        <Grid Grid.Column="0"
+              Background="{ThemeResource PanelBackgroundABrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                <!-- Search -->
-                <NavigationViewItem x:Name="SearchNavItem"
-                                    Tag="Search">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xE721;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
+            <!-- Vertical Navigation View for tab selection -->
+            <NavigationView x:Name="ProjectNavigation"
+                            Grid.Row="0"
+                            IsPaneToggleButtonVisible="False"
+                            IsBackButtonVisible="Collapsed"
+                            IsSettingsVisible="False"
+                            PaneDisplayMode="LeftCompact"
+                            CompactPaneLength="48"
+                            Background="Transparent"
+                            SelectionChanged="ProjectNavigation_SelectionChanged">
+                <NavigationView.MenuItems>
+                    <!-- Explorer -->
+                    <NavigationViewItem x:Name="ExplorerNavItem"
+                                        Tag="Explorer"
+                                        IsSelected="True">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xEC50;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
 
-                <!-- Debug -->
-                <NavigationViewItem x:Name="DebugNavItem"
-                                    Tag="Debug"
-                                    IsEnabled="False"
-                                    Visibility="Collapsed">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xEBE8;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
+                    <!-- Search -->
+                    <NavigationViewItem x:Name="SearchNavItem"
+                                        Tag="Search">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xE721;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
 
-                <!-- Source Control -->
-                <NavigationViewItem x:Name="SourceControlNavItem"
-                                    Tag="SourceControl"
-                                    IsEnabled="False"
-                                    Visibility="Collapsed">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Upload"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
-        </NavigationView>
+                    <!-- Debug -->
+                    <NavigationViewItem x:Name="DebugNavItem"
+                                        Tag="Debug"
+                                        IsEnabled="False"
+                                        Visibility="Collapsed">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xEBE8;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+
+                    <!-- Source Control -->
+                    <NavigationViewItem x:Name="SourceControlNavItem"
+                                        Tag="SourceControl"
+                                        IsEnabled="False"
+                                        Visibility="Collapsed">
+                        <NavigationViewItem.Icon>
+                            <SymbolIcon Symbol="Upload"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+                </NavigationView.MenuItems>
+            </NavigationView>
+
+            <!-- Shortcut Buttons Container -->
+            <StackPanel x:Name="ShortcutButtonsPanel"
+                        Grid.Row="1"
+                        VerticalAlignment="Top"
+                        Visibility="Collapsed">
+                <!-- Separator -->
+                <Border Height="1"
+                        Margin="8,4,8,4"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <!-- Shortcut buttons are added programmatically -->
+            </StackPanel>
+        </Grid>
 
         <!-- Content area for the selected panel -->
         <Grid x:Name="ContentArea"

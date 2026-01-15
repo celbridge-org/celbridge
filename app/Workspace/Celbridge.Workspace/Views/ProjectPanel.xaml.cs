@@ -42,21 +42,38 @@ public sealed partial class ProjectPanel : UserControl
     {
         ApplyTooltips();
 
-        // Build shortcut menu items from the current project configuration
+        // Build shortcut buttons from the current project configuration
         var currentProject = _projectService.CurrentProject;
         if (currentProject != null)
         {
             var navigationBarSection = currentProject.ProjectConfig.Config.Shortcuts.NavigationBar;
             var logger = ServiceLocator.AcquireService<ILogger<ShortcutMenuBuilder>>();
             _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
-            _shortcutMenuBuilder.BuildShortcutMenuItems(navigationBarSection.RootCustomCommandNode, ProjectNavigation.MenuItems);
+            _shortcutMenuBuilder.ShortcutClicked += OnShortcutClicked;
+            
+            var hasShortcuts = _shortcutMenuBuilder.BuildShortcutButtons(navigationBarSection.RootCustomCommandNode, ShortcutButtonsPanel);
+            ShortcutButtonsPanel.Visibility = hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
     private void ProjectPanel_Unloaded(object sender, RoutedEventArgs e)
     {
+        if (_shortcutMenuBuilder != null)
+        {
+            _shortcutMenuBuilder.ShortcutClicked -= OnShortcutClicked;
+        }
+
         Loaded -= ProjectPanel_Loaded;
         Unloaded -= ProjectPanel_Unloaded;
+    }
+
+    private void OnShortcutClicked(string tag)
+    {
+        if (_shortcutMenuBuilder?.TryGetScript(tag, out var script) == true && !string.IsNullOrEmpty(script))
+        {
+            var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+            workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
+        }
     }
 
     private void ApplyTooltips()
@@ -160,17 +177,6 @@ public sealed partial class ProjectPanel : UserControl
             var tag = selectedItem.Tag?.ToString();
             if (string.IsNullOrEmpty(tag))
             {
-                return;
-            }
-
-            // Check if this is a shortcut command
-            if (_shortcutMenuBuilder?.TryGetScript(tag, out var script) == true)
-            {
-                if (!string.IsNullOrEmpty(script))
-                {
-                    var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-                    workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
-                }
                 return;
             }
 

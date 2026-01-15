@@ -4,15 +4,18 @@ using Celbridge.Projects;
 namespace Celbridge.Workspace.Services;
 
 /// <summary>
-/// Helper class for building custom shortcut menu items in the navigation bar.
+/// Helper class for building custom shortcut buttons in the navigation bar.
 /// </summary>
 public class ShortcutMenuBuilder
 {
     private readonly ILogger<ShortcutMenuBuilder> _logger;
 
     private Dictionary<string, string> _tagsToScriptDictionary = new();
-    private List<KeyValuePair<IList<object>, NavigationViewItem>> _shortcutMenuItems = new();
-    private NavigationViewItemSeparator? _separator;
+
+    /// <summary>
+    /// Event raised when a shortcut button is clicked.
+    /// </summary>
+    public event Action<string>? ShortcutClicked;
 
     public ShortcutMenuBuilder(ILogger<ShortcutMenuBuilder> logger)
     {
@@ -28,105 +31,202 @@ public class ShortcutMenuBuilder
     }
 
     /// <summary>
-    /// Builds shortcut menu items from the navigation bar section configuration.
+    /// Builds shortcut buttons from the navigation bar section configuration.
     /// </summary>
-    public void BuildShortcutMenuItems(NavigationBarSection.CustomCommandNode rootNode, IList<object> menuItems)
+    /// <param name="rootNode">The root custom command node from project configuration.</param>
+    /// <param name="panel">The StackPanel to add buttons to.</param>
+    /// <returns>True if any shortcuts were added, false otherwise.</returns>
+    public bool BuildShortcutButtons(NavigationBarSection.CustomCommandNode rootNode, StackPanel panel)
     {
-        // Check if there are any shortcuts to add
         bool hasShortcuts = rootNode.Nodes.Count > 0 || rootNode.CustomCommands.Count > 0;
         
-        if (hasShortcuts)
+        if (!hasShortcuts)
         {
-            // Add a separator before the custom shortcuts
-            _separator = new NavigationViewItemSeparator();
-            menuItems.Add(_separator);
+            return false;
         }
 
-        AddShortcutMenuItems(rootNode, menuItems);
+        AddShortcutButtons(rootNode, panel);
+        return true;
     }
 
-    private void AddShortcutMenuItems(NavigationBarSection.CustomCommandNode node, IList<object> menuItems)
+    private void AddShortcutButtons(NavigationBarSection.CustomCommandNode node, StackPanel panel)
     {
-        Dictionary<string, NavigationViewItem> newNodes = new();
-        Dictionary<string, string> pathToScriptDictionary = new();
-
-        foreach (var (k, v) in node.Nodes)
+        // Collect the paths of folder nodes so we can skip commands that are just metadata for folders
+        var folderPaths = new HashSet<string>();
+        foreach (var (nodeName, childNode) in node.Nodes)
         {
-            var newItem = new NavigationViewItem()
-            {
-                Name = k,
-                Content = k
-            };
-
-            menuItems.Add(newItem);
-            string newPath = v.Path + (v.Path.Length > 0 ? "." : "") + k;
-            newNodes.Add(newPath, newItem);
-            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, newItem));
-            AddShortcutMenuItems(v, newItem.MenuItems);
+            // Build the path for this folder node
+            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
+            folderPaths.Add(folderPath);
         }
 
+        // Add folder nodes as buttons with flyout menus
+        foreach (var (nodeName, childNode) in node.Nodes)
+        {
+            // Find the command definition for this folder node (to get icon/tooltip)
+            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
+            var folderCommand = node.CustomCommands.FirstOrDefault(c => c.Path == folderPath);
+            
+            var button = CreateShortcutButton(
+                folderCommand?.Name ?? nodeName, 
+                folderCommand?.Icon, 
+                folderCommand?.ToolTip);
+            
+            // Create a flyout menu for the child items
+            var flyout = new MenuFlyout();
+            flyout.Placement = FlyoutPlacementMode.RightEdgeAlignedTop;
+            AddMenuItems(childNode, flyout.Items);
+            button.Flyout = flyout;
+            
+            panel.Children.Add(button);
+        }
+
+        // Add direct command items as buttons (skip commands that are metadata for folder nodes)
         foreach (var command in node.CustomCommands)
         {
-            if (pathToScriptDictionary.ContainsKey(command.Path!))
+            // Skip if this command is just metadata for a folder node
+            if (folderPaths.Contains(command.Path!))
+            {
+                continue;
+            }
+
+            if (_tagsToScriptDictionary.ContainsKey(command.Path!))
             {
                 _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added.");
                 continue;
             }
 
-            Symbol? icon = null;
-            if (command.Icon is not null)
+            _tagsToScriptDictionary.Add(command.Path!, command.Script!);
+
+            var button = CreateShortcutButton(command.Name, command.Icon, command.ToolTip);
+            button.Tag = command.Path;
+            button.Click += OnShortcutButtonClick;
+            
+            panel.Children.Add(button);
+        }
+    }
+
+    private void AddMenuItems(NavigationBarSection.CustomCommandNode node, IList<MenuFlyoutItemBase> menuItems)
+    {
+        // Collect the paths of folder nodes so we can skip commands that are just metadata for folders
+        var folderPaths = new HashSet<string>();
+        foreach (var (nodeName, childNode) in node.Nodes)
+        {
+            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
+            folderPaths.Add(folderPath);
+        }
+
+        // Add sub-folder nodes as sub-menus
+        foreach (var (nodeName, childNode) in node.Nodes)
+        {
+            var subMenu = new MenuFlyoutSubItem
             {
-                if (Enum.TryParse(command.Icon, out Symbol parsedIcon))
+                Text = nodeName
+            };
+            
+            // Find the command definition for this folder node (to get icon/tooltip)
+            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
+            var folderCommand = node.CustomCommands.FirstOrDefault(c => c.Path == folderPath);
+            if (folderCommand != null)
+            {
+                if (!string.IsNullOrEmpty(folderCommand.Name))
                 {
-                    icon = parsedIcon;
+                    subMenu.Text = folderCommand.Name;
+                }
+                if (!string.IsNullOrEmpty(folderCommand.Icon) && Enum.TryParse<Symbol>(folderCommand.Icon, out var icon))
+                {
+                    subMenu.Icon = new SymbolIcon(icon);
                 }
             }
+            
+            AddMenuItems(childNode, subMenu.Items);
+            menuItems.Add(subMenu);
+        }
 
-            if (newNodes.ContainsKey(command.Path!))
+        // Add command items (skip commands that are metadata for folder nodes)
+        foreach (var command in node.CustomCommands)
+        {
+            // Skip if this command is just metadata for a folder node
+            if (folderPaths.Contains(command.Path!))
             {
-                NavigationViewItem item = newNodes[command.Path!];
-                if (!string.IsNullOrEmpty(command.ToolTip))
-                {
-                    ToolTipService.SetToolTip(item, command.ToolTip);
-                    ToolTipService.SetPlacement(item, PlacementMode.Right);
-                }
+                continue;
+            }
 
-                if (icon.HasValue)
-                {
-                    item.Icon = new SymbolIcon(icon.Value);
-                }
-
-                if (!string.IsNullOrEmpty(command.Name))
-                {
-                    item.Content = command.Name;
-                }
-
-                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with a folder node.");
+            if (_tagsToScriptDictionary.ContainsKey(command.Path!))
+            {
+                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added.");
                 continue;
             }
 
             _tagsToScriptDictionary.Add(command.Path!, command.Script!);
 
-            var commandItem = new NavigationViewItem
+            var menuItem = new MenuFlyoutItem
             {
-                Name = command.Name ?? "Shortcut",
-                Content = command.Name ?? "Shortcut",
-                Tag = command.Path!
+                Text = command.Name ?? "Shortcut",
+                Tag = command.Path
             };
 
-            if (!string.IsNullOrEmpty(command.ToolTip))
+            if (!string.IsNullOrEmpty(command.Icon) && Enum.TryParse<Symbol>(command.Icon, out var icon))
             {
-                ToolTipService.SetToolTip(commandItem, command.ToolTip);
-                ToolTipService.SetPlacement(commandItem, PlacementMode.Right);
+                menuItem.Icon = new SymbolIcon(icon);
             }
 
-            if (icon.HasValue)
-            {
-                commandItem.Icon = new SymbolIcon(icon.Value);
-            }
+            menuItem.Click += OnMenuItemClick;
+            menuItems.Add(menuItem);
+        }
+    }
 
-            menuItems.Add(commandItem);
-            _shortcutMenuItems.Add(new KeyValuePair<IList<object>, NavigationViewItem>(menuItems, commandItem));
+    private Button CreateShortcutButton(string? name, string? iconName, string? tooltip)
+    {
+        var button = new Button
+        {
+            Width = 40,
+            Height = 40,
+            Padding = new Thickness(0),
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        // Set icon if provided
+        if (!string.IsNullOrEmpty(iconName) && Enum.TryParse<Symbol>(iconName, out var icon))
+        {
+            button.Content = new SymbolIcon(icon);
+        }
+        else
+        {
+            // Default to Play icon for shortcuts
+            button.Content = new SymbolIcon(Symbol.Play);
+        }
+
+        // Set tooltip if provided
+        if (!string.IsNullOrEmpty(tooltip))
+        {
+            ToolTipService.SetToolTip(button, tooltip);
+            ToolTipService.SetPlacement(button, PlacementMode.Right);
+        }
+        else if (!string.IsNullOrEmpty(name))
+        {
+            ToolTipService.SetToolTip(button, name);
+            ToolTipService.SetPlacement(button, PlacementMode.Right);
+        }
+
+        return button;
+    }
+
+    private void OnShortcutButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string tag)
+        {
+            ShortcutClicked?.Invoke(tag);
+        }
+    }
+
+    private void OnMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string tag)
+        {
+            ShortcutClicked?.Invoke(tag);
         }
     }
 }
