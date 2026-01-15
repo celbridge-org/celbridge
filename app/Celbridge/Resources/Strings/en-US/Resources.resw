@@ -633,4 +633,7 @@ Do you wish to continue?</value>
   <data name="MainMenu_ExitTooltip" xml:space="preserve">
     <value>Exit the application</value>
   </data>
+  <data name="FullScreenToolbar_ExitFullscreen" xml:space="preserve">
+    <value>Exit fullscreen</value>
+  </data>
 </root>
