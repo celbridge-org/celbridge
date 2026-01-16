@@ -147,12 +147,6 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to update resources. {updateResult.Error}");
         }
 
-        // ResourceTreeView may not be set yet if the UI hasn't loaded
-        if (_resourceTreeView is null)
-        {
-            return Result.Ok();
-        }
-
         var populateResult = await ResourceTreeView.PopulateTreeView(ResourceRegistry);
         if (populateResult.IsFailure)
         {
