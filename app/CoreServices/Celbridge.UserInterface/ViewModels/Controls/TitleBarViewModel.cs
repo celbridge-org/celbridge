@@ -24,6 +24,9 @@ public partial class TitleBarViewModel : ObservableObject
     [ObservableProperty]
     private string _projectTitle = string.Empty;
 
+    [ObservableProperty]
+    private string _projectFilePath = string.Empty;
+
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
     public TitleBarViewModel(
@@ -70,25 +73,28 @@ public partial class TitleBarViewModel : ObservableObject
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         OnPropertyChanged(nameof(IsWorkspaceLoaded));
-        UpdateProjectTitle();
+        UpdateProjectInfo();
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         OnPropertyChanged(nameof(IsWorkspaceLoaded));
         ProjectTitle = string.Empty;
+        ProjectFilePath = string.Empty;
     }
 
-    private void UpdateProjectTitle()
+    private void UpdateProjectInfo()
     {
         var currentProject = _projectService.CurrentProject;
         if (currentProject != null)
         {
             ProjectTitle = currentProject.ProjectName;
+            ProjectFilePath = currentProject.ProjectFilePath;
         }
         else
         {
             ProjectTitle = string.Empty;
+            ProjectFilePath = string.Empty;
         }
     }
 

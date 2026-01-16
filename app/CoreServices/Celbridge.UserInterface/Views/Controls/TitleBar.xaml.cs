@@ -67,6 +67,7 @@ public sealed partial class TitleBar : UserControl
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         UpdateNavigationSelection(ApplicationPage.Workspace);
+        UpdateWorkspaceTooltip();
     }
 
     private void OnTitleBar_Unloaded(object sender, RoutedEventArgs e)
@@ -101,13 +102,23 @@ public sealed partial class TitleBar : UserControl
         ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
         ToolTipService.SetPlacement(CommunityNavItem, PlacementMode.Bottom);
 
-        var workspaceTooltip = _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
-        ToolTipService.SetToolTip(WorkspaceNavItem, workspaceTooltip);
-        ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
+        // Workspace tooltip will be set dynamically when a project is loaded
+        UpdateWorkspaceTooltip();
 
         var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
         ToolTipService.SetToolTip(SettingsButton, settingsTooltip);
         ToolTipService.SetPlacement(SettingsButton, PlacementMode.Bottom);
+    }
+
+    private void UpdateWorkspaceTooltip()
+    {
+        // Show the full project file path in the tooltip, or fall back to default tooltip
+        var tooltip = !string.IsNullOrEmpty(ViewModel.ProjectFilePath) 
+            ? ViewModel.ProjectFilePath 
+            : _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
+        
+        ToolTipService.SetToolTip(WorkspaceNavItem, tooltip);
+        ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

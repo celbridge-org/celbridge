@@ -3,8 +3,6 @@ using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
 using Celbridge.Projects;
-using Celbridge.Settings;
-using Celbridge.UserInterface.Models;
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
@@ -15,21 +13,21 @@ public partial class HomePageViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly IProjectService _projectService;
     private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
         INavigationService navigationService,
         Logging.ILogger<HomePageViewModel> logger,
         ICommandService commandService,
-        IEditorSettings editorSettings,
+        IProjectService projectService,
         IFilePickerService filePickerService,
         IDialogService dialogService,
         MainMenuUtils mainMenuUtils)
     {
         _logger = logger;
         _commandService = commandService;
-        _editorSettings = editorSettings;
+        _projectService = projectService;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
         _mainMenuUtils = mainMenuUtils;
@@ -39,17 +37,7 @@ public partial class HomePageViewModel : ObservableObject
 
     private void PopulateRecentProjects()
     {
-        var recentProjects = _editorSettings.RecentProjects;
-        foreach (var projectFilePath in recentProjects)
-        {
-            if (!File.Exists(projectFilePath))
-            {
-                // Don't list project files that no longer exist
-                continue;
-            }
-
-            RecentProjects.Add(new RecentProject(projectFilePath));
-        }
+        RecentProjects.AddRange(_projectService.GetRecentProjects());
     }
 
     public List<RecentProject> RecentProjects = new();
