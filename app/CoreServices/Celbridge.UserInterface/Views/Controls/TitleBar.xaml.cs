@@ -144,18 +144,18 @@ public sealed partial class TitleBar : UserControl
         {
             switch (activePage)
             {
-                case ApplicationPage.Workspace:
-                    TitleBarNavigation.SelectedItem = WorkspaceNavItem;
+                case ApplicationPage.Home:
+                    TitleBarNavigation.SelectedItem = HomeNavItem;
                     break;
                 case ApplicationPage.Community:
                     TitleBarNavigation.SelectedItem = CommunityNavItem;
                     break;
+                case ApplicationPage.Workspace:
+                    TitleBarNavigation.SelectedItem = WorkspaceNavItem;
+                    break;
                 case ApplicationPage.Settings:
                     // Settings is no longer in the navigation view, clear selection
                     TitleBarNavigation.SelectedItem = null;
-                    break;
-                case ApplicationPage.Home:
-                    TitleBarNavigation.SelectedItem = HomeNavItem;
                     break;
                 default:
                     // Clear selection for unknown pages

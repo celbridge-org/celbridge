@@ -96,9 +96,6 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-
-            <!-- Empty content - navigation doesn't display content here -->
-            <Grid/>
         </NavigationView>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
