@@ -33,9 +33,6 @@ public class ShortcutMenuBuilder
     /// <summary>
     /// Builds shortcut buttons from the navigation bar section configuration.
     /// </summary>
-    /// <param name="rootNode">The root custom command node from project configuration.</param>
-    /// <param name="panel">The StackPanel to add buttons to.</param>
-    /// <returns>True if any shortcuts were added, false otherwise.</returns>
     public bool BuildShortcutButtons(NavigationBarSection.CustomCommandNode rootNode, StackPanel panel)
     {
         bool hasShortcuts = rootNode.Nodes.Count > 0 || rootNode.CustomCommands.Count > 0;
