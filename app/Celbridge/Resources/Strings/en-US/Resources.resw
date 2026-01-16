@@ -604,7 +604,7 @@ Do you wish to continue?</value>
     <value>Full screen presentation mode for displaying content</value>
   </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
-    <value>Settings</value>
+    <value>Open application settings</value>
   </data>
   <data name="TitleBar_WorkspaceTooltip" xml:space="preserve">
     <value>Workspace</value>
@@ -632,5 +632,17 @@ Do you wish to continue?</value>
   </data>
   <data name="MainMenu_SettingsTooltip" xml:space="preserve">
     <value>Open application settings</value>
+  </data>
+  <data name="MainMenu_OpenRecent" xml:space="preserve">
+    <value>Open recent</value>
+  </data>
+  <data name="MainMenu_OpenRecentTooltip" xml:space="preserve">
+    <value>Open a recently opened project</value>
+  </data>
+  <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
+    <value>Clear recent projects</value>
+  </data>
+  <data name="MainMenu_ClearRecentProjectsTooltip" xml:space="preserve">
+    <value>Clear the list of recent projects</value>
   </data>
 </root>
