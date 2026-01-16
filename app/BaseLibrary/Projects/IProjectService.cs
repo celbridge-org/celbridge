@@ -31,28 +31,4 @@ public interface IProjectService
     /// Unload the current loaded project.
     /// </summary>
     Task<Result> UnloadProjectAsync();
-
-    /// <summary>
-    /// Register our handler for rebuilding the Shortcuts in the UI.
-    /// </summary>
-    void RegisterRebuildShortcutsUI(TypedEventHandler<IProjectService, RebuildShortcutsUIEventArgs> handler);
-
-    /// <summary>
-    /// Unregister our handler for rebuilding the Shortcuts in the UI.
-    /// </summary>
-    void UnregisterRebuildShortcutsUI(TypedEventHandler<IProjectService, RebuildShortcutsUIEventArgs> handler);
-
-    /// <summary>
-    /// Event Arguments for RebuildShortcutsUI event.
-    /// </summary>
-    public class RebuildShortcutsUIEventArgs : EventArgs
-    {
-        // Storage for our Navigation Bar Section information from the configuration.
-        public NavigationBarSection NavigationBarSection { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Call to invoke our handler for rebuilding the Shortcuts in the UI.
-    /// </summary>
-    void InvokeRebuildShortcutsUI(NavigationBarSection navigationBarSection);
 }

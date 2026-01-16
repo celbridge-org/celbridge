@@ -1,7 +1,7 @@
-﻿namespace Celbridge.Navigation;
+namespace Celbridge.Navigation;
 
 /// <summary>
-/// A service that supports page UI navigation.
+/// A service that supports top-level page navigation in the application.
 /// </summary>
 public interface INavigationService
 {
@@ -11,35 +11,36 @@ public interface INavigationService
     INavigationProvider NavigationProvider { get; }
 
     /// <summary>
-    /// Registers a page with the navigation system.
-    /// The page type must inherit from Windows.UI.Xaml.Controls.Page class
-    /// https://learn.microsoft.com/en-us/uwp/api/windows.ui.xaml.controls.page?view=winrt-22621
+    /// Registers a page with the navigation system using a navigation tag.
+    /// The page type must inherit from Windows.UI.Xaml.Controls.Page class.
     /// </summary>
-    Result RegisterPage(string pageName, Type pageType);
+    Result RegisterPage(string tag, Type pageType);
 
     /// <summary>
     /// Unregisters a previously registered page.
     /// </summary>
-    Result UnregisterPage(string pageName);
+    Result UnregisterPage(string tag);
 
     /// <summary>
-    /// Navigates the top-level UI to display the specified page.
+    /// Navigates the top-level UI to display the specified page by tag.
     /// </summary>
-    Result NavigateToPage(string pageName);
+    Result NavigateToPage(string tag);
 
     /// <summary>
-    /// Navigates the top-level UI to display the specified page, passing an object parameter.
+    /// Navigates the top-level UI to display the specified page by tag, passing an object parameter.
     /// </summary>
-    Result NavigateToPage(string pageName, object parameter);
+    Result NavigateToPage(string tag, object parameter);
 
     /// <summary>
-    /// Clears the persistence settings of all loaded pages. Used before unloading a project to ensure all pages can be flushed.
+    /// When true, the WorkspacePage should perform cleanup when it unloads.
+    /// This flag is automatically cleared after navigation completes.
     /// </summary>
-    public void ClearPersistenceOfAllLoadedPages();
+    bool IsWorkspacePageCleanupPending { get; }
 
     /// <summary>
-    /// Performs a forced unload of all the persistant pages which are out of focus. 
-    ///  The in focus page will be unloaded normally by the navigation.
+    /// Signals that the WorkspacePage should perform cleanup on next unload.
+    /// This should be called before unloading or switching projects to ensure the
+    /// WorkspacePage is fully recreated on the next navigation.
     /// </summary>
-    public void UnloadPersistantUnfocusedPages();
+    void RequestWorkspacePageCleanup();
 }

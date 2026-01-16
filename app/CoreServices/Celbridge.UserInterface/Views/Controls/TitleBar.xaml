@@ -41,6 +41,8 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="144"/><!-- Space for window caption buttons -->
         </Grid.ColumnDefinitions>
 
         <Image Source="ms-appx:///Assets/Images/title_icon.png"
@@ -49,11 +51,52 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <TextBlock x:Name="ProjectNameText"
-                   Grid.Column="1"
-                   Margin="8,0,0,0"
-                   HorizontalAlignment="Left"
-                   VerticalAlignment="Center"/>
+        <!-- Horizontal Navigation View for app-level navigation -->
+        <NavigationView x:Name="TitleBarNavigation"
+                        Grid.Column="1"
+                        IsPaneToggleButtonVisible="False"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        PaneDisplayMode="Top"
+                        Background="Transparent"
+                        SelectionChanged="TitleBarNavigation_SelectionChanged"
+                        ItemInvoked="TitleBarNavigation_ItemInvoked">
+            <NavigationView.MenuItems>
+                <!-- Main Menu is added programmatically -->
+
+                <!-- Home -->
+                <NavigationViewItem x:Name="HomeNavItem"
+                                    Tag="Home">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Home"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Community -->
+                <NavigationViewItem x:Name="CommunityNavItem"
+                                    Tag="Community">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xE12B;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <!-- Separator before Workspace -->
+                <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
+                                             Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Workspace - shows project name when loaded -->
+                <NavigationViewItem x:Name="WorkspaceNavItem"
+                                    Tag="Workspace"
+                                    Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xEC50;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+        </NavigationView>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <FontIcon x:Name="SaveIcon"
@@ -67,12 +110,23 @@
                   FontSize="18"
                   Glyph="&#xE74E;"/>
 
-        <!-- Layout Toolbar - positioned on the right side of the title bar, leaving space for system caption buttons -->
+        <!-- Layout Toolbar - positioned on the right side of the title bar -->
         <controls:LayoutToolbar x:Name="LayoutToolbar"
                                 Grid.Column="4"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
-                                Margin="0,0,144,0"/>
+                                Margin="0,0,8,0"/>
+
+        <!-- Settings Button - positioned between layout toolbar and window controls -->
+        <Button x:Name="SettingsButton"
+                Grid.Column="5"
+                Click="SettingsButton_Click"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="12,8"
+                VerticalAlignment="Center">
+            <SymbolIcon Symbol="Setting"/>
+        </Button>
   </Grid>
 </UserControl>
 

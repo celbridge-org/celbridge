@@ -55,6 +55,21 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
     {
         // Show toolbar when panel has focus or mouse pointer is over it
         var isToolbarVisible = _hasFocus || _isPointerOver;
-        ResourceTreeView.SetToolbarVisible(isToolbarVisible);
+        ExplorerToolbar.SetToolbarVisible(isToolbarVisible);
+    }
+
+    private void ExplorerToolbar_AddFileClicked(object sender, EventArgs e)
+    {
+        ResourceTreeView.AddFileToSelectedFolder();
+    }
+
+    private void ExplorerToolbar_AddFolderClicked(object sender, EventArgs e)
+    {
+        ResourceTreeView.AddFolderToSelectedFolder();
+    }
+
+    private void ExplorerToolbar_CollapseFoldersClicked(object sender, EventArgs e)
+    {
+        ResourceTreeView.CollapseAllFolders();
     }
 }

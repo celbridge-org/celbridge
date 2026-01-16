@@ -37,11 +37,6 @@ public interface IUserInterfaceService
     void RegisterTitleBar(object titleBar);
 
     /// <summary>
-    /// Call to set the current project title when a new project is made or loaded.
-    /// </summary>
-    void SetCurrentProjectTitle(string currentProjectTitle);
-
-    /// <summary>
     /// Sets the active application page and broadcasts an ActivePageChangedMessage.
     /// </summary>
     void SetActivePage(ApplicationPage page);

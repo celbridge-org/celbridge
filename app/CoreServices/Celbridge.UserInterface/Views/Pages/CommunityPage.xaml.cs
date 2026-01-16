@@ -1,23 +1,15 @@
-using Celbridge.Projects;
-using Celbridge.UserInterface.Models;
-using Celbridge.UserInterface.ViewModels.Pages;
-
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The very beginnings of the Community Page.
+/// The Community Page for accessing forums and community content.
 /// </summary>
-public sealed partial class CommunityPage : PersistentPage
+public sealed partial class CommunityPage : Page
 {
     public CommunityPage()
     {
-        Persistence = PersistenceLevel.Eternal;
-
         this.InitializeComponent();
-    }
 
-    public override void PageUnloadInternal()
-    {
-
+        // Enable caching so the page persists during navigation
+        NavigationCacheMode = NavigationCacheMode.Required;
     }
 }
