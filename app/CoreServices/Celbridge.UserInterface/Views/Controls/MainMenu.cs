@@ -1,7 +1,4 @@
 using Celbridge.UserInterface.ViewModels.Controls;
-using Microsoft.Extensions.Localization;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -12,12 +9,6 @@ public class MainMenu
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly NavigationViewItem _menuNavItem;
-    private readonly NavigationViewItem _newProjectNavItem;
-    private readonly NavigationViewItem _openProjectNavItem;
-    private readonly NavigationViewItem _reloadProjectNavItem;
-    private readonly NavigationViewItem _closeProjectNavItem;
-    private readonly NavigationViewItem _settingsNavItem;
-    private readonly NavigationViewItem _exitNavItem;
 
     public MainMenuViewModel ViewModel { get; }
 
@@ -31,49 +22,6 @@ public class MainMenu
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
 
-        // Create the menu items programmatically
-        _newProjectNavItem = new NavigationViewItem
-        {
-            Tag = "NewProject",
-            Icon = new SymbolIcon(Symbol.NewFolder)
-        };
-        _newProjectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
-        _openProjectNavItem = new NavigationViewItem
-        {
-            Tag = "OpenProject",
-            Icon = new SymbolIcon(Symbol.OpenLocal)
-        };
-        _openProjectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
-        _reloadProjectNavItem = new NavigationViewItem
-        {
-            Tag = "ReloadProject",
-            Icon = new SymbolIcon(Symbol.Refresh)
-        };
-        _reloadProjectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
-        _closeProjectNavItem = new NavigationViewItem
-        {
-            Tag = "CloseProject",
-            Icon = new SymbolIcon(Symbol.Cancel)
-        };
-        _closeProjectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
-        _settingsNavItem = new NavigationViewItem
-        {
-            Tag = "Settings",
-            Icon = new SymbolIcon(Symbol.Setting)
-        };
-        _settingsNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
-        _exitNavItem = new NavigationViewItem
-        {
-            Tag = "Exit",
-            Icon = new FontIcon { FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe MDL2 Assets"), Glyph = "\uE7E8" }
-        };
-        _exitNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
-
         _menuNavItem = new NavigationViewItem
         {
             Tag = "Menu",
@@ -81,36 +29,112 @@ public class MainMenu
         };
         _menuNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
 
-        // Add menu items
-        _menuNavItem.MenuItems.Add(_newProjectNavItem);
-        _menuNavItem.MenuItems.Add(_openProjectNavItem);
-        _menuNavItem.MenuItems.Add(_reloadProjectNavItem);
-        _menuNavItem.MenuItems.Add(_closeProjectNavItem);
-        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
-        _menuNavItem.MenuItems.Add(_settingsNavItem);
-        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
-        _menuNavItem.MenuItems.Add(_exitNavItem);
+        var menuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
+        ToolTipService.SetToolTip(_menuNavItem, menuTooltip);
+        ToolTipService.SetPlacement(_menuNavItem, PlacementMode.Bottom);
 
-        ApplyLabels();
-        ApplyTooltips();
+        // Build initial menu items
+        RebuildMenuItems();
 
-        // Bind IsEnabled for reload/close to IsWorkspaceLoaded
-        ViewModel.PropertyChanged += OnViewModel_PropertyChanged;
-        UpdateWorkspaceLoadedState();
+        // Rebuild menu items when the flyout is about to open to ensure correct state
+        _menuNavItem.RegisterPropertyChangedCallback(NavigationViewItem.IsExpandedProperty, OnMenuExpandedChanged);
     }
 
-    private void OnViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnMenuExpandedChanged(DependencyObject sender, DependencyProperty dp)
     {
-        if (e.PropertyName == nameof(ViewModel.IsWorkspaceLoaded))
+        if (_menuNavItem.IsExpanded)
         {
-            UpdateWorkspaceLoadedState();
+            // Rebuild menu items when the menu opens to ensure correct visual state
+            RebuildMenuItems();
         }
     }
 
-    private void UpdateWorkspaceLoadedState()
+    private void RebuildMenuItems()
     {
-        _reloadProjectNavItem.IsEnabled = ViewModel.IsWorkspaceLoaded;
-        _closeProjectNavItem.IsEnabled = ViewModel.IsWorkspaceLoaded;
+        _menuNavItem.MenuItems.Clear();
+
+        var isWorkspaceLoaded = ViewModel.IsWorkspaceLoaded;
+
+        // New Project
+        var newProjectNavItem = CreateMenuItem(
+            tag: "NewProject",
+            icon: new SymbolIcon(Symbol.NewFolder),
+            label: _stringLocalizer.GetString("MainMenu_NewProject"),
+            tooltip: _stringLocalizer.GetString("MainMenu_NewProjectTooltip"),
+            isEnabled: true);
+        _menuNavItem.MenuItems.Add(newProjectNavItem);
+
+        // Open Project
+        var openProjectNavItem = CreateMenuItem(
+            tag: "OpenProject",
+            icon: new SymbolIcon(Symbol.OpenLocal),
+            label: _stringLocalizer.GetString("MainMenu_OpenProject"),
+            tooltip: _stringLocalizer.GetString("MainMenu_OpenProjectTooltip"),
+            isEnabled: true);
+        _menuNavItem.MenuItems.Add(openProjectNavItem);
+
+        // Reload Project
+        var reloadProjectNavItem = CreateMenuItem(
+            tag: "ReloadProject",
+            icon: new SymbolIcon(Symbol.Refresh),
+            label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
+            tooltip: _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(reloadProjectNavItem);
+
+        // Close Project
+        var closeProjectNavItem = CreateMenuItem(
+            tag: "CloseProject",
+            icon: new SymbolIcon(Symbol.Cancel),
+            label: _stringLocalizer.GetString("MainMenu_CloseProject"),
+            tooltip: _stringLocalizer.GetString("MainMenu_CloseProjectTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(closeProjectNavItem);
+
+        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+
+        // Settings
+        var settingsNavItem = CreateMenuItem(
+            tag: "Settings",
+            icon: new SymbolIcon(Symbol.Setting),
+            label: _stringLocalizer.GetString("MainMenu_Settings"),
+            tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
+            isEnabled: true);
+        _menuNavItem.MenuItems.Add(settingsNavItem);
+
+        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+
+        // Exit
+        var exitIcon = new FontIcon 
+        { 
+            FontFamily = new FontFamily("Segoe MDL2 Assets"), 
+            Glyph = "\uE7E8" 
+        };
+
+        var exitNavItem = CreateMenuItem(
+            tag: "Exit",
+            icon: exitIcon,
+            label: _stringLocalizer.GetString("MainMenu_Exit"),
+            tooltip: _stringLocalizer.GetString("MainMenu_ExitTooltip"),
+            isEnabled: true);
+        _menuNavItem.MenuItems.Add(exitNavItem);
+    }
+
+    private NavigationViewItem CreateMenuItem(string tag, IconElement icon, string label, string tooltip, bool isEnabled)
+    {
+        var navItem = new NavigationViewItem
+        {
+            Tag = tag,
+            Icon = icon,
+            Content = label,
+            IsEnabled = isEnabled
+        };
+        navItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+
+        ToolTipService.SetToolTip(navItem, tooltip);
+        ToolTipService.SetPlacement(navItem, PlacementMode.Right);
+
+        return navItem;
     }
 
     public void OnLoaded()
@@ -121,48 +145,6 @@ public class MainMenu
     public void OnUnloaded()
     {
         ViewModel.OnUnloaded();
-        ViewModel.PropertyChanged -= OnViewModel_PropertyChanged;
-    }
-
-    private void ApplyTooltips()
-    {
-        var menuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
-        ToolTipService.SetToolTip(_menuNavItem, menuTooltip);
-        ToolTipService.SetPlacement(_menuNavItem, PlacementMode.Bottom);
-
-        var newProjectTooltip = _stringLocalizer.GetString("MainMenu_NewProjectTooltip");
-        ToolTipService.SetToolTip(_newProjectNavItem, newProjectTooltip);
-        ToolTipService.SetPlacement(_newProjectNavItem, PlacementMode.Right);
-
-        var openProjectTooltip = _stringLocalizer.GetString("MainMenu_OpenProjectTooltip");
-        ToolTipService.SetToolTip(_openProjectNavItem, openProjectTooltip);
-        ToolTipService.SetPlacement(_openProjectNavItem, PlacementMode.Right);
-
-        var reloadProjectTooltip = _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip");
-        ToolTipService.SetToolTip(_reloadProjectNavItem, reloadProjectTooltip);
-        ToolTipService.SetPlacement(_reloadProjectNavItem, PlacementMode.Right);
-
-        var closeProjectTooltip = _stringLocalizer.GetString("MainMenu_CloseProjectTooltip");
-        ToolTipService.SetToolTip(_closeProjectNavItem, closeProjectTooltip);
-        ToolTipService.SetPlacement(_closeProjectNavItem, PlacementMode.Right);
-
-        var settingsTooltip = _stringLocalizer.GetString("MainMenu_SettingsTooltip");
-        ToolTipService.SetToolTip(_settingsNavItem, settingsTooltip);
-        ToolTipService.SetPlacement(_settingsNavItem, PlacementMode.Right);
-
-        var exitTooltip = _stringLocalizer.GetString("MainMenu_ExitTooltip");
-        ToolTipService.SetToolTip(_exitNavItem, exitTooltip);
-        ToolTipService.SetPlacement(_exitNavItem, PlacementMode.Right);
-    }
-
-    private void ApplyLabels()
-    {
-        _newProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_NewProject");
-        _openProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_OpenProject");
-        _reloadProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_ReloadProject");
-        _closeProjectNavItem.Content = _stringLocalizer.GetString("MainMenu_CloseProject");
-        _settingsNavItem.Content = _stringLocalizer.GetString("MainMenu_Settings");
-        _exitNavItem.Content = _stringLocalizer.GetString("MainMenu_Exit");
     }
 
     /// <summary>
