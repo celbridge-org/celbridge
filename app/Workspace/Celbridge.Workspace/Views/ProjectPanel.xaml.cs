@@ -14,12 +14,11 @@ public sealed partial class ProjectPanel : UserControl
 
     private ShortcutMenuBuilder? _shortcutMenuBuilder;
     private readonly Dictionary<ProjectPanelTab, UIElement> _panels = new();
-    private ProjectPanelTab _currentTab = ProjectPanelTab.None;
 
     /// <summary>
     /// Gets the currently active panel tab.
     /// </summary>
-    public ProjectPanelTab CurrentTab => _currentTab;
+    public ProjectPanelTab CurrentTab => ViewModel.CurrentTab;
 
     public ProjectPanelViewModel ViewModel { get; }
 
@@ -52,6 +51,7 @@ public sealed partial class ProjectPanel : UserControl
             _shortcutMenuBuilder.ShortcutClicked += OnShortcutClicked;
             
             var hasShortcuts = _shortcutMenuBuilder.BuildShortcutButtons(navigationBarSection.RootCustomCommandNode, ShortcutButtonsPanel);
+            ViewModel.HasShortcuts = hasShortcuts;
             ShortcutButtonsPanel.Visibility = hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
         }
     }
@@ -128,7 +128,7 @@ public sealed partial class ProjectPanel : UserControl
             _panels.Remove(tab);
 
             // If we removed the currently visible panel, show another one
-            if (_currentTab == tab)
+            if (ViewModel.CurrentTab == tab)
             {
                 var nextTab = _panels.Keys.FirstOrDefault(t => t != ProjectPanelTab.None);
                 if (nextTab != ProjectPanelTab.None)
@@ -137,7 +137,7 @@ public sealed partial class ProjectPanel : UserControl
                 }
                 else
                 {
-                    _currentTab = ProjectPanelTab.None;
+                    ViewModel.CurrentTab = ProjectPanelTab.None;
                 }
             }
         }
@@ -167,7 +167,7 @@ public sealed partial class ProjectPanel : UserControl
 
         // Show the requested panel
         panelToShow.Visibility = Visibility.Visible;
-        _currentTab = tab;
+        ViewModel.CurrentTab = tab;
     }
 
     private void ProjectNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
