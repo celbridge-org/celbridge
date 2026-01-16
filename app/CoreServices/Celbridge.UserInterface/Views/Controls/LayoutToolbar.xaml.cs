@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -9,7 +8,6 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
-    private readonly IEditorSettings _editorSettings;
 
     private bool _isUpdatingUI = false;
     private bool _isOnWorkspacePage = false;
@@ -22,7 +20,6 @@ public sealed partial class LayoutToolbar : UserControl
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
-        _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
 
         Loaded += LayoutToolbar_Loaded;
         Unloaded += LayoutToolbar_Unloaded;

@@ -1,12 +1,10 @@
 using Celbridge.Commands;
 using Celbridge.Console;
-using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 

@@ -2,12 +2,11 @@ using Celbridge.Documents;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
 /// <summary>
-/// ViewModel for the TitleBar control, handling navigation between top-level pages.
+/// ViewModel for the TitleBar control.
 /// </summary>
 public partial class TitleBarViewModel : ObservableObject
 {

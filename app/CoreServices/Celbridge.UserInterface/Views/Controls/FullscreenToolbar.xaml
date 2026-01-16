@@ -7,9 +7,7 @@
 
   <!--
   Minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge.
-  Clicking anywhere on the toolbar exits fullscreen.
-    
-  The TriggerZone is an invisible area at the top that detects mouse hover even over WebView2 content.
+  Clicking anywhere on the toolbar exits fullscreen. The TriggerZone is an invisible area at the top that detects mouse hover.
   -->
   <Grid x:Name="RootContainer">
     <!-- Invisible trigger zone that sits above all other UI elements -->
@@ -36,7 +34,7 @@
                             Y="-36"/>
       </Grid.RenderTransform>
 
-      <!-- Centered exit button -->
+      <!-- Centered exit label -->
       <StackPanel Orientation="Horizontal"
                   Spacing="8"
                   HorizontalAlignment="Center"
