@@ -1,12 +1,12 @@
 namespace Celbridge.UserInterface.Views.PanelIcons;
 
-public sealed partial class ExplorerPanelIcon : UserControl
+public sealed partial class PrimaryPanelIcon : UserControl
 {
     public static readonly DependencyProperty IsActivePanelProperty =
         DependencyProperty.Register(
             nameof(IsActivePanel),
             typeof(bool),
-            typeof(ExplorerPanelIcon),
+            typeof(PrimaryPanelIcon),
             new PropertyMetadata(false, OnIsActivePanelChanged));
 
     public bool IsActivePanel
@@ -15,7 +15,7 @@ public sealed partial class ExplorerPanelIcon : UserControl
         set => SetValue(IsActivePanelProperty, value);
     }
 
-    public ExplorerPanelIcon()
+    public PrimaryPanelIcon()
     {
         InitializeComponent();
         Loaded += OnLoaded;
@@ -30,7 +30,7 @@ public sealed partial class ExplorerPanelIcon : UserControl
 
     private static void OnIsActivePanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var icon = (ExplorerPanelIcon)d;
+        var icon = (PrimaryPanelIcon)d;
         var isActive = (bool)e.NewValue;
         icon.UpdateVisibility(isActive);
     }

@@ -23,11 +23,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public IList<IResource> Resources => _explorerService.ResourceRegistry.RootFolder.Children;
 
-    /// <summary>
-    /// The name of the project folder displayed at the top of the tree view.
-    /// </summary>
-    public string ProjectFolderName { get; }
-
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
@@ -42,9 +37,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _pythonService = workspaceWrapper.WorkspaceService.PythonService;
-
-        // Get the project folder name from the current project
-        ProjectFolderName = projectService.CurrentProject?.ProjectName ?? string.Empty;
     }
 
     //

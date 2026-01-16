@@ -1,24 +1,40 @@
 using Celbridge.Navigation;
-using Celbridge.UserInterface.Views;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 
+/// <summary>
+/// Internal record to track page registration info.
+/// </summary>
+internal record PageInfo(Type PageType, ApplicationPage AppPage);
+
+/// <summary>
+/// Service responsible for top-level application page navigation.
+/// </summary>
 public class NavigationService : INavigationService
 {
     private readonly Logging.ILogger<NavigationService> _logger;
+    private readonly IMessengerService _messengerService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     private INavigationProvider? _navigationProvider;
     public INavigationProvider NavigationProvider => _navigationProvider!;
 
-    private readonly Dictionary<string, Type> _pageTypes = new();
+    private readonly Dictionary<string, PageInfo> _pages = new();
 
-    public NavigationService(Logging.ILogger<NavigationService> logger)
+    public NavigationService(
+        Logging.ILogger<NavigationService> logger,
+        IMessengerService messengerService,
+        IUserInterfaceService userInterfaceService)
     {
         _logger = logger;
+        _messengerService = messengerService;
+        _userInterfaceService = userInterfaceService;
     }
 
-    // The navigation provider is implemented by the MainPage class. Pages have to be loaded to be used, so the provider
-    // instance is not available until the Main Page has finished loading. This method is used to set this dependency.
+    /// <summary>
+    /// Sets the navigation provider. Called by MainPage after it has loaded.
+    /// </summary>
     public void SetNavigationProvider(INavigationProvider navigationProvider)
     {
         Guard.IsNotNull(navigationProvider);
@@ -26,69 +42,98 @@ public class NavigationService : INavigationService
         _navigationProvider = navigationProvider;
     }
 
-    public Result RegisterPage(string pageName, Type pageType)
+    public Result RegisterPage(string tag, Type pageType)
     {
-        if (_pageTypes.ContainsKey(pageName))
+        return RegisterPage(tag, pageType, ApplicationPage.None);
+    }
+
+    /// <summary>
+    /// Registers a page with an ApplicationPage mapping for UI state tracking.
+    /// </summary>
+    public Result RegisterPage(string tag, Type pageType, ApplicationPage appPage)
+    {
+        if (_pages.ContainsKey(tag))
         {
-            return Result.Fail($"Failed to register page name '{pageName}' because it is already registered.");
+            return Result.Fail($"Failed to register page tag '{tag}' because it is already registered.");
         }
 
         if (!pageType.IsAssignableTo(typeof(Page)))
         {
-            return Result.Fail($"Failed to register page name '{pageName}' because the type '{pageType}' does not inherit from Page.");
+            return Result.Fail($"Failed to register page tag '{tag}' because the type '{pageType}' does not inherit from Page.");
         }
 
-        _pageTypes[pageName] = pageType;
+        _pages[tag] = new PageInfo(pageType, appPage);
 
         return Result.Ok();
     }
 
-    public Result UnregisterPage(string pageName)
+    public Result UnregisterPage(string tag)
     {
-        if (!_pageTypes.ContainsKey(pageName))
+        if (!_pages.ContainsKey(tag))
         {
-            return Result.Fail($"Failed to unregister page name '{pageName}' because it is not registered.");
+            return Result.Fail($"Failed to unregister page tag '{tag}' because it is not registered.");
         }
 
-        _pageTypes.Remove(pageName);
+        _pages.Remove(tag);
 
         return Result.Ok();
     }
 
-    public Result NavigateToPage(string pageName)
+    public Result NavigateToPage(string tag)
     {
-        return NavigateToPage(pageName, string.Empty);
+        return NavigateToPage(tag, string.Empty);
     }
 
-    public Result NavigateToPage(string pageName, object parameter)
+    public Result NavigateToPage(string tag, object parameter)
     {
         Guard.IsNotNull(_navigationProvider);
 
-        // Resolve the page type by looking up the page name
-        if (!_pageTypes.TryGetValue(pageName, out var pageType))
+        if (!_pages.TryGetValue(tag, out var pageInfo))
         {
-            var errorMessage = $"Failed to navigage to content page '{pageName}' because it is not registered.";
+            var errorMessage = $"Failed to navigate to page '{tag}' because it is not registered.";
             _logger.LogError(errorMessage);
-
             return Result.Fail(errorMessage);
         }
 
-        // Navigate using the resolved page type
-        var navigateResult = _navigationProvider.NavigateToPage(pageType, parameter);
+        // Update application page state (skip if None)
+        if (pageInfo.AppPage != ApplicationPage.None)
+        {
+            SetActivePage(pageInfo.AppPage);
+        }
+
+        var navigateResult = _navigationProvider.NavigateToPage(pageInfo.PageType, parameter);
         if (navigateResult.IsFailure)
         {
             _logger.LogError(navigateResult.Error);
+            return navigateResult;
         }
 
-        return navigateResult;
-    }
-    public void ClearPersistenceOfAllLoadedPages()
-    {
-        PersistentPage.ClearPersistenceOfAllLoadedPages();
+        // Clear the cleanup flag after successful navigation
+        IsWorkspacePageCleanupPending = false;
+
+        return Result.Ok();
     }
 
-    public void UnloadPersistantUnfocusedPages()
+    private void SetActivePage(ApplicationPage page)
     {
-        PersistentPage.UnloadPersistantUnfocusedPages(NavigationProvider.GetCurrentPageName());
+        bool isWorkspacePage = page == ApplicationPage.Workspace;
+
+        if (isWorkspacePage)
+        {
+            _messengerService.Send(new WorkspacePageActivatedMessage());
+        }
+        else
+        {
+            _messengerService.Send(new WorkspacePageDeactivatedMessage());
+        }
+
+        _userInterfaceService.SetActivePage(page);
+    }
+
+    public bool IsWorkspacePageCleanupPending { get; private set; }
+
+    public void RequestWorkspacePageCleanup()
+    {
+        IsWorkspacePageCleanupPending = true;
     }
 }

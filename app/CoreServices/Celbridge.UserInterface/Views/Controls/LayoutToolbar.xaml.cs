@@ -62,17 +62,17 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(PanelLayoutButton, layoutTooltip);
         ToolTipService.SetPlacement(PanelLayoutButton, PlacementMode.Bottom);
 
-        var explorerTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleExplorerTooltip");
-        ToolTipService.SetToolTip(ToggleExplorerPanelButton, explorerTooltip);
-        ToolTipService.SetPlacement(ToggleExplorerPanelButton, PlacementMode.Bottom);
+        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_TogglePrimaryTooltip");
+        ToolTipService.SetToolTip(TogglePrimaryPanelButton, primaryTooltip);
+        ToolTipService.SetPlacement(TogglePrimaryPanelButton, PlacementMode.Bottom);
 
         var consoleTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleConsoleTooltip");
         ToolTipService.SetToolTip(ToggleConsolePanelButton, consoleTooltip);
         ToolTipService.SetPlacement(ToggleConsolePanelButton, PlacementMode.Bottom);
 
-        var inspectorTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleInspectorTooltip");
-        ToolTipService.SetToolTip(ToggleInspectorPanelButton, inspectorTooltip);
-        ToolTipService.SetPlacement(ToggleInspectorPanelButton, PlacementMode.Bottom);
+        var secondaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleSecondaryTooltip");
+        ToolTipService.SetToolTip(ToggleSecondaryPanelButton, secondaryTooltip);
+        ToolTipService.SetPlacement(ToggleSecondaryPanelButton, PlacementMode.Bottom);
 
         var windowedModeTooltip = _stringLocalizer.GetString("LayoutToolbar_WindowedModeTooltip");
         ToolTipService.SetToolTip(WindowedModeRadio, windowedModeTooltip);
@@ -138,12 +138,12 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelIcons()
     {
-        ExplorerPanelIcon.IsActivePanel = _layoutManager.IsContextPanelVisible;
+        PrimaryPanelIcon.IsActivePanel = _layoutManager.IsContextPanelVisible;
         ConsolePanelIcon.IsActivePanel = _layoutManager.IsConsolePanelVisible;
-        InspectorPanelIcon.IsActivePanel = _layoutManager.IsInspectorPanelVisible;
+        SecondaryPanelIcon.IsActivePanel = _layoutManager.IsInspectorPanelVisible;
     }
 
-    private void ToggleExplorerPanelButton_Click(object sender, RoutedEventArgs e)
+    private void TogglePrimaryPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutManager.IsContextPanelVisible;
@@ -165,7 +165,7 @@ public sealed partial class LayoutToolbar : UserControl
         });
     }
 
-    private void ToggleInspectorPanelButton_Click(object sender, RoutedEventArgs e)
+    private void ToggleSecondaryPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutManager.IsInspectorPanelVisible;

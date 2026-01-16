@@ -74,16 +74,16 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreferredPanelVisibility), value);
     }
 
-    public float ContextPanelWidth
+    public float PrimaryPanelWidth
     {
-        get => GetValue<float>(nameof(ContextPanelWidth), UserInterfaceConstants.ContextPanelWidth);
-        set => SetValue(nameof(ContextPanelWidth), value);
+        get => GetValue<float>(nameof(PrimaryPanelWidth), UserInterfaceConstants.PrimaryPanelWidth);
+        set => SetValue(nameof(PrimaryPanelWidth), value);
     }
 
-    public float InspectorPanelWidth
+    public float SecondaryPanelWidth
     {
-        get => GetValue<float>(nameof(InspectorPanelWidth), UserInterfaceConstants.InspectorPanelWidth);
-        set => SetValue(nameof(InspectorPanelWidth), value);
+        get => GetValue<float>(nameof(SecondaryPanelWidth), UserInterfaceConstants.SecondaryPanelWidth);
+        set => SetValue(nameof(SecondaryPanelWidth), value);
     }
 
     public float ConsolePanelHeight

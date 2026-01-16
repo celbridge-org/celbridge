@@ -27,6 +27,9 @@ public class LayoutManager : ILayoutManager
 
         // Initialize from persisted preferences
         _panelVisibility = _editorSettings.PreferredPanelVisibility;
+
+        // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
+        _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
     }
 
     public WindowMode WindowMode
@@ -123,6 +126,27 @@ public class LayoutManager : ILayoutManager
         SetPanelVisibility(panel, !isCurrentlyVisible);
     }
 
+    private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
+    {
+        // The window has exited fullscreen via drag, so sync our internal state to Windowed mode
+        // This ensures the UI state matches the actual window state
+        if (WindowMode != WindowMode.Windowed)
+        {
+            _logger.LogDebug("Detected fullscreen exit via drag, transitioning to Windowed mode");
+
+            // Restore the preferred panel visibility configuration
+            UpdatePanelVisibility(_editorSettings.PreferredPanelVisibility, shouldPersist: false);
+
+            // Update internal state without sending another WindowModeChangedMessage
+            // since the window is already in the correct state
+            WindowMode = WindowMode.Windowed;
+
+            // Still need to send the message so other UI components update
+            var windowModeMessage = new WindowModeChangedMessage(WindowMode.Windowed);
+            _messengerService.Send(windowModeMessage);
+        }
+    }
+
     private Result TransitionToWindowed()
     {
         if (WindowMode == WindowMode.Windowed)
@@ -201,10 +225,9 @@ public class LayoutManager : ILayoutManager
     private Result HandleResetLayout()
     {
         // Reset panel sizes
-        _editorSettings.ContextPanelWidth = UserInterfaceConstants.ContextPanelWidth;
-        _editorSettings.InspectorPanelWidth = UserInterfaceConstants.InspectorPanelWidth;
+        _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+        _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
         _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
-
 
         // Reset preferred window geometry
         _editorSettings.UsePreferredWindowGeometry = false;

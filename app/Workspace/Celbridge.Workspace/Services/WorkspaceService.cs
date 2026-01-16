@@ -11,7 +11,6 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Services;
 
@@ -30,12 +29,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
-
-//  Future support:    
-//  public ISearchService SearchService { get; }
-//  public IDebugService DebugService { get; }
-//  public IRevisionControlService RevisionControlService { get; }
-
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
@@ -55,8 +48,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _logger = logger;
         _editorSettings = editorSettings;
         _messengerService = messengerService;
-
-        ContextAreaUsageDetails = new ContextAreaUsage();
 
         // Create instances of the required sub-services
 
@@ -161,23 +152,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
-    }
-
-    protected ContextAreaUsage ContextAreaUsageDetails;
-
-    public void ClearContextAreaUses()
-    {
-        ContextAreaUsageDetails = new ContextAreaUsage();
-    }
-
-    public void SetCurrentContextAreaUsage(ContextAreaUse contextAreaUse)
-    {
-        ContextAreaUsageDetails.SetUsage(contextAreaUse);
-    }
-
-    public void AddContextAreaUse(ContextAreaUse contextAreaUse, UIElement element)
-    {
-        ContextAreaUsageDetails.Add(contextAreaUse, element);
     }
 
     protected virtual void Dispose(bool disposing)

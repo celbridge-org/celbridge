@@ -6,27 +6,22 @@ namespace Celbridge.Workspace;
 public enum WorkspacePanel
 {
     /// <summary>
-    /// The Explorer panel.
+    /// The primary panel (left side by default).
     /// </summary>
-    Explorer,
+    Primary,
 
     /// <summary>
-    /// The Inspector panel.
+    /// The secondary panel (right side by default).
     /// </summary>
-    Inspector,
+    Secondary,
 
     /// <summary>
-    /// The Documents panel.
+    /// The documents panel.
     /// </summary>
     Documents,
 
     /// <summary>
-    /// The Console panel.
+    /// The console panel.
     /// </summary>
-    Console,
-
-    /// <summary>
-    /// The Status panel.
-    /// </summary>
-    Status
+    Console
 }

@@ -20,6 +20,8 @@ public sealed class WindowStateHelper
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
+    private bool _isTransitioningFromFullscreen;
+    private AppWindowPresenterKind _previousPresenterKind;
 
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
@@ -51,6 +53,9 @@ public sealed class WindowStateHelper
             {
                 return Result.Fail("AppWindow presenter is not an OverlappedPresenter");
             }
+
+            // Track the initial presenter kind
+            _previousPresenterKind = _appWindow.Presenter.Kind;
 
             // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
             TryRestoreWindowState();
@@ -162,6 +167,9 @@ public sealed class WindowStateHelper
                     }
                     break;
             }
+
+            // Update the tracked presenter kind after applying the mode
+            _previousPresenterKind = _appWindow.Presenter.Kind;
         }
         catch (Exception ex)
         {
@@ -265,6 +273,30 @@ public sealed class WindowStateHelper
             return;
         }
 
+        // Detect when the user drags the window out of fullscreen mode
+        // Windows automatically exits fullscreen when the user drags from the top of the screen
+        if (args.DidPresenterChange)
+        {
+            var currentPresenterKind = sender.Presenter.Kind;
+            
+            // Only send the message if we're transitioning from FullScreen to Overlapped
+            // This filters out normal windowed operations like maximize/restore
+            if (_previousPresenterKind == AppWindowPresenterKind.FullScreen && 
+                currentPresenterKind == AppWindowPresenterKind.Overlapped)
+            {
+                // Mark that we're transitioning from fullscreen
+                // This prevents saving the fullscreen dimensions as preferred window bounds
+                _isTransitioningFromFullscreen = true;
+                
+                // Notify the layout system that we've exited fullscreen via drag
+                // This ensures the UI state is synchronized with the window state
+                _messengerService.Send(new ExitedFullscreenViaDragMessage());
+            }
+            
+            // Update the tracked presenter kind
+            _previousPresenterKind = currentPresenterKind;
+        }
+
         if (args.DidSizeChange || 
             args.DidPositionChange || 
             args.DidPresenterChange)
@@ -279,9 +311,19 @@ public sealed class WindowStateHelper
                     _editorSettings.IsWindowMaximized = isMaximized;
 
                     // Only save bounds when not maximized or minimized
-                    if (presenter.State == OverlappedPresenterState.Restored)
+                    // Also skip if we're transitioning from fullscreen to avoid saving fullscreen
+                    // dimensions (happens when the user drags the window out of fullscreen)
+                    if (presenter.State == OverlappedPresenterState.Restored && 
+                        !_isTransitioningFromFullscreen)
                     {
                         SaveWindowBounds();
+                    }
+                    
+                    // Clear the transition flag after the first restored state is processed
+                    // The next size/position change will be the actual windowed dimensions
+                    if (_isTransitioningFromFullscreen && presenter.State == OverlappedPresenterState.Restored)
+                    {
+                        _isTransitioningFromFullscreen = false;
                     }
                 }
             }
