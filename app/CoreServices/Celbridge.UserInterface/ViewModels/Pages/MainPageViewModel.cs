@@ -48,12 +48,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         return OnNavigate?.Invoke(pageType, parameter)!;
     }
 
-    public Result SelectNavigationItemByNavigationTag(string navigationTag)
-    {
-        // This is now handled by the TitleBar navigation directly
-        return Result.Ok();
-    }
-
     public string GetCurrentPageName()
     {
         return ReturnCurrentPage();

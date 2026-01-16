@@ -17,11 +17,6 @@ public interface INavigationProvider
     Result NavigateToPage(Type pageType, object parameter);
 
     /// <summary>
-    /// Select the specified Navigation Item in our Main Navigaion View by name.
-    /// </summary>
-    Result SelectNavigationItemByNavigationTag(string navigationTag);
-
-    /// <summary>
     /// Return the Instance Name of the page currently displayed in the NavigationView Panel, or "None".
     /// </summary>
     string GetCurrentPageName();
