@@ -53,9 +53,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         explorerService.ResourceTreeView = resourceTreeView;
 
-        // Populate the tree view with resources that were loaded before the UI was ready
-        _ = resourceTreeView.PopulateTreeView(_explorerService.ResourceRegistry);
-
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
     }
 
