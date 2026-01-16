@@ -10,6 +10,9 @@ public class MainMenu
     private const string MenuTag = "Menu";
     private const string NewProjectTag = "NewProject";
     private const string OpenProjectTag = "OpenProject";
+    private const string OpenRecentTag = "OpenRecent";
+    private const string RecentProjectTagPrefix = "RecentProject_";
+    private const string ClearRecentProjectsTag = "ClearRecentProjects";
     private const string ReloadProjectTag = "ReloadProject";
     private const string CloseProjectTag = "CloseProject";
     private const string SettingsTag = "Settings";
@@ -81,6 +84,10 @@ public class MainMenu
             isEnabled: true);
         _menuNavItem.MenuItems.Add(openProjectNavItem);
 
+        // Open Recent submenu
+        var openRecentNavItem = CreateOpenRecentMenuItem();
+        _menuNavItem.MenuItems.Add(openRecentNavItem);
+
         // Reload Project
         var reloadProjectNavItem = CreateMenuItem(
             tag: ReloadProjectTag,
@@ -112,20 +119,77 @@ public class MainMenu
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
-        // Exit
-        var exitIcon = new FontIcon 
-        { 
-            FontFamily = new FontFamily("Segoe MDL2 Assets"), 
-            Glyph = "\uE7E8" 
-        };
 
+
+        // Exit
         var exitNavItem = CreateMenuItem(
             tag: ExitTag,
-            icon: exitIcon,
+            icon: new FontIcon 
+            { 
+                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                Glyph = "\uE7E8"
+            },
             label: _stringLocalizer.GetString("MainMenu_Exit"),
             tooltip: _stringLocalizer.GetString("MainMenu_ExitTooltip"),
             isEnabled: true);
         _menuNavItem.MenuItems.Add(exitNavItem);
+    }
+
+    private NavigationViewItem CreateOpenRecentMenuItem()
+    {
+        var recentProjects = ViewModel.GetRecentProjects();
+        var hasRecentProjects = recentProjects.Count > 0;
+
+        var openRecentNavItem = new NavigationViewItem
+        {
+            Tag = OpenRecentTag,
+            Icon = new SymbolIcon(Symbol.Clock),
+            Content = _stringLocalizer.GetString("MainMenu_OpenRecent"),
+            IsEnabled = hasRecentProjects
+        };
+        openRecentNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+
+        ToolTipService.SetToolTip(openRecentNavItem, _stringLocalizer.GetString("MainMenu_OpenRecentTooltip"));
+        ToolTipService.SetPlacement(openRecentNavItem, PlacementMode.Right);
+
+        if (hasRecentProjects)
+        {
+            // Add recent project items showing project name with full path in tooltip
+            foreach (var recentProject in recentProjects)
+            {
+                var projectNavItem = new NavigationViewItem
+                {
+                    Tag = RecentProjectTagPrefix + recentProject.ProjectFilePath,
+                    Content = recentProject.ProjectName
+                };
+                projectNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+
+                // Show full path in tooltip
+                ToolTipService.SetToolTip(projectNavItem, recentProject.ProjectFilePath);
+                ToolTipService.SetPlacement(projectNavItem, PlacementMode.Right);
+
+                openRecentNavItem.MenuItems.Add(projectNavItem);
+            }
+
+            // Add separator before "Clear recently opened"
+            openRecentNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+
+            // Add "Clear recently opened" option
+            var clearRecentNavItem = new NavigationViewItem
+            {
+                Tag = ClearRecentProjectsTag,
+                Icon = new SymbolIcon(Symbol.Delete),
+                Content = _stringLocalizer.GetString("MainMenu_ClearRecentProjects")
+            };
+            clearRecentNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+
+            ToolTipService.SetToolTip(clearRecentNavItem, _stringLocalizer.GetString("MainMenu_ClearRecentProjectsTooltip"));
+            ToolTipService.SetPlacement(clearRecentNavItem, PlacementMode.Right);
+
+            openRecentNavItem.MenuItems.Add(clearRecentNavItem);
+        }
+
+        return openRecentNavItem;
     }
 
     private NavigationViewItem CreateMenuItem(string tag, IconElement icon, string label, string tooltip, bool isEnabled)
@@ -167,6 +231,15 @@ public class MainMenu
             return;
         }
 
+        // Handle recent project items
+        if (tag.StartsWith(RecentProjectTagPrefix))
+        {
+            var projectFilePath = tag.Substring(RecentProjectTagPrefix.Length);
+            ViewModel.OpenRecentProject(projectFilePath);
+            MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         switch (tag)
         {
             case MenuTag:
@@ -180,6 +253,15 @@ public class MainMenu
 
             case OpenProjectTag:
                 ViewModel.OpenProject();
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case OpenRecentTag:
+                // Open Recent submenu just opens its flyout, no action needed
+                break;
+
+            case ClearRecentProjectsTag:
+                ViewModel.ClearRecentProjects();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
