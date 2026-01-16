@@ -88,19 +88,8 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Map panel size property changes
-        switch (e.PropertyName)
-        {
-            case nameof(IEditorSettings.PrimaryPanelWidth):
-                OnPropertyChanged(nameof(PrimaryPanelWidth));
-                break;
-            case nameof(IEditorSettings.SecondaryPanelWidth):
-                OnPropertyChanged(nameof(SecondaryPanelWidth));
-                break;
-            default:
-                OnPropertyChanged(e);
-                break;
-        }
+        // Forward property change notifications from editor settings
+        OnPropertyChanged(e);
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
