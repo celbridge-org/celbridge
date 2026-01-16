@@ -87,14 +87,14 @@ public interface IEditorSettings : INotifyPropertyChanged
     PanelVisibilityFlags PreferredPanelVisibility { get; set; }
 
     /// <summary>
-    /// Width of the Context panel.
+    /// Width of the Primary panel.
     /// </summary>
-    float ContextPanelWidth { get; set; }
+    float PrimaryPanelWidth { get; set; }
 
     /// <summary>
-    /// Width of the Inspector panel.
+    /// Width of the Secondary panel.
     /// </summary>
-    float InspectorPanelWidth { get; set; }
+    float SecondaryPanelWidth { get; set; }
 
     /// <summary>
     /// Height of the Console panel.

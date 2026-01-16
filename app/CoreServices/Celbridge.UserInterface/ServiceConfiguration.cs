@@ -56,6 +56,7 @@ public static class ServiceConfiguration
         services.AddTransient<HomePageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<TitleBarViewModel>();
+        services.AddTransient<MainMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();
@@ -74,11 +75,26 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = ServiceLocator.AcquireService<INavigationService>();
+        var navigationService = ServiceLocator.AcquireService<INavigationService>() as NavigationService;
+        Guard.IsNotNull(navigationService);
 
-        navigationService.RegisterPage(nameof(EmptyPage), typeof(EmptyPage));
-        navigationService.RegisterPage(nameof(HomePage), typeof(HomePage));
-        navigationService.RegisterPage(nameof(SettingsPage), typeof(SettingsPage));
-        navigationService.RegisterPage(nameof(CommunityPage), typeof(CommunityPage));
+        // EmptyPage is used as a temporary navigation target when unloading workspaces
+        navigationService.RegisterPage("Empty", typeof(EmptyPage), ApplicationPage.None);
+        
+        // Register application pages
+        navigationService.RegisterPage(
+            NavigationConstants.HomeTag, 
+            typeof(HomePage), 
+            ApplicationPage.Home);
+                
+        navigationService.RegisterPage(
+            NavigationConstants.CommunityTag, 
+            typeof(CommunityPage), 
+            ApplicationPage.Community);
+
+        navigationService.RegisterPage(
+            NavigationConstants.SettingsTag,
+            typeof(SettingsPage),
+            ApplicationPage.Settings);
     }
 }

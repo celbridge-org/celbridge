@@ -1,30 +1,19 @@
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
-using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
 
 public partial class MainPageViewModel : ObservableObject, INavigationProvider
 {
-    private const string HomePageName = "HomePage";
-    private const string SettingsPageName = "SettingsPage";
-    private const string WorkspacePageName = "WorkspacePage";
-    private const string CommunityPageName = "CommunityPage";
-
     private readonly IMessengerService _messengerService;
     private readonly Logging.ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
     private readonly IUndoService _undoService;
-    private readonly MainMenuUtils _mainMenuUtils;
-    private readonly IProjectService _projectService;
-    private readonly IUserInterfaceService _userInterfaceService;
 
     public MainPageViewModel(
         Logging.ILogger<MainPageViewModel> logger,
@@ -32,11 +21,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         INavigationService navigationService,
         ICommandService commandService,
         IEditorSettings editorSettings,
-        IUndoService undoService,
-        IWorkspaceWrapper workspaceWrapper,
-        MainMenuUtils mainMenuUtils,
-        IProjectService projectService,
-        IUserInterfaceService userInterfaceService)
+        IUndoService undoService)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -44,26 +29,9 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _commandService = commandService;
         _editorSettings = editorSettings;
         _undoService = undoService;
-        _workspaceWrapper = workspaceWrapper;
-        _mainMenuUtils = mainMenuUtils;
-        _projectService = projectService;
-        _userInterfaceService = userInterfaceService;
     }
 
-    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
-
-    [ObservableProperty]
-    private bool _isWorkspacePageActive;
-
     public event Func<Type, object, Result>? OnNavigate;
-
-#pragma warning disable CS0067 // Event is used in MainPage.cs for navigation
-    public event Func<string, Result>? SelectNavigationItem;
-#pragma warning restore CS0067
-
-    public delegate string ReturnCurrentPageDelegate();
-
-    public ReturnCurrentPageDelegate ReturnCurrentPage = () => string.Empty;
 
     public Result NavigateToPage(Type pageType)
     {
@@ -76,34 +44,8 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         return OnNavigate?.Invoke(pageType, parameter)!;
     }
 
-    public Result SelectNavigationItemByNavigationTag(string navigationTag)
-    {
-        OnSelectNavigationItem(navigationTag);
-        return Result.Ok();
-    }
-
-    public string GetCurrentPageName()
-    {
-        return ReturnCurrentPage();
-    }
-
     public void OnMainPage_Loaded()
     {
-        _messengerService.Register<WorkspaceLoadedMessage>(this, (r, m) =>
-        {
-            OnPropertyChanged(nameof(IsWorkspaceLoaded));
-        });
-
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, (r, m) =>
-        {
-            OnPropertyChanged(nameof(IsWorkspaceLoaded));
-        });
-
-        _messengerService.Register<ReloadProjectMessage>(this, (r, m) =>
-        {
-         _ = ReloadProjectAsync();
-        });
-
         // Register this class as the navigation provider for the application
         var navigationService = _navigationService as NavigationService;
         Guard.IsNotNull(navigationService);
@@ -122,128 +64,12 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         else
         {
             // No previous project to load, so navigate to the home page
-            _navigationService.NavigateToPage(HomePageName);
+            _navigationService.NavigateToPage(NavigationConstants.HomeTag);
         }
     }
 
     public void OnMainPage_Unloaded()
     { }
-
-    public void OnSelectNavigationItem(string tag)
-    {
-        switch (tag)
-        {
-            case NavigationConstants.HomeTag:
-                SetActivePage(ApplicationPage.Home);
-                _navigationService.NavigateToPage(HomePageName);
-                return;
-
-            case NavigationConstants.NewProjectTag:
-                _ = _mainMenuUtils.ShowNewProjectDialogAsync();
-                return;
-
-            case NavigationConstants.OpenProjectTag:
-                _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
-                return;
-
-            case NavigationConstants.ReloadProjectTag:
-                _ = ReloadProjectAsync();
-                return;
-
-            case NavigationConstants.SettingsTag:
-                SetActivePage(ApplicationPage.Settings);
-                _navigationService.NavigateToPage(SettingsPageName);
-                return;
-
-            case NavigationConstants.ExplorerTag:
-                SetActivePage(ApplicationPage.Workspace);
-                _navigationService.NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Explorer);
-                }
-                return;
-
-            case NavigationConstants.SearchTag:
-                SetActivePage(ApplicationPage.Workspace);
-                _navigationService.NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Search);
-                }
-                return;
-
-            case NavigationConstants.DebugTag:
-                SetActivePage(ApplicationPage.Workspace);
-                _navigationService.NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.Debug);
-                }
-                return;
-
-            case NavigationConstants.RevisionControlTag:
-                SetActivePage(ApplicationPage.Workspace);
-                _navigationService.NavigateToPage(WorkspacePageName);
-                if (_workspaceWrapper.IsWorkspacePageLoaded)
-                {
-                    _workspaceWrapper.WorkspaceService.SetCurrentContextAreaUsage(ContextAreaUse.VersionControl);
-                }
-                return;
-
-            case NavigationConstants.CommunityTag:
-                SetActivePage(ApplicationPage.Community);
-                _navigationService.NavigateToPage(CommunityPageName);
-                return;
-        }
-
-        _logger.LogError($"Failed to navigate to item {tag}.");
-    }
-
-    private void SetActivePage(ApplicationPage page)
-    {
-        // Update the local property for backward compatibility with bindings
-        bool isWorkspacePage = page == ApplicationPage.Workspace;
-        if (IsWorkspacePageActive != isWorkspacePage)
-        {
-            IsWorkspacePageActive = isWorkspacePage;
-
-            // Send workspace-specific messages for backward compatibility
-            if (isWorkspacePage)
-            {
-                var message = new WorkspacePageActivatedMessage();
-                _messengerService.Send(message);
-            }
-            else
-            {
-                var message = new WorkspacePageDeactivatedMessage();
-                _messengerService.Send(message);
-            }
-        }
-
-        // Set the active page in the UserInterfaceService (sends ActivePageChangedMessage)
-        _userInterfaceService.SetActivePage(page);
-    }
-
-    private async Task ReloadProjectAsync()
-    {
-        if (_projectService.CurrentProject is not null)
-        {
-            // Change the Navigation Cache status of the active persistent pages to Disabled, to allow them to be destroyed.
-            _navigationService.ClearPersistenceOfAllLoadedPages();
-
-            string projectPath = _projectService.CurrentProject.ProjectFilePath;
-
-            // Close any loaded project.
-            // This will fail if there's no project currently open, but we can just ignore that.
-            await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
-
-            _commandService.Execute<ILoadProjectCommand>((command) =>
-            {
-                command.ProjectFilePath = projectPath;
-            });
-        }
-    }
 
     public void Undo()
     {

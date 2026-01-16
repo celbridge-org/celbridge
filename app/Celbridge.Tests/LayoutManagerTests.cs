@@ -305,8 +305,8 @@ public class LayoutManagerTests
     {
         _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
 
-        _editorSettings.Received(1).ContextPanelWidth = 300f;
-        _editorSettings.Received(1).InspectorPanelWidth = 300f;
+        _editorSettings.Received(1).PrimaryPanelWidth = 300f;
+        _editorSettings.Received(1).SecondaryPanelWidth = 300f;
         _editorSettings.Received(1).ConsolePanelHeight = 350f;
     }
 

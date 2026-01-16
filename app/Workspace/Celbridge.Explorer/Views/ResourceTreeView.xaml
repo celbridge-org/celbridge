@@ -12,20 +12,6 @@
     Background="{ThemeResource ApplicationBackgroundBrush}">
 
   <UserControl.Resources>
-    <!-- Storyboard animations for toolbar fade in/out -->
-    <Storyboard x:Name="ToolbarFadeIn">
-      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
-                       Storyboard.TargetProperty="Opacity"
-                       To="1"
-                       Duration="0:0:0.15" />
-    </Storyboard>
-    <Storyboard x:Name="ToolbarFadeOut">
-      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
-                       Storyboard.TargetProperty="Opacity"
-                       To="0"
-                       Duration="0:0:0.15" />
-    </Storyboard>
-
     <MenuFlyout x:Name="ResourceContextMenu"
                 Placement="RightEdgeAlignedTop"
                 Opening="ResourceContextMenu_Opening">
@@ -123,116 +109,19 @@
                                     FileTemplate="{StaticResource FileTemplate}" />
   </UserControl.Resources>
 
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
-
-    <!-- Project Name and Toolbar Row -->
-    <Grid Grid.Row="0"
-          Margin="8,4,8,4">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <!-- Project Folder Name -->
-      <Grid Grid.Column="0"
-            VerticalAlignment="Center">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <FontIcon Grid.Column="0"
-                  FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE8D5;"
-                  FontSize="16"
-                  Margin="0,0,6,0"
-                  VerticalAlignment="Center"
-                  Foreground="#FFCC40" />
-        <TextBlock Grid.Column="1"
-                   Text="{x:Bind ViewModel.ProjectFolderName, Mode=OneWay}"
-                   VerticalAlignment="Center"
-                   FontWeight="SemiBold"
-                   TextTrimming="CharacterEllipsis" />
-      </Grid>
-
-      <!-- Toolbar Buttons -->
-      <StackPanel x:Name="ToolbarPanel"
-                  Grid.Column="1"
-                  Orientation="Horizontal"
-                  Spacing="0"
-                  Opacity="0">
-        <StackPanel.Resources>
-          <!-- Button theme resources are overridden on the parent to give all child buttons the same hover behaviour -->
-          <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-          <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SystemListLowColor}" />
-          <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SystemListMediumColor}" />
-          <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
-          <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
-        </StackPanel.Resources>
-        <Button x:Name="AddFileButton"
-                ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
-                Padding="4"
-                Click="ToolbarAddFile_Click">
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE4DE;"
-                    FontSize="20" />
-        </Button>
-        <Button x:Name="AddFolderButton"
-                ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
-                Padding="4"
-                Click="ToolbarAddFolder_Click">
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE645;"
-                    FontSize="20" />
-        </Button>
-        <!-- Not sure if this is really needed - add it back if anyone complains
-        <Button x:Name="RefreshExplorerButton"
-                ToolTipService.ToolTip="{x:Bind RefreshExplorerTooltipString}"
-                Padding="4"
-                Click="ToolbarRefreshExplorer_Click">
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xF06AE;"
-                    FontSize="20" />
-        </Button>
-        -->
-        <Button x:Name="CollapseFoldersButton"
-                ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
-                Padding="4"
-                Click="ToolbarCollapseFolders_Click">
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE660;"
-                    FontSize="20" />
-        </Button>
-        <Button x:Name="ProjectSettingsButton"
-                ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
-                Padding="4"
-                Click="ToolbarProjectSettings_Click">
-          <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xF6AB;"
-                    FontSize="20" />
-        </Button>
-      </StackPanel>
-    </Grid>
-
-    <!-- Resource Tree View -->
-    <ScrollViewer Grid.Row="1"
-                  VerticalScrollBarVisibility="Auto"
-                  VerticalAlignment="Stretch"
-                  ContextFlyout="{StaticResource ResourceContextMenu}">
-      <muxc:TreeView x:Name="ResourcesTreeView"
-                   ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
-                   CanReorderItems="True"
-                   SelectionMode="Single"
-                   KeyDown="TreeView_KeyDown"
-                   DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
-                   AllowDrop="True"
-                   DragOver="ResourcesTreeView_DragOver"
-                   Drop="ResourcesTreeView_Drop"
-                   SelectionChanged="ResourcesTreeView_SelectionChanged" />
-    </ScrollViewer>
-  </Grid>
+  <!-- Resource Tree View -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto"
+                VerticalAlignment="Stretch"
+                ContextFlyout="{StaticResource ResourceContextMenu}">
+    <muxc:TreeView x:Name="ResourcesTreeView"
+                 ItemTemplateSelector="{StaticResource ResourceTemplateSelector}"
+                 CanReorderItems="True"
+                 SelectionMode="Single"
+                 KeyDown="TreeView_KeyDown"
+                 DragItemsCompleted="ResourcesTreeView_DragItemsCompleted"
+                 AllowDrop="True"
+                 DragOver="ResourcesTreeView_DragOver"
+                 Drop="ResourcesTreeView_Drop"
+                 SelectionChanged="ResourcesTreeView_SelectionChanged" />
+  </ScrollViewer>
 </UserControl>
