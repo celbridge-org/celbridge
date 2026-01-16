@@ -23,16 +23,6 @@ public record WorkspaceWillPopulatePanelsMessage();
 public record WorkspaceUnloadedMessage();
 
 /// <summary>
-/// Sent when the workspace page persistence mode is changed.
-/// </summary>
-public record SetWorkspacePagePersistenceMessage(bool isPersistant);
-
-/// <summary>
-/// Sent when the workspace page is unloaded.
-/// </summary>
-public record UnloadWorkspacePageMessage();
-
-/// <summary>
 /// Sent when the workspace page becomes the active page in the navigation view.
 /// </summary>
 public record WorkspacePageActivatedMessage();

@@ -8,19 +8,22 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public sealed partial class FullscreenToolbar : UserControl
 {
+    private const double TriggerZoneHeight = 4; // pixels from top to trigger showing the toolbar
+    private const double AutoHideDelay = 1.5; // seconds
+    private const double AnimationDuration = 150; // ms
+
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly DispatcherTimer _hideTimer;
     
     private bool _isFullscreenModeActive;
     private bool _isToolbarVisible;
     private bool _isMouseOverToolbar;
+    private Storyboard? _currentAnimation;
     
-    private const double TRIGGER_ZONE_HEIGHT = 8; // pixels from top to trigger show
-    private const double AUTO_HIDE_DELAY_SECONDS = 1.5; // seconds before auto-hiding
-    private const double ANIMATION_DURATION_MS = 150; // animation speed
-    private const double TOOLBAR_HEIGHT = 36; // height of the toolbar
+    public string ExitFullscreenString => _stringLocalizer.GetString("FullScreenToolbar_ExitFullscreen");
 
     public FullscreenToolbar()
     {
@@ -29,20 +32,23 @@ public sealed partial class FullscreenToolbar : UserControl
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        this.VerticalAlignment = VerticalAlignment.Top;
-        this.HorizontalAlignment = HorizontalAlignment.Stretch;
+        this.DataContext = this;
 
         // Setup auto-hide timer
         _hideTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(AUTO_HIDE_DELAY_SECONDS)
+            Interval = TimeSpan.FromSeconds(AutoHideDelay)
         };
         _hideTimer.Tick += HideTimer_Tick;
 
         // Track mouse entering/leaving the toolbar
         ToolbarContainer.PointerEntered += ToolbarContainer_PointerEntered;
         ToolbarContainer.PointerExited += ToolbarContainer_PointerExited;
+        
+        // Track mouse entering the trigger zone (this works even over WebView2)
+        TriggerZone.PointerEntered += TriggerZone_PointerEntered;
 
         Loaded += FullscreenToolbar_Loaded;
         Unloaded += FullscreenToolbar_Unloaded;
@@ -55,7 +61,9 @@ public sealed partial class FullscreenToolbar : UserControl
         
         // Check if already in a fullscreen mode
         _isFullscreenModeActive = _layoutManager.IsFullScreen;
-
+        
+        // Update trigger zone visibility based on current mode
+        UpdateTriggerZoneVisibility();
     }
 
     private void FullscreenToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -63,6 +71,7 @@ public sealed partial class FullscreenToolbar : UserControl
         _hideTimer.Stop();
         ToolbarContainer.PointerEntered -= ToolbarContainer_PointerEntered;
         ToolbarContainer.PointerExited -= ToolbarContainer_PointerExited;
+        TriggerZone.PointerEntered -= TriggerZone_PointerEntered;
         Loaded -= FullscreenToolbar_Loaded;
         Unloaded -= FullscreenToolbar_Unloaded;
         _messengerService.UnregisterAll(this);
@@ -77,6 +86,25 @@ public sealed partial class FullscreenToolbar : UserControl
             // Exiting fullscreen mode - hide toolbar immediately
             HideToolbar(animate: false);
         }
+        
+        // Update trigger zone visibility
+        UpdateTriggerZoneVisibility();
+    }
+    
+    private void UpdateTriggerZoneVisibility()
+    {
+        // Show the trigger zone only in fullscreen modes when the toolbar is not visible.
+        TriggerZone.Visibility = _isFullscreenModeActive && !_isToolbarVisible 
+            ? Visibility.Visible 
+            : Visibility.Collapsed;
+    }
+    
+    private void TriggerZone_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isFullscreenModeActive)
+        {
+            ShowToolbar();
+        }
     }
 
     /// <summary>
@@ -90,7 +118,7 @@ public sealed partial class FullscreenToolbar : UserControl
         }
 
         // Check if mouse is near the top of the window
-        if (yPosition <= TRIGGER_ZONE_HEIGHT)
+        if (yPosition <= TriggerZoneHeight)
         {
             ShowToolbar();
         }
@@ -120,7 +148,7 @@ public sealed partial class FullscreenToolbar : UserControl
     {
         _hideTimer.Stop();
         // Reset interval to normal
-        _hideTimer.Interval = TimeSpan.FromSeconds(AUTO_HIDE_DELAY_SECONDS);
+        _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
 
         // Only hide if not hovering over toolbar and still in fullscreen mode
         if (_isFullscreenModeActive && !_isMouseOverToolbar)
@@ -135,31 +163,52 @@ public sealed partial class FullscreenToolbar : UserControl
         {
             // Reset hide timer
             _hideTimer.Stop();
-            _hideTimer.Interval = TimeSpan.FromSeconds(AUTO_HIDE_DELAY_SECONDS);
+            _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
             _hideTimer.Start();
             return;
         }
 
+        // Stop any running animation before starting a new one
+        if (_currentAnimation != null)
+        {
+            _currentAnimation.Stop();
+            _currentAnimation = null;
+        }
+
         _isToolbarVisible = true;
         ToolbarContainer.Visibility = Visibility.Visible;
+        
+        // Hide the trigger zone while toolbar is visible (toolbar handles its own events)
+        TriggerZone.Visibility = Visibility.Collapsed;
 
-        // Animate slide down
+        // Animate slide down from current position
         var storyboard = new Storyboard();
         var slideAnimation = new DoubleAnimation
         {
-            From = -TOOLBAR_HEIGHT,
+            From = SlideTransform.Y,  // Start from current position in case animation was interrupted
             To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(ANIMATION_DURATION_MS)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(AnimationDuration)),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
 
         Storyboard.SetTarget(slideAnimation, SlideTransform);
         Storyboard.SetTargetProperty(slideAnimation, "Y");
         storyboard.Children.Add(slideAnimation);
+        
+        // Track the current animation
+        _currentAnimation = storyboard;
+        storyboard.Completed += (s, e) => 
+        {
+            if (_currentAnimation == storyboard)
+            {
+                _currentAnimation = null;
+            }
+        };
+        
         storyboard.Begin();
 
         // Start hide timer
-        _hideTimer.Interval = TimeSpan.FromSeconds(AUTO_HIDE_DELAY_SECONDS);
+        _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
         _hideTimer.Start();
     }
 
@@ -173,31 +222,50 @@ public sealed partial class FullscreenToolbar : UserControl
         _hideTimer.Stop();
         _isToolbarVisible = false;
 
+        // Stop any running animation before starting a new one
+        if (_currentAnimation != null)
+        {
+            _currentAnimation.Stop();
+            _currentAnimation = null;
+        }
+
         if (animate)
         {
-            // Animate slide up
+            // Animate slide up from current position
             var storyboard = new Storyboard();
             var slideAnimation = new DoubleAnimation
             {
-                From = 0,
-                To = -TOOLBAR_HEIGHT,
-                Duration = new Duration(TimeSpan.FromMilliseconds(ANIMATION_DURATION_MS)),
+                From = SlideTransform.Y,  // Start from current position in case animation was interrupted
+                To = -ToolbarContainer.Height,
+                Duration = new Duration(TimeSpan.FromMilliseconds(AnimationDuration)),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
 
             Storyboard.SetTarget(slideAnimation, SlideTransform);
             Storyboard.SetTargetProperty(slideAnimation, "Y");
             storyboard.Children.Add(slideAnimation);
+            
+            // Track the current animation
+            _currentAnimation = storyboard;
             storyboard.Completed += (s, e) =>
             {
+                if (_currentAnimation == storyboard)
+                {
+                    _currentAnimation = null;
+                }
                 ToolbarContainer.Visibility = Visibility.Collapsed;
+                // Show trigger zone again after toolbar is hidden
+                UpdateTriggerZoneVisibility();
             };
+            
             storyboard.Begin();
         }
         else
         {
-            SlideTransform.Y = -TOOLBAR_HEIGHT;
+            SlideTransform.Y = -ToolbarContainer.Height;
             ToolbarContainer.Visibility = Visibility.Collapsed;
+            // Show trigger zone again after toolbar is hidden
+            UpdateTriggerZoneVisibility();
         }
     }
 

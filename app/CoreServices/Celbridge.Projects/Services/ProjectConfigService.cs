@@ -36,10 +36,6 @@ public partial class ProjectConfigService : IProjectConfigService
             _root = (TomlTable)parse.ToModel();
             _config = MapRootToModel(_root);
 
-            // Notify Main Page to allow UI updates for shortcuts.
-            IProjectService projectService = ServiceLocator.AcquireService<IProjectService>();
-            projectService.InvokeRebuildShortcutsUI(_config.Shortcuts.NavigationBar);
-
             return Result.Ok();
         }
         catch (Exception ex)

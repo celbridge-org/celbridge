@@ -72,7 +72,7 @@
 
                         <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
 
-                        <!-- Reset Layout Button (only visible on Workspace page) -->
+                        <!-- Reset Layout Button -->
                         <Button x:Name="ResetLayoutButton"
                                 Click="ResetLayoutButton_Click"
                                 HorizontalAlignment="Stretch">
@@ -86,20 +86,20 @@
                       FontSize="18" />
         </Button>
         
-        <!-- Panel Toggle Buttons (only visible on Workspace page) -->
+        <!-- Panel Toggle Buttons -->
         <StackPanel x:Name="PanelToggleButtons" Orientation="Horizontal">
-            <!-- Explorer Panel Toggle (Left sidebar icon) -->
-            <Button x:Name="ToggleExplorerPanelButton"
-                    Click="ToggleExplorerPanelButton_Click"
+            <!-- Primary Panel Toggle -->
+            <Button x:Name="TogglePrimaryPanelButton"
+                    Click="TogglePrimaryPanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
                     Padding="6"
                     Background="Transparent"
                     BorderThickness="0">
-                <icons:ExplorerPanelIcon x:Name="ExplorerPanelIcon"/>
+                <icons:PrimaryPanelIcon x:Name="PrimaryPanelIcon"/>
             </Button>
             
-            <!-- Console Panel Toggle (Bottom panel icon) -->
+            <!-- Console Panel Toggle -->
             <Button x:Name="ToggleConsolePanelButton"
                     Click="ToggleConsolePanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
@@ -110,15 +110,15 @@
                 <icons:ConsolePanelIcon x:Name="ConsolePanelIcon"/>
             </Button>
             
-            <!-- Inspector Panel Toggle (Right sidebar icon) -->
-            <Button x:Name="ToggleInspectorPanelButton"
-                    Click="ToggleInspectorPanelButton_Click"
+            <!-- Secondary Panel Toggle -->
+            <Button x:Name="ToggleSecondaryPanelButton"
+                    Click="ToggleSecondaryPanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
                     Padding="6"
                     Background="Transparent"
                     BorderThickness="0">
-                <icons:InspectorPanelIcon x:Name="InspectorPanelIcon"/>
+                <icons:SecondaryPanelIcon x:Name="SecondaryPanelIcon"/>
             </Button>
         </StackPanel>
         

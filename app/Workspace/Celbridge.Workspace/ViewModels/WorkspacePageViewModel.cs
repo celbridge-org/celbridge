@@ -27,16 +27,17 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    public float ContextPanelWidth
+    // Panel width/height properties now use Primary/Secondary naming
+    public float PrimaryPanelWidth
     {
-        get => _editorSettings.ContextPanelWidth;
-        set => _editorSettings.ContextPanelWidth = value;
+        get => _editorSettings.PrimaryPanelWidth;
+        set => _editorSettings.PrimaryPanelWidth = value;
     }
 
-    public float InspectorPanelWidth
+    public float SecondaryPanelWidth
     {
-        get => _editorSettings.InspectorPanelWidth;
-        set => _editorSettings.InspectorPanelWidth = value;
+        get => _editorSettings.SecondaryPanelWidth;
+        set => _editorSettings.SecondaryPanelWidth = value;
     }
 
     public float ConsolePanelHeight
@@ -47,9 +48,10 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public bool IsFullScreen => _layoutManager.IsFullScreen;
 
-    public bool IsContextPanelVisible => _layoutManager.IsContextPanelVisible;
+    // Panel visibility properties now use Primary/Secondary naming
+    public bool IsPrimaryPanelVisible => _layoutManager.IsContextPanelVisible;
 
-    public bool IsInspectorPanelVisible => _layoutManager.IsInspectorPanelVisible;
+    public bool IsSecondaryPanelVisible => _layoutManager.IsInspectorPanelVisible;
 
     public bool IsConsolePanelVisible => _layoutManager.IsConsolePanelVisible;
 
@@ -86,7 +88,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Forward editor setting change notifications for panel sizes
+        // Forward property change notifications from editor settings
         OnPropertyChanged(e);
     }
 
@@ -99,8 +101,8 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
     {
         // Notify that panel visibility properties have changed
-        OnPropertyChanged(nameof(IsContextPanelVisible));
-        OnPropertyChanged(nameof(IsInspectorPanelVisible));
+        OnPropertyChanged(nameof(IsPrimaryPanelVisible));
+        OnPropertyChanged(nameof(IsSecondaryPanelVisible));
         OnPropertyChanged(nameof(IsConsolePanelVisible));
     }
 
