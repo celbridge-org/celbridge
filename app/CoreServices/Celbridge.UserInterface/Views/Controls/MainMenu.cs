@@ -7,6 +7,14 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public class MainMenu
 {
+    private const string MenuTag = "Menu";
+    private const string NewProjectTag = "NewProject";
+    private const string OpenProjectTag = "OpenProject";
+    private const string ReloadProjectTag = "ReloadProject";
+    private const string CloseProjectTag = "CloseProject";
+    private const string SettingsTag = "Settings";
+    private const string ExitTag = "Exit";
+
     private readonly IStringLocalizer _stringLocalizer;
     private readonly NavigationViewItem _menuNavItem;
 
@@ -24,7 +32,7 @@ public class MainMenu
 
         _menuNavItem = new NavigationViewItem
         {
-            Tag = "Menu",
+            Tag = MenuTag,
             Icon = new SymbolIcon(Symbol.GlobalNavigationButton)
         };
         _menuNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
@@ -57,7 +65,7 @@ public class MainMenu
 
         // New Project
         var newProjectNavItem = CreateMenuItem(
-            tag: "NewProject",
+            tag: NewProjectTag,
             icon: new SymbolIcon(Symbol.NewFolder),
             label: _stringLocalizer.GetString("MainMenu_NewProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_NewProjectTooltip"),
@@ -66,7 +74,7 @@ public class MainMenu
 
         // Open Project
         var openProjectNavItem = CreateMenuItem(
-            tag: "OpenProject",
+            tag: OpenProjectTag,
             icon: new SymbolIcon(Symbol.OpenLocal),
             label: _stringLocalizer.GetString("MainMenu_OpenProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_OpenProjectTooltip"),
@@ -75,7 +83,7 @@ public class MainMenu
 
         // Reload Project
         var reloadProjectNavItem = CreateMenuItem(
-            tag: "ReloadProject",
+            tag: ReloadProjectTag,
             icon: new SymbolIcon(Symbol.Refresh),
             label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip"),
@@ -84,7 +92,7 @@ public class MainMenu
 
         // Close Project
         var closeProjectNavItem = CreateMenuItem(
-            tag: "CloseProject",
+            tag: CloseProjectTag,
             icon: new SymbolIcon(Symbol.Cancel),
             label: _stringLocalizer.GetString("MainMenu_CloseProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_CloseProjectTooltip"),
@@ -95,7 +103,7 @@ public class MainMenu
 
         // Settings
         var settingsNavItem = CreateMenuItem(
-            tag: "Settings",
+            tag: SettingsTag,
             icon: new SymbolIcon(Symbol.Setting),
             label: _stringLocalizer.GetString("MainMenu_Settings"),
             tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
@@ -112,7 +120,7 @@ public class MainMenu
         };
 
         var exitNavItem = CreateMenuItem(
-            tag: "Exit",
+            tag: ExitTag,
             icon: exitIcon,
             label: _stringLocalizer.GetString("MainMenu_Exit"),
             tooltip: _stringLocalizer.GetString("MainMenu_ExitTooltip"),
@@ -161,36 +169,36 @@ public class MainMenu
 
         switch (tag)
         {
-            case "Menu":
+            case MenuTag:
                 // Menu item just opens its flyout, no action needed
                 break;
 
-            case "NewProject":
+            case NewProjectTag:
                 ViewModel.NewProject();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case "OpenProject":
+            case OpenProjectTag:
                 ViewModel.OpenProject();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case "ReloadProject":
+            case ReloadProjectTag:
                 _ = ViewModel.ReloadProjectAsync();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case "CloseProject":
+            case CloseProjectTag:
                 _ = ViewModel.CloseProjectAsync();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case "Settings":
+            case SettingsTag:
                 ViewModel.NavigateToSettings();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case "Exit":
+            case ExitTag:
                 ViewModel.ExitApplication();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
