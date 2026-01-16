@@ -30,14 +30,14 @@ public partial class WorkspacePageViewModel : ObservableObject
     // Panel width/height properties now use Primary/Secondary naming
     public float PrimaryPanelWidth
     {
-        get => _editorSettings.ContextPanelWidth;
-        set => _editorSettings.ContextPanelWidth = value;
+        get => _editorSettings.PrimaryPanelWidth;
+        set => _editorSettings.PrimaryPanelWidth = value;
     }
 
     public float SecondaryPanelWidth
     {
-        get => _editorSettings.InspectorPanelWidth;
-        set => _editorSettings.InspectorPanelWidth = value;
+        get => _editorSettings.SecondaryPanelWidth;
+        set => _editorSettings.SecondaryPanelWidth = value;
     }
 
     public float ConsolePanelHeight
@@ -88,13 +88,13 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Map old property names to new ones for panel sizes
+        // Map panel size property changes
         switch (e.PropertyName)
         {
-            case nameof(IEditorSettings.ContextPanelWidth):
+            case nameof(IEditorSettings.PrimaryPanelWidth):
                 OnPropertyChanged(nameof(PrimaryPanelWidth));
                 break;
-            case nameof(IEditorSettings.InspectorPanelWidth):
+            case nameof(IEditorSettings.SecondaryPanelWidth):
                 OnPropertyChanged(nameof(SecondaryPanelWidth));
                 break;
             default:

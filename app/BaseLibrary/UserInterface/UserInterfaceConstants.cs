@@ -3,14 +3,14 @@ namespace Celbridge.UserInterface;
 public static class UserInterfaceConstants
 {
     /// <summary>
-    /// Default width of the context panel.
+    /// Default width of the primary panel.
     /// </summary>
-    public const float ContextPanelWidth = 300f;
+    public const float PrimaryPanelWidth = 300f;
 
     /// <summary>
-    /// Default width of the inspector panel.
+    /// Default width of the secondary panel.
     /// </summary>
-    public const float InspectorPanelWidth = 300f;
+    public const float SecondaryPanelWidth = 300f;
 
     /// <summary>
     /// Default height of the console panel.

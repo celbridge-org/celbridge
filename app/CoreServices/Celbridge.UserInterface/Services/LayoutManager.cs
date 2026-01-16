@@ -225,8 +225,8 @@ public class LayoutManager : ILayoutManager
     private Result HandleResetLayout()
     {
         // Reset panel sizes
-        _editorSettings.ContextPanelWidth = UserInterfaceConstants.ContextPanelWidth;
-        _editorSettings.InspectorPanelWidth = UserInterfaceConstants.InspectorPanelWidth;
+        _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+        _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
         _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
 
         // Reset preferred window geometry
