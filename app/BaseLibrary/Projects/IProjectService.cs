@@ -31,4 +31,15 @@ public interface IProjectService
     /// Unload the current loaded project.
     /// </summary>
     Task<Result> UnloadProjectAsync();
+
+    /// <summary>
+    /// Returns the list of recent projects that still exist on disk,
+    /// excluding the currently opened project.
+    /// </summary>
+    List<RecentProject> GetRecentProjects();
+
+    /// <summary>
+    /// Clears the list of recently opened projects.
+    /// </summary>
+    void ClearRecentProjects();
 }

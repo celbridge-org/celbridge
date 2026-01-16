@@ -18,6 +18,7 @@ public partial class MainMenuViewModel : ObservableObject
     private readonly INavigationService _navigationService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly MainMenuUtils _mainMenuUtils;
 
     [ObservableProperty]
@@ -29,6 +30,7 @@ public partial class MainMenuViewModel : ObservableObject
         INavigationService navigationService,
         IEditorSettings editorSettings,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         MainMenuUtils mainMenuUtils)
     {
         _messengerService = messengerService;
@@ -36,6 +38,7 @@ public partial class MainMenuViewModel : ObservableObject
         _navigationService = navigationService;
         _editorSettings = editorSettings;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _mainMenuUtils = mainMenuUtils;
     }
 
@@ -122,5 +125,37 @@ public partial class MainMenuViewModel : ObservableObject
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var mainWindow = userInterfaceService.MainWindow as Window;
         mainWindow?.Close();
+    }
+
+    /// <summary>
+    /// Returns the list of recent projects that still exist on disk, excluding the currently opened project.
+    /// </summary>
+    public List<RecentProject> GetRecentProjects()
+    {
+        return _projectService.GetRecentProjects();
+    }
+
+    /// <summary>
+    /// Opens a specific project from the recent projects list.
+    /// </summary>
+    public void OpenRecentProject(string projectFilePath)
+    {
+        if (!File.Exists(projectFilePath))
+        {
+            return;
+        }
+
+        _commandService.Execute<ILoadProjectCommand>((command) =>
+        {
+            command.ProjectFilePath = projectFilePath;
+        });
+    }
+
+    /// <summary>
+    /// Clears the list of recently opened projects.
+    /// </summary>
+    public void ClearRecentProjects()
+    {
+        _projectService.ClearRecentProjects();
     }
 }

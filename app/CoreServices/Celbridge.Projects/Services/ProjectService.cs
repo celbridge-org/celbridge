@@ -8,7 +8,7 @@ namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService
 {
-    private const int RecentProjectsMax = 5;
+    private const int RecentProjectsMax = 10;
 
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -170,5 +170,46 @@ public class ProjectService : IProjectService
         CurrentProject = null;
 
         return Result.Ok();
+    }
+
+    public List<RecentProject> GetRecentProjects()
+    {
+        var currentProjectPath = CurrentProject?.ProjectFilePath;
+        var recentProjects = new List<RecentProject>();
+
+        foreach (var projectFilePath in _editorSettings.RecentProjects)
+        {
+            if (!File.Exists(projectFilePath))
+            {
+                continue;
+            }
+
+            // Skip the currently opened project
+            if (currentProjectPath != null &&
+                string.Equals(projectFilePath, currentProjectPath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            recentProjects.Add(new RecentProject(projectFilePath));
+        }
+
+        return recentProjects;
+    }
+
+    public void ClearRecentProjects()
+    {
+        var currentProjectPath = CurrentProject?.ProjectFilePath;
+        
+        if (currentProjectPath != null)
+        {
+            // Keep only the currently opened project in the list
+            _editorSettings.RecentProjects = new List<string> { currentProjectPath };
+        }
+        else
+        {
+            // No project is open, clear everything
+            _editorSettings.RecentProjects = new List<string>();
+        }
     }
 }

@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Projects;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Views;
@@ -10,8 +9,6 @@ public sealed partial class ExplorerToolbar : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IExplorerService _explorerService;
-    private readonly IDocumentsService _documentsService;
 
     // Toolbar tooltip strings
     private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
@@ -40,10 +37,6 @@ public sealed partial class ExplorerToolbar : UserControl
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     /// <summary>

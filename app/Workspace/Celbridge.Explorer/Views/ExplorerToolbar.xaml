@@ -54,16 +54,16 @@
             ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
             Padding="4"
             Click="CollapseFoldersButton_Click">
-      <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                Glyph="&#xE660;"
+      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                Glyph="&#xF165;"
                 FontSize="20" />
     </Button>
     <Button x:Name="ProjectSettingsButton"
             ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
             Padding="4"
             Click="ProjectSettingsButton_Click">
-      <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                Glyph="&#xF6AB;"
+      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                Glyph="&#xF259;"
                 FontSize="20" />
     </Button>
   </StackPanel>
