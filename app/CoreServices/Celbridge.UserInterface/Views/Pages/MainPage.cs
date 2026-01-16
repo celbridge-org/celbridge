@@ -77,7 +77,6 @@ public partial class MainPage : Page
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);
 
         ViewModel.OnNavigate += OnViewModel_Navigate;
-        ViewModel.ReturnCurrentPage += ReturnCurrentPage;
         ViewModel.OnMainPage_Loaded();
 
         // Listen for keyboard input events (required for undo / redo)
@@ -120,7 +119,6 @@ public partial class MainPage : Page
         _messengerService.UnregisterAll(this);
 
         ViewModel.OnNavigate -= OnViewModel_Navigate;
-        ViewModel.ReturnCurrentPage -= ReturnCurrentPage;
 
         Loaded -= OnMainPage_Loaded;
         Unloaded -= OnMainPage_Unloaded;
@@ -204,18 +202,5 @@ public partial class MainPage : Page
             return Result.Ok();
         }
         return Result.Fail($"Failed to navigate to page type {pageType}");
-    }
-
-    private string ReturnCurrentPage()
-    {
-        Page? currentPage = _contentFrame.Content as Page;
-        if (currentPage != null)
-        {
-            return currentPage.Name;
-        }
-        else
-        {
-            return "None";
-        }
     }
 }

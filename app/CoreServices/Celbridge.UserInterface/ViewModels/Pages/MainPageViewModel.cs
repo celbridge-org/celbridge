@@ -33,10 +33,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
 
     public event Func<Type, object, Result>? OnNavigate;
 
-    public delegate string ReturnCurrentPageDelegate();
-
-    public ReturnCurrentPageDelegate ReturnCurrentPage = () => string.Empty;
-
     public Result NavigateToPage(Type pageType)
     {
         // Pass the empty string to avoid making the parameter nullable.
@@ -46,11 +42,6 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     public Result NavigateToPage(Type pageType, object parameter)
     {
         return OnNavigate?.Invoke(pageType, parameter)!;
-    }
-
-    public string GetCurrentPageName()
-    {
-        return ReturnCurrentPage();
     }
 
     public void OnMainPage_Loaded()
