@@ -1,4 +1,3 @@
-using Celbridge.Navigation;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
@@ -11,11 +10,6 @@ public sealed partial class PageNavigationToolbar : UserControl
     private MainMenu? _mainMenu;
 
     public PageNavigationToolbarViewModel ViewModel { get; }
-
-    public event EventHandler? SizeChanged;
-
-    public double ActualWidth => PageNavigation.ActualWidth;
-    public double ActualHeight => PageNavigation.ActualHeight;
 
     public PageNavigationToolbar()
     {
@@ -35,7 +29,6 @@ public sealed partial class PageNavigationToolbar : UserControl
     {
         ViewModel.OnLoaded();
 
-        // Create and add the MainMenu control
         _mainMenu = new MainMenu();
         _mainMenu.OnLoaded();
         _mainMenu.MenuItemInvoked += OnMainMenu_ItemInvoked;
@@ -45,15 +38,11 @@ public sealed partial class PageNavigationToolbar : UserControl
 
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-
-        PageNavigation.SizeChanged += OnPageNavigation_SizeChanged;
     }
 
     private void OnPageNavigationToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnUnloaded();
-
-        PageNavigation.SizeChanged -= OnPageNavigation_SizeChanged;
 
         if (_mainMenu != null)
         {
@@ -177,15 +166,5 @@ public sealed partial class PageNavigationToolbar : UserControl
                 }
             }
         }
-    }
-
-    private void OnPageNavigation_SizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e)
-    {
-        SizeChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    public GeneralTransform TransformToVisual(UIElement visual)
-    {
-        return PageNavigation.TransformToVisual(visual);
     }
 }

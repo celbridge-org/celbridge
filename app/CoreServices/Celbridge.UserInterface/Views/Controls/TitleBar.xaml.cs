@@ -1,5 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -8,6 +9,7 @@ public sealed partial class TitleBar : UserControl
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private Window? _mainWindow;
+    private DispatcherQueueTimer? _updateRegionsTimer;
 
     public TitleBarViewModel ViewModel { get; }
 
@@ -39,9 +41,13 @@ public sealed partial class TitleBar : UserControl
         LayoutToolbar.SizeChanged += OnLayoutToolbar_SizeChanged;
         PageNavigationToolbar.SizeChanged += OnPageNavigationToolbar_SizeChanged;
         SettingsButton.SizeChanged += OnSettingsButton_SizeChanged;
-
+        
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _mainWindow = userInterfaceService.MainWindow as Window;
+        
+        // Listen for layout updates to recalculate interactive regions
+        // This handles window maximize/restore events
+        this.LayoutUpdated += OnTitleBar_LayoutUpdated;
 
         DispatcherQueue.TryEnqueue(() =>
         {
@@ -57,6 +63,13 @@ public sealed partial class TitleBar : UserControl
         LayoutToolbar.SizeChanged -= OnLayoutToolbar_SizeChanged;
         PageNavigationToolbar.SizeChanged -= OnPageNavigationToolbar_SizeChanged;
         SettingsButton.SizeChanged -= OnSettingsButton_SizeChanged;
+        this.LayoutUpdated -= OnTitleBar_LayoutUpdated;
+        
+        if (_updateRegionsTimer is not null)
+        {
+            _updateRegionsTimer.Stop();
+            _updateRegionsTimer = null;
+        }
 
         Loaded -= OnTitleBar_Loaded;
         Unloaded -= OnTitleBar_Unloaded;
@@ -97,9 +110,12 @@ public sealed partial class TitleBar : UserControl
         }
     }
 
-    private void OnPageNavigationToolbar_SizeChanged(object? sender, EventArgs e)
+    private void OnPageNavigationToolbar_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        UpdateInteractiveRegions();
+        if (e.NewSize.Width > 0)
+        {
+            UpdateInteractiveRegions();
+        }
     }
 
     private void OnSettingsButton_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -107,6 +123,27 @@ public sealed partial class TitleBar : UserControl
         if (e.NewSize.Width > 0)
         {
             UpdateInteractiveRegions();
+        }
+    }
+
+    private void OnTitleBar_LayoutUpdated(object? sender, object e)
+    {
+        // LayoutUpdated fires very frequently, so throttle the updates using a timer
+        // This ensures we don't recalculate interactive regions on every frame
+        if (_updateRegionsTimer is null || !_updateRegionsTimer.IsRunning)
+        {
+            if (_updateRegionsTimer is null)
+            {
+                _updateRegionsTimer = DispatcherQueue.CreateTimer();
+                _updateRegionsTimer.Interval = TimeSpan.FromMilliseconds(100);
+                _updateRegionsTimer.Tick += (s, e) =>
+                {
+                    UpdateInteractiveRegions();
+                    _updateRegionsTimer?.Stop();
+                };
+            }
+            
+            _updateRegionsTimer.Start();
         }
     }
 
