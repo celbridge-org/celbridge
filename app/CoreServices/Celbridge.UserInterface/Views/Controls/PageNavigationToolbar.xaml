@@ -1,0 +1,56 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.PageNavigationToolbar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:services="using:Celbridge.UserInterface.Services">
+
+    <UserControl.Resources>
+        <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <NavigationView x:Name="PageNavigation"
+                    IsPaneToggleButtonVisible="False"
+                    IsBackButtonVisible="Collapsed"
+                    IsSettingsVisible="False"
+                    PaneDisplayMode="Top"
+                    Background="Transparent"
+                    SelectionChanged="PageNavigation_SelectionChanged"
+                    ItemInvoked="PageNavigation_ItemInvoked">
+        <NavigationView.MenuItems>
+            <!-- Main Menu is added programmatically -->
+
+            <!-- Home -->
+            <NavigationViewItem x:Name="HomeNavItem"
+                                Tag="Home">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Home"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <!-- Community -->
+            <NavigationViewItem x:Name="CommunityNavItem"
+                                Tag="Community">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE716;"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <!-- Separator before Workspace -->
+            <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
+                                         Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <!-- Workspace - shows project name when loaded -->
+            <NavigationViewItem x:Name="WorkspaceNavItem"
+                                Tag="Workspace"
+                                Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xEC50;"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
+    </NavigationView>
+</UserControl>

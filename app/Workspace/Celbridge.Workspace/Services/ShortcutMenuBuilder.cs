@@ -180,7 +180,7 @@ public class ShortcutMenuBuilder
             Width = 40,
             Height = 40,
             Padding = new Thickness(0),
-            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            Background = new SolidColorBrush(Colors.Transparent),
             BorderThickness = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Center
         };
