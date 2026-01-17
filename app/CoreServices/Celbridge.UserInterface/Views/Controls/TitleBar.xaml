@@ -51,52 +51,9 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <!-- Horizontal Navigation View for app-level navigation -->
-        <NavigationView x:Name="TitleBarNavigation"
-                        Grid.Column="1"
-                        IsPaneToggleButtonVisible="False"
-                        IsBackButtonVisible="Collapsed"
-                        IsSettingsVisible="False"
-                        PaneDisplayMode="Top"
-                        Background="Transparent"
-                        SelectionChanged="TitleBarNavigation_SelectionChanged"
-                        ItemInvoked="TitleBarNavigation_ItemInvoked">
-            <NavigationView.MenuItems>
-                <!-- Main Menu is added programmatically -->
-
-                <!-- Home -->
-                <NavigationViewItem x:Name="HomeNavItem"
-                                    Tag="Home">
-                    <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Home"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-
-                <!-- Community -->
-                <NavigationViewItem x:Name="CommunityNavItem"
-                                    Tag="Community">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xE716;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-
-                <!-- Separator before Workspace -->
-                <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
-                                             Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                <!-- Workspace - shows project name when loaded -->
-                <NavigationViewItem x:Name="WorkspaceNavItem"
-                                    Tag="Workspace"
-                                    Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xEC50;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
-        </NavigationView>
+        <!-- Page Navigation Toolbar -->
+        <controls:PageNavigationToolbar x:Name="PageNavigationToolbar"
+                                        Grid.Column="1"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <FontIcon x:Name="SaveIcon"

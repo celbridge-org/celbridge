@@ -56,6 +56,7 @@ public static class ServiceConfiguration
         services.AddTransient<HomePageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<TitleBarViewModel>();
+        services.AddTransient<PageNavigationToolbarViewModel>();
         services.AddTransient<MainMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
