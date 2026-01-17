@@ -127,13 +127,13 @@
     <value>Create</value>
   </data>
   <data name="DialogButton_Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>OK</value>
   </data>
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
   <data name="ResourceTree_EnterName" xml:space="preserve">
-    <value>Enter name</value>
+    <value>Enter Name</value>
   </data>
   <data name="InspectorPanel_Title" xml:space="preserve">
     <value>Inspector</value>
@@ -142,10 +142,10 @@
     <value>Failed to load project file '{0}'. See log for details.</value>
   </data>
   <data name="LoadProjectFailedAlert_Title" xml:space="preserve">
-    <value>Failed to load project</value>
+    <value>Failed to Load Project</value>
   </data>
   <data name="MainPage_CloseProject" xml:space="preserve">
-    <value>Close project</value>
+    <value>Close Project</value>
   </data>
   <data name="TitleBar_HomeTooltip" xml:space="preserve">
     <value>Home</value>
@@ -166,22 +166,22 @@
     <value>Community</value>
   </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
-    <value>Project folder</value>
+    <value>Project Folder</value>
   </data>
   <data name="NewProjectDialog_ProjectFolderPlaceholder" xml:space="preserve">
     <value>Select folder</value>
   </data>
   <data name="NewProjectDialog_ProjectName" xml:space="preserve">
-    <value>Project name</value>
+    <value>Project Name</value>
   </data>
   <data name="NewProjectDialog_ProjectNamePlaceholder" xml:space="preserve">
     <value>Enter project name</value>
   </data>
   <data name="NewProjectDialog_Title" xml:space="preserve">
-    <value>New project</value>
+    <value>New Project</value>
   </data>
   <data name="NewExampleProjectDialog_Title" xml:space="preserve">
-    <value>New example project</value>
+    <value>New Example Project</value>
   </data>
   <data name="ExplorerPanel_RefreshTooltip" xml:space="preserve">
     <value>Refresh project files</value>
@@ -208,13 +208,13 @@
     <value>Settings</value>
   </data>
   <data name="WorkspacePage_LoadingWorkspace" xml:space="preserve">
-    <value>Loading workspace</value>
+    <value>Loading Workspace</value>
   </data>
   <data name="ResourceTree_EnterNewName" xml:space="preserve">
     <value>Enter a new name:</value>
   </data>
   <data name="ResourceTree_CopyResource" xml:space="preserve">
-    <value>Copy resource</value>
+    <value>Copy Resource</value>
   </data>
   <data name="ResourceTree_RenameResource" xml:space="preserve">
     <value>Rename {0}</value>
@@ -247,7 +247,7 @@
     <value>Paste</value>
   </data>
   <data name="ResourceTree_AddFile" xml:space="preserve">
-    <value>Add file</value>
+    <value>Add File</value>
   </data>
   <data name="ResourceTree_UndoDeleteFileFailed" xml:space="preserve">
     <value>Failed to undo delete file '{0}'</value>
@@ -259,7 +259,7 @@
     <value>Failed to undo delete folder '{0}'</value>
   </data>
   <data name="ResourceTree_MoveResource" xml:space="preserve">
-    <value>Move resource</value>
+    <value>Move Resource</value>
   </data>
   <data name="ResourceTree_MoveResourceFailed" xml:space="preserve">
     <value>Failed to move resource '{0}' to '{1}'</value>
@@ -271,7 +271,7 @@
     <value>Enter a name for the new copy:</value>
   </data>
   <data name="StatusPanel_CopyResourceKey" xml:space="preserve">
-    <value>Copy resource key to clipboard</value>
+    <value>Copy Resource Key to Clipboard</value>
   </data>
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
@@ -289,22 +289,22 @@
     <value>No commands were found matching search term '{0}'.</value>
   </data>
   <data name="HomePage_NewProject" xml:space="preserve">
-    <value>New project</value>
+    <value>New Project</value>
   </data>
   <data name="HomePage_OpenProject" xml:space="preserve">
-    <value>Open project</value>
+    <value>Open Project</value>
   </data>
   <data name="HomePage_NewExampleProject" xml:space="preserve">
-    <value>New example project</value>
+    <value>New Example Project</value>
   </data>
   <data name="MainMenu_NewProject" xml:space="preserve">
-    <value>New project</value>
+    <value>New Project</value>
   </data>
   <data name="MainMenu_OpenProject" xml:space="preserve">
-    <value>Open project</value>
+    <value>Open Project</value>
   </data>
   <data name="MainMenu_ReloadProject" xml:space="preserve">
-    <value>Reload project</value>
+    <value>Reload Project</value>
   </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
@@ -334,7 +334,7 @@
     <value>Open in File Explorer</value>
   </data>
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
-    <value>Open with application</value>
+    <value>Open with Application</value>
   </data>
   <data name="WebInspector_StartURL" xml:space="preserve">
     <value>Start URL</value>
@@ -349,13 +349,13 @@
     <value>Add a new component</value>
   </data>
   <data name="EntityInspector_ContextMenu_Add" xml:space="preserve">
-    <value>Add a new component</value>
+    <value>Add a New Component</value>
   </data>
   <data name="EntityInspector_ContextMenu_Delete" xml:space="preserve">
-    <value>Delete the component</value>
+    <value>Delete the Component</value>
   </data>
   <data name="EntityInspector_ContextMenu_Duplicate" xml:space="preserve">
-    <value>Duplicate the component</value>
+    <value>Duplicate the Component</value>
   </data>
   <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
     <value>Open Document Failed</value>
@@ -379,19 +379,19 @@
     <value>The file format is not supported: '{0}'</value>
   </data>
   <data name="Screenplay_LoadingScreenplayTitle" xml:space="preserve">
-    <value>Loading screenplay</value>
+    <value>Loading Screenplay</value>
   </data>
   <data name="Screenplay_SavingScreenplayTitle" xml:space="preserve">
-    <value>Saving screenplay</value>
+    <value>Saving Screenplay</value>
   </data>
   <data name="Screenplay_SaveFailedTitle" xml:space="preserve">
-    <value>Save failed</value>
+    <value>Save Failed</value>
   </data>
   <data name="Screenplay_LoadFailedTitle" xml:space="preserve">
-    <value>Load failed</value>
+    <value>Load Failed</value>
   </data>
   <data name="Screenplay_SaveFailedMessage" xml:space="preserve">
-    <value>An error occurred while saving the screenplay Excel file.  See console log for details.</value>
+    <value>An error occurred while saving the screenplay Excel file. See console log for details.</value>
   </data>
   <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
     <value>An error occurred while loading the screenplay Excel file. See console log for details.</value>
@@ -421,10 +421,10 @@ Do you wish to continue?</value>
     <value>Create a new Celbridge project with example content</value>
   </data>
   <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
-    <value>Create a new Celbridge project</value>
+    <value>Create a new project</value>
   </data>
   <data name="MainMenu_OpenProjectTooltip" xml:space="preserve">
-    <value>Open an existing Celbridge project</value>
+    <value>Open an existing project</value>
   </data>
   <data name="MainMenu_ReloadProjectTooltip" xml:space="preserve">
     <value>Reload the current project</value>
@@ -475,37 +475,37 @@ Do you wish to continue?</value>
     <value>Close</value>
   </data>
   <data name="DocumentTab_CloseOthers" xml:space="preserve">
-    <value>Close others</value>
+    <value>Close Others</value>
   </data>
   <data name="DocumentTab_CloseRight" xml:space="preserve">
-    <value>Close to the right</value>
+    <value>Close to the Right</value>
   </data>
   <data name="DocumentTab_CloseLeft" xml:space="preserve">
-    <value>Close to the left</value>
+    <value>Close to the Left</value>
   </data>
   <data name="DocumentTab_CloseAll" xml:space="preserve">
-    <value>Close all</value>
+    <value>Close All</value>
   </data>
   <data name="DocumentTab_SelectFile" xml:space="preserve">
-    <value>Select file</value>
+    <value>Select File</value>
   </data>
   <data name="StatusPanel_SelectFileTooltip" xml:space="preserve">
     <value>Select file</value>
   </data>
   <data name="InspectorPanel_SelectFile" xml:space="preserve">
-    <value>Select file</value>
+    <value>Select File</value>
   </data>
   <data name="DocumentTab_CopyResourceKey" xml:space="preserve">
-    <value>Copy resource key</value>
+    <value>Copy Resource Key</value>
   </data>
   <data name="DocumentTab_CopyFilePath" xml:space="preserve">
-    <value>Copy file path</value>
+    <value>Copy File Path</value>
   </data>
   <data name="DocumentTab_OpenFileExplorer" xml:space="preserve">
     <value>Open in File Explorer</value>
   </data>
   <data name="DocumentTab_OpenApplication" xml:space="preserve">
-    <value>Open with application</value>
+    <value>Open with Application</value>
   </data>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
@@ -523,34 +523,34 @@ Do you wish to continue?</value>
     <value>Open project settings</value>
   </data>
   <data name="AddFileDialog_FileType" xml:space="preserve">
-    <value>File type</value>
+    <value>File Type</value>
   </data>
   <data name="AddFileDialog_FileType_Python" xml:space="preserve">
-    <value>Python script (.py)</value>
+    <value>Python Script (.py)</value>
   </data>
   <data name="AddFileDialog_FileType_Excel" xml:space="preserve">
-    <value>Excel file (.xlsx)</value>
+    <value>Excel File (.xlsx)</value>
   </data>
   <data name="AddFileDialog_FileType_Markdown" xml:space="preserve">
-    <value>Markdown file (.md)</value>
+    <value>Markdown File (.md)</value>
   </data>
   <data name="AddFileDialog_FileType_WebApp" xml:space="preserve">
-    <value>Web application file (.webapp)</value>
+    <value>Web Application File (.webapp)</value>
   </data>
   <data name="AddFileDialog_FileType_Text" xml:space="preserve">
-    <value>Text file (.txt)</value>
+    <value>Text File (.txt)</value>
   </data>
   <data name="AddFileDialog_FileType_Other" xml:space="preserve">
-    <value>Other file (any extension)</value>
+    <value>Other File (any extension)</value>
   </data>
   <data name="ResourceTree_AddFolder" xml:space="preserve">
-    <value>Add folder</value>
+    <value>Add Folder</value>
   </data>
   <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
-    <value>Copy resource key</value>
+    <value>Copy Resource Key</value>
   </data>
   <data name="ResourceTree_CopyFilePath" xml:space="preserve">
-    <value>Copy file path</value>
+    <value>Copy File Path</value>
   </data>
   <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
     <value>Toggle primary panel</value>
@@ -565,19 +565,19 @@ Do you wish to continue?</value>
     <value>Customize layout</value>
   </data>
   <data name="LayoutToolbar_ResetLayoutButton" xml:space="preserve">
-    <value>Reset layout</value>
+    <value>Reset Layout</value>
   </data>
   <data name="LayoutToolbar_ZenModeLabel" xml:space="preserve">
-    <value>Zen mode</value>
+    <value>Zen Mode</value>
   </data>
   <data name="LayoutToolbar_WindowModeLabel" xml:space="preserve">
-    <value>Window mode</value>
+    <value>Window Mode</value>
   </data>
   <data name="LayoutToolbar_WindowedLabel" xml:space="preserve">
     <value>Windowed</value>
   </data>
   <data name="LayoutToolbar_FullScreen" xml:space="preserve">
-    <value>Full screen</value>
+    <value>Full Screen</value>
   </data>
   <data name="LayoutToolbar_PresenterLabel" xml:space="preserve">
     <value>Presenter</value>
@@ -613,7 +613,7 @@ Do you wish to continue?</value>
     <value>Main menu</value>
   </data>
   <data name="MainMenu_CloseProject" xml:space="preserve">
-    <value>Close project</value>
+    <value>Close Project</value>
   </data>
   <data name="MainMenu_CloseProjectTooltip" xml:space="preserve">
     <value>Close the current project</value>
@@ -625,7 +625,7 @@ Do you wish to continue?</value>
     <value>Exit the application</value>
   </data>
   <data name="FullScreenToolbar_ExitFullscreen" xml:space="preserve">
-    <value>Exit fullscreen</value>
+    <value>Exit Fullscreen</value>
   </data>
   <data name="MainMenu_Settings" xml:space="preserve">
     <value>Settings</value>
@@ -634,13 +634,13 @@ Do you wish to continue?</value>
     <value>Open application settings</value>
   </data>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
-    <value>Open recent</value>
+    <value>Open Recent</value>
   </data>
   <data name="MainMenu_OpenRecentTooltip" xml:space="preserve">
-    <value>Open a recently opened project</value>
+    <value>Open a recent project</value>
   </data>
   <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
-    <value>Clear recent projects</value>
+    <value>Clear Recent Projects</value>
   </data>
   <data name="MainMenu_ClearRecentProjectsTooltip" xml:space="preserve">
     <value>Clear the list of recent projects</value>
