@@ -111,7 +111,7 @@
                 <!-- Error icon -->
                 <FontIcon Margin="0 0 8 0"
                           VerticalAlignment="Center"
-                          FontFamily="Segoe MDL2 Assets"
+                          FontFamily="{StaticResource SymbolThemeFontFamily}"
                           Glyph="&#xE783;"
                           FontSize="22"
                           Foreground="{ThemeResource ErrorTextColor}"
@@ -120,7 +120,7 @@
                 <!-- Warning icon -->
                 <FontIcon Margin="0 0 8 0"
                           VerticalAlignment="Center"
-                          FontFamily="Segoe MDL2 Assets"
+                          FontFamily="{StaticResource SymbolThemeFontFamily}"
                           Glyph="&#xE7BA;"
                           FontSize="22"
                           Foreground="{ThemeResource WarningTextColor}"
@@ -143,7 +143,7 @@
                     Background="Transparent"
                     Click="ComponentMenuButton_Click"
                     Visibility="Visible">
-              <FontIcon FontFamily="Segoe MDL2 Assets"
+              <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                         Glyph="&#xE712;"/>
             </Button>
 

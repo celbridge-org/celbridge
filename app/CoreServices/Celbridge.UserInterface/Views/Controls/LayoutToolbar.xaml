@@ -14,7 +14,7 @@
         <Button x:Name="PanelLayoutButton"
                 Click="PanelLayoutButton_Click"
                 DoubleTapped="Button_DoubleTapped"
-                Margin="2,2,0,0"
+                Margin="0, 0, 2, 0"
                 Padding="6"
                 Background="Transparent"
                 BorderThickness="0">
@@ -30,8 +30,8 @@
                                      GroupName="WindowMode"
                                      Checked="WindowModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                                          Glyph="&#xF8B5;"
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE737;"
                                           FontSize="20"/>
                                 <TextBlock x:Name="WindowedModeLabel"/>
                             </StackPanel>
@@ -41,8 +41,8 @@
                                      GroupName="WindowMode"
                                      Checked="WindowModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                                          Glyph="&#xE0C5;"
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE740;"
                                           FontSize="20"/>
                                 <TextBlock x:Name="FullScreenModeLabel"/>
                             </StackPanel>
@@ -52,8 +52,8 @@
                                      GroupName="WindowMode"
                                      Checked="WindowModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                                          Glyph="&#xEFC9;"
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                          Glyph="&#xEAD6;"
                                           FontSize="20"/>
                                 <TextBlock x:Name="ZenModeRadioLabel"/>
                             </StackPanel>
@@ -63,8 +63,8 @@
                                      GroupName="WindowMode"
                                      Checked="WindowModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                                          Glyph="&#xF35A;"
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE7F4;"
                                           FontSize="20"/>
                                 <TextBlock x:Name="PresenterModeLabel"/>
                             </StackPanel>
@@ -81,9 +81,7 @@
                     </StackPanel>
                 </Flyout>
             </Button.Flyout>
-            <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                      Glyph="&#xF06F7;"
-                      FontSize="18" />
+            <icons:PanelLayoutIcon x:Name="PanelLayoutIcon"/>
         </Button>
         
         <!-- Panel Toggle Buttons -->
