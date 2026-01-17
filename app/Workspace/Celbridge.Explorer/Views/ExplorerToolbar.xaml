@@ -38,16 +38,16 @@
             ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
             Padding="4"
             Click="AddFileButton_Click">
-      <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                Glyph="&#xE4DE;"
+      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                Glyph="&#xE710;"
                 FontSize="20" />
     </Button>
     <Button x:Name="AddFolderButton"
             ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
             Padding="4"
             Click="AddFolderButton_Click">
-      <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                Glyph="&#xE645;"
+      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                Glyph="&#xE8F4;"
                 FontSize="20" />
     </Button>
     <Button x:Name="CollapseFoldersButton"

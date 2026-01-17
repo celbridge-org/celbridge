@@ -53,8 +53,8 @@
               Padding="1"
               Command="{x:Bind ViewModel.NavigateToResourceCommand}"
               ToolTipService.ToolTip="{x:Bind SelectFileString}">
-        <FontIcon FontFamily="{StaticResource FluentSystemIconsFamily}"
-                    Glyph="&#xE85D;"
+        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Glyph="&#xE8DA;"
                     FontSize="20" />
       </Button>
     </Grid>
