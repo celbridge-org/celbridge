@@ -1,4 +1,4 @@
-<Project Sdk="Uno.Sdk">
+﻿<Project Sdk="Uno.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
@@ -42,7 +42,6 @@
     <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FluentUISystemIcons\FluentSystemIcons-Regular.ttf" />
   </ItemGroup>
 
 </Project>

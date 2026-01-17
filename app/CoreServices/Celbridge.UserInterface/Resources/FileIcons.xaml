@@ -6,6 +6,5 @@
   <FontFamily x:Key="FontAwesomeFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/fontawesome.ttf#fontawesome</FontFamily>
   <FontFamily x:Key="MFixxFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/mfixx.ttf#mfixx</FontFamily>
   <FontFamily x:Key="OctIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/octicons.ttf#octicons</FontFamily>
-  <FontFamily x:Key="FluentSystemIconsFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FluentUISystemIcons/FluentSystemIcons-Regular.ttf#FluentSystemIcons-Regular</FontFamily>
 
 </ResourceDictionary>

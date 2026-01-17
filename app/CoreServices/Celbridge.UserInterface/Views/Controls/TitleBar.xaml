@@ -77,7 +77,7 @@
                                     Tag="Community">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xE12B;"/>
+                                  Glyph="&#xE716;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 

@@ -1,0 +1,35 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.PanelIcons.PanelLayoutIcon"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Viewbox Width="16" Height="16">
+        <Grid Width="16" Height="16">
+
+            <!-- Left tall rectangle (primary panel) -->
+            <Rectangle Width="7" Height="16"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                       StrokeThickness="1.2"
+                       RadiusX="2" RadiusY="2"/>
+            
+            <!-- Top right rectangle (documents panel) -->
+            <Rectangle Width="7" Height="7"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Top"
+                       Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                       StrokeThickness="1.2"
+                       RadiusX="2" RadiusY="2"/>
+
+            <!-- Bottom right rectangle (console/secondary panel) -->
+            <Rectangle Width="7" Height="7"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Bottom"
+                       Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                       StrokeThickness="1.2"
+                       RadiusX="2" RadiusY="2"/>
+
+        </Grid>
+    </Viewbox>
+</UserControl>
