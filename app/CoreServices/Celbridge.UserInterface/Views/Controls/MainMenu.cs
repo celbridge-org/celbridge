@@ -1,3 +1,4 @@
+using Celbridge.Navigation;
 using Celbridge.UserInterface.ViewModels.Controls;
 
 namespace Celbridge.UserInterface.Views;
@@ -15,7 +16,6 @@ public class MainMenu
     private const string ClearRecentProjectsTag = "ClearRecentProjects";
     private const string ReloadProjectTag = "ReloadProject";
     private const string CloseProjectTag = "CloseProject";
-    private const string SettingsTag = "Settings";
     private const string ExitTag = "Exit";
 
     private readonly IStringLocalizer _stringLocalizer;
@@ -110,7 +110,7 @@ public class MainMenu
 
         // Settings
         var settingsNavItem = CreateMenuItem(
-            tag: SettingsTag,
+            tag: NavigationConstants.SettingsTag,
             icon: new SymbolIcon(Symbol.Setting),
             label: _stringLocalizer.GetString("MainMenu_Settings"),
             tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
@@ -275,7 +275,7 @@ public class MainMenu
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
-            case SettingsTag:
+            case NavigationConstants.SettingsTag:
                 ViewModel.NavigateToSettings();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;

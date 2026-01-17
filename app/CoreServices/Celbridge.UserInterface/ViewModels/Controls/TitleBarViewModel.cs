@@ -1,6 +1,5 @@
 using Celbridge.Documents;
 using Celbridge.Navigation;
-using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
@@ -12,8 +11,6 @@ public partial class TitleBarViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectService _projectService;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -21,24 +18,12 @@ public partial class TitleBarViewModel : ObservableObject
     [ObservableProperty]
     private bool _isWorkspaceActive;
 
-    [ObservableProperty]
-    private string _projectTitle = string.Empty;
-
-    [ObservableProperty]
-    private string _projectFilePath = string.Empty;
-
-    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
-
     public TitleBarViewModel(
         IMessengerService messengerService,
-        INavigationService navigationService,
-        IWorkspaceWrapper workspaceWrapper,
-        IProjectService projectService)
+        INavigationService navigationService)
     {
         _messengerService = messengerService;
         _navigationService = navigationService;
-        _workspaceWrapper = workspaceWrapper;
-        _projectService = projectService;
     }
 
     public void OnLoaded()
@@ -46,8 +31,6 @@ public partial class TitleBarViewModel : ObservableObject
         _messengerService.Register<WorkspacePageActivatedMessage>(this, OnWorkspacePageActivated);
         _messengerService.Register<WorkspacePageDeactivatedMessage>(this, OnWorkspacePageDeactivated);
         _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     public void OnUnloaded()
@@ -68,34 +51,6 @@ public partial class TitleBarViewModel : ObservableObject
     private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)
     {
         IsSaving = message.PendingSaveCount > 0;
-    }
-
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        OnPropertyChanged(nameof(IsWorkspaceLoaded));
-        UpdateProjectInfo();
-    }
-
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
-    {
-        OnPropertyChanged(nameof(IsWorkspaceLoaded));
-        ProjectTitle = string.Empty;
-        ProjectFilePath = string.Empty;
-    }
-
-    private void UpdateProjectInfo()
-    {
-        var currentProject = _projectService.CurrentProject;
-        if (currentProject != null)
-        {
-            ProjectTitle = currentProject.ProjectName;
-            ProjectFilePath = currentProject.ProjectFilePath;
-        }
-        else
-        {
-            ProjectTitle = string.Empty;
-            ProjectFilePath = string.Empty;
-        }
     }
 
     /// <summary>
