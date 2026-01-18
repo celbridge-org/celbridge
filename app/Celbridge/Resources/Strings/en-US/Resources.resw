@@ -645,4 +645,10 @@ Do you wish to continue?</value>
   <data name="MainMenu_ClearRecentProjectsTooltip" xml:space="preserve">
     <value>Clear the list of recent projects</value>
   </data>
+  <data name="ConsolePanel_ShortcutConfigErrorTitle" xml:space="preserve">
+    <value>Shortcut Configuration Error</value>
+  </data>
+  <data name="ConsolePanel_ShortcutConfigErrorMessage" xml:space="preserve">
+    <value>The shortcut configuration in '{0}' contains errors. Python scripting has been disabled.</value>
+  </data>
 </root>
