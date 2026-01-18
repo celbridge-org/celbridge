@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using System.Text;
 
 namespace Celbridge.Workspace.Services;
 
@@ -138,33 +139,66 @@ public class WorkspaceLoader
             _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
         }
 
-        var pythonService = workspaceService.PythonService;
-        
-        // Check for version compatibility issues before initializing Python
+        // Initialize Python scripting
+        // If Python fails to initialize, the error is reported and the project continues to load.
+        await TryInitializePythonAsync(workspaceService);
+
+        return Result.Ok();
+    }
+
+    private async Task TryInitializePythonAsync(IWorkspaceService workspaceService)
+    {
         var projectService = ServiceLocator.AcquireService<IProjectService>();
         var currentProject = projectService.CurrentProject;
         
-        if (currentProject is not null)
+        if (currentProject is null)
         {
-            var migrationResult = currentProject.MigrationResult;
-            
-            if (migrationResult.Status == MigrationStatus.Complete)
-            {
-                // Project has loaded and migration completed.
-                // We can now safely initialize Python.
-                var pythonResult = await pythonService.InitializePython();
-                if (pythonResult.IsFailure)
-                {
-                    _logger.LogError(pythonResult, "Failed to initialize Python scripting");
-                }
-            }
-            else
-            {
-                HandleMigrationFailure(migrationResult, currentProject.ProjectFilePath);
-            }
+            return;
         }
 
-        return Result.Ok();
+        var migrationResult = currentProject.MigrationResult;
+        
+        if (migrationResult.Status != MigrationStatus.Complete)
+        {
+            HandleMigrationFailure(migrationResult, currentProject.ProjectFilePath);
+            return;
+        }
+
+        var shortcutsSection = currentProject.ProjectConfig.Config.Shortcuts;
+        if (shortcutsSection.HasErrors)
+        {
+            // Log the detailed errors but don't prevent workspace loading
+            // The Python REPL will not be available until errors are fixed
+            HandleShortcutConfigErrors(shortcutsSection.ValidationErrors, currentProject.ProjectFilePath);
+            return;
+        }
+
+        // Project has loaded and migration completed with no config errors.
+        // We can now safely initialize Python.
+        var pythonService = workspaceService.PythonService;
+        var pythonResult = await pythonService.InitializePython();
+        if (pythonResult.IsFailure)
+        {
+            _logger.LogError(pythonResult, "Failed to initialize Python scripting");
+        }
+    }
+
+    private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)
+    {
+        var projectFileName = Path.GetFileName(projectFilePath);
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+
+        // Log detailed error information
+        var sb = new StringBuilder();
+        sb.AppendLine($"Shortcut configuration errors in '{projectFileName}' - Python initialization disabled:");
+        foreach (var error in errors)
+        {
+            sb.AppendLine($"  Shortcut #{error.ShortcutIndex} ({error.PropertyName}): {error.Message}");
+        }
+        _logger.LogError(sb.ToString());
+        
+        var message = new ConsoleErrorMessage(ConsoleErrorType.ShortcutConfigError, projectFileName);
+        messengerService.Send(message);
     }
 
     private void HandleMigrationFailure(MigrationResult migrationResult, string projectFilePath)

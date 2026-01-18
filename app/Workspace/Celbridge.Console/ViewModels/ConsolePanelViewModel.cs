@@ -139,6 +139,11 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationErrorMessage", configFile);
                 break;
 
+            case ConsoleErrorType.ShortcutConfigError:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_ShortcutConfigErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ShortcutConfigErrorMessage", configFile);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -153,7 +158,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     public void OnReloadProjectClicked()
     {
         // Send message to request project reload
-        _messengerService.Send<ReloadProjectMessage>();
+        _messengerService.Send<RequestReloadProjectMessage>();
     }
 
     private void ShowConsolePanel()

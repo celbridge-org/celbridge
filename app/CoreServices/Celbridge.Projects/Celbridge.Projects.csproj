@@ -25,7 +25,6 @@
 
   <ItemGroup>
 	  <PackageReference Include="Tomlyn" />
-      <PackageReference Include="Humanizer" />
   </ItemGroup>
 
   <ItemGroup>

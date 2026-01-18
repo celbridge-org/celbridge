@@ -1,12 +1,13 @@
 using System.Globalization;
 using Tomlyn;
 using Tomlyn.Model;
-using Humanizer;
 
 namespace Celbridge.Projects.Services;
 
 public partial class ProjectConfigService : IProjectConfigService
 {
+    private const char PathSeparator = '/';
+
     private TomlTable _root = new();
     private ProjectConfig _config = new();
 
@@ -185,89 +186,170 @@ public partial class ProjectConfigService : IProjectConfigService
             };
         }
 
-        // [shortcuts]
-        if (root.TryGetValue("shortcuts", out var shortcutsObject) &&
-            shortcutsObject is TomlTable shortcutsTable)
+        // [[shortcut]]
+        if (root.TryGetValue("shortcut", out var shortcutsObject) && 
+            shortcutsObject is TomlTableArray shortcutsArray)
         {
-            var navigationBarSection = new NavigationBarSection();
-
-            // [shortcuts.navigation_bar]
-            if (shortcutsTable.TryGetValue("navigation_bar", out var navigationBarObject) && 
-                navigationBarObject is TomlTable navigationBarTable)
-            {
-                ExtractNavigationBarEntry(navigationBarTable, navigationBarSection.RootCustomCommandNode, "Root", null);
-            }
-
-            shortcutsSection = shortcutsSection with { NavigationBar = navigationBarSection };
+            shortcutsSection = ParseShortcutsArray(shortcutsArray);
         }
 
         return new ProjectConfig { Project = projectSection, Celbridge = celbridgeSection, Shortcuts = shortcutsSection };
     }
 
-    private static bool CheckTableHasSubTable(TomlTable table)
+    /// <summary>
+    /// Parse the [[shortcut]] array format from TOML.
+    /// </summary>
+    private static ShortcutsSection ParseShortcutsArray(TomlTableArray shortcutsArray)
     {
-        foreach (var (k, v) in table)
+        var definitions = new List<ShortcutDefinition>();
+        var validationErrors = new List<ShortcutValidationError>();
+
+        for (int i = 0; i < shortcutsArray.Count; i++)
         {
-            if (v is TomlTable)
+            var shortcutTable = shortcutsArray[i];
+            var shortcutIndex = i + 1; // 1-based index for user-friendly error messages
+
+            // Parse required 'name' property
+            string? name = null;
+            if (shortcutTable.TryGetValue("name", out var nameObj) && nameObj is string nameStr)
             {
-                return true;
+                name = nameStr;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", "The 'name' property is required and cannot be empty."));
+                continue; // Skip this shortcut entry
+            }
+
+            // Validate name doesn't start or end with separator
+            if (name.StartsWith(PathSeparator) || name.EndsWith(PathSeparator))
+            {
+                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot start or end with '{PathSeparator}'."));
+                continue;
+            }
+
+            // Validate no empty segments
+            if (name.Contains($"{PathSeparator}{PathSeparator}"))
+            {
+                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot contain empty segments (consecutive '{PathSeparator}' characters)."));
+                continue;
+            }
+
+            // Parse optional properties
+            string? icon = null;
+            if (shortcutTable.TryGetValue("icon", out var iconObj) && iconObj is string iconStr)
+            {
+                icon = iconStr;
+            }
+
+            string? tooltip = null;
+            if (shortcutTable.TryGetValue("tooltip", out var tooltipObj) && tooltipObj is string tooltipStr)
+            {
+                tooltip = tooltipStr;
+            }
+
+            string? script = null;
+            if (shortcutTable.TryGetValue("script", out var scriptObj) && scriptObj is string scriptStr)
+            {
+                script = scriptStr;
+            }
+
+            // Create the shortcut definition
+            var definition = new ShortcutDefinition
+            {
+                Name = name,
+                Icon = icon,
+                Tooltip = tooltip,
+                Script = script
+            };
+
+            definitions.Add(definition);
+        }
+
+        // Second pass validation: check that all parent paths exist as groups
+        var groupPaths = new HashSet<string>();
+        
+        // Collect all group paths (items without scripts define groups)
+        foreach (var def in definitions)
+        {
+            if (def.IsGroup)
+            {
+                groupPaths.Add(def.Name);
             }
         }
 
-        return false;
-    }
-
-    private static void ExtractNavigationBarEntry(TomlTable barEntry, NavigationBarSection.CustomCommandNode node, string name, NavigationBarSection.CustomCommandNode? previousNode, string path = "")
-    {
-        foreach (var (k, v) in barEntry)
+        // Validate that all non-top-level items have valid parent paths
+        for (int i = 0; i < definitions.Count; i++)
         {
-            var key = k.Humanize(LetterCasing.Title);
-
-            if (v is TomlTable table)
+            var def = definitions[i];
+            var parentPath = def.ParentPath;
+            
+            if (parentPath != null)
             {
-                string newPath = path + (path.Length > 0 ? "." : "") + key;
-
-                if (node.Nodes.ContainsKey(key))
+                // Check if the immediate parent path exists as a group
+                if (!groupPaths.Contains(parentPath))
                 {
-                    ExtractNavigationBarEntry(table, node.Nodes[key], key, node, newPath);
-                }
-                else
-                {
-                    if (CheckTableHasSubTable(table))
+                    // Check if any ancestor exists as a group
+                    var pathSegments = parentPath.Split(PathSeparator);
+                    var currentPath = "";
+                    bool foundValidParent = false;
+                    
+                    foreach (var segment in pathSegments)
                     {
-                        var newNode = new NavigationBarSection.CustomCommandNode();
-                        newNode.Path = path;
-                        node.Nodes.Add(key, newNode);
-                        ExtractNavigationBarEntry(table, newNode, key, node, newPath);
+                        currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
+                        if (groupPaths.Contains(currentPath))
+                        {
+                            foundValidParent = true;
+                        }
                     }
-                    else
+
+                    if (!foundValidParent)
                     {
-                        ExtractNavigationBarEntry(table, node, key, node, newPath);
+                        validationErrors.Add(new ShortcutValidationError(
+                            i + 1, 
+                            "name", 
+                            $"The parent path '{parentPath}' does not exist. Define a group with name='{parentPath}' first."));
                     }
                 }
             }
         }
 
-        var customCommandDefinition = new NavigationBarSection.CustomCommandDefinition()
+        // Validate that groups have at least one child
+        var usedParentPaths = new HashSet<string>();
+        foreach (var def in definitions)
         {
-            Icon = barEntry.TryGetValue("icon", out var icon) ? icon?.ToString() : null,
-            ToolTip = barEntry.TryGetValue("tooltip", out var tooltip) ? tooltip?.ToString() : null,
-            Script = barEntry.TryGetValue("script", out var script) ? script?.ToString() : null,
-            Name = barEntry.TryGetValue("name", out var givenName) ? givenName?.ToString() : name.Humanize(LetterCasing.Title),
-            Path = path
+            var parentPath = def.ParentPath;
+            if (parentPath != null)
+            {
+                // Mark all ancestor paths as used
+                var pathSegments = parentPath.Split(PathSeparator);
+                var currentPath = "";
+                foreach (var segment in pathSegments)
+                {
+                    currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
+                    usedParentPaths.Add(currentPath);
+                }
+            }
+        }
+
+        for (int i = 0; i < definitions.Count; i++)
+        {
+            var def = definitions[i];
+            if (def.IsGroup && !usedParentPaths.Contains(def.Name))
+            {
+                validationErrors.Add(new ShortcutValidationError(
+                    i + 1, 
+                    "script", 
+                    $"Group '{def.DisplayName}' has no children. Either add child items with names starting with '{def.Name}/' or add a script to make it a command."));
+            }
+        }
+
+        return new ShortcutsSection
+        {
+            Definitions = definitions,
+            ValidationErrors = validationErrors
         };
-
-        if (customCommandDefinition.Icon != null || customCommandDefinition.ToolTip != null || customCommandDefinition.Script != null)
-        {
-            if (previousNode == null)
-            {
-                throw new Exception("Commands must not be unnamed on root");
-            }
-            else
-            {
-                previousNode!.CustomCommands.Add(customCommandDefinition);
-            }
-        }
     }
 
     private static string TomlValueToString(object? value) =>
