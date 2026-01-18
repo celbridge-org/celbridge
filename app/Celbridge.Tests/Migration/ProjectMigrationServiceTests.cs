@@ -29,14 +29,14 @@ public class ProjectMigrationServiceTests
     #region File Validation Tests
 
     [Test]
-    public async Task PerformMigrationAsync_NonExistentFile_ReturnsFailedStatus()
+    public async Task CheckMigrationAsync_NonExistentFile_ReturnsFailedStatus()
     {
         // Arrange
         var service = new ProjectMigrationService(_mockLogger, _mockUtilityService, _registry);
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "nonexistent.celbridge");
 
         // Act
-        var result = await service.PerformMigrationAsync(nonExistentPath);
+        var result = await service.CheckMigrationAsync(nonExistentPath);
 
         // Assert
         result.Status.Should().Be(MigrationStatus.Failed);
@@ -45,7 +45,7 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task PerformMigrationAsync_InvalidToml_ReturnsInvalidConfig()
+    public async Task CheckMigrationAsync_InvalidToml_ReturnsInvalidConfig()
     {
         // Arrange
         var service = new ProjectMigrationService(_mockLogger, _mockUtilityService, _registry);
@@ -54,7 +54,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.InvalidConfig);
@@ -71,7 +71,7 @@ public class ProjectMigrationServiceTests
     #region Same Version Tests
 
     [Test]
-    public async Task PerformMigrationAsync_SameVersion_ReturnsComplete()
+    public async Task CheckMigrationAsync_SameVersion_ReturnsComplete()
     {
         // Arrange
         var appVersion = "1.0.0";
@@ -82,7 +82,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.Complete);
@@ -97,7 +97,7 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task PerformMigrationAsync_SentinelVersion_ReturnsComplete_DoesNotModifyFile()
+    public async Task CheckMigrationAsync_SentinelVersion_ReturnsComplete_DoesNotModifyFile()
     {
         // Arrange
         var appVersion = "1.0.0";
@@ -110,7 +110,7 @@ public class ProjectMigrationServiceTests
             var originalContent = File.ReadAllText(projectPath);
 
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.Complete);
@@ -134,7 +134,7 @@ public class ProjectMigrationServiceTests
     #region Newer Version Tests
 
     [Test]
-    public async Task PerformMigrationAsync_NewerProjectVersion_ReturnsIncompatibleVersion()
+    public async Task CheckMigrationAsync_NewerProjectVersion_ReturnsIncompatibleVersion()
     {
         // Arrange
         var appVersion = "1.0.0";
@@ -146,7 +146,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.IncompatibleVersion);
@@ -164,7 +164,7 @@ public class ProjectMigrationServiceTests
     #region Invalid Version Tests
 
     [Test]
-    public async Task PerformMigrationAsync_EmptyProjectVersion_ReturnsInvalidVersion()
+    public async Task CheckMigrationAsync_EmptyProjectVersion_ReturnsInvalidVersion()
     {
         // Arrange
         _mockUtilityService = MigrationTestHelper.CreateMockUtilityService("1.0.0");
@@ -174,7 +174,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.InvalidVersion);
@@ -187,7 +187,7 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task PerformMigrationAsync_InvalidVersionFormat_ReturnsInvalidVersion()
+    public async Task CheckMigrationAsync_InvalidVersionFormat_ReturnsInvalidVersion()
     {
         // Arrange
         _mockUtilityService = MigrationTestHelper.CreateMockUtilityService("1.0.0");
@@ -197,7 +197,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.InvalidVersion);
@@ -214,7 +214,7 @@ public class ProjectMigrationServiceTests
     #region Legacy Version Compatibility Tests
 
     [Test]
-    public async Task PerformMigrationAsync_LegacyVersionFormat_RecognizesVersion()
+    public async Task CheckMigrationAsync_LegacyVersionFormat_ReturnsUpgradeRequired()
     {
         // Arrange
         var appVersion = "0.1.5";
@@ -227,11 +227,12 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
-            // Assert
-            result.Status.Should().Be(MigrationStatus.Complete);
+            // Assert - Should return UpgradeRequired, not Complete
+            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
             result.OldVersion.Should().Be("0.1.4");
+            result.NewVersion.Should().Be(appVersion);
         }
         finally
         {
@@ -240,7 +241,39 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task PerformMigrationAsync_LegacyVersion4Part_TruncatesTo3Part()
+    public async Task PerformMigrationUpgradeAsync_LegacyVersionFormat_PerformsMigration()
+    {
+        // Arrange
+        var appVersion = "0.1.5";
+        _mockUtilityService = MigrationTestHelper.CreateMockUtilityService(appVersion);
+        
+        // Use real registry which will discover MigrationStep_0_1_5
+        var registry = new MigrationStepRegistry(_mockRegistryLogger);
+        registry.Initialize();
+        
+        var service = new ProjectMigrationService(_mockLogger, _mockUtilityService, registry);
+        
+        // Create file with legacy "version" property (pre-0.1.5)
+        var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4");
+
+        try
+        {
+            // Act
+            var result = await service.PerformMigrationUpgradeAsync(projectPath);
+
+            // Assert
+            result.Status.Should().Be(MigrationStatus.Complete);
+            result.OldVersion.Should().Be("0.1.4");
+            result.NewVersion.Should().Be(appVersion);
+        }
+        finally
+        {
+            MigrationTestHelper.CleanupTempFile(projectPath);
+        }
+    }
+
+    [Test]
+    public async Task CheckMigrationAsync_LegacyVersion4Part_ReturnsUpgradeRequired()
     {
         // Arrange
         var appVersion = "0.1.5";
@@ -253,10 +286,10 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
-            // Assert - should truncate to 3-part and migrate
-            result.Status.Should().Be(MigrationStatus.Complete);
+            // Assert - should return UpgradeRequired
+            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
             result.OldVersion.Should().Be("0.1.4.2");
         }
         finally
@@ -270,7 +303,7 @@ public class ProjectMigrationServiceTests
     #region Version Update Tests
 
     [Test]
-    public async Task PerformMigrationAsync_OlderVersion_NoSteps_UpdatesVersion()
+    public async Task CheckMigrationAsync_OlderVersion_ReturnsUpgradeRequired()
     {
         // Arrange
         var appVersion = "1.0.1";
@@ -282,7 +315,38 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
+
+            // Assert - Should return UpgradeRequired
+            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
+            result.OperationResult.IsSuccess.Should().BeTrue();
+            result.OldVersion.Should().Be(projectVersion);
+            result.NewVersion.Should().Be(appVersion);
+
+            // Verify file was NOT updated (only checking, not upgrading)
+            var updatedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
+            updatedVersion.Should().Be(projectVersion);
+        }
+        finally
+        {
+            MigrationTestHelper.CleanupTempFile(projectPath);
+        }
+    }
+
+    [Test]
+    public async Task PerformMigrationUpgradeAsync_OlderVersion_NoSteps_UpdatesVersion()
+    {
+        // Arrange
+        var appVersion = "1.0.1";
+        var projectVersion = "1.0.0";
+        _mockUtilityService = MigrationTestHelper.CreateMockUtilityService(appVersion);
+        var service = new ProjectMigrationService(_mockLogger, _mockUtilityService, _registry);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+
+        try
+        {
+            // Act
+            var result = await service.PerformMigrationUpgradeAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.Complete);
@@ -305,7 +369,7 @@ public class ProjectMigrationServiceTests
     #region Migration Step Execution Tests
 
     [Test]
-    public async Task PerformMigrationAsync_WithMigrationSteps_ExecutesStepsInOrder()
+    public async Task PerformMigrationUpgradeAsync_WithMigrationSteps_ExecutesStepsInOrder()
     {
         // Arrange
         var appVersion = "0.2.0";
@@ -322,7 +386,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.PerformMigrationUpgradeAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.Complete);
@@ -349,7 +413,7 @@ public class ProjectMigrationServiceTests
     #region Edge Cases
 
     [Test]
-    public async Task PerformMigrationAsync_Exception_ReturnsFailedStatus()
+    public async Task CheckMigrationAsync_Exception_ReturnsFailedStatus()
     {
         // Arrange
         var mockUtilityService = Substitute.For<IUtilityService>();
@@ -362,7 +426,7 @@ public class ProjectMigrationServiceTests
         try
         {
             // Act
-            var result = await service.PerformMigrationAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
             result.Status.Should().Be(MigrationStatus.Failed);

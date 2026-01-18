@@ -10,34 +10,34 @@ dependencies = ["pandas", "openpyxl", "requests", "faker"]
 # Shortcut buttons
 
 # Group header for Run Examples flyout menu
-[[shortcuts]]
+[[shortcut]]
 name = "Run Examples"
 icon = "Play"
 tooltip = "Run the examples"
 
 # Nested items reference parent via path
-[[shortcuts]]
+[[shortcut]]
 name = "Run Examples/03 Hello World"
 tooltip = "Run example 03_hello_world"
 script = '''
 run "03_hello_world/hello_world.py" "Universe"
 '''
 
-[[shortcuts]]
+[[shortcut]]
 name = "Run Examples/04 Data Import"
 tooltip = "Run example 04_data_import"
 script = '''
 run "04_data_import/data_import.py"
 '''
 
-[[shortcuts]]
+[[shortcut]]
 name = "Run Examples/05 Fake Data"
 tooltip = "Run example 05_fake_data"
 script = '''
 run "05_fake_data/fake_data.py"
 '''
 
-[[shortcuts]]
+[[shortcut]]
 name = "Run Examples/06 Data Cleaning"
 tooltip = "Run example 06_data_cleaning"
 script = '''

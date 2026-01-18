@@ -1,6 +1,4 @@
-using Celbridge.Navigation;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 using Path = System.IO.Path;
 
@@ -11,21 +9,13 @@ public class ProjectService : IProjectService
     private const int RecentProjectsMax = 10;
 
     private readonly IEditorSettings _editorSettings;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly INavigationService _navigationService;
-
-    private const string EmptyPageTag = "Empty";
 
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
-        IEditorSettings editorSettings,
-        INavigationService navigationService,
-        IWorkspaceWrapper workspaceWrapper)
+        IEditorSettings editorSettings)
     {
         _editorSettings = editorSettings;
-        _navigationService = navigationService;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
@@ -80,18 +70,18 @@ public class ProjectService : IProjectService
         }
     }
 
-    public async Task<Result<IProject>> LoadProjectAsync(string projectFilePath)
+    public async Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult)
     {
         try
         {
-            var loadResult = await Project.LoadProjectAsync(projectFilePath);
+            var loadResult = await Project.LoadProjectAsync(projectFilePath, migrationResult);
             if (loadResult.IsFailure)
             {
                 return Result<IProject>.Fail($"Failed to load project: {projectFilePath}")
                     .WithErrors(loadResult);
             }
 
-            // Both data files have successfully loaded, so we can now populate the member variables
+            // Project has successfully loaded, so we can now populate the member variables
             CurrentProject = loadResult.Value;
 
             // Update the recent projects list in editor settings
@@ -113,63 +103,9 @@ public class ProjectService : IProjectService
         }
     }
 
-    public async Task<Result> UnloadProjectAsync()
+    public void ClearCurrentProject()
     {
-        if (CurrentProject is null)
-        {
-            // Unloading a project that is not loaded is a no-op
-            return Result.Ok();
-        }
-
-        // The logic here is quite complicated because we need to teardown the workspace in the
-        // unloaded callback of the Workspace Page, and there are multiple code paths to consider.
-
-        // The workspace page uses NavigationCacheMode.Required, so it stays loaded in memory
-        // even when the user navigates to other pages like Home or Community.
-        // We need to ensure proper cleanup of the workspace page.
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            // Navigate to the Workspace page first to make it the active/visible page.
-            // This is necessary because OnNavigatingFrom (which handles cleanup) only runs
-            // when navigating away from the currently visible page.
-            var navResult = _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag);
-            if (navResult.IsFailure)
-            {
-                return Result.Fail("Failed to navigate to workspace page for cleanup")
-                    .WithErrors(navResult);
-            }
-
-            // Give the UI enough time to complete the navigation and render.
-            // This ensures the Workspace page is fully active before we navigate away.
-            await Task.Delay(100);
-
-            // Signal that the workspace page should perform cleanup when it unloads.
-            // This must be called AFTER navigating to the Workspace page, because
-            // NavigateToPage clears the cleanup flag after each navigation.
-            _navigationService.RequestWorkspacePageCleanup();
-
-            // Now navigate to the empty page to trigger OnNavigatingFrom on the WorkspacePage,
-            // which will disable caching and allow proper cleanup on unload.
-            navResult = _navigationService.NavigateToPage(EmptyPageTag);
-            if (navResult.IsFailure)
-            {
-                return Result.Fail("Failed to navigate to empty page for workspace cleanup")
-                    .WithErrors(navResult);
-            }
-
-            // Wait until the workspace is fully unloaded
-            while (_workspaceWrapper.IsWorkspacePageLoaded)
-            {
-                await Task.Delay(50);
-            }
-        }
-
-        var disposableProject = CurrentProject as IDisposable;
-        Guard.IsNotNull(disposableProject);
-        disposableProject.Dispose();
         CurrentProject = null;
-
-        return Result.Ok();
     }
 
     public List<RecentProject> GetRecentProjects()

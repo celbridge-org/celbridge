@@ -651,4 +651,22 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_ShortcutConfigErrorMessage" xml:space="preserve">
     <value>The shortcut configuration in '{0}' contains errors. Python scripting has been disabled.</value>
   </data>
+  <data name="ProjectUpgradeConfirmation_Title" xml:space="preserve">
+    <value>Project Upgrade Required</value>
+  </data>
+  <data name="ProjectUpgradeConfirmation_Message" xml:space="preserve">
+    <value>The project "{0}" was created with Celbridge v{1} and needs to be upgraded to v{2}. Do you want to upgrade now?</value>
+  </data>
+  <data name="ProjectUpgradeFailedAlert_Title" xml:space="preserve">
+    <value>Project Upgrade Failed</value>
+  </data>
+  <data name="ProjectUpgradeFailedAlert_Message" xml:space="preserve">
+    <value>Failed to upgrade project "{0}". Please edit the project settings file to fix the issue and then reload the project.</value>
+  </data>
+  <data name="ProjectConfigErrorAlert_Title" xml:space="preserve">
+    <value>Project Configuration Error</value>
+  </data>
+  <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
+    <value>The project "{0}" has a configuration error. Please edit the project settings file to fix the issue and then reload the project.</value>
+  </data>
 </root>

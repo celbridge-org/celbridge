@@ -11,6 +11,11 @@ public enum MigrationStatus
     Complete,
 
     /// <summary>
+    /// Project requires upgrade.
+    /// </summary>
+    UpgradeRequired,
+
+    /// <summary>
     /// The project config file failed to parse.
     /// </summary>
     InvalidConfig,
@@ -52,7 +57,15 @@ public record MigrationResult(
 public interface IProjectMigrationService
 {
     /// <summary>
-    /// Performs version migration on a project if needed.
+    /// Checks if a project requires migration and returns the migration status.
+    /// If the project requires upgrade, returns MigrationStatus.UpgradeRequired without modifying files.
+    /// Call PerformMigrationUpgradeAsync to actually perform the upgrade after user confirmation.
     /// </summary>
-    Task<MigrationResult> PerformMigrationAsync(string projectFilePath);
+    Task<MigrationResult> CheckMigrationAsync(string projectFilePath);
+
+    /// <summary>
+    /// Performs the actual migration upgrade on a project.
+    /// This should only be called after the user has confirmed they want to upgrade.
+    /// </summary>
+    Task<MigrationResult> PerformMigrationUpgradeAsync(string projectFilePath);
 }
