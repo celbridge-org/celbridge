@@ -26,7 +26,7 @@ public class ProjectMigrationService : IProjectMigrationService
         _migrationRegistry.Initialize();
     }
 
-    public async Task<MigrationResult> PerformMigrationAsync(string projectFilePath)
+    public async Task<MigrationResult> CheckMigrationAsync(string projectFilePath)
     {
         try
         {
@@ -73,31 +73,80 @@ public class ProjectMigrationService : IProjectMigrationService
             var envInfo = _utilityService.GetEnvironmentInfo();
             var applicationVersion = envInfo.AppVersion;
 
-            // Attempt to resolve the migration by comparing the project and application versions.
-            var resolved = TryResolveMigration(projectVersion, applicationVersion, out var resolveResult);
-            if (resolved)
+            // Resolve the migration status by comparing the project and application versions.
+            var result = ResolveMigrationStatus(projectVersion, applicationVersion);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check project migration status");
+            var errorResult = Result.Fail($"Failed to check migration status")
+                .WithException(ex);
+            return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
+        }
+    }
+
+    public async Task<MigrationResult> PerformMigrationUpgradeAsync(string projectFilePath)
+    {
+        try
+        {
+            if (!File.Exists(projectFilePath))
             {
-                // Migration is either not needed or cannot proceed, so we can return now.
-                Guard.IsNotNull(resolveResult);
-                return resolveResult;
+                var errorResult = Result.Fail($"Project file does not exist: '{projectFilePath}'");
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
+
+            var text = File.ReadAllText(projectFilePath);
+            var parse = Toml.Parse(text);
+
+            if (parse.HasErrors)
+            {
+                var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
+                return MigrationResult.FromStatus(MigrationStatus.InvalidConfig, errorResult);
+            }
+
+            var root = parse.ToModel();
+
+            // Get project version from [celbridge].celbridge-version property
+            var projectVersion = string.Empty;
+            if (JsonPointerToml.TryResolve(root, "/celbridge/celbridge-version", out var versionNode, out _) &&
+                versionNode is string existingVersion)
+            {
+                projectVersion = existingVersion;
+            }
+
+            // Provide limited backwards compatibility for pre-v0.1.5 version format to support migration
+            if (string.IsNullOrEmpty(projectVersion) &&
+                JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
+                legacyVersionNode is string legacyVersion)
+            {
+                // Only populate the project version if the legacy version < v0.1.5
+                var versionA = new Version(legacyVersion);
+                var versionB = new Version("0.1.5");
+                if (versionA < versionB)
+                {
+                    projectVersion = legacyVersion;
+                }
+            }
+
+            // Get current application version
+            var envInfo = _utilityService.GetEnvironmentInfo();
+            var applicationVersion = envInfo.AppVersion;
 
             // Proceed to migrate the project to the latest version.
             return await MigrateProjectAsync(projectFilePath, projectVersion, applicationVersion, root);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to perform project migration");
-            var errorResult = Result.Fail($"Failed to execute migration")
+            _logger.LogError(ex, "Failed to perform project migration upgrade");
+            var errorResult = Result.Fail($"Failed to execute migration upgrade")
                 .WithException(ex);
             return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
         }
     }
 
-    private bool TryResolveMigration(string projectVersion, string applicationVersion, out MigrationResult? result)
+    private MigrationResult ResolveMigrationStatus(string projectVersion, string applicationVersion)
     {
-        result = null;
-
         // The sentinel value "<application-version>" means "use current version" without updating the file.
         // This is for dev team use with example projects during development.
         bool usingSentinelVersion = projectVersion == ApplicationVersionSentinel;
@@ -117,25 +166,23 @@ public class ProjectMigrationService : IProjectMigrationService
                         applicationVersion);
 
                     // Return the same app version for both old and new to suppress the upgrade notification banner
-                    result = MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
-                    return true;
+                    return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
                 }
 
                 _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
 
-                result = MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
-                return true;
+                return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
             }
 
             case VersionComparisonState.OlderVersion:
             {
                 _logger.LogInformation(
-                    "Project migration needed: project version {ProjectVersion}, current version {CurrentVersion}",
+                    "Project upgrade required: project version {ProjectVersion}, current version {CurrentVersion}",
                     projectVersion,
                     applicationVersion);
 
-                // Migration was not resolved so we need to proceed to migrate the project.
-                return false;
+                // Return UpgradeRequired status - caller must get user confirmation before calling PerformMigrationUpgradeAsync
+                return MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), projectVersion, applicationVersion);
             }
 
             case VersionComparisonState.NewerVersion:
@@ -145,8 +192,7 @@ public class ProjectMigrationService : IProjectMigrationService
                     $"Your current Celbridge version is v{applicationVersion}. " +
                     $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
 
-                result = MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
-                return true;
+                return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
             }
 
             case VersionComparisonState.InvalidVersion:
@@ -154,15 +200,13 @@ public class ProjectMigrationService : IProjectMigrationService
                 var errorResult = Result.Fail(
                     $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
                     $"Please correct the version number in the .celbridge file and reload the project.");
-                result = MigrationResult.FromStatus(MigrationStatus.InvalidVersion, errorResult);
-                return true;
+                return MigrationResult.FromStatus(MigrationStatus.InvalidVersion, errorResult);
             }
 
             default:
             {
                 var errorResult = Result.Fail($"Unknown version comparison state: {versionState}");
-                result = MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
-                return true;
+                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
         }
     }
