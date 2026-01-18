@@ -23,14 +23,16 @@ public interface IProjectService
     Task<Result> CreateProjectAsync(NewProjectConfig config);
 
     /// <summary>
-    /// Load the project file at the specified path with migration support.
+    /// Load the project file at the specified path.
+    /// The migrationResult should be obtained from ProjectLoader before calling this method.
     /// </summary>
-    Task<Result<IProject>> LoadProjectAsync(string projectFilePath);
+    Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult);
 
     /// <summary>
-    /// Unload the current loaded project.
+    /// Clears the CurrentProject reference without disposing it.
+    /// The caller is responsible for disposing the project.
     /// </summary>
-    Task<Result> UnloadProjectAsync();
+    void ClearCurrentProject();
 
     /// <summary>
     /// Returns the list of recent projects that still exist on disk,
