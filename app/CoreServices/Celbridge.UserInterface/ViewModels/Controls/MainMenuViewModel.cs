@@ -46,7 +46,7 @@ public partial class MainMenuViewModel : ObservableObject
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
-        _messengerService.Register<ReloadProjectMessage>(this, OnReloadProject);
+        _messengerService.Register<RequestReloadProjectMessage>(this, OnRequestReloadProject);
 
         IsWorkspaceLoaded = _workspaceWrapper.IsWorkspacePageLoaded;
     }
@@ -66,7 +66,7 @@ public partial class MainMenuViewModel : ObservableObject
         IsWorkspaceLoaded = false;
     }
 
-    private void OnReloadProject(object recipient, ReloadProjectMessage message)
+    private void OnRequestReloadProject(object recipient, RequestReloadProjectMessage message)
     {
         _ = ReloadProjectAsync();
     }

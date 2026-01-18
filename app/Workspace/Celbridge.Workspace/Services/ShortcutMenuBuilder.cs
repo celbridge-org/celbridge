@@ -8,6 +8,8 @@ namespace Celbridge.Workspace.Services;
 /// </summary>
 public class ShortcutMenuBuilder
 {
+    private const char PathSeparator = '/';
+
     private readonly ILogger<ShortcutMenuBuilder> _logger;
 
     private Dictionary<string, string> _tagsToScriptDictionary = new();
@@ -31,139 +33,227 @@ public class ShortcutMenuBuilder
     }
 
     /// <summary>
-    /// Builds shortcut buttons from the navigation bar section configuration.
+    /// Builds shortcut buttons from the shortcuts section configuration.
     /// </summary>
-    public bool BuildShortcutButtons(NavigationBarSection.CustomCommandNode rootNode, StackPanel panel)
+    public bool BuildShortcutButtons(ShortcutsSection shortcutsSection, StackPanel panel)
     {
-        bool hasShortcuts = rootNode.Nodes.Count > 0 || rootNode.CustomCommands.Count > 0;
+        var definitions = shortcutsSection.Definitions;
         
-        if (!hasShortcuts)
+        if (definitions.Count == 0)
         {
             return false;
         }
 
-        AddShortcutButtons(rootNode, panel);
+        // Build tree structure from flat list
+        var rootNode = BuildTreeFromDefinitions(definitions);
+        
+        // Add buttons to panel
+        AddShortcutButtonsFromTree(rootNode, panel);
+        
         return true;
     }
 
-    private void AddShortcutButtons(NavigationBarSection.CustomCommandNode node, StackPanel panel)
+    /// <summary>
+    /// Internal tree node for building the UI hierarchy.
+    /// </summary>
+    private class ShortcutTreeNode
     {
-        // Collect the paths of folder nodes so we can skip commands that are just metadata for folders
-        var folderPaths = new HashSet<string>();
-        foreach (var (nodeName, childNode) in node.Nodes)
+        public ShortcutDefinition? Definition { get; set; }
+        public Dictionary<string, ShortcutTreeNode> Children { get; } = new();
+        public List<ShortcutDefinition> LeafItems { get; } = new();
+    }
+
+    /// <summary>
+    /// Build a tree structure from the flat list of shortcut definitions.
+    /// </summary>
+    private ShortcutTreeNode BuildTreeFromDefinitions(IReadOnlyList<ShortcutDefinition> definitions)
+    {
+        var root = new ShortcutTreeNode();
+        
+        // First pass: create group nodes
+        foreach (var def in definitions)
         {
-            // Build the path for this folder node
-            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
-            folderPaths.Add(folderPath);
+            if (def.IsGroup)
+            {
+                // Find or create the parent path, then add this group
+                var parentNode = GetOrCreateNodeAtPath(root, def.ParentPath);
+                
+                // Create or update the node for this group
+                if (!parentNode.Children.TryGetValue(def.DisplayName, out var groupNode))
+                {
+                    groupNode = new ShortcutTreeNode();
+                    parentNode.Children[def.DisplayName] = groupNode;
+                }
+                groupNode.Definition = def;
+            }
         }
 
-        // Add folder nodes as buttons with flyout menus
-        foreach (var (nodeName, childNode) in node.Nodes)
+        // Second pass: add leaf items (non-groups)
+        foreach (var def in definitions)
         {
-            // Find the command definition for this folder node (to get icon/tooltip)
-            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
-            var folderCommand = node.CustomCommands.FirstOrDefault(c => c.Path == folderPath);
+            if (!def.IsGroup)
+            {
+                if (def.IsTopLevel)
+                {
+                    // Top-level command - add directly to root's leaf items
+                    root.LeafItems.Add(def);
+                }
+                else
+                {
+                    // Nested command - find the parent node and add to its leaf items
+                    var parentNode = GetNodeAtPath(root, def.ParentPath!);
+                    if (parentNode != null)
+                    {
+                        parentNode.LeafItems.Add(def);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Parent path '{def.ParentPath}' not found for shortcut '{def.Name}'");
+                    }
+                }
+            }
+        }
+
+        return root;
+    }
+
+    /// <summary>
+    /// Get or create a node at the specified path.
+    /// </summary>
+    private ShortcutTreeNode GetOrCreateNodeAtPath(ShortcutTreeNode root, string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return root;
+        }
+
+        var segments = path.Split(PathSeparator);
+        var current = root;
+
+        foreach (var segment in segments)
+        {
+            if (!current.Children.TryGetValue(segment, out var child))
+            {
+                child = new ShortcutTreeNode();
+                current.Children[segment] = child;
+            }
+            current = child;
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    /// Get a node at the specified path, or null if not found.
+    /// </summary>
+    private ShortcutTreeNode? GetNodeAtPath(ShortcutTreeNode root, string path)
+    {
+        var segments = path.Split(PathSeparator);
+        var current = root;
+
+        foreach (var segment in segments)
+        {
+            if (!current.Children.TryGetValue(segment, out var child))
+            {
+                return null;
+            }
+            current = child;
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    /// Add shortcut buttons from the tree structure.
+    /// </summary>
+    private void AddShortcutButtonsFromTree(ShortcutTreeNode node, StackPanel panel)
+    {
+        // Add group nodes as buttons with flyout menus
+        foreach (var (name, childNode) in node.Children)
+        {
+            var def = childNode.Definition;
             
             var button = CreateShortcutButton(
-                folderCommand?.Name ?? nodeName, 
-                folderCommand?.Icon, 
-                folderCommand?.ToolTip);
+                def?.DisplayName ?? name, 
+                def?.Icon, 
+                def?.Tooltip);
             
             // Create a flyout menu for the child items
             var flyout = new MenuFlyout();
             flyout.Placement = FlyoutPlacementMode.RightEdgeAlignedTop;
-            AddMenuItems(childNode, flyout.Items);
+            AddMenuItemsFromTree(childNode, flyout.Items);
             button.Flyout = flyout;
             
             panel.Children.Add(button);
         }
 
-        // Add direct command items as buttons (skip commands that are metadata for folder nodes)
-        foreach (var command in node.CustomCommands)
+        // Add leaf items as buttons
+        foreach (var def in node.LeafItems)
         {
-            // Skip if this command is just metadata for a folder node
-            if (folderPaths.Contains(command.Path!))
+            var tag = def.Name; // Use full name as tag for uniqueness
+            
+            if (_tagsToScriptDictionary.ContainsKey(tag))
             {
+                _logger.LogWarning($"Shortcut '{def.Name}' collides with an existing command; command will not be added.");
                 continue;
             }
 
-            if (_tagsToScriptDictionary.ContainsKey(command.Path!))
-            {
-                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added.");
-                continue;
-            }
+            _tagsToScriptDictionary.Add(tag, def.Script!);
 
-            _tagsToScriptDictionary.Add(command.Path!, command.Script!);
-
-            var button = CreateShortcutButton(command.Name, command.Icon, command.ToolTip);
-            button.Tag = command.Path;
+            var button = CreateShortcutButton(def.DisplayName, def.Icon, def.Tooltip);
+            button.Tag = tag;
             button.Click += OnShortcutButtonClick;
             
             panel.Children.Add(button);
         }
     }
 
-    private void AddMenuItems(NavigationBarSection.CustomCommandNode node, IList<MenuFlyoutItemBase> menuItems)
+    /// <summary>
+    /// Add menu items from the tree structure recursively.
+    /// </summary>
+    private void AddMenuItemsFromTree(ShortcutTreeNode node, IList<MenuFlyoutItemBase> menuItems)
     {
-        // Collect the paths of folder nodes so we can skip commands that are just metadata for folders
-        var folderPaths = new HashSet<string>();
-        foreach (var (nodeName, childNode) in node.Nodes)
+        // Add sub-groups as sub-menus
+        foreach (var (name, childNode) in node.Children)
         {
-            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
-            folderPaths.Add(folderPath);
-        }
-
-        // Add sub-folder nodes as sub-menus
-        foreach (var (nodeName, childNode) in node.Nodes)
-        {
+            var def = childNode.Definition;
+            
             var subMenu = new MenuFlyoutSubItem
             {
-                Text = nodeName
+                Text = def?.DisplayName ?? name
             };
             
-            // Find the command definition for this folder node (to get icon/tooltip)
-            var folderPath = node.Path + (node.Path.Length > 0 ? "." : "") + nodeName;
-            var folderCommand = node.CustomCommands.FirstOrDefault(c => c.Path == folderPath);
-            if (folderCommand != null)
+            if (!string.IsNullOrEmpty(def?.Icon) && 
+                Enum.TryParse<Symbol>(def.Icon, out var icon))
             {
-                if (!string.IsNullOrEmpty(folderCommand.Name))
-                {
-                    subMenu.Text = folderCommand.Name;
-                }
-                if (!string.IsNullOrEmpty(folderCommand.Icon) && Enum.TryParse<Symbol>(folderCommand.Icon, out var icon))
-                {
-                    subMenu.Icon = new SymbolIcon(icon);
-                }
+                subMenu.Icon = new SymbolIcon(icon);
             }
             
-            AddMenuItems(childNode, subMenu.Items);
+            AddMenuItemsFromTree(childNode, subMenu.Items);
             menuItems.Add(subMenu);
         }
 
-        // Add command items (skip commands that are metadata for folder nodes)
-        foreach (var command in node.CustomCommands)
+        // Add leaf items as menu items
+        foreach (var def in node.LeafItems)
         {
-            // Skip if this command is just metadata for a folder node
-            if (folderPaths.Contains(command.Path!))
+            var tag = def.Name; // Use full name as tag for uniqueness
+            
+            if (_tagsToScriptDictionary.ContainsKey(tag))
             {
+                _logger.LogWarning($"Shortcut '{def.Name}' collides with an existing command; command will not be added.");
                 continue;
             }
 
-            if (_tagsToScriptDictionary.ContainsKey(command.Path!))
-            {
-                _logger.LogWarning($"Shortcut command '{command.Name}' at path '{command.Path}' collides with an existing command; command will not be added.");
-                continue;
-            }
-
-            _tagsToScriptDictionary.Add(command.Path!, command.Script!);
+            _tagsToScriptDictionary.Add(tag, def.Script!);
 
             var menuItem = new MenuFlyoutItem
             {
-                Text = command.Name ?? "Shortcut",
-                Tag = command.Path
+                Text = def.DisplayName,
+                Tag = tag
             };
 
-            if (!string.IsNullOrEmpty(command.Icon) && Enum.TryParse<Symbol>(command.Icon, out var icon))
+            if (!string.IsNullOrEmpty(def.Icon) && 
+                Enum.TryParse<Symbol>(def.Icon, out var icon))
             {
                 menuItem.Icon = new SymbolIcon(icon);
             }
@@ -186,7 +276,8 @@ public class ShortcutMenuBuilder
         };
 
         // Set icon if provided
-        if (!string.IsNullOrEmpty(iconName) && Enum.TryParse<Symbol>(iconName, out var icon))
+        if (!string.IsNullOrEmpty(iconName) && 
+            Enum.TryParse<Symbol>(iconName, out var icon))
         {
             button.Content = new SymbolIcon(icon);
         }
@@ -213,7 +304,8 @@ public class ShortcutMenuBuilder
 
     private void OnShortcutButtonClick(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is string tag)
+        if (sender is Button button && 
+            button.Tag is string tag)
         {
             ShortcutClicked?.Invoke(tag);
         }
@@ -221,7 +313,8 @@ public class ShortcutMenuBuilder
 
     private void OnMenuItemClick(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string tag)
+        if (sender is MenuFlyoutItem menuItem && 
+            menuItem.Tag is string tag)
         {
             ShortcutClicked?.Invoke(tag);
         }

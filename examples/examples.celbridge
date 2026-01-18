@@ -9,31 +9,37 @@ dependencies = ["pandas", "openpyxl", "requests", "faker"]
 
 # Shortcut buttons
 
-[shortcuts.navigation_bar.run_examples]
-icon="Play"
-tooltip="Run examples"
+# Group header for Run Examples flyout menu
+[[shortcuts]]
+name = "Run Examples"
+icon = "Play"
+tooltip = "Run the examples"
 
-[shortcuts.navigation_bar.run_examples.03_hello_world]
-tooltip="Run example 03_hello_world"
-script='''
+# Nested items reference parent via path
+[[shortcuts]]
+name = "Run Examples/03 Hello World"
+tooltip = "Run example 03_hello_world"
+script = '''
 run "03_hello_world/hello_world.py" "Universe"
 '''
 
-[shortcuts.navigation_bar.run_examples.04_data_import]
-tooltip="Run example 04_data_import"
-script='''
+[[shortcuts]]
+name = "Run Examples/04 Data Import"
+tooltip = "Run example 04_data_import"
+script = '''
 run "04_data_import/data_import.py"
 '''
 
-[shortcuts.navigation_bar.run_examples.05_fake_data]
-tooltip="Run example 05_fake_data"
-script='''
+[[shortcuts]]
+name = "Run Examples/05 Fake Data"
+tooltip = "Run example 05_fake_data"
+script = '''
 run "05_fake_data/fake_data.py"
 '''
 
-[shortcuts.navigation_bar.run_examples.06_data_cleaning]
-tooltip="Run example 06_data_cleaning"
-script='''
+[[shortcuts]]
+name = "Run Examples/06 Data Cleaning"
+tooltip = "Run example 06_data_cleaning"
+script = '''
 run "06_data_cleaning/clean_data.py"
 '''
-

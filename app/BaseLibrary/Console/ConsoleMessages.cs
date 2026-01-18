@@ -35,14 +35,14 @@ public enum ConsoleErrorType
     /// Project migration failed.
     /// </summary>
     MigrationError,
+
+    /// <summary>
+    /// The shortcut configuration in the project file contains errors.
+    /// </summary>
+    ShortcutConfigError,
 }
 
 /// <summary>
 /// Message sent when the console fails to initialize or terminates unexpectedly.
 /// </summary>
 public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileName);
-
-/// <summary>
-/// Message sent to request reloading the current project.
-/// </summary>
-public record ReloadProjectMessage();
