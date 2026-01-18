@@ -16,6 +16,8 @@ public static class ServiceConfiguration
         services.AddTransient<IProject, Project>();
         services.AddTransient<IProjectConfigService, ProjectConfigService>();
         services.AddSingleton<MigrationStepRegistry>();
+        services.AddTransient<ProjectLoader>();
+        services.AddTransient<ProjectUnloader>();
 
         //
         // Register commands

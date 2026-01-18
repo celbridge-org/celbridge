@@ -38,7 +38,7 @@ public class Project : IDisposable, IProject
         _logger = logger;
     }
 
-    public static async Task<Result<IProject>> LoadProjectAsync(string projectFilePath)
+    public static async Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath))
         {
@@ -59,20 +59,14 @@ public class Project : IDisposable, IProject
             var project = ServiceLocator.AcquireService<IProject>() as Project;
             Guard.IsNotNull(project);
             project.PopulatePaths(projectFilePath);
+            project._migrationResult = migrationResult;
 
-            //
-            // Migrate project to latest version of Celbridge
-            //
-
-            var migrationService = ServiceLocator.AcquireService<IProjectMigrationService>();
-            project._migrationResult = await migrationService.PerformMigrationAsync(projectFilePath);
-
-            bool migrationSucceeded = project._migrationResult.OperationResult.IsSuccess;
+            bool migrationSucceeded = migrationResult.OperationResult.IsSuccess;
 
             if (!migrationSucceeded)
             {
                 // Log the error but continue loading the workspace
-                project._logger.LogError(project._migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
+                project._logger.LogError(migrationResult.OperationResult, $"Failed to migrate project to latest version of Celbridge.");
             }
             
             //

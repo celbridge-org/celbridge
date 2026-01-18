@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Navigation;
+using Celbridge.Projects.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
@@ -7,17 +7,17 @@ namespace Celbridge.Projects.Commands;
 public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly INavigationService _navigationService;
     private readonly IProjectService _projectService;
+    private readonly ProjectUnloader _projectUnloader;
 
     public UnloadProjectCommand(
-        INavigationService navigationService,
         IProjectService projectService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ProjectUnloader projectUnloader)
     {
-        _navigationService = navigationService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
+        _projectUnloader = projectUnloader;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -28,7 +28,7 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
             return Result.Ok();
         }
 
-        return await _projectService.UnloadProjectAsync();
+        return await _projectUnloader.UnloadProjectAsync();
     }
 
     //
