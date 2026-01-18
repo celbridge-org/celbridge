@@ -64,46 +64,96 @@ public sealed record class CelbridgeSection
 }
 
 /// <summary>
-/// Models the [shortcuts] section from the project config.
-/// Contains shortcut definitions for various UI surfaces.
+/// Definition of a shortcut from the [[shortcut]] array.
+/// The name property contains the full hierarchical path using "/" as separator.
+/// Example: "Run Examples/Hello World" creates a "Hello World" item under "Run Examples" group.
+/// </summary>
+public record ShortcutDefinition
+{
+    private const char PathSeparator = '/';
+
+    /// <summary>
+    /// Full hierarchical name of the shortcut (required).
+    /// Use "/" to create nested items, e.g., "Tools/Format Code".
+    /// The display text is the last segment of the path.
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// Icon name from symbol registry.
+    /// </summary>
+    public string? Icon { get; init; }
+
+    /// <summary>
+    /// Hover text; defaults to DisplayName if not specified.
+    /// </summary>
+    public string? Tooltip { get; init; }
+
+    /// <summary>
+    /// Python script to execute. Required for leaf items, omit for groups.
+    /// </summary>
+    public string? Script { get; init; }
+
+    /// <summary>
+    /// Returns the display text (last segment of the name path).
+    /// Example: "Run Examples/Hello World" returns "Hello World".
+    /// </summary>
+    public string DisplayName
+    {
+        get
+        {
+            var lastSeparator = Name.LastIndexOf(PathSeparator);
+            return lastSeparator >= 0 ? Name[(lastSeparator + 1)..] : Name;
+        }
+    }
+
+    /// <summary>
+    /// Returns the parent path (everything before the last segment), or null if top-level.
+    /// Example: "Run Examples/Hello World" returns "Run Examples".
+    /// </summary>
+    public string? ParentPath
+    {
+        get
+        {
+            var lastSeparator = Name.LastIndexOf(PathSeparator);
+            return lastSeparator >= 0 ? Name[..lastSeparator] : null;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if this shortcut is a group container (no script defined).
+    /// </summary>
+    public bool IsGroup => string.IsNullOrEmpty(Script);
+
+    /// <summary>
+    /// Returns true if this is a top-level shortcut (no "/" in name).
+    /// </summary>
+    public bool IsTopLevel => ParentPath == null;
+}
+
+/// <summary>
+/// Represents a validation error found during shortcut configuration parsing.
+/// </summary>
+public record ShortcutValidationError(int ShortcutIndex, string PropertyName, string Message);
+
+/// <summary>
+/// Models the shortcut configuration from the project config.
+/// Contains definitions parsed from the [[shortcut]] array.
 /// </summary>
 public sealed record class ShortcutsSection
 {
     /// <summary>
-    /// Navigation bar shortcuts.
+    /// List of shortcut definitions parsed from the [[shortcut]] array.
     /// </summary>
-    public NavigationBarSection NavigationBar { get; init; } = new();
-}
-
-/// <summary>
-/// Models the [shortcuts.navigation_bar] section from the project config
-/// </summary>
-public sealed record class NavigationBarSection
-{
-    /// <summary>
-    /// Definition of a custom command in the navigation bar.
-    /// </summary>
-    public record class CustomCommandDefinition
-    {
-        public string? Icon { get; init; }
-        public string? ToolTip { get; init; }
-        public string? Script { get; init; }
-        public string? Name { get; init; }
-        public string? Path { get; init; }
-    }
+    public IReadOnlyList<ShortcutDefinition> Definitions { get; init; } = new List<ShortcutDefinition>();
 
     /// <summary>
-    /// Node in our graph of custom commands. Each node holds a list of further sub-nodes, and a list of commands for this level.
+    /// List of validation errors encountered during parsing.
     /// </summary>
-    public class CustomCommandNode
-    {
-        public List<CustomCommandDefinition> CustomCommands = new List<CustomCommandDefinition>();
-        public Dictionary<string, CustomCommandNode> Nodes = new Dictionary<string, CustomCommandNode>();
-        public string Path = "";
-    }
+    public IReadOnlyList<ShortcutValidationError> ValidationErrors { get; init; } = new List<ShortcutValidationError>();
 
     /// <summary>
-    /// Root node for our custom command graph.
+    /// Returns true if there are validation errors.
     /// </summary>
-    public CustomCommandNode RootCustomCommandNode { get; init; } = new CustomCommandNode();
+    public bool HasErrors => ValidationErrors.Count > 0;
 }

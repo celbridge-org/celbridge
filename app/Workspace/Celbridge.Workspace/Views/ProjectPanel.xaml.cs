@@ -3,6 +3,7 @@ using Celbridge.Projects;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;
+using System.Text;
 
 namespace Celbridge.Workspace.Views;
 
@@ -41,19 +42,29 @@ public sealed partial class ProjectPanel : UserControl
     {
         ApplyTooltips();
 
-        // Build shortcut buttons from the current project configuration
         var currentProject = _projectService.CurrentProject;
-        if (currentProject != null)
+        if (currentProject is null)
         {
-            var navigationBarSection = currentProject.ProjectConfig.Config.Shortcuts.NavigationBar;
-            var logger = ServiceLocator.AcquireService<ILogger<ShortcutMenuBuilder>>();
-            _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
-            _shortcutMenuBuilder.ShortcutClicked += OnShortcutClicked;
-            
-            var hasShortcuts = _shortcutMenuBuilder.BuildShortcutButtons(navigationBarSection.RootCustomCommandNode, ShortcutButtonsPanel);
-            ViewModel.HasShortcuts = hasShortcuts;
-            ShortcutButtonsPanel.Visibility = hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
+            return;
         }
+
+        var shortcutsSection = currentProject.ProjectConfig.Config.Shortcuts;
+        var logger = ServiceLocator.AcquireService<ILogger<ShortcutMenuBuilder>>();
+        _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
+        _shortcutMenuBuilder.ShortcutClicked += OnShortcutClicked;
+        
+        // Don't build shortcuts when there are validation errors
+        // Error notification is handled by WorkspaceLoader
+        if (shortcutsSection.HasErrors)
+        {
+            ViewModel.HasShortcuts = false;
+            ShortcutButtonsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var hasShortcuts = _shortcutMenuBuilder.BuildShortcutButtons(shortcutsSection, ShortcutButtonsPanel);
+        ViewModel.HasShortcuts = hasShortcuts;
+        ShortcutButtonsPanel.Visibility = hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ProjectPanel_Unloaded(object sender, RoutedEventArgs e)
