@@ -1,5 +1,6 @@
 using Celbridge.Dialog;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace.Services;
@@ -21,6 +22,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly ILayoutManager _layoutManager;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
+    private readonly IProjectService _projectService;
     private readonly WorkspaceLoader _workspaceLoader;
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
@@ -61,6 +63,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         IEditorSettings editorSettings,
         ILayoutManager layoutManager,
         IDialogService dialogService,
+        IProjectService projectService,
         WorkspaceLoader workspaceLoader)
     {
         _logger = logger;
@@ -69,6 +72,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _editorSettings = editorSettings;
         _layoutManager = layoutManager;
         _dialogService = dialogService;
+        _projectService = projectService;
         _workspaceLoader = workspaceLoader;
 
         _editorSettings.PropertyChanged += OnEditorSettings_PropertyChanged;
@@ -125,9 +129,10 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public async Task LoadWorkspaceAsync()
     {
-        // Show the progress dialog
-        var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-        using var progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
+        // Show the progress dialog with the project name
+        var projectName = _projectService.CurrentProject?.ProjectName ?? string.Empty;
+        var loadingProjectString = _stringLocalizer.GetString("WorkspacePage_LoadingProject", projectName);
+        using var progressDialogToken = _dialogService.AcquireProgressDialog(loadingProjectString);
 
         // Time how long it takes to open the workspace
         var stopWatch = new Stopwatch();
