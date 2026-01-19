@@ -1,22 +1,40 @@
-using Celbridge.Documents;
 using Celbridge.Commands;
 using Celbridge.Explorer;
-using Celbridge.Logging;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Inspector.ViewModels;
 
 public partial class ResourceNameInspectorViewModel : InspectorViewModel
 {
-    private readonly ILogger<ResourceNameInspectorViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IExplorerService _explorerService;
 
-    [ObservableProperty]
-    private IconDefinition _icon;
+    /// <summary>
+    /// Returns the file extension for the current resource, used by the FileIcon control.
+    /// Returns "_folder" for folder resources to display the folder icon.
+    /// </summary>
+    public string FileExtension
+    {
+        get
+        {
+            if (Resource.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            // Check if resource is a folder
+            var getResult = _explorerService.ResourceRegistry.GetResource(Resource);
+            if (getResult.IsSuccess && getResult.Value is IFolderResource)
+            {
+                return "_folder";
+            }
+
+            return Path.GetExtension(Resource.ResourceName);
+        }
+    }
 
     // Code gen requires a parameterless constructor
     public ResourceNameInspectorViewModel()
@@ -25,19 +43,14 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
     }
 
     public ResourceNameInspectorViewModel(
-        ILogger<ResourceNameInspectorViewModel> logger,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // workspaceWrapper.IsWorkspaceLoaded could be false here if this is called while loading workspace.
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);
 
-        _logger = logger;
         _commandService = commandService;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-
-        // Use the default file icon until we can resolve the proper icon when the resource is populated.
-        _icon = _explorerService.GetIconForResource(ResourceKey.Empty);
 
         PropertyChanged += ViewModel_PropertyChanged;
     }
@@ -46,7 +59,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
     {
         if (e.PropertyName == nameof(Resource))
         {
-            Icon = _explorerService.GetIconForResource(Resource);
+            OnPropertyChanged(nameof(FileExtension));
         }
     }
 

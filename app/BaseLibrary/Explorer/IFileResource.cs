@@ -1,4 +1,4 @@
-﻿using Celbridge.UserInterface;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Explorer;
 
@@ -10,5 +10,5 @@ public interface IFileResource : IResource
     /// <summary>
     /// The icon to display for the file resource.
     /// </summary>
-    public IconDefinition Icon { get; }
+    public FileIconDefinition Icon { get; }
 }

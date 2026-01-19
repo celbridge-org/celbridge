@@ -9,6 +9,12 @@ namespace Celbridge.Explorer.Commands;
 
 public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 {
+    private const string AddFolderTitleKey = "ResourceTree_AddFolder";
+    private const string FolderNameKey = "AddFolderDialog_FolderName";
+    private const string DefaultFolderNameKey = "ResourceTree_DefaultFolderName";
+    private const string DefaultFileNameKey = "ResourceTree_DefaultFileName";
+    private const string AddButtonKey = "DialogButton_Add";
+
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
@@ -78,16 +84,11 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
 
-        var titleString = _stringLocalizer.GetString("ResourceTree_AddFile");
-        var enterNameString = _stringLocalizer.GetString("ResourceTree_EnterName");
-
         // Select only the filename part without the extension
         var extensionIndex = defaultFileName.LastIndexOf('.');
         var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
 
         var showResult = await _dialogService.ShowAddFileDialogAsync(
-            titleString,
-            enterNameString,
             defaultFileName,
             selectionRange,
             validator);
@@ -141,18 +142,19 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
 
-        var titleString = _stringLocalizer.GetString("ResourceTree_AddFolder");
-        var enterNameString = _stringLocalizer.GetString("ResourceTree_EnterName");
+        var titleString = _stringLocalizer.GetString(AddFolderTitleKey);
+        var nameString = _stringLocalizer.GetString(FolderNameKey);
 
         // Select the entire folder name
         var selectionRange = ..;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,
-            enterNameString,
+            nameString,
             defaultText,
             selectionRange,
-            validator);
+            validator,
+            AddButtonKey);
 
         if (showResult.IsSuccess)
         {
@@ -189,7 +191,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         while (true)
         {
             var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
-            var candidateName = _stringLocalizer.GetString("ResourceTree_DefaultFolderName", folderNumber).ToString();
+            var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
 
             var candidatePath = Path.Combine(parentFolderPath, candidateName);
             if (!Directory.Exists(candidatePath) &&
@@ -226,7 +228,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         while (true)
         {
             var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
-            var candidateName = _stringLocalizer.GetString("ResourceTree_DefaultFileName", fileNumber).ToString();
+            var candidateName = _stringLocalizer.GetString(DefaultFileNameKey, fileNumber).ToString();
 
             // Replace the default extension with the preferred extension
             candidateName = Path.ChangeExtension(candidateName, extension);

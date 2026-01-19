@@ -1,4 +1,4 @@
-﻿using Celbridge.Validators;
+using Celbridge.Validators;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Services;
@@ -42,23 +42,24 @@ public class ResourceNameValidator : IResourceNameValidator
             errorList.Add(errorText);
         }
 
-        // Check for naming conflict with other resources in the parent folder
+        // Check for naming conflict with other resources in the parent folder.
+        // Use case-insensitive comparison since Windows file system is case-insensitive.
         // Any name listed in ValidNames is always accepted as valid.
-        if (!ValidNames.Contains(input) &&
+        if (!ValidNames.Any(name => name.Equals(input, StringComparison.OrdinalIgnoreCase)) &&
             ParentFolder is not null)
         {
             foreach (var childResource in ParentFolder.Children)
             {
-                if (childResource.Name == input)
+                if (childResource.Name.Equals(input, StringComparison.OrdinalIgnoreCase))
                 {
                     if (childResource is IFileResource)
                     {
-                        var errorText = _stringLocalizer.GetString($"Validation_FileNameAlreadyExists", input);
+                        var errorText = _stringLocalizer.GetString($"Validation_FileNameAlreadyExists", childResource.Name);
                         errorList.Add(errorText);
                     }
                     else if (childResource is IFolderResource)
                     {
-                        var errorText = _stringLocalizer.GetString($"Validation_FolderNameAlreadyExists", input);
+                        var errorText = _stringLocalizer.GetString($"Validation_FolderNameAlreadyExists", childResource.Name);
                         errorList.Add(errorText);
                     }
                     isValid = false;
