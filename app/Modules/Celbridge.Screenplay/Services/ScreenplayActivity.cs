@@ -438,7 +438,7 @@ public class ScreenplayActivity : IActivity
 
         // Display a progress dialog
         var dialogTitleText = _localizerService.GetString("Screenplay_LoadingScreenplayTitle");
-        var progressToken = _dialogService.AcquireProgressDialog(dialogTitleText);
+        using var progressToken = _dialogService.AcquireProgressDialog(dialogTitleText);
 
         // Give the progress dialog a chance to display
         await Task.Delay(100);
@@ -446,7 +446,6 @@ public class ScreenplayActivity : IActivity
         var loader = _serviceProvider.AcquireService<ScreenplayLoader>();
 
         var loadResult = await loader.LoadScreenplayAsync(screenplayResource);
-        _dialogService.ReleaseProgressDialog(progressToken);
 
         if (loadResult.IsFailure)
         {
@@ -482,7 +481,7 @@ public class ScreenplayActivity : IActivity
     {
         // Display a progress dialog
         var dialogueTitleText = _localizerService.GetString("Screenplay_SavingScreenplayTitle");
-        var progressToken = _dialogService.AcquireProgressDialog(dialogueTitleText);
+        using var progressToken = _dialogService.AcquireProgressDialog(dialogueTitleText);
 
         // Give the progress dialog a chance to display
         await Task.Delay(100);
@@ -490,7 +489,6 @@ public class ScreenplayActivity : IActivity
         var saver = _serviceProvider.AcquireService<ScreenplaySaver>();
 
         var saveResult = await saver.SaveScreenplay(screenplayResource);
-        _dialogService.ReleaseProgressDialog(progressToken);
 
         if (saveResult.IsFailure)
         {

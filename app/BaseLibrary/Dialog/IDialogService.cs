@@ -19,18 +19,13 @@ public interface IDialogService
     Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText);
 
     /// <summary>
-    /// Aqcuire a progress dialog token.
+    /// Acquire a progress dialog token.
     /// The progress dialog will be displayed as long as any token is active, and will display the title of the
     /// most recently acquired token that is still active. The progress dialog is temporarily hidden while any other type 
     /// of dialog is displayed.
+    /// Dispose the token to release it. The progress dialog is hidden when all tokens are released.
     /// </summary>
     IProgressDialogToken AcquireProgressDialog(string titleText);
-
-    /// <summary>
-    /// Release a previously acquired progress dialog token.
-    /// The progress dialog is hidden when all tokens are released.
-    /// </summary>
-    void ReleaseProgressDialog(IProgressDialogToken token);
 
     /// <summary>
     /// Display a New Project Dialog.
