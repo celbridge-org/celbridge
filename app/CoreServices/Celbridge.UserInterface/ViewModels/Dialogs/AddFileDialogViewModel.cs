@@ -170,6 +170,17 @@ public partial class AddFileDialogViewModel : ObservableObject
             return;
         }
 
+        // Check if filename only consists of an extension (e.g., ".py" without a name)
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
+        if (!string.IsNullOrEmpty(FileName) && string.IsNullOrEmpty(nameWithoutExtension))
+        {
+            IsFileNameValid = false;
+            IsSubmitEnabled = false;
+            IsErrorVisible = true;
+            ErrorText = _stringLocalizer.GetString("Validation_FileNameRequired");
+            return;
+        }
+
         var result = Validator.Validate(FileName);
 
         IsFileNameValid = result.IsValid;

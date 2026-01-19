@@ -678,4 +678,7 @@ Do you wish to continue?</value>
   <data name="AddFileDialog_FileName" xml:space="preserve">
     <value>Name</value>
   </data>
+  <data name="Validation_FileNameRequired" xml:space="preserve">
+    <value>A file name is required</value>
+  </data>
 </root>
