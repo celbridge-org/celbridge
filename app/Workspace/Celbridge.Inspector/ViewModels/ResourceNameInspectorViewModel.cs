@@ -16,7 +16,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
     private readonly IExplorerService _explorerService;
 
     [ObservableProperty]
-    private IconDefinition _icon;
+    private FileIconDefinition _icon;
 
     // Code gen requires a parameterless constructor
     public ResourceNameInspectorViewModel()

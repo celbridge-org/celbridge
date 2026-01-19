@@ -15,7 +15,7 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     [ObservableProperty]
-    private IconDefinition _icon;
+    private FileIconDefinition _icon;
 
     [ObservableProperty]
     private ResourceKey _fileResource;
