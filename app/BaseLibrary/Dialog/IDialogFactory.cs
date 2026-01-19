@@ -36,10 +36,10 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Input Text Dialog.
     /// </summary>
-    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
+    IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null);
 
     /// <summary>
     /// Create an Add File Dialog.
     /// </summary>
-    IAddFileDialog CreateAddFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
+    IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 }

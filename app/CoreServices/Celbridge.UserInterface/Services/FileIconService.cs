@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace Celbridge.UserInterface.Services;
 
-public class IconService : IIconService
+public class FileIconService : IFileIconService
 {
     private const string DefaultFileIconName = "_file";
     private const string DefaultFolderIconName = "_folder";
@@ -12,27 +12,27 @@ public class IconService : IIconService
     private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
 
     private Dictionary<string, string> _fileExtensionDefinitions = new();
-    private Dictionary<string, IconDefinition> _iconDefinitions = new();
+    private Dictionary<string, FileIconDefinition> _iconDefinitions = new();
 
-    public IconDefinition DefaultFileIcon { get; private set; }
-    public IconDefinition DefaultFolderIcon { get; private set; }
+    public FileIconDefinition DefaultFileIcon { get; private set; }
+    public FileIconDefinition DefaultFolderIcon { get; private set; }
 
-    public IconService()
+    public FileIconService()
     {
-        var loadResult = LoadIconDefinitions();
+        var loadResult = LoadDefinitions();
         if (loadResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to load icon definitions. {loadResult.Error}");
+            throw new InvalidOperationException($"Failed to load file icon definitions. {loadResult.Error}");
         }
 
-        var getFileResult = GetIcon(DefaultFileIconName);
+        var getFileResult = GetFileIcon(DefaultFileIconName);
         if (getFileResult.IsFailure)
         {
             throw new InvalidOperationException($"Failed to get default file icon definitions. {getFileResult.Error}");
         }
         DefaultFileIcon = getFileResult.Value;
 
-        var getFolderResult = GetIcon(DefaultFolderIconName);
+        var getFolderResult = GetFileIcon(DefaultFolderIconName);
         if (getFolderResult.IsFailure)
         {
             throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.Error}");
@@ -40,12 +40,12 @@ public class IconService : IIconService
         DefaultFolderIcon = getFolderResult.Value;
     }
 
-    public Result LoadIconDefinitions()
+    public Result LoadDefinitions()
     {
         var loadResult = LoadIconData();
         if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to load icon definition. {loadResult.Error}");
+            return Result.Fail($"Failed to load file icon definition. {loadResult.Error}");
         }
         var iconData = loadResult.Value;
 
@@ -56,30 +56,30 @@ public class IconService : IIconService
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when loading the icon definitions.")
+            return Result.Fail($"An exception occurred when loading the file icon definitions.")
                 .WithException(ex);
         }
 
         return Result.Ok();
     }
 
-    public Result<IconDefinition> GetIcon(string iconName)
+    public Result<FileIconDefinition> GetFileIcon(string iconName)
     {
-        if (!_iconDefinitions.TryGetValue(iconName, out IconDefinition? iconDefinition))
+        if (!_iconDefinitions.TryGetValue(iconName, out FileIconDefinition? iconDefinition))
         {
-            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
+            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
             {
                 // Icon definition not found, return default icon
-                return Result<IconDefinition>.Ok(defaultIcon);
+                return Result<FileIconDefinition>.Ok(defaultIcon);
             }
 
-            return Result<IconDefinition>.Fail($"No default icon found.");
+            return Result<FileIconDefinition>.Fail($"No default icon found.");
         }
 
-        return Result<IconDefinition>.Ok(iconDefinition);
+        return Result<FileIconDefinition>.Ok(iconDefinition);
     }
 
-    public Result<IconDefinition> GetIconForFileExtension(string fileExtension)
+    public Result<FileIconDefinition> GetFileIconForExtension(string fileExtension)
     {
         if (fileExtension.StartsWith('.'))
         {
@@ -89,21 +89,21 @@ public class IconService : IIconService
 
         if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
         {
-            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
+            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
             {
                 // File extension not recognized, return default icon
-                return Result<IconDefinition>.Ok(defaultIcon);
+                return Result<FileIconDefinition>.Ok(defaultIcon);
             }
 
-            return Result<IconDefinition>.Fail($"No default icon found.");
+            return Result<FileIconDefinition>.Fail($"No default icon found.");
         }
 
-        return GetIcon(iconName);
+        return GetFileIcon(iconName);
     }
 
-    public IconDefinition GetDefaultFileIcon()
+    public FileIconDefinition GetDefaultFileIcon()
     {
-        if (_iconDefinitions.TryGetValue(DefaultFileIconName, out IconDefinition? defaultIcon))
+        if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
         {
             return defaultIcon;
         }
@@ -195,7 +195,7 @@ public class IconService : IIconService
                 fontSize = "100%";
             }
 
-            var iconDefinition = new IconDefinition(fontCharacter, color, fontFamily, fontSize);
+            var iconDefinition = new FileIconDefinition(fontCharacter, color, fontFamily, fontSize);
 
             _iconDefinitions.Add(iconName, iconDefinition);
         }

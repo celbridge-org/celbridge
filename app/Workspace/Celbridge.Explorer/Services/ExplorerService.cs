@@ -20,7 +20,7 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
-    private readonly IIconService _iconService;
+    private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ResourceChangeMonitor? _resourceChangeMonitor;
 
@@ -57,7 +57,7 @@ public class ExplorerService : IExplorerService, IDisposable
         ICommandService commandService,
         IProjectService projectService,
         IUtilityService utilityService,
-        IIconService iconService,
+        IFileIconService fileIconService,
         IWorkspaceWrapper workspaceWrapper,
         ResourceChangeMonitor resourceChangeMonitor)
     {
@@ -70,7 +70,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _editorSettings = editorSettings;
         _commandService = commandService;
         _projectService = projectService;
-        _iconService = iconService;
+        _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
         _resourceChangeMonitor = resourceChangeMonitor;
 
@@ -405,7 +405,7 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public IconDefinition GetIconForResource(ResourceKey resource)
+    public FileIconDefinition GetIconForResource(ResourceKey resource)
     {
         // If the resource is a folder, use the folder icon
         var getResourceResult = ResourceRegistry.GetResource(resource);
@@ -414,7 +414,7 @@ public class ExplorerService : IExplorerService, IDisposable
             var r = getResourceResult.Value;
             if (r is IFolderResource)
             {
-                var icon = _iconService.DefaultFolderIcon with
+                var icon = _fileIconService.DefaultFolderIcon with
                 {
                     // Todo: Define this color in resources
                     FontColor = "#FFCC40"
@@ -425,14 +425,14 @@ public class ExplorerService : IExplorerService, IDisposable
 
         // If the resource is a file, use the icon matching the file extension
         var fileExtension = Path.GetExtension(resource);
-        var getIconResult = _iconService.GetIconForFileExtension(fileExtension);
+        var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
         if (getIconResult.IsSuccess)
         {
             return getIconResult.Value;
         }
 
         // Return the default file icon if we couldn't find a better match
-        return _iconService.DefaultFileIcon;
+        return _fileIconService.DefaultFileIcon;
     }
 
     public void OpenResource(ResourceKey resource)

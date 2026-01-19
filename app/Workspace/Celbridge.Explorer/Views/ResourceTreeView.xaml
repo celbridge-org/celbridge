@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:models="using:Celbridge.Explorer.Models"
-    xmlns:ui="using:Celbridge.UserInterface.Services"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     DataContext="{x:Bind ViewModel}"
     Background="{ThemeResource ApplicationBackgroundBrush}">
 
@@ -90,19 +90,15 @@
       <muxc:TreeViewItem ContextFlyout="{StaticResource ResourceContextMenu}"
                          DoubleTapped="TreeViewItem_DoubleTapped">
         <StackPanel Orientation="Horizontal">
-          <FontIcon FontFamily="{Binding Content.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
-                    Glyph="{Binding Path=Content.Icon.FontCharacter}"
-                    Foreground="{Binding Path=Content.Icon.FontColor}"
-                    FontSize="16"
-                    MinWidth="20"
-                    Margin="0" />
+          <controls:FileIcon IconDefinition="{Binding Path=Content.Icon}"
+                             Size="16"
+                             MinWidth="20"
+                             Margin="0" />
           <TextBlock Margin="4 0 0 0"
                      Text="{Binding Path=Content.Name, Mode=OneWay}" />
         </StackPanel>
       </muxc:TreeViewItem>
     </DataTemplate>
-
-    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
 
     <local:ResourceTemplateSelector x:Key="ResourceTemplateSelector"
                                     FolderTemplate="{StaticResource FolderTemplate}"

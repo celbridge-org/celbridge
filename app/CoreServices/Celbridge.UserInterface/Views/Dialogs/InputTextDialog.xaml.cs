@@ -6,6 +6,7 @@ namespace Celbridge.UserInterface.Views;
 public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private string _submitButtonKey = "DialogButton_Ok";
 
     public InputTextDialogViewModel ViewModel { get; }
 
@@ -21,7 +22,16 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         set => ViewModel.HeaderText = value;
     }
 
-    private string OkString => _stringLocalizer.GetString($"DialogButton_Ok");
+    public string SubmitButtonKey
+    {
+        get => _submitButtonKey;
+        set
+        {
+            _submitButtonKey = value;
+            PrimaryButtonText = _stringLocalizer.GetString(_submitButtonKey);
+        }
+    }
+
     private string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
 
     private bool _pressedEnter;
@@ -36,6 +46,9 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
         ViewModel = ServiceLocator.AcquireService<InputTextDialogViewModel>();
 
         this.InitializeComponent();
+
+        // Set default submit button text
+        PrimaryButtonText = _stringLocalizer.GetString(_submitButtonKey);
     }
 
     private void InputTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
