@@ -10,17 +10,21 @@
 
   <StackPanel Orientation="Vertical"
               HorizontalAlignment="Stretch"
-              VerticalAlignment="Center">
+              VerticalAlignment="Top"
+              MinWidth="400">
     <TextBox x:Name="InputTextBox"
              Header="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
              Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              IsSpellCheckEnabled="False"
              AcceptsReturn="False"
              KeyDown="InputTextBox_KeyDown"/>
-    <TextBlock Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
-               Foreground="{ThemeResource ErrorTextBrush}"
-               Margin="6,4,0,0"
-               Opacity="{x:Bind ViewModel.IsTextValid, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter=Inverted}"/>
+    <Grid MinHeight="56"
+          Margin="0,8,0,0">
+      <InfoBar Severity="Error"
+               IsOpen="{x:Bind ViewModel.IsErrorVisible, Mode=OneWay}"
+               IsClosable="False"
+               Message="{x:Bind ViewModel.ErrorText, Mode=OneWay}"/>
+    </Grid>
   </StackPanel>
 
 </ContentDialog>

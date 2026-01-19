@@ -28,6 +28,9 @@ public partial class AddFileDialogViewModel : ObservableObject
     [ObservableProperty]
     private int _selectedFileTypeIndex;
 
+    [ObservableProperty]
+    private bool _isErrorVisible = false;
+
     public IValidator? Validator { get; set; }
 
     public List<FileTypeItem> FileTypes { get; }
@@ -163,6 +166,7 @@ public partial class AddFileDialogViewModel : ObservableObject
             IsFileNameValid = true;
             IsSubmitEnabled = !string.IsNullOrEmpty(FileName);
             ErrorText = string.Empty;
+            IsErrorVisible = false;
             return;
         }
 
@@ -170,6 +174,7 @@ public partial class AddFileDialogViewModel : ObservableObject
 
         IsFileNameValid = result.IsValid;
         IsSubmitEnabled = IsFileNameValid && !string.IsNullOrEmpty(FileName);
+        IsErrorVisible = !IsFileNameValid && !string.IsNullOrEmpty(FileName);
 
         if (result.Errors.Count == 0)
         {

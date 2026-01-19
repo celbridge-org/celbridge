@@ -13,8 +13,8 @@
 
   <StackPanel Orientation="Vertical"
               HorizontalAlignment="Stretch"
-              VerticalAlignment="Center"
-              MinWidth="350">
+              VerticalAlignment="Top"
+              MinWidth="400">
         
     <!-- File name text box -->
     <TextBox x:Name="FileNameTextBox"
@@ -44,11 +44,14 @@
       </ComboBox.ItemTemplate>
     </ComboBox>
 
-    <!-- Error text -->
-    <TextBlock Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
-               Foreground="{ThemeResource ErrorTextBrush}"
-               Margin="0,8,0,0"
-               Opacity="{x:Bind ViewModel.IsFileNameValid, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter=Inverted}"/>
+    <!-- Error InfoBar with reserved space -->
+    <Grid MinHeight="56"
+          Margin="0,8,0,0">
+      <InfoBar Severity="Error"
+               IsOpen="{x:Bind ViewModel.IsErrorVisible, Mode=OneWay}"
+               IsClosable="False"
+               Message="{x:Bind ViewModel.ErrorText, Mode=OneWay}"/>
+    </Grid>
 
   </StackPanel>
 
