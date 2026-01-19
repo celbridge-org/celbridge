@@ -1,9 +1,10 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Explorer;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+
+using Path = System.IO.Path;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -12,24 +13,25 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-
-    [ObservableProperty]
-    private FileIconDefinition _icon;
 
     [ObservableProperty]
     private ResourceKey _fileResource;
-
-    partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
-    {
-        _icon = _workspaceWrapper.WorkspaceService.ExplorerService.GetIconForResource(newValue);
-    }
 
     [ObservableProperty]
     public string _documentName = string.Empty;
 
     [ObservableProperty]
     private string _filePath = string.Empty;
+
+    /// <summary>
+    /// Returns the file extension for the current resource, used by the FileIcon control.
+    /// </summary>
+    public string FileExtension => Path.GetExtension(FileResource.ResourceName);
+
+    partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
+    {
+        OnPropertyChanged(nameof(FileExtension));
+    }
 
     public IDocumentView? DocumentView { get; set; }
 
@@ -42,7 +44,6 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         // We can't use the view's Loaded & Unloaded methods to register & unregister here.
@@ -50,16 +51,13 @@ public partial class DocumentTabViewModel : ObservableObject
         // When a TabViewItem is reordered, it is first added in the new position and then removed in the old position.
         // This means Unloaded is called first, followed by Load (opposite to what you might expect).
 
-        // To work around this, we register the message handlers in the constructor and then unregister in the 
+        // To work around this, we register the message handlers in the constructor and then unregister in the
         // CloseDocument() method if the tab is actually closed. There's one more case to consider, when the DocumentTabView
         // unloads (e.g. closing the open workspace). In this case, WeakReferenceMessenger should automatically clean up the
         // message handlers because the old DocumentTabViewModel has been destroyed.
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
-
-        // Use the default file icon until we can resolve the proper icon when the resource is populated.
-        _icon = workspaceWrapper.WorkspaceService.ExplorerService.GetIconForResource(ResourceKey.Empty);
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
