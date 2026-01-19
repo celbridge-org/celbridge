@@ -54,7 +54,7 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator)
+    public IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
         var dialog = new InputTextDialog
         {
@@ -62,19 +62,20 @@ public class DialogFactory : IDialogFactory
             HeaderText = messageText,
         };
 
+        if (submitButtonKey is not null)
+        {
+            dialog.SubmitButtonKey = submitButtonKey;
+        }
+
         dialog.ViewModel.Validator = validator;
         dialog.SetDefaultText(defaultText, selectionRange);
 
         return dialog;
     }
 
-    public IAddFileDialog CreateAddFileDialog(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
+    public IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator)
     {
-        var dialog = new AddFileDialog
-        {
-            TitleText = titleText,
-            HeaderText = headerText,
-        };
+        var dialog = new AddFileDialog();
 
         dialog.ViewModel.Validator = validator;
         dialog.SetDefaultFileName(defaultFileName, selectionRange);

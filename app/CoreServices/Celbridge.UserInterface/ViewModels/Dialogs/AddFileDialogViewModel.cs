@@ -14,12 +14,6 @@ public partial class AddFileDialogViewModel : ObservableObject
     private bool _isUpdatingFromCode;
 
     [ObservableProperty]
-    private string _titleText = string.Empty;
-
-    [ObservableProperty]
-    private string _headerText = string.Empty;
-
-    [ObservableProperty]
     private string _errorText = string.Empty;
 
     [ObservableProperty]
