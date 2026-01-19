@@ -1,14 +1,28 @@
-﻿using Celbridge.Dialog;
+using Celbridge.Dialog;
 
 namespace Celbridge.UserInterface.Services.Dialogs;
 
-public record ProgressDialogToken : IProgressDialogToken
+public sealed class ProgressDialogToken : IProgressDialogToken
 {
-    public Guid Token { get; private set; } = Guid.NewGuid();
-    public string DialogTitle { get; init; }
+    private readonly Action<IProgressDialogToken>? _releaseAction;
+    private bool _disposed;
 
-    public ProgressDialogToken(string DialogTitle)
+    public string DialogTitle { get; }
+
+    public ProgressDialogToken(string dialogTitle, Action<IProgressDialogToken>? releaseAction = null)
     {
-        this.DialogTitle = DialogTitle;
+        DialogTitle = dialogTitle;
+        _releaseAction = releaseAction;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _releaseAction?.Invoke(this);
     }
 }

@@ -22,8 +22,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
     private readonly WorkspaceLoader _workspaceLoader;
-    
-    private IProgressDialogToken? _progressDialogToken;
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
@@ -129,7 +127,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         // Show the progress dialog
         var loadingWorkspaceString = _stringLocalizer.GetString("WorkspacePage_LoadingWorkspace");
-        _progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
+        using var progressDialogToken = _dialogService.AcquireProgressDialog(loadingWorkspaceString);
 
         // Time how long it takes to open the workspace
         var stopWatch = new Stopwatch();
@@ -158,10 +156,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         // progress bar updating, which feels more responsive than having the progress bar flash on screen momentarily.
         await Task.Delay(1000);
 
-        // Hide the progress dialog
-        _dialogService.ReleaseProgressDialog(_progressDialogToken);
-
-        _progressDialogToken = null;
         LoadProjectCancellationToken = null;
 
         if (loadResult.IsSuccess)
