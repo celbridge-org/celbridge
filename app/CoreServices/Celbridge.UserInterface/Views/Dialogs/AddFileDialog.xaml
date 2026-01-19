@@ -1,40 +1,58 @@
 ﻿<ContentDialog
-x:Class="Celbridge.UserInterface.Views.AddFileDialog"
+  x:Class="Celbridge.UserInterface.Views.AddFileDialog"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.UserInterface.Views"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-  PrimaryButtonText="{x:Bind CreateString}"
+  Title="{x:Bind TitleString}"
+  PrimaryButtonText="{x:Bind AddString}"
   SecondaryButtonText="{x:Bind CancelString}"
   IsPrimaryButtonEnabled="{x:Bind ViewModel.IsSubmitEnabled, Mode=OneWay}"
   Opened="Dialog_Opened">
 
   <StackPanel Orientation="Vertical"
               HorizontalAlignment="Stretch"
-              VerticalAlignment="Center"
-              MinWidth="350">
+              VerticalAlignment="Top"
+              MinWidth="400">
         
+    <!-- File name text box -->
+    <TextBox x:Name="FileNameTextBox"
+             Header="{x:Bind HeaderString}"
+             Text="{x:Bind ViewModel.FileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+             IsSpellCheckEnabled="False"
+             AcceptsReturn="False"
+             KeyDown="FileNameTextBox_KeyDown"/>
+                
     <!-- File type dropdown -->
     <ComboBox x:Name="FileTypeComboBox"
               Header="{x:Bind FileTypeString}"
               HorizontalAlignment="Stretch"
-              SelectedIndex="{x:Bind ViewModel.SelectedFileTypeIndex, Mode=TwoWay}"/>
-        
-    <!-- File name text box -->
-    <TextBox x:Name="FileNameTextBox"
-             Header="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
-             Text="{x:Bind ViewModel.FileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-             IsSpellCheckEnabled="False"
-             AcceptsReturn="False"
-             Margin="0,12,0,0"
-             KeyDown="FileNameTextBox_KeyDown"/>
-        
-    <!-- Error text -->
-    <TextBlock Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
-               Foreground="{ThemeResource ErrorTextBrush}"
-               Margin="6,4,0,0"
-               Opacity="{x:Bind ViewModel.IsFileNameValid, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}, ConverterParameter=Inverted}"/>
+              Margin="0,8,0,0"
+              SelectedIndex="{x:Bind ViewModel.SelectedFileTypeIndex, Mode=TwoWay}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="local:FileTypeDisplayItem">
+          <StackPanel Orientation="Horizontal">
+            <controls:FileIcon Source="{x:Bind Extension}"
+                               Size="16"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"/>
+            <TextBlock Text="{x:Bind DisplayName}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+
+    <!-- Error InfoBar with reserved space -->
+    <Grid MinHeight="56"
+          Margin="0,8,0,0">
+      <InfoBar Severity="Error"
+               IsOpen="{x:Bind ViewModel.IsErrorVisible, Mode=OneWay}"
+               IsClosable="False"
+               Message="{x:Bind ViewModel.ErrorText, Mode=OneWay}"/>
+    </Grid>
+
   </StackPanel>
 
 </ContentDialog>

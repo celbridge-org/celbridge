@@ -108,9 +108,9 @@ public class DialogService : IDialogService
         return showResult;
     }
 
-    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator)
+    public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
-        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator);
+        var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator, submitButtonKey);
 
         SuppressProgressDialog(true);
 
@@ -121,9 +121,9 @@ public class DialogService : IDialogService
         return showResult;
     }
 
-    public async Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator)
+    public async Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
-        var dialog = _dialogFactory.CreateAddFileDialog(titleText, headerText, defaultFileName, selectionRange, validator);
+        var dialog = _dialogFactory.CreateAddFileDialog(defaultFileName, selectionRange, validator);
 
         SuppressProgressDialog(true);
 
