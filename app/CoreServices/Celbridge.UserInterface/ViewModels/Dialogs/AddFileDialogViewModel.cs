@@ -14,12 +14,6 @@ public partial class AddFileDialogViewModel : ObservableObject
     private bool _isUpdatingFromCode;
 
     [ObservableProperty]
-    private string _titleText = string.Empty;
-
-    [ObservableProperty]
-    private string _headerText = string.Empty;
-
-    [ObservableProperty]
     private string _errorText = string.Empty;
 
     [ObservableProperty]
@@ -33,6 +27,9 @@ public partial class AddFileDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private int _selectedFileTypeIndex;
+
+    [ObservableProperty]
+    private bool _isErrorVisible = false;
 
     public IValidator? Validator { get; set; }
 
@@ -169,6 +166,18 @@ public partial class AddFileDialogViewModel : ObservableObject
             IsFileNameValid = true;
             IsSubmitEnabled = !string.IsNullOrEmpty(FileName);
             ErrorText = string.Empty;
+            IsErrorVisible = false;
+            return;
+        }
+
+        // Check if filename only consists of an extension (e.g., ".py" without a name)
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
+        if (!string.IsNullOrEmpty(FileName) && string.IsNullOrEmpty(nameWithoutExtension))
+        {
+            IsFileNameValid = false;
+            IsSubmitEnabled = false;
+            IsErrorVisible = true;
+            ErrorText = _stringLocalizer.GetString("Validation_FileNameRequired");
             return;
         }
 
@@ -176,6 +185,7 @@ public partial class AddFileDialogViewModel : ObservableObject
 
         IsFileNameValid = result.IsValid;
         IsSubmitEnabled = IsFileNameValid && !string.IsNullOrEmpty(FileName);
+        IsErrorVisible = !IsFileNameValid && !string.IsNullOrEmpty(FileName);
 
         if (result.Errors.Count == 0)
         {

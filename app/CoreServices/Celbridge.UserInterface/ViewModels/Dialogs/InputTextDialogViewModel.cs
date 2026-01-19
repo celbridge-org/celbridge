@@ -1,4 +1,4 @@
-﻿using Celbridge.Validators;
+using Celbridge.Validators;
 using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -23,6 +23,9 @@ public partial class InputTextDialogViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSubmitEnabled = false;
 
+    [ObservableProperty]
+    private bool _isErrorVisible = false;
+
     public IValidator? Validator { get; set; }
 
     public InputTextDialogViewModel()
@@ -46,6 +49,7 @@ public partial class InputTextDialogViewModel : ObservableObject
 
         IsTextValid = result.IsValid;
         IsSubmitEnabled = IsTextValid && !string.IsNullOrEmpty(InputText);
+        IsErrorVisible = !IsTextValid && !string.IsNullOrEmpty(InputText);
 
         if (result.Errors.Count == 0)
         {

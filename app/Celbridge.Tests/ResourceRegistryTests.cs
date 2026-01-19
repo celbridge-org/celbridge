@@ -65,9 +65,9 @@ public class ResourceRegistryTests
         //
 
         var messengerService = new MessengerService();
-        var iconService = new IconService();
+        var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(messengerService, iconService);
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
@@ -104,9 +104,9 @@ public class ResourceRegistryTests
         //
 
         var messengerService = new MessengerService();
-        var iconService = new IconService();
+        var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(messengerService, iconService);
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         resourceRegistry.SetFolderIsExpanded(FolderNameA, true);

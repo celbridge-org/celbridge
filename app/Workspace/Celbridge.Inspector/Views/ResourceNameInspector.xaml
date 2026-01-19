@@ -5,12 +5,8 @@
     xmlns:local="using:Celbridge.Inspector.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:Celbridge.Inspector.ViewModels"  
-    xmlns:ui="using:Celbridge.UserInterface.Services">
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
-  <UserControl.Resources>
-    <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
-  </UserControl.Resources>
-  
   <Grid HorizontalAlignment="Stretch"
         Margin="0"
         Padding="0"
@@ -26,12 +22,10 @@
           Margin="0 0 8 0">
 
       <StackPanel Orientation="Horizontal">
-        <FontIcon
+        <controls:FileIcon
             x:Name="ResourceIcon"
-            FontFamily="{x:Bind ViewModel.Icon.FontFamily, Converter={StaticResource FontFamilyConverter}}"
-            Glyph="{x:Bind ViewModel.Icon.FontCharacter}"
-            Foreground="{x:Bind ViewModel.Icon.FontColor, Mode=OneWay}"
-            FontSize="20"
+            Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
+            Size="20"
             MinWidth="20"
             Margin="0,4,4,4"
             VerticalAlignment="Top" />

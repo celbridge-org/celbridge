@@ -3,25 +3,20 @@ using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
 
+/// <summary>
+/// Display item for file types in the ComboBox, containing the display name and extension for icon lookup.
+/// </summary>
+public record FileTypeDisplayItem(string DisplayName, string Extension);
+
 public sealed partial class AddFileDialog : ContentDialog, IAddFileDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
 
     public AddFileDialogViewModel ViewModel { get; }
 
-    public string TitleText
-    {
-        get => ViewModel.TitleText;
-        set => ViewModel.TitleText = value;
-    }
-
-    public string HeaderText
-    {
-        get => ViewModel.HeaderText;
-        set => ViewModel.HeaderText = value;
-    }
-
-    private string CreateString => _stringLocalizer.GetString($"DialogButton_Create");
+    private string TitleString => _stringLocalizer.GetString("AddFileDialog_AddFile");
+    private string HeaderString => _stringLocalizer.GetString("AddFileDialog_FileName");
+    private string AddString => _stringLocalizer.GetString($"DialogButton_Add");
     private string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
     private string FileTypeString => _stringLocalizer.GetString($"AddFileDialog_FileType");
 
@@ -39,8 +34,10 @@ public sealed partial class AddFileDialog : ContentDialog, IAddFileDialog
 
         this.InitializeComponent();
 
-        // Populate file type dropdown
-        FileTypeComboBox.ItemsSource = ViewModel.FileTypes.Select(ft => ft.DisplayName).ToList();
+        // Populate file type dropdown with display items containing extension info for icons
+        FileTypeComboBox.ItemsSource = ViewModel.FileTypes
+            .Select(ft => new FileTypeDisplayItem(ft.DisplayName, ft.Extension))
+            .ToList();
     }
 
     private void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)

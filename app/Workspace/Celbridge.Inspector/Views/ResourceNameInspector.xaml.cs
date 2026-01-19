@@ -38,10 +38,7 @@ public sealed partial class ResourceNameInspector : UserControl, IInspector
         {
             if (!ViewModel.Resource.IsEmpty)
             {
-                var fontFamily = (FontFamily)Application.Current.Resources[ViewModel.Icon.FontFamily];
-                ResourceIcon.FontFamily = fontFamily;
-
-                ToolTipService.SetPlacement( ResourceNameText, PlacementMode.Bottom);
+                ToolTipService.SetPlacement(ResourceNameText, PlacementMode.Bottom);
                 ToolTipService.SetToolTip(ResourceNameText, ViewModel.Resource);
             }
         }

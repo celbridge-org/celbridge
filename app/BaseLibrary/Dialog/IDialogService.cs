@@ -45,10 +45,10 @@ public interface IDialogService
     /// <summary>
     /// Display an Input Text Dialog.
     /// </summary>
-    Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator);
+    Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null);
 
     /// <summary>
     /// Display an Add File Dialog with file type selection.
     /// </summary>
-    Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string titleText, string headerText, string defaultFileName, Range selectionRange, IValidator validator);
+    Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
 }

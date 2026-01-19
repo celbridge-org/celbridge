@@ -123,17 +123,14 @@
   <data name="DialogButton_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="DialogButton_Create" xml:space="preserve">
-    <value>Create</value>
-  </data>
   <data name="DialogButton_Ok" xml:space="preserve">
     <value>OK</value>
   </data>
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
-  <data name="ResourceTree_EnterName" xml:space="preserve">
-    <value>Enter Name</value>
+  <data name="AddFolderDialog_FolderName" xml:space="preserve">
+    <value>Name</value>
   </data>
   <data name="InspectorPanel_Title" xml:space="preserve">
     <value>Inspector</value>
@@ -523,7 +520,7 @@ Do you wish to continue?</value>
     <value>Open project settings</value>
   </data>
   <data name="AddFileDialog_FileType" xml:space="preserve">
-    <value>File Type</value>
+    <value>Type</value>
   </data>
   <data name="AddFileDialog_FileType_Python" xml:space="preserve">
     <value>Python Script (.py)</value>
@@ -668,5 +665,20 @@ Do you wish to continue?</value>
   </data>
   <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
     <value>The project "{0}" has a configuration error. Please edit the project settings file to fix the issue and then reload the project.</value>
+  </data>
+  <data name="DialogButton_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="DialogButton_Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="AddFileDialog_AddFile" xml:space="preserve">
+    <value>Add File</value>
+  </data>
+  <data name="AddFileDialog_FileName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Validation_FileNameRequired" xml:space="preserve">
+    <value>A file name is required</value>
   </data>
 </root>
