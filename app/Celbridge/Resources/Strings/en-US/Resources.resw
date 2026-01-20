@@ -681,4 +681,58 @@ Do you wish to continue?</value>
   <data name="WorkspacePage_LoadingProject" xml:space="preserve">
     <value>Loading {0}</value>
   </data>
+  <data name="SearchPanel_Title" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchPanel_Placeholder" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchPanel_MatchCaseTooltip" xml:space="preserve">
+    <value>Match Case</value>
+  </data>
+  <data name="SearchPanel_WholeWordTooltip" xml:space="preserve">
+    <value>Match Whole Word</value>
+  </data>
+  <data name="SearchPanel_SearchTooltip" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchPanel_Searching" xml:space="preserve">
+    <value>Searching...</value>
+  </data>
+  <data name="SearchPanel_NoResults" xml:space="preserve">
+    <value>No results found</value>
+  </data>
+  <data name="SearchPanel_Error" xml:space="preserve">
+    <value>Search error</value>
+  </data>
+  <data name="SearchPanel_Match" xml:space="preserve">
+    <value>match</value>
+  </data>
+  <data name="SearchPanel_Matches" xml:space="preserve">
+    <value>matches</value>
+  </data>
+  <data name="SearchPanel_File" xml:space="preserve">
+    <value>file</value>
+  </data>
+  <data name="SearchPanel_Files" xml:space="preserve">
+    <value>files</value>
+  </data>
+  <data name="SearchPanel_In" xml:space="preserve">
+    <value>in</value>
+  </data>
+  <data name="SearchPanel_ResultsCapped" xml:space="preserve">
+    <value>results capped</value>
+  </data>
+  <data name="ProjectPanel_ExplorerTooltip" xml:space="preserve">
+    <value>Explorer</value>
+  </data>
+  <data name="ProjectPanel_SearchTooltip" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="ProjectPanel_DebugTooltip" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="ProjectPanel_SourceControlTooltip" xml:space="preserve">
+    <value>Source Control</value>
+  </data>
 </root>
