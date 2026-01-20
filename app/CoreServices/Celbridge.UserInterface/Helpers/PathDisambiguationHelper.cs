@@ -42,24 +42,11 @@ public static class PathDisambiguationHelper
         public string Segment { get; }
         public int GroupIndex { get; }
 
-#if DEBUG
-        public List<PathNode> NextNodes { get; }
-        public List<string> PathIdentifiers { get; }
-
-        public PathNode(string segment, int groupIndex, string initialPathIdentifier)
-        {
-            Segment = segment;
-            GroupIndex = groupIndex;
-            NextNodes = new List<PathNode>();
-            PathIdentifiers = new List<string> { initialPathIdentifier };
-        }
-#else
-        public PathNode(string segment, int groupIndex, string initialPathIdentifier)
+        public PathNode(string segment, int groupIndex)
         {
             Segment = segment;
             GroupIndex = groupIndex;
         }
-#endif
     }
 
     /// <summary>
@@ -168,26 +155,10 @@ public static class PathDisambiguationHelper
                     var entry = pathEntries[key];
                     var segment = entry.PathSegments[entry.CurrentIndex];
 
-                    if (nodeDictionary.ContainsKey(segment))
+                    if (!nodeDictionary.ContainsKey(segment))
                     {
-#if DEBUG
-                        nodeDictionary[segment].PathIdentifiers.Add(key.ToString() ?? "");
-#endif
+                        nodeDictionary.Add(segment, new PathNode(segment, nextGroupIndex++));
                     }
-                    else
-                    {
-                        nodeDictionary.Add(segment, new PathNode(segment, nextGroupIndex++, key.ToString() ?? ""));
-                    }
-
-#if DEBUG
-                    if (entry.CurrentNode != null)
-                    {
-                        if (!nodeDictionary[segment].NextNodes.Contains(entry.CurrentNode))
-                        {
-                            nodeDictionary[segment].NextNodes.Add(entry.CurrentNode);
-                        }
-                    }
-#endif
 
                     entry.CurrentNode = nodeDictionary[segment];
                 }
