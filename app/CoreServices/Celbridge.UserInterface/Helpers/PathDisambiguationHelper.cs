@@ -21,7 +21,11 @@ public static class PathDisambiguationHelper
         public PathEntry(string path)
         {
             FullPath = path;
-            PathSegments = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+            var segments = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // Filter out drive letters (e.g., "C:") and volume roots from path segments
+            PathSegments = segments.Where(s => !s.EndsWith(':')).ToArray();
+            
             CurrentIndex = PathSegments.Length - 2; // Start from parent directory
             DisplaySegments = new List<string>();
             FinalDisplayString = "";
