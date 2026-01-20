@@ -41,8 +41,8 @@ public class PathDisambiguationHelperTests
         var result = PathDisambiguationHelper.DisambiguatePaths(paths);
 
         result.Should().HaveCount(2);
-        result["key1"].Should().Be(@"ProjectA\File.txt");
-        result["key2"].Should().Be(@"ProjectB\File.txt");
+        result["key1"].Should().Be("ProjectA/File.txt");
+        result["key2"].Should().Be("ProjectB/File.txt");
     }
 
     [Test]
@@ -57,8 +57,8 @@ public class PathDisambiguationHelperTests
         var result = PathDisambiguationHelper.DisambiguatePaths(paths);
 
         result.Should().HaveCount(2);
-        result["key1"].Should().Be(@"ProjectA\File.txt");
-        result["key2"].Should().Be(@"ProjectB\File.txt");
+        result["key1"].Should().Be("ProjectA/File.txt");
+        result["key2"].Should().Be("ProjectB/File.txt");
     }
 
     [Test]
@@ -99,8 +99,8 @@ public class PathDisambiguationHelperTests
         var result = PathDisambiguationHelper.DisambiguatePaths(paths);
 
         result.Should().HaveCount(2);
-        result["key1"].Should().Be(@"Work\File.txt");
-        result["key2"].Should().Be(@"Personal\File.txt");
+        result["key1"].Should().Be("Work/File.txt");
+        result["key2"].Should().Be("Personal/File.txt");
     }
 
     [Test]
@@ -153,8 +153,8 @@ public class PathDisambiguationHelperTests
 
         result.Should().HaveCount(2);
         // Shows minimal distinguishing path
-        result["key1"].Should().Be(@"Project\File.txt");
-        result["key2"].Should().Be(@"components\File.txt");
+        result["key1"].Should().Be("Project/File.txt");
+        result["key2"].Should().Be("components/File.txt");
     }
 
     [Test]
@@ -231,8 +231,8 @@ public class PathDisambiguationHelperTests
         var result = PathDisambiguationHelper.DisambiguatePaths(paths);
 
         result.Should().HaveCount(2);
-        result[1].Should().Be(@"ProjectA\File.txt");
-        result[2].Should().Be(@"ProjectB\File.txt");
+        result[1].Should().Be("ProjectA/File.txt");
+        result[2].Should().Be("ProjectB/File.txt");
     }
 
     [Test]
@@ -296,7 +296,7 @@ public class PathDisambiguationHelperTests
         var result = PathDisambiguationHelper.DisambiguatePaths(paths);
 
         result.Should().HaveCount(2);
-        result["key1"].Should().Be(@"Project-1\File.txt");
-        result["key2"].Should().Be(@"Project-2\File.txt");
+        result["key1"].Should().Be("Project-1/File.txt");
+        result["key2"].Should().Be("Project-2/File.txt");
     }
 }

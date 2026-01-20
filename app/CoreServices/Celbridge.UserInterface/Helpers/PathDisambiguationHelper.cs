@@ -197,6 +197,10 @@ public static class PathDisambiguationHelper
         }
     }
 
+    /// <summary>
+    /// Builds the final display string from the collected display segments.
+    /// Uses normalized forward slashes for cross-platform consistency.
+    /// </summary>
     private static void BuildDisplayString(PathEntry entry)
     {
         var displaySegments = entry.DisplaySegments;
@@ -207,7 +211,7 @@ public static class PathDisambiguationHelper
         {
             if (outputPath.Length > 0)
             {
-                outputPath += Path.DirectorySeparatorChar;
+                outputPath += '/';
             }
             else if (segment == "...")
             {
@@ -221,7 +225,7 @@ public static class PathDisambiguationHelper
         var fileName = entry.PathSegments[^1];
         if (outputPath.Length > 0)
         {
-            outputPath += Path.DirectorySeparatorChar;
+            outputPath += '/';
         }
         outputPath += fileName;
 
