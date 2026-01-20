@@ -63,6 +63,27 @@ public static class PathDisambiguationHelper
     }
 
     /// <summary>
+    /// Gets the filename from a path, handling both forward and back slashes.
+    /// </summary>
+    private static string GetFileName(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return path;
+        }
+        
+        // Find the last separator (either / or \)
+        int lastSeparator = Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'));
+        
+        if (lastSeparator < 0)
+        {
+            return path; // No separator found, the whole string is the filename
+        }
+        
+        return path.Substring(lastSeparator + 1);
+    }
+
+    /// <summary>
     /// Disambiguates a collection of file paths that share the same filename.
     /// </summary>
     /// <param name="paths">Dictionary mapping unique identifiers to file paths</param>
@@ -79,7 +100,7 @@ public static class PathDisambiguationHelper
         {
             // No disambiguation needed for a single path
             var singlePath = paths.First();
-            var fileName = Path.GetFileName(singlePath.Value);
+            var fileName = GetFileName(singlePath.Value);
             return new Dictionary<TKey, string> { { singlePath.Key, fileName } };
         }
 
