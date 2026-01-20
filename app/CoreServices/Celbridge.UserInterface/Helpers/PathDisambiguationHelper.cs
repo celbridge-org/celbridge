@@ -21,7 +21,9 @@ public static class PathDisambiguationHelper
         public PathEntry(string path)
         {
             FullPath = path;
-            var segments = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // Split on both forward and back slashes to handle paths from any platform
+            var segments = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             
             // Filter out drive letters (e.g., "C:") and volume roots from path segments
             PathSegments = segments.Where(s => !s.EndsWith(':')).ToArray();
