@@ -1,5 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
@@ -12,6 +14,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly ISearchService _searchService;
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly DispatcherQueue _dispatcherQueue;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
@@ -62,10 +65,12 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public SearchPanelViewModel(
         ISearchService searchService,
-        ICommandService commandService)
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _searchService = searchService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -185,7 +190,7 @@ public partial class SearchPanelViewModel : ObservableObject
 
         foreach (var fileResult in results.FileResults)
         {
-            var fileVm = new SearchFileResultViewModel(fileResult, this);
+            var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
             FileResults.Add(fileVm);
         }
 
@@ -241,19 +246,24 @@ public partial class SearchFileResultViewModel : ObservableObject
     public string FileName { get; }
     public string RelativePath { get; }
     public int MatchCount { get; }
+    public FileIconDefinition FileIcon { get; }
 
     [ObservableProperty]
     private bool _isExpanded = true;
 
     public ObservableCollection<SearchMatchLineViewModel> Matches { get; } = new();
 
-    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent)
+    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent, IWorkspaceWrapper workspaceWrapper)
     {
         Parent = parent;
         Resource = result.Resource;
         FileName = result.FileName;
         RelativePath = result.RelativePath;
         MatchCount = result.Matches.Count;
+
+        // Get the file icon from the explorer service
+        var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        FileIcon = explorerService.GetIconForResource(result.Resource);
 
         foreach (var match in result.Matches)
         {

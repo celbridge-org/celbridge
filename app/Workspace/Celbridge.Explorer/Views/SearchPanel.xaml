@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.Explorer.Views"
     xmlns:vm="using:Celbridge.Explorer.ViewModels"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <UserControl.Resources>
@@ -130,6 +131,7 @@
                       PointerPressed="FileHeader_PointerPressed">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
@@ -141,8 +143,16 @@
                             Margin="0,0,4,0"
                             VerticalAlignment="Center"/>
 
+                  <!-- File Icon -->
+                  <controls:FileIcon Grid.Column="1"
+                                     IconDefinition="{x:Bind FileIcon}"
+                                     Size="16"
+                                     MinWidth="20"
+                                     Margin="0,0,4,0"
+                                     VerticalAlignment="Center"/>
+
                   <!-- File Name -->
-                  <TextBlock Grid.Column="1"
+                  <TextBlock Grid.Column="2"
                              Text="{x:Bind FileName}"
                              FontWeight="SemiBold"
                              TextTrimming="CharacterEllipsis"
@@ -150,7 +160,7 @@
                              ToolTipService.ToolTip="{x:Bind RelativePath}"/>
 
                   <!-- Match Count Badge -->
-                  <Border Grid.Column="2"
+                  <Border Grid.Column="3"
                           Background="{ThemeResource AccentFillColorDefaultBrush}"
                           CornerRadius="8"
                           Padding="6,1,6,2"
