@@ -2,12 +2,16 @@ namespace Celbridge.Explorer;
 
 /// <summary>
 /// Represents a single line match within a file.
+/// LineText is the formatted display text (may be trimmed/truncated with "...").
+/// MatchStart is the position in the formatted display text (for UI highlighting).
+/// OriginalMatchStart is the position in the original unformatted file line (for editor navigation).
 /// </summary>
 public record SearchMatchLine(
     int LineNumber,
     string LineText,
     int MatchStart,
-    int MatchLength);
+    int MatchLength,
+    int OriginalMatchStart);
 
 /// <summary>
 /// Represents all matches within a single file.

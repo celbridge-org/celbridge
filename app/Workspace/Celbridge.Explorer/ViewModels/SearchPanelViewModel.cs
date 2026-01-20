@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace Celbridge.Explorer.ViewModels;
 
@@ -225,16 +226,18 @@ public partial class SearchPanelViewModel : ObservableObject
         ClearResults();
     }
 
-    public void NavigateToResult(ResourceKey resource, int lineNumber)
+    public void NavigateToResult(ResourceKey resource, int lineNumber, int column)
     {
-        // Open the document
+        // Create location JSON for text document navigation
+        var location = JsonSerializer.Serialize(new { lineNumber, column });
+
+        // Open the document and navigate to the specific location
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource;
             command.ForceReload = false;
+            command.Location = location;
         });
-
-        // Todo: Navigate to the specific line in the document
     }
 }
 
@@ -282,7 +285,8 @@ public partial class SearchFileResultViewModel : ObservableObject
     {
         if (Matches.Count > 0)
         {
-            Parent.NavigateToResult(Resource, Matches[0].LineNumber);
+            var firstMatch = Matches[0];
+            Parent.NavigateToResult(Resource, firstMatch.LineNumber, firstMatch.OriginalMatchStart + 1);
         }
     }
 }
@@ -323,6 +327,12 @@ public partial class SearchMatchLineViewModel : ObservableObject
     /// </summary>
     public int MatchLength { get; }
 
+    /// <summary>
+    /// The position where the match starts in the original unformatted line (0-based).
+    /// This is used for navigation to the correct column in the editor.
+    /// </summary>
+    public int OriginalMatchStart { get; }
+
     public SearchMatchLineViewModel(SearchMatchLine match, SearchFileResultViewModel parent)
     {
         _parent = parent;
@@ -330,6 +340,7 @@ public partial class SearchMatchLineViewModel : ObservableObject
         LineText = match.LineText;
         MatchStart = match.MatchStart;
         MatchLength = match.MatchLength;
+        OriginalMatchStart = match.OriginalMatchStart;
         
         // Split the line text into before, match, and after segments for highlighting
         var displayText = match.LineText;
@@ -357,6 +368,8 @@ public partial class SearchMatchLineViewModel : ObservableObject
     [RelayCommand]
     private void Navigate()
     {
-        _parent.Parent.NavigateToResult(_parent.Resource, LineNumber);
+        // Navigate to the line and column position of the match
+        // Use OriginalMatchStart (0-based) + 1 to get the 1-based column position for Monaco
+        _parent.Parent.NavigateToResult(_parent.Resource, LineNumber, OriginalMatchStart + 1);
     }
 }

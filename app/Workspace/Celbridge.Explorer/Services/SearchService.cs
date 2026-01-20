@@ -166,7 +166,8 @@ public class SearchService : ISearchService
                         i + 1, // Line numbers are 1-based
                         contextLine,
                         displayMatchStart,
-                        match.Length));
+                        match.Length,
+                        match.Start)); // Store original position for navigation
                 }
             }
 

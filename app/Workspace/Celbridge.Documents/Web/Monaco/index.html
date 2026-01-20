@@ -147,6 +147,27 @@
                 monaco.editor.setModelLanguage(window.editor.getModel(), language);
             };
 
+            // Navigate to a specific location in the editor
+            // lineNumber and column are 1-based
+            window.navigateToLocation = function(lineNumber, column) {
+                if (!window.editor) {
+                    return;
+                }
+
+                // Ensure valid values (Monaco uses 1-based line and column numbers)
+                lineNumber = Math.max(1, lineNumber || 1);
+                column = Math.max(1, column || 1);
+
+                // Set the cursor position
+                window.editor.setPosition({ lineNumber: lineNumber, column: column });
+
+                // Reveal the line in the center of the editor viewport
+                window.editor.revealLineInCenter(lineNumber);
+
+                // Focus the editor to make the cursor visible
+                window.editor.focus();
+            };
+
         })();
     </script>
 </body>

@@ -18,6 +18,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public bool ForceReload { get; set; }
 
+    public string Location { get; set; } = string.Empty;
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
@@ -44,7 +46,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
-        var openResult = await documentsService.OpenDocument(FileResource, ForceReload);
+        var openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
         if (openResult.IsFailure)
         {
             // Alert the user that the document failed to open
@@ -81,6 +83,18 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         {
             command.FileResource = fileResource;
             command.ForceReload = forceReload;
+        });
+    }
+
+    public static void OpenDocument(ResourceKey fileResource, bool forceReload, string location)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.ForceReload = forceReload;
+            command.Location = location;
         });
     }
 }

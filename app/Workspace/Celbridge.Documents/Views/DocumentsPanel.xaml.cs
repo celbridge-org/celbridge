@@ -246,101 +246,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
-    {
-        string fileName = System.IO.Path.GetFileName(filePath);
-
-        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
-
-        // Check if the file is already opened
-        foreach (var tabItem in TabView.TabItems)
-        {
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
-
-            if (fileResource == tab.ViewModel.FileResource)
-            {
-                //  Activate the existing tab instead of opening a new one
-                TabView.SelectedItem = tab;
-
-                if (forceReload)
-                {
-                    var reloadResult = await tab.ViewModel.ReloadDocument();
-                    if (reloadResult.IsFailure)
-                    {
-                        return Result.Fail($"Failed to reload document: {fileResource}")
-                            .WithErrors(reloadResult);
-                    }
-                }
-
-                return Result.Ok();
-            }
-            else
-            {
-                // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
-                {
-                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
-                }
-            }
-        }
-
-
-        //
-        // Add a new DocumentTab to the TabView immediately.
-        // This provides some early visual feedback that the document is loading.
-        //
-
-        var documentTab = new DocumentTab();
-        documentTab.ViewModel.FileResource = fileResource;
-        documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
-        documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
-
-        // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
-        // must be populated at this point.
-        TabView.TabItems.Add(documentTab);
-
-        // Select the tab and make the content active
-        TabView.SelectedItem = documentTab;
-
-        int tabIndex = TabView.TabItems.Count - 1;
-
-        var createResult = await ViewModel.CreateDocumentView(fileResource);
-        if (createResult.IsFailure)
-        {
-            TabView.TabItems.RemoveAt(tabIndex);
-
-            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
-                .WithErrors(createResult);
-        }
-        var documentView = createResult.Value;
-
-        // Populate the tab content
-        documentTab.ViewModel.DocumentView = documentView;
-        documentTab.Content = documentView;
-
-        // Select the tab and force the content to refresh
-        TabView.SelectedItem = null;
-        TabView.SelectedItem = documentTab;
-
-        // Handle differentiation for alike filenames.
-        if (collidedTabs.Count > 0)
-        {
-            collidedTabs.Add(documentTab, new PathWorkEntry(filePath));
-            HandleCollidedTabs(ref collidedTabs);
-
-            foreach (var tabInfo in collidedTabs)
-            {
-                // Update our display string for this tab.
-                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
-            }
-        }
-
-        return Result.Ok();
-    }
-
     public static void HandleCollidedTabs(ref Dictionary<DocumentTab, PathWorkEntry> collidedTabs)
     {
         // Make a list of tab identifiers to iterate to avoid iterate lock up on our instances (Thanks C#)
@@ -465,6 +370,138 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             workEntry.finalDisplayString = outputPath;
         }
+    }
+
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
+    {
+        return await OpenDocument(fileResource, filePath, forceReload, string.Empty);
+    }
+
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location)
+    {
+        string fileName = System.IO.Path.GetFileName(filePath);
+
+        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+
+        // Check if the file is already opened
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var tab = tabItem as DocumentTab;
+            Guard.IsNotNull(tab);
+
+            if (fileResource == tab.ViewModel.FileResource)
+            {
+                //  Activate the existing tab instead of opening a new one
+                TabView.SelectedItem = tab;
+
+                if (forceReload)
+                {
+                    var reloadResult = await tab.ViewModel.ReloadDocument();
+                    if (reloadResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to reload document: {fileResource}")
+                            .WithErrors(reloadResult);
+                    }
+                }
+
+                // Navigate to location if specified
+                if (!string.IsNullOrEmpty(location))
+                {
+                    await NavigateToLocation(fileResource, location);
+                }
+
+                return Result.Ok();
+            }
+            else
+            {
+                // Check for alike filenames where we need to show a differentiation of paths.
+                if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
+                {
+                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
+                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                }
+            }
+        }
+
+        //
+        // Add a new DocumentTab to the TabView immediately.
+        // This provides some early visual feedback that the document is loading.
+        //
+
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.FilePath = filePath;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
+        documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
+
+        // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
+        // must be populated at this point.
+        TabView.TabItems.Add(documentTab);
+
+        // Select the tab and make the content active
+        TabView.SelectedItem = documentTab;
+
+        int tabIndex = TabView.TabItems.Count - 1;
+
+        var createResult = await ViewModel.CreateDocumentView(fileResource);
+        if (createResult.IsFailure)
+        {
+            TabView.TabItems.RemoveAt(tabIndex);
+
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .WithErrors(createResult);
+        }
+        var documentView = createResult.Value;
+
+        // Populate the tab content
+        documentTab.ViewModel.DocumentView = documentView;
+        documentTab.Content = documentView;
+
+        // Select the tab and force the content to refresh
+        TabView.SelectedItem = null;
+        TabView.SelectedItem = documentTab;
+
+        // Handle differentiation for alike filenames.
+        if (collidedTabs.Count > 0)
+        {
+            collidedTabs.Add(documentTab, new PathWorkEntry(filePath));
+            HandleCollidedTabs(ref collidedTabs);
+
+            foreach (var tabInfo in collidedTabs)
+            {
+                // Update our display string for this tab.
+                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
+            }
+        }
+
+        // Navigate to location if specified
+        if (!string.IsNullOrEmpty(location))
+        {
+            await NavigateToLocation(fileResource, location);
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> NavigateToLocation(ResourceKey fileResource, string location)
+    {
+        foreach (var tabItem in TabView.TabItems)
+        {
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
+
+            if (fileResource == documentTab.ViewModel.FileResource)
+            {
+                var documentView = documentTab.Content as IDocumentView;
+                if (documentView != null)
+                {
+                    return await documentView.NavigateToLocation(location);
+                }
+                return Result.Ok();
+            }
+        }
+
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
@@ -652,7 +689,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
 
         // Check if the file is already opened
-        string fileName = System.IO.Path.GetFileName(newResourcePath);
+        string fileName = Path.GetFileName(newResourcePath);
         foreach (var tabItem in TabView.TabItems)
         {
             var tab = tabItem as DocumentTab;
@@ -661,7 +698,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             if (newResource != tab.ViewModel.FileResource)
             {
                 // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
+                if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
                 {
                     var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
                     collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
