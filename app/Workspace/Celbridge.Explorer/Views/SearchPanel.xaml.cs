@@ -43,5 +43,6 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
     public void FocusSearchInput()
     {
         SearchTextBox.Focus(FocusState.Programmatic);
+        SearchTextBox.SelectAll();
     }
 }
