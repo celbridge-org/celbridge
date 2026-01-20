@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,6 +17,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IEditorSettings _editorSettings;
     private readonly DispatcherQueue _dispatcherQueue;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
@@ -67,11 +69,13 @@ public partial class SearchPanelViewModel : ObservableObject
     public SearchPanelViewModel(
         ISearchService searchService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IEditorSettings editorSettings)
     {
         _searchService = searchService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _editorSettings = editorSettings;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -83,6 +87,10 @@ public partial class SearchPanelViewModel : ObservableObject
         MatchCaseTooltip = _stringLocalizer.GetString("SearchPanel_MatchCaseTooltip");
         WholeWordTooltip = _stringLocalizer.GetString("SearchPanel_WholeWordTooltip");
         SearchTooltip = _stringLocalizer.GetString("SearchPanel_SearchTooltip");
+
+        // Load saved search options from editor settings
+        MatchCase = _editorSettings.SearchMatchCase;
+        WholeWord = _editorSettings.SearchWholeWord;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -106,6 +114,9 @@ public partial class SearchPanelViewModel : ObservableObject
 
     partial void OnMatchCaseChanged(bool value)
     {
+        // Save to editor settings
+        _editorSettings.SearchMatchCase = value;
+
         if (!string.IsNullOrEmpty(SearchText))
         {
             _ = ExecuteSearchAsync();
@@ -114,6 +125,9 @@ public partial class SearchPanelViewModel : ObservableObject
 
     partial void OnWholeWordChanged(bool value)
     {
+        // Save to editor settings
+        _editorSettings.SearchWholeWord = value;
+
         if (!string.IsNullOrEmpty(SearchText))
         {
             _ = ExecuteSearchAsync();
