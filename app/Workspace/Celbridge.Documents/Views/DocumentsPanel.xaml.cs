@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
@@ -206,172 +207,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return openDocuments;
     }
 
-    public class PathNode
-    {
-        public string entryString;
-        public int groupIndex;
-
-        // These fields are not used for any algorithmic reason but are very useful for tracing and debugging the algorithm.
-        //  Also, if we do want to do any further work on this to make it more contextual this information will likely be what we need to use.
-#if DEBUG
-        public List<PathNode> nextNodes;
-        public List<DocumentTab> tabIdentifiers;
-#endif // DEBUG
-
-        public PathNode(string entryString, int groupIndex, DocumentTab initialTabIndentifier)
-        {
-            this.entryString = entryString;
-            this.groupIndex = groupIndex;
-#if DEBUG
-            nextNodes = new List<PathNode>();
-            this.tabIdentifiers = new List<DocumentTab>() { initialTabIndentifier };
-#endif // DEBUG
-        }
-    }
-
-    public class PathWorkEntry
-    {
-        public int currentIndex;
-        public string[] pathSegments;
-        public List<string> displaySegments;
-        public string finalDisplayString;
-        public PathNode? currentNode;
-
-        public PathWorkEntry(string path)
-        {
-            pathSegments = path.Split(Path.DirectorySeparatorChar);
-            currentIndex = pathSegments.Length - 2;
-            displaySegments = new List<string>();
-            finalDisplayString = "";
-        }
-    }
-
-    public static void HandleCollidedTabs(ref Dictionary<DocumentTab, PathWorkEntry> collidedTabs)
-    {
-        // Make a list of tab identifiers to iterate to avoid iterate lock up on our instances (Thanks C#)
-        var tabIdentifiers = new List<DocumentTab>();
-        foreach (var pair in collidedTabs)
-        {
-            tabIdentifiers.Add(pair.Key);
-        }
-
-        int nextGroupIndex = 1;
-        bool stillBusy = true;
-        do
-        {
-            // Reset our busy flag.
-            stillBusy = false;
-
-            // Sort identifiers by group, ready to process.
-            var GroupToIdentifiersDictionary = new Dictionary<int, List<DocumentTab>>();
-            foreach (var identifier in tabIdentifiers)
-            {
-                PathWorkEntry workEntry = collidedTabs[identifier];
-                if (workEntry.currentIndex < 0)
-                {
-                    continue;
-                }
-
-                stillBusy = true;       // If we reach here, - then there's still work to be done.
-
-                int groupIndex = workEntry.currentNode != null ? workEntry.currentNode.groupIndex : 0;
-                if (!GroupToIdentifiersDictionary.ContainsKey(groupIndex))
-                {
-                    GroupToIdentifiersDictionary.Add(groupIndex, new List<DocumentTab>() { identifier });
-                }
-                else
-                {
-                    GroupToIdentifiersDictionary[groupIndex].Add(identifier);
-                }
-            }
-
-            // Run through identifiers in group blocks, with a clean node dictionary for each group.
-            foreach (var pair in GroupToIdentifiersDictionary)
-            {
-                var NodeDictionary = new Dictionary<string, PathNode>();
-
-                foreach (DocumentTab identifier in pair.Value)
-                {
-                    var workEntry = collidedTabs[identifier];
-                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
-                    if (NodeDictionary.ContainsKey(segmentString))
-                    {
-#if DEBUG
-                        NodeDictionary[segmentString].tabIdentifiers.Add(identifier);
-#endif // DEBUG
-                    }
-                    else
-                    {
-                        NodeDictionary.Add(segmentString, new PathNode(segmentString, nextGroupIndex++, identifier));
-                    }
-
-#if DEBUG
-                    if (workEntry.currentNode != null)
-                    {
-                        if (!NodeDictionary[segmentString].nextNodes.Contains(workEntry.currentNode))
-                        {
-                            NodeDictionary[segmentString].nextNodes.Add(workEntry.currentNode);
-                        }
-                    }
-#endif // DEBUG
-
-                    workEntry.currentNode = NodeDictionary[segmentString];
-                }
-
-                // If we have only one node, then there is no deviation, so use '...', otherwise, use the segment.
-                bool useSegment = NodeDictionary.Count > 1;
-                foreach (var identifier in pair.Value)
-                {
-                    var workEntry = collidedTabs[identifier];
-                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
-                    if (useSegment)
-                    {
-                        workEntry.displaySegments.Add(segmentString);
-                    }
-                    else
-                    {
-                        if ((workEntry.displaySegments.Count > 0) && 
-                            (workEntry.displaySegments[workEntry.displaySegments.Count - 1] != "..."))
-                        {
-                            workEntry.displaySegments.Add("...");
-                        }
-                    }
-                    workEntry.currentIndex--;
-                }
-            }
-        }
-        while (stillBusy);
-
-        // Render out to a string ready for output and tidy any leading '...' entries.
-        foreach (var pair in collidedTabs)
-        {
-            PathWorkEntry workEntry = pair.Value;
-            var displaySegments = workEntry.displaySegments;
-            displaySegments.Reverse();
-            string outputPath = "";
-            foreach (var segment in displaySegments)
-            {
-                if (outputPath.Length > 0)
-                {
-                    outputPath += Path.DirectorySeparatorChar;
-                }
-                else
-                {
-                    if (segment == "...")
-                    {
-                        continue;
-                    }
-                }
-                outputPath += segment;
-            }
-
-            // Add file name to the end of the path.
-            outputPath += Path.DirectorySeparatorChar + workEntry.pathSegments[workEntry.pathSegments.Length - 1];
-
-            workEntry.finalDisplayString = outputPath;
-        }
-    }
-
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
     {
         return await OpenDocument(fileResource, filePath, forceReload, string.Empty);
@@ -381,7 +216,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         string fileName = System.IO.Path.GetFileName(filePath);
 
-        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+        var collidedTabs = new Dictionary<DocumentTab, string>();
 
         // Check if the file is already opened
         foreach (var tabItem in TabView.TabItems)
@@ -418,7 +253,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
                 {
                     var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                    collidedTabs.Add(tab, otherFilePath);
                 }
             }
         }
@@ -431,7 +266,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
         documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
@@ -464,14 +299,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Handle differentiation for alike filenames.
         if (collidedTabs.Count > 0)
         {
-            collidedTabs.Add(documentTab, new PathWorkEntry(filePath));
-            HandleCollidedTabs(ref collidedTabs);
-
-            foreach (var tabInfo in collidedTabs)
-            {
-                // Update our display string for this tab.
-                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
-            }
+            collidedTabs.Add(documentTab, filePath);
+            UpdateTabNamesForCollisions(collidedTabs);
         }
 
         // Navigate to location if specified
@@ -685,10 +514,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = newResource.ResourceName;
         documentTab.ViewModel.FilePath = newResourcePath;
 
-        // %%% TEST -- Ensure our renamed tab does not collide with any existing open tabs.
-        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+        // Ensure our renamed tab does not collide with any existing open tabs.
+        var collidedTabs = new Dictionary<DocumentTab, string>();
 
-        // Check if the file is already opened
         string fileName = Path.GetFileName(newResourcePath);
         foreach (var tabItem in TabView.TabItems)
         {
@@ -701,7 +529,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
                 {
                     var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                    collidedTabs.Add(tab, otherFilePath);
                 }
             }
         }
@@ -709,18 +537,21 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Handle differentiation for alike filenames.
         if (collidedTabs.Count > 0)
         {
-            collidedTabs.Add(documentTab, new PathWorkEntry(newResourcePath));
-            HandleCollidedTabs(ref collidedTabs);
-
-            foreach (var tabInfo in collidedTabs)
-            {
-                // Update our display string for this tab.
-                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
-            }
+            collidedTabs.Add(documentTab, newResourcePath);
+            UpdateTabNamesForCollisions(collidedTabs);
         }
-        // ---
 
         return Result.Ok();
+    }
+
+    private void UpdateTabNamesForCollisions(Dictionary<DocumentTab, string> collidedTabs)
+    {
+        var disambiguatedPaths = PathDisambiguationHelper.DisambiguatePaths(collidedTabs);
+
+        foreach (var kvp in disambiguatedPaths)
+        {
+            kvp.Key.ViewModel.DocumentName = kvp.Value;
+        }
     }
 
     public void Shutdown()
