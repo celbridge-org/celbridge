@@ -21,7 +21,7 @@ public static class PathDisambiguationHelper
         public PathEntry(string path)
         {
             FullPath = path;
-            PathSegments = path.Split(Path.DirectorySeparatorChar);
+            PathSegments = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
             CurrentIndex = PathSegments.Length - 2; // Start from parent directory
             DisplaySegments = new List<string>();
             FinalDisplayString = "";
