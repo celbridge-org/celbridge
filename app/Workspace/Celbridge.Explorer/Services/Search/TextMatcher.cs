@@ -8,11 +8,6 @@ public class TextMatcher
     /// <summary>
     /// Finds all matches of a search term within a line of text.
     /// </summary>
-    /// <param name="line">The line of text to search.</param>
-    /// <param name="searchTerm">The term to search for.</param>
-    /// <param name="matchCase">Whether to perform case-sensitive matching.</param>
-    /// <param name="wholeWord">Whether to match whole words only.</param>
-    /// <returns>A list of match positions (start index, length).</returns>
     public List<(int Start, int Length)> FindMatches(
         string line,
         string searchTerm,
