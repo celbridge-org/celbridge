@@ -48,12 +48,6 @@ public partial class HomePageViewModel : ObservableObject
         await _mainMenuUtils.ShowNewProjectDialogAsync();
     }
 
-    public IAsyncRelayCommand NewExampleProjectCommand => new AsyncRelayCommand(NewExampleProjectCommand_Executed);
-    private async Task NewExampleProjectCommand_Executed()
-    {
-        await _mainMenuUtils.ShowNewExampleProjectDialogAsync();
-    }
-
     public IAsyncRelayCommand OpenProjectCommand => new AsyncRelayCommand(OpenProjectCommand_Executed);
     private async Task OpenProjectCommand_Executed()
     {
@@ -74,4 +68,3 @@ public partial class HomePageViewModel : ObservableObject
         });
     }
 }
-

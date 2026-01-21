@@ -41,6 +41,11 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// </summary>
     string PreviousNewFileExtension { get; set; }
 
+    /// <summary>
+    /// The template name of the previously created project via the New Project dialog.
+    /// </summary>
+    string PreviousNewProjectTemplateName { get; set; }
+
     // ========================================
     // Window Geometry
     // Applies to non-maximized windowed mode only.

@@ -413,3 +413,5 @@ solution-config.props
 
 # Celbridge ephemeral data
 .cache/
+# Design documentation (keep local only)
+app/Celbridge/DesignDocs/

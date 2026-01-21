@@ -17,21 +17,15 @@ public interface IDialogFactory
     /// </summary>
     IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText);
 
-
     /// <summary>
     /// Create a Progress Dialog.
     /// </summary>
     IProgressDialog CreateProgressDialog();
 
     /// <summary>
-    /// Create a New Project Dialog.
+    /// Create a New Project Dialog with template selection.
     /// </summary>
     INewProjectDialog CreateNewProjectDialog();
-
-    /// <summary>
-    /// Create a New Example Project Dialog.
-    /// </summary>
-    INewProjectDialog CreateNewExampleProjectDialog();
 
     /// <summary>
     /// Create an Input Text Dialog.
@@ -43,3 +37,4 @@ public interface IDialogFactory
     /// </summary>
     IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 }
+
