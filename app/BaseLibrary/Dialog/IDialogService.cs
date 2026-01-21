@@ -28,14 +28,9 @@ public interface IDialogService
     IProgressDialogToken AcquireProgressDialog(string titleText);
 
     /// <summary>
-    /// Display a New Project Dialog.
+    /// Display a New Project Dialog with template selection.
     /// </summary>
     Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync();
-
-    /// <summary>
-    /// Display a New Example Project Dialog.
-    /// </summary>
-    Task<Result<NewProjectConfig>> ShowNewExampleProjectDialogAsync();
 
     /// <summary>
     /// Display an Input Text Dialog.
@@ -47,3 +42,4 @@ public interface IDialogService
     /// </summary>
     Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
 }
+

@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Workspace.Views.Controls;
 
 namespace Celbridge.Workspace.Services;
 
@@ -182,7 +183,7 @@ public class ShortcutMenuBuilder
             var flyout = new MenuFlyout();
             flyout.Placement = FlyoutPlacementMode.RightEdgeAlignedTop;
             AddMenuItemsFromTree(childNode, flyout.Items);
-            button.Flyout = flyout;
+            button.SetFlyout(flyout);
             
             panel.Children.Add(button);
         }
@@ -263,40 +264,30 @@ public class ShortcutMenuBuilder
         }
     }
 
-    private Button CreateShortcutButton(string? name, string? iconName, string? tooltip)
+    private ShortcutButton CreateShortcutButton(string? name, string? iconName, string? tooltip)
     {
-        var button = new Button
-        {
-            Width = 40,
-            Height = 40,
-            Padding = new Thickness(0),
-            Background = new SolidColorBrush(Colors.Transparent),
-            BorderThickness = new Thickness(0),
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
+        var button = new ShortcutButton();
 
         // Set icon if provided
         if (!string.IsNullOrEmpty(iconName) && 
             Enum.TryParse<Symbol>(iconName, out var icon))
         {
-            button.Content = new SymbolIcon(icon);
+            button.SetIcon(icon);
         }
         else
         {
             // Default to Play icon for shortcuts
-            button.Content = new SymbolIcon(Symbol.Play);
+            button.SetIcon(Symbol.Play);
         }
 
         // Set tooltip if provided
         if (!string.IsNullOrEmpty(tooltip))
         {
-            ToolTipService.SetToolTip(button, tooltip);
-            ToolTipService.SetPlacement(button, PlacementMode.Right);
+            button.SetTooltip(tooltip);
         }
         else if (!string.IsNullOrEmpty(name))
         {
-            ToolTipService.SetToolTip(button, name);
-            ToolTipService.SetPlacement(button, PlacementMode.Right);
+            button.SetTooltip(name);
         }
 
         return button;
@@ -304,7 +295,7 @@ public class ShortcutMenuBuilder
 
     private void OnShortcutButtonClick(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && 
+        if (sender is ShortcutButton button && 
             button.Tag is string tag)
         {
             ShortcutClicked?.Invoke(tag);

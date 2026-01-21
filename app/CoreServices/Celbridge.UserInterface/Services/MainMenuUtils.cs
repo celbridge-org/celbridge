@@ -37,20 +37,6 @@ public class MainMenuUtils
         }
     }
 
-    public async Task ShowNewExampleProjectDialogAsync()
-    {
-        var showResult = await _dialogService.ShowNewExampleProjectDialogAsync();
-        if (showResult.IsSuccess)
-        {
-            var projectConfig = showResult.Value;
-
-            _commandService.Execute<ICreateProjectCommand>((command) =>
-            {
-                command.Config = projectConfig;
-            });
-        }
-    }
-
     public async Task ShowOpenProjectDialogAsync()
     {
         var result = await _filePickerService.PickSingleFileAsync(new List<string> { ProjectConstants.ProjectFileExtension });
@@ -65,3 +51,4 @@ public class MainMenuUtils
         }
     }
 }
+
