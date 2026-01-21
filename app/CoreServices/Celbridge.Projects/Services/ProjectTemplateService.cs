@@ -12,21 +12,17 @@ public class ProjectTemplateService : IProjectTemplateService
         [
             new ProjectTemplate
             {
-                Id = "empty",
+                Id = "Empty",
                 Name = stringLocalizer.GetString("Template_Empty_Name"),
                 Description = stringLocalizer.GetString("Template_Empty_Description"),
-                Icon = "\uE8A5", // Document icon
-                TemplateAssetPath = "ms-appx:///Assets/Templates/Empty.zip",
-                TemplateProjectFileName = "empty.celbridge"
+                Icon = "\uE8A5" // Document icon
             },
             new ProjectTemplate
             {
-                Id = "examples",
+                Id = "Examples",
                 Name = stringLocalizer.GetString("Template_Examples_Name"),
                 Description = stringLocalizer.GetString("Template_Examples_Description"),
-                Icon = "\uE736", // Library icon
-                TemplateAssetPath = "ms-appx:///Assets/Templates/Examples.zip",
-                TemplateProjectFileName = "examples.celbridge"
+                Icon = "\uE736" // Library icon
             }
         ];
     }
@@ -35,5 +31,5 @@ public class ProjectTemplateService : IProjectTemplateService
         _templates;
 
     public ProjectTemplate GetDefaultTemplate() =>
-        _templates.First(t => t.Id == "empty");
+        _templates.First(t => t.Id == "Empty");
 }

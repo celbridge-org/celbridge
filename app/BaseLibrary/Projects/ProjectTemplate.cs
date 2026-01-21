@@ -2,11 +2,12 @@ namespace Celbridge.Projects;
 
 /// <summary>
 /// Defines a project template that can be used to create new projects.
+/// Uses naming conventions to automatically construct localization keys and asset paths from the Id.
 /// </summary>
 public record ProjectTemplate
 {
     /// <summary>
-    /// Unique identifier for the template.
+    /// Unique identifier for the template (e.g., "Empty", "Examples").
     /// </summary>
     public required string Id { get; init; }
 
@@ -26,14 +27,7 @@ public record ProjectTemplate
     public required string Icon { get; init; }
 
     /// <summary>
-    /// Path to the zip asset file containing the template content.
-    /// All templates must have a zip file.
-    /// Example: "ms-appx:///Assets/Templates/Empty.zip"
+    /// Gets the path to the zip asset file containing the template content.
     /// </summary>
-    public required string TemplateAssetPath { get; init; }
-
-    /// <summary>
-    /// The name of the .celbridge file inside the zip (before renaming to user's project name).
-    /// </summary>
-    public required string TemplateProjectFileName { get; init; }
+    public string TemplateAssetPath => $"ms-appx:///Assets/Templates/{Id}.zip";
 }

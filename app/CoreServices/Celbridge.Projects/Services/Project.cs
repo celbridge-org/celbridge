@@ -8,6 +8,8 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
+    private const string TemplateProjectFileName = "project.celbridge";
+
     private readonly ILogger<Project> _logger;
 
     private IProjectConfigService? _projectConfig;
@@ -144,7 +146,7 @@ public class Project : IDisposable, IProject
             ZipFile.ExtractToDirectory(tempZipFile.Path, tempStagingPath, overwriteFiles: true);
 
             // Update the extracted project file with actual version values
-            var extractedProjectFile = Path.Combine(tempStagingPath, template.TemplateProjectFileName);
+            var extractedProjectFile = Path.Combine(tempStagingPath, TemplateProjectFileName);
             var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
 
             projectFileContents = projectFileContents
