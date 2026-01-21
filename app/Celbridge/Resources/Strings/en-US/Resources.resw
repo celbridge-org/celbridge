@@ -505,7 +505,7 @@ Do you wish to continue?</value>
     <value>Add folder</value>
   </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
-    <value>Collapse folders</value>
+    <value>Collapse all folders</value>
   </data>
   <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
     <value>Open project settings</value>
@@ -770,5 +770,8 @@ Do you wish to continue?</value>
   </data>
   <data name="CreateProject_FailedMessage" xml:space="preserve">
     <value>The project could not be created. Please check that you have write access to the destination folder and try again.</value>
+  </data>
+  <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
+    <value>Collapse all search results</value>
   </data>
 </root>
