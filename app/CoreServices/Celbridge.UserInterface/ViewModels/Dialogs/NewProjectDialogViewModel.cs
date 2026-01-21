@@ -33,6 +33,12 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private string _projectSaveLocation = string.Empty;
 
     [ObservableProperty]
+    private string _validationErrorMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isValidationErrorVisible = false;
+
+    [ObservableProperty]
     private IReadOnlyList<ProjectTemplate> _templates = [];
 
     [ObservableProperty]
@@ -95,6 +101,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 // Project name is not a valid filename
                 IsCreateButtonEnabled = false;
                 DestProjectFilePath = string.Empty;
+                ValidationErrorMessage = "NewProjectDialog_InvalidProjectName";
+                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
                 return;
             }
 
@@ -103,6 +111,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 // Project base folder is not valid.
                 IsCreateButtonEnabled = false;
                 DestProjectFilePath = string.Empty;
+                ValidationErrorMessage = "NewProjectDialog_InvalidFolderPath";
+                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
                 return;
             }
 
@@ -116,6 +126,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
                     // A subfolder with this name already exists
                     IsCreateButtonEnabled = false;
                     DestProjectFilePath = string.Empty;
+                    ValidationErrorMessage = "NewProjectDialog_SubfolderAlreadyExists";
+                    IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
                     return;
                 }
 
@@ -131,11 +143,15 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 // A project file with the same name already exists
                 IsCreateButtonEnabled = false;
                 DestProjectFilePath = string.Empty;
+                ValidationErrorMessage = "NewProjectDialog_ProjectFileAlreadyExists";
+                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
                 return;
             }
 
             IsCreateButtonEnabled = true;
             DestProjectFilePath = destProjectFilePath;
+            ValidationErrorMessage = string.Empty;
+            IsValidationErrorVisible = false;
         }
 
         if (e.PropertyName == nameof(DestProjectFilePath))

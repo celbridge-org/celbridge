@@ -78,7 +78,9 @@
              Header="{x:Bind ProjectNameString}"
              Text="{x:Bind ViewModel.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              ToolTipService.ToolTip="{x:Bind ProjectNameTooltipString}"
-             ToolTipService.Placement="Bottom"/>
+             ToolTipService.Placement="Bottom"
+             Loaded="ProjectNameTextBox_Loaded"
+             KeyDown="ProjectNameTextBox_KeyDown"/>
 
     <!-- Select folder grid -->
     <Grid>
@@ -112,19 +114,24 @@
               ToolTipService.ToolTip="{x:Bind CreateSubfolderTooltipString}"
               ToolTipService.Placement="Bottom"/>
 
-    <!-- Save location info -->
-    <InfoBar x:Name="SaveLocationInfoBar"
-             IsOpen="{x:Bind ViewModel.IsCreateButtonEnabled, Mode=OneWay}"
-             Severity="Informational"
-             IsClosable="False"
-             IsIconVisible="True"
-             MinHeight="68"
-             Margin="0,12,0,0">
-      <InfoBar.Content>
-        <TextBlock Text="{x:Bind ViewModel.ProjectSaveLocation, Mode=OneWay}"
-                   TextWrapping="Wrap"/>
-      </InfoBar.Content>
-    </InfoBar>
+    <!-- InfoBar container - both InfoBars occupy the same space -->
+    <Grid MinHeight="80" Margin="0,12,0,0">
+      <!-- Validation error message -->
+      <InfoBar x:Name="ValidationErrorInfoBar"
+               IsOpen="{x:Bind ViewModel.IsValidationErrorVisible, Mode=OneWay}"
+               Severity="Error"
+               IsClosable="False"
+               IsIconVisible="True"
+               Message="{x:Bind GetLocalizedErrorMessage(ViewModel.ValidationErrorMessage), Mode=OneWay}"/>
+
+      <!-- Save location info -->
+      <InfoBar x:Name="SaveLocationInfoBar"
+               IsOpen="{x:Bind ViewModel.IsCreateButtonEnabled, Mode=OneWay}"
+               Severity="Informational"
+               IsClosable="False"
+               IsIconVisible="True"
+               Message="{x:Bind ViewModel.ProjectSaveLocation, Mode=OneWay}"/>
+    </Grid>
 
   </StackPanel>
 

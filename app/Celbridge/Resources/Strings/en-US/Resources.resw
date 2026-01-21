@@ -753,4 +753,16 @@ Do you wish to continue?</value>
   <data name="ProjectPanel_SourceControlTooltip" xml:space="preserve">
     <value>Source Control</value>
   </data>
+  <data name="NewProjectDialog_InvalidProjectName" xml:space="preserve">
+    <value>The project name contains invalid characters or is not a valid file name.</value>
+  </data>
+  <data name="NewProjectDialog_InvalidFolderPath" xml:space="preserve">
+    <value>The selected folder path does not exist.</value>
+  </data>
+  <data name="NewProjectDialog_ProjectFileAlreadyExists" xml:space="preserve">
+    <value>A project file with this name already exists in the selected location.</value>
+  </data>
+  <data name="NewProjectDialog_SubfolderAlreadyExists" xml:space="preserve">
+    <value>A folder with this name already exists in the selected location.</value>
+  </data>
 </root>

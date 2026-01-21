@@ -24,6 +24,15 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public string CreateSubfolderString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolder");
     public string CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
     public string SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
+    public string InvalidProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_InvalidProjectName");
+    public string InvalidFolderPathString => _stringLocalizer.GetString($"NewProjectDialog_InvalidFolderPath");
+    public string SubfolderAlreadyExistsString => _stringLocalizer.GetString($"NewProjectDialog_SubfolderAlreadyExists");
+    public string ProjectFileAlreadyExistsString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFileAlreadyExists");
+
+    public string GetLocalizedErrorMessage(string errorKey)
+    {
+        return _stringLocalizer.GetString(errorKey);
+    }
 
     public NewProjectDialog()
     {
@@ -37,6 +46,26 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         Title = TitleString;
 
         this.InitializeComponent();
+    }
+
+    private void ProjectNameTextBox_Loaded(object sender, RoutedEventArgs e)
+    {
+        ProjectNameTextBox.Focus(FocusState.Programmatic);
+    }
+
+    private void ProjectNameTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            e.Handled = true;
+            // Move focus away from the TextBox when Enter is pressed
+            // This allows the user to see validation results without submitting
+            var options = new FindNextElementOptions
+            {
+                SearchRoot = this.XamlRoot?.Content
+            };
+            FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
+        }
     }
 
     private void CancelButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
