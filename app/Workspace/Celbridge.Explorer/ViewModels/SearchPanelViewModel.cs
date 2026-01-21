@@ -21,7 +21,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly DispatcherQueue _dispatcherQueue;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
-    private readonly object _searchLock = new();
+    private readonly Lock _searchLock = new();
 
     // Debounce timer
     private Timer? _debounceTimer;
