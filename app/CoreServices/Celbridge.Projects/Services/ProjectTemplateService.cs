@@ -17,8 +17,7 @@ public class ProjectTemplateService : IProjectTemplateService
                 Description = stringLocalizer.GetString("Template_Empty_Description"),
                 Icon = "\uE8A5", // Document icon
                 TemplateAssetPath = "ms-appx:///Assets/Templates/Empty.zip",
-                TemplateProjectFileName = "empty.celbridge",
-                SortOrder = 0
+                TemplateProjectFileName = "empty.celbridge"
             },
             new ProjectTemplate
             {
@@ -27,14 +26,13 @@ public class ProjectTemplateService : IProjectTemplateService
                 Description = stringLocalizer.GetString("Template_Examples_Description"),
                 Icon = "\uE736", // Library icon
                 TemplateAssetPath = "ms-appx:///Assets/Templates/Examples.zip",
-                TemplateProjectFileName = "examples.celbridge",
-                SortOrder = 1
+                TemplateProjectFileName = "examples.celbridge"
             }
         ];
     }
 
     public IReadOnlyList<ProjectTemplate> GetTemplates() =>
-        _templates.OrderBy(t => t.SortOrder).ToList();
+        _templates;
 
     public ProjectTemplate GetDefaultTemplate() =>
         _templates.First(t => t.Id == "empty");

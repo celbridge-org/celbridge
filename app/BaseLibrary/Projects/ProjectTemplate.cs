@@ -36,9 +36,4 @@ public record ProjectTemplate
     /// The name of the .celbridge file inside the zip (before renaming to user's project name).
     /// </summary>
     public required string TemplateProjectFileName { get; init; }
-
-    /// <summary>
-    /// Sort order for display in the template gallery.
-    /// </summary>
-    public int SortOrder { get; init; }
 }
