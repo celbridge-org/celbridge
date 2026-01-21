@@ -14,8 +14,6 @@ public sealed partial class HomePage : Page
     private string NewProjectTooltipString => _stringLocalizer.GetString("HomePage_NewProjectTooltip");
     private string OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
     private string OpenProjectTooltipString => _stringLocalizer.GetString("HomePage_OpenProjectTooltip");
-    private string NewExampleProjectString => _stringLocalizer.GetString("HomePage_NewExampleProject");
-    private string NewExampleProjectTooltipString => _stringLocalizer.GetString("HomePage_NewExampleProjectTooltip");
     private string RecentString => _stringLocalizer.GetString("HomePage_Recent");
 
     public HomePageViewModel ViewModel { get; private set; }
