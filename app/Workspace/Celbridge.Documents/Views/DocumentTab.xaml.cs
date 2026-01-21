@@ -1,7 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -163,7 +163,7 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        // Focus the document editor when the tab is clicked (even if already selected)
+        // Focus the document editor when the tab is clicked (even if tab is already selected)
         _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             FocusDocumentEditor();
@@ -177,31 +177,11 @@ public partial class DocumentTab : TabViewItem
         {
             // Focus workaround for Monaco editor hosted in WebView2.
             // Try to find a WebView2 control within the document view and focus it.
-            var webView = FindDescendant<WebView2>(element);
+            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(element);
             if (webView != null)
             {
                 webView.Focus(FocusState.Programmatic);
             }
         }
-    }
-
-    private static T? FindDescendant<T>(DependencyObject parent) where T : class
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T result)
-            {
-                return result;
-            }
-            
-            var descendant = FindDescendant<T>(child);
-            if (descendant != null)
-            {
-                return descendant;
-            }
-        }
-        return null;
     }
 }

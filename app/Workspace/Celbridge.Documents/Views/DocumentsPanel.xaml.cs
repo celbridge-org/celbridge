@@ -130,14 +130,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
                 // Use a style to control the tab strip visibility
                 // This approach modifies the TabView's internal template
-                var tabListView = FindDescendant<ListView>(TabView);
+                var tabListView = VisualTreeHelperEx.FindDescendant<ListView>(TabView);
                 if (tabListView != null)
                 {
                     tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
                 }
 
                 // Also try to find and hide the tab strip container
-                var tabStripContainer = FindDescendantByName(TabView, "TabContainerGrid");
+                var tabStripContainer = VisualTreeHelperEx.FindDescendantByName(TabView, "TabContainerGrid");
                 if (tabStripContainer is FrameworkElement container)
                 {
                     container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
@@ -148,46 +148,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 // Silently handle any template traversal errors
             }
         }
-    }
-
-    private static T? FindDescendant<T>(DependencyObject parent) where T : class
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T result)
-            {
-                return result;
-            }
-            
-            var descendant = FindDescendant<T>(child);
-            if (descendant != null)
-            {
-                return descendant;
-            }
-        }
-        return null;
-    }
-
-    private static DependencyObject? FindDescendantByName(DependencyObject parent, string name)
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is FrameworkElement element && element.Name == name)
-            {
-                return element;
-            }
-            
-            var descendant = FindDescendantByName(child, name);
-            if (descendant != null)
-            {
-                return descendant;
-            }
-        }
-        return null;
     }
 
     public List<ResourceKey> GetOpenDocuments()
