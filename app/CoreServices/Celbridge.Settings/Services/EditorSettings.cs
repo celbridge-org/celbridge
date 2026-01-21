@@ -32,6 +32,12 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreviousNewFileExtension), value);
     }
 
+    public string PreviousNewProjectTemplateName
+    {
+        get => GetValue<string>(nameof(PreviousNewProjectTemplateName), string.Empty);
+        set => SetValue(nameof(PreviousNewProjectTemplateName), value);
+    }
+
     public bool UsePreferredWindowGeometry
     {
         get => GetValue<bool>(nameof(UsePreferredWindowGeometry), false);

@@ -1,6 +1,6 @@
-using System.IO.Compression;
 using Celbridge.Logging;
 using Celbridge.Utilities;
+using System.IO.Compression;
 
 using Path = System.IO.Path;
 
@@ -8,9 +8,7 @@ namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject
 {
-    private const string DefaultProjectVersion = "0.1.0";
-    private const string ExamplesZipAssetPath = "ms-appx:///Assets/Examples.zip";
-    private const string ReadMeMDAssetPath = "ms-appx:///Assets/readme.md";
+    private const string TemplateProjectFileName = "project.celbridge";
 
     private readonly ILogger<Project> _logger;
 
@@ -32,8 +30,7 @@ public class Project : IDisposable, IProject
     private string? _projectDataFolderPath;
     public string ProjectDataFolderPath => _projectDataFolderPath!;
 
-    public Project(
-        ILogger<Project> logger)
+    public Project(ILogger<Project> logger)
     {
         _logger = logger;
     }
@@ -105,9 +102,14 @@ public class Project : IDisposable, IProject
         }
     }
 
-    public static async Task<Result> CreateProjectAsync(string projectFilePath, NewProjectConfigType configType)
+    public static async Task<Result> CreateProjectAsync(string projectFilePath, ProjectTemplate template)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
+
+        // Use a temporary staging folder to prevent leftover files on failure
+        var utilityService = ServiceLocator.AcquireService<IUtilityService>();
+        var tempFile = utilityService.GetTemporaryFilePath("NewProject", string.Empty);
+        var tempStagingPath = Path.GetDirectoryName(tempFile);
 
         try
         {
@@ -118,75 +120,85 @@ public class Project : IDisposable, IProject
 
             if (File.Exists(projectFilePath))
             {
-                return Result.Fail($"Project file already exists exist: {projectFilePath}");
+                return Result.Fail($"Project file already exists: {projectFilePath}");
             }
 
             var projectPath = Path.GetDirectoryName(projectFilePath);
             Guard.IsNotNull(projectPath);
 
-            var projectDataFolderPath = Path.Combine(projectPath, ProjectConstants.MetaDataFolder);
+            // Create the staging folder
+            Directory.CreateDirectory(tempStagingPath);
 
-            if (!Directory.Exists(projectDataFolderPath))
-            {
-                Directory.CreateDirectory(projectDataFolderPath);
-            }
+            var stagingDataFolderPath = Path.Combine(tempStagingPath, ProjectConstants.MetaDataFolder);
+            Directory.CreateDirectory(stagingDataFolderPath);
 
             // Get Celbridge application version
-            var utilityService = ServiceLocator.AcquireService<IUtilityService>();
             var appVersion = utilityService.GetEnvironmentInfo().AppVersion;
 
-            if (configType == NewProjectConfigType.Standard)
+            // Extract template zip to staging location
+            var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");
+            var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(templateAsset);
+
+            var tempZipFile = await sourceZipFile.CopyAsync(
+                ApplicationData.Current.TemporaryFolder,
+                "template.zip",
+                NameCollisionOption.ReplaceExisting);
+
+            ZipFile.ExtractToDirectory(tempZipFile.Path, tempStagingPath, overwriteFiles: true);
+
+            // Update the extracted project file with actual version values
+            var extractedProjectFile = Path.Combine(tempStagingPath, TemplateProjectFileName);
+            var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
+
+            projectFileContents = projectFileContents
+                .Replace("<application-version>", appVersion)
+                .Replace("<python-version>", ProjectConstants.DefaultPythonVersion);
+            await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
+
+            // Rename the project settings file to the user-specified name in staging
+            var projectFileName = Path.GetFileName(projectFilePath);
+            var stagedProjectFilePath = Path.Combine(tempStagingPath, projectFileName);
+            File.Move(extractedProjectFile, stagedProjectFilePath);
+
+            // All staging operations succeeded - now move to final location
+            // Ensure the destination folder exists
+            if (!Directory.Exists(projectPath))
             {
-                var projectTOML = $"""
-                [celbridge]
-                celbridge-version = "{appVersion}"
-
-                [project]
-                name = "{Path.GetFileNameWithoutExtension(projectFilePath)}"
-                version = "{DefaultProjectVersion}"
-                requires-python = "{ProjectConstants.DefaultPythonVersion}"
-                dependencies = []
-                """;
-
-                await File.WriteAllTextAsync(projectFilePath, projectTOML);
-
-                // Create a readme.md file in the project, if it doesn't already exist.
-                string readMePath = projectPath + Path.DirectorySeparatorChar + "readme.md";
-                if (!File.Exists(readMePath))
-                {
-                    var sourceWelcomeFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ReadMeMDAssetPath));
-                    var welcomeFileStream = (await sourceWelcomeFile.OpenReadAsync()).AsStreamForRead();
-                
-                    using (StreamReader reader = new StreamReader(welcomeFileStream, encoding: System.Text.Encoding.UTF8))
-                    {
-                        string fileContents = await reader.ReadToEndAsync();
-                        await File.WriteAllTextAsync(readMePath, fileContents);
-                    }
-                    welcomeFileStream.Close();
-                }
+                Directory.CreateDirectory(projectPath);
             }
-            else
+
+            // Move all files and folders from staging to the final project location
+            foreach (var file in Directory.GetFiles(tempStagingPath))
             {
-                // Extract our Examples.zip file to the selected location.
-                var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(ExamplesZipAssetPath));
-                var tempZipFile = await sourceZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, "Examples.zip", NameCollisionOption.ReplaceExisting);
-                ZipFile.ExtractToDirectory(tempZipFile.Path, projectPath, overwriteFiles: true);
+                var destFile = Path.Combine(projectPath, Path.GetFileName(file));
+                File.Move(file, destFile);
+            }
 
-                // Update the extracted examples.celbridge project file with actual values
-                var extractedProjectFile = projectPath + Path.DirectorySeparatorChar + "examples.celbridge";
-                var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
-                projectFileContents = projectFileContents.Replace("<application-version>", appVersion);
-                projectFileContents = projectFileContents.Replace("<python-version>", ProjectConstants.DefaultPythonVersion);
-                await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
-
-                // Rename the celbridge project file to the selected project file name.
-                File.Move(extractedProjectFile, projectFilePath);
+            foreach (var dir in Directory.GetDirectories(tempStagingPath))
+            {
+                var destDir = Path.Combine(projectPath, Path.GetFileName(dir));
+                Directory.Move(dir, destDir);
             }
         }
         catch (Exception ex)
         {
             return Result.Fail($"An exception occurred when creating the project: {projectFilePath}")
                 .WithException(ex);
+        }
+        finally
+        {
+            // Clean up the staging folder regardless of success or failure
+            try
+            {
+                if (Directory.Exists(tempStagingPath))
+                {
+                    Directory.Delete(tempStagingPath, recursive: true);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
         }
 
         return Result.Ok();

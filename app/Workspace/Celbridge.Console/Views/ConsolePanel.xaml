@@ -68,6 +68,7 @@
 
     <WebView2 x:Name="TerminalWebView"
               Grid.Row="4"
+              Margin="4,0,4,0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
               DefaultBackgroundColor="Transparent"/>

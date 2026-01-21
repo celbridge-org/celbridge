@@ -7,7 +7,7 @@ namespace Celbridge.Explorer.Services.Search;
 /// </summary>
 public class SearchResultFormatter
 {
-    private const int MaxPrefixChars = 30;
+    private const int MaxPrefixChars = 25;
     private const int MaxDisplayLength = 100;
 
     /// <summary>

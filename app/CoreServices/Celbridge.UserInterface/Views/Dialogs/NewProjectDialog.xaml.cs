@@ -10,16 +10,29 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public NewProjectDialogViewModel ViewModel { get; }
 
     public string TitleString => _stringLocalizer.GetString($"NewProjectDialog_Title");
-    public string NewExampleProjectTitleString => _stringLocalizer.GetString($"NewExampleProjectDialog_Title");
     public string CreateString => _stringLocalizer.GetString($"DialogButton_Create");
     public string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
+    public string ChooseTemplateString => _stringLocalizer.GetString($"NewProjectDialog_ChooseTemplate");
+    public string ChooseTemplateTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ChooseTemplateTooltip");
     public string ProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
     public string ProjectNamePlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
+    public string ProjectNameTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNameTooltip");
     public string ProjectFolderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
     public string ProjectFolderPlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
+    public string ProjectFolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderTooltip");
+    public string BrowseFolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_BrowseFolderTooltip");
     public string CreateSubfolderString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolder");
     public string CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
     public string SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
+    public string InvalidProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_InvalidProjectName");
+    public string InvalidFolderPathString => _stringLocalizer.GetString($"NewProjectDialog_InvalidFolderPath");
+    public string SubfolderAlreadyExistsString => _stringLocalizer.GetString($"NewProjectDialog_SubfolderAlreadyExists");
+    public string ProjectFileAlreadyExistsString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFileAlreadyExists");
+
+    public string GetLocalizedErrorMessage(string errorKey)
+    {
+        return _stringLocalizer.GetString(errorKey);
+    }
 
     public NewProjectDialog()
     {
@@ -30,20 +43,28 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         ViewModel = ServiceLocator.AcquireService<NewProjectDialogViewModel>();
 
-        // Default to standard project title
         Title = TitleString;
 
         this.InitializeComponent();
     }
 
-    public void Initialize(NewProjectConfigType configType)
+    private void ProjectNameTextBox_Loaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.ConfigType = configType;
+        ProjectNameTextBox.Focus(FocusState.Programmatic);
+    }
 
-        // Update the title based on the config type
-        if (configType == NewProjectConfigType.Example)
+    private void ProjectNameTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
         {
-            Title = NewExampleProjectTitleString;
+            e.Handled = true;
+            // Move focus away from the TextBox when Enter is pressed
+            // This allows the user to see validation results without submitting
+            var options = new FindNextElementOptions
+            {
+                SearchRoot = this.XamlRoot?.Content
+            };
+            FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
         }
     }
 
@@ -70,3 +91,4 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         return Result<NewProjectConfig>.Fail("Failed to create new project config");
     }
 }
+

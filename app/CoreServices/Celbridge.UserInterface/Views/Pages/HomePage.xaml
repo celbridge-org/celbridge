@@ -60,16 +60,6 @@
         </StackPanel>
       </HyperlinkButton>
 
-      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                       Command="{x:Bind ViewModel.NewExampleProjectCommand}"
-                       ToolTipService.ToolTip="{x:Bind NewExampleProjectTooltipString}">
-        <StackPanel Orientation="Horizontal">
-          <SymbolIcon Symbol="Library" />
-          <TextBlock Margin="8 0 0 0"
-                     Text="{x:Bind NewExampleProjectString}"/>
-        </StackPanel>
-      </HyperlinkButton>
-
     </StackPanel>
 
     <!-- Recent section -->
