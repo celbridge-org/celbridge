@@ -180,9 +180,6 @@
   <data name="NewProjectDialog_ChooseTemplate" xml:space="preserve">
     <value>Choose a template:</value>
   </data>
-  <data name="ExplorerPanel_RefreshTooltip" xml:space="preserve">
-    <value>Refresh project files</value>
-  </data>
   <data name="ExplorerPanel_Title" xml:space="preserve">
     <value>Explorer</value>
   </data>
@@ -316,7 +313,7 @@
     <value>Create directory for project</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
-    <value>Places the project file in a new subfolder with the same name as the project</value>
+    <value>Creates a subfolder with the same name as the project</value>
   </data>
   <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
     <value>The project will be saved at this location.</value>
@@ -331,13 +328,13 @@
     <value>Start URL</value>
   </data>
   <data name="WebInspector_OpenURLTooltip" xml:space="preserve">
-    <value>Open web page document</value>
+    <value>Open Web Application Document</value>
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>
   </data>
   <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
-    <value>Add a new component</value>
+    <value>Add a New Component</value>
   </data>
   <data name="EntityInspector_ContextMenu_Add" xml:space="preserve">
     <value>Add a New Component</value>
@@ -403,19 +400,19 @@ Do you wish to continue?</value>
     <value>Run</value>
   </data>
   <data name="HomePage_NewProjectTooltip" xml:space="preserve">
-    <value>Create a new Celbridge project</value>
+    <value>Create a New Project</value>
   </data>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
-    <value>Open an existing Celbridge project</value>
+    <value>Open an Existing Project</value>
   </data>
   <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
-    <value>Create a new project</value>
+    <value>Create a New Project</value>
   </data>
   <data name="MainMenu_OpenProjectTooltip" xml:space="preserve">
-    <value>Open an existing project</value>
+    <value>Open an Existing project</value>
   </data>
   <data name="MainMenu_ReloadProjectTooltip" xml:space="preserve">
-    <value>Reload the current project</value>
+    <value>Reload the Current Project</value>
   </data>
   <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
     <value>Python Initialization Error</value>
@@ -478,7 +475,7 @@ Do you wish to continue?</value>
     <value>Select File</value>
   </data>
   <data name="StatusPanel_SelectFileTooltip" xml:space="preserve">
-    <value>Select file</value>
+    <value>Select File</value>
   </data>
   <data name="InspectorPanel_SelectFile" xml:space="preserve">
     <value>Select File</value>
@@ -499,16 +496,16 @@ Do you wish to continue?</value>
     <value>Open</value>
   </data>
   <data name="ResourceTreeToolbar_AddFileTooltip" xml:space="preserve">
-    <value>Add file</value>
+    <value>Add File</value>
   </data>
   <data name="ResourceTreeToolbar_AddFolderTooltip" xml:space="preserve">
-    <value>Add folder</value>
+    <value>Add Folder</value>
   </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
-    <value>Collapse all folders</value>
+    <value>Collapse All Folders</value>
   </data>
   <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
-    <value>Open project settings</value>
+    <value>Open Project Settings</value>
   </data>
   <data name="AddFileDialog_FileType" xml:space="preserve">
     <value>Type</value>
@@ -541,16 +538,16 @@ Do you wish to continue?</value>
     <value>Copy File Path</value>
   </data>
   <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
-    <value>Toggle primary panel</value>
+    <value>Toggle Primary Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
-    <value>Toggle console panel</value>
+    <value>Toggle Console Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleSecondaryTooltip" xml:space="preserve">
-    <value>Toggle secondary panel</value>
+    <value>Toggle Secondary Panel</value>
   </data>
   <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
-    <value>Customize layout</value>
+    <value>Customize Layout</value>
   </data>
   <data name="LayoutToolbar_ResetLayoutButton" xml:space="preserve">
     <value>Reset Layout</value>
@@ -592,7 +589,7 @@ Do you wish to continue?</value>
     <value>Full screen presentation mode for displaying content</value>
   </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
-    <value>Open application settings</value>
+    <value>Open Application Settings</value>
   </data>
   <data name="TitleBar_WorkspaceTooltip" xml:space="preserve">
     <value>Workspace</value>
@@ -604,13 +601,13 @@ Do you wish to continue?</value>
     <value>Close Project</value>
   </data>
   <data name="MainMenu_CloseProjectTooltip" xml:space="preserve">
-    <value>Close the current project</value>
+    <value>Close the Current Project</value>
   </data>
   <data name="MainMenu_Exit" xml:space="preserve">
     <value>Exit</value>
   </data>
   <data name="MainMenu_ExitTooltip" xml:space="preserve">
-    <value>Exit the application</value>
+    <value>Exit the Application</value>
   </data>
   <data name="FullScreenToolbar_ExitFullscreen" xml:space="preserve">
     <value>Exit Fullscreen</value>
@@ -619,19 +616,19 @@ Do you wish to continue?</value>
     <value>Settings</value>
   </data>
   <data name="MainMenu_SettingsTooltip" xml:space="preserve">
-    <value>Open application settings</value>
+    <value>Open Application Settings</value>
   </data>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
     <value>Open Recent</value>
   </data>
   <data name="MainMenu_OpenRecentTooltip" xml:space="preserve">
-    <value>Open a recent project</value>
+    <value>Open a Recent project</value>
   </data>
   <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
     <value>Clear Recent Projects</value>
   </data>
   <data name="MainMenu_ClearRecentProjectsTooltip" xml:space="preserve">
-    <value>Clear the list of recent projects</value>
+    <value>Clear Recent Projects</value>
   </data>
   <data name="ConsolePanel_ShortcutConfigErrorTitle" xml:space="preserve">
     <value>Shortcut Configuration Error</value>
@@ -691,13 +688,13 @@ Do you wish to continue?</value>
     <value>Select a template for your new project</value>
   </data>
   <data name="NewProjectDialog_ProjectNameTooltip" xml:space="preserve">
-    <value>Enter a name for your project</value>
+    <value>Enter a name for the project</value>
   </data>
   <data name="NewProjectDialog_ProjectFolderTooltip" xml:space="preserve">
-    <value>Specify the folder where the project will be created</value>
+    <value>Select the folder where the project will be created</value>
   </data>
   <data name="NewProjectDialog_BrowseFolderTooltip" xml:space="preserve">
-    <value>Browse for folder</value>
+    <value>Browse for Folder</value>
   </data>
   <data name="SearchPanel_Title" xml:space="preserve">
     <value>Search</value>
@@ -772,6 +769,6 @@ Do you wish to continue?</value>
     <value>The project could not be created. Please check that you have write access to the destination folder and try again.</value>
   </data>
   <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
-    <value>Collapse all search results</value>
+    <value>Collapse All Search Results</value>
   </data>
 </root>
