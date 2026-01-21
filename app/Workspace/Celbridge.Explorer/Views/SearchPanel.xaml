@@ -86,6 +86,18 @@
                     MinHeight="32">
         <TextBlock Text="ab" FontWeight="SemiBold"/>
       </ToggleButton>
+
+      <!-- Collapse All button -->
+      <Button Command="{x:Bind ViewModel.CollapseAllCommand}"
+              ToolTipService.ToolTip="{x:Bind ViewModel.CollapseAllTooltip, Mode=OneWay}"
+              IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
+              Background="Transparent"
+              BorderThickness="1"
+              Padding="8,6"
+              MinWidth="36"
+              MinHeight="32">
+        <FontIcon Glyph="&#xF165;" FontSize="14"/>
+      </Button>
     </StackPanel>
 
     <!-- Results Section -->

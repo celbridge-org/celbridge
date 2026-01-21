@@ -64,6 +64,8 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public string SearchTooltip { get; private set; } = string.Empty;
 
+    public string CollapseAllTooltip { get; private set; } = string.Empty;
+
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
     public SearchPanelViewModel(
@@ -87,6 +89,7 @@ public partial class SearchPanelViewModel : ObservableObject
         MatchCaseTooltip = _stringLocalizer.GetString("SearchPanel_MatchCaseTooltip");
         WholeWordTooltip = _stringLocalizer.GetString("SearchPanel_WholeWordTooltip");
         SearchTooltip = _stringLocalizer.GetString("SearchPanel_SearchTooltip");
+        CollapseAllTooltip = _stringLocalizer.GetString("SearchPanel_CollapseAllTooltip");
 
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
@@ -238,6 +241,15 @@ public partial class SearchPanelViewModel : ObservableObject
     {
         SearchText = string.Empty;
         ClearResults();
+    }
+
+    [RelayCommand]
+    private void CollapseAll()
+    {
+        foreach (var fileResult in FileResults)
+        {
+            fileResult.IsExpanded = false;
+        }
     }
 
     public void NavigateToResult(ResourceKey resource, int lineNumber, int column)
