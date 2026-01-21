@@ -44,9 +44,6 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
                 .WithErrors(createResult);
         }
 
-        // %%% NOTE : Do we want to install MANY examples, in which case which one do we load?
-        //  For now, assume we are only unpacking one example project.
-
         // Load the newly created project
         _commandService.Execute<ILoadProjectCommand>(command =>
         {
@@ -59,13 +56,21 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
     // Static methods for scripting support.
     //
 
-    public static void CreateProject(string projectFilePath, NewProjectConfigType configType)
+    public static void CreateProject(string projectFilePath, string templateId)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
+        var templateService = ServiceLocator.AcquireService<IProjectTemplateService>();
+
+        var template = templateService.GetTemplates().FirstOrDefault(t => t.Id == templateId);
+        if (template is null)
+        {
+            template = templateService.GetDefaultTemplate();
+        }
 
         commandService.Execute<ICreateProjectCommand>(command =>
         {
-            command.Config = new NewProjectConfig(projectFilePath, configType);
+            command.Config = new NewProjectConfig(projectFilePath, template);
         });
     }
 }
+

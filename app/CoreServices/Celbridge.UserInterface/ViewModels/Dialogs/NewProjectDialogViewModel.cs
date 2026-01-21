@@ -12,6 +12,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
+    private readonly IProjectTemplateService _templateService;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -31,27 +32,46 @@ public partial class NewProjectDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _projectSaveLocation = string.Empty;
 
-    public NewProjectConfig? NewProjectConfig { get; private set; }
+    [ObservableProperty]
+    private IReadOnlyList<ProjectTemplate> _templates = [];
 
-    public NewProjectConfigType ConfigType { get; set; }
+    [ObservableProperty]
+    private ProjectTemplate? _selectedTemplate;
+
+    public NewProjectConfig? NewProjectConfig { get; private set; }
 
     public NewProjectDialogViewModel(
         IEditorSettings editorSettings,
         IProjectService projectService,
-        IFilePickerService filePickerService)
+        IFilePickerService filePickerService,
+        IProjectTemplateService templateService)
     {
         _editorSettings = editorSettings;
         _projectService = projectService;
         _filePickerService = filePickerService;
+        _templateService = templateService;
 
-        // Set default path for projects. If there is no previous project folder, or it doesn't exist, then use our users documents home folder.
-        //  NOTE : It is possible for the home documents folder to become invalid if the user has messed up their windows set up, but in that case we only really have the choice
-        //          of offering the path they have or a potentially empty previous path. As the Create button is hidden for invalid paths then it is safe for us to allow this.
-        //             We could potentially start listing the drives and offering the root folder of drives but then this could fail due to permissions, so I think this is probably enough.
-        _destFolderPath = (string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath) || !Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
-                            && Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments))
-                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-                                    : _editorSettings.PreviousNewProjectFolderPath;
+        // Initialize templates
+        _templates = _templateService.GetTemplates();
+        _selectedTemplate = _templateService.GetDefaultTemplate();
+
+        // Set default path for projects with fallback chain:
+        // 1. Previous project folder (if valid)
+        // 2. User's Documents folder (if valid)
+        // 3. Previous path as-is (may be invalid, but UI will disable Create button)
+        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath) && 
+            Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
+        {
+            _destFolderPath = _editorSettings.PreviousNewProjectFolderPath;
+        }
+        else if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
+        {
+            _destFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        }
+        else
+        {
+            _destFolderPath = _editorSettings.PreviousNewProjectFolderPath ?? string.Empty;
+        }
 
         PropertyChanged += NewProjectDialogViewModel_PropertyChanged;
     }
@@ -151,7 +171,12 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public ICommand CreateProjectCommand => new RelayCommand(CreateProjectCommand_Execute);
     private void CreateProjectCommand_Execute()
     {
-        var config = new NewProjectConfig(DestProjectFilePath, ConfigType);
+        if (SelectedTemplate is null)
+        {
+            return;
+        }
+
+        var config = new NewProjectConfig(DestProjectFilePath, SelectedTemplate);
         if (_projectService.ValidateNewProjectConfig(config).IsSuccess)
         {
             // If the config is not valid then NewProjectConfig will remain null
@@ -161,3 +186,4 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // The dialog closes automatically after the Create button is clicked.
     }
 }
+

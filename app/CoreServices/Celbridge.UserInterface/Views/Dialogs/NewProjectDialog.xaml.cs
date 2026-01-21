@@ -10,13 +10,17 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
     public NewProjectDialogViewModel ViewModel { get; }
 
     public string TitleString => _stringLocalizer.GetString($"NewProjectDialog_Title");
-    public string NewExampleProjectTitleString => _stringLocalizer.GetString($"NewExampleProjectDialog_Title");
     public string CreateString => _stringLocalizer.GetString($"DialogButton_Create");
     public string CancelString => _stringLocalizer.GetString($"DialogButton_Cancel");
+    public string ChooseTemplateString => _stringLocalizer.GetString($"NewProjectDialog_ChooseTemplate");
+    public string ChooseTemplateTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ChooseTemplateTooltip");
     public string ProjectNameString => _stringLocalizer.GetString($"NewProjectDialog_ProjectName");
     public string ProjectNamePlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNamePlaceholder");
+    public string ProjectNameTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ProjectNameTooltip");
     public string ProjectFolderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolder");
     public string ProjectFolderPlaceholderString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderPlaceholder");
+    public string ProjectFolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_ProjectFolderTooltip");
+    public string BrowseFolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_BrowseFolderTooltip");
     public string CreateSubfolderString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolder");
     public string CreateSubfolderTooltipString => _stringLocalizer.GetString($"NewProjectDialog_CreateSubfolderTooltip");
     public string SaveLocationTooltipString => _stringLocalizer.GetString($"NewProjectDialog_SaveLocationTooltip");
@@ -30,21 +34,9 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
         ViewModel = ServiceLocator.AcquireService<NewProjectDialogViewModel>();
 
-        // Default to standard project title
         Title = TitleString;
 
         this.InitializeComponent();
-    }
-
-    public void Initialize(NewProjectConfigType configType)
-    {
-        ViewModel.ConfigType = configType;
-
-        // Update the title based on the config type
-        if (configType == NewProjectConfigType.Example)
-        {
-            Title = NewExampleProjectTitleString;
-        }
     }
 
     private void CancelButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -70,3 +62,4 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         return Result<NewProjectConfig>.Fail("Failed to create new project config");
     }
 }
+

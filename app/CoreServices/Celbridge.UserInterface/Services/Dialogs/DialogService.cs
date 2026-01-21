@@ -120,12 +120,6 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
-    public async Task<Result<NewProjectConfig>> ShowNewExampleProjectDialogAsync()
-    {
-        var dialog = _dialogFactory.CreateNewExampleProjectDialog();
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
-    }
-
     public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
         var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator, submitButtonKey);

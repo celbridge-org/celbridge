@@ -177,8 +177,8 @@
   <data name="NewProjectDialog_Title" xml:space="preserve">
     <value>New Project</value>
   </data>
-  <data name="NewExampleProjectDialog_Title" xml:space="preserve">
-    <value>New Example Project</value>
+  <data name="NewProjectDialog_ChooseTemplate" xml:space="preserve">
+    <value>Choose a template:</value>
   </data>
   <data name="ExplorerPanel_RefreshTooltip" xml:space="preserve">
     <value>Refresh project files</value>
@@ -288,9 +288,6 @@
   <data name="HomePage_OpenProject" xml:space="preserve">
     <value>Open Project</value>
   </data>
-  <data name="HomePage_NewExampleProject" xml:space="preserve">
-    <value>New Example Project</value>
-  </data>
   <data name="MainMenu_NewProject" xml:space="preserve">
     <value>New Project</value>
   </data>
@@ -316,7 +313,7 @@
     <value>Application Theme</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
-    <value>Place project in a subfolder with the same name</value>
+    <value>Create directory for project</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolderTooltip" xml:space="preserve">
     <value>Places the project file in a new subfolder with the same name as the project</value>
@@ -410,9 +407,6 @@ Do you wish to continue?</value>
   </data>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an existing Celbridge project</value>
-  </data>
-  <data name="HomePage_NewExampleProjectTooltip" xml:space="preserve">
-    <value>Create a new Celbridge project with example content</value>
   </data>
   <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
     <value>Create a new project</value>
@@ -680,5 +674,29 @@ Do you wish to continue?</value>
   </data>
   <data name="WorkspacePage_LoadingProject" xml:space="preserve">
     <value>Loading {0}</value>
+  </data>
+  <data name="Template_Empty_Name" xml:space="preserve">
+    <value>Empty Project</value>
+  </data>
+  <data name="Template_Empty_Description" xml:space="preserve">
+    <value>A blank project with a readme.md file to get you started.</value>
+  </data>
+  <data name="Template_Examples_Name" xml:space="preserve">
+    <value>Examples</value>
+  </data>
+  <data name="Template_Examples_Description" xml:space="preserve">
+    <value>A project containing example scripts demonstrating Celbridge features.</value>
+  </data>
+  <data name="NewProjectDialog_ChooseTemplateTooltip" xml:space="preserve">
+    <value>Select a template for your new project</value>
+  </data>
+  <data name="NewProjectDialog_ProjectNameTooltip" xml:space="preserve">
+    <value>Enter a name for your project</value>
+  </data>
+  <data name="NewProjectDialog_ProjectFolderTooltip" xml:space="preserve">
+    <value>Specify the folder where the project will be created</value>
+  </data>
+  <data name="NewProjectDialog_BrowseFolderTooltip" xml:space="preserve">
+    <value>Browse for folder</value>
   </data>
 </root>
