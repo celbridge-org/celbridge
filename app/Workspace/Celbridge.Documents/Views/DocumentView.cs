@@ -19,6 +19,13 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         throw new NotImplementedException();
     }
 
+    public virtual async Task<Result> NavigateToLocation(string location)
+    {
+        // Default implementation does nothing - subclasses can override for document-specific navigation
+        await Task.CompletedTask;
+        return Result.Ok();
+    }
+
     public virtual async Task<bool> CanClose()
     {
         await Task.CompletedTask;

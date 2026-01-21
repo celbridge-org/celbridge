@@ -114,4 +114,18 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Application user interface theme.
     /// </summary>
     ApplicationColorTheme Theme { get; set; }
+
+    // ========================================
+    // Search Panel Options
+    // ========================================
+
+    /// <summary>
+    /// Match case option for search panel.
+    /// </summary>
+    bool SearchMatchCase { get; set; }
+
+    /// <summary>
+    /// Match whole word option for search panel.
+    /// </summary>
+    bool SearchWholeWord { get; set; }
 }

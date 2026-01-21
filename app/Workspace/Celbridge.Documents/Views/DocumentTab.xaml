@@ -7,7 +7,8 @@
   xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   DataContext="{x:Bind ViewModel}"
-  DoubleTapped="DocumentTab_DoubleTapped">
+  DoubleTapped="DocumentTab_DoubleTapped"
+  Tapped="DocumentTab_Tapped">
 
     <muxc:TabViewItem.ContextFlyout>
         <MenuFlyout x:Name="TabContextMenu" Opening="TabContextMenu_Opening">

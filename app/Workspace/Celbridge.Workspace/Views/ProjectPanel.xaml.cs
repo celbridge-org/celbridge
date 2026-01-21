@@ -1,3 +1,4 @@
+using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace.Services;
@@ -179,6 +180,17 @@ public sealed partial class ProjectPanel : UserControl
         // Show the requested panel
         panelToShow.Visibility = Visibility.Visible;
         ViewModel.CurrentTab = tab;
+
+        // Set focus to the search input when switching to the Search tab
+        if (tab == ProjectPanelTab.Search &&
+            panelToShow is ISearchPanel searchPanel)
+        {
+            // Use dispatcher to ensure the panel is fully loaded before focusing
+            _ = panelToShow.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                searchPanel.FocusSearchInput();
+            });
+        }
     }
 
     private void ProjectNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -192,7 +204,8 @@ public sealed partial class ProjectPanel : UserControl
             }
 
             // Handle built-in navigation items
-            if (Enum.TryParse<ProjectPanelTab>(tag, out var tab) && tab != ProjectPanelTab.None)
+            if (Enum.TryParse<ProjectPanelTab>(tag, out var tab) &&
+                tab != ProjectPanelTab.None)
             {
                 ShowTab(tab);
             }
