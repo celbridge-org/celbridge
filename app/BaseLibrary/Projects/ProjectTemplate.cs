@@ -25,9 +25,4 @@ public record ProjectTemplate
     /// Icon glyph for the template.
     /// </summary>
     public required string Icon { get; init; }
-
-    /// <summary>
-    /// Gets the path to the zip asset file containing the template content.
-    /// </summary>
-    public string TemplateAssetPath => $"ms-appx:///Assets/Templates/{Id}.zip";
 }

@@ -136,7 +136,8 @@ public class Project : IDisposable, IProject
             var appVersion = utilityService.GetEnvironmentInfo().AppVersion;
 
             // Extract template zip to staging location
-            var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(template.TemplateAssetPath));
+            var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");
+            var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(templateAsset);
 
             var tempZipFile = await sourceZipFile.CopyAsync(
                 ApplicationData.Current.TemporaryFolder,
