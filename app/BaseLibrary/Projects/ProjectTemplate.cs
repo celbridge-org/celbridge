@@ -2,7 +2,6 @@ namespace Celbridge.Projects;
 
 /// <summary>
 /// Defines a project template that can be used to create new projects.
-/// Uses naming conventions to automatically construct localization keys and asset paths from the Id.
 /// </summary>
 public record ProjectTemplate
 {
