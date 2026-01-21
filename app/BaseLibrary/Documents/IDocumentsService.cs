@@ -50,6 +50,11 @@ public interface IDocumentsService
     Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload);
 
     /// <summary>
+    /// Opens a file resource as a document in the documents panel and navigates to a specific location.
+    /// </summary>
+    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location);
+
+    /// <summary>
     /// Closes an opened document in the documents panel.
     /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>

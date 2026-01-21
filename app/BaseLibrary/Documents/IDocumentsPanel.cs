@@ -17,6 +17,11 @@ public interface IDocumentsPanel
     Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload);
 
     /// <summary>
+    /// Open a file resource as a document in the documents panel and navigate to a specific location.
+    /// </summary>
+    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location);
+
+    /// <summary>
     /// Close an opened document in the documents panel.
     /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>
@@ -32,6 +37,11 @@ public interface IDocumentsPanel
     /// Fails if the specified document is not opened.
     /// </summary>
     Result SelectDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// Navigate to a specific location within an already-opened document.
+    /// </summary>
+    Task<Result> NavigateToLocation(ResourceKey fileResource, string location);
 
     /// <summary>
     /// Change the resource of an opened document.

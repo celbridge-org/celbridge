@@ -371,12 +371,45 @@ public class ResourceRegistry : IResourceRegistry
         return ExpandedFolders.Contains(folderResource);
     }
 
+    public List<(ResourceKey Resource, string Path)> GetAllFileResources()
+    {
+        var fileResources = new List<(ResourceKey Resource, string Path)>();
+        CollectFileResources(_rootFolder, fileResources);
+
+        // Sort by path for stable ordering
+        fileResources.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
+
+        return fileResources;
+    }
+
+    /// <summary>
+    /// Recursively collects all file resources from the resource registry.
+    /// </summary>
+    private void CollectFileResources(
+        IFolderResource folder,
+        List<(ResourceKey Resource, string Path)> fileResources)
+    {
+        foreach (var child in folder.Children)
+        {
+            if (child is IFileResource fileResource)
+            {
+                var resourceKey = GetResourceKey(fileResource);
+                var filePath = GetResourcePath(resourceKey);
+                fileResources.Add((resourceKey, filePath));
+            }
+            else if (child is IFolderResource childFolder)
+            {
+                CollectFileResources(childFolder, fileResources);
+            }
+        }
+    }
+
     public Result<ResourceKey> NormalizeResourceKey(ResourceKey resourceKey)
     {
         try
         {
             var resourcePath = GetResourcePath(resourceKey);
-            
+
             if (!File.Exists(resourcePath) && !Directory.Exists(resourcePath))
             {
                 return Result.Fail($"Resource does not exist: '{resourceKey}'");
@@ -422,7 +455,7 @@ public class ResourceRegistry : IResourceRegistry
 
             // Get the full path first
             var fullPath = Path.GetFullPath(path);
-            
+
             // Start with the root (e.g., "C:\")
             var root = Path.GetPathRoot(fullPath);
             if (root == null)
@@ -438,7 +471,7 @@ public class ResourceRegistry : IResourceRegistry
 
             // Get the relative path after the root
             var relativePath = fullPath.Substring(root.Length);
-            var segments = relativePath.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, 
+            var segments = relativePath.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
                                             StringSplitOptions.RemoveEmptyEntries);
 
             // Build up the corrected path segment by segment
@@ -447,7 +480,7 @@ public class ResourceRegistry : IResourceRegistry
             {
                 // Try to find the actual entry with correct casing
                 var entries = Directory.GetFileSystemEntries(currentPath, segment);
-                
+
                 if (entries.Length == 0)
                 {
                     // This shouldn't happen since we verified the path exists, but handle it gracefully
