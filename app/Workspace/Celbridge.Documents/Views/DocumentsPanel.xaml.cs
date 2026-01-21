@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
@@ -129,14 +130,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
                 // Use a style to control the tab strip visibility
                 // This approach modifies the TabView's internal template
-                var tabListView = FindDescendant<ListView>(TabView);
+                var tabListView = VisualTreeHelperEx.FindDescendant<ListView>(TabView);
                 if (tabListView != null)
                 {
                     tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
                 }
 
                 // Also try to find and hide the tab strip container
-                var tabStripContainer = FindDescendantByName(TabView, "TabContainerGrid");
+                var tabStripContainer = VisualTreeHelperEx.FindDescendantByName(TabView, "TabContainerGrid");
                 if (tabStripContainer is FrameworkElement container)
                 {
                     container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
@@ -147,46 +148,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 // Silently handle any template traversal errors
             }
         }
-    }
-
-    private static T? FindDescendant<T>(DependencyObject parent) where T : class
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T result)
-            {
-                return result;
-            }
-            
-            var descendant = FindDescendant<T>(child);
-            if (descendant != null)
-            {
-                return descendant;
-            }
-        }
-        return null;
-    }
-
-    private static DependencyObject? FindDescendantByName(DependencyObject parent, string name)
-    {
-        int childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (int i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is FrameworkElement element && element.Name == name)
-            {
-                return element;
-            }
-            
-            var descendant = FindDescendantByName(child, name);
-            if (descendant != null)
-            {
-                return descendant;
-            }
-        }
-        return null;
     }
 
     public List<ResourceKey> GetOpenDocuments()
@@ -206,52 +167,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return openDocuments;
     }
 
-    public class PathNode
-    {
-        public string entryString;
-        public int groupIndex;
-
-        // These fields are not used for any algorithmic reason but are very useful for tracing and debugging the algorithm.
-        //  Also, if we do want to do any further work on this to make it more contextual this information will likely be what we need to use.
-#if DEBUG
-        public List<PathNode> nextNodes;
-        public List<DocumentTab> tabIdentifiers;
-#endif // DEBUG
-
-        public PathNode(string entryString, int groupIndex, DocumentTab initialTabIndentifier)
-        {
-            this.entryString = entryString;
-            this.groupIndex = groupIndex;
-#if DEBUG
-            nextNodes = new List<PathNode>();
-            this.tabIdentifiers = new List<DocumentTab>() { initialTabIndentifier };
-#endif // DEBUG
-        }
-    }
-
-    public class PathWorkEntry
-    {
-        public int currentIndex;
-        public string[] pathSegments;
-        public List<string> displaySegments;
-        public string finalDisplayString;
-        public PathNode? currentNode;
-
-        public PathWorkEntry(string path)
-        {
-            pathSegments = path.Split(Path.DirectorySeparatorChar);
-            currentIndex = pathSegments.Length - 2;
-            displaySegments = new List<string>();
-            finalDisplayString = "";
-        }
-    }
-
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
     {
-        string fileName = System.IO.Path.GetFileName(filePath);
+        return await OpenDocument(fileResource, filePath, forceReload, string.Empty);
+    }
 
-        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
-
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location)
+    {
         // Check if the file is already opened
         foreach (var tabItem in TabView.TabItems)
         {
@@ -273,19 +195,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     }
                 }
 
+                // Navigate to location if specified
+                if (!string.IsNullOrEmpty(location))
+                {
+                    await NavigateToLocation(fileResource, location);
+                }
+
                 return Result.Ok();
             }
-            else
-            {
-                // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
-                {
-                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
-                }
-            }
         }
-
 
         //
         // Add a new DocumentTab to the TabView immediately.
@@ -295,7 +213,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName; // fileResource.ResourceNameNoExtension;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
         documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
 
         // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
@@ -325,146 +243,37 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         TabView.SelectedItem = null;
         TabView.SelectedItem = documentTab;
 
-        // Handle differentiation for alike filenames.
-        if (collidedTabs.Count > 0)
-        {
-            collidedTabs.Add(documentTab, new PathWorkEntry(filePath));
-            HandleCollidedTabs(ref collidedTabs);
+        // Update all tab names to handle any filename ambiguity
+        UpdateAllTabDisplayNames();
 
-            foreach (var tabInfo in collidedTabs)
-            {
-                // Update our display string for this tab.
-                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
-            }
+        // Navigate to location if specified
+        if (!string.IsNullOrEmpty(location))
+        {
+            await NavigateToLocation(fileResource, location);
         }
 
         return Result.Ok();
     }
 
-    public static void HandleCollidedTabs(ref Dictionary<DocumentTab, PathWorkEntry> collidedTabs)
+    public async Task<Result> NavigateToLocation(ResourceKey fileResource, string location)
     {
-        // Make a list of tab identifiers to iterate to avoid iterate lock up on our instances (Thanks C#)
-        var tabIdentifiers = new List<DocumentTab>();
-        foreach (var pair in collidedTabs)
+        foreach (var tabItem in TabView.TabItems)
         {
-            tabIdentifiers.Add(pair.Key);
-        }
+            var documentTab = tabItem as DocumentTab;
+            Guard.IsNotNull(documentTab);
 
-        int nextGroupIndex = 1;
-        bool stillBusy = true;
-        do
-        {
-            // Reset our busy flag.
-            stillBusy = false;
-
-            // Sort identifiers by group, ready to process.
-            var GroupToIdentifiersDictionary = new Dictionary<int, List<DocumentTab>>();
-            foreach (var identifier in tabIdentifiers)
+            if (fileResource == documentTab.ViewModel.FileResource)
             {
-                PathWorkEntry workEntry = collidedTabs[identifier];
-                if (workEntry.currentIndex < 0)
+                var documentView = documentTab.Content as IDocumentView;
+                if (documentView != null)
                 {
-                    continue;
+                    return await documentView.NavigateToLocation(location);
                 }
-
-                stillBusy = true;       // If we reach here, - then there's still work to be done.
-
-                int groupIndex = workEntry.currentNode != null ? workEntry.currentNode.groupIndex : 0;
-                if (!GroupToIdentifiersDictionary.ContainsKey(groupIndex))
-                {
-                    GroupToIdentifiersDictionary.Add(groupIndex, new List<DocumentTab>() { identifier });
-                }
-                else
-                {
-                    GroupToIdentifiersDictionary[groupIndex].Add(identifier);
-                }
-            }
-
-            // Run through identifiers in group blocks, with a clean node dictionary for each group.
-            foreach (var pair in GroupToIdentifiersDictionary)
-            {
-                var NodeDictionary = new Dictionary<string, PathNode>();
-
-                foreach (DocumentTab identifier in pair.Value)
-                {
-                    var workEntry = collidedTabs[identifier];
-                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
-                    if (NodeDictionary.ContainsKey(segmentString))
-                    {
-#if DEBUG
-                        NodeDictionary[segmentString].tabIdentifiers.Add(identifier);
-#endif // DEBUG
-                    }
-                    else
-                    {
-                        NodeDictionary.Add(segmentString, new PathNode(segmentString, nextGroupIndex++, identifier));
-                    }
-
-#if DEBUG
-                    if (workEntry.currentNode != null)
-                    {
-                        if (!NodeDictionary[segmentString].nextNodes.Contains(workEntry.currentNode))
-                        {
-                            NodeDictionary[segmentString].nextNodes.Add(workEntry.currentNode);
-                        }
-                    }
-#endif // DEBUG
-
-                    workEntry.currentNode = NodeDictionary[segmentString];
-                }
-
-                // If we have only one node, then there is no deviation, so use '...', otherwise, use the segment.
-                bool useSegment = NodeDictionary.Count > 1;
-                foreach (var identifier in pair.Value)
-                {
-                    var workEntry = collidedTabs[identifier];
-                    var segmentString = workEntry.pathSegments[workEntry.currentIndex];
-                    if (useSegment)
-                    {
-                        workEntry.displaySegments.Add(segmentString);
-                    }
-                    else
-                    {
-                        if ((workEntry.displaySegments.Count > 0) && 
-                            (workEntry.displaySegments[workEntry.displaySegments.Count - 1] != "..."))
-                        {
-                            workEntry.displaySegments.Add("...");
-                        }
-                    }
-                    workEntry.currentIndex--;
-                }
+                return Result.Ok();
             }
         }
-        while (stillBusy);
 
-        // Render out to a string ready for output and tidy any leading '...' entries.
-        foreach (var pair in collidedTabs)
-        {
-            PathWorkEntry workEntry = pair.Value;
-            var displaySegments = workEntry.displaySegments;
-            displaySegments.Reverse();
-            string outputPath = "";
-            foreach (var segment in displaySegments)
-            {
-                if (outputPath.Length > 0)
-                {
-                    outputPath += Path.DirectorySeparatorChar;
-                }
-                else
-                {
-                    if (segment == "...")
-                    {
-                        continue;
-                    }
-                }
-                outputPath += segment;
-            }
-
-            // Add file name to the end of the path.
-            outputPath += Path.DirectorySeparatorChar + workEntry.pathSegments[workEntry.pathSegments.Length - 1];
-
-            workEntry.finalDisplayString = outputPath;
-        }
+        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
@@ -489,6 +298,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 {
                     documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
                     TabView.TabItems.Remove(documentTab);
+
+                    // Update all tab names since closing a tab may resolve filename ambiguity
+                    UpdateAllTabDisplayNames();
                 }
 
                 return Result.Ok();
@@ -648,42 +460,61 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = newResource.ResourceName;
         documentTab.ViewModel.FilePath = newResourcePath;
 
-        // %%% TEST -- Ensure our renamed tab does not collide with any existing open tabs.
-        var collidedTabs = new Dictionary<DocumentTab, PathWorkEntry>();
+        // Update all tab names to handle any filename ambiguity changes
+        UpdateAllTabDisplayNames();
 
-        // Check if the file is already opened
-        string fileName = System.IO.Path.GetFileName(newResourcePath);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Updates all tab display names to ensure tabs with the same filename are disambiguated.
+    /// Tabs with unique filenames show just the filename; tabs with ambiguous filenames
+    /// show additional path segments to differentiate them.
+    /// </summary>
+    private void UpdateAllTabDisplayNames()
+    {
+        // Group tabs by their filename
+        var tabsByFilename = new Dictionary<string, List<DocumentTab>>();
         foreach (var tabItem in TabView.TabItems)
         {
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
 
-            if (newResource != tab.ViewModel.FileResource)
+            var filename = Path.GetFileName(tab.ViewModel.FilePath);
+            if (!tabsByFilename.TryGetValue(filename, out var tabList))
             {
-                // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == System.IO.Path.GetFileName(tab.ViewModel.FileResource))
+                tabList = new List<DocumentTab>();
+                tabsByFilename[filename] = tabList;
+            }
+            tabList.Add(tab);
+        }
+
+        // Process each group
+        foreach (var group in tabsByFilename)
+        {
+            var tabs = group.Value;
+
+            if (tabs.Count == 1)
+            {
+                // Only one tab with this filename - use simple filename
+                tabs[0].ViewModel.DocumentName = tabs[0].ViewModel.FileResource.ResourceName;
+            }
+            else
+            {
+                // Multiple tabs with same filename - disambiguate using paths
+                var tabsToDisambiguate = new Dictionary<DocumentTab, string>();
+                foreach (var tab in tabs)
                 {
-                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, new PathWorkEntry(otherFilePath));
+                    tabsToDisambiguate[tab] = tab.ViewModel.FilePath;
+                }
+
+                var disambiguatedNames = PathDisambiguationHelper.DisambiguatePaths(tabsToDisambiguate);
+                foreach (var kvp in disambiguatedNames)
+                {
+                    kvp.Key.ViewModel.DocumentName = kvp.Value;
                 }
             }
         }
-
-        // Handle differentiation for alike filenames.
-        if (collidedTabs.Count > 0)
-        {
-            collidedTabs.Add(documentTab, new PathWorkEntry(newResourcePath));
-            HandleCollidedTabs(ref collidedTabs);
-
-            foreach (var tabInfo in collidedTabs)
-            {
-                // Update our display string for this tab.
-                tabInfo.Key.ViewModel.DocumentName = tabInfo.Value.finalDisplayString;
-            }
-        }
-        // ---
-
-        return Result.Ok();
     }
 
     public void Shutdown()
