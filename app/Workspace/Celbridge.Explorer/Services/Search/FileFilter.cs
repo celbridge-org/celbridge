@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Explorer.Services.Search;
 
 /// <summary>
@@ -58,11 +60,22 @@ public class FileFilter
     }
 
     /// <summary>
+    /// Checks if a file is likely a text file by examining its content.
+    /// This method reads a sample from the file and uses heuristics to detect binary content.
+    /// </summary>
+    public bool IsTextFile(string filePath)
+    {
+        var result = TextBinarySniffer.IsTextFile(filePath);
+        return result.IsSuccess && result.Value;
+    }
+
+    /// <summary>
     /// Checks if file content appears to be text (not binary).
+    /// Uses thorough heuristics including BOM detection, UTF-8 validation, 
+    /// and control character ratio analysis.
     /// </summary>
     public bool IsTextContent(string content)
     {
-        // Quick check for null characters (binary indicator)
-        return !content.Contains('\0');
+        return TextBinarySniffer.IsTextContent(content);
     }
 }

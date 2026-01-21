@@ -3,6 +3,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 using System.Text.RegularExpressions;

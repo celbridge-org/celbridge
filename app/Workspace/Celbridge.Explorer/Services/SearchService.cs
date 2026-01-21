@@ -123,25 +123,25 @@ public class SearchService : ISearchService
     {
         try
         {
-            // Check if file should be searched
+            // Check if file should be searched (size, extension filters)
             if (!_fileFilter.ShouldSearchFile(filePath))
             {
                 return null;
             }
 
-            // Try to read the file and check if it's text
+            // Check if file content is text (not binary) using efficient sampling
+            if (!_fileFilter.IsTextFile(filePath))
+            {
+                return null;
+            }
+
+            // Try to read the file content
             string content;
             try
             {
                 content = File.ReadAllText(filePath);
             }
             catch
-            {
-                return null;
-            }
-
-            // Check if content is text (not binary)
-            if (!_fileFilter.IsTextContent(content))
             {
                 return null;
             }
