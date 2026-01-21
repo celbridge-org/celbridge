@@ -20,6 +20,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistry, ResourceRegistry>();
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
+        services.AddTransient<ISearchService, SearchService>();
         services.AddTransient<ResourceArchiver>();
         services.AddTransient<ResourceChangeMonitor>();
 
@@ -36,6 +37,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<ExplorerPanelViewModel>();
         services.AddTransient<ResourceTreeViewModel>();
+        services.AddTransient<SearchPanelViewModel>();
 
         //
         // Register commands

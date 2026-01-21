@@ -12,7 +12,9 @@
 
         <!-- Navigation Bar Container -->
         <Grid Grid.Column="0"
-              Background="{ThemeResource PanelBackgroundABrush}">
+              Background="{ThemeResource PanelBackgroundABrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,1,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -41,8 +43,7 @@
 
                     <!-- Search -->
                     <NavigationViewItem x:Name="SearchNavItem"
-                                        Tag="Search"
-                                        Visibility="Collapsed">
+                                        Tag="Search">
                         <NavigationViewItem.Icon>
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       Glyph="&#xE721;"/>

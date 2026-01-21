@@ -3,6 +3,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 using System.Text.RegularExpressions;
@@ -230,6 +231,11 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload)
     {
+        return await OpenDocument(fileResource, forceReload, string.Empty);
+    }
+
+    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location)
+    {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
@@ -244,7 +250,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
-        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload);
+        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")

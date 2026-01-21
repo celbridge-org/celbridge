@@ -5,5 +5,8 @@ namespace Celbridge.Explorer;
 /// </summary>
 public interface ISearchPanel
 {
-
+    /// <summary>
+    /// Sets focus to the search input field.
+    /// </summary>
+    void FocusSearchInput();
 }
