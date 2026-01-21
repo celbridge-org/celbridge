@@ -89,6 +89,11 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         return saveResult;
     }
 
+    public async Task<Result> NavigateToLocation(string location)
+    {
+        return await MonacoEditor.NavigateToLocation(location);
+    }
+
     public async Task<bool> CanClose()
     {
         return await MonacoEditor.CanClose();

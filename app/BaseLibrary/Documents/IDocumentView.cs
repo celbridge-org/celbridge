@@ -34,6 +34,11 @@ public interface IDocumentView
     Task<Result> SaveDocument();
 
     /// <summary>
+    /// Navigate to a specific location within the document.
+    /// </summary>
+    Task<Result> NavigateToLocation(string location);
+
+    /// <summary>
     /// Returns true if the document view can be closed.
     /// For example, a document view could prompt the user to confirm closing the document, and return false
     /// here to indicate that the user cancelled the close operation. 

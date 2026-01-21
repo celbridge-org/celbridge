@@ -1,8 +1,6 @@
-using Celbridge.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using System.Text.Json;
@@ -131,6 +129,41 @@ public sealed partial class MonacoEditorView : DocumentView
         var textData = readResult.Value;
 
         return await ViewModel.SaveDocument(textData);
+    }
+
+    public override async Task<Result> NavigateToLocation(string location)
+    {
+        if (_webView == null || 
+            _webView.CoreWebView2 == null)
+        {
+            return Result.Fail("WebView is not initialized");
+        }
+
+        if (string.IsNullOrEmpty(location))
+        {
+            return Result.Ok();
+        }
+
+        try
+        {
+            // Parse the location JSON to extract line number and column
+            using var doc = JsonDocument.Parse(location);
+            var root = doc.RootElement;
+
+            var lineNumber = root.TryGetProperty("lineNumber", out var lineProp) ? lineProp.GetInt32() : 1;
+            var column = root.TryGetProperty("column", out var colProp) ? colProp.GetInt32() : 1;
+
+            // Call the JavaScript function to navigate to the location
+            var script = $"navigateToLocation({lineNumber}, {column});";
+            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to navigate to location: {location}")
+                .WithException(ex);
+        }
     }
 
     public override async Task PrepareToClose()

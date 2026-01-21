@@ -16,4 +16,9 @@ public interface IOpenDocumentCommand : IExecutableCommand
     /// Reload the document from the file, if the document is already open.
     /// </summary>
     bool ForceReload { get; set; }
+
+    /// <summary>
+    /// Optional location within the document to navigate to when opening.
+    /// </summary>
+    string Location { get; set; }
 }

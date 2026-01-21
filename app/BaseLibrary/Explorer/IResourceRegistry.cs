@@ -92,4 +92,10 @@ public interface IResourceRegistry
     /// Returns true if the folder with the specified resource key is expanded.
     /// </summary>
     bool IsFolderExpanded(ResourceKey folderResource);
+
+    /// <summary>
+    /// Returns all file resources in the registry with their resource keys and absolute paths.
+    /// The results are sorted by path for stable ordering.
+    /// </summary>
+    List<(ResourceKey Resource, string Path)> GetAllFileResources();
 }

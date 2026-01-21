@@ -1,7 +1,7 @@
 using System.Buffers;
 using System.Text;
 
-namespace Celbridge.Documents.Services;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Provides heuristic detection of whether a file or stream contains text or binary data.
@@ -39,6 +39,20 @@ public static class TextBinarySniffer
     }
 
     /// <summary>
+    /// Determines if the provided content appears to be text (not binary).
+    /// </summary>
+    public static bool IsTextContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return true; // Empty content is considered text
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(content);
+        return IsTextBytes(bytes);
+    }
+
+    /// <summary>
     /// Determines if a stream contains text data by examining its content.
     /// </summary>
     private static bool IsTextStream(Stream stream)
@@ -58,35 +72,47 @@ public static class TextBinarySniffer
             }
 
             var bytes = new ReadOnlySpan<byte>(rented, 0, read);
-
-            // 1. BOM => text
-            if (HasTextBom(bytes))
-            {
-                return true;
-            }
-
-            // 2. NUL bytes without BOM => binary
-            // (UTF-16/UTF-32 without BOM is rare; treating as binary is the pragmatic choice)
-            if (bytes.IndexOf((byte)0) >= 0)
-            {
-                return false;
-            }
-
-            // 3. Strict UTF-8 decode test
-            if (IsValidUtf8(bytes))
-            {
-                // If it's valid UTF-8, still guard against "mostly control chars"
-                return LooksLikeMostlyText(bytes);
-            }
-
-            // 4. If it's not valid UTF-8, it might still be legacy 8-bit text.
-            // Decide using a control/printable heuristic.
-            return LooksLikeMostlyText(bytes);
+            return IsTextBytes(bytes);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(rented);
         }
+    }
+
+    /// <summary>
+    /// Determines if the provided bytes appear to be text data.
+    /// </summary>
+    private static bool IsTextBytes(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length == 0)
+        {
+            return true; // Empty content, treat as text
+        }
+
+        // 1. BOM => text
+        if (HasTextBom(bytes))
+        {
+            return true;
+        }
+
+        // 2. NUL bytes without BOM => binary
+        // (UTF-16/UTF-32 without BOM is rare; treating as binary is the pragmatic choice)
+        if (bytes.IndexOf((byte)0) >= 0)
+        {
+            return false;
+        }
+
+        // 3. Strict UTF-8 decode test
+        if (IsValidUtf8(bytes))
+        {
+            // If it's valid UTF-8, still guard against "mostly control chars"
+            return LooksLikeMostlyText(bytes);
+        }
+
+        // 4. If it's not valid UTF-8, it might still be legacy 8-bit text.
+        // Decide using a control/printable heuristic.
+        return LooksLikeMostlyText(bytes);
     }
 
     /// <summary>

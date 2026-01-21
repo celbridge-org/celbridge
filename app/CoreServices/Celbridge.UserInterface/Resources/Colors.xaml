@@ -13,6 +13,7 @@
       <Color x:Key="PanelBorderColor">#EBECF0</Color>
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
+      <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
     </ResourceDictionary>
 
     <!-- Dark Theme -->
@@ -25,6 +26,7 @@
       <Color x:Key="PanelBorderColor">#1E1F22</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
+      <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>
     </ResourceDictionary>
 
   </ResourceDictionary.ThemeDictionaries>
@@ -43,6 +45,9 @@
 
   <SolidColorBrush x:Key="ErrorTextBrush"
                      Color="{ThemeResource ErrorTextColor}" />
+
+  <SolidColorBrush x:Key="SearchMatchHighlightBrush"
+                     Color="{ThemeResource SearchMatchHighlightColor}" />
 
   <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
   <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>

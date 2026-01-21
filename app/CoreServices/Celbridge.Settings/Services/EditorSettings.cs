@@ -103,4 +103,16 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);
         set => SetValue(nameof(Theme), value);
     }
+
+    public bool SearchMatchCase
+    {
+        get => GetValue<bool>(nameof(SearchMatchCase), false);
+        set => SetValue(nameof(SearchMatchCase), value);
+    }
+
+    public bool SearchWholeWord
+    {
+        get => GetValue<bool>(nameof(SearchWholeWord), false);
+        set => SetValue(nameof(SearchWholeWord), value);
+    }
 }
