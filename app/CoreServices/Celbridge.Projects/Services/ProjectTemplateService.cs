@@ -10,21 +10,20 @@ public class ProjectTemplateService : IProjectTemplateService
     {
         _templates =
         [
-            new ProjectTemplate
-            {
-                Id = "Empty",
-                Name = stringLocalizer.GetString("Template_Empty_Name"),
-                Description = stringLocalizer.GetString("Template_Empty_Description"),
-                Icon = "\uE8A5" // Document icon
-            },
-            new ProjectTemplate
-            {
-                Id = "Examples",
-                Name = stringLocalizer.GetString("Template_Examples_Name"),
-                Description = stringLocalizer.GetString("Template_Examples_Description"),
-                Icon = "\uE736" // Library icon
-            }
+            CreateTemplate(stringLocalizer, "Empty", "\uE8A5"),
+            CreateTemplate(stringLocalizer, "Examples", "\uE736")
         ];
+    }
+
+    private static ProjectTemplate CreateTemplate(IStringLocalizer stringLocalizer, string id, string icon)
+    {
+        return new ProjectTemplate
+        {
+            Id = id,
+            Name = stringLocalizer.GetString($"Template_{id}_Name"),
+            Description = stringLocalizer.GetString($"Template_{id}_Description"),
+            Icon = icon
+        };
     }
 
     public IReadOnlyList<ProjectTemplate> GetTemplates() =>
