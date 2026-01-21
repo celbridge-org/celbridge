@@ -511,7 +511,7 @@ Do you wish to continue?</value>
     <value>Add folder</value>
   </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
-    <value>Collapse folders</value>
+    <value>Collapse all folders</value>
   </data>
   <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
     <value>Open project settings</value>
@@ -734,5 +734,8 @@ Do you wish to continue?</value>
   </data>
   <data name="ProjectPanel_SourceControlTooltip" xml:space="preserve">
     <value>Source Control</value>
+  </data>
+  <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
+    <value>Collapse all search results</value>
   </data>
 </root>
