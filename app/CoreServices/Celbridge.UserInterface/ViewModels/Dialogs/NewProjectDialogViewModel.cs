@@ -59,7 +59,15 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
         // Initialize templates
         _templates = _templateService.GetTemplates();
-        _selectedTemplate = _templateService.GetDefaultTemplate();
+
+        // Try to restore the previously selected template
+        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectTemplateName))
+        {
+            _selectedTemplate = _templates.FirstOrDefault(t => t.Name == _editorSettings.PreviousNewProjectTemplateName);
+        }
+
+        // Fall back to default template if persisted template doesn't exist
+        _selectedTemplate ??= _templateService.GetDefaultTemplate();
 
         // Set default path for projects with fallback chain:
         // 1. Previous project folder (if valid)
@@ -197,6 +205,9 @@ public partial class NewProjectDialogViewModel : ObservableObject
         {
             // If the config is not valid then NewProjectConfig will remain null
             NewProjectConfig = config;
+
+            // Persist the template selection only when project is successfully created
+            _editorSettings.PreviousNewProjectTemplateName = SelectedTemplate.Name;
         }
 
         // The dialog closes automatically after the Create button is clicked.
