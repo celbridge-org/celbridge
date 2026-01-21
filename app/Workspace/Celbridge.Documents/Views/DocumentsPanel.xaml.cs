@@ -174,10 +174,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location)
     {
-        string fileName = System.IO.Path.GetFileName(filePath);
-
-        var collidedTabs = new Dictionary<DocumentTab, string>();
-
         // Check if the file is already opened
         foreach (var tabItem in TabView.TabItems)
         {
@@ -206,15 +202,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
 
                 return Result.Ok();
-            }
-            else
-            {
-                // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
-                {
-                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, otherFilePath);
-                }
             }
         }
 
@@ -256,12 +243,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         TabView.SelectedItem = null;
         TabView.SelectedItem = documentTab;
 
-        // Handle differentiation for alike filenames.
-        if (collidedTabs.Count > 0)
-        {
-            collidedTabs.Add(documentTab, filePath);
-            UpdateTabNamesForCollisions(collidedTabs);
-        }
+        // Update all tab names to handle any filename ambiguity
+        UpdateAllTabDisplayNames();
 
         // Navigate to location if specified
         if (!string.IsNullOrEmpty(location))
@@ -315,6 +298,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 {
                     documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
                     TabView.TabItems.Remove(documentTab);
+
+                    // Update all tab names since closing a tab may resolve filename ambiguity
+                    UpdateAllTabDisplayNames();
                 }
 
                 return Result.Ok();
@@ -474,43 +460,60 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = newResource.ResourceName;
         documentTab.ViewModel.FilePath = newResourcePath;
 
-        // Ensure our renamed tab does not collide with any existing open tabs.
-        var collidedTabs = new Dictionary<DocumentTab, string>();
+        // Update all tab names to handle any filename ambiguity changes
+        UpdateAllTabDisplayNames();
 
-        string fileName = Path.GetFileName(newResourcePath);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Updates all tab display names to ensure tabs with the same filename are disambiguated.
+    /// Tabs with unique filenames show just the filename; tabs with ambiguous filenames
+    /// show additional path segments to differentiate them.
+    /// </summary>
+    private void UpdateAllTabDisplayNames()
+    {
+        // Group tabs by their filename
+        var tabsByFilename = new Dictionary<string, List<DocumentTab>>();
         foreach (var tabItem in TabView.TabItems)
         {
             var tab = tabItem as DocumentTab;
             Guard.IsNotNull(tab);
 
-            if (newResource != tab.ViewModel.FileResource)
+            var filename = Path.GetFileName(tab.ViewModel.FilePath);
+            if (!tabsByFilename.TryGetValue(filename, out var tabList))
             {
-                // Check for alike filenames where we need to show a differentiation of paths.
-                if (fileName == Path.GetFileName(tab.ViewModel.FileResource))
+                tabList = new List<DocumentTab>();
+                tabsByFilename[filename] = tabList;
+            }
+            tabList.Add(tab);
+        }
+
+        // Process each group
+        foreach (var group in tabsByFilename)
+        {
+            var tabs = group.Value;
+
+            if (tabs.Count == 1)
+            {
+                // Only one tab with this filename - use simple filename
+                tabs[0].ViewModel.DocumentName = tabs[0].ViewModel.FileResource.ResourceName;
+            }
+            else
+            {
+                // Multiple tabs with same filename - disambiguate using paths
+                var tabsToDisambiguate = new Dictionary<DocumentTab, string>();
+                foreach (var tab in tabs)
                 {
-                    var otherFilePath = _resourceRegistry.GetResourcePath(tab.ViewModel.FileResource);
-                    collidedTabs.Add(tab, otherFilePath);
+                    tabsToDisambiguate[tab] = tab.ViewModel.FilePath;
+                }
+
+                var disambiguatedNames = PathDisambiguationHelper.DisambiguatePaths(tabsToDisambiguate);
+                foreach (var kvp in disambiguatedNames)
+                {
+                    kvp.Key.ViewModel.DocumentName = kvp.Value;
                 }
             }
-        }
-
-        // Handle differentiation for alike filenames.
-        if (collidedTabs.Count > 0)
-        {
-            collidedTabs.Add(documentTab, newResourcePath);
-            UpdateTabNamesForCollisions(collidedTabs);
-        }
-
-        return Result.Ok();
-    }
-
-    private void UpdateTabNamesForCollisions(Dictionary<DocumentTab, string> collidedTabs)
-    {
-        var disambiguatedPaths = PathDisambiguationHelper.DisambiguatePaths(collidedTabs);
-
-        foreach (var kvp in disambiguatedPaths)
-        {
-            kvp.Key.ViewModel.DocumentName = kvp.Value;
         }
     }
 
