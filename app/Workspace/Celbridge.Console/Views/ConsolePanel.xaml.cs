@@ -41,6 +41,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _currentTheme = _userInterfaceService.UserInterfaceTheme;
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
+        // Listen for terminal focus requests
+        _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
+
         this.Loaded += ConsolePanel_Loaded;
     }
 
@@ -61,6 +64,54 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         {
             _currentTheme = message.Theme;
             SendThemeToTerminal();
+        }
+    }
+
+    private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)
+    {
+        if (message.ShouldFocus && TerminalWebView?.CoreWebView2 != null)
+        {
+            // Use dispatcher to ensure focus happens after any pending layout updates
+            _ = this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                // Focus the WebView2 control first
+                TerminalWebView.Focus(FocusState.Programmatic);
+                
+                // Then send a message to the terminal to focus the Xterm.js instance
+                try
+                {
+                    TerminalWebView.CoreWebView2.PostWebMessageAsString("focus_terminal");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send focus message to terminal");
+                }
+            });
+        }
+    }
+
+    private void TitleBar_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // When user clicks on the title bar, focus the terminal
+        FocusTerminal();
+    }
+
+    private void FocusTerminal()
+    {
+        if (TerminalWebView?.CoreWebView2 != null)
+        {
+            // Focus the WebView2 control first
+            TerminalWebView.Focus(FocusState.Programmatic);
+            
+            // Then send a message to the terminal to focus the Xterm.js instance
+            try
+            {
+                TerminalWebView.CoreWebView2.PostWebMessageAsString("focus_terminal");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send focus message to terminal");
+            }
         }
     }
 
