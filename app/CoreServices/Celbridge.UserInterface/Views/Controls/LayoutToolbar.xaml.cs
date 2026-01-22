@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -156,13 +157,20 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
-        // Use command to toggle panel visibility
+        // Toggle panel visibility
+        // Using an immediate command to ensure console is shown before focusing
         var isVisible = !_layoutManager.IsConsolePanelVisible;
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.ExecuteImmediate<ISetPanelVisibilityCommand>(command =>
         {
             command.Panels = PanelVisibilityFlags.Console;
             command.IsVisible = isVisible;
         });
+
+        // Request focus when showing the console
+        if (isVisible)
+        {
+            _messengerService.Send(new RequestConsoleFocusMessage(true));
+        }
     }
 
     private void ToggleSecondaryPanelButton_Click(object sender, RoutedEventArgs e)

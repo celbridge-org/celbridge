@@ -18,7 +18,9 @@
     <!-- Title Bar -->
     <Grid Grid.Row="0"
           BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,0,0,1">
+          BorderThickness="0,0,0,1"
+          Background="Transparent"
+          Tapped="TitleBar_Tapped">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
