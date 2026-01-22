@@ -150,6 +150,12 @@
         window.chrome.webview.addEventListener('message', event => {
             const data = event.data;
             if (typeof data === "string") {
+                // Handle focus request from host
+                if (data === "focus_terminal") {
+                    term.focus();
+                    return;
+                }
+                
                 // Handle theme change messages from host
                 if (data.startsWith("theme_change,")) {
                     const themeName = data.split(',')[1];
