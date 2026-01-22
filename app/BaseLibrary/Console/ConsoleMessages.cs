@@ -46,3 +46,8 @@ public enum ConsoleErrorType
 /// Message sent when the console fails to initialize or terminates unexpectedly.
 /// </summary>
 public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileName);
+
+/// <summary>
+/// Message sent to request the console terminal to receive focus.
+/// </summary>
+public record RequestConsoleFocusMessage(bool ShouldFocus);
