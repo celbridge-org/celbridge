@@ -3,7 +3,6 @@ using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
-using Celbridge.Modules;
 using Celbridge.Validators;
 
 namespace Celbridge.Explorer;
