@@ -25,12 +25,6 @@ public sealed partial class ShortcutButton : UserControl
         ButtonElement.Flyout = flyout;
     }
 
-    public object? Tag
-    {
-        get => ButtonElement.Tag;
-        set => ButtonElement.Tag = value;
-    }
-
     private void ButtonElement_Click(object sender, RoutedEventArgs e)
     {
         Click?.Invoke(this, e);
