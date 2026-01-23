@@ -34,8 +34,8 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
     }
 
-    public IRelayCommand<string> ComponentTypeClickedCommand => new RelayCommand<string>(ComponentTypeClickedCommandExecuted);
-    private void ComponentTypeClickedCommandExecuted(string? componentType)
+    [RelayCommand]
+    private void ComponentTypeClicked(string? componentType)
     {
         var componentKey = new ComponentKey(_inspectorService.InspectedResource, _inspectorService.InspectedComponentIndex);
 
