@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 using System.Reflection;
 
 namespace Celbridge.UserInterface.Services;
@@ -111,9 +111,9 @@ public class FileIconService : IFileIconService
         throw new InvalidOperationException();
     }
 
-    private void PopulateIconDefinitions(JObject iconData)
+    private void PopulateIconDefinitions(JsonObject iconData)
     {
-        var iconDefinitions = iconData["iconDefinitions"] as JObject;
+        var iconDefinitions = iconData["iconDefinitions"] as JsonObject;
         Guard.IsNotNull(iconDefinitions);
 
         foreach (var kv in iconDefinitions)
@@ -121,7 +121,7 @@ public class FileIconService : IFileIconService
             Guard.IsNotNull(kv.Value);
 
             string iconName = kv.Key;
-            var iconProperties = kv.Value as JObject;
+            var iconProperties = kv.Value as JsonObject;
             Guard.IsNotNull(iconProperties);
 
             string fontId;
@@ -214,14 +214,14 @@ public class FileIconService : IFileIconService
         return character.ToString();
     }
 
-    private void PopulateFileExtensionDefinitions(JObject iconData)
+    private void PopulateFileExtensionDefinitions(JsonObject iconData)
     {
         // Edit 'file-icons-icon-theme.json' to change the icon definition.
         // Note that there are multiple "fileExtensions" sections in the JSON document, the section
         // you want to edit starts around line 11855.
         // Original json file available here: https://github.com/file-icons/vscode/tree/master/icons
 
-        var fileExtensions = iconData["fileExtensions"] as JObject;
+        var fileExtensions = iconData["fileExtensions"] as JsonObject;
         Guard.IsNotNull(fileExtensions);
 
         foreach (var kv in fileExtensions)
@@ -235,12 +235,12 @@ public class FileIconService : IFileIconService
         }
     }
 
-    private Result<JObject> LoadIconData()
+    private Result<JsonObject> LoadIconData()
     {
         var loadResult = LoadIconDataResource(FileIconsThemeResource);
         if (loadResult.IsFailure)
         {
-            return Result<JObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.Error}");
+            return Result<JsonObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.Error}");
         }
         var stream = loadResult.Value;
 
@@ -249,14 +249,18 @@ public class FileIconService : IFileIconService
             using (var reader = new StreamReader(stream))
             {
                 var json = reader.ReadToEnd();
-                var jo = JObject.Parse(json);
+                var jo = JsonNode.Parse(json) as JsonObject;
+                if (jo is null)
+                {
+                    return Result<JsonObject>.Fail("Failed to parse icon data as JSON object.");
+                }
 
-                return Result<JObject>.Ok(jo);
+                return Result<JsonObject>.Ok(jo);
             }
         }
         catch (Exception ex)
         {
-            return Result<JObject>.Fail($"An exception occurred when loading the icon data.")
+            return Result<JsonObject>.Fail($"An exception occurred when loading the icon data.")
                 .WithException(ex);
         }
     }

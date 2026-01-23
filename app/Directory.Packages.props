@@ -10,7 +10,6 @@
     <PackageVersion Include="JsonPointer.Net" Version="5.3.1" />
     <PackageVersion Include="JsonSchema.Net" Version="7.4.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="NLog" Version="6.0.3" />
     <PackageVersion Include="NLog.Extensions.Logging" Version="6.0.3" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />

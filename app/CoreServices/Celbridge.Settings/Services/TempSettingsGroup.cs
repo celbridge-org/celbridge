@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Celbridge.Settings.Services;
 
@@ -36,7 +36,7 @@ public class TempSettingsGroup : ISettingsGroup
     {
         var settingKey = GetSettingKey(key);
 
-        string json = JsonConvert.SerializeObject(value);
+        string json = JsonSerializer.Serialize(value);
         _container[settingKey] = json;
     }
 
@@ -49,7 +49,7 @@ public class TempSettingsGroup : ISettingsGroup
             return defaultValue;
         }
 
-        var value = JsonConvert.DeserializeObject<T>((string)json);
+        var value = JsonSerializer.Deserialize<T>((string)json);
         if (value is null)
         {
             throw new InvalidOperationException();

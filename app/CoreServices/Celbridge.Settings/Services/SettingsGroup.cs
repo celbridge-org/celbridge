@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+using System.Text.Json;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Settings.Services;
@@ -53,7 +53,7 @@ public class SettingsGroup : ISettingsGroup
 
         try
         {
-            string json = JsonConvert.SerializeObject(value);
+            string json = JsonSerializer.Serialize(value);
             _propertySet[settingKey] = json;
         }
         catch (JsonException ex)
@@ -77,7 +77,7 @@ public class SettingsGroup : ISettingsGroup
             // The serialization type does not have to match the deserialization type. The deserializer
             // simply attempts to match the property names.This allows for clients to change the serialization
             // type in future releases, as long as the key remains the same.
-            var value = JsonConvert.DeserializeObject<T>((string)json);
+            var value = JsonSerializer.Deserialize<T>((string)json);
             if (value is null)
             {
                 _logger.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");
@@ -112,7 +112,7 @@ public class SettingsGroup : ISettingsGroup
                 return false;
             }
 
-            var v = JsonConvert.DeserializeObject<T>((string)json);
+            var v = JsonSerializer.Deserialize<T>((string)json);
             if (v is null)
             {
                 _logger.LogError($"Failed to get setting '{settingKey}' because the value failed to deserialize.");

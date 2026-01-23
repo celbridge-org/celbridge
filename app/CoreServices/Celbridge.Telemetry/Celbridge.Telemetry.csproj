@@ -24,12 +24,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-		<PackageReference Include="Countly" />
-		<PackageReference Include="Newtonsoft.Json" />
-	</ItemGroup>
+      <PackageReference Include="Countly" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+      <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
+  </ItemGroup>
 
 </Project>

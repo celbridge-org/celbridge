@@ -3,7 +3,7 @@ using Celbridge.Messaging;
 using Celbridge.Utilities;
 using CountlySDK.Entities;
 using CountlySDK;
-using Newtonsoft.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Celbridge.Telemetry.Services;
@@ -57,7 +57,7 @@ public class TelemetryService : ITelemetryService
         }
 
         var eventName = eventObject.GetType().Name;
-        var eventJson = JsonConvert.SerializeObject(eventObject);
+        var eventJson = JsonSerializer.Serialize(eventObject);
 
         _ = SendTelemetryEventAsync(eventName, eventJson);
 
