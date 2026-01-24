@@ -1,5 +1,4 @@
 using Celbridge.GenerativeAI.Commands;
-using Celbridge.Modules;
 using Microsoft.Extensions.DependencyInjection;
 
 

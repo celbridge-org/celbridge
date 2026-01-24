@@ -1,5 +1,4 @@
 using Celbridge.Documents;
-using Celbridge.Explorer;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 

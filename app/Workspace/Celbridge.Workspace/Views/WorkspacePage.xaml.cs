@@ -1,7 +1,5 @@
 using Celbridge.Messaging;
 using Celbridge.Navigation;
-using Celbridge.Settings;
-using Celbridge.UserInterface;
 using Celbridge.Workspace.ViewModels;
 using Celbridge.Console.Views;
 

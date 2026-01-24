@@ -1,5 +1,3 @@
-using Celbridge.Settings;
-
 namespace Celbridge.UserInterface;
 
 /// <summary>
