@@ -1,5 +1,6 @@
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.Workspace;
@@ -11,7 +12,7 @@ namespace Celbridge.Projects.Services;
 /// Handles the complete workflow of loading a project, including migration checks,
 /// upgrade confirmation dialogs, error alerts, and navigation.
 /// </summary>
-public class ProjectLoader
+public class ProjectLoader : IProjectLoader
 {
     private readonly ILogger<ProjectLoader> _logger;
     private readonly IProjectMigrationService _migrationService;
@@ -20,6 +21,7 @@ public class ProjectLoader
     private readonly INavigationService _navigationService;
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
     public ProjectLoader(
@@ -30,6 +32,7 @@ public class ProjectLoader
         INavigationService navigationService,
         IEditorSettings editorSettings,
         IWorkspaceWrapper workspaceWrapper,
+        IMessengerService messengerService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
@@ -39,6 +42,7 @@ public class ProjectLoader
         _navigationService = navigationService;
         _editorSettings = editorSettings;
         _workspaceWrapper = workspaceWrapper;
+        _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
     }
 
@@ -182,18 +186,41 @@ public class ProjectLoader
         var loadPageCancellationToken = new CancellationTokenSource();
         _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag, loadPageCancellationToken);
 
-        // Wait until the workspace page either loads or cancels loading due to an error
-        while (!_workspaceWrapper.IsWorkspacePageLoaded &&
-               !loadPageCancellationToken.IsCancellationRequested)
+        // Use TaskCompletionSource for event-based waiting instead of polling
+        var workspaceLoadedTcs = new TaskCompletionSource<bool>();
+
+        void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
         {
-            await Task.Delay(50);
+            workspaceLoadedTcs.TrySetResult(true);
         }
 
-        if (loadPageCancellationToken.IsCancellationRequested)
-        {
-            return Result.Fail("Failed to open project because an error occurred");
-        }
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
-        return Result.Ok();
+        try
+        {
+            // If already loaded, complete immediately
+            if (_workspaceWrapper.IsWorkspacePageLoaded)
+            {
+                return Result.Ok();
+            }
+
+            // Wait for either workspace load completion or cancellation
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(loadPageCancellationToken.Token);
+
+            var completedTask = await Task.WhenAny(
+                workspaceLoadedTcs.Task,
+                Task.Delay(Timeout.Infinite, linkedCts.Token));
+
+            if (loadPageCancellationToken.IsCancellationRequested)
+            {
+                return Result.Fail("Failed to open project because an error occurred");
+            }
+
+            return Result.Ok();
+        }
+        finally
+        {
+            _messengerService.Unregister<WorkspaceLoadedMessage>(this);
+        }
     }
 }

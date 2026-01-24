@@ -6,6 +6,41 @@ using Tomlyn.Model;
 
 namespace Celbridge.Projects.Services;
 
+/// <summary>
+/// Result of parsing a project file for version information.
+/// </summary>
+internal record ProjectVersionInfo(
+    TomlTable Root,
+    string ProjectVersion,
+    string ApplicationVersion);
+
+/// <summary>
+/// Reason for a project parse failure.
+/// </summary>
+internal enum ParseFailureReason
+{
+    FileNotFound,
+    InvalidToml,
+    Other
+}
+
+/// <summary>
+/// Result of attempting to parse project version info.
+/// </summary>
+internal record ParseResult
+{
+    public bool IsSuccess { get; init; }
+    public ProjectVersionInfo? VersionInfo { get; init; }
+    public ParseFailureReason FailureReason { get; init; }
+    public Result OperationResult { get; init; } = Result.Ok();
+
+    public static ParseResult Success(ProjectVersionInfo versionInfo) =>
+        new() { IsSuccess = true, VersionInfo = versionInfo };
+
+    public static ParseResult Failure(ParseFailureReason reason, Result operationResult) =>
+        new() { IsSuccess = false, FailureReason = reason, OperationResult = operationResult };
+}
+
 public class ProjectMigrationService : IProjectMigrationService
 {
     private const string ApplicationVersionSentinel = "<application-version>";
@@ -17,91 +52,66 @@ public class ProjectMigrationService : IProjectMigrationService
     public ProjectMigrationService(
         ILogger<ProjectMigrationService> logger,
         IUtilityService utilityService,
-        MigrationStepRegistry migrationRegistry)
+        IMigrationStepRegistry migrationRegistry)
     {
         _logger = logger;
         _utilityService = utilityService;
-        _migrationRegistry = migrationRegistry;
+        _migrationRegistry = (MigrationStepRegistry)migrationRegistry;
         _migrationRegistry.Initialize();
     }
 
     public async Task<MigrationResult> CheckMigrationAsync(string projectFilePath)
     {
-        try
+        var parseResult = await ParseProjectVersionInfoAsync(projectFilePath);
+        if (!parseResult.IsSuccess)
         {
-            if (!File.Exists(projectFilePath))
-            {
-                var errorResult = Result.Fail($"Project file does not exist: '{projectFilePath}'");
-                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
-            }
-
-            var text = File.ReadAllText(projectFilePath);
-            var parse = Toml.Parse(text);
-
-            if (parse.HasErrors)
-            {
-                var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
-                return MigrationResult.FromStatus(MigrationStatus.InvalidConfig, errorResult);
-            }
-
-            var root = parse.ToModel();
-
-            // Get project version from [celbridge].celbridge-version property
-            var projectVersion = string.Empty;
-            if (JsonPointerToml.TryResolve(root, "/celbridge/celbridge-version", out var versionNode, out _) &&
-                versionNode is string existingVersion)
-            {
-                projectVersion = existingVersion;
-            }
-
-            // Provide limited backwards compatibility for pre-v0.1.5 version format to support migration
-            if (string.IsNullOrEmpty(projectVersion) &&
-                JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
-                legacyVersionNode is string legacyVersion)
-            {
-                // Only populate the project version if the legacy version < v0.1.5
-                var versionA = new Version(legacyVersion);
-                var versionB = new Version("0.1.5");
-                if (versionA < versionB)
-                {
-                    projectVersion = legacyVersion;
-                }
-            }
-
-            // Get current application version
-            var envInfo = _utilityService.GetEnvironmentInfo();
-            var applicationVersion = envInfo.AppVersion;
-
-            // Resolve the migration status by comparing the project and application versions.
-            var result = ResolveMigrationStatus(projectVersion, applicationVersion);
-            return result;
+            var status = parseResult.FailureReason == ParseFailureReason.InvalidToml
+                ? MigrationStatus.InvalidConfig
+                : MigrationStatus.Failed;
+            return MigrationResult.FromStatus(status, parseResult.OperationResult);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check project migration status");
-            var errorResult = Result.Fail($"Failed to check migration status")
-                .WithException(ex);
-            return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
-        }
+
+        var versionInfo = parseResult.VersionInfo!;
+        return ResolveMigrationStatus(versionInfo.ProjectVersion, versionInfo.ApplicationVersion);
     }
 
     public async Task<MigrationResult> PerformMigrationUpgradeAsync(string projectFilePath)
+    {
+        var parseResult = await ParseProjectVersionInfoAsync(projectFilePath);
+        if (!parseResult.IsSuccess)
+        {
+            var status = parseResult.FailureReason == ParseFailureReason.InvalidToml
+                ? MigrationStatus.InvalidConfig
+                : MigrationStatus.Failed;
+            return MigrationResult.FromStatus(status, parseResult.OperationResult);
+        }
+
+        var versionInfo = parseResult.VersionInfo!;
+        return await MigrateProjectAsync(projectFilePath, versionInfo.ProjectVersion, versionInfo.ApplicationVersion, versionInfo.Root);
+    }
+
+    /// <summary>
+    /// Parses the project file and extracts version information.
+    /// </summary>
+    private async Task<ParseResult> ParseProjectVersionInfoAsync(string projectFilePath)
     {
         try
         {
             if (!File.Exists(projectFilePath))
             {
-                var errorResult = Result.Fail($"Project file does not exist: '{projectFilePath}'");
-                return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
+                return ParseResult.Failure(
+                    ParseFailureReason.FileNotFound,
+                    Result.Fail($"Project file does not exist: '{projectFilePath}'"));
             }
 
-            var text = File.ReadAllText(projectFilePath);
+            var text = await File.ReadAllTextAsync(projectFilePath);
             var parse = Toml.Parse(text);
 
             if (parse.HasErrors)
             {
-                var errorResult = Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
-                return MigrationResult.FromStatus(MigrationStatus.InvalidConfig, errorResult);
+                return ParseResult.Failure(
+                    ParseFailureReason.InvalidToml,
+                    Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}"));
             }
 
             var root = parse.ToModel();
@@ -132,15 +142,14 @@ public class ProjectMigrationService : IProjectMigrationService
             var envInfo = _utilityService.GetEnvironmentInfo();
             var applicationVersion = envInfo.AppVersion;
 
-            // Proceed to migrate the project to the latest version.
-            return await MigrateProjectAsync(projectFilePath, projectVersion, applicationVersion, root);
+            return ParseResult.Success(new ProjectVersionInfo(root, projectVersion, applicationVersion));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to perform project migration upgrade");
-            var errorResult = Result.Fail($"Failed to execute migration upgrade")
-                .WithException(ex);
-            return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
+            _logger.LogError(ex, "Failed to parse project version info");
+            return ParseResult.Failure(
+                ParseFailureReason.Other,
+                Result.Fail("Failed to parse project version info").WithException(ex));
         }
     }
 
