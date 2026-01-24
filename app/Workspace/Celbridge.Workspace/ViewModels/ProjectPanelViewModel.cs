@@ -1,4 +1,3 @@
-using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Workspace.ViewModels;

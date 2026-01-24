@@ -178,8 +178,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public IAsyncRelayCommand SelectFolderCommand => new AsyncRelayCommand(SelectFolderCommand_ExecuteAsync);
-    private async Task SelectFolderCommand_ExecuteAsync()
+    [RelayCommand]
+    private async Task SelectFolderAsync()
     {
         var pickResult = await _filePickerService.PickSingleFolderAsync();
         if (pickResult.IsSuccess)
@@ -192,8 +192,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
     }
 
-    public ICommand CreateProjectCommand => new RelayCommand(CreateProjectCommand_Execute);
-    private void CreateProjectCommand_Execute()
+    [RelayCommand]
+    private void CreateProject()
     {
         if (SelectedTemplate is null)
         {

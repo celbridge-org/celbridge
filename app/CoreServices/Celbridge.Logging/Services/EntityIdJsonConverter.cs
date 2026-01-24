@@ -1,19 +1,20 @@
-﻿using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Celbridge.Logging.Services;
 
 public class EntityIdConverter : JsonConverter<EntityId>
 {
-    public override void WriteJson(JsonWriter writer, EntityId value, JsonSerializer serializer)
+    public override void Write(Utf8JsonWriter writer, EntityId value, JsonSerializerOptions options)
     {
-        writer.WriteValue(value.ToString());
+        writer.WriteStringValue(value.ToString());
     }
 
-    public override EntityId ReadJson(JsonReader reader, Type objectType, EntityId existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override EntityId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var idText = reader.Value!.ToString();
+        var idText = reader.GetString();
 
-        if (ulong.TryParse(idText, out ulong id))
+        if (idText is not null && ulong.TryParse(idText, out ulong id))
         {
             return new EntityId(id);
         }

@@ -1,17 +1,18 @@
-﻿using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Celbridge.Logging.Services;
 
 public class ResourceKeyConverter : JsonConverter<ResourceKey>
 {
-    public override void WriteJson(JsonWriter writer, ResourceKey value, JsonSerializer serializer)
+    public override void Write(Utf8JsonWriter writer, ResourceKey value, JsonSerializerOptions options)
     {
-        writer.WriteValue(value.ToString());
+        writer.WriteStringValue(value.ToString());
     }
 
-    public override ResourceKey ReadJson(JsonReader reader, Type objectType, ResourceKey existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override ResourceKey Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var key = reader.Value!.ToString()!;
+        var key = reader.GetString()!;
         return new ResourceKey(key);
     }
 }

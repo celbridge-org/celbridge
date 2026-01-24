@@ -5,7 +5,7 @@ using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace Celbridge.Inspector.ViewModels;
 
@@ -94,7 +94,12 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 return Result<string>.Ok(string.Empty);
             }
 
-            var jsonObject = JObject.Parse(json);
+            var jsonObject = JsonNode.Parse(json) as JsonObject;
+            if (jsonObject is null)
+            {
+                return Result<string>.Fail($"Failed to parse JSON file: {webFilePath}");
+            }
+
             var urlToken = jsonObject["sourceUrl"];
             if (urlToken is null)
             {
@@ -117,13 +122,13 @@ public partial class WebInspectorViewModel : InspectorViewModel
         try
         {
             // Create a new JSON object with just the 'url' property
-            var jsonObject = new JObject
+            var jsonObject = new JsonObject
             {
                 ["sourceUrl"] = url
             };
 
             // Write the new JSON object to the file, overwriting any existing content
-            File.WriteAllText(webFilePath, jsonObject.ToString());
+            File.WriteAllText(webFilePath, jsonObject.ToJsonString());
 
             return Result.Ok();
         }

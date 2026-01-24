@@ -1,12 +1,12 @@
-﻿using Newtonsoft.Json.Converters;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Celbridge.Logging.Services;
 
 public class LogSerializer : ILogSerializer
 {
-    private readonly JsonSerializerSettings _jsonSettingsWithProperties;
-    private readonly JsonSerializerSettings _jsonSettingsNoProperties;
+    private readonly JsonSerializerOptions _jsonSettingsWithProperties;
+    private readonly JsonSerializerOptions _jsonSettingsNoProperties;
 
     public LogSerializer()
     {
@@ -17,24 +17,24 @@ public class LogSerializer : ILogSerializer
     public string SerializeObject(object? obj, bool ignoreCommandProperties)
     {
         var jsonSettings = ignoreCommandProperties ? _jsonSettingsNoProperties : _jsonSettingsWithProperties;
-        var serialized = JsonConvert.SerializeObject(obj, jsonSettings);
+        var serialized = JsonSerializer.Serialize(obj, jsonSettings);
 
         return serialized;
     }
 
-    private JsonSerializerSettings CreateJsonSettings(bool ignoreCommandProperties)
+    private JsonSerializerOptions CreateJsonSettings(bool ignoreCommandProperties)
     {
-        var settings = new JsonSerializerSettings
+        var options = new JsonSerializerOptions
         {
-            ContractResolver = new CommandSerializerContractResolver(),
-            Formatting = Formatting.None
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        settings.Converters.Add(new ExecuteCommandStartedMessageJsonConverter(ignoreCommandProperties));
-        settings.Converters.Add(new StringEnumConverter());
-        settings.Converters.Add(new EntityIdConverter());
-        settings.Converters.Add(new ResourceKeyConverter());
+        options.Converters.Add(new ExecuteCommandStartedMessageJsonConverter(ignoreCommandProperties));
+        options.Converters.Add(new JsonStringEnumConverter());
+        options.Converters.Add(new EntityIdConverter());
+        options.Converters.Add(new ResourceKeyConverter());
 
-        return settings;
+        return options;
     }
 }

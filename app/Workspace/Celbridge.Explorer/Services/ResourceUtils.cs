@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 using Windows.System;
 
 namespace Celbridge.Explorer.Services;
@@ -178,16 +178,22 @@ public class ResourceUtils
             }
 
             var json = File.ReadAllText(webAppPath);
-            var jsonObj = JObject.Parse(json);
+            using var jsonDoc = JsonDocument.Parse(json);
+            var root = jsonDoc.RootElement;
 
-            var urlToken = jsonObj["sourceUrl"];
-            if (urlToken is null)
+            if (!root.TryGetProperty("sourceUrl", out var urlElement))
+            {
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webapp JSON data: {webAppPath}");
+            }
+
+            var urlValue = urlElement.GetString();
+            if (urlValue is null)
             {
                 return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webapp JSON data: {webAppPath}");
             }
 
             // Todo: This logic is repeated in multiple places, move it to the utility service
-            string targetUrl = urlToken.ToString().Trim();
+            string targetUrl = urlValue.Trim();
             if (!string.IsNullOrWhiteSpace(targetUrl) &&
                 !targetUrl.StartsWith("http") && 
                 !targetUrl.StartsWith("file"))

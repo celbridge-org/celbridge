@@ -87,8 +87,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         PropertyChanged -= ViewModel_PropertyChanged;
     }
 
-    public ICommand AddComponentCommand => new AsyncRelayCommand<object?>(AddComponent_Executed);
-    private async Task AddComponent_Executed(object? parameter)
+    [RelayCommand]
+    private async Task AddComponentAsync(object? parameter)
     {
         int addIndex = -1;
         switch (parameter)
@@ -134,8 +134,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    public ICommand DeleteComponentCommand => new AsyncRelayCommand<object?>(DeleteComponent_Executed);
-    private async Task DeleteComponent_Executed(object? parameter)
+    [RelayCommand]
+    private async Task DeleteComponentAsync(object? parameter)
     {
         var deleteIndex = -1;
 
@@ -181,8 +181,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         }
     }
 
-    public ICommand DuplicateComponentCommand => new AsyncRelayCommand<object?>(DuplicateComponent_Executed);
-    private async Task DuplicateComponent_Executed(object? parameter)
+    [RelayCommand]
+    private async Task DuplicateComponentAsync(object? parameter)
     {
         var componentItem = parameter as ComponentItem;
         if (componentItem is null)
@@ -223,9 +223,8 @@ public partial class ComponentListViewModel : InspectorViewModel
         SelectedIndex = destIndex;
     }
 
-    public ICommand MoveComponentCommand => new AsyncRelayCommand<object?>(MoveComponent_Executed);
-
-    private async Task MoveComponent_Executed(object? parameter)
+    [RelayCommand]
+    private async Task MoveComponentAsync(object? parameter)
     {
         if (parameter is not (int oldIndex, int newIndex))
         {

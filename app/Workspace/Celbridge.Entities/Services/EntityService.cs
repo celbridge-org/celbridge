@@ -3,7 +3,6 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Workspace;
 using Json.More;
 using Json.Patch;
 using Json.Pointer;
