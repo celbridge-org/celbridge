@@ -27,7 +27,7 @@ public static class EntityUtils
             ["_components"] = new JsonArray()
         };
 
-        var evaluateResult = entitySchema.Evaluate(entityJsonObject);
+        var evaluateResult = entitySchema.Evaluate(JsonDocument.Parse(entityJsonObject.ToJsonString()).RootElement);
         if (!evaluateResult.IsValid)
         {
             return Result<EntityData>.Fail($"Failed to create entity data. Schema validation error: {resource}");
@@ -62,7 +62,7 @@ public static class EntityUtils
         }
 
         // Validate the loaded data against the entity schema
-        var evaluateResult = entitySchema.Evaluate(jsonObject);
+        var evaluateResult = entitySchema.Evaluate(JsonDocument.Parse(jsonObject.ToJsonString()).RootElement);
         if (!evaluateResult.IsValid)
         {
             return Result<EntityData>.Fail($"Entity data failed schema validation: '{entityDataPath}'");
@@ -142,7 +142,7 @@ public static class EntityUtils
         var (componentObject, componentConfig) = getComponentResult.Value;
 
         // Validate the component against its schema
-        var validationResult = componentConfig.JsonSchema.Evaluate(componentObject);
+        var validationResult = componentConfig.JsonSchema.Evaluate(JsonDocument.Parse(componentObject.ToJsonString()).RootElement);
         if (!validationResult.IsValid)
         {
             return Result.Fail($"Component is not valid against its schema at index {componentIndex}");
