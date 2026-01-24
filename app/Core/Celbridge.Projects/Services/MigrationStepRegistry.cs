@@ -7,7 +7,7 @@ namespace Celbridge.Projects.Services;
 /// Discovers and manages migration steps, providing ordered execution based on version numbers.
 /// Uses reflection to automatically find all IMigrationStep implementations in the assembly.
 /// </summary>
-public class MigrationStepRegistry
+public class MigrationStepRegistry : IMigrationStepRegistry
 {
     private readonly ILogger<MigrationStepRegistry> _logger;
     private readonly List<IMigrationStep> _steps = new();
