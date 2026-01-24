@@ -4,8 +4,6 @@ using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Documents.ViewModels;
 
 public partial class EditorPreviewViewModel : ObservableObject

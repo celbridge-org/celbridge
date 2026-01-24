@@ -5,8 +5,6 @@ using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Logging;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Python.Services;
 
 public class PythonService : IPythonService, IDisposable
