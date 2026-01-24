@@ -2,7 +2,6 @@
   <ItemGroup>
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <PackageVersion Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
-    <PackageVersion Include="Countly" Version="24.1.1" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="FluentAssertions" Version="8.8.0" />
     <PackageVersion Include="Humanizer" Version="3.0.1" />
@@ -17,19 +16,6 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="6.1.0" />
     <PackageVersion Include="OpenAI" Version="2.8.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
-    <!-- .Net Interactive-->
-    <PackageVersion Include="Microsoft.DotNet.Interactive" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.CSharp" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.FSharp" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.PowerShell" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.Documents" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.Browser" Version="1.0.0-beta.24229.4" />
-    <!-- Http is used to communicate with remote instances of .Net Interactive. Removing cause of version warning -->
-    <!-- <PackageVersion Include="Microsoft.Dotnet.Interactive.Http" Version="1.0.0-beta.23403.1" /> -->
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.PackageManagement" Version="1.0.0-beta.24229.4" />
-    <PackageVersion Include="Microsoft.Dotnet.Interactive.Formatting" Version="1.0.0-beta.24229.4" />
-    <!-- Microsoft.Dotnet.Interactive.CSharp attempts to load this version of VisualBasic.Features, so had to add it as a dependency -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Features" Version="4.8.0.0" />
     <PackageVersion Include="StreamJsonRpc" Version="2.24.84" />
     <PackageVersion Include="Tomlyn" Version="0.19.0" />
   </ItemGroup>
