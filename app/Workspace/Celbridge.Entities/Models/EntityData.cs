@@ -2,8 +2,8 @@ using Celbridge.Entities.Services;
 using Json.Patch;
 using Json.Pointer;
 using Json.Schema;
-using System.Text.Json.Nodes;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Celbridge.Entities.Models;
 
@@ -78,7 +78,7 @@ public class EntityData
 
             // Check if the patched JSON is still valid against the entity schema
 
-            var evaluateResult = EntitySchema.Evaluate(patchedJsonObject);
+            var evaluateResult = EntitySchema.Evaluate(JsonDocument.Parse(patchedJsonObject.ToJsonString()).RootElement);
             if (!evaluateResult.IsValid)
             {
                 return Result<PatchSummary>.Fail($"Failed to apply JSON patch to entity data. Schema validation error.");
@@ -95,7 +95,8 @@ public class EntityData
 
             // Check that the component that was modified by the operation is still valid against its schema.
             // The remove component operation doesn't require validation.
-            bool isRemoveComponentOperation = operation.Path.Count == 2 && operation.Op == OperationType.Remove;
+            var pathSegments = operation.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
+            bool isRemoveComponentOperation = pathSegments.Length == 2 && operation.Op == OperationType.Remove;
             if (!isRemoveComponentOperation)
             {
                 var validateResult = EntityUtils.ValidateComponent(patchedJsonObject, componentChange.ComponentKey.ComponentIndex, configRegistry);
@@ -159,15 +160,19 @@ public class EntityData
         {
             var jsonPointer = operation.Path;
 
+            // Parse the pointer string to get segments (format: "/_components/0/_type")
+            var pointerString = jsonPointer.ToString();
+            var segments = pointerString.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
             // Check if the JSON pointer is a component property path
-            if (jsonPointer.Count < 2 ||
-                jsonPointer[0] != EntityUtils.ComponentsKey)
+            if (segments.Length < 2 ||
+                segments[0] != EntityUtils.ComponentsKey)
             {
                 throw new InvalidOperationException($"Component patch operation does not start with /{EntityUtils.ComponentsKey}");
             }
 
             // Extract the component index from the path
-            var indexSegment = jsonPointer[1];
+            var indexSegment = segments[1];
             if (!int.TryParse(indexSegment, out var componentIndex))
             {
                 throw new InvalidOperationException($"Component patch operation does not specify a component index");
@@ -175,7 +180,7 @@ public class EntityData
 
             string typeAndVersion = string.Empty;
             if (operation.Op == OperationType.Add &&
-                jsonPointer.Count == 2)
+                segments.Length == 2)
             {
                 // This is an add component operation, so extract the type of the component that will be
                 // added by the patch...
@@ -198,7 +203,7 @@ public class EntityData
             {
                 // ...in all other cases, use the component type of the existing entity component.
 
-                var componentTypePointer = jsonPointer[..2].Combine(EntityUtils.ComponentTypeKey);
+                var componentTypePointer = JsonPointer.Parse($"/{segments[0]}/{segments[1]}/{EntityUtils.ComponentTypeKey}");
                 if (!componentTypePointer.TryEvaluate(EntityJsonObject, out var componentTypeNode) ||
                     componentTypeNode is null)
                 {
@@ -220,7 +225,7 @@ public class EntityData
                 throw new InvalidOperationException($"Invalid component type");
             }
 
-            string propertyPath = jsonPointer.Count == 2 ? "/" : jsonPointer[2..].ToString();
+            string propertyPath = segments.Length == 2 ? "/" : "/" + string.Join("/", segments.Skip(2));
             var operationName = operation.Op.ToString().ToLower();
 
             // Create a message for the component change

@@ -24,7 +24,6 @@
   
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="sqlite-net-pcl" />
   </ItemGroup>
   

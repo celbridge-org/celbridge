@@ -1,6 +1,6 @@
 using Celbridge.Commands;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Celbridge.Logging.Services;
 
@@ -13,31 +13,55 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
         _ignoreCommandProperties = ignoreCommandProperties;
     }
 
-    public override void WriteJson(JsonWriter writer, ExecuteCommandStartedMessage? message, JsonSerializer serializer)
+    public override void Write(Utf8JsonWriter writer, ExecuteCommandStartedMessage message, JsonSerializerOptions options)
     {
         Guard.IsNotNull(message);
 
         var command = message.Command;
 
-        var outputJO = new JObject();
+        writer.WriteStartObject();
+
         if (!_ignoreCommandProperties)
         {
-            JObject commandJO = JObject.FromObject(command, serializer);
-            foreach (var kv in commandJO)
+            // Serialize command properties (excluding the base IExecutableCommand properties)
+            var commandType = command.GetType();
+            var properties = commandType.GetProperties()
+                .Where(p => p.DeclaringType != typeof(object) &&
+                           p.Name != nameof(IExecutableCommand.CommandId) &&
+                           p.Name != nameof(IExecutableCommand.UndoGroupId) &&
+                           p.Name != nameof(IExecutableCommand.CommandFlags) &&
+                           p.Name != nameof(IExecutableCommand.ExecutionSource) &&
+                           p.Name != nameof(IExecutableCommand.OnExecute) &&
+                           p.CanRead);
+
+            foreach (var prop in properties)
             {
-                outputJO.Add(kv.Key, kv.Value);
+                var value = prop.GetValue(command);
+                if (value is not null || options.DefaultIgnoreCondition != JsonIgnoreCondition.WhenWritingNull)
+                {
+                    writer.WritePropertyName(prop.Name);
+                    JsonSerializer.Serialize(writer, value, prop.PropertyType, options);
+                }
             }
         }
 
-        outputJO.Add("_CommandId", JToken.FromObject(command.CommandId, serializer));
-        outputJO.Add("_UndoGroupId", JToken.FromObject(command.UndoGroupId, serializer));
-        outputJO.Add("_CommandFlags", JToken.FromObject(command.CommandFlags, serializer));
-        outputJO.Add("_Source", JToken.FromObject(command.ExecutionSource, serializer));
+        // Add the command metadata properties at the end
+        writer.WritePropertyName("_CommandId");
+        JsonSerializer.Serialize(writer, command.CommandId, options);
 
-        outputJO.WriteTo(writer);
+        writer.WritePropertyName("_UndoGroupId");
+        JsonSerializer.Serialize(writer, command.UndoGroupId, options);
+
+        writer.WritePropertyName("_CommandFlags");
+        JsonSerializer.Serialize(writer, command.CommandFlags, options);
+
+        writer.WritePropertyName("_Source");
+        JsonSerializer.Serialize(writer, command.ExecutionSource, options);
+
+        writer.WriteEndObject();
     }
 
-    public override ExecuteCommandStartedMessage ReadJson(JsonReader reader, Type objectType, ExecuteCommandStartedMessage? existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override ExecuteCommandStartedMessage Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         throw new NotImplementedException();
     }
