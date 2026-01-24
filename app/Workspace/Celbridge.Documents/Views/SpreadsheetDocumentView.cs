@@ -8,7 +8,6 @@ using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
-using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Views;
 

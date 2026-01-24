@@ -6,7 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Text.Json.Nodes;
-using Path = System.IO.Path;
 
 namespace Celbridge.Documents.ViewModels;
 

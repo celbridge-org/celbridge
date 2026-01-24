@@ -8,8 +8,6 @@ using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.Foundation.Collections;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Documents.Views;
 
 using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;

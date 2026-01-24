@@ -7,8 +7,6 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Entities.Services;
 
 public class EntityRegistry

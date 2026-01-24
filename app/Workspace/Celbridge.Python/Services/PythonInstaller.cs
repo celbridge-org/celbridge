@@ -1,8 +1,6 @@
 using System.IO.Compression;
 using System.Diagnostics;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Python.Services;
 
 public static class PythonInstaller

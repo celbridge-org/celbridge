@@ -3,8 +3,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Documents.Views;
 
 public sealed partial class EditorPreviewView : UserControl, IEditorPreview

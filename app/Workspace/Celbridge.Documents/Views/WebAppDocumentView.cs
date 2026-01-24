@@ -8,8 +8,6 @@ using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Documents.Views;
 
 public sealed partial class WebAppDocumentView : DocumentView

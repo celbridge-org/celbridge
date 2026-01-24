@@ -5,8 +5,6 @@ using Celbridge.Explorer;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Workspace;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Markdown.Services;
 
 public class MarkdownActivity : IActivity

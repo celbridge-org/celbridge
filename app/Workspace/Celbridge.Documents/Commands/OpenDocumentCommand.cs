@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
-using Path = System.IO.Path;
 
 namespace Celbridge.Documents.Commands;
 

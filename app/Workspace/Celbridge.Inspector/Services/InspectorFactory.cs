@@ -3,8 +3,6 @@ using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
 using Celbridge.Workspace;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Inspector.Services;
 
 public class InspectorFactory : IInspectorFactory
