@@ -1,7 +1,7 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Provides access to available project templates.
+/// Provides access to available project templates and project creation from templates.
 /// </summary>
 public interface IProjectTemplateService
 {
@@ -14,4 +14,9 @@ public interface IProjectTemplateService
     /// Returns the default template (Empty Project).
     /// </summary>
     ProjectTemplate GetDefaultTemplate();
+
+    /// <summary>
+    /// Creates a new project from a template at the specified path.
+    /// </summary>
+    Task<Result> CreateFromTemplateAsync(string projectFilePath, ProjectTemplate template);
 }

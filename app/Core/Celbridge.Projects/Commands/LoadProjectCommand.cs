@@ -7,12 +7,12 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
 {
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
-    private readonly ProjectLoader _projectLoader;
+    private readonly IProjectLoader _projectLoader;
 
     public LoadProjectCommand(
         ICommandService commandService,
         IProjectService projectService,
-        ProjectLoader projectLoader)
+        IProjectLoader projectLoader)
     {
         _commandService = commandService;
         _projectService = projectService;

@@ -14,11 +14,14 @@ public static class ServiceConfiguration
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IProjectMigrationService, ProjectMigrationService>();
         services.AddSingleton<IProjectTemplateService, ProjectTemplateService>();
-        services.AddTransient<IProject, Project>();
         services.AddTransient<IProjectConfigService, ProjectConfigService>();
-        services.AddSingleton<MigrationStepRegistry>();
-        services.AddTransient<ProjectLoader>();
+        services.AddSingleton<IMigrationStepRegistry, MigrationStepRegistry>();
+        services.AddTransient<IProjectLoader, ProjectLoader>();
         services.AddTransient<ProjectUnloader>();
+
+        // New services for refactored project loading
+        services.AddTransient<ProjectConfigReader>();
+        services.AddTransient<ProjectFactory>();
 
         //
         // Register commands

@@ -7,13 +7,19 @@ public class ProjectService : IProjectService
     private const int RecentProjectsMax = 10;
 
     private readonly IEditorSettings _editorSettings;
+    private readonly ProjectFactory _projectFactory;
+    private readonly IProjectTemplateService _projectTemplateService;
 
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        ProjectFactory projectFactory,
+        IProjectTemplateService projectTemplateService)
     {
         _editorSettings = editorSettings;
+        _projectFactory = projectFactory;
+        _projectTemplateService = projectTemplateService;
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
@@ -53,10 +59,11 @@ public class ProjectService : IProjectService
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
 
-            var createResult = await Project.CreateProjectAsync(config.ProjectFilePath, config.Template);
+            var createResult = await _projectTemplateService.CreateFromTemplateAsync(config.ProjectFilePath, config.Template);
             if (createResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'");
+                return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'")
+                    .WithErrors(createResult);
             }
 
             return Result.Ok();
@@ -72,7 +79,7 @@ public class ProjectService : IProjectService
     {
         try
         {
-            var loadResult = await Project.LoadProjectAsync(projectFilePath, migrationResult);
+            var loadResult = await _projectFactory.LoadAsync(projectFilePath, migrationResult);
             if (loadResult.IsFailure)
             {
                 return Result<IProject>.Fail($"Failed to load project: {projectFilePath}")
