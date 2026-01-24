@@ -42,14 +42,14 @@ public partial class HomePageViewModel : ObservableObject
 
     public List<RecentProject> RecentProjects = new();
 
-    public IAsyncRelayCommand NewProjectCommand => new AsyncRelayCommand(NewProjectCommand_Executed);
-    private async Task NewProjectCommand_Executed()
+    [RelayCommand]
+    private async Task NewProjectAsync()
     {
         await _mainMenuUtils.ShowNewProjectDialogAsync();
     }
 
-    public IAsyncRelayCommand OpenProjectCommand => new AsyncRelayCommand(OpenProjectCommand_Executed);
-    private async Task OpenProjectCommand_Executed()
+    [RelayCommand]
+    private async Task OpenProjectAsync()
     {
         await _mainMenuUtils.ShowOpenProjectDialogAsync();
     }

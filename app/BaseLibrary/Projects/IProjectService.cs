@@ -1,5 +1,3 @@
-using Windows.Foundation;
-
 namespace Celbridge.Projects;
 
 /// <summary>
