@@ -3,7 +3,6 @@ using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.HTML.Components;
 using Celbridge.Workspace;
-using Path = System.IO.Path;
 
 namespace Celbridge.HTML.Services;
 

@@ -6,7 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
-using Path = System.IO.Path;
 
 namespace Celbridge.Screenplay.Services;
 

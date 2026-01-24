@@ -2,8 +2,6 @@ using Celbridge.Logging;
 using Celbridge.Utilities;
 using System.IO.Compression;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Projects.Services;
 
 public class Project : IDisposable, IProject

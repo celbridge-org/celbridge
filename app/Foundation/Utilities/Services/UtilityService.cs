@@ -1,8 +1,6 @@
 using System.Reflection;
 using Celbridge.Utilities;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Messaging.Services;
 
 public class UtilityService : IUtilityService

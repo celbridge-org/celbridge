@@ -3,7 +3,6 @@ using Celbridge.Utilities;
 using System.Text.RegularExpressions;
 using Tomlyn;
 using Tomlyn.Model;
-using Path = System.IO.Path;
 
 namespace Celbridge.Projects.Services;
 

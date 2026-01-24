@@ -5,8 +5,6 @@ using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Projects.Services;
 
 /// <summary>

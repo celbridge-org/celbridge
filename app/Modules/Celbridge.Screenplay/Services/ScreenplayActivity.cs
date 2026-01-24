@@ -12,8 +12,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayActivity : IActivity

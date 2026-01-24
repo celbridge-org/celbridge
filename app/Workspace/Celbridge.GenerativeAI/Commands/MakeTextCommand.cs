@@ -2,8 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.GenerativeAI.Commands;
 
 public class MakeTextCommand : CommandBase, IMakeTextCommand

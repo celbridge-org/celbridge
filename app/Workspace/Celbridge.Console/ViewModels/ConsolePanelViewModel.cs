@@ -8,8 +8,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using System.Security.Cryptography;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Console.ViewModels;
 
 public partial class ConsolePanelViewModel : ObservableObject

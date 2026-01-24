@@ -1,7 +1,5 @@
 using Celbridge.Settings;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Projects.Services;
 
 public class ProjectService : IProjectService

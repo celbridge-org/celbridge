@@ -3,8 +3,6 @@ using Celbridge.Explorer;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.Input;
 
-using Path = System.IO.Path;
-
 namespace Celbridge.Inspector.ViewModels;
 
 public partial class ResourceNameInspectorViewModel : InspectorViewModel

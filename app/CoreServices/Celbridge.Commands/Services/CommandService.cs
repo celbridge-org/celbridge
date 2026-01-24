@@ -6,8 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace Celbridge.Commands.Services;
 
-using ICommandLogger = Logging.ILogger<CommandService>;
-using Path = System.IO.Path;
+using ICommandLogger = ILogger<CommandService>;
 
 public class CommandService : ICommandService
 {
