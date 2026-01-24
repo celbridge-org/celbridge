@@ -23,6 +23,8 @@ public partial class MainPage : Page
 
     public MainPage()
     {
+        InitializeComponent();
+
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
@@ -100,13 +102,6 @@ public partial class MainPage : Page
             };
         }
 #endif
-
-        // Prevent focus indicators from appearing on random UI elements at startup
-        // by setting focus to a non-interactive element (the content frame)
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-        {
-            _contentFrame.Focus(FocusState.Programmatic);
-        });
     }
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
