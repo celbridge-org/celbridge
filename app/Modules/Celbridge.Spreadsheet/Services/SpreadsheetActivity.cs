@@ -4,6 +4,7 @@ using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
+using Path = System.IO.Path;
 
 namespace Celbridge.Spreadsheet.Services;
 

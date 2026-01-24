@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BaseLibrary\Celbridge.BaseLibrary.csproj" />
+    <ProjectReference Include="..\..\Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,3 +41,4 @@
   </ItemGroup>
 
 </Project>
+

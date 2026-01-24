@@ -6,6 +6,7 @@ using Celbridge.Messaging;
 using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Services;
 using System.Text.Json;
+using Path = System.IO.Path;
 
 namespace Celbridge.Screenplay.Components;
 

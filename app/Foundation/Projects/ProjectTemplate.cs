@@ -3,7 +3,7 @@ namespace Celbridge.Projects;
 /// <summary>
 /// Defines a project template that can be used to create new projects.
 /// </summary>
-public record ProjectTemplate
+public partial record ProjectTemplate
 {
     /// <summary>
     /// Unique identifier for the template (e.g., "Empty", "Examples").

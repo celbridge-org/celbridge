@@ -58,7 +58,7 @@
     <ProjectReference Include="..\CoreServices\Celbridge.Projects\Celbridge.Projects.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.Settings\Celbridge.Settings.csproj" />
     <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
@@ -72,3 +72,4 @@
   </ItemGroup>
 
 </Project>
+
