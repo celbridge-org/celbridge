@@ -293,7 +293,10 @@ public class ShortcutMenuBuilder
         return button;
     }
 
-    private void OnShortcutButtonClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Called by shortcut buttons on the Project Panel navigation bar.
+    /// </summary>
+    private void OnShortcutButtonClick(object? sender, RoutedEventArgs e)
     {
         if (sender is ShortcutButton button && 
             button.Tag is string tag)
@@ -302,7 +305,10 @@ public class ShortcutMenuBuilder
         }
     }
 
-    private void OnMenuItemClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Called by shortcut menu items in the flyout menus.
+    /// </summary>
+    private void OnMenuItemClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem menuItem && 
             menuItem.Tag is string tag)
