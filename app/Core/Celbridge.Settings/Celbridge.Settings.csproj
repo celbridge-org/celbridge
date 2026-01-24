@@ -24,19 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-		<PackageReference Include="NLog" />
-		<PackageReference Include="NLog.Extensions.Logging" />
-	</ItemGroup>
+      <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\..\Foundation\Celbridge.Foundation.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Update="NLog.config">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	</ItemGroup>
-  
 </Project>
 

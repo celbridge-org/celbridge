@@ -23,12 +23,8 @@
 
   </PropertyGroup>
 
-  <ItemGroup>
-	  <PackageReference Include="Tomlyn" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Foundation\Celbridge.Foundation.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+	</ItemGroup>
   
 </Project>

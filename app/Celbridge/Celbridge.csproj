@@ -51,14 +51,14 @@
 
   <!-- Direct project dependencies -->
   <ItemGroup>
-    <ProjectReference Include="..\CoreServices\Celbridge.Commands\Celbridge.Commands.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Logging\Celbridge.Logging.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Messaging\Celbridge.Messaging.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Modules\Celbridge.Modules.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Projects\Celbridge.Projects.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.Settings\Celbridge.Settings.csproj" />
-    <ProjectReference Include="..\CoreServices\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Logging\Celbridge.Logging.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Messaging\Celbridge.Messaging.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Modules\Celbridge.Modules.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Projects\Celbridge.Projects.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Settings\Celbridge.Settings.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 

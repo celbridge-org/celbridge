@@ -24,21 +24,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Foundation\Celbridge.Foundation.csproj" />
+	  <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="Assets\Fonts\FileIcons\LICENSE.md" />
+    <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons-icon-theme.json" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\devopicons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
-  </ItemGroup>
-
+  
 </Project>
-
