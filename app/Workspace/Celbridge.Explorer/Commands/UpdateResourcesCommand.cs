@@ -15,12 +15,7 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
     public override async Task<Result> ExecuteAsync()
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-
-        var updateResult = await explorerService.UpdateResourcesAsync();
-        if (updateResult.IsFailure)
-        {
-            return updateResult;
-        }
+        explorerService.ScheduleResourceUpdate();
 
         return Result.Ok();
     }

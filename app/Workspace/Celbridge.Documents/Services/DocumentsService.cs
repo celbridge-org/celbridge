@@ -1,11 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using ClosedXML.Excel;
 using System.Text.RegularExpressions;
 
 namespace Celbridge.Documents.Services;
@@ -176,33 +174,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
-
-    public Result CreateDocumentResource(string resourcePath)
-    {
-        string extension = Path.GetExtension(resourcePath);
-        if (!string.IsNullOrEmpty(extension))
-        {
-            resourcePath = Path.ChangeExtension(resourcePath, extension.ToLowerInvariant());
-            if (extension == ExplorerConstants.ExcelExtension)
-            {
-                // Create an empty Excel file at resource path
-                using var wb = new XLWorkbook();
-                var sheet = wb.AddWorksheet("Sheet1");
-
-                // This workaround forces a block of cells to be displayed instead of a single empty cell.
-                // I think SpreadJS does something similar internally when you add a new sheet.
-                sheet.Cell(200, 20).Style.NumberFormat.Format = "@";
-
-                wb.SaveAs(resourcePath);
-                return Result.Ok();
-            }
-        }
-
-        File.WriteAllText(resourcePath, string.Empty);
-
-        return Result.Ok();
-    }
-
 
     public bool CanAccessFile(string resourcePath)
     {

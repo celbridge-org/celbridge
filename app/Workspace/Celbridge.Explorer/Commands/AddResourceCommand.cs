@@ -1,13 +1,12 @@
 using Celbridge.Commands;
-using Celbridge.Explorer.Services;
-using Celbridge.Workspace;
 using Celbridge.Documents;
+using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;
@@ -16,20 +15,16 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-
-    private string _addedResourcePath = string.Empty;
-
-    private readonly ResourceArchiver _archiver;
+    private readonly IFileTemplateService _fileTemplateService;
 
     public AddResourceCommand(
-        IServiceProvider serviceProvider,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileTemplateService fileTemplateService)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-
-        _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
+        _fileTemplateService = fileTemplateService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -53,16 +48,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         return addResult;
     }
 
-    public override async Task<Result> UndoAsync()
-    {
-        var undoResult = await UndoAddResourceAsync();
-
-        // The user may have deliberately selected a resource since the add was executed, so it would be
-        // surprising if their selection was changed when undoing the add, so we leave the selected resource as is.
-
-        return undoResult;
-    }
-
     private async Task<Result> AddResourceAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
@@ -72,6 +57,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var fileOpService = workspaceService.FileOperationService;
 
         //
         // Validate the resource key
@@ -91,96 +77,79 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         // Create the resource on disk
         //
 
-        try
+        var addedResourcePath = resourceRegistry.GetResourcePath(DestResource);
+
+        // Fail if the parent folder for the new resource does not exist.
+        var parentFolderPath = Path.GetDirectoryName(addedResourcePath);
+        if (!Directory.Exists(parentFolderPath))
         {
-            var addedResourcePath = resourceRegistry.GetResourcePath(DestResource);
-
-            // Fail if the parent folder for the new resource does not exist.
-            // We could attempt to create any missing parent folders, but it would make the undo logic trickier.
-            var parentFolderPath = Path.GetDirectoryName(addedResourcePath);
-            if (!Directory.Exists(parentFolderPath))
-            {
-                return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentFolderPath}'");
-            }
-
-            // It's important to fail if the resource already exists, because undoing this command
-            // deletes the resource, which could lead to unexpected data loss.
-            if (ResourceType == ResourceType.File)
-            {
-                if (File.Exists(addedResourcePath))
-                {
-                    return Result.Fail($"A file already exists at '{addedResourcePath}'.");
-                }
-
-                if (string.IsNullOrEmpty(SourcePath))
-                {
-                    if (_archiver.ArchivedResourceType == ResourceType.File)
-                    {
-                        // This is a redo of previously undone add resource command, so restore the archived
-                        // version of the file.
-                        var unarchiveResult = await _archiver.UnarchiveResourceAsync();
-                        if (unarchiveResult.IsFailure)
-                        {
-                            return Result.Fail($"Failed to unarchive resource: {DestResource}")
-                                .WithErrors(unarchiveResult);
-                        }
-                    }
-                    else
-                    {
-                        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-
-                        // This is a regular command execution, not a redo, so just create an empty file resource.
-                        var createResult = documentsService.CreateDocumentResource(addedResourcePath);                        
-                        if (createResult.IsFailure)
-                        {
-                            return Result.Fail($"Failed to create resource: {DestResource}")
-                                .WithErrors(createResult);
-                        }
-                    }
-                }
-                else
-                {
-                    if (File.Exists(SourcePath))
-                    {
-                        File.Copy(SourcePath, addedResourcePath);
-                    }
-                    else
-                    {
-                        return Result.Fail($"Failed to create resource. Source file '{SourcePath}' does not exist.");
-                    }
-                }
-            }
-            else if (ResourceType == ResourceType.Folder)
-            {
-                if (Directory.Exists(addedResourcePath))
-                {
-                    return Result.Fail($"A folder already exists at '{addedResourcePath}'.");
-                }
-
-                if (string.IsNullOrEmpty(SourcePath))
-                {
-                    Directory.CreateDirectory(addedResourcePath);
-                }
-                else
-                {
-                    if (Directory.Exists(SourcePath))
-                    {
-                        ResourceUtils.CopyFolder(SourcePath, addedResourcePath);
-                    }
-                    else
-                    {
-                        return Result.Fail($"Failed to create resource. Source folder '{SourcePath}' does not exist.");
-                    }
-                }
-            }
-
-            // Note the path of the added resource for undoing
-            _addedResourcePath = addedResourcePath;
+            return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentFolderPath}'");
         }
-        catch (Exception ex)
+
+        if (ResourceType == ResourceType.File)
         {
-            return Result.Fail($"An exception occurred when adding the resource.")
-                .WithException(ex);
+            if (File.Exists(addedResourcePath))
+            {
+                return Result.Fail($"A file already exists at '{addedResourcePath}'.");
+            }
+
+            if (string.IsNullOrEmpty(SourcePath))
+            {
+                // Create a new empty file
+                var content = _fileTemplateService.GetNewFileContent(addedResourcePath);
+                var createResult = await fileOpService.CreateFileAsync(addedResourcePath, content);
+                if (createResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to create resource: {DestResource}")
+                        .WithErrors(createResult);
+                }
+            }
+            else
+            {
+                // Copy from source path
+                if (!File.Exists(SourcePath))
+                {
+                    return Result.Fail($"Failed to create resource. Source file '{SourcePath}' does not exist.");
+                }
+
+                var copyResult = await fileOpService.CopyFileAsync(SourcePath, addedResourcePath);
+                if (copyResult.IsFailure)
+                {
+                    return copyResult;
+                }
+            }
+        }
+        else if (ResourceType == ResourceType.Folder)
+        {
+            if (Directory.Exists(addedResourcePath))
+            {
+                return Result.Fail($"A folder already exists at '{addedResourcePath}'.");
+            }
+
+            if (string.IsNullOrEmpty(SourcePath))
+            {
+                // Create a new empty folder
+                var createResult = await fileOpService.CreateFolderAsync(addedResourcePath);
+                if (createResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to create folder: {DestResource}")
+                        .WithErrors(createResult);
+                }
+            }
+            else
+            {
+                // Copy from source path
+                if (!Directory.Exists(SourcePath))
+                {
+                    return Result.Fail($"Failed to create resource. Source folder '{SourcePath}' does not exist.");
+                }
+
+                var copyResult = await fileOpService.CopyFolderAsync(SourcePath, addedResourcePath);
+                if (copyResult.IsFailure)
+                {
+                    return copyResult;
+                }
+            }
         }
 
         //
@@ -191,50 +160,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         {
             resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
         }
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
-    }
-
-    private async Task<Result> UndoAddResourceAsync()
-    {
-        //
-        // Delete the previously added resource
-        //
-
-        try
-        {
-            // Clear the cached resource path to clean up
-            var addedResourcePath = _addedResourcePath;
-            _addedResourcePath = string.Empty;
-
-            if (ResourceType == ResourceType.File &&
-                File.Exists(addedResourcePath))
-            {
-                // Archive the file instead of just deleting it.
-                // This preserves any changes that the user made since adding the resource.
-                var archiveResult = await _archiver.ArchiveResourceAsync(DestResource);
-                if (archiveResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to archive file resource: {DestResource}")
-                        .WithErrors(archiveResult);
-                }
-            }
-            else if (ResourceType == ResourceType.Folder &&
-                Directory.Exists(addedResourcePath))
-            {
-                Directory.Delete(addedResourcePath, true);
-            }
-
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when undoing adding the resource.")
-                .WithException(ex);
-        }
-
-        await Task.CompletedTask;
 
         return Result.Ok();
     }

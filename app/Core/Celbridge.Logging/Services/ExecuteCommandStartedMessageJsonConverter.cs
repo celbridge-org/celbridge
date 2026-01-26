@@ -28,7 +28,6 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
             var properties = commandType.GetProperties()
                 .Where(p => p.DeclaringType != typeof(object) &&
                            p.Name != nameof(IExecutableCommand.CommandId) &&
-                           p.Name != nameof(IExecutableCommand.UndoGroupId) &&
                            p.Name != nameof(IExecutableCommand.CommandFlags) &&
                            p.Name != nameof(IExecutableCommand.ExecutionSource) &&
                            p.Name != nameof(IExecutableCommand.OnExecute) &&
@@ -48,9 +47,6 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
         // Add the command metadata properties at the end
         writer.WritePropertyName("_CommandId");
         JsonSerializer.Serialize(writer, command.CommandId, options);
-
-        writer.WritePropertyName("_UndoGroupId");
-        JsonSerializer.Serialize(writer, command.UndoGroupId, options);
 
         writer.WritePropertyName("_CommandFlags");
         JsonSerializer.Serialize(writer, command.CommandFlags, options);

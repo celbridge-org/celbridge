@@ -446,7 +446,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         });
     }
 
-    public async Task<Result> ImportResources(List<string> sourcePaths, IResource? destResource)
+    public Result ImportResources(List<string> sourcePaths, IResource? destResource)
     {
         if (destResource is null)
         {
@@ -461,7 +461,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
         var resourceTransfer = createResult.Value;
 
-        var transferResult = await _explorerService.TransferResources(destFolderResource, resourceTransfer);
+        var transferResult = _explorerService.TransferResources(destFolderResource, resourceTransfer);
         if (transferResult.IsFailure)
         {
             return Result.Fail($"Failed to transfer resources. {transferResult.Error}");

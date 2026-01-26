@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Entities;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -22,32 +22,48 @@ public class UndoService : IUndoService
         // If the secondary panel is active, try to undo the entity for the selected resource
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            var activePanel = _workspaceWrapper.WorkspaceService.ActivePanel;
+            var workspaceService = _workspaceWrapper.WorkspaceService;
+            var activePanel = workspaceService.ActivePanel;
+
             if (activePanel == WorkspacePanel.Secondary)
             {
-                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+                var explorerService = workspaceService.ExplorerService;
                 var selectedResource = explorerService.SelectedResource;
 
                 if (!selectedResource.IsEmpty)
                 {
-                    var entityService = _workspaceWrapper.WorkspaceService.EntityService;
+                    var entityService = workspaceService.EntityService;
                     if (entityService.GetUndoCount(selectedResource) > 0)
                     {
-                        // Executing as a command ensures that no other operations are performed at the same time.
-                        _commandService.Execute<IUndoEntityCommand>(command =>
-                        {
-                            command.Resource = selectedResource;
-                        });
+                        entityService.UndoEntity(selectedResource);
+                        return Result.Ok();
                     }
-
-                    return Result.Ok();
                 }
+            }
+
+            // Try file operation undo
+            var fileOpService = workspaceService.FileOperationService;
+            if (fileOpService.CanUndo)
+            {
+                _ = UndoFileOperationAsync();
+                return Result.Ok();
             }
         }
 
-        // The undo is performed internally by executing a command.
-        // Again, this ensures that no other operations are performed at the same time.
-        return _commandService.Undo();
+        return Result.Ok();
+    }
+
+    private async Task UndoFileOperationAsync()
+    {
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileOpService = workspaceService.FileOperationService;
+
+        var result = await fileOpService.UndoAsync();
+        if (result.IsSuccess)
+        {
+            // Trigger resource update to refresh the tree view and entity cache
+            _commandService.Execute<IUpdateResourcesCommand>();
+        }
     }
 
     public Result Redo()
@@ -55,31 +71,47 @@ public class UndoService : IUndoService
         // First try to redo the selected entity if the secondary panel is active
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            var activePanel = _workspaceWrapper.WorkspaceService.ActivePanel;
+            var workspaceService = _workspaceWrapper.WorkspaceService;
+            var activePanel = workspaceService.ActivePanel;
+
             if (activePanel == WorkspacePanel.Secondary)
             {
-                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+                var explorerService = workspaceService.ExplorerService;
                 var selectedResource = explorerService.SelectedResource;
 
                 if (!selectedResource.IsEmpty)
                 {
-                    var entityService = _workspaceWrapper.WorkspaceService.EntityService;
+                    var entityService = workspaceService.EntityService;
                     if (entityService.GetRedoCount(selectedResource) > 0)
                     {
-                        // Executing as a command ensures that no other operations are performed at the same time.
-                        _commandService.Execute<IRedoEntityCommand>(command =>
-                        {
-                            command.Resource = selectedResource;
-                        });
+                        entityService.RedoEntity(selectedResource);
+                        return Result.Ok();
                     }
-
-                    return Result.Ok();
                 }
+            }
+
+            // Try file operation redo
+            var fileOpService = workspaceService.FileOperationService;
+            if (fileOpService.CanRedo)
+            {
+                _ = RedoFileOperationAsync();
+                return Result.Ok();
             }
         }
 
-        // The redo is performed internally by executing a command.
-        // Again, this ensures that no other operations are performed at the same time.
-        return _commandService.Redo();
+        return Result.Ok();
+    }
+
+    private async Task RedoFileOperationAsync()
+    {
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileOpService = workspaceService.FileOperationService;
+
+        var result = await fileOpService.RedoAsync();
+        if (result.IsSuccess)
+        {
+            // Trigger resource update to refresh the tree view and entity cache
+            _commandService.Execute<IUpdateResourcesCommand>();
+        }
     }
 }

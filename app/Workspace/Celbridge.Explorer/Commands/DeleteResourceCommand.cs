@@ -2,27 +2,23 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
-using Celbridge.Explorer.Services;
 using Celbridge.Logging;
 
 namespace Celbridge.Explorer.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.Undoable | CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey Resource { get; set; }
 
-    private ResourceArchiver _archiver;
-
-    private readonly ILogger<ResourceArchiver> _logger;
+    private readonly ILogger<DeleteResourceCommand> _logger;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceCommand(
-        ILogger<ResourceArchiver> logger,
-        IServiceProvider serviceProvider,
+        ILogger<DeleteResourceCommand> logger,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
         IWorkspaceWrapper workspaceWrapper)
@@ -31,93 +27,54 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
-
-        _archiver = serviceProvider.GetRequiredService<ResourceArchiver>();
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-
-        var getResourceResult = resourceRegistry.GetResource(Resource);
-        if (getResourceResult.IsFailure)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _logger.LogError(getResourceResult.Error);
-
-            return Result.Fail($"Failed to get resource: {Resource}");
+            return Result.Fail("Workspace is not loaded");
         }
 
-        var resource = getResourceResult.Value;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var fileOpService = workspaceService.FileOperationService;
 
-        if (resource is IFileResource)
+        var resourcePath = resourceRegistry.GetResourcePath(Resource);
+
+        Result deleteResult;
+
+        if (File.Exists(resourcePath))
         {
-            var archiveResult = await _archiver.ArchiveResourceAsync(Resource);
-            if (archiveResult.IsFailure)
+            deleteResult = await fileOpService.DeleteFileAsync(resourcePath);
+            if (deleteResult.IsFailure)
             {
-                _logger.LogError(archiveResult.Error);
+                _logger.LogError(deleteResult.Error);
 
                 var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
                 var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", Resource);
                 await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
-                return archiveResult;
+                return deleteResult;
             }
         }
-        else if (resource is IFolderResource)
+        else if (Directory.Exists(resourcePath))
         {
-            var archiveResult = await _archiver.ArchiveResourceAsync(Resource);
-            if (archiveResult.IsFailure)
+            deleteResult = await fileOpService.DeleteFolderAsync(resourcePath);
+            if (deleteResult.IsFailure)
             {
-                _logger.LogError(archiveResult.Error);
+                _logger.LogError(deleteResult.Error);
 
                 var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
                 var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", Resource);
                 await _dialogService.ShowAlertDialogAsync(titleString, messageString);
 
-                return archiveResult;
+                return deleteResult;
             }
         }
         else
         {
-            return Result.Fail($"Unknown resource type for key: {Resource}");
-        }
-
-        return Result.Ok();
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        if (_archiver.ArchivedResourceType == ResourceType.File)
-        {
-            var unarchiveResult = await _archiver.UnarchiveResourceAsync();
-            if (unarchiveResult.IsFailure)
-            {
-                _logger.LogError(unarchiveResult.Error);
-
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFileFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-
-                return unarchiveResult;
-            }
-        }
-        else if (_archiver.ArchivedResourceType == ResourceType.Folder)
-        {
-            var unarchiveResult = await _archiver.UnarchiveResourceAsync();
-            if (unarchiveResult.IsFailure)
-            {
-                _logger.LogError(unarchiveResult.Error);
-
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                var messageString = _stringLocalizer.GetString("ResourceTree_UndoDeleteFolderFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-
-                return unarchiveResult;
-            }
-        }
-        else
-        {
-            return Result.Fail($"Invalid deleted resource type for key: {Resource}");
+            return Result.Fail($"Resource does not exist: {Resource}");
         }
 
         return Result.Ok();

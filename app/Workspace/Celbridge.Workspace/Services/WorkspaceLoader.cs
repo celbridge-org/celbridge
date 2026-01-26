@@ -82,6 +82,7 @@ public class WorkspaceLoader
                 }
             }
 
+            // Update resources registry immediately to ensure we are up to date
             var updateResult = await explorerService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {

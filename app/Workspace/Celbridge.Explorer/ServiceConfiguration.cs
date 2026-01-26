@@ -20,6 +20,8 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<ISearchService, SearchService>();
+        services.AddSingleton<IFileOperationService, FileOperationService>();
+        services.AddSingleton<IFileTemplateService, FileTemplateService>();
         services.AddTransient<ResourceArchiver>();
         services.AddTransient<ResourceChangeMonitor>();
 
@@ -46,6 +48,7 @@ public static class ServiceConfiguration
         services.AddTransient<IAddResourceCommand, AddResourceCommand>();
         services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
+        services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();
         services.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
         services.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         services.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();

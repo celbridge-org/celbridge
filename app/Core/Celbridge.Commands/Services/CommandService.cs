@@ -16,7 +16,7 @@ public class CommandService : ICommandService
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private record QueuedCommand(IExecutableCommand Command, CommandExecutionMode ExecutionMode);
+    private record QueuedCommand(IExecutableCommand Command);
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
@@ -26,8 +26,6 @@ public class CommandService : ICommandService
     private double _lastWorkspaceUpdateTime = 0;
 
     private bool _stopped = false;
-
-    private UndoStack _undoStack = new ();
 
     public CommandService(
         IServiceProvider serviceProvider,
@@ -54,7 +52,7 @@ public class CommandService : ICommandService
         // Configure the command if the caller provided a configuration action
         configure?.Invoke(command);
 
-        return EnqueueCommand(command, CommandExecutionMode.Execute);
+        return EnqueueCommand(command);
     }
 
     public async Task<Result> ExecuteImmediate<T>(
@@ -92,7 +90,7 @@ public class CommandService : ICommandService
             tcs.TrySetResult();
         };
 
-        var enqueueResult = EnqueueCommand(command, CommandExecutionMode.Execute);
+        var enqueueResult = EnqueueCommand(command);
         if (enqueueResult.IsFailure)
         {
             return Result.Fail($"Failed to enqueue command")
@@ -102,7 +100,7 @@ public class CommandService : ICommandService
         // Wait for the command to execute
         await tcs.Task;
 
-        // Clear the callback to avoid it being called again via undo/redo.
+        // Clear the callback
         command.OnExecute = null;
 
         if (executionResult.IsFailure)
@@ -128,90 +126,6 @@ public class CommandService : ICommandService
         {
             _commandQueue.RemoveAll(c => c.GetType().IsAssignableTo(typeof(T)));
         }
-    }
-
-    public int GetUndoCount()
-    {
-        lock (_lock)
-        {
-            return _undoStack.GetUndoCount();
-        }
-    }
-
-    public int GetRedoCount()
-    {
-        lock (_lock)
-        {
-            return _undoStack.GetRedoCount();
-        }
-    }
-
-    public Result Undo()
-    {
-        lock (_lock)
-        {
-            if (GetUndoCount() == 0)
-            {
-                // Noop
-                return Result.Ok();
-            }
-
-            // Pop next command(s) from the undo queue
-            var popResult = _undoStack.PopCommands(UndoStackOperation.Undo);
-            if (popResult.IsFailure)
-            {
-                return Result.Fail("Failed to pop command from undo stack")
-                    .WithErrors(popResult);
-            }
-            var commandList = popResult.Value;
-
-            foreach (var command in commandList)
-            {
-                // Enqueue this command as an undo. 
-                var enqueueResult = EnqueueCommand(command, CommandExecutionMode.Undo);
-                if (enqueueResult.IsFailure)
-                {
-                    return Result.Fail("Failed to enqueue popped undo command")
-                        .WithErrors(enqueueResult);
-                }
-            }
-        }
-
-        return Result.Ok();
-    }
-
-    public Result Redo()
-    {
-        lock (_lock)
-        {
-            if (GetRedoCount() == 0)
-            {
-                // Noop
-                return Result.Ok();
-            }
-
-            // Pop next command(s) from the redo queue
-            var popResult = _undoStack.PopCommands(UndoStackOperation.Redo);
-            if (popResult.IsFailure)
-            {
-                return Result.Fail("Failed to pop command from redo stack")
-                    .WithErrors(popResult);
-            }
-            var commandList = popResult.Value;
-
-            foreach (var command in commandList)
-            {
-                // Enqueue this command as a redo (same as a normal execution).
-                var enqueueResult = EnqueueCommand(command, CommandExecutionMode.Redo);
-                if (enqueueResult.IsFailure)
-                {
-                    return Result.Fail("Failed to enqueue popped undo command")
-                        .WithErrors(enqueueResult);
-                }
-            }
-        }
-
-        return Result.Ok();
     }
 
     public void StartExecution()
@@ -250,7 +164,6 @@ public class CommandService : ICommandService
 
             // Find the first command that is ready to execute
             IExecutableCommand? command = null;
-            var executionMode = CommandExecutionMode.Execute;
 
             lock (_lock)
             {
@@ -258,7 +171,6 @@ public class CommandService : ICommandService
                 {
                     var item = _commandQueue[0];
                     command = item.Command;
-                    executionMode = item.ExecutionMode;
                     _commandQueue.RemoveAt(0);
                 }
             }
@@ -268,68 +180,33 @@ public class CommandService : ICommandService
                 try
                 {
                     // Notify listeners that the command is about to execute
-                    var startedMessage = new ExecuteCommandStartedMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                    var startedMessage = new ExecuteCommandStartedMessage(command, (float)_stopwatch.Elapsed.TotalSeconds);
                     _messengerService.Send(startedMessage);
 
-                    var scopeName = $"{executionMode} {command.GetType().Name}";
+                    var scopeName = $"Execute {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
                         // Log the command execution at the debug level
                         string logEntry = _logSerializer.SerializeObject(startedMessage, false);
                         _logger.LogDebug(logEntry);
 
-                        if (executionMode == CommandExecutionMode.Undo)
+                        var executeResult = await command.ExecuteAsync();
+
+                        if (executeResult.IsFailure)
                         {
-                            //
-                            // Execute command as an undo
-                            //
-
-                            var undoResult = await command.UndoAsync();
-
-                            if (undoResult.IsSuccess)
-                            {
-                                // Push the undone command onto the redo stack
-                                _undoStack.PushRedoCommand(command);
-                            }
-                            else
-                            {
-                                _logger.LogError(undoResult, "Undo command failed");
-                            }
-                        }
-                        else
-                        {
-                            //
-                            // Execute the command as a regular execution or redo
-                            //
-
-                            var executeResult = await command.ExecuteAsync();
-
-                            if (executeResult.IsSuccess)
-                            {
-                                if (command.CommandFlags.HasFlag(CommandFlags.Undoable))
-                                {
-                                    _undoStack.PushUndoCommand(command);
-                                }
-                            }
-                            else
-                            {
-                                _logger.LogError(executeResult, "Execute command failed");
-                            }
-
-                            // Call the OnExecute callback if it is set.
-                            // This is used by the ExecuteAsync() methods to notify the caller about the execution.
-                            command.OnExecute?.Invoke(executeResult);
+                            _logger.LogError(executeResult, "Execute command failed");
                         }
 
-                        // Update the resource registry if the command requires it.
+                        // Call the OnExecute callback if it is set.
+                        // This is used by the ExecuteAsync() methods to notify the caller about the execution.
+                        command.OnExecute?.Invoke(executeResult);
+
+                        // Schedule a resource update if the command requires it.
                         if (_workspaceWrapper.IsWorkspacePageLoaded &&
                             command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
                         {
-                            var updateResult = await UpdateResourcesAsync(command);
-                            if (updateResult.IsFailure)
-                            {
-                                _logger.LogError(updateResult, "Update resources failed");
-                            }
+                            var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+                            explorerService.ScheduleResourceUpdate();
                         }
 
                         // Save the workspace state if the command requires it.
@@ -339,7 +216,7 @@ public class CommandService : ICommandService
                             _workspaceWrapper.WorkspaceService.SetWorkspaceStateIsDirty();
                         }
 
-                        var endedMessage = new ExecuteCommandEndedMessage(command, executionMode, (float)_stopwatch.Elapsed.TotalSeconds);
+                        var endedMessage = new ExecuteCommandEndedMessage(command, (float)_stopwatch.Elapsed.TotalSeconds);
                         _messengerService.Send(endedMessage);
                     }
                 }
@@ -362,22 +239,16 @@ public class CommandService : ICommandService
         return command;
     }
 
-    private Result EnqueueCommand(IExecutableCommand command, CommandExecutionMode executionMode)
+    private Result EnqueueCommand(IExecutableCommand command)
     {
         lock (_lock)
         {
-            if (executionMode == CommandExecutionMode.Execute)
-            {
-                // Executing a regular command (as opposed to an undo or redo) clears the redo stack.
-                _undoStack.ClearRedoCommands();
-            }
-
             if (_commandQueue.Any((item) => item.Command.CommandId == command.CommandId))
             {
                 return Result.Fail($"Command '{command.CommandId}' is already in the execution queue");
             }
 
-            _commandQueue.Add(new QueuedCommand(command, executionMode));
+            _commandQueue.Add(new QueuedCommand(command));
         }
 
         return Result.Ok();
@@ -409,32 +280,6 @@ public class CommandService : ICommandService
 
         // Use the latest reported time to account for any time spent saving
         _lastWorkspaceUpdateTime = _stopwatch.Elapsed.TotalSeconds;
-
-        return Result.Ok();
-    }
-
-    private async Task<Result> UpdateResourcesAsync(IExecutableCommand command)
-    {
-        // For grouped commands, only the last command to execute should perform the
-        // resource update to avoid unnecessary updates.
-        // Every non-grouped command does update the resource registry. This ensures
-        // that the registry & view are up to date before the next command in the queue executes.
-
-        foreach (var item in _commandQueue)
-        {
-            if (item.Command.CommandFlags.HasFlag(CommandFlags.UpdateResources) &&
-                item.Command.UndoGroupId == command.UndoGroupId)
-            {
-                return Result.Ok();
-            }
-        }
-
-        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        var updateResult = await explorerService.UpdateResourcesAsync();
-        if (updateResult.IsFailure)
-        {
-            return updateResult;
-        }
 
         return Result.Ok();
     }

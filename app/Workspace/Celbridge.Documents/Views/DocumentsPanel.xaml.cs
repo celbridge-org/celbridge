@@ -423,6 +423,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 return Result.Fail($"Failed to set file resource for document: '{newResource}'")
                     .WithErrors(setResult);
             }
+
+            // Reload the content to ensure the document reflects the current file state
+            // and entity data is properly synchronized after the resource move/rename.
+            var loadResult = await oldDocumentView.LoadContent();
+            if (loadResult.IsFailure)
+            {
+                return Result.Fail($"Failed to reload content for document: '{newResource}'")
+                    .WithErrors(loadResult);
+            }
         }
         else
         {

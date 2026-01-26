@@ -1,24 +1,23 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Projects;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
-using Celbridge.Utilities.Services;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Celbridge.Logging;
+using Timer = System.Timers.Timer;
 
 namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
     private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
+    private const int UpdateDebounceMs = 250;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IEditorSettings _editorSettings;
     private readonly ICommandService _commandService;
+    private readonly IDispatcher _dispatcher;
     private readonly IProjectService _projectService;
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -29,6 +28,10 @@ public class ExplorerService : IExplorerService, IDisposable
 
     private ISearchPanel? _searchPanel;
     public ISearchPanel SearchPanel => _searchPanel!;
+
+    // Debounce fields for UpdateResourcesAsync
+    private readonly object _updateLock = new();
+    private Timer? _updateDebounceTimer;
 
     public IResourceRegistry ResourceRegistry { get; init; }
 
@@ -53,10 +56,9 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
         ICommandService commandService,
+        IDispatcher dispatcher,
         IProjectService projectService,
-        IUtilityService utilityService,
         IFileIconService fileIconService,
         IWorkspaceWrapper workspaceWrapper,
         ResourceChangeMonitor resourceChangeMonitor)
@@ -67,20 +69,27 @@ public class ExplorerService : IExplorerService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
-        _editorSettings = editorSettings;
         _commandService = commandService;
+        _dispatcher = dispatcher;
         _projectService = projectService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
         _resourceChangeMonitor = resourceChangeMonitor;
 
-        // Delete the DeletedFiles folder to clean these archives up.
-        // The DeletedFiles folder contain archived files and folders from previous delete commands.
-        var tempFilename = utilityService.GetTemporaryFilePath(PathConstants.DeletedFilesFolder, string.Empty);
-        var deletedFilesFolder = Path.GetDirectoryName(tempFilename)!;
-        if (Directory.Exists(deletedFilesFolder))
+        // Clean up the trash folder from previous sessions.
+        // The trash folder contains soft-deleted files and folders from previous delete operations.
+        var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
+        var trashFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+        if (Directory.Exists(trashFolderPath))
         {
-            Directory.Delete(deletedFilesFolder, true);
+            try
+            {
+                Directory.Delete(trashFolderPath, true);
+            }
+            catch
+            {
+                // Best effort cleanup - ignore errors
+            }
         }
 
         // Create the resource registry for the project.
@@ -94,6 +103,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
     }
 
     private void InitializeResourceChangeMonitor()
@@ -137,6 +147,57 @@ public class ExplorerService : IExplorerService, IDisposable
             // Ignore change events that happen while loading the workspace
             _ = StoreSelectedResource();            
         }
+    }
+
+    private void OnMainWindowActivatedMessage(object recipient, MainWindowActivatedMessage message)
+    {
+        if (!_isWorkspaceLoaded)
+        {
+            return;
+        }
+
+        // Refresh resources when the window gains focus to catch any external file system changes
+        _commandService.Execute<IUpdateResourcesCommand>();
+    }
+
+    public void ScheduleResourceUpdate()
+    {
+        lock (_updateLock)
+        {
+            if (_updateDebounceTimer != null)
+            {
+                // Timer already running - reset it
+                _updateDebounceTimer.Stop();
+                _updateDebounceTimer.Start();
+            }
+            else
+            {
+                // Start new debounce timer
+                _updateDebounceTimer = new Timer(UpdateDebounceMs);
+                _updateDebounceTimer.AutoReset = false;
+                _updateDebounceTimer.Elapsed += OnDebounceTimerElapsed;
+                _updateDebounceTimer.Start();
+            }
+        }
+    }
+
+    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        lock (_updateLock)
+        {
+            _updateDebounceTimer?.Dispose();
+            _updateDebounceTimer = null;
+        }
+
+        // Marshal to UI thread and execute refresh directly
+        _dispatcher.TryEnqueue(async () =>
+        {
+            var result = await UpdateResourcesAsync();
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result, "Failed to refresh resources");
+            }
+        });
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -260,55 +321,15 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
-    public async Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer)
+    public Result TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer)
     {
-        // Filter out any items where the destination resource already exists
-        // Todo: If it's a single item, ask the user if they want to replace the existing resource
-        transfer.TransferItems.RemoveAll(item =>
+        // Uses Execute, not ExecuteAsync, to avoid deadlock when called from within another command.
+        _commandService.Execute<ITransferResourcesCommand>(command =>
         {
-            return ResourceRegistry.GetResource(item.DestResource).IsSuccess;
+            command.DestFolderResource = destFolderResource;
+            command.TransferMode = transfer.TransferMode;
+            command.TransferItems = transfer.TransferItems;
         });
-
-        if (transfer.TransferItems.Count == 0)
-        {
-            // All resource items have been filtered out so nothing left to transfer
-            return Result.Ok();
-        }
-
-        // If there are multiple items, assign the same undo group id to all commands.
-        // This ensures that all commands are undone together in a single operation.
-        var undoGroupId = transfer.TransferItems.Count > 1 ? EntityId.Create() : EntityId.InvalidId;
-
-        foreach (var transferItem in transfer.TransferItems)
-        {
-            if (transferItem.SourceResource.IsEmpty)
-            {
-                // This resource is outside the project folder, add it using the AddResource command.
-                _commandService.Execute<IAddResourceCommand>(command =>
-                {
-                    command.ResourceType = transferItem.ResourceType;
-                    command.DestResource = transferItem.DestResource;
-                    command.SourcePath = transferItem.SourcePath;
-                    command.UndoGroupId = undoGroupId;
-                });
-            }
-            else
-            {
-                // This resource is inside the project folder, copy/move it using the CopyResource command.
-                _commandService.Execute<ICopyResourceCommand>(command =>
-                {
-                    command.SourceResource = transferItem.SourceResource;
-                    command.DestResource = transferItem.DestResource;
-                    command.TransferMode = transfer.TransferMode;
-                    command.UndoGroupId = undoGroupId;
-                });
-            }
-        }
-
-        // Expand the destination folder so the user can see the newly transfered resources immediately.
-        ResourceRegistry.SetFolderIsExpanded(destFolderResource, true);
-
-        await Task.CompletedTask;
 
         return Result.Ok();
     }
@@ -494,6 +515,28 @@ public class ExplorerService : IExplorerService, IDisposable
                 // Shutdown and dispose the resource change monitor
                 _resourceChangeMonitor?.Shutdown();
                 _resourceChangeMonitor?.Dispose();
+
+                // Dispose the debounce timer
+                lock (_updateLock)
+                {
+                    _updateDebounceTimer?.Dispose();
+                    _updateDebounceTimer = null;
+                }
+
+                // Clean up the trash folder on project close.
+                // This ensures deleted files don't persist after the project is closed.
+                var trashFolderPath = Path.Combine(ResourceRegistry.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+                if (Directory.Exists(trashFolderPath))
+                {
+                    try
+                    {
+                        Directory.Delete(trashFolderPath, true);
+                    }
+                    catch
+                    {
+                        // Best effort cleanup - ignore errors
+                    }
+                }
             }
 
             _disposed = true;

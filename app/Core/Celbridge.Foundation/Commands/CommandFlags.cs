@@ -9,11 +9,6 @@ public enum CommandFlags
     None = 0,
 
     /// <summary>
-    /// User can undo the command after execution.
-    /// </summary>
-    Undoable = 1 << 0,
-
-    /// <summary>
     /// Update the resource registry after execution.
     /// </summary>
     UpdateResources = 1 << 1,

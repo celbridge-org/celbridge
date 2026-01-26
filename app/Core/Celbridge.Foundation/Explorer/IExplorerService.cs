@@ -14,7 +14,8 @@ public interface IExplorerService
     IExplorerPanel? ExplorerPanel { get; }
 
     /// <summary>
-    /// TEMPORARY: Returns the Explorer Panel view. - %%% Move this to separate Search module.
+    /// Returns the Explorer Panel view.
+    /// Todo: Move this to a separate Search module.
     /// </summary>
     ISearchPanel? SearchPanel { get; }
 
@@ -34,7 +35,13 @@ public interface IExplorerService
     ResourceKey SelectedResource { get; }
 
     /// <summary>
-    /// Update the resource registry and populate the resource tree view.
+    /// Schedules a resource update. 
+    /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
+    /// </summary>
+    void ScheduleResourceUpdate();
+
+    /// <summary>
+    /// Refreshes the resource registry and tree view immediately.
     /// </summary>
     Task<Result> UpdateResourcesAsync();
 
@@ -46,7 +53,7 @@ public interface IExplorerService
     /// <summary>
     /// Transfer resources to a destination folder resource.
     /// </summary>
-    Task<Result> TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer);
+    Result TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer);
 
     /// <summary>
     /// Select a resource in the explorer panel.

@@ -51,6 +51,11 @@ public interface IWorkspaceService
     IInspectorService InspectorService { get; }
 
     /// <summary>
+    /// Returns the File Operation Service associated with the workspace.
+    /// </summary>
+    IFileOperationService FileOperationService { get; }
+
+    /// <summary>
     /// Returns the Data Transfer Service associated with the workspace.
     /// </summary>
     IDataTransferService DataTransferService { get; }

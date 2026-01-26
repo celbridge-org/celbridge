@@ -37,7 +37,11 @@ public class DataTransferService : IDataTransferService, IDisposable
     public ClipboardContentDescription GetClipboardContentDescription()
     {
         var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+        return GetClipboardContentDescription(dataPackageView);
+    }
 
+    private ClipboardContentDescription GetClipboardContentDescription(ApplicationDataTransfer.DataPackageView dataPackageView)
+    {
         ClipboardContentType contentType;
         if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
         {
@@ -77,7 +81,9 @@ public class DataTransferService : IDataTransferService, IDisposable
 
     public async Task<Result<IResourceTransfer>> GetClipboardResourceTransfer(ResourceKey destFolderResource)
     {
-        var contentDescription = GetClipboardContentDescription();
+        // Get clipboard content once and reuse it to avoid issues with virtualized storage items
+        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+        var contentDescription = GetClipboardContentDescription(dataPackageView);
 
         if (contentDescription.ContentType != ClipboardContentType.Resource)
         {
@@ -110,16 +116,25 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
-        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
-
         try
         {
             var storageItems = await dataPackageView.GetStorageItemsAsync();
             var paths = new List<string>();
             foreach (var storageItem in storageItems)
             {
+                // Skip storage items with empty paths (can happen with virtualized items)
+                if (string.IsNullOrEmpty(storageItem.Path))
+                {
+                    continue;
+                }
+
                 var path = Path.GetFullPath(storageItem.Path);
                 paths.Add(path);
+            }
+
+            if (paths.Count == 0)
+            {
+                return Result<IResourceTransfer>.Fail("No valid file paths found in clipboard");
             }
 
             // Note whether the operation is a move or a copy
@@ -176,7 +191,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         }
 
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        return await explorerService.TransferResources(destFolderResource, description);
+        return explorerService.TransferResources(destFolderResource, description);
     }
 
     private bool _disposed;

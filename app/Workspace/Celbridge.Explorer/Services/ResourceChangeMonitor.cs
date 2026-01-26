@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
@@ -11,39 +10,25 @@ namespace Celbridge.Explorer.Services;
 public class ResourceChangeMonitor : IDisposable
 {
     private readonly ILogger<ResourceChangeMonitor> _logger;
-    private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private IResourceRegistry? _resourceRegistry = null;
 
     private readonly string _projectFolderPath;
 
     private FileSystemWatcher? _fileSystemWatcher;
-    private readonly System.Timers.Timer _debounceTimer;
-    private readonly object _lock = new();
-    
-    // Track pending changes for debouncing
-    private readonly HashSet<string> _pendingCreated = new();
-    private readonly HashSet<string> _pendingChanged = new();
-    private readonly HashSet<string> _pendingDeleted = new();
-    private readonly Dictionary<string, string> _pendingRenamed = new();
-
-    private const int DebounceDelayMs = 500; // Wait 500ms after last change before processing
     private bool _isDisposed;
 
     public ResourceChangeMonitor(
         ILogger<ResourceChangeMonitor> logger,
         IDispatcher dispatcher,
-        ICommandService commandService,
         IProjectService projectService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _dispatcher = dispatcher;
-        _commandService = commandService;
         _projectService = projectService;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
@@ -52,10 +37,6 @@ public class ResourceChangeMonitor : IDisposable
         Guard.IsNotNull(project);
 
         _projectFolderPath = project.ProjectFolderPath;
-
-        _debounceTimer = new System.Timers.Timer(DebounceDelayMs);
-        _debounceTimer.AutoReset = false;
-        _debounceTimer.Elapsed += OnDebounceTimerElapsed;
     }
 
     public Result Initialize()
@@ -112,8 +93,6 @@ public class ResourceChangeMonitor : IDisposable
 
         try
         {
-            _debounceTimer.Stop();
-
             if (_fileSystemWatcher != null)
             {
                 _fileSystemWatcher.EnableRaisingEvents = false;
@@ -124,14 +103,6 @@ public class ResourceChangeMonitor : IDisposable
                 _fileSystemWatcher.Error -= OnFileSystemError;
                 _fileSystemWatcher.Dispose();
                 _fileSystemWatcher = null;
-            }
-
-            lock (_lock)
-            {
-                _pendingCreated.Clear();
-                _pendingChanged.Clear();
-                _pendingDeleted.Clear();
-                _pendingRenamed.Clear();
             }
 
             _logger.LogDebug($"Resource change monitoring stopped for: {_projectFolderPath}");
@@ -151,11 +122,10 @@ public class ResourceChangeMonitor : IDisposable
             return;
         }
 
-        lock (_lock)
-        {
-            _pendingCreated.Add(e.FullPath);
-            RestartDebounceTimer();
-        }
+        // Send granular notification for listeners (e.g., document editors)
+        OnResourceCreated(e.FullPath);
+        
+        ScheduleResourceUpdate();
     }
 
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
@@ -165,11 +135,10 @@ public class ResourceChangeMonitor : IDisposable
             return;
         }
 
-        lock (_lock)
-        {
-            _pendingChanged.Add(e.FullPath);
-            RestartDebounceTimer();
-        }
+        // Send granular notification for listeners (e.g., document editors)
+        OnResourceChanged(e.FullPath);
+        
+        ScheduleResourceUpdate();
     }
 
     private void OnFileSystemDeleted(object sender, FileSystemEventArgs e)
@@ -179,11 +148,10 @@ public class ResourceChangeMonitor : IDisposable
             return;
         }
 
-        lock (_lock)
-        {
-            _pendingDeleted.Add(e.FullPath);
-            RestartDebounceTimer();
-        }
+        // Send granular notification for listeners (e.g., document editors)
+        OnResourceDeleted(e.FullPath);
+        
+        ScheduleResourceUpdate();
     }
 
     private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
@@ -193,16 +161,14 @@ public class ResourceChangeMonitor : IDisposable
             return;
         }
 
-        lock (_lock)
-        {
-            _pendingRenamed[e.OldFullPath] = e.FullPath;
-            
-            // Also track as a changed file since the content may have been updated
-            // This handles applications that use rename operations as part of their save process (e.g. Excel)
-            _pendingChanged.Add(e.FullPath);
-            
-            RestartDebounceTimer();
-        }
+        // Send granular notifications for listeners
+        OnResourceRenamed(e.OldFullPath, e.FullPath);
+        
+        // Also notify as changed since content may have been updated
+        // (handles applications that use rename as part of save, e.g., Excel)
+        OnResourceChanged(e.FullPath);
+        
+        ScheduleResourceUpdate();
     }
 
     private void OnFileSystemError(object sender, ErrorEventArgs e)
@@ -210,105 +176,21 @@ public class ResourceChangeMonitor : IDisposable
         var exception = e.GetException();
         _logger.LogError($"File system watcher error: {exception?.Message ?? "Unknown error"}");
     }
-
-    #endregion
-
-    #region Debouncing
-
-    private void RestartDebounceTimer()
+  
+    private void ScheduleResourceUpdate()
     {
-        _debounceTimer.Stop();
-        _debounceTimer.Start();
-    }
-
-    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-    {
-        ProcessPendingChanges();
-    }
-
-    private void ProcessPendingChanges()
-    {
-        HashSet<string> created;
-        HashSet<string> changed;
-        HashSet<string> deleted;
-        Dictionary<string, string> renamed;
-
-        // Copy pending changes to local collections to avoid race conditions
-        lock (_lock)
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            created = new HashSet<string>(_pendingCreated);
-            changed = new HashSet<string>(_pendingChanged);
-            deleted = new HashSet<string>(_pendingDeleted);
-            renamed = new Dictionary<string, string>(_pendingRenamed);
-
-            _pendingCreated.Clear();
-            _pendingChanged.Clear();
-            _pendingDeleted.Clear();
-            _pendingRenamed.Clear();
+            return;
         }
-
-        bool updateResourceRegistry = false;
-
-        // Process created resources
-        foreach (var path in created)
-        {
-            OnResourceCreated(path);
-            
-            var resourceKey = GetResourceKey(path);
-            if (!ResourceExists(resourceKey))
-            {
-                // Resource is not in registry yet, registry needs to update.
-                updateResourceRegistry = true;
-            }
-        }
-
-        // Process changed resources
-        foreach (var path in changed)
-        {
-            OnResourceChanged(path);
-        }
-
-        // Process deleted resources
-        foreach (var path in deleted)
-        {
-            OnResourceDeleted(path);
-            
-            var resourceKey = GetResourceKey(path);
-            if (ResourceExists(resourceKey))
-            {
-                // Resource is still in the registry, registry needs to update.
-                updateResourceRegistry = true;
-            }
-        }
-
-        // Process renamed resources
-        foreach (var kvp in renamed)
-        {
-            OnResourceRenamed(kvp.Key, kvp.Value);
-            
-            var oldResourceKey = GetResourceKey(kvp.Key);
-            var newResourceKey = GetResourceKey(kvp.Value);
-            
-            var oldExists = ResourceExists(oldResourceKey);
-            var newExists = ResourceExists(newResourceKey);
-            
-            if (oldExists || !newExists)
-            {
-                // Old resource is still in the registry, or new resource is not in the registry yet.
-                // Registry needs to update.
-                updateResourceRegistry = true;
-            }
-        }
-
-        if (updateResourceRegistry)
-        {
-            _commandService.Execute<IUpdateResourcesCommand>();
-        }
+        
+        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+        explorerService.ScheduleResourceUpdate();
     }
 
     #endregion
 
-    #region Change Processing Methods
+    #region Change Notifications
 
     private void OnResourceCreated(string fullPath)
     {
@@ -387,25 +269,6 @@ public class ResourceChangeMonitor : IDisposable
     #endregion
 
     #region Helper Methods
-
-    private bool ResourceExists(ResourceKey resourceKey)
-    {
-        if (_resourceRegistry is null)
-        {
-            // Acquire the registry lazily to workaround initialization order issues
-            _resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
-        }
-
-        Guard.IsNotNull(_resourceRegistry);
-        
-        if (resourceKey.IsEmpty)
-        {
-            return false;
-        }
-        
-        var getResult = _resourceRegistry.GetResource(resourceKey);
-        return getResult.IsSuccess;
-    }
 
     private bool ShouldIgnorePath(string fullPath)
     {
@@ -539,7 +402,6 @@ public class ResourceChangeMonitor : IDisposable
             if (disposing)
             {
                 Shutdown();
-                _debounceTimer?.Dispose();
             }
 
             _isDisposed = true;

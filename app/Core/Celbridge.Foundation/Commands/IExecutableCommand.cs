@@ -11,12 +11,6 @@ public interface IExecutableCommand
     EntityId CommandId { get; }
 
     /// <summary>
-    /// Optional group identifier for undo/redo.
-    /// Commands with the same valid group id will be undone/redone together.
-    /// </summary>
-    EntityId UndoGroupId { get; set; }
-
-    /// <summary>
     /// Flags to configure behaviour when executing the command.
     /// </summary>
     CommandFlags CommandFlags { get; }
@@ -36,9 +30,4 @@ public interface IExecutableCommand
     /// Execute the command.
     /// </summary>
     Task<Result> ExecuteAsync();
-
-    /// <summary>
-    /// Undo a previously executed command.
-    /// </summary>
-    Task<Result> UndoAsync();
 }
