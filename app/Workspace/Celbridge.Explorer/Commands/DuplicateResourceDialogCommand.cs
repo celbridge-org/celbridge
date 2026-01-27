@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDialogCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceKey Resource { get; set; }
 
@@ -44,7 +44,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)

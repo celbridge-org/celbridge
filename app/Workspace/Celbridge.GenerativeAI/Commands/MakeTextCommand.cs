@@ -6,7 +6,7 @@ namespace Celbridge.GenerativeAI.Commands;
 
 public class MakeTextCommand : CommandBase, IMakeTextCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
 
     private ILogger<MakeTextCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -35,7 +35,7 @@ public class MakeTextCommand : CommandBase, IMakeTextCommand
         }
         var content = generateResult.Value;
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         // Todo: Update this to support undo/redo
 

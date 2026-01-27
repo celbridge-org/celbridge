@@ -36,7 +36,7 @@ public class ScreenplayActivity : IActivity
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
     }
 
     public async Task<Result> ActivateAsync()

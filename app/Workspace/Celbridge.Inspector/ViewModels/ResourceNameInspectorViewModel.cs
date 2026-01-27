@@ -8,7 +8,7 @@ namespace Celbridge.Inspector.ViewModels;
 public partial class ResourceNameInspectorViewModel : InspectorViewModel
 {
     private readonly ICommandService _commandService;
-    private readonly IExplorerService _explorerService;
+    private readonly IResourceRegistry _resourceRegistry;
 
     /// <summary>
     /// Returns the file extension for the current resource, used by the FileIcon control.
@@ -24,7 +24,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
             }
 
             // Check if resource is a folder
-            var getResult = _explorerService.ResourceRegistry.GetResource(Resource);
+            var getResult = _resourceRegistry.GetResource(Resource);
             if (getResult.IsSuccess && getResult.Value is IFolderResource)
             {
                 return "_folder";
@@ -48,7 +48,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);
 
         _commandService = commandService;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         PropertyChanged += ViewModel_PropertyChanged;
     }

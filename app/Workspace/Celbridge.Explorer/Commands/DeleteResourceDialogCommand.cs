@@ -7,7 +7,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceKey Resource { get; set; }
 
@@ -41,7 +41,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)

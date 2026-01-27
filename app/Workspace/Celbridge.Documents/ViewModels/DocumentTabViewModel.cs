@@ -42,7 +42,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         // We can't use the view's Loaded & Unloaded methods to register & unregister here.
         // Loaded and Unloaded are called when the UI element are added & removed from the visual tree.

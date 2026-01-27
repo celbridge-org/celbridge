@@ -18,7 +18,7 @@ public sealed partial class FileViewerDocumentView : DocumentView
     {
         ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         _webView = new WebView2()
             .Source(x => x.Binding(() => ViewModel.Source));

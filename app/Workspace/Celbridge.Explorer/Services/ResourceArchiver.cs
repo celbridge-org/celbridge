@@ -30,7 +30,7 @@ public class ResourceArchiver
     {
         _utilityService = utilityService;
         _workspaceWrapper = workspaceWrapper;
-        _resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
         _entityService = _workspaceWrapper.WorkspaceService.EntityService;
     }
 

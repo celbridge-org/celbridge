@@ -21,11 +21,14 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
 
         writer.WriteStartObject();
 
+        writer.WritePropertyName("_CommandType");
+        var commandTypeString = command.GetType().ToString();
+        JsonSerializer.Serialize(writer, commandTypeString, options);
+
         if (!_ignoreCommandProperties)
         {
             // Serialize command properties (excluding the base IExecutableCommand properties)
-            var commandType = command.GetType();
-            var properties = commandType.GetProperties()
+            var properties = command.GetType().GetProperties()
                 .Where(p => p.DeclaringType != typeof(object) &&
                            p.Name != nameof(IExecutableCommand.CommandId) &&
                            p.Name != nameof(IExecutableCommand.CommandFlags) &&

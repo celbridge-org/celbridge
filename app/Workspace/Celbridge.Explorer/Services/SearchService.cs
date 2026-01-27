@@ -52,8 +52,7 @@ public class SearchService : ISearchService
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
 
-        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        var resourceRegistry = explorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
         var projectFolder = resourceRegistry.ProjectFolderPath;
 
         if (string.IsNullOrEmpty(projectFolder) || 

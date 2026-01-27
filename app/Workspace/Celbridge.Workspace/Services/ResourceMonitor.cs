@@ -1,27 +1,34 @@
+using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Workspace;
+using Timer = System.Timers.Timer;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Workspace.Services;
 
 /// <summary>
-/// Monitors file system changes in the project folder and reports changes to resources.
+/// Monitors file system changes in the project folder and schedules resource updates.
+/// Includes debouncing to coalesce rapid file system events and external update requests.
 /// </summary>
-public class ResourceChangeMonitor : IDisposable
+public class ResourceMonitor : IResourceMonitor, IDisposable
 {
-    private readonly ILogger<ResourceChangeMonitor> _logger;
+    private const int UpdateDebounceMs = 250;
+
+    private readonly ILogger<ResourceMonitor> _logger;
     private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private readonly string _projectFolderPath;
+    private readonly object _updateLock = new();
 
     private FileSystemWatcher? _fileSystemWatcher;
+    private Timer? _updateDebounceTimer;
     private bool _isDisposed;
 
-    public ResourceChangeMonitor(
-        ILogger<ResourceChangeMonitor> logger,
+    public ResourceMonitor(
+        ILogger<ResourceMonitor> logger,
         IDispatcher dispatcher,
         IProjectService projectService,
         IMessengerService messengerService,
@@ -43,7 +50,7 @@ public class ResourceChangeMonitor : IDisposable
     {
         if (_isDisposed)
         {
-            return Result.Fail("Cannot initialize a disposed ResourceChangeMonitor");
+            return Result.Fail("Cannot initialize a disposed ResourceMonitor");
         }
 
         try
@@ -73,13 +80,13 @@ public class ResourceChangeMonitor : IDisposable
             // Start raising events once initialization has completed
             _fileSystemWatcher.EnableRaisingEvents = true;
 
-            _logger.LogDebug($"Resource change monitoring started for: {_projectFolderPath}");
+            _logger.LogDebug($"Resource monitoring started for: {_projectFolderPath}");
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail("Failed to initialize resource change monitor")
+            return Result.Fail("Failed to initialize resource monitor")
                 .WithException(ex);
         }
     }
@@ -93,6 +100,12 @@ public class ResourceChangeMonitor : IDisposable
 
         try
         {
+            lock (_updateLock)
+            {
+                _updateDebounceTimer?.Dispose();
+                _updateDebounceTimer = null;
+            }
+
             if (_fileSystemWatcher != null)
             {
                 _fileSystemWatcher.EnableRaisingEvents = false;
@@ -105,11 +118,11 @@ public class ResourceChangeMonitor : IDisposable
                 _fileSystemWatcher = null;
             }
 
-            _logger.LogDebug($"Resource change monitoring stopped for: {_projectFolderPath}");
+            _logger.LogDebug($"Resource monitoring stopped for: {_projectFolderPath}");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error occurred while shutting down resource change monitor: {ex.Message}");
+            _logger.LogError($"Error occurred while shutting down resource monitor: {ex.Message}");
         }
     }
 
@@ -176,16 +189,57 @@ public class ResourceChangeMonitor : IDisposable
         var exception = e.GetException();
         _logger.LogError($"File system watcher error: {exception?.Message ?? "Unknown error"}");
     }
-  
-    private void ScheduleResourceUpdate()
+
+    public void ScheduleResourceUpdate()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return;
         }
-        
-        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        explorerService.ScheduleResourceUpdate();
+
+        lock (_updateLock)
+        {
+            if (_updateDebounceTimer != null)
+            {
+                // Timer already running - reset it
+                _updateDebounceTimer.Stop();
+                _updateDebounceTimer.Start();
+            }
+            else
+            {
+                // Start new debounce timer
+                _updateDebounceTimer = new Timer(UpdateDebounceMs);
+                _updateDebounceTimer.AutoReset = false;
+                _updateDebounceTimer.Elapsed += OnDebounceTimerElapsed;
+                _updateDebounceTimer.Start();
+            }
+        }
+    }
+
+    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        lock (_updateLock)
+        {
+            _updateDebounceTimer?.Dispose();
+            _updateDebounceTimer = null;
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        // Marshal to UI thread since UpdateResourcesAsync may update UI
+        _dispatcher.TryEnqueue(async () =>
+        {
+            var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+
+            var result = await explorerService.UpdateResourcesAsync();
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result, "Failed to refresh resources");
+            }
+        });
     }
 
     #endregion
@@ -356,33 +410,14 @@ public class ResourceChangeMonitor : IDisposable
 
     private ResourceKey GetResourceKey(string fullPath)
     {
-        try
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var result = resourceRegistry.GetResourceKey(fullPath);
+        if (result.IsFailure)
         {
-            var projectFolder = _projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (!fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                // Path is not in project folder - return empty ResourceKey
-                _logger.LogWarning($"Path is not in project folder: {fullPath}");
-                return ResourceKey.Empty;
-            }
-
-            var relativePath = fullPath.Substring(projectFolder.Length)
-                .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            
-            // Convert backslashes to forward slashes for ResourceKey
-            var resourceKeyPath = relativePath.Replace(Path.DirectorySeparatorChar, '/');
-            if (Path.AltDirectorySeparatorChar != '/')
-            {
-                resourceKeyPath = resourceKeyPath.Replace(Path.AltDirectorySeparatorChar, '/');
-            }
-            
-            return new ResourceKey(resourceKeyPath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to convert path to ResourceKey: {fullPath}");
+            _logger.LogWarning($"Path is not in project folder: {fullPath}");
             return ResourceKey.Empty;
         }
+        return result.Value;
     }
 
     #endregion
@@ -408,7 +443,7 @@ public class ResourceChangeMonitor : IDisposable
         }
     }
 
-    ~ResourceChangeMonitor()
+    ~ResourceMonitor()
     {
         Dispose(false);
     }

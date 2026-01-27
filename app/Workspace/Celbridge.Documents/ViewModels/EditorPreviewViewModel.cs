@@ -63,7 +63,7 @@ public partial class EditorPreviewViewModel : ObservableObject
             return Result.Fail($"File does not exist at relative path: {relativePath}");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResourceKey(fullPath);
         if (getResult.IsFailure)

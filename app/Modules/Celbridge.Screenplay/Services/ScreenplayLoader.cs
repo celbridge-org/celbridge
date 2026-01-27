@@ -11,13 +11,13 @@ namespace Celbridge.Screenplay.Services;
 
 public class ScreenplayLoader
 {
-    private IExplorerService _explorerService;
+    private IResourceRegistry _resourceRegistry;
     private IWorkspaceWrapper _workspaceWrapper;
 
     public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
     }
 
     public async Task<Result> LoadScreenplayAsync(ResourceKey workbookFile)
@@ -31,7 +31,7 @@ public class ScreenplayLoader
             }
 
             var entityService = _workspaceWrapper.WorkspaceService.EntityService;
-            var resourceRegistry = _explorerService.ResourceRegistry;
+            var resourceRegistry = _resourceRegistry;
             var workbookFilePath = resourceRegistry.GetResourcePath(workbookFile);
             var screenplayFolderPath = Path.GetFileNameWithoutExtension(workbookFilePath);
 
@@ -566,7 +566,7 @@ public class ScreenplayLoader
     {
         var screenplayFolderResource = Path.GetFileNameWithoutExtension(workbookResource);
 
-        var resourceRegistry = _explorerService.ResourceRegistry;
+        var resourceRegistry = _resourceRegistry;
         var sceneFolderPath = resourceRegistry.GetResourcePath(screenplayFolderResource);
 
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;

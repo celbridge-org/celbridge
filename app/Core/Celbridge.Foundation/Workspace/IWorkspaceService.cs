@@ -26,6 +26,21 @@ public interface IWorkspaceService
     IWorkspaceSettings WorkspaceSettings { get; }
 
     /// <summary>
+    /// Returns the Resource Registry associated with the current project.
+    /// </summary>
+    IResourceRegistry ResourceRegistry { get; }
+
+    /// <summary>
+    /// Returns the Resource Monitor associated with the current project.
+    /// </summary>
+    IResourceMonitor ResourceMonitor { get; }
+
+    /// <summary>
+    /// Returns the Resource Transfer Service associated with the workspace.
+    /// </summary>
+    IResourceTransferService ResourceTransferService { get; }
+
+    /// <summary>
     /// Returns the Python Service associated with the workspace.
     /// </summary>
     IPythonService PythonService { get; }

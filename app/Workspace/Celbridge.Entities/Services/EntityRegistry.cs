@@ -70,7 +70,7 @@ public class EntityRegistry
                 return Result.Fail("The entities folder does not exist.");
             }
 
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
             // Remove any cached entities whose resources no longer exist on disk
             foreach (var resourceKey in _entityCache.Keys.ToArray())
@@ -275,7 +275,7 @@ public class EntityRegistry
         Guard.IsNotNull(_entitySchema);
         Guard.IsNotNull(_configRegistry);
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResourceResult = resourceRegistry.GetResource(resource);
         if (getResourceResult.IsFailure)

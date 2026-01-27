@@ -32,7 +32,7 @@ internal class EntityFileHelper
         }
 
         var result = _resourceRegistry.GetResourceKey(path);
-        return result.IsSuccess ? result.Value : null;
+        return result.IsSuccess ? result.Value : default;
     }
 
     /// <summary>

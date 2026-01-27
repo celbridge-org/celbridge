@@ -15,7 +15,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     private const string DefaultFileNameKey = "ResourceTree_DefaultFileName";
     private const string AddButtonKey = "DialogButton_Add";
 
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestFolderResource { get; set; }
@@ -59,7 +59,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Failed to show add file dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
@@ -117,7 +117,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Failed to show add folder dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
@@ -184,7 +184,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result<string>.Fail("Parent folder is null");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         string defaultFolderName = string.Empty;
         int folderNumber = 1;
@@ -217,7 +217,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result<string>.Fail("Parent folder is null");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension

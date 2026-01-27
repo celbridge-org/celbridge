@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
 
     public ResourceKey Resource { get; set; }
 
@@ -37,7 +37,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceRegistry;
         var fileOpService = workspaceService.FileOperationService;
 
         var resourcePath = resourceRegistry.GetResourcePath(Resource);

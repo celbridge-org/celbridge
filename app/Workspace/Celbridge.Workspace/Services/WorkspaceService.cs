@@ -24,6 +24,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
+    public IResourceRegistry ResourceRegistry { get; }
+    public IResourceMonitor ResourceMonitor { get; }
+    public IResourceTransferService ResourceTransferService { get; }
     public IPythonService PythonService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
@@ -53,6 +56,17 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+
+        // Create the resource registry for the project.
+        // The registry is populated later once the workspace UI is fully loaded.
+        ResourceRegistry = serviceProvider.GetRequiredService<IResourceRegistry>();
+        ResourceRegistry.ProjectFolderPath = projectService.CurrentProject!.ProjectFolderPath;
+
+        // Create the resource monitor for the project.
+        // The monitor is initialized by ExplorerService after the workspace is loaded.
+        ResourceMonitor = serviceProvider.GetRequiredService<IResourceMonitor>();
+
+        ResourceTransferService = serviceProvider.GetRequiredService<IResourceTransferService>();
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -141,8 +155,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Save the expanded folders in the Resource Registry
 
-        var resourceRegistry = ExplorerService.ResourceRegistry;
-        var expandedFolders = resourceRegistry.ExpandedFolders;
+        var expandedFolders = ResourceRegistry.ExpandedFolders;
         await WorkspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
@@ -164,6 +177,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             {
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+
+                // Shutdown resource monitoring first to stop file system events
+                ResourceMonitor.Shutdown();
+                (ResourceMonitor as IDisposable)?.Dispose();
 
                 (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();

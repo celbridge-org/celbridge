@@ -30,7 +30,7 @@ public class WorkspaceLoader
         //
         // Set the current directory to the workspace project folder
         //
-        var projectFolderPath = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry.ProjectFolderPath;
+        var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceRegistry.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
         if (Path.Exists(projectFolderPath))
         {
@@ -75,7 +75,7 @@ public class WorkspaceLoader
             if (expandedFolders is not null &&
                 expandedFolders.Count > 0)
             {
-                var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+                var resourceRegistry = workspaceService.ResourceRegistry;
                 foreach (var expandedFolder in expandedFolders)
                 {
                     resourceRegistry.SetFolderIsExpanded(expandedFolder, true);

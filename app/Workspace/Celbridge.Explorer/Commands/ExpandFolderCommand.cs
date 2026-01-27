@@ -6,11 +6,10 @@ namespace Celbridge.Explorer.Commands;
 public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    public override CommandFlags CommandFlags => UpdateResources ? CommandFlags.SaveWorkspaceState | CommandFlags.UpdateResources : CommandFlags.SaveWorkspaceState;
+    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
     public ResourceKey FolderResource { get; set; }
     public bool Expanded { get; set; } = true;
-    public bool UpdateResources { get; set; }
 
     public ExpandFolderCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -19,7 +18,7 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
         Guard.IsNotNull(resourceRegistry);
 
         var getResult = resourceRegistry.GetResource(FolderResource);
@@ -60,7 +59,6 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
         {
             command.FolderResource = folderResource;
             command.Expanded = IsExpanded;
-            command.UpdateResources = true; // Update the tree view to reflect the new state of the folder.
         });
     }
 }

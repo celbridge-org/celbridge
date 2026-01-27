@@ -16,7 +16,7 @@ public sealed partial class TextBoxDocumentView : DocumentView
     {
         ViewModel = serviceProvider.GetRequiredService<DefaultDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var textBox = new TextBox()
             .Text(x => x.Binding(() => ViewModel.Text)

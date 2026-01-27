@@ -9,7 +9,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
 
     public ResourceKey SourceResource { get; set; }
     public ResourceKey DestResource { get; set; }
@@ -50,7 +50,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceRegistry;
         var fileOpService = workspaceService.FileOperationService;
 
         // Resolve destination to handle folder drops

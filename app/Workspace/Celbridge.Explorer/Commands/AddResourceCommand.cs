@@ -6,7 +6,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;
@@ -56,7 +56,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceRegistry;
         var fileOpService = workspaceService.FileOperationService;
 
         //
@@ -181,7 +181,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
         }
 
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
@@ -233,7 +233,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a file in
         // that folder with the same name as the source file.
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -262,7 +262,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a folder in
         // that folder with the same name as the source folder.
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
         var resolvedDestResource = resourceRegistry.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();

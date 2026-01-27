@@ -201,12 +201,25 @@ public class CommandService : ICommandService
                         // This is used by the ExecuteAsync() methods to notify the caller about the execution.
                         command.OnExecute?.Invoke(executeResult);
 
-                        // Schedule a resource update if the command requires it.
-                        if (_workspaceWrapper.IsWorkspacePageLoaded &&
-                            command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                        // Handle resource updates based on command flags
+                        if (_workspaceWrapper.IsWorkspacePageLoaded)
                         {
-                            var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-                            explorerService.ScheduleResourceUpdate();
+                            // Force immediate update if required (prevents race conditions)
+                            if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
+                            {
+                                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+                                var updateResult = await explorerService.UpdateResourcesAsync();
+                                if (updateResult.IsFailure)
+                                {
+                                    _logger.LogWarning(updateResult, "Failed to update resources after command execution");
+                                }
+                            }
+                            // Otherwise schedule a debounced update if requested (efficient for batching)
+                            else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
+                            {
+                                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+                                explorerService.ScheduleResourceUpdate();
+                            }
                         }
 
                         // Save the workspace state if the command requires it.

@@ -9,7 +9,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceKey Resource { get; set; }
 
@@ -45,7 +45,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)

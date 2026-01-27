@@ -45,7 +45,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         _commandService = commandService;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
 
         Loaded += SpreadsheetDocumentView_Loaded;
 

@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Commands;
 
 public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
 
     public ResourceKey DestFolderResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
@@ -41,7 +41,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceRegistry;
         var fileOpService = workspaceService.FileOperationService;
 
         // Filter out any items where the destination resource already exists

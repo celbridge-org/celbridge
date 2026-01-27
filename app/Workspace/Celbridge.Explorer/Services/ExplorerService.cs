@@ -1,39 +1,32 @@
 using Celbridge.Commands;
-using Celbridge.DataTransfer;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Celbridge.Logging;
-using Timer = System.Timers.Timer;
 
 namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
     private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
-    private const int UpdateDebounceMs = 250;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly IDispatcher _dispatcher;
     private readonly IProjectService _projectService;
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ResourceChangeMonitor? _resourceChangeMonitor;
+
+    private IResourceRegistry? _resourceRegistry;
+    private IResourceRegistry ResourceRegistry => 
+        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceRegistry;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
 
     private ISearchPanel? _searchPanel;
     public ISearchPanel SearchPanel => _searchPanel!;
-
-    // Debounce fields for UpdateResourcesAsync
-    private readonly object _updateLock = new();
-    private Timer? _updateDebounceTimer;
-
-    public IResourceRegistry ResourceRegistry { get; init; }
 
     private IResourceTreeView? _resourceTreeView;
     public IResourceTreeView ResourceTreeView 
@@ -57,11 +50,9 @@ public class ExplorerService : IExplorerService, IDisposable
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IDispatcher dispatcher,
         IProjectService projectService,
         IFileIconService fileIconService,
-        IWorkspaceWrapper workspaceWrapper,
-        ResourceChangeMonitor resourceChangeMonitor)
+        IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -70,11 +61,9 @@ public class ExplorerService : IExplorerService, IDisposable
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _dispatcher = dispatcher;
         _projectService = projectService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
-        _resourceChangeMonitor = resourceChangeMonitor;
 
         // Clean up the trash folder from previous sessions.
         // The trash folder contains soft-deleted files and folders from previous delete operations.
@@ -92,13 +81,8 @@ public class ExplorerService : IExplorerService, IDisposable
             }
         }
 
-        // Create the resource registry for the project.
-        // The registry is populated later once the workspace UI is fully loaded.
-        ResourceRegistry = _serviceProvider.GetRequiredService<IResourceRegistry>();
-        ResourceRegistry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-
-        // Initialize the resource change monitor
-        InitializeResourceChangeMonitor();
+        // Initialize the resource monitor
+        InitializeResourceMonitor();
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
@@ -106,23 +90,20 @@ public class ExplorerService : IExplorerService, IDisposable
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
     }
 
-    private void InitializeResourceChangeMonitor()
+    private void InitializeResourceMonitor()
     {
         try
         {
-            Guard.IsNotNull(_resourceChangeMonitor);
-            
-            var initResult = _resourceChangeMonitor.Initialize();
+            var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceMonitor;
+            var initResult = resourceMonitor.Initialize();
             if (initResult.IsFailure)
             {
-                _logger.LogWarning(initResult, "Failed to initialize resource change monitor");
-                _resourceChangeMonitor?.Dispose();
+                _logger.LogWarning(initResult, "Failed to initialize resource monitor");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Exception occurred while initializing resource change monitor: {ex.Message}");
-            _resourceChangeMonitor?.Dispose();
+            _logger.LogError($"Exception occurred while initializing resource monitor: {ex.Message}");
         }
     }
 
@@ -156,48 +137,17 @@ public class ExplorerService : IExplorerService, IDisposable
             return;
         }
 
+#if !DEBUG
         // Refresh resources when the window gains focus to catch any external file system changes
+        // Disabled in debug to avoid triggering an update every time we switch between the app and the debugger.
         _commandService.Execute<IUpdateResourcesCommand>();
+#endif
     }
 
     public void ScheduleResourceUpdate()
     {
-        lock (_updateLock)
-        {
-            if (_updateDebounceTimer != null)
-            {
-                // Timer already running - reset it
-                _updateDebounceTimer.Stop();
-                _updateDebounceTimer.Start();
-            }
-            else
-            {
-                // Start new debounce timer
-                _updateDebounceTimer = new Timer(UpdateDebounceMs);
-                _updateDebounceTimer.AutoReset = false;
-                _updateDebounceTimer.Elapsed += OnDebounceTimerElapsed;
-                _updateDebounceTimer.Start();
-            }
-        }
-    }
-
-    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-    {
-        lock (_updateLock)
-        {
-            _updateDebounceTimer?.Dispose();
-            _updateDebounceTimer = null;
-        }
-
-        // Marshal to UI thread and execute refresh directly
-        _dispatcher.TryEnqueue(async () =>
-        {
-            var result = await UpdateResourcesAsync();
-            if (result.IsFailure)
-            {
-                _logger.LogWarning(result, "Failed to refresh resources");
-            }
-        });
+        var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceMonitor;
+        resourceMonitor.ScheduleResourceUpdate();
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -214,122 +164,7 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to update resources. {populateResult.Error}");
         }
 
-        return Result.Ok();
-    }
-
-    public Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode)
-    {
-        var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
-        if (createItemsResult.IsFailure)
-        {
-            return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.")
-                .WithErrors(createItemsResult);
-        }
-        var transferItems = createItemsResult.Value;
-
-        var resourceTransfer = new ResourceTransfer()
-        {
-            TransferMode = transferMode,
-            TransferItems = transferItems
-        };
-
-        return Result<IResourceTransfer>.Ok(resourceTransfer);
-    }
-
-    private Result<List<ResourceTransferItem>> CreateResourceTransferItems(List<string> sourcePaths, ResourceKey destFolderResource)
-    {
-        try
-        {
-            List<ResourceTransferItem> transferItems = new();
-
-            var destFolderPath = ResourceRegistry.GetResourcePath(destFolderResource);
-            if (!Directory.Exists(destFolderPath))
-            {
-                return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
-            }
-
-            foreach (var sourcePath in sourcePaths)
-            {
-                if (PathContainsSubPath(destFolderPath, sourcePath) &&
-                    string.Compare(destFolderPath, sourcePath, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    // Ignore attempts to transfer a resource into a subfolder of itself.
-                    // This check is case insensitive to err on the safe side for Windows file systems.
-                    // Without this check, a transfer operation could generate thousands of nested folders!
-                    // It is ok to "transfer" a resource to the same path however as this indicates a duplicate operation.
-                    return Result<List<ResourceTransferItem>>.Fail($"Cannot transfer a resource into a subfolder of itself.");
-                }
-
-                ResourceType resourceType = ResourceType.Invalid;
-                if (File.Exists(sourcePath))
-                {
-                    resourceType = ResourceType.File;
-                }
-                else if (Directory.Exists(sourcePath))
-                {
-                    resourceType = ResourceType.Folder;
-                }
-                else
-                {
-                    // Resource does not exist in the file system, ignore it.
-                    continue;
-                }
-
-                var getKeyResult = ResourceRegistry.GetResourceKey(sourcePath);
-                if (getKeyResult.IsSuccess)
-                {
-                    // This resource is inside the project folder so we should use the CopyResource command
-                    // to copy/move it so that the resource meta data is preserved.
-                    // This is indicated by having a non-empty source resource property.
-
-                    var sourceResource = getKeyResult.Value;
-
-                    // Sanity check that the generated sourceResource matches the original source path
-                    var checkSourcePath = ResourceRegistry.GetResourcePath(sourceResource);
-                    Guard.IsTrue(sourcePath == checkSourcePath);
-
-                    var destResource = ResourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
-
-                    var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
-                    transferItems.Add(item);
-                }
-                else
-                {
-                    // This file or folder resource is outside the project folder, so we should add it to the project
-                    // via the AddResource command, which will create new metadata for the resource.
-                    // This behaviour is indicated by having an empty source resource property.
-                    var sourceResource = new ResourceKey();
-                    var resourcename = Path.GetFileName(sourcePath);
-                    var destResource = destFolderResource.Combine(resourcename);
-
-                    var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
-                    transferItems.Add(item);
-                }
-            }
-
-            if (transferItems.Count == 0)
-            {
-                return Result<List<ResourceTransferItem>>.Fail($"Transfer item list is empty.");
-            }
-
-            return Result<List<ResourceTransferItem>>.Ok(transferItems);
-        }
-        catch (Exception ex)
-        {
-            return Result<List<ResourceTransferItem>>.Fail($"Failed to create resource transfer items.")
-                .WithException(ex);
-        }
-    }
-
-    public Result TransferResources(ResourceKey destFolderResource, IResourceTransfer transfer)
-    {
-        // Uses Execute, not ExecuteAsync, to avoid deadlock when called from within another command.
-        _commandService.Execute<ITransferResourcesCommand>(command =>
-        {
-            command.DestFolderResource = destFolderResource;
-            command.TransferMode = transfer.TransferMode;
-            command.TransferItems = transfer.TransferItems;
-        });
+        _logger.LogDebug("Updated resources successfully.");
 
         return Result.Ok();
     }
@@ -488,13 +323,6 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
-    private bool PathContainsSubPath(string path, string subPath)
-    {
-        string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string pathB = Path.GetFullPath(subPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
-    }
-
     private bool _disposed;
 
     public void Dispose()
@@ -511,17 +339,6 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
-                
-                // Shutdown and dispose the resource change monitor
-                _resourceChangeMonitor?.Shutdown();
-                _resourceChangeMonitor?.Dispose();
-
-                // Dispose the debounce timer
-                lock (_updateLock)
-                {
-                    _updateDebounceTimer?.Dispose();
-                    _updateDebounceTimer = null;
-                }
 
                 // Clean up the trash folder on project close.
                 // This ensures deleted files don't persist after the project is closed.

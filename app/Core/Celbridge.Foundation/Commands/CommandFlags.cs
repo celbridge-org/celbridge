@@ -9,12 +9,18 @@ public enum CommandFlags
     None = 0,
 
     /// <summary>
-    /// Update the resource registry after execution.
+    /// Schedule a resource registry update after execution.
+    /// Multiple requests are coalesced for efficiency.
     /// </summary>
-    UpdateResources = 1 << 1,
+    RequestUpdateResources = 1 << 1,
+
+    /// <summary>
+    /// Force an immediate synchronous resource registry update after execution.
+    /// </summary>
+    ForceUpdateResources = 1 << 2,
 
     /// <summary>
     /// Save the workspace state after execution.
     /// </summary>
-    SaveWorkspaceState = 1 << 2
+    SaveWorkspaceState = 1 << 3
 }
