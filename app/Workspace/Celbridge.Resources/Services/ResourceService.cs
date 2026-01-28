@@ -66,26 +66,14 @@ public class ResourceService : IResourceService, IDisposable
         }
 
         // Initialize the resource monitor to start watching for file system changes
-        InitializeResourceMonitor();
+        var initResult = Monitor.Initialize();
+        if (initResult.IsFailure)
+        {
+            _logger.LogWarning(initResult, "Failed to initialize resource monitor");
+        }
 
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
         _messengerService.Register<ResourceUpdateRequestedMessage>(this, OnResourceUpdateRequestedMessage);
-    }
-
-    private void InitializeResourceMonitor()
-    {
-        try
-        {
-            var initResult = Monitor.Initialize();
-            if (initResult.IsFailure)
-            {
-                _logger.LogWarning(initResult, "Failed to initialize resource monitor");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Exception occurred while initializing resource monitor: {ex.Message}");
-        }
     }
 
     private void OnMainWindowActivatedMessage(object recipient, MainWindowActivatedMessage message)
