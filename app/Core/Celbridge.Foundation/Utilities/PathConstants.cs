@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Utilities.Services;
+namespace Celbridge.Utilities.Services;
 public static class PathConstants
 {
     /// <summary>

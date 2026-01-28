@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Validators;
+namespace Celbridge.Validators;
 
 /// <summary>
 /// Applies a set of validation rules to an input string.

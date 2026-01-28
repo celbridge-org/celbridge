@@ -39,7 +39,6 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
-    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
   <ItemGroup>

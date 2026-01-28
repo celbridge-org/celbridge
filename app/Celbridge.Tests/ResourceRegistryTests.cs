@@ -1,6 +1,6 @@
 using Celbridge.Messaging.Services;
-using Celbridge.Explorer.Models;
-using Celbridge.Explorer.Services;
+using Celbridge.Resources.Models;
+using Celbridge.Resources.Services;
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.Tests;

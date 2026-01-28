@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace Celbridge.Commands;
 
 /// <summary>
-/// An asynchronous command queue service with undo/redo support.
+/// An asynchronous command queue service.
 /// </summary>
 public interface ICommandService
 {
@@ -47,24 +47,4 @@ public interface ICommandService
     /// Removes all commands of the given type from the queue.
     /// </summary>
     void RemoveCommandsOfType<T>() where T : notnull;
-
-    /// <summary>
-    /// Returns the number of available undo operations.
-    /// </summary>
-    int GetUndoCount();
-
-    /// <summary>
-    /// Returns the number of available redo operations.
-    /// </summary>
-    int GetRedoCount();
-
-    /// <summary>
-    /// Attempt to pop the most recent undo command from the undo stack and execute it.
-    /// </summary>
-    Result Undo();
-
-    /// <summary>
-    /// Attempts to pop the most recently undone command from the redo stack and execute it.
-    /// </summary>
-    Result Redo();
 }

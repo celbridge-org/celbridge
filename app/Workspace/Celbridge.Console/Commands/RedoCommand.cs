@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Console;
 
@@ -6,8 +7,8 @@ public class RedoCommand : CommandBase, IRedoCommand
 {
     public override async Task<Result> ExecuteAsync()
     {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Redo();
+        var undoService = ServiceLocator.AcquireService<IUndoService>();
+        undoService.Redo();
 
         await Task.CompletedTask;
         return Result.Ok();

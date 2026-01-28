@@ -58,9 +58,9 @@ public class LayoutManager : ILayoutManager
 
     public bool IsFullScreen => WindowMode != WindowMode.Windowed;
 
-    public bool IsContextPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Context);
+    public bool IsContextPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Primary);
 
-    public bool IsInspectorPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Inspector);
+    public bool IsInspectorPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Secondary);
 
     public bool IsConsolePanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Console);
 

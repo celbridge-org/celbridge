@@ -1,8 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Messaging;
 using Celbridge.Explorer;
-
+using Celbridge.Messaging;
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Services;
@@ -37,15 +36,19 @@ public class DataTransferService : IDataTransferService, IDisposable
     public ClipboardContentDescription GetClipboardContentDescription()
     {
         var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+        return GetClipboardContentDescription(dataPackageView);
+    }
 
+    private ClipboardContentDescription GetClipboardContentDescription(ApplicationDataTransfer.DataPackageView dataPackageView)
+    {
         ClipboardContentType contentType;
         if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
         {
-            contentType =  ClipboardContentType.Resource;
+            contentType = ClipboardContentType.Resource;
         }
         else if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
         {
-            contentType =  ClipboardContentType.Text;
+            contentType = ClipboardContentType.Text;
         }
         else
         {
@@ -77,7 +80,9 @@ public class DataTransferService : IDataTransferService, IDisposable
 
     public async Task<Result<IResourceTransfer>> GetClipboardResourceTransfer(ResourceKey destFolderResource)
     {
-        var contentDescription = GetClipboardContentDescription();
+        // Get clipboard content once and reuse it to avoid issues with virtualized storage items
+        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
+        var contentDescription = GetClipboardContentDescription(dataPackageView);
 
         if (contentDescription.ContentType != ClipboardContentType.Resource)
         {
@@ -89,8 +94,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail("Workspace is not loaded");
         }
 
-        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        var resourceRegistry = explorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
 
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
@@ -110,16 +115,25 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
 
-        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
-
         try
         {
             var storageItems = await dataPackageView.GetStorageItemsAsync();
             var paths = new List<string>();
             foreach (var storageItem in storageItems)
             {
+                // Skip storage items with empty paths (can happen with virtualized items)
+                if (string.IsNullOrEmpty(storageItem.Path))
+                {
+                    continue;
+                }
+
                 var path = Path.GetFullPath(storageItem.Path);
                 paths.Add(path);
+            }
+
+            if (paths.Count == 0)
+            {
+                return Result<IResourceTransfer>.Fail("No valid file paths found in clipboard");
             }
 
             // Note whether the operation is a move or a copy
@@ -128,7 +142,7 @@ public class DataTransferService : IDataTransferService, IDisposable
                 ? DataTransferMode.Move
                 : DataTransferMode.Copy;
 
-            var createTransferResult = explorerService.CreateResourceTransfer(paths, destFolderResource, transferMode);
+            var createTransferResult = resourceTransferService.CreateResourceTransfer(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
             {
                 return Result<IResourceTransfer>.Fail($"Failed to create resource transfer.")
@@ -175,8 +189,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             }
         }
 
-        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-        return await explorerService.TransferResources(destFolderResource, description);
+        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        return resourceTransferService.TransferResources(destFolderResource, description);
     }
 
     private bool _disposed;

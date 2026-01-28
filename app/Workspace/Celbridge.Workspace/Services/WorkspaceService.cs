@@ -10,7 +10,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
-using Celbridge.Settings;
+using Celbridge.Search;
 
 namespace Celbridge.Workspace.Services;
 
@@ -19,16 +19,17 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
     private readonly ILogger<WorkspaceService> _logger;
-    private readonly IEditorSettings _editorSettings;
     private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
+    public IResourceService ResourceService { get; }
     public IPythonService PythonService { get; }
     public IConsoleService ConsoleService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
+    public ISearchService SearchService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
@@ -41,22 +42,22 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public WorkspaceService(
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
-        IEditorSettings editorSettings,
         IMessengerService messengerService,
         IProjectService projectService)
     {
         _logger = logger;
-        _editorSettings = editorSettings;
         _messengerService = messengerService;
 
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
+        SearchService = serviceProvider.GetRequiredService<ISearchService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
@@ -71,9 +72,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
+
+        _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
     }
 
-    public void SetWorkspaceStateIsDirty()
+    private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
     {
         _workspaceStateIsDirty = true;
     }
@@ -85,7 +88,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
-            
+
             // Todo: Save the workspace state after a delay to avoid saving too frequently
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
@@ -106,11 +109,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (saveDocumentsResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to save modified documents. { saveDocumentsResult.Error}");
+            _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.Error}");
         }
 
         var activitiesResult = await ActivityService.UpdateAsync();
-        if (activitiesResult.IsFailure) 
+        if (activitiesResult.IsFailure)
         {
             failed = true;
             _logger.LogError($"Failed to update activity service. {activitiesResult.Error}");
@@ -139,8 +142,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Save the expanded folders in the Resource Registry
 
-        var resourceRegistry = ExplorerService.ResourceRegistry;
-        var expandedFolders = resourceRegistry.ExpandedFolders;
+        var expandedFolders = ResourceService.Registry.ExpandedFolders;
         await WorkspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
 
         return Result.Ok();
@@ -163,12 +165,18 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
 
+                // Unregister message handlers
+                _messengerService.UnregisterAll(this);
+
+                // Dispose resource service first to stop file system monitoring
+                (ResourceService as IDisposable)?.Dispose();
                 (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();
+                (SearchService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
                 (GenerativeAIService as IDisposable)!.Dispose();

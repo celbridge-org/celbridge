@@ -31,3 +31,8 @@ public record WorkspacePageActivatedMessage();
 /// Sent when the user navigates away from the workspace page to another page.
 /// </summary>
 public record WorkspacePageDeactivatedMessage();
+
+/// <summary>
+/// Sent when the workspace state needs to be saved.
+/// </summary>
+public record WorkspaceStateDirtyMessage();

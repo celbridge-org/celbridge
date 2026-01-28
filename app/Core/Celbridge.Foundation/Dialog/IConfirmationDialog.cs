@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Dialog;
+namespace Celbridge.Dialog;
 
 /// <summary>
 /// A modal dialog that requests the user to confirm an action.

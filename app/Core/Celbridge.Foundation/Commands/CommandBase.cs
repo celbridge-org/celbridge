@@ -11,12 +11,6 @@ public abstract class CommandBase : IExecutableCommand
     public EntityId CommandId { get; } = EntityId.Create();
 
     /// <summary>
-    /// Optional group identifier for undo/redo.
-    /// Commands with the same valid group id will be undone/redone together.
-    /// </summary>
-    public EntityId UndoGroupId { get; set; }
-
-    /// <summary>
     /// Flags to configure behaviour when executing the command.
     /// </summary>
     public virtual CommandFlags CommandFlags => CommandFlags.None;
@@ -36,12 +30,4 @@ public abstract class CommandBase : IExecutableCommand
     /// Execute the command.
     /// </summary>
     public abstract Task<Result> ExecuteAsync();
-
-    /// <summary>
-    /// Undo a previously executed command.
-    /// </summary>
-    public virtual Task<Result> UndoAsync()
-    {
-        throw new NotImplementedException();
-    }
 }

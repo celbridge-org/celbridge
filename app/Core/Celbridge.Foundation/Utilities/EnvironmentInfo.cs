@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Utilities;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Describes the runtime application environment.

@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Console;
 
@@ -6,9 +7,9 @@ public class UndoCommand : CommandBase, IUndoCommand
 {
     public override async Task<Result> ExecuteAsync()
     {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        var undoService = ServiceLocator.AcquireService<IUndoService>();
 
-        commandService.Undo();
+        undoService.Undo();
 
         await Task.CompletedTask;
         return Result.Ok();

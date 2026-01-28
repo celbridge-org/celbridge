@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Search;
 
 /// <summary>
 /// Interface for interacting with the Search Panel view.

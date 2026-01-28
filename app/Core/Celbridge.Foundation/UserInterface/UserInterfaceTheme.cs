@@ -1,4 +1,4 @@
-﻿namespace Celbridge.UserInterface;
+namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Color theme of the user interface

@@ -1,10 +1,10 @@
-using Celbridge.Explorer;
+using System.Text;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Search;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;
-using System.Text;
 
 namespace Celbridge.Workspace.Views;
 
@@ -53,7 +53,7 @@ public sealed partial class ProjectPanel : UserControl
         var logger = ServiceLocator.AcquireService<ILogger<ShortcutMenuBuilder>>();
         _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
         _shortcutMenuBuilder.ShortcutClicked += OnShortcutClicked;
-        
+
         // Don't build shortcuts when there are validation errors
         // Error notification is handled by WorkspaceLoader
         if (shortcutsSection.HasErrors)

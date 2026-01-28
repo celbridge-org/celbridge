@@ -14,12 +14,12 @@ public enum PanelVisibilityFlags
     /// <summary>
     /// Context panel (left sidebar with explorer/search) is visible.
     /// </summary>
-    Context = 1 << 0,
+    Primary = 1 << 0,
 
     /// <summary>
     /// Inspector panel (right sidebar) is visible.
     /// </summary>
-    Inspector = 1 << 1,
+    Secondary = 1 << 1,
 
     /// <summary>
     /// Console panel (bottom panel) is visible.
@@ -29,5 +29,5 @@ public enum PanelVisibilityFlags
     /// <summary>
     /// All panels are visible.
     /// </summary>
-    All = Context | Inspector | Console
+    All = Primary | Secondary | Console
 }

@@ -1,6 +1,5 @@
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using System.Text.Json;
@@ -20,7 +19,7 @@ public sealed partial class MonacoEditorView : DocumentView
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();

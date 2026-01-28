@@ -24,6 +24,8 @@ public static class ServiceConfiguration
         GenerativeAI.ServiceConfiguration.ConfigureServices(services);
         Inspector.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
+        Resources.ServiceConfiguration.ConfigureServices(services);
+        Search.ServiceConfiguration.ConfigureServices(services);
 
         //
         // Register services
@@ -48,8 +50,7 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        services.AddTransient<IAlertCommand, AlertCommand>();
-
+        services.AddTransient<ISetPanelVisibilityCommand, SetPanelVisibilityCommand>();
     }
 
     public static void Initialize()
