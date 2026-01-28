@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
@@ -12,6 +13,7 @@ namespace Celbridge.Resources.Services;
 public class ResourceService : IResourceService, IDisposable
 {
     private readonly ILogger<ResourceService> _logger;
+    private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
 
@@ -21,6 +23,7 @@ public class ResourceService : IResourceService, IDisposable
 
     public ResourceService(
         ILogger<ResourceService> logger,
+        ICommandService commandService,
         IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
@@ -32,6 +35,7 @@ public class ResourceService : IResourceService, IDisposable
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
         _logger = logger;
+        _commandService = commandService;
         _messengerService = messengerService;
         _projectService = projectService;
 
