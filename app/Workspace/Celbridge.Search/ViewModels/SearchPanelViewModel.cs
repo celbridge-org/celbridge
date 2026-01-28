@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Celbridge.Commands;
-using Celbridge.Core;
 using Celbridge.Documents;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 
