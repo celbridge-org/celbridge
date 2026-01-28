@@ -1,6 +1,6 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Delete a file or folder resource from the project.

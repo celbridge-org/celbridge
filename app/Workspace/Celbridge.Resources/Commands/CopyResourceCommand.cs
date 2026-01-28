@@ -5,7 +5,7 @@ using Celbridge.Projects;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Explorer.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {

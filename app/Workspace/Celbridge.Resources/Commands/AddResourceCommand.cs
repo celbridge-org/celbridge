@@ -1,8 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 
-namespace Celbridge.Explorer.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
@@ -170,11 +171,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     private static void OpenResourceDocument(ResourceKey resourceKey)
     {
-        // %%% Need to wait for previous command to complete.
-        //  NOTE : Been thinking about this a lot. I was wondering whether the AddResource command should automatically open the document, but I was thinking that in some cases
-        //          we may have automations that add a great number of files to the project, and the user will probably not be amused at having to close all the millions of opened documents afterwards.
-        //          We probably need to talk about this a little to get a decision on the best positioning for this.
-
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {

@@ -35,11 +35,6 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
-        services.AddTransient<IAddResourceCommand, AddResourceCommand>();
-        services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
-        services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
-        services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();
         services.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
         services.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         services.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();

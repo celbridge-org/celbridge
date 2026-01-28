@@ -1,7 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Transfer one or more file or folder resources to a destination folder

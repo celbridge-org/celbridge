@@ -1,6 +1,6 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Add a file or folder resource to the project.

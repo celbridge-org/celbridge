@@ -1,7 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Workspace;
 
-namespace Celbridge.Explorer.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 {

@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Celbridge.Logging;
 
-namespace Celbridge.Explorer.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {

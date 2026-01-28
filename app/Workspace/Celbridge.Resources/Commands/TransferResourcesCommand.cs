@@ -4,7 +4,7 @@ using Celbridge.Dialog;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Explorer.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 {

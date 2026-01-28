@@ -1,3 +1,4 @@
+using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 
 namespace Celbridge.Resources;
@@ -19,5 +20,15 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
+        services.AddTransient<IAddResourceCommand, AddResourceCommand>();
+        services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
+        services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
+        services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();
     }
 }
