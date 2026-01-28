@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -15,151 +16,42 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public bool OpenAfterAdding { get; set; } = false;
 
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileTemplateService _fileTemplateService;
+    private readonly AddResourceHelper _addResourceHelper;
 
     public AddResourceCommand(
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
-        IFileTemplateService fileTemplateService)
+        AddResourceHelper addResourceHelper)
     {
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
-        _fileTemplateService = fileTemplateService;
+        _addResourceHelper = addResourceHelper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var addResult = await AddResourceAsync();
-        if (addResult.IsSuccess)
+        var addResult = await _addResourceHelper.AddResourceAsync(ResourceType, SourcePath, DestResource);
+
+        if (addResult.IsFailure)
         {
-            _commandService.Execute<ISelectResourceCommand>(command =>
+            return addResult;
+        }
+
+        _commandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = DestResource;
+        });
+
+        if (OpenAfterAdding)
+        {
+            _commandService.Execute<IOpenDocumentCommand>(command =>
             {
-                command.Resource = DestResource;
+                command.FileResource = DestResource;
+                command.ForceReload = false;
             });
 
-            if (OpenAfterAdding)
+            _commandService.Execute<ISelectDocumentCommand>(command =>
             {
-                OpenResourceDocument(DestResource);
-            }
-
-            return Result.Ok();
-        }
-
-        return addResult;
-    }
-
-    private async Task<Result> AddResourceAsync()
-    {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            return Result.Fail($"Failed to add resource because workspace is not loaded");
-        }
-
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
-
-        //
-        // Validate the resource key
-        //
-
-        if (DestResource.IsEmpty)
-        {
-            return Result.Fail("Failed to create resource. Resource key is empty");
-        }
-
-        if (!ResourceKey.IsValidKey(DestResource))
-        {
-            return Result.Fail($"Failed to create resource. Resource key '{DestResource}' is not valid.");
-        }
-
-        //
-        // Create the resource on disk
-        //
-
-        var addedResourcePath = resourceRegistry.GetResourcePath(DestResource);
-
-        // Fail if the parent folder for the new resource does not exist.
-        var parentFolderPath = Path.GetDirectoryName(addedResourcePath);
-        if (!Directory.Exists(parentFolderPath))
-        {
-            return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentFolderPath}'");
-        }
-
-        if (ResourceType == ResourceType.File)
-        {
-            if (File.Exists(addedResourcePath))
-            {
-                return Result.Fail($"A file already exists at '{addedResourcePath}'.");
-            }
-
-            if (string.IsNullOrEmpty(SourcePath))
-            {
-                // Create a new empty file
-                var content = _fileTemplateService.GetNewFileContent(addedResourcePath);
-                var createResult = await resourceOpService.CreateFileAsync(addedResourcePath, content);
-                if (createResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to create resource: {DestResource}")
-                        .WithErrors(createResult);
-                }
-            }
-            else
-            {
-                // Copy from source path
-                if (!File.Exists(SourcePath))
-                {
-                    return Result.Fail($"Failed to create resource. Source file '{SourcePath}' does not exist.");
-                }
-
-                var copyResult = await resourceOpService.CopyFileAsync(SourcePath, addedResourcePath);
-                if (copyResult.IsFailure)
-                {
-                    return copyResult;
-                }
-            }
-        }
-        else if (ResourceType == ResourceType.Folder)
-        {
-            if (Directory.Exists(addedResourcePath))
-            {
-                return Result.Fail($"A folder already exists at '{addedResourcePath}'.");
-            }
-
-            if (string.IsNullOrEmpty(SourcePath))
-            {
-                // Create a new empty folder
-                var createResult = await resourceOpService.CreateFolderAsync(addedResourcePath);
-                if (createResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to create folder: {DestResource}")
-                        .WithErrors(createResult);
-                }
-            }
-            else
-            {
-                // Copy from source path
-                if (!Directory.Exists(SourcePath))
-                {
-                    return Result.Fail($"Failed to create resource. Source folder '{SourcePath}' does not exist.");
-                }
-
-                var copyResult = await resourceOpService.CopyFolderAsync(SourcePath, addedResourcePath);
-                if (copyResult.IsFailure)
-                {
-                    return copyResult;
-                }
-            }
-        }
-
-        //
-        // Expand the folder containing the newly created resource
-        //
-        var parentFolderKey = DestResource.GetParent();
-        if (!parentFolderKey.IsEmpty)
-        {
-            resourceRegistry.SetFolderIsExpanded(parentFolderKey, true);
+                command.FileResource = DestResource;
+            });
         }
 
         return Result.Ok();
@@ -168,56 +60,6 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     //
     // Static methods for scripting support.
     //
-
-    private static void OpenResourceDocument(ResourceKey resourceKey)
-    {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
-        }
-
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        //
-        //  Open our new file.
-        //
-
-        var filePath = resourceRegistry.GetResourcePath(resourceKey);
-        if (!string.IsNullOrEmpty(filePath) &&
-            File.Exists(filePath))
-        {
-            try
-            {
-                // Ensure the file is accessible.
-                //  This would be done better using DocumentsService.CanAccessFile but DocumentsService isn't created until
-                //  the explorer starts and we may be reaching here before then.
-                var fileInfo = new FileInfo(filePath);
-                using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                // Execute a command to open the HTML document.
-                commandService.Execute<IOpenDocumentCommand>(command =>
-                {
-                    command.FileResource = resourceKey;
-                    command.ForceReload = false;
-                });
-
-                // Execute a command to select the welcome document
-                commandService.Execute<ISelectDocumentCommand>(command =>
-                {
-                    command.FileResource = new ResourceKey(resourceKey);
-                });
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
-    }
 
     public static async void AddFile(string sourcePath, ResourceKey destResource)
     {
