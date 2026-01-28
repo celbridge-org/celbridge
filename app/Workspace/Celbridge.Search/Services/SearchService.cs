@@ -1,31 +1,60 @@
-using Celbridge.Explorer.Services.Search;
+using Celbridge.Core;
 using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Search.Services.Search;
 using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
+using Path = System.IO.Path;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Search.Services;
 
 /// <summary>
 /// Service that performs text search across project files.
 /// </summary>
-public class SearchService : ISearchService
+public class SearchService : ISearchService, IDisposable
 {
     private const int MaxResults = 1000;
 
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SearchService> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly FileFilter _fileFilter;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
 
+    private ISearchPanel? _searchPanel;
+    public ISearchPanel? SearchPanel => _searchPanel;
+
     public SearchService(
+        IServiceProvider serviceProvider,
         ILogger<SearchService> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        // Only the workspace service is allowed to instantiate this service
+        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+
+        _serviceProvider = serviceProvider;
         _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _fileFilter = new FileFilter();
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
+
+        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
+    }
+
+    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
+    {
+        _searchPanel = _serviceProvider.GetRequiredService<ISearchPanel>();
+    }
+
+    public void Dispose()
+    {
+        _messengerService.UnregisterAll(this);
     }
 
     private sealed record SearchState
@@ -55,7 +84,7 @@ public class SearchService : ISearchService
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var projectFolder = resourceRegistry.ProjectFolderPath;
 
-        if (string.IsNullOrEmpty(projectFolder) || 
+        if (string.IsNullOrEmpty(projectFolder) ||
             !Directory.Exists(projectFolder))
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);

@@ -23,9 +23,6 @@ public class ExplorerService : IExplorerService, IDisposable
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
 
-    private ISearchPanel? _searchPanel;
-    public ISearchPanel SearchPanel => _searchPanel!;
-
     private IResourceTreeView? _resourceTreeView;
     public IResourceTreeView ResourceTreeView 
     {
@@ -70,7 +67,6 @@ public class ExplorerService : IExplorerService, IDisposable
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
     {
         _explorerPanel = _serviceProvider.GetRequiredService<IExplorerPanel>();
-        _searchPanel = _serviceProvider.GetRequiredService<ISearchPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)

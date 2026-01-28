@@ -13,12 +13,6 @@ public interface IExplorerService
     IExplorerPanel? ExplorerPanel { get; }
 
     /// <summary>
-    /// Returns the Explorer Panel view.
-    /// Todo: Move this to a separate Search module.
-    /// </summary>
-    ISearchPanel? SearchPanel { get; }
-
-    /// <summary>
     /// Returns the Resource Tree View associated with the current project.
     /// </summary>
     IResourceTreeView ResourceTreeView { get; }

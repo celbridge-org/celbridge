@@ -1,6 +1,7 @@
 using Celbridge.Utilities;
+using Path = System.IO.Path;
 
-namespace Celbridge.Explorer.Services.Search;
+namespace Celbridge.Search.Services.Search;
 
 /// <summary>
 /// Determines which files should be included in search operations.

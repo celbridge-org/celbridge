@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Celbridge.Explorer.Services.Search;
+namespace Celbridge.Search.Services.Search;
 
 /// <summary>
 /// Formats search result display text with context around matches.

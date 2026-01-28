@@ -70,6 +70,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.UserInterface", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Resources", "Workspace\Celbridge.Resources\Celbridge.Resources.csproj", "{9D409061-B39F-4C0F-8769-BB23244444A8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Search", "Workspace\Celbridge.Search\Celbridge.Search.csproj", "{AB53754B-F6A7-4535-92BC-D1A494C16109}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -384,6 +386,18 @@ Global
 		{9D409061-B39F-4C0F-8769-BB23244444A8}.Release|x64.Build.0 = Release|Any CPU
 		{9D409061-B39F-4C0F-8769-BB23244444A8}.Release|x86.ActiveCfg = Release|Any CPU
 		{9D409061-B39F-4C0F-8769-BB23244444A8}.Release|x86.Build.0 = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|x64.Build.0 = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Debug|x86.Build.0 = Debug|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|x64.ActiveCfg = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|x64.Build.0 = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|x86.ActiveCfg = Release|Any CPU
+		{AB53754B-F6A7-4535-92BC-D1A494C16109}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -413,6 +427,7 @@ Global
 		{E1CF72A7-02F9-B0F2-6FDE-1F1F8FD9A217} = {CBDD78F8-9AF9-4805-8B33-6CDA18F7E94B}
 		{0CC828C3-E5EF-ACF1-8343-A355D840D0B3} = {CBDD78F8-9AF9-4805-8B33-6CDA18F7E94B}
 		{9D409061-B39F-4C0F-8769-BB23244444A8} = {00D6636E-63D7-4B7C-AEB0-9A433AA10316}
+		{AB53754B-F6A7-4535-92BC-D1A494C16109} = {00D6636E-63D7-4B7C-AEB0-9A433AA10316}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {695F2378-3B43-4460-9FB8-6D27C121D85D}

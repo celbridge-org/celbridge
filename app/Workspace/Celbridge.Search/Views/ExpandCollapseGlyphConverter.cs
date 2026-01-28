@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer.Views;
+namespace Celbridge.Search.Views;
 
 /// <summary>
 /// Converts a boolean expanded state to the appropriate chevron glyph.

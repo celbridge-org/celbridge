@@ -1,6 +1,7 @@
-using Celbridge.Explorer.ViewModels;
+using Celbridge.Core;
+using Celbridge.Search.ViewModels;
 
-namespace Celbridge.Explorer.Views;
+namespace Celbridge.Search.Views;
 
 public sealed partial class SearchPanel : UserControl, ISearchPanel
 {
@@ -24,7 +25,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void FileHeader_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement element && 
+        if (sender is FrameworkElement element &&
             element.DataContext is SearchFileResultViewModel fileResult)
         {
             fileResult.ToggleExpandedCommand.Execute(null);
@@ -33,7 +34,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void MatchLine_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement element && 
+        if (sender is FrameworkElement element &&
             element.DataContext is SearchMatchLineViewModel matchLine)
         {
             matchLine.NavigateCommand.Execute(null);

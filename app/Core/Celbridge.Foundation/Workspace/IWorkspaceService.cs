@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
+using Celbridge.Search;
 
 namespace Celbridge.Workspace;
 
@@ -49,6 +50,11 @@ public interface IWorkspaceService
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }
+
+    /// <summary>
+    /// Gets the search service used to perform text search operations within the workspace.
+    /// </summary>
+    ISearchService SearchService { get; }
 
     /// <summary>
     /// Returns the Inspector Service associated with the workspace.

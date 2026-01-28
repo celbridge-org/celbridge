@@ -25,6 +25,7 @@ public static class ServiceConfiguration
         Inspector.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
         Resources.ServiceConfiguration.ConfigureServices(services);
+        Search.ServiceConfiguration.ConfigureServices(services);
 
         //
         // Register services

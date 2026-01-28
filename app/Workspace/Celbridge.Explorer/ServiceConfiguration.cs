@@ -14,14 +14,12 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerService, ExplorerService>();
-        services.AddTransient<ISearchService, SearchService>();
 
         //
         // Register views
         //
 
         services.AddTransient<IExplorerPanel, ExplorerPanel>();
-        services.AddTransient<ISearchPanel, SearchPanel>();
 
         //
         // Register view models
@@ -29,7 +27,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<ExplorerPanelViewModel>();
         services.AddTransient<ResourceTreeViewModel>();
-        services.AddTransient<SearchPanelViewModel>();
 
         //
         // Register commands

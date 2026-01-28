@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Search;
 
 /// <summary>
 /// Represents a single line match within a file.

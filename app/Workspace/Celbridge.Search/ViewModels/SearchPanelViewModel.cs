@@ -1,15 +1,17 @@
+using System.Collections.ObjectModel;
+using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Core;
 using Celbridge.Documents;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
-using System.Collections.ObjectModel;
-using System.Text.Json;
 
-namespace Celbridge.Explorer.ViewModels;
+namespace Celbridge.Search.ViewModels;
 
 public partial class SearchPanelViewModel : ObservableObject
 {
@@ -213,11 +215,11 @@ public partial class SearchPanelViewModel : ObservableObject
         }
 
         // Update status text
-        var matchWord = results.TotalMatches == 1 
-            ? _stringLocalizer.GetString("SearchPanel_Match") 
+        var matchWord = results.TotalMatches == 1
+            ? _stringLocalizer.GetString("SearchPanel_Match")
             : _stringLocalizer.GetString("SearchPanel_Matches");
-        var fileWord = results.TotalFiles == 1 
-            ? _stringLocalizer.GetString("SearchPanel_File") 
+        var fileWord = results.TotalFiles == 1
+            ? _stringLocalizer.GetString("SearchPanel_File")
             : _stringLocalizer.GetString("SearchPanel_Files");
 
         StatusText = $"{results.TotalMatches} {matchWord} {_stringLocalizer.GetString("SearchPanel_In")} {results.TotalFiles} {fileWord}";
@@ -322,32 +324,32 @@ public partial class SearchMatchLineViewModel : ObservableObject
     private readonly SearchFileResultViewModel _parent;
 
     public int LineNumber { get; }
-    
+
     /// <summary>
     /// The full context line text (used for tooltip).
     /// </summary>
     public string LineText { get; }
-    
+
     /// <summary>
     /// Text before the match (for display).
     /// </summary>
     public string TextBeforeMatch { get; }
-    
+
     /// <summary>
     /// The matched text (for highlighted display).
     /// </summary>
     public string MatchedText { get; }
-    
+
     /// <summary>
     /// Text after the match (for display).
     /// </summary>
     public string TextAfterMatch { get; }
-    
+
     /// <summary>
     /// The position where the match starts in the display text.
     /// </summary>
     public int MatchStart { get; }
-    
+
     /// <summary>
     /// The length of the match.
     /// </summary>
@@ -367,17 +369,17 @@ public partial class SearchMatchLineViewModel : ObservableObject
         MatchStart = match.MatchStart;
         MatchLength = match.MatchLength;
         OriginalMatchStart = match.OriginalMatchStart;
-        
+
         // Split the line text into before, match, and after segments for highlighting
         var displayText = match.LineText;
         var matchStart = match.MatchStart;
         var matchLength = match.MatchLength;
-        
+
         // Ensure bounds are valid
         if (matchStart >= 0 && matchStart < displayText.Length)
         {
             var matchEnd = Math.Min(matchStart + matchLength, displayText.Length);
-            
+
             TextBeforeMatch = displayText.Substring(0, matchStart);
             MatchedText = displayText.Substring(matchStart, matchEnd - matchStart);
             TextAfterMatch = matchEnd < displayText.Length ? displayText.Substring(matchEnd) : string.Empty;
