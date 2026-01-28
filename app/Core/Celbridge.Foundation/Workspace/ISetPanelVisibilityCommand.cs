@@ -1,6 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 
-namespace Celbridge.UserInterface;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Sets the visibility of workspace panels.

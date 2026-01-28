@@ -1,6 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 
-namespace Celbridge.UserInterface.Commands;
+namespace Celbridge.Workspace.Commands;
 
 public class SetPanelVisibilityCommand : CommandBase, ISetPanelVisibilityCommand
 {

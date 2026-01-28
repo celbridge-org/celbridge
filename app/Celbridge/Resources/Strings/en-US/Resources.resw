@@ -276,7 +276,7 @@
   <data name="ConsolePanel_ProjectConfigErrorMessage" xml:space="preserve">
     <value>Please check '{0}' for syntax errors and reload the project.</value>
   </data>
-  <data name="WorkspacePage_AlertTitleDefault" xml:space="preserve">
+  <data name="AlertDialog_TitleDefault" xml:space="preserve">
     <value>Alert</value>
   </data>
   <data name="ScriptingService_NoMatchesFound" xml:space="preserve">

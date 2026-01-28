@@ -1,6 +1,6 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Workspace;
+namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Display an alert dialogue.

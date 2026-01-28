@@ -2,7 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Workspace.Commands;
+namespace Celbridge.UserInterface.Commands;
 
 public class AlertCommand : CommandBase, IAlertCommand
 {
@@ -35,7 +35,7 @@ public class AlertCommand : CommandBase, IAlertCommand
     public static void Alert(string message)
     {
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        var titleString = stringLocalizer.GetString("WorkspacePage_AlertTitleDefault");
+        var titleString = stringLocalizer.GetString("AlertDialog_TitleDefault");
 
         Alert(titleString, message);
     }
