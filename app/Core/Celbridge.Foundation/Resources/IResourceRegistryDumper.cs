@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Dumps the contents of the resource registry to a file for debugging purposes.

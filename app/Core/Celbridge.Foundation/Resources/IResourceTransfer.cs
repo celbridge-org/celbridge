@@ -1,6 +1,6 @@
 using Celbridge.DataTransfer;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Describes the transfer (move or copy) of a set of file or folder resources.

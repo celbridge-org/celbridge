@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Provides initial content for new files based on their file type.

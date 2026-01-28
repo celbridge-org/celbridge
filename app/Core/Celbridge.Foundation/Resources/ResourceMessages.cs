@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// A message sent when the resource registry has been updated.
@@ -34,4 +34,3 @@ public record MonitoredResourceDeletedMessage(ResourceKey Resource);
 /// A message sent when a monitored resource has been renamed or moved in the file system.
 /// </summary>
 public record MonitoredResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);
-

@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// File formats that can be added as resources via the explorer window.

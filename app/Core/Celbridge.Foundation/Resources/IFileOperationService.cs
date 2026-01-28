@@ -1,6 +1,6 @@
 using Celbridge.DataTransfer;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Service for performing file system operations with undo/redo support.

@@ -1,6 +1,6 @@
 using Celbridge.UserInterface;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// A file resource in the project folder.

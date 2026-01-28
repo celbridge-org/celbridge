@@ -1,5 +1,4 @@
 using Celbridge.DataTransfer;
-using Celbridge.Explorer;
 
 namespace Celbridge.Resources;
 

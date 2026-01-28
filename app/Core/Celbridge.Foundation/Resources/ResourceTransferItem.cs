@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Describes the transfer of resource from one location to another.
@@ -36,4 +36,3 @@ public record ResourceTransferItem
         DestResource = destResource;
     }
 }
-
