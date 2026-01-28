@@ -121,7 +121,7 @@ public class ExplorerService : IExplorerService, IDisposable
         {
             _commandService.Execute<ISetPanelVisibilityCommand>(command =>
             {
-                command.Panels = PanelVisibilityFlags.Context;
+                command.Panels = PanelVisibilityFlags.Primary;
                 command.IsVisible = true;
             });
         }
