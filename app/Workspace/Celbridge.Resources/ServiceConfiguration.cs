@@ -20,6 +20,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
+        services.AddTransient<AddResourceHelper>();
 
         //
         // Register commands
