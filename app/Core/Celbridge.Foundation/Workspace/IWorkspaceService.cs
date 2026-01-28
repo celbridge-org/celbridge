@@ -86,11 +86,6 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Set a flag to indicate that the workspace state is dirty and needs to be saved.
-    /// </summary>
-    void SetWorkspaceStateIsDirty();
-
-    /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);

@@ -1,8 +1,9 @@
-using Celbridge.Logging;
-using Celbridge.Messaging;
-using Celbridge.Workspace;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 
 namespace Celbridge.Commands.Services;
 
@@ -202,31 +203,22 @@ public class CommandService : ICommandService
                         command.OnExecute?.Invoke(executeResult);
 
                         // Handle resource updates based on command flags
-                        if (_workspaceWrapper.IsWorkspacePageLoaded)
+                        if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
                         {
-                            // Force immediate update if required (prevents race conditions)
-                            if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
-                            {
-                                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-                                var updateResult = resourceService.UpdateResources();
-                                if (updateResult.IsFailure)
-                                {
-                                    _logger.LogWarning(updateResult, "Failed to update resources after command execution");
-                                }
-                            }
-                            // Otherwise schedule a debounced update if requested (efficient for batching)
-                            else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
-                            {
-                                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-                                resourceService.ScheduleResourceUpdate();
-                            }
+                            var message = new ResourceUpdateRequestedMessage(ForceImmediate: true);
+                            _messengerService.Send(message);
+                        }
+                        else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
+                        {
+                            var message = new ResourceUpdateRequestedMessage(ForceImmediate: false);
+                            _messengerService.Send(message);
                         }
 
                         // Save the workspace state if the command requires it.
-                        if (_workspaceWrapper.IsWorkspacePageLoaded &&
-                            command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
+                        if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))
                         {
-                            _workspaceWrapper.WorkspaceService.SetWorkspaceStateIsDirty();
+                            var message = new WorkspaceStateDirtyMessage();
+                            _messengerService.Send(message);
                         }
 
                         var endedMessage = new ExecuteCommandEndedMessage(command, (float)_stopwatch.Elapsed.TotalSeconds);

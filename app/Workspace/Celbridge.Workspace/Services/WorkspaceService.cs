@@ -78,9 +78,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
+
+        _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
     }
 
-    public void SetWorkspaceStateIsDirty()
+    private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
     {
         _workspaceStateIsDirty = true;
     }
@@ -92,7 +94,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (_workspaceStateIsDirty)
         {
             _workspaceStateIsDirty = false;
-            
+
             // Todo: Save the workspace state after a delay to avoid saving too frequently
             var saveWorkspaceResult = await SaveWorkspaceStateAsync();
             if (saveWorkspaceResult.IsFailure)
@@ -113,11 +115,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (saveDocumentsResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to save modified documents. { saveDocumentsResult.Error}");
+            _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.Error}");
         }
 
         var activitiesResult = await ActivityService.UpdateAsync();
-        if (activitiesResult.IsFailure) 
+        if (activitiesResult.IsFailure)
         {
             failed = true;
             _logger.LogError($"Failed to update activity service. {activitiesResult.Error}");
@@ -168,6 +170,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             {
                 // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
                 // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+
+                // Unregister message handlers
+                _messengerService.UnregisterAll(this);
 
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();

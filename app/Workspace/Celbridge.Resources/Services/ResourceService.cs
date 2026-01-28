@@ -66,6 +66,7 @@ public class ResourceService : IResourceService, IDisposable
         InitializeResourceMonitor();
 
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
+        _messengerService.Register<ResourceUpdateRequestedMessage>(this, OnResourceUpdateRequestedMessage);
     }
 
     private void InitializeResourceMonitor()
@@ -91,6 +92,22 @@ public class ResourceService : IResourceService, IDisposable
         // Disabled in debug to avoid triggering an update every time we switch between the app and the debugger.
         _commandService.Execute<IUpdateResourcesCommand>();
 #endif
+    }
+
+    private void OnResourceUpdateRequestedMessage(object recipient, ResourceUpdateRequestedMessage message)
+    {
+        if (message.ForceImmediate)
+        {
+            var updateResult = UpdateResources();
+            if (updateResult.IsFailure)
+            {
+                _logger.LogWarning(updateResult, "Failed to update resources after command execution");
+            }
+        }
+        else
+        {
+            ScheduleResourceUpdate();
+        }
     }
 
     public void ScheduleResourceUpdate()

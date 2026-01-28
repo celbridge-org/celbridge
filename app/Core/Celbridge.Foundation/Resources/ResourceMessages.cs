@@ -34,3 +34,8 @@ public record MonitoredResourceDeletedMessage(ResourceKey Resource);
 /// A message sent when a monitored resource has been renamed or moved in the file system.
 /// </summary>
 public record MonitoredResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);
+
+/// <summary>
+/// A message sent when resource updates are requested after command execution.
+/// </summary>
+public record ResourceUpdateRequestedMessage(bool ForceImmediate);
