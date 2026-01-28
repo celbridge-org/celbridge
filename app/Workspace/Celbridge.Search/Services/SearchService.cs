@@ -1,7 +1,6 @@
 using Celbridge.Core;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Path = System.IO.Path;

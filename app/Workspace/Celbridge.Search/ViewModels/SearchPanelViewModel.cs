@@ -3,7 +3,6 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Core;
 using Celbridge.Documents;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;

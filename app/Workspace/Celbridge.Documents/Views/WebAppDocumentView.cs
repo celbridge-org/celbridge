@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.Utilities;
