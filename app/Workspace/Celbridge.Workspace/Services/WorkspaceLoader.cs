@@ -83,7 +83,7 @@ public class WorkspaceLoader
                 }
             }
 
-            // Update resources registry immediately to ensure we are up to date
+            // Update resource registry immediately to ensure we are up to date
             var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
             {

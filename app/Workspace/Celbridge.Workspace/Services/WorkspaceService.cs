@@ -56,9 +56,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
 
-        // Create the resource service which manages the resource registry, monitor, and transfer service.
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
-
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
@@ -177,13 +175,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
-
                 (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();
+                (SearchService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
                 (GenerativeAIService as IDisposable)!.Dispose();

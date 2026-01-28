@@ -50,9 +50,31 @@ public class SearchService : ISearchService, IDisposable
         _searchPanel = _serviceProvider.GetRequiredService<ISearchPanel>();
     }
 
+    private bool _disposed;
+
     public void Dispose()
     {
-        _messengerService.UnregisterAll(this);
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+                _messengerService.UnregisterAll(this);
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~SearchService()
+    {
+        Dispose(false);
     }
 
     private sealed record SearchState
