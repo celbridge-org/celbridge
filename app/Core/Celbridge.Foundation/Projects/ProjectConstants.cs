@@ -36,6 +36,11 @@ public static class ProjectConstants
     public const string LogsFolder = ".logs";
 
     /// <summary>
+    /// Folder containing soft-deleted files for undo support.
+    /// </summary>
+    public const string TrashFolder = ".trash";
+
+    /// <summary>
     /// File containing the workspace settings data.
     /// </summary>
     public const string WorkspaceSettingsFile = "workspace_settings.db";

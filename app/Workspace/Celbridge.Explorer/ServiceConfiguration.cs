@@ -1,9 +1,7 @@
-using Celbridge.Commands.Services;
 using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
-using Celbridge.Validators;
 
 namespace Celbridge.Explorer;
 
@@ -16,19 +14,12 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerService, ExplorerService>();
-        services.AddTransient<IResourceRegistry, ResourceRegistry>();
-        services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
-        services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
-        services.AddTransient<ISearchService, SearchService>();
-        services.AddTransient<ResourceArchiver>();
-        services.AddTransient<ResourceChangeMonitor>();
 
         //
         // Register views
         //
 
         services.AddTransient<IExplorerPanel, ExplorerPanel>();
-        services.AddTransient<ISearchPanel, SearchPanel>();
 
         //
         // Register view models
@@ -36,16 +27,11 @@ public static class ServiceConfiguration
 
         services.AddTransient<ExplorerPanelViewModel>();
         services.AddTransient<ResourceTreeViewModel>();
-        services.AddTransient<SearchPanelViewModel>();
 
         //
         // Register commands
         //
 
-        services.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
-        services.AddTransient<IAddResourceCommand, AddResourceCommand>();
-        services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
-        services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
         services.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
         services.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         services.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();

@@ -1,5 +1,3 @@
-using Celbridge.Explorer.Models;
-
 namespace Celbridge.Explorer.Views;
 
 public class ResourceTemplateSelector : DataTemplateSelector

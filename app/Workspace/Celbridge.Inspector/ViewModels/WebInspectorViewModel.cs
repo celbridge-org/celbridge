@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,7 +32,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     {
         _logger = logger;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         PropertyChanged += ViewModel_PropertyChanged;
     }

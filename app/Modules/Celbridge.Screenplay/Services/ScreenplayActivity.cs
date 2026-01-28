@@ -2,7 +2,6 @@ using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Localization;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
@@ -36,7 +35,7 @@ public class ScreenplayActivity : IActivity
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
     public async Task<Result> ActivateAsync()

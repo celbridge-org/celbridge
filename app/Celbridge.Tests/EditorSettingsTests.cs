@@ -36,8 +36,8 @@ public class EditorSettingsTests
         editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.All);
 
         // Set a property
-        editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.Context;
-        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.Context);
+        editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.Primary;
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.Primary);
 
         // Reset the property to default
         editorSettings.Reset();

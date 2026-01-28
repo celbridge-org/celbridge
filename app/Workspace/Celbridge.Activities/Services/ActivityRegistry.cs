@@ -1,5 +1,4 @@
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Projects;
@@ -31,7 +30,7 @@ public class ActivityRegistry
         _messengerService = messengerService;
         _moduleService = moduleService;
         _projectService = projectService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
     public async Task<Result> Initialize()

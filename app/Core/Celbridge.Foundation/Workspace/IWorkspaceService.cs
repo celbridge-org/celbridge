@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
+using Celbridge.Search;
 
 namespace Celbridge.Workspace;
 
@@ -24,6 +25,11 @@ public interface IWorkspaceService
     /// Returns the Workspace Settings associated with the workspace.
     /// </summary>
     IWorkspaceSettings WorkspaceSettings { get; }
+
+    /// <summary>
+    /// Returns the Resource Service associated with the workspace.
+    /// </summary>
+    IResourceService ResourceService { get; }
 
     /// <summary>
     /// Returns the Python Service associated with the workspace.
@@ -44,6 +50,11 @@ public interface IWorkspaceService
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }
+
+    /// <summary>
+    /// Gets the search service used to perform text search operations within the workspace.
+    /// </summary>
+    ISearchService SearchService { get; }
 
     /// <summary>
     /// Returns the Inspector Service associated with the workspace.
@@ -74,11 +85,6 @@ public interface IWorkspaceService
     /// The most recently focussed workspace panel.
     /// </summary>
     WorkspacePanel ActivePanel { get; }
-
-    /// <summary>
-    /// Set a flag to indicate that the workspace state is dirty and needs to be saved.
-    /// </summary>
-    void SetWorkspaceStateIsDirty();
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

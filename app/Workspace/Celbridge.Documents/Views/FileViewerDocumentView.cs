@@ -1,5 +1,4 @@
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
@@ -18,7 +17,7 @@ public sealed partial class FileViewerDocumentView : DocumentView
     {
         ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         _webView = new WebView2()
             .Source(x => x.Binding(() => ViewModel.Source));

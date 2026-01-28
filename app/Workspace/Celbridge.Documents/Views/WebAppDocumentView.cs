@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.Utilities;
@@ -34,7 +33,7 @@ public sealed partial class WebAppDocumentView : DocumentView
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         _webView = new WebView2();
 

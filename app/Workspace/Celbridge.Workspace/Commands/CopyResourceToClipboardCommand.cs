@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Explorer;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Commands;
@@ -19,7 +18,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(SourceResource);
         if (getResult.IsFailure)

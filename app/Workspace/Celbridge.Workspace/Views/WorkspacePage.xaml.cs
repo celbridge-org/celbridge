@@ -108,7 +108,7 @@ public sealed partial class WorkspacePage : Page
 
         // Get the explorer and search panels from the workspace service
         var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
-        var searchPanel = workspaceService.ExplorerService.SearchPanel as UIElement;
+        var searchPanel = workspaceService.SearchService.SearchPanel as UIElement;
 
         if (explorerPanel != null && searchPanel != null)
         {

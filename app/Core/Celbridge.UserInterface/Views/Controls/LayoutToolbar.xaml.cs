@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -33,7 +34,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
         UpdateWindowModeRadios();
         UpdatePanelToggleVisibility();
-        
+
         // Register for layout manager state change messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
@@ -51,7 +52,7 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Show panel toggle buttons and reset layout controls only on the Workspace page
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
-        
+
         PanelToggleButtons.Visibility = visibility;
         ResetLayoutSeparator.Visibility = visibility;
         ResetLayoutButton.Visibility = visibility;
@@ -150,7 +151,7 @@ public sealed partial class LayoutToolbar : UserControl
         var isVisible = !_layoutManager.IsContextPanelVisible;
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Context;
+            command.Panels = PanelVisibilityFlags.Primary;
             command.IsVisible = isVisible;
         });
     }
@@ -179,7 +180,7 @@ public sealed partial class LayoutToolbar : UserControl
         var isVisible = !_layoutManager.IsInspectorPanelVisible;
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Inspector;
+            command.Panels = PanelVisibilityFlags.Secondary;
             command.IsVisible = isVisible;
         });
     }
@@ -211,7 +212,7 @@ public sealed partial class LayoutToolbar : UserControl
         }
 
         LayoutTransition transition;
-        
+
         if (ReferenceEquals(sender, WindowedModeRadio))
         {
             transition = LayoutTransition.EnterWindowed;

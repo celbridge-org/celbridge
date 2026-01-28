@@ -1,11 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using ClosedXML.Excel;
 using System.Text.RegularExpressions;
 
 namespace Celbridge.Documents.Services;
@@ -150,7 +148,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         // For unrecognized extensions (including empty), check if the file is text
         if (!_fileTypeHelper.IsRecognizedExtension(extension))
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             var filePath = resourceRegistry.GetResourcePath(fileResource);
 
             var result = TextBinarySniffer.IsTextFile(filePath);
@@ -176,33 +174,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
-
-    public Result CreateDocumentResource(string resourcePath)
-    {
-        string extension = Path.GetExtension(resourcePath);
-        if (!string.IsNullOrEmpty(extension))
-        {
-            resourcePath = Path.ChangeExtension(resourcePath, extension.ToLowerInvariant());
-            if (extension == ExplorerConstants.ExcelExtension)
-            {
-                // Create an empty Excel file at resource path
-                using var wb = new XLWorkbook();
-                var sheet = wb.AddWorksheet("Sheet1");
-
-                // This workaround forces a block of cells to be displayed instead of a single empty cell.
-                // I think SpreadJS does something similar internally when you add a new sheet.
-                sheet.Cell(200, 20).Style.NumberFormat.Format = "@";
-
-                wb.SaveAs(resourcePath);
-                return Result.Ok();
-            }
-        }
-
-        File.WriteAllText(resourcePath, string.Empty);
-
-        return Result.Ok();
-    }
-
 
     public bool CanAccessFile(string resourcePath)
     {
@@ -235,7 +206,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
         if (string.IsNullOrEmpty(filePath) ||
@@ -293,7 +264,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         try
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
             var filePath = resourceRegistry.GetResourcePath(fileResource);
 
@@ -354,7 +325,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
         if (openDocuments is null ||
@@ -525,7 +496,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var oldResource = message.OldResource.ToString();
         var newResource = message.NewResource.ToString();
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ExplorerService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var newResourcePath = resourceRegistry.GetResourcePath(message.NewResource);
 
         Guard.IsTrue(File.Exists(newResourcePath));

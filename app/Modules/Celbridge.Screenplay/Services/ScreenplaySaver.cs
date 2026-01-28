@@ -37,7 +37,7 @@ public class ScreenplaySaver
     private const string SceneNoteColor = "a8e6a3";
 
     private readonly IMessengerService _messengerService;
-    private readonly IExplorerService _explorerService;
+    private readonly IResourceRegistry _resourceRegistry;
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
     private readonly IWorkspaceSettings _workspaceSettings;
@@ -50,7 +50,7 @@ public class ScreenplaySaver
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
@@ -66,7 +66,7 @@ public class ScreenplaySaver
                 return Result.Fail($"Unsupported file type: {extension}");
             }
 
-            var workbookPath = _explorerService.ResourceRegistry.GetResourcePath(screenplayResource);
+            var workbookPath = _resourceRegistry.GetResourcePath(screenplayResource);
             var screenplayFolder = Path.GetDirectoryName(workbookPath);
             if (string.IsNullOrEmpty(screenplayFolder))
             {
@@ -162,7 +162,7 @@ public class ScreenplaySaver
 
         foreach (var sceneFile in sceneFiles)
         {
-            var getResourceKeyResult = _explorerService.ResourceRegistry.GetResourceKey(sceneFile);
+            var getResourceKeyResult = _resourceRegistry.GetResourceKey(sceneFile);
             if (getResourceKeyResult.IsFailure)
             {
                 return Result<List<SceneData>>.Fail($"Failed to get resource key for scene file '{sceneFile}'")
