@@ -1,8 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Messaging;
 using Celbridge.Explorer;
-
+using Celbridge.Messaging;
 using ApplicationDataTransfer = Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Services;
@@ -45,11 +44,11 @@ public class DataTransferService : IDataTransferService, IDisposable
         ClipboardContentType contentType;
         if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
         {
-            contentType =  ClipboardContentType.Resource;
+            contentType = ClipboardContentType.Resource;
         }
         else if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
         {
-            contentType =  ClipboardContentType.Text;
+            contentType = ClipboardContentType.Text;
         }
         else
         {
