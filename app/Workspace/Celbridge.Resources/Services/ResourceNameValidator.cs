@@ -1,7 +1,7 @@
 using Celbridge.Validators;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 public class ResourceNameValidator : IResourceNameValidator
 {

@@ -1,9 +1,7 @@
-using Celbridge.Commands.Services;
 using Celbridge.Explorer.Commands;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
-using Celbridge.Validators;
 
 namespace Celbridge.Explorer;
 
@@ -16,14 +14,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerService, ExplorerService>();
-        services.AddTransient<IResourceRegistry, ResourceRegistry>();
-        services.AddTransient<IResourceTransferService, ResourceTransferService>();
-        services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
-        services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<ISearchService, SearchService>();
-        services.AddSingleton<IFileOperationService, FileOperationService>();
-        services.AddSingleton<IFileTemplateService, FileTemplateService>();
-        services.AddTransient<ResourceArchiver>();
 
         //
         // Register views

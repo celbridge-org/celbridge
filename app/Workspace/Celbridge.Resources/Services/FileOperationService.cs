@@ -1,11 +1,10 @@
 using Celbridge.DataTransfer;
 using Celbridge.Entities;
-using Celbridge.Explorer.Models;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Service for performing file system operations with undo/redo support.
@@ -34,7 +33,7 @@ public class FileOperationService : IFileOperationService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    private IEntityService? EntityService => 
+    private IEntityService? EntityService =>
         _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
 
     private IResourceRegistry? ResourceRegistry =>

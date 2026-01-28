@@ -10,7 +10,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
-using Celbridge.Resources;
 using Celbridge.Settings;
 
 namespace Celbridge.Workspace.Services;

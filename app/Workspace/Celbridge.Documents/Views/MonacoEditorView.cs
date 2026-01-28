@@ -1,6 +1,5 @@
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using System.Text.Json;

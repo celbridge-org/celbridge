@@ -1,5 +1,3 @@
-using Celbridge.Resources;
-
 namespace Celbridge.Explorer;
 
 /// <summary>

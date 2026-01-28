@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Celbridge.Explorer.Models;
+namespace Celbridge.Resources.Models;
 
 public partial class FolderResource : Resource, IFolderResource
 {

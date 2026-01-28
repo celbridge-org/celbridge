@@ -1,6 +1,5 @@
 using Celbridge.DataTransfer;
 using Celbridge.Navigation;
-using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
@@ -34,7 +33,6 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
-        services.AddTransient<IResourceMonitor, ResourceMonitor>();
         services.AddTransient<WorkspaceLoader>();
 
         //

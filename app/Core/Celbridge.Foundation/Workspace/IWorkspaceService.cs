@@ -7,7 +7,6 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
-using Celbridge.Resources;
 
 namespace Celbridge.Workspace;
 

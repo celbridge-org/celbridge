@@ -1,11 +1,9 @@
-using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Resources;
+using Celbridge.Workspace;
 using Timer = System.Timers.Timer;
 
-namespace Celbridge.Workspace.Services;
+namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Monitors file system changes in the project folder and schedules resource updates.

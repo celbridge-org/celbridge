@@ -1,6 +1,6 @@
 using Celbridge.DataTransfer;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Models;
 
 public class ResourceTransfer : IResourceTransfer
 {

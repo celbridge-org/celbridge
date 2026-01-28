@@ -1,9 +1,8 @@
 using Celbridge.Logging;
-using Celbridge.Explorer;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
-namespace Celbridge.Commands.Services;
+namespace Celbridge.Resources.Services;
 
 public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
 {

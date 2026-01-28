@@ -1,4 +1,4 @@
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Helper class for common file system operations used by file operations.

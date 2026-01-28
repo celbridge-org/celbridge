@@ -1,9 +1,8 @@
-using Celbridge.Explorer.Models;
+using System.Text;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
-using System.Text;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {

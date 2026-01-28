@@ -1,7 +1,8 @@
 using System.Text.Json;
 using Windows.System;
+using Celbridge.Explorer;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 public class ResourceUtils
 {

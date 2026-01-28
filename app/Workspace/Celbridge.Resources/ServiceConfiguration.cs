@@ -10,6 +10,14 @@ public static class ServiceConfiguration
         // Register services
         //
 
+        services.AddSingleton<IFileOperationService, FileOperationService>();
+        services.AddSingleton<IFileTemplateService, FileTemplateService>();
+
         services.AddTransient<IResourceService, ResourceService>();
+        services.AddTransient<IResourceRegistry, ResourceRegistry>();
+        services.AddTransient<IResourceTransferService, ResourceTransferService>();
+        services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
+        services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
+        services.AddTransient<IResourceMonitor, ResourceMonitor>();
     }
 }

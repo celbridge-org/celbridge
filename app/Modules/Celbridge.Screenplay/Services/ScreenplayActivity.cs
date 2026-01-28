@@ -2,7 +2,6 @@ using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Localization;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Celbridge.Explorer.Models;
+namespace Celbridge.Resources.Models;
 
 public abstract partial class Resource : ObservableObject, IResource
 {

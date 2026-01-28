@@ -1,5 +1,4 @@
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;

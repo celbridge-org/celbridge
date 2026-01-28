@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
+using Celbridge.Explorer;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Provides initial content for new files based on their file type.

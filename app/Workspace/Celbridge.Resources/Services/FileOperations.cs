@@ -1,6 +1,6 @@
 using Celbridge.Entities;
 
-namespace Celbridge.Explorer.Services;
+namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Represents a single undoable file operation.
