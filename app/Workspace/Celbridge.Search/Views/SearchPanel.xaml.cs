@@ -1,4 +1,3 @@
-using Celbridge.Core;
 using Celbridge.Search.ViewModels;
 
 namespace Celbridge.Search.Views;

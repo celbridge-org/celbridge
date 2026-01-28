@@ -11,7 +11,6 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Search;
-using Celbridge.Settings;
 
 namespace Celbridge.Workspace.Services;
 
@@ -20,7 +19,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private const string ExpandedFoldersKey = "ExpandedFolders";
 
     private readonly ILogger<WorkspaceService> _logger;
-    private readonly IEditorSettings _editorSettings;
     private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
@@ -44,18 +42,15 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public WorkspaceService(
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
-        IEditorSettings editorSettings,
         IMessengerService messengerService,
         IProjectService projectService)
     {
         _logger = logger;
-        _editorSettings = editorSettings;
         _messengerService = messengerService;
 
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
-
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
