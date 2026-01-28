@@ -1,4 +1,4 @@
-namespace Celbridge.Search.Services.Search;
+namespace Celbridge.Search.Services;
 
 /// <summary>
 /// Finds text matches within lines, supporting case-sensitive and whole-word matching.

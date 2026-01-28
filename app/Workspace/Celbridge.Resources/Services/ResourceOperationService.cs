@@ -7,14 +7,14 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Service for performing file system operations with undo/redo support.
+/// Service for performing resource operations with undo/redo support.
 /// Uses a soft-delete trash folder approach for delete operations.
 /// </summary>
-public class FileOperationService : IFileOperationService
+public class ResourceOperationService : IResourceOperationService
 {
     private const int MaxUndoStackSize = 50;
 
-    private readonly ILogger<FileOperationService> _logger;
+    private readonly ILogger<ResourceOperationService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -23,8 +23,8 @@ public class FileOperationService : IFileOperationService
 
     private FileOperationBatch? _currentBatch;
 
-    public FileOperationService(
-        ILogger<FileOperationService> logger,
+    public ResourceOperationService(
+        ILogger<ResourceOperationService> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {

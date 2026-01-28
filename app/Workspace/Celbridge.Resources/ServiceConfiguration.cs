@@ -11,7 +11,7 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        services.AddSingleton<IFileOperationService, FileOperationService>();
+        services.AddSingleton<IResourceOperationService, ResourceOperationService>();
         services.AddSingleton<IFileTemplateService, FileTemplateService>();
 
         services.AddTransient<IResourceService, ResourceService>();

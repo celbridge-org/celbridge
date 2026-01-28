@@ -22,6 +22,11 @@ public interface IResourceService
     IResourceTransferService TransferService { get; }
 
     /// <summary>
+    /// Returns the Resource Operation Service associated with the workspace.
+    /// </summary>
+    IResourceOperationService OperationService { get; }
+
+    /// <summary>
     /// Schedules a resource update. 
     /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
     /// </summary>

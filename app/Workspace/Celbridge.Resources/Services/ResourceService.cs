@@ -20,6 +20,7 @@ public class ResourceService : IResourceService, IDisposable
     public IResourceRegistry Registry { get; }
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
+    public IResourceOperationService OperationService { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -29,7 +30,8 @@ public class ResourceService : IResourceService, IDisposable
         IWorkspaceWrapper workspaceWrapper,
         IResourceRegistry resourceRegistry,
         IResourceMonitor resourceMonitor,
-        IResourceTransferService resourceTransferService)
+        IResourceTransferService resourceTransferService,
+        IResourceOperationService resourceOperationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -42,6 +44,7 @@ public class ResourceService : IResourceService, IDisposable
         Registry = resourceRegistry;
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
+        OperationService = resourceOperationService;
 
         // Set the project folder path on the registry
         Registry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;

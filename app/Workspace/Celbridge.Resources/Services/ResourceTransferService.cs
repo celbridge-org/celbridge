@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Explorer;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;

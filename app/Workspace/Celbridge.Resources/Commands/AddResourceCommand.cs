@@ -58,7 +58,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
         //
         // Validate the resource key
@@ -98,7 +98,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             {
                 // Create a new empty file
                 var content = _fileTemplateService.GetNewFileContent(addedResourcePath);
-                var createResult = await fileOpService.CreateFileAsync(addedResourcePath, content);
+                var createResult = await resourceOpService.CreateFileAsync(addedResourcePath, content);
                 if (createResult.IsFailure)
                 {
                     return Result.Fail($"Failed to create resource: {DestResource}")
@@ -113,7 +113,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                     return Result.Fail($"Failed to create resource. Source file '{SourcePath}' does not exist.");
                 }
 
-                var copyResult = await fileOpService.CopyFileAsync(SourcePath, addedResourcePath);
+                var copyResult = await resourceOpService.CopyFileAsync(SourcePath, addedResourcePath);
                 if (copyResult.IsFailure)
                 {
                     return copyResult;
@@ -130,7 +130,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             if (string.IsNullOrEmpty(SourcePath))
             {
                 // Create a new empty folder
-                var createResult = await fileOpService.CreateFolderAsync(addedResourcePath);
+                var createResult = await resourceOpService.CreateFolderAsync(addedResourcePath);
                 if (createResult.IsFailure)
                 {
                     return Result.Fail($"Failed to create folder: {DestResource}")
@@ -145,7 +145,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                     return Result.Fail($"Failed to create resource. Source folder '{SourcePath}' does not exist.");
                 }
 
-                var copyResult = await fileOpService.CopyFolderAsync(SourcePath, addedResourcePath);
+                var copyResult = await resourceOpService.CopyFolderAsync(SourcePath, addedResourcePath);
                 if (copyResult.IsFailure)
                 {
                     return copyResult;

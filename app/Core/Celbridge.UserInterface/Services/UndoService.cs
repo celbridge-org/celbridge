@@ -42,8 +42,8 @@ public class UndoService : IUndoService
             }
 
             // Try file operation undo
-            var fileOpService = workspaceService.FileOperationService;
-            if (fileOpService.CanUndo)
+            var resourceOpService = workspaceService.ResourceService.OperationService;
+            if (resourceOpService.CanUndo)
             {
                 _ = UndoFileOperationAsync();
                 return Result.Ok();
@@ -56,9 +56,9 @@ public class UndoService : IUndoService
     private async Task UndoFileOperationAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
-        var result = await fileOpService.UndoAsync();
+        var result = await resourceOpService.UndoAsync();
         if (result.IsSuccess)
         {
             // Trigger resource update to refresh the tree view and entity cache
@@ -91,8 +91,8 @@ public class UndoService : IUndoService
             }
 
             // Try file operation redo
-            var fileOpService = workspaceService.FileOperationService;
-            if (fileOpService.CanRedo)
+            var resourceOpService = workspaceService.ResourceService.OperationService;
+            if (resourceOpService.CanRedo)
             {
                 _ = RedoFileOperationAsync();
                 return Result.Ok();
@@ -105,9 +105,9 @@ public class UndoService : IUndoService
     private async Task RedoFileOperationAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
-        var result = await fileOpService.RedoAsync();
+        var result = await resourceOpService.RedoAsync();
         if (result.IsSuccess)
         {
             // Trigger resource update to refresh the tree view and entity cache

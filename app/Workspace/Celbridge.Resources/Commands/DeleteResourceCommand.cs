@@ -38,7 +38,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
         var resourcePath = resourceRegistry.GetResourcePath(Resource);
 
@@ -46,7 +46,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
         if (File.Exists(resourcePath))
         {
-            deleteResult = await fileOpService.DeleteFileAsync(resourcePath);
+            deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
             if (deleteResult.IsFailure)
             {
                 _logger.LogError(deleteResult.Error);
@@ -60,7 +60,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
         else if (Directory.Exists(resourcePath))
         {
-            deleteResult = await fileOpService.DeleteFolderAsync(resourcePath);
+            deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
             if (deleteResult.IsFailure)
             {
                 _logger.LogError(deleteResult.Error);

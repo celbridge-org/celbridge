@@ -42,7 +42,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
         // Filter out any items where the destination resource already exists
         TransferItems.RemoveAll(item => resourceRegistry.GetResource(item.DestResource).IsSuccess);
@@ -53,7 +53,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         // Begin batch for single undo operation
-        fileOpService.BeginBatch();
+        resourceOpService.BeginBatch();
 
         List<string> failedItems = new();
 
@@ -61,7 +61,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         {
             foreach (var item in TransferItems)
             {
-                var result = await TransferSingleItemAsync(item, resourceRegistry, fileOpService);
+                var result = await TransferSingleItemAsync(item, resourceRegistry, resourceOpService);
                 if (result.IsFailure)
                 {
                     failedItems.Add(item.DestResource.ResourceName);
@@ -71,7 +71,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         finally
         {
             // Always commit batch - partial success is acceptable
-            fileOpService.CommitBatch();
+            resourceOpService.CommitBatch();
         }
 
         // Expand the destination folder so the user can see the newly transferred resources
@@ -89,24 +89,24 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private async Task<Result> TransferSingleItemAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
-        IFileOperationService fileOpService)
+        IResourceOperationService resourceOpService)
     {
         if (item.SourceResource.IsEmpty)
         {
             // Resource is outside the project folder - add it
-            return await AddExternalResourceAsync(item, resourceRegistry, fileOpService);
+            return await AddExternalResourceAsync(item, resourceRegistry, resourceOpService);
         }
         else
         {
             // Resource is inside the project folder - copy/move it
-            return await CopyInternalResourceAsync(item, resourceRegistry, fileOpService);
+            return await CopyInternalResourceAsync(item, resourceRegistry, resourceOpService);
         }
     }
 
     private async Task<Result> AddExternalResourceAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
-        IFileOperationService fileOpService)
+        IResourceOperationService resourceOpService)
     {
         var destPath = resourceRegistry.GetResourcePath(item.DestResource);
 
@@ -117,7 +117,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 return Result.Fail($"Source file does not exist: {item.SourcePath}");
             }
 
-            return await fileOpService.CopyFileAsync(item.SourcePath, destPath);
+            return await resourceOpService.CopyFileAsync(item.SourcePath, destPath);
         }
         else if (item.ResourceType == ResourceType.Folder)
         {
@@ -126,7 +126,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 return Result.Fail($"Source folder does not exist: {item.SourcePath}");
             }
 
-            return await fileOpService.CopyFolderAsync(item.SourcePath, destPath);
+            return await resourceOpService.CopyFolderAsync(item.SourcePath, destPath);
         }
 
         return Result.Fail($"Invalid resource type: {item.ResourceType}");
@@ -135,14 +135,14 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private async Task<Result> CopyInternalResourceAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
-        IFileOperationService fileOpService)
+        IResourceOperationService resourceOpService)
     {
         var resolvedDestResource = resourceRegistry.ResolveDestinationResource(item.SourceResource, item.DestResource);
         
         var sourcePath = resourceRegistry.GetResourcePath(item.SourceResource);
         var destPath = resourceRegistry.GetResourcePath(resolvedDestResource);
 
-        var result = await fileOpService.TransferAsync(sourcePath, destPath, TransferMode);
+        var result = await resourceOpService.TransferAsync(sourcePath, destPath, TransferMode);
 
         // Expand destination parent folder
         if (result.IsSuccess)

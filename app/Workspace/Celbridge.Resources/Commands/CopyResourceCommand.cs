@@ -51,7 +51,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileOpService = workspaceService.FileOperationService;
+        var resourceOpService = workspaceService.ResourceService.OperationService;
 
         // Resolve destination to handle folder drops
         var resolvedDestResource = resourceRegistry.ResolveDestinationResource(SourceResource, DestResource);
@@ -76,22 +76,22 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             if (TransferMode == DataTransferMode.Copy)
             {
-                result = await fileOpService.CopyFileAsync(sourcePath, destPath);
+                result = await resourceOpService.CopyFileAsync(sourcePath, destPath);
             }
             else
             {
-                result = await fileOpService.MoveFileAsync(sourcePath, destPath);
+                result = await resourceOpService.MoveFileAsync(sourcePath, destPath);
             }
         }
         else
         {
             if (TransferMode == DataTransferMode.Copy)
             {
-                result = await fileOpService.CopyFolderAsync(sourcePath, destPath);
+                result = await resourceOpService.CopyFolderAsync(sourcePath, destPath);
             }
             else
             {
-                result = await fileOpService.MoveFolderAsync(sourcePath, destPath);
+                result = await resourceOpService.MoveFolderAsync(sourcePath, destPath);
             }
         }
 

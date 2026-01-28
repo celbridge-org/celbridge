@@ -32,7 +32,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IInspectorService InspectorService { get; }
     public IExplorerService ExplorerService { get; }
     public ISearchService SearchService { get; }
-    public IFileOperationService FileOperationService { get; }
     public IDataTransferService DataTransferService { get; }
     public IEntityService EntityService { get; }
     public IGenerativeAIService GenerativeAIService { get; }
@@ -66,7 +65,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
-        FileOperationService = serviceProvider.GetRequiredService<IFileOperationService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
