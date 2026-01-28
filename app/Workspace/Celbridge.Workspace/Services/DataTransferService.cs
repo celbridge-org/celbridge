@@ -95,8 +95,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail("Workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
-        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceTransferService;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
 
         var getResult = resourceRegistry.GetResource(destFolderResource);
         if (getResult.IsFailure)
@@ -190,7 +190,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             }
         }
 
-        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceTransferService;
+        var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
         return resourceTransferService.TransferResources(destFolderResource, description);
     }
 

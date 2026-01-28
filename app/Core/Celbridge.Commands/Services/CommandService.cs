@@ -207,8 +207,8 @@ public class CommandService : ICommandService
                             // Force immediate update if required (prevents race conditions)
                             if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
                             {
-                                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-                                var updateResult = await explorerService.UpdateResourcesAsync();
+                                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+                                var updateResult = resourceService.UpdateResources();
                                 if (updateResult.IsFailure)
                                 {
                                     _logger.LogWarning(updateResult, "Failed to update resources after command execution");
@@ -217,8 +217,8 @@ public class CommandService : ICommandService
                             // Otherwise schedule a debounced update if requested (efficient for batching)
                             else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
                             {
-                                var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
-                                explorerService.ScheduleResourceUpdate();
+                                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+                                resourceService.ScheduleResourceUpdate();
                             }
                         }
 

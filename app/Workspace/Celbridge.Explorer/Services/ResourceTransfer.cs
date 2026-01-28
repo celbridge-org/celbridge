@@ -1,4 +1,4 @@
-﻿using Celbridge.DataTransfer;
+using Celbridge.DataTransfer;
 
 namespace Celbridge.Explorer.Services;
 

@@ -7,6 +7,7 @@ using Celbridge.Explorer;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
+using Celbridge.Resources;
 
 namespace Celbridge.Workspace;
 
@@ -26,19 +27,9 @@ public interface IWorkspaceService
     IWorkspaceSettings WorkspaceSettings { get; }
 
     /// <summary>
-    /// Returns the Resource Registry associated with the current project.
+    /// Returns the Resource Service associated with the workspace.
     /// </summary>
-    IResourceRegistry ResourceRegistry { get; }
-
-    /// <summary>
-    /// Returns the Resource Monitor associated with the current project.
-    /// </summary>
-    IResourceMonitor ResourceMonitor { get; }
-
-    /// <summary>
-    /// Returns the Resource Transfer Service associated with the workspace.
-    /// </summary>
-    IResourceTransferService ResourceTransferService { get; }
+    IResourceService ResourceService { get; }
 
     /// <summary>
     /// Returns the Python Service associated with the workspace.

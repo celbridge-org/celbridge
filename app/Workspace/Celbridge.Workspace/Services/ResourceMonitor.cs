@@ -2,6 +2,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Timer = System.Timers.Timer;
 
 namespace Celbridge.Workspace.Services;
@@ -63,9 +64,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             /// Start monitoring the project folder for file system changes.
             _fileSystemWatcher = new FileSystemWatcher(_projectFolderPath)
             {
-                NotifyFilter = NotifyFilters.FileName 
-                             | NotifyFilters.DirectoryName 
-                             | NotifyFilters.LastWrite 
+                NotifyFilter = NotifyFilters.FileName
+                             | NotifyFilters.DirectoryName
+                             | NotifyFilters.LastWrite
                              | NotifyFilters.Size,
                 IncludeSubdirectories = true,
                 EnableRaisingEvents = false
@@ -137,7 +138,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         // Send granular notification for listeners (e.g., document editors)
         OnResourceCreated(e.FullPath);
-        
+
         ScheduleResourceUpdate();
     }
 
@@ -150,7 +151,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         // Send granular notification for listeners (e.g., document editors)
         OnResourceChanged(e.FullPath);
-        
+
         ScheduleResourceUpdate();
     }
 
@@ -163,7 +164,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         // Send granular notification for listeners (e.g., document editors)
         OnResourceDeleted(e.FullPath);
-        
+
         ScheduleResourceUpdate();
     }
 
@@ -176,11 +177,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         // Send granular notifications for listeners
         OnResourceRenamed(e.OldFullPath, e.FullPath);
-        
+
         // Also notify as changed since content may have been updated
         // (handles applications that use rename as part of save, e.g., Excel)
         OnResourceChanged(e.FullPath);
-        
+
         ScheduleResourceUpdate();
     }
 
@@ -229,12 +230,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return;
         }
 
-        // Marshal to UI thread since UpdateResourcesAsync may update UI
-        _dispatcher.TryEnqueue(async () =>
+        // Marshal to UI thread since UpdateResources may trigger UI updates via message
+        _dispatcher.TryEnqueue(() =>
         {
-            var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+            var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-            var result = await explorerService.UpdateResourcesAsync();
+            var result = resourceService.UpdateResources();
             if (result.IsFailure)
             {
                 _logger.LogWarning(result, "Failed to refresh resources");
@@ -254,9 +255,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
-        
+
         _logger.LogDebug($"Resource created: {resourceKey}");
-        
+
         _dispatcher.TryEnqueue(() =>
         {
             var message = new MonitoredResourceCreatedMessage(resourceKey);
@@ -272,9 +273,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
-        
+
         _logger.LogDebug($"Resource changed: {resourceKey}");
-        
+
         _dispatcher.TryEnqueue(() =>
         {
             var message = new MonitoredResourceChangedMessage(resourceKey);
@@ -290,9 +291,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
-        
+
         _logger.LogDebug($"Resource deleted: {resourceKey}");
-        
+
         _dispatcher.TryEnqueue(() =>
         {
             var message = new MonitoredResourceDeletedMessage(resourceKey);
@@ -304,15 +305,15 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     {
         var oldResourceKey = GetResourceKey(oldFullPath);
         var newResourceKey = GetResourceKey(newFullPath);
-        
+
         if (oldResourceKey.IsEmpty || newResourceKey.IsEmpty)
         {
             // One or both paths are not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
-        
+
         _logger.LogDebug($"Resource renamed: {oldResourceKey} -> {newResourceKey}");
-        
+
         _dispatcher.TryEnqueue(() =>
         {
             var message = new MonitoredResourceRenamedMessage(oldResourceKey, newResourceKey);
@@ -327,10 +328,10 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private bool ShouldIgnorePath(string fullPath)
     {
         var fileName = Path.GetFileName(fullPath);
-        
+
         // Cross-platform: Unix hidden files start with '.'
-        if (fileName.StartsWith(".") || 
-            fileName.StartsWith("~") || 
+        if (fileName.StartsWith(".") ||
+            fileName.StartsWith("~") ||
             fileName.EndsWith(".tmp"))
         {
             return true;
@@ -353,7 +354,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         {
             return true;
         }
-        
+
         // Windows-specific checks
         if (OperatingSystem.IsWindows())
         {
@@ -376,7 +377,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 return true;
             }
         }
-        
+
         // Check if path is directly under project root and matches ignored folders
         var projectFolder = _projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var relativePath = fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase)
@@ -386,14 +387,14 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         if (!string.IsNullOrEmpty(relativePath))
         {
             var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
-            
+
             // Only ignore "celbridge" folder if it's directly in the project root
             if (firstSegment.Equals("celbridge", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
         }
-        
+
         // Ignore specific files and folders at any level
         var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (pathParts.Any(part => part.Equals(".vs", StringComparison.OrdinalIgnoreCase) ||
@@ -410,7 +411,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private ResourceKey GetResourceKey(string fullPath)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var result = resourceRegistry.GetResourceKey(fullPath);
         if (result.IsFailure)
         {

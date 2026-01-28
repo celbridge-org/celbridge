@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Validators;
+namespace Celbridge.Validators;
 
 /// <summary>
 /// isValid is true if the input string is valid.

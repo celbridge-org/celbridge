@@ -148,7 +148,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         // For unrecognized extensions (including empty), check if the file is text
         if (!_fileTypeHelper.IsRecognizedExtension(extension))
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             var filePath = resourceRegistry.GetResourcePath(fileResource);
 
             var result = TextBinarySniffer.IsTextFile(filePath);
@@ -206,7 +206,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var filePath = resourceRegistry.GetResourcePath(fileResource);
         if (string.IsNullOrEmpty(filePath) ||
@@ -264,7 +264,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         try
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
             var filePath = resourceRegistry.GetResourcePath(fileResource);
 
@@ -325,7 +325,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
         if (openDocuments is null ||
@@ -496,7 +496,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var oldResource = message.OldResource.ToString();
         var newResource = message.NewResource.ToString();
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var newResourcePath = resourceRegistry.GetResourcePath(message.NewResource);
 
         Guard.IsTrue(File.Exists(newResourcePath));

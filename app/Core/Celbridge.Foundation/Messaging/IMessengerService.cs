@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Messaging
+namespace Celbridge.Messaging
 {
     /// <summary>
     /// Send and register to listen for messages.

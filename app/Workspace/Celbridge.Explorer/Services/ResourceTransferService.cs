@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Services;
@@ -14,7 +15,7 @@ public class ResourceTransferService : IResourceTransferService
     
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry => 
-        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     public ResourceTransferService(
         ICommandService commandService,

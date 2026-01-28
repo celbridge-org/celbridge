@@ -1,4 +1,4 @@
-﻿namespace Celbridge.Explorer;
+namespace Celbridge.Explorer;
 
 /// <summary>
 /// A folder resource in the project folder.

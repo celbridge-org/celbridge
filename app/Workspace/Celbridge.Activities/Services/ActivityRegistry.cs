@@ -31,7 +31,7 @@ public class ActivityRegistry
         _messengerService = messengerService;
         _moduleService = moduleService;
         _projectService = projectService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
     public async Task<Result> Initialize()

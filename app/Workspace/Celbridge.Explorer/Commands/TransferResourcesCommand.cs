@@ -41,7 +41,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileOpService = workspaceService.FileOperationService;
 
         // Filter out any items where the destination resource already exists

@@ -48,7 +48,7 @@ public partial class ResourceNameInspectorViewModel : InspectorViewModel
         Guard.IsNotNull(workspaceWrapper.WorkspaceService);
 
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         PropertyChanged += ViewModel_PropertyChanged;
     }

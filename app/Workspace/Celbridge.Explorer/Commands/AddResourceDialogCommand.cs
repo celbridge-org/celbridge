@@ -59,7 +59,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Failed to show add file dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
@@ -117,7 +117,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Failed to show add folder dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
@@ -184,7 +184,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result<string>.Fail("Parent folder is null");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         string defaultFolderName = string.Empty;
         int folderNumber = 1;
@@ -217,7 +217,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result<string>.Fail("Parent folder is null");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension

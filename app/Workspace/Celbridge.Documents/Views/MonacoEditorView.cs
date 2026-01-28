@@ -20,7 +20,7 @@ public sealed partial class MonacoEditorView : DocumentView
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();

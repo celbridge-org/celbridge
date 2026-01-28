@@ -1,4 +1,4 @@
-﻿namespace Celbridge.DataTransfer;
+namespace Celbridge.DataTransfer;
 
 /// <summary>
 /// Specifies whether transfered data should be copied or moved.

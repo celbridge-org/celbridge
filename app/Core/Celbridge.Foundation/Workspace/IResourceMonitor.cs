@@ -1,4 +1,4 @@
-namespace Celbridge.Workspace;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Interface for monitoring file system changes in the project folder and scheduling resource updates.

@@ -37,7 +37,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileOpService = workspaceService.FileOperationService;
 
         var resourcePath = resourceRegistry.GetResourcePath(Resource);

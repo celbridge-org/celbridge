@@ -34,7 +34,7 @@ public sealed partial class WebAppDocumentView : DocumentView
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         _webView = new WebView2();
 

@@ -35,8 +35,8 @@ public partial class ResourceTreeViewModel : ObservableObject
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
-        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceTransferService;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;

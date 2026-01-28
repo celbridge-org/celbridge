@@ -33,7 +33,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     {
         _logger = logger;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         PropertyChanged += ViewModel_PropertyChanged;
     }

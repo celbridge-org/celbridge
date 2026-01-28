@@ -37,7 +37,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _layoutManager = layoutManager;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();

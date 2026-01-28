@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Celbridge.Logging;
@@ -14,13 +15,12 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly IProjectService _projectService;
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry => 
-        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
@@ -50,7 +50,6 @@ public class ExplorerService : IExplorerService, IDisposable
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IProjectService projectService,
         IFileIconService fileIconService,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -61,50 +60,13 @@ public class ExplorerService : IExplorerService, IDisposable
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _projectService = projectService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
-
-        // Clean up the trash folder from previous sessions.
-        // The trash folder contains soft-deleted files and folders from previous delete operations.
-        var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-        var trashFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
-        if (Directory.Exists(trashFolderPath))
-        {
-            try
-            {
-                Directory.Delete(trashFolderPath, true);
-            }
-            catch
-            {
-                // Best effort cleanup - ignore errors
-            }
-        }
-
-        // Initialize the resource monitor
-        InitializeResourceMonitor();
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
-        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
-    }
-
-    private void InitializeResourceMonitor()
-    {
-        try
-        {
-            var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceMonitor;
-            var initResult = resourceMonitor.Initialize();
-            if (initResult.IsFailure)
-            {
-                _logger.LogWarning(initResult, "Failed to initialize resource monitor");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Exception occurred while initializing resource monitor: {ex.Message}");
-        }
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
@@ -130,41 +92,22 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
-    private void OnMainWindowActivatedMessage(object recipient, MainWindowActivatedMessage message)
+    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        if (!_isWorkspaceLoaded)
+        var result = await PopulateTreeViewAsync();
+        if (result.IsFailure)
         {
-            return;
+            _logger.LogWarning(result.Error);
         }
-
-#if !DEBUG
-        // Refresh resources when the window gains focus to catch any external file system changes
-        // Disabled in debug to avoid triggering an update every time we switch between the app and the debugger.
-        _commandService.Execute<IUpdateResourcesCommand>();
-#endif
     }
 
-    public void ScheduleResourceUpdate()
+    private async Task<Result> PopulateTreeViewAsync()
     {
-        var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceMonitor;
-        resourceMonitor.ScheduleResourceUpdate();
-    }
-
-    public async Task<Result> UpdateResourcesAsync()
-    {
-        var updateResult = ResourceRegistry.UpdateResourceRegistry();
-        if (updateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to update resources. {updateResult.Error}");
-        }
-
         var populateResult = await ResourceTreeView.PopulateTreeView(ResourceRegistry);
         if (populateResult.IsFailure)
         {
-            return Result.Fail($"Failed to update resources. {populateResult.Error}");
+            return Result.Fail($"Failed to populate tree view. {populateResult.Error}");
         }
-
-        _logger.LogDebug("Updated resources successfully.");
 
         return Result.Ok();
     }
@@ -339,21 +282,6 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
-
-                // Clean up the trash folder on project close.
-                // This ensures deleted files don't persist after the project is closed.
-                var trashFolderPath = Path.Combine(ResourceRegistry.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
-                if (Directory.Exists(trashFolderPath))
-                {
-                    try
-                    {
-                        Directory.Delete(trashFolderPath, true);
-                    }
-                    catch
-                    {
-                        // Best effort cleanup - ignore errors
-                    }
-                }
             }
 
             _disposed = true;

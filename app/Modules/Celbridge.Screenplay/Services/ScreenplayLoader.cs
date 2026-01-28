@@ -17,7 +17,7 @@ public class ScreenplayLoader
     public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
     public async Task<Result> LoadScreenplayAsync(ResourceKey workbookFile)

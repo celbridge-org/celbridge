@@ -50,7 +50,7 @@ public class ScreenplaySaver
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceRegistry;
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;

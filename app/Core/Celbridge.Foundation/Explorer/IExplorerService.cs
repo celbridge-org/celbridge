@@ -29,17 +29,6 @@ public interface IExplorerService
     ResourceKey SelectedResource { get; }
 
     /// <summary>
-    /// Schedules a resource update. 
-    /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
-    /// </summary>
-    void ScheduleResourceUpdate();
-
-    /// <summary>
-    /// Refreshes the resource registry and tree view immediately.
-    /// </summary>
-    Task<Result> UpdateResourcesAsync();
-
-    /// <summary>
     /// Select a resource in the explorer panel.
     /// </summary>
     Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel);

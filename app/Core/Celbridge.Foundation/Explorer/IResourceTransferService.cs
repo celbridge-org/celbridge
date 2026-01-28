@@ -1,6 +1,7 @@
 using Celbridge.DataTransfer;
+using Celbridge.Explorer;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.Resources;
 
 /// <summary>
 /// Service for creating and executing resource transfer operations.

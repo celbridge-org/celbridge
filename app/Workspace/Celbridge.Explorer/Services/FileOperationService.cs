@@ -38,7 +38,7 @@ public class FileOperationService : IFileOperationService
         _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
 
     private IResourceRegistry? ResourceRegistry =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceRegistry : null;
+        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceService.Registry : null;
 
     private string ProjectFolderPath =>
         _workspaceWrapper.IsWorkspacePageLoaded ? ResourceRegistry!.ProjectFolderPath : string.Empty;

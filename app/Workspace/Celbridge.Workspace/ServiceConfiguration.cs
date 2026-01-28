@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Navigation;
+using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.Workspace.Commands;
 using Celbridge.Workspace.Services;
@@ -24,6 +25,7 @@ public static class ServiceConfiguration
         GenerativeAI.ServiceConfiguration.ConfigureServices(services);
         Inspector.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
+        Resources.ServiceConfiguration.ConfigureServices(services);
 
         //
         // Register services

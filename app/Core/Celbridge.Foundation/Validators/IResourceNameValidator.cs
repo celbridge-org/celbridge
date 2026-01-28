@@ -1,4 +1,4 @@
-﻿using Celbridge.Explorer;
+using Celbridge.Explorer;
 
 namespace Celbridge.Validators;
 

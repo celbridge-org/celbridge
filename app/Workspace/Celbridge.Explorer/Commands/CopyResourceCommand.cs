@@ -50,7 +50,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceRegistry;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileOpService = workspaceService.FileOperationService;
 
         // Resolve destination to handle folder drops

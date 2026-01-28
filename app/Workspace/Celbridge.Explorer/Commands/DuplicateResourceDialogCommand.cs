@@ -44,7 +44,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)

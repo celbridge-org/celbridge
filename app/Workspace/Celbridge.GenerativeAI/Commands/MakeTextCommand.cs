@@ -35,7 +35,7 @@ public class MakeTextCommand : CommandBase, IMakeTextCommand
         }
         var content = generateResult.Value;
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Todo: Update this to support undo/redo
 

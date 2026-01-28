@@ -1,8 +1,8 @@
+using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using System.Text;
 
 namespace Celbridge.Workspace.Services;
 
@@ -30,7 +30,7 @@ public class WorkspaceLoader
         //
         // Set the current directory to the workspace project folder
         //
-        var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceRegistry.ProjectFolderPath;
+        var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
         if (Path.Exists(projectFolderPath))
         {
@@ -71,11 +71,12 @@ public class WorkspaceLoader
         try
         {
             // Restore previous state of expanded folders before populating resources
+            var resourceService = workspaceService.ResourceService;
             var expandedFolders = await workspaceSettings.GetPropertyAsync<List<string>>("ExpandedFolders");
             if (expandedFolders is not null &&
                 expandedFolders.Count > 0)
             {
-                var resourceRegistry = workspaceService.ResourceRegistry;
+                var resourceRegistry = workspaceService.ResourceService.Registry;
                 foreach (var expandedFolder in expandedFolders)
                 {
                     resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
@@ -83,7 +84,7 @@ public class WorkspaceLoader
             }
 
             // Update resources registry immediately to ensure we are up to date
-            var updateResult = await explorerService.UpdateResourcesAsync();
+            var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
             {
                 return Result.Fail("Failed to update resources")
@@ -151,14 +152,14 @@ public class WorkspaceLoader
     {
         var projectService = ServiceLocator.AcquireService<IProjectService>();
         var currentProject = projectService.CurrentProject;
-        
+
         if (currentProject is null)
         {
             return;
         }
 
         var migrationResult = currentProject.MigrationResult;
-        
+
         if (migrationResult.Status != MigrationStatus.Complete)
         {
             HandleMigrationFailure(migrationResult, currentProject.ProjectFilePath);
@@ -197,7 +198,7 @@ public class WorkspaceLoader
             sb.AppendLine($"  Shortcut #{error.ShortcutIndex} ({error.PropertyName}): {error.Message}");
         }
         _logger.LogError(sb.ToString());
-        
+
         var message = new ConsoleErrorMessage(ConsoleErrorType.ShortcutConfigError, projectFileName);
         messengerService.Send(message);
     }
@@ -208,7 +209,7 @@ public class WorkspaceLoader
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         ConsoleErrorMessage message;
-        
+
         switch (migrationResult.Status)
         {
             case MigrationStatus.InvalidConfig:

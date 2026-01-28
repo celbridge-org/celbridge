@@ -50,7 +50,7 @@ public class InspectorFactory : IInspectorFactory
     {
         try
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             var path = resourceRegistry.GetResourcePath(resource);
 
             if (Directory.Exists(path))

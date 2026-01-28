@@ -48,7 +48,7 @@ public class EntityAnnotationCache
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Remove cached entries for resources that no longer exist.
         bool updated = false;
