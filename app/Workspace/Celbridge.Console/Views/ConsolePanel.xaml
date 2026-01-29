@@ -19,7 +19,7 @@
     <Grid Grid.Row="0"
           BorderBrush="{ThemeResource PanelBorderBrush}"
           BorderThickness="0,0,0,1"
-          Background="Transparent"
+          Background="{ThemeResource PanelBackgroundABrush}"
           Tapped="TitleBar_Tapped">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
