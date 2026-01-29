@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Explorer;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -20,17 +21,20 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ICommandService _commandService;
 
     public CopyResourceCommand(
         IProjectService projectService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ICommandService commandService)
     {
         _projectService = projectService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
+        _commandService = commandService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -105,12 +109,20 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         var newParentFolder = resolvedDestResource.GetParent();
         if (!newParentFolder.IsEmpty)
         {
-            resourceRegistry.SetFolderIsExpanded(newParentFolder, true);
+            _commandService.Execute<IExpandFolderCommand>(command =>
+            {
+                command.FolderResource = newParentFolder;
+                command.Expanded = true;
+            });
         }
 
         if (ExpandCopiedFolder && isFolder)
         {
-            resourceRegistry.SetFolderIsExpanded(resolvedDestResource, true);
+            _commandService.Execute<IExpandFolderCommand>(command =>
+            {
+                command.FolderResource = resolvedDestResource;
+                command.Expanded = true;
+            });
         }
 
         return Result.Ok();

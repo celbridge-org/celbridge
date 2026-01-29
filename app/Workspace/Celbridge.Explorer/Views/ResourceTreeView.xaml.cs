@@ -1,4 +1,5 @@
 using Celbridge.Explorer.ViewModels;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using Windows.ApplicationModel.DataTransfer;
@@ -11,6 +12,7 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private IResourceRegistry? _resourceRegistry;
     private bool _isPopulating;
 
@@ -35,6 +37,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         Loaded += ResourceTreeView_Loaded;
         Unloaded += ResourceTreeView_Unloaded;
@@ -211,12 +214,14 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     {
         Guard.IsNotNull(_resourceRegistry);
 
+        var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
+
         foreach (var resource in resources)
         {
             if (resource is IFolderResource folderResource)
             {
                 var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
-                var isExpanded = _resourceRegistry.IsFolderExpanded(resourceKey);
+                var isExpanded = folderStateService.IsExpanded(resourceKey);
 
                 var folderNode = new TreeViewNode
                 {
@@ -227,7 +232,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
                 if (folderResource.Children.Count > 0)
                 {
-                    if (folderResource.IsExpanded)
+                    if (isExpanded)
                     {
                         PopulateTreeViewNodes(folderNode.Children, folderResource.Children);
                     }
@@ -304,7 +309,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     }
 
     private void OpenResource(IResource resource, TreeViewNode node)
-    { 
+    {
         if (resource is IFolderResource)
         {
             // Opening a folder resource toggles the expanded state

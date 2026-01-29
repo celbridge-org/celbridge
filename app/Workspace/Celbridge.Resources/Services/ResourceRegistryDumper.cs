@@ -49,6 +49,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         // Append the new contents of the resource registry
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
 
         _dumpFile.ClearFile();
 
@@ -56,7 +57,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         WriteFolder(resourceRegistry.RootFolder);
 
         // Write expanded folders to the dump file
-        foreach (var expandedFolder in resourceRegistry.ExpandedFolders)
+        foreach (var expandedFolder in folderStateService.ExpandedFolders)
         {
             WriteObject(expandedFolder);
         }

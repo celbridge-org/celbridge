@@ -257,9 +257,6 @@ public class ResourceRegistry : IResourceRegistry
         {
             SynchronizeFolder(_rootFolder, ProjectFolderPath);
 
-            ExpandedFolders.Remove(string.Empty);
-            ExpandedFolders.Remove((expandedFolder) => GetResource(expandedFolder).IsFailure);
-
             _messengerService.Send(new ResourceRegistryUpdatedMessage());
 
             return Result.Ok();
@@ -273,10 +270,6 @@ public class ResourceRegistry : IResourceRegistry
 
     private void SynchronizeFolder(FolderResource folderResource, string folderPath)
     {
-        // Apply expanded folder state
-
-        var folderResourceKey = GetResourceKey(folderResource);
-        folderResource.IsExpanded = IsFolderExpanded(folderResourceKey);
 
         // Update child resources
 
@@ -344,30 +337,6 @@ public class ResourceRegistry : IResourceRegistry
             .OrderBy(child => child is IFolderResource ? 0 : 1)
             .ThenBy(child => child.Name)
             .ToList();
-    }
-
-    public List<string> ExpandedFolders { get; } = new();
-
-    public void SetFolderIsExpanded(ResourceKey folderResource, bool isExpanded)
-    {
-        if (isExpanded)
-        {
-            if (!folderResource.IsEmpty &&
-                !ExpandedFolders.Contains(folderResource))
-            {
-                ExpandedFolders.Add(folderResource);
-                ExpandedFolders.Sort();
-            }
-        }
-        else
-        {
-            ExpandedFolders.Remove(folderResource);
-        }
-    }
-
-    public bool IsFolderExpanded(ResourceKey folderResource)
-    {
-        return ExpandedFolders.Contains(folderResource);
     }
 
     public List<(ResourceKey Resource, string Path)> GetAllFileResources()

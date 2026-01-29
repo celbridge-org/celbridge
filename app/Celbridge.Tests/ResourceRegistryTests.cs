@@ -1,7 +1,9 @@
+using Celbridge.Explorer.Services;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests;
 
@@ -109,23 +111,23 @@ public class ResourceRegistryTests
         var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
-        resourceRegistry.SetFolderIsExpanded(FolderNameA, true);
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        var folderStateService = new FolderStateService(workspaceWrapper);
+        folderStateService.SetExpanded(FolderNameA, true);
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
         updateResult.IsSuccess.Should().BeTrue();
 
         //
-        // Check that the folder resource is expanded.
+        // Check that the folder resource expanded state is tracked correctly.
         //
 
-        var folderResource = (resourceRegistry.RootFolder.Children[0] as FolderResource)!;
-        folderResource.IsExpanded.Should().BeTrue();
-
-        var expandedFoldersOut = resourceRegistry.ExpandedFolders;
+        var expandedFoldersOut = folderStateService.ExpandedFolders;
         expandedFoldersOut.Count.Should().Be(1);
         expandedFoldersOut[0].Should().Be(FolderNameA);
 
+        var folderResource = (resourceRegistry.RootFolder.Children[0] as FolderResource)!;
         var folderPath = resourceRegistry.GetResourceKey(folderResource);
-        resourceRegistry.IsFolderExpanded(folderPath).Should().BeTrue();
+        folderStateService.IsExpanded(folderPath).Should().BeTrue();
     }
 }

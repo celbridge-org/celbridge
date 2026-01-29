@@ -18,6 +18,11 @@ public interface IExplorerService
     IResourceTreeView ResourceTreeView { get; }
 
     /// <summary>
+    /// Returns the Folder State Service that manages folder expanded state in the resource tree.
+    /// </summary>
+    IFolderStateService FolderStateService { get; }
+
+    /// <summary>
     /// The currenlty selected resource in the Explorer Panel.
     /// </summary>
     ResourceKey SelectedResource { get; }
