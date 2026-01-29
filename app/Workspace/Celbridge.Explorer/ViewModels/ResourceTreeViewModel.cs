@@ -19,6 +19,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IResourceTransferService _resourceTransferService;
     private readonly IExplorerService _explorerService;
+    private readonly IFolderStateService _folderStateService;
     private readonly IDocumentsService _documentsService;
     private readonly IDataTransferService _dataTransferService;
     private readonly IPythonService _pythonService;
@@ -38,6 +39,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
         _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
+        _folderStateService = _explorerService.FolderStateService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
         _pythonService = workspaceWrapper.WorkspaceService.PythonService;
@@ -190,14 +192,13 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void SetFolderIsExpanded(IFolderResource folder, bool isExpanded)
     {
-        var resourceRegistry = _resourceRegistry;
-        var folderResource = resourceRegistry.GetResourceKey(folder);
+        var folderResource = _resourceRegistry.GetResourceKey(folder);
 
-        bool currentRegistryState = resourceRegistry.IsFolderExpanded(folderResource);
-        bool curentFolderState = folder.IsExpanded;
+        bool currentStateServiceState = _folderStateService.IsExpanded(folderResource);
+        bool currentFolderState = folder.IsExpanded;
 
-        if (currentRegistryState == isExpanded &&
-            curentFolderState == isExpanded)
+        if (currentStateServiceState == isExpanded &&
+            currentFolderState == isExpanded)
         {
             return;
         }
@@ -343,7 +344,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceRegistry = _resourceRegistry;
         var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
 
-        if(!resourceKey.IsEmpty)
+        if (!resourceKey.IsEmpty)
         {
             _explorerService.OpenResource(resourceKey);
         }

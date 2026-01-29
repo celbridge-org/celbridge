@@ -1,3 +1,5 @@
+using Celbridge.Commands;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -9,13 +11,16 @@ public class AddResourceHelper
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileTemplateService _fileTemplateService;
+    private readonly ICommandService _commandService;
 
     public AddResourceHelper(
         IWorkspaceWrapper workspaceWrapper,
-        IFileTemplateService fileTemplateService)
+        IFileTemplateService fileTemplateService,
+        ICommandService commandService)
     {
         _workspaceWrapper = workspaceWrapper;
         _fileTemplateService = fileTemplateService;
+        _commandService = commandService;
     }
 
     /// <summary>
@@ -71,7 +76,7 @@ public class AddResourceHelper
         // Expand the folder containing the newly created resource
         //
 
-        ExpandParentFolder(destResource, resourceRegistry);
+        ExpandParentFolder(destResource);
 
         return Result.Ok();
     }
@@ -156,12 +161,16 @@ public class AddResourceHelper
         return await opService.CopyFolderAsync(sourcePath, destPath);
     }
 
-    private static void ExpandParentFolder(ResourceKey destResource, IResourceRegistry registry)
+    private void ExpandParentFolder(ResourceKey destResource)
     {
         var parentFolderKey = destResource.GetParent();
         if (!parentFolderKey.IsEmpty)
         {
-            registry.SetFolderIsExpanded(parentFolderKey, true);
+            _commandService.Execute<IExpandFolderCommand>(command =>
+            {
+                command.FolderResource = parentFolderKey;
+                command.Expanded = true;
+            });
         }
     }
 }

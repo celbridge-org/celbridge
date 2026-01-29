@@ -67,23 +67,15 @@ public class WorkspaceLoader
         //
 
         var explorerService = workspaceService.ExplorerService;
+        var folderStateService = explorerService.FolderStateService;
 
         try
         {
             // Restore previous state of expanded folders before populating resources
-            var resourceService = workspaceService.ResourceService;
-            var expandedFolders = await workspaceSettings.GetPropertyAsync<List<string>>("ExpandedFolders");
-            if (expandedFolders is not null &&
-                expandedFolders.Count > 0)
-            {
-                var resourceRegistry = workspaceService.ResourceService.Registry;
-                foreach (var expandedFolder in expandedFolders)
-                {
-                    resourceRegistry.SetFolderIsExpanded(expandedFolder, true);
-                }
-            }
+            await folderStateService.LoadAsync();
 
             // Update resource registry immediately to ensure we are up to date
+            var resourceService = workspaceService.ResourceService;
             var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
             {

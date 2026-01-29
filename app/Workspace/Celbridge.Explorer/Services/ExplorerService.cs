@@ -1,7 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
-using Celbridge.Logging;
 
 namespace Celbridge.Explorer.Services;
 
@@ -17,24 +17,26 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry? _resourceRegistry;
-    private IResourceRegistry ResourceRegistry => 
+    private IResourceRegistry ResourceRegistry =>
         _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
 
     private IResourceTreeView? _resourceTreeView;
-    public IResourceTreeView ResourceTreeView 
+    public IResourceTreeView ResourceTreeView
     {
         get
         {
             return _resourceTreeView ?? throw new NullReferenceException("ResourceTreeView is null.");
         }
-        set 
-        { 
-            _resourceTreeView = value; 
+        set
+        {
+            _resourceTreeView = value;
         }
     }
+
+    public IFolderStateService FolderStateService { get; }
 
     public ResourceKey SelectedResource { get; private set; }
 
@@ -57,6 +59,8 @@ public class ExplorerService : IExplorerService, IDisposable
         _commandService = commandService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
+
+        FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
@@ -82,12 +86,15 @@ public class ExplorerService : IExplorerService, IDisposable
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreSelectedResource();            
+            _ = StoreSelectedResource();
         }
     }
 
     private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
+        // Clean up expanded folders that no longer exist in the registry
+        FolderStateService.Cleanup();
+
         var result = await PopulateTreeViewAsync();
         if (result.IsFailure)
         {
