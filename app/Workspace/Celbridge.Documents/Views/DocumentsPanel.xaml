@@ -11,5 +11,9 @@
            VerticalAlignment="Stretch"
            TabCloseRequested="TabView_CloseRequested"
            SelectionChanged="TabView_SelectionChanged"
-           TabItemsChanged="TabView_TabItemsChanged" />
+           TabItemsChanged="TabView_TabItemsChanged">
+    <TabView.TabStripFooter>
+      <local:DocumentToolbar x:Name="DocumentToolbar" />
+    </TabView.TabStripFooter>
+  </TabView>
 </UserControl>

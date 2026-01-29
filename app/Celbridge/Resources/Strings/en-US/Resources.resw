@@ -459,6 +459,9 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
   </data>
+  <data name="DocumentToolbar_SplitViewTooltip" xml:space="preserve">
+    <value>Split view for side-by-side editing</value>
+  </data>
   <data name="DocumentTab_Close" xml:space="preserve">
     <value>Close</value>
   </data>

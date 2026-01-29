@@ -1,0 +1,22 @@
+﻿<UserControl
+    x:Class="Celbridge.Documents.Views.DocumentToolbar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    HorizontalAlignment="Right">
+
+  <!-- Toolbar Buttons -->
+  <StackPanel x:Name="ToolbarPanel"
+              Orientation="Horizontal"
+              Spacing="0"
+              VerticalAlignment="Center"
+              Margin="0,0,4,0">
+    <Button x:Name="SplitViewButton"
+            ToolTipService.ToolTip="{x:Bind SplitViewTooltipString}"
+            Padding="4"
+            Click="SplitViewButton_Click">
+      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                Glyph="&#xE8C0;"/>
+    </Button>
+  </StackPanel>
+</UserControl>
