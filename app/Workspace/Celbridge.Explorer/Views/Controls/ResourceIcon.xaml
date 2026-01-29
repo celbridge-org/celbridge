@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Celbridge.Explorer.Views.Controls.ResourceIcon"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Explorer.Views.Controls"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
+
+    <Grid>
+        <!-- Folder icon (FontIcon) - shown when resource is a folder -->
+        <FontIcon x:Name="FolderIcon"
+                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  Glyph="&#xE8D5;"
+                  FontSize="16"
+                  Margin="0,4,0,0"
+                  VerticalAlignment="Center"
+                  Foreground="#FFCC40"
+                  Visibility="Collapsed" />
+        
+        <!-- File icon (FileIcon control) - shown when resource is a file -->
+        <controls:FileIcon x:Name="FileIconControl"
+                           Size="16"
+                           MinWidth="20"
+                           Margin="0"
+                           Visibility="Collapsed" />
+    </Grid>
+</UserControl>

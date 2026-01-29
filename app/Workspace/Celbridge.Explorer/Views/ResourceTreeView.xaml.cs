@@ -59,9 +59,6 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
     public async Task<Result> PopulateTreeView(IResourceRegistry resourceRegistry)
     {
         // Prevent concurrent population which causes duplicate resources in the tree view.
-        // This can happen because OnLoaded calls PopulateTreeView, and shortly after,
-        // WorkspaceLoader.LoadWorkspaceAsync also calls UpdateResourcesAsync which calls PopulateTreeView.
-        // The Task.Delay(10) below creates a window where a second call can interleave.
         if (_isPopulating)
         {
             return Result.Ok();
@@ -78,34 +75,36 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
             var rootFolder = _resourceRegistry.RootFolder;
             var rootNodes = ResourcesTreeView.RootNodes;
 
-            // Make a note of the currently selected resource
+            // Save state before clearing
+            var savedScrollOffset = ResourceScrollViewer.VerticalOffset;
             var selectedResourceKey = GetSelectedResource();
 
             try
             {
-                // Clear existing nodes
+                // Build all new nodes in memory first, then swap atomically
+                var newNodes = BuildTreeViewNodes(rootFolder.Children);
+                
                 rootNodes.Clear();
-
-                // NOTE: There was previously an issue with Resource icons not displaying correctly.
-                // Adding a small delay here seemed to help mitigate the issue. I think it was caused by
-                // a race condition where the TreeView was being updated twice in quick succession.
-                // The root should now have been fixed with the _isPopulating flag above, but if the issue reoccurs
-                // the delay fix can be reinstated.
-
-                // Recursively populate the Tree View
-                PopulateTreeViewNodes(rootNodes, rootFolder.Children);
+                foreach (var node in newNodes)
+                {
+                    rootNodes.Add(node);
+                }
             }
             catch (Exception ex)
             {
                 return Result.Fail($"An exception occurred when populating the tree view.")
-                    .WithException(ex); ;
+                    .WithException(ex);
             }
 
-            // Attempt to re-select the previously selected resource
+            // Restore selection (without scrolling - we'll restore scroll position separately)
             if (_resourceRegistry.GetResource(selectedResourceKey) != null)
             {
-                await SetSelectedResource(selectedResourceKey);
+                await SetSelectedResource(selectedResourceKey, scrollIntoView: false);
             }
+            
+            // Restore scroll position
+            ResourcesTreeView.UpdateLayout();
+            ResourceScrollViewer.ChangeView(null, savedScrollOffset, null, disableAnimation: true);
 
             return Result.Ok();
         }
@@ -113,6 +112,64 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         {
             _isPopulating = false;
         }
+    }
+
+    /// <summary>
+    /// Builds TreeViewNodes for the given resources without adding them to the TreeView.
+    /// </summary>
+    private List<TreeViewNode> BuildTreeViewNodes(IList<IResource> resources)
+    {
+        Guard.IsNotNull(_resourceRegistry);
+
+        var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
+        var nodes = new List<TreeViewNode>();
+
+        foreach (var resource in resources)
+        {
+            if (resource is IFolderResource folderResource)
+            {
+                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
+                var isExpanded = folderStateService.IsExpanded(resourceKey);
+
+                var folderNode = new TreeViewNode
+                {
+                    Content = folderResource,
+                    IsExpanded = isExpanded,
+                };
+                AutomationProperties.SetName(folderNode, folderResource.Name);
+
+                if (folderResource.Children.Count > 0)
+                {
+                    if (isExpanded)
+                    {
+                        var childNodes = BuildTreeViewNodes(folderResource.Children);
+                        foreach (var childNode in childNodes)
+                        {
+                            folderNode.Children.Add(childNode);
+                        }
+                    }
+                    else
+                    {
+                        // The child nodes will only be populated if the user expands the folder
+                        folderNode.HasUnrealizedChildren = true;
+                    }
+                }
+
+                nodes.Add(folderNode);
+            }
+            else if (resource is IFileResource fileResource)
+            {
+                var fileNode = new TreeViewNode
+                {
+                    Content = fileResource
+                };
+                AutomationProperties.SetName(fileNode, fileResource.Name);
+
+                nodes.Add(fileNode);
+            }
+        }
+
+        return nodes;
     }
 
     public ResourceKey GetSelectedResource()
@@ -132,7 +189,7 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
         return selectedResourceKey;
     }
 
-    public async Task<Result> SetSelectedResource(ResourceKey resource)
+    public async Task<Result> SetSelectedResource(ResourceKey resource, bool scrollIntoView = true)
     {
         // If the resource registry hasn't been set yet (tree not populated), return early
         if (_resourceRegistry is null)
@@ -167,11 +224,15 @@ public sealed partial class ResourceTreeView : UserControl, IResourceTreeView
 
         ResourcesTreeView.SelectedItem = node;
 
-        // Scroll the list view to bring the selected item into view
-        var itemContainer = (TreeViewItem)ResourcesTreeView.ContainerFromNode(node);
-        if (itemContainer != null)
+        // Only scroll to selected item if explicitly requested (e.g., user navigation)
+        // During tree repopulation, we preserve the original scroll position instead
+        if (scrollIntoView)
         {
-            itemContainer.StartBringIntoView();
+            var itemContainer = (TreeViewItem)ResourcesTreeView.ContainerFromNode(node);
+            if (itemContainer != null)
+            {
+                itemContainer.StartBringIntoView();
+            }
         }
 
         await Task.CompletedTask;

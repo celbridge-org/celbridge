@@ -268,71 +268,48 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
+    /// <summary>
+    /// Recursively synchronizes a folder resource with the file system.
+    /// Always creates fresh resource instances to prevent stale TreeViewNode.Content references
+    /// during rapid registry updates (e.g., undo/redo operations).
+    /// </summary>
     private void SynchronizeFolder(FolderResource folderResource, string folderPath)
     {
-
-        // Update child resources
-
-        var existingChildren = folderResource.Children.ToDictionary(child => child.Name);
-
-        // Get filtered list of subfolders in this folder
-
+        // Get filtered lists of subfolders and files
         bool isRootFolder = folderResource.ParentFolder is null;
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
         RemoveHiddenFolders(subFolderPaths, isRootFolder);
 
-        // Get filtered list of files in this folder
-
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
         RemoveHiddenFiles(filePaths);
 
+        // Clear and rebuild with fresh instances
         folderResource.Children.Clear();
 
+        // Add subfolder resources (recursive)
         foreach (var subFolderPath in subFolderPaths)
         {
             var folderName = Path.GetFileName(subFolderPath);
-            if (existingChildren.TryGetValue(folderName, out var existingChild) && existingChild is FolderResource existingFolder)
-            {
-                SynchronizeFolder(existingFolder, subFolderPath);
-                folderResource.AddChild(existingFolder);
-            }
-            else
-            {
-                var newFolder = new FolderResource(folderName, folderResource);
-                SynchronizeFolder(newFolder, subFolderPath);
-                folderResource.AddChild(newFolder);
-            }
+            var childFolder = new FolderResource(folderName, folderResource);
+            SynchronizeFolder(childFolder, subFolderPath);
+            folderResource.AddChild(childFolder);
         }
 
+        // Add file resources
         foreach (var filePath in filePaths)
         {
             var fileName = Path.GetFileName(filePath);
-            if (existingChildren.TryGetValue(fileName, out var existingChild) && existingChild is FileResource)
-            {
-                folderResource.AddChild(existingChild);
-            }
-            else
-            {
-                // Lookup the icon for this type of file 
-                FileIconDefinition iconDefinition;
-                var fileExtension = Path.GetExtension(filePath).TrimStart('.');
+            var fileExtension = Path.GetExtension(filePath).TrimStart('.');
+            
+            var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+            var iconDefinition = getIconResult.IsSuccess 
+                ? getIconResult.Value 
+                : _fileIconService.DefaultFileIcon;
 
-                var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
-                if (getIconResult.IsSuccess)
-                {
-                    iconDefinition = getIconResult.Value;
-                }
-                else
-                {
-                    iconDefinition = _fileIconService.DefaultFileIcon;
-                }
-
-                var fileResource = new FileResource(fileName, folderResource, iconDefinition);
-
-                folderResource.AddChild(fileResource);
-            }
+            folderResource.AddChild(new FileResource(fileName, folderResource, iconDefinition));
         }
 
+        // Sort children: folders first, then files, both alphabetically
         folderResource.Children = folderResource.Children
             .OrderBy(child => child is IFolderResource ? 0 : 1)
             .ThenBy(child => child.Name)
