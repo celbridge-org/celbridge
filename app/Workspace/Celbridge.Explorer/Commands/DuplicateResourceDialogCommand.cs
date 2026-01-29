@@ -91,8 +91,9 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             bool isFolderResource = resource is IFolderResource;
 
             // Maintain the expanded state of folders after rename
+            var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
             bool isExpandedFolder = isFolderResource &&
-                resourceRegistry.IsFolderExpanded(Resource);
+                folderStateService.IsExpanded(Resource);
 
             // Execute a command to move the folder resource to perform the rename
             _commandService.Execute<ICopyResourceCommand>(command =>

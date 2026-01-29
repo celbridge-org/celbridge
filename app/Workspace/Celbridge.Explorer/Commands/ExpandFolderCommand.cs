@@ -11,7 +11,8 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
     public ResourceKey FolderResource { get; set; }
     public bool Expanded { get; set; } = true;
 
-    public ExpandFolderCommand(IWorkspaceWrapper workspaceWrapper)
+    public ExpandFolderCommand(
+        IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -33,9 +34,11 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
             return Result.Fail($"Resource is not a folder. {FolderResource}");
         }
 
-        if (resourceRegistry.IsFolderExpanded(FolderResource) != Expanded)
+        var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
+
+        if (folderStateService.IsExpanded(FolderResource) != Expanded)
         {
-            resourceRegistry.SetFolderIsExpanded(FolderResource, Expanded);
+            folderStateService.SetExpanded(FolderResource, Expanded);
         }
 
         if (folderResource.IsExpanded != Expanded)

@@ -78,22 +78,6 @@ public interface IResourceRegistry
     Result UpdateResourceRegistry();
 
     /// <summary>
-    /// Returns the list of expanded folders in the resource tree.
-    /// </summary>
-    List<string> ExpandedFolders { get; }
-
-    /// <summary>
-    /// Mark a folder resource as expanded or collapsed in the resource tree.
-    /// This does not affect the IsExpanded property of the folder resource itself.
-    /// </summary>
-    void SetFolderIsExpanded(ResourceKey folderResource, bool isExpanded);
-
-    /// <summary>
-    /// Returns true if the folder with the specified resource key is expanded.
-    /// </summary>
-    bool IsFolderExpanded(ResourceKey folderResource);
-
-    /// <summary>
     /// Returns all file resources in the registry with their resource keys and absolute paths.
     /// The results are sorted by path for stable ordering.
     /// </summary>

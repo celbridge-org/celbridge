@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -17,15 +18,18 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ICommandService _commandService;
 
     public TransferResourcesCommand(
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ICommandService commandService)
     {
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
+        _commandService = commandService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -75,7 +79,11 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         // Expand the destination folder so the user can see the newly transferred resources
-        resourceRegistry.SetFolderIsExpanded(DestFolderResource, true);
+        _commandService.Execute<IExpandFolderCommand>(command =>
+        {
+            command.FolderResource = DestFolderResource;
+            command.Expanded = true;
+        });
 
         // Show error dialog if any items failed
         if (failedItems.Count > 0)
@@ -138,7 +146,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         IResourceOperationService resourceOpService)
     {
         var resolvedDestResource = resourceRegistry.ResolveDestinationResource(item.SourceResource, item.DestResource);
-        
+
         var sourcePath = resourceRegistry.GetResourcePath(item.SourceResource);
         var destPath = resourceRegistry.GetResourcePath(resolvedDestResource);
 
@@ -150,7 +158,11 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             var parentFolder = resolvedDestResource.GetParent();
             if (!parentFolder.IsEmpty)
             {
-                resourceRegistry.SetFolderIsExpanded(parentFolder, true);
+                _commandService.Execute<IExpandFolderCommand>(command =>
+                {
+                    command.FolderResource = parentFolder;
+                    command.Expanded = true;
+                });
             }
         }
 
@@ -159,14 +171,14 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
     private async Task ShowTransferErrorAsync(List<string> failedItems)
     {
-        var titleKey = TransferMode == DataTransferMode.Copy 
-            ? "ResourceTree_CopyResource" 
+        var titleKey = TransferMode == DataTransferMode.Copy
+            ? "ResourceTree_CopyResource"
             : "ResourceTree_MoveResource";
-        
+
         var title = _stringLocalizer.GetString(titleKey);
         var failedList = string.Join(", ", failedItems);
         var message = _stringLocalizer.GetString("ResourceTree_TransferResourcesFailed", failedList);
-        
+
         await _dialogService.ShowAlertDialogAsync(title, message);
     }
 }

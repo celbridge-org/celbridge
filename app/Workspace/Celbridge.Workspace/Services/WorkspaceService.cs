@@ -16,8 +16,6 @@ namespace Celbridge.Workspace.Services;
 
 public class WorkspaceService : IWorkspaceService, IDisposable
 {
-    private const string ExpandedFoldersKey = "ExpandedFolders";
-
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
 
@@ -138,12 +136,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private async Task<Result> SaveWorkspaceStateAsync()
     {
-        Guard.IsNotNull(WorkspaceSettings);
-
-        // Save the expanded folders in the Resource Registry
-
-        var expandedFolders = ResourceService.Registry.ExpandedFolders;
-        await WorkspaceSettings.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
+        var folderStateService = ExplorerService.FolderStateService;
+        await folderStateService.SaveAsync();
 
         return Result.Ok();
     }

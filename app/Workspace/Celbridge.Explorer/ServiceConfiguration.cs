@@ -14,6 +14,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IExplorerService, ExplorerService>();
+        services.AddTransient<IFolderStateService, FolderStateService>();
 
         //
         // Register views
