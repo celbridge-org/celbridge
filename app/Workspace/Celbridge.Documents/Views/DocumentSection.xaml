@@ -5,11 +5,17 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
   
-  <Grid>
+  <Grid x:Name="RootGrid"
+        AllowDrop="True"
+        DragOver="RootGrid_DragOver"
+        Drop="RootGrid_Drop">
     <!-- Empty section placeholder (shown when no tabs) -->
     <Border x:Name="EmptyPlaceholder"
             Background="{ThemeResource LayerFillColorDefaultBrush}"
-            Visibility="Collapsed">
+            Visibility="Collapsed"
+            AllowDrop="True"
+            DragOver="RootGrid_DragOver"
+            Drop="RootGrid_Drop">
       <TextBlock Text="{x:Bind NoDocumentsOpenString}"
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
@@ -22,9 +28,15 @@
              IsAddTabButtonVisible="False"
              TabWidthMode="SizeToContent"
              VerticalAlignment="Stretch"
+             CanReorderTabs="True"
+             CanDragTabs="True"
+             AllowDrop="True"
              TabCloseRequested="TabView_CloseRequested"
              SelectionChanged="TabView_SelectionChanged"
-             TabItemsChanged="TabView_TabItemsChanged">
+             TabItemsChanged="TabView_TabItemsChanged"
+             TabDroppedOutside="TabView_TabDroppedOutside"
+             DragOver="TabView_DragOver"
+             Drop="TabView_Drop">
       <TabView.TabStripFooter>
         <ContentPresenter x:Name="FooterPresenter"/>
       </TabView.TabStripFooter>

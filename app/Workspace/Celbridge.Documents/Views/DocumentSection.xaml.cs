@@ -1,5 +1,6 @@
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
@@ -12,6 +13,17 @@ public sealed partial class DocumentSection : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
     private bool _isShuttingDown = false;
+
+    /// <summary>
+    /// Static field to track the tab currently being dragged between sections.
+    /// This is set when a drag starts and cleared after the drop is handled.
+    /// </summary>
+    private static DocumentTab? _draggedTab;
+
+    /// <summary>
+    /// Static field to track which section the dragged tab came from.
+    /// </summary>
+    private static DocumentSection? _dragSourceSection;
 
     // Localized strings
     private string NoDocumentsOpenString => _stringLocalizer.GetString("DocumentSection_NoDocumentsOpen");
@@ -29,7 +41,7 @@ public sealed partial class DocumentSection : UserControl
     /// <summary>
     /// Event raised when the open documents in this section change.
     /// </summary>
-    public event Action<DocumentSection, List<ResourceKey>>? OpenDocumentsChanged;
+    public event Action<DocumentSection, List<ResourceKey>>? DocumentsLayoutChanged;
 
     /// <summary>
     /// Event raised when a tab close is requested.
@@ -40,6 +52,11 @@ public sealed partial class DocumentSection : UserControl
     /// Event raised when a context menu action is requested on a document tab.
     /// </summary>
     public event Action<DocumentSection, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
+
+    /// <summary>
+    /// Event raised when a tab from another section is dropped into this section.
+    /// </summary>
+    public event Action<DocumentSection, DocumentTab>? TabDroppedInside;
 
     public DocumentSection()
     {
@@ -155,6 +172,7 @@ public sealed partial class DocumentSection : UserControl
         // Set from cached value - stays in sync via VisibleSectionCount property setter
         tab.VisibleSectionCount = VisibleSectionCount;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
+        tab.DragStarted += OnDocumentTabDragStarted;
         TabView.TabItems.Add(tab);
         UpdateEmptyPlaceholderVisibility();
     }
@@ -165,6 +183,7 @@ public sealed partial class DocumentSection : UserControl
     public void RemoveTab(DocumentTab tab)
     {
         tab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
+        tab.DragStarted -= OnDocumentTabDragStarted;
         TabView.TabItems.Remove(tab);
         UpdateEmptyPlaceholderVisibility();
     }
@@ -262,6 +281,7 @@ public sealed partial class DocumentSection : UserControl
             Guard.IsNotNull(documentTab);
 
             documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
+            documentTab.DragStarted -= OnDocumentTabDragStarted;
 
             var documentView = documentTab.Content as IDocumentView;
             if (documentView != null)
@@ -299,7 +319,7 @@ public sealed partial class DocumentSection : UserControl
         }
 
         var documentResources = GetOpenDocuments();
-        OpenDocumentsChanged?.Invoke(this, documentResources);
+        DocumentsLayoutChanged?.Invoke(this, documentResources);
 
         ToolTipService.SetToolTip(TabView, null);
         UpdateEmptyPlaceholderVisibility();
@@ -320,9 +340,140 @@ public sealed partial class DocumentSection : UserControl
         ContextMenuActionRequested?.Invoke(this, tab, action);
     }
 
+    private void OnDocumentTabDragStarted(DocumentTab tab)
+    {
+        // Set the static drag state when a tab starts being dragged
+        _draggedTab = tab;
+        _dragSourceSection = this;
+    }
+
     private void UpdateEmptyPlaceholderVisibility()
     {
         EmptyPlaceholder.Visibility = TabView.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         TabView.Visibility = TabView.TabItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void TabView_TabDroppedOutside(TabView sender, TabViewTabDroppedOutsideEventArgs args)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        var tab = args.Tab as DocumentTab;
+        if (tab is null)
+        {
+            return;
+        }
+
+        // The tab was dropped outside the TabView but the drag is now complete.
+        // Check if another section handled the drop (via DragOver/Drop during the drag).
+        // If not, the drag state will still be set and we should clear it.
+
+        // The DragOver/Drop events on other sections fire DURING the drag (before TabDroppedOutside),
+        // so if a drop was handled, _draggedTab will already be cleared.
+
+        // If we get here and no drop occurred, just clear the state.
+        if (_draggedTab == tab)
+        {
+            ClearDragState();
+        }
+    }
+
+    private void RootGrid_DragOver(object sender, DragEventArgs e)
+    {
+        // Accept drags from other sections (for dropping on empty sections or anywhere in the section)
+        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        {
+            e.AcceptedOperation = DataPackageOperation.Move;
+            e.DragUIOverride.IsCaptionVisible = false;
+            e.DragUIOverride.IsGlyphVisible = false;
+            e.Handled = true;
+        }
+    }
+
+    private void RootGrid_Drop(object sender, DragEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Handle drop from other sections
+        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        {
+            var tab = _draggedTab;
+
+            // Clear the drag state
+            ClearDragState();
+
+            // Raise event to notify container to move the tab
+            TabDroppedInside?.Invoke(this, tab);
+            e.Handled = true;
+        }
+    }
+
+    private void TabView_DragOver(object sender, DragEventArgs e)
+    {
+        // Accept drags from other sections
+        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        {
+            e.AcceptedOperation = DataPackageOperation.Move;
+            e.DragUIOverride.IsCaptionVisible = false;
+            e.DragUIOverride.IsGlyphVisible = false;
+            e.Handled = true;
+        }
+    }
+
+    private void TabView_Drop(object sender, DragEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Handle drop from other sections
+        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        {
+            var tab = _draggedTab;
+
+            // Clear the drag state
+            ClearDragState();
+
+            // Raise event to notify container to move the tab
+            TabDroppedInside?.Invoke(this, tab);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Clears any pending drag state. Should be called after a drag operation completes.
+    /// </summary>
+    public static void ClearDragState()
+    {
+        _draggedTab = null;
+        _dragSourceSection = null;
+    }
+
+    /// <summary>
+    /// Inserts a tab at the specified index.
+    /// </summary>
+    public void InsertTab(DocumentTab tab, int index)
+    {
+        tab.SectionIndex = SectionIndex;
+        tab.VisibleSectionCount = VisibleSectionCount;
+        tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
+        tab.DragStarted += OnDocumentTabDragStarted;
+
+        if (index < 0 || index >= TabView.TabItems.Count)
+        {
+            TabView.TabItems.Add(tab);
+        }
+        else
+        {
+            TabView.TabItems.Insert(index, tab);
+        }
+
+        UpdateEmptyPlaceholderVisibility();
     }
 }

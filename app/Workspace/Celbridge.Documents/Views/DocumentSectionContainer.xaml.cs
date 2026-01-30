@@ -35,7 +35,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// Event raised when the open documents in any section change.
     /// </summary>
-    public event Action<DocumentSection, List<ResourceKey>>? OpenDocumentsChanged;
+    public event Action<DocumentSection, List<ResourceKey>>? DocumentsLayoutChanged;
 
     /// <summary>
     /// Event raised when a tab close is requested in any section.
@@ -499,9 +499,10 @@ public sealed partial class DocumentSectionContainer : UserControl
         };
 
         section.SelectionChanged += OnSectionSelectionChanged;
-        section.OpenDocumentsChanged += OnSectionOpenDocumentsChanged;
+        section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         section.CloseRequested += OnSectionCloseRequested;
         section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
+        section.TabDroppedInside += OnSectionTabDroppedInside;
 
         _sections.Add(section);
     }
@@ -558,17 +559,19 @@ public sealed partial class DocumentSectionContainer : UserControl
             var section = _sections[i];
             // Unwire and rewire to ensure no duplicates
             section.SelectionChanged -= OnSectionSelectionChanged;
-            section.OpenDocumentsChanged -= OnSectionOpenDocumentsChanged;
+            section.DocumentsLayoutChanged -= OnSectionDocumentsLayoutChanged;
             section.CloseRequested -= OnSectionCloseRequested;
             section.ContextMenuActionRequested -= OnSectionContextMenuActionRequested;
+            section.TabDroppedInside -= OnSectionTabDroppedInside;
 
             section.SelectionChanged += OnSectionSelectionChanged;
-            section.OpenDocumentsChanged += OnSectionOpenDocumentsChanged;
-            section.CloseRequested += OnSectionCloseRequested;
-            section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-        }
+                section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
+                section.CloseRequested += OnSectionCloseRequested;
+                section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
+                section.TabDroppedInside += OnSectionTabDroppedInside;
+            }
 
-        for (int i = 0; i < _sectionCount; i++)
+            for (int i = 0; i < _sectionCount; i++)
         {
             // Add section column with Star sizing for proportional layout
             // All sections use Star sizing so they resize proportionally with the window
@@ -635,7 +638,6 @@ public sealed partial class DocumentSectionContainer : UserControl
         var leftColumnIndex = _activeSplitterIndex * 2;
         var rightColumnIndex = leftColumnIndex + 2;
 
-
         var newLeftWidth = _leftColumnStartWidth + delta;
         var newRightWidth = _rightColumnStartWidth - delta;
 
@@ -682,9 +684,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    private void OnSectionOpenDocumentsChanged(DocumentSection section, List<ResourceKey> documents)
+    private void OnSectionDocumentsLayoutChanged(DocumentSection section, List<ResourceKey> documents)
     {
-        OpenDocumentsChanged?.Invoke(section, documents);
+        DocumentsLayoutChanged?.Invoke(section, documents);
     }
 
     private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
@@ -695,5 +697,25 @@ public sealed partial class DocumentSectionContainer : UserControl
     private void OnSectionContextMenuActionRequested(DocumentSection section, DocumentTab tab, DocumentTabMenuAction action)
     {
         ContextMenuActionRequested?.Invoke(section, tab, action);
+    }
+
+    private void OnSectionTabDroppedInside(DocumentSection targetSection, DocumentTab tab)
+    {
+        // Move the tab to the target section
+        if (MoveTabToSection(tab, targetSection.SectionIndex))
+        {
+            NotifyLayoutChanged();
+        }
+    }
+
+    private void NotifyLayoutChanged()
+    {
+        // Re-fire OpenDocumentsChanged for all visible sections to ensure the layout is persisted
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            var documents = section.GetOpenDocuments();
+            DocumentsLayoutChanged?.Invoke(section, documents);
+        }
     }
 }

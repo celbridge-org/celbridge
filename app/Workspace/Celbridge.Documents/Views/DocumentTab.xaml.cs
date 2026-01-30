@@ -57,6 +57,11 @@ public partial class DocumentTab : TabViewItem
     /// </summary>
     public event Action<DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
+    /// <summary>
+    /// Event raised when this tab starts being dragged.
+    /// </summary>
+    public event Action<DocumentTab>? DragStarted;
+
     public DocumentTab()
     {
         this.InitializeComponent();
@@ -252,5 +257,11 @@ public partial class DocumentTab : TabViewItem
                 webView.Focus(FocusState.Programmatic);
             }
         }
+    }
+
+    private void DocumentTab_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        // Notify that this tab is being dragged
+        DragStarted?.Invoke(this);
     }
 }

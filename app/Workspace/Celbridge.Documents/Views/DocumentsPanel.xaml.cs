@@ -66,7 +66,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         // Wire up section container events
         SectionContainer.ActiveDocumentChanged += OnActiveDocumentChanged;
-        SectionContainer.OpenDocumentsChanged += OnSectionOpenDocumentsChanged;
+        SectionContainer.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         SectionContainer.CloseRequested += OnSectionCloseRequested;
         SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         SectionContainer.SectionCountChanged += OnSectionCountChanged;
@@ -89,7 +89,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnSelectedDocumentChanged(documentResource);
     }
 
-    private void OnSectionOpenDocumentsChanged(DocumentSection section, List<ResourceKey> documents)
+    private void OnSectionDocumentsLayoutChanged(DocumentSection section, List<ResourceKey> documents)
     {
         if (_isShuttingDown)
         {
