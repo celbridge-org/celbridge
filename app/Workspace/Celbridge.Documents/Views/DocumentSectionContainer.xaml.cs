@@ -251,16 +251,34 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Gets all open documents across all visible sections.
+    /// Moves a tab from its current section to the target section.
     /// </summary>
-    public List<ResourceKey> GetAllOpenDocuments()
+    public bool MoveTabToSection(DocumentTab tab, int targetSectionIndex)
     {
-        var allDocuments = new List<ResourceKey>();
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        if (targetSectionIndex < 0 || targetSectionIndex >= _sectionCount)
         {
-            allDocuments.AddRange(_sections[i].GetOpenDocuments());
+            return false;
         }
-        return allDocuments;
+
+        // Find the source section
+        var (sourceSection, foundTab) = FindDocumentTab(tab.ViewModel.FileResource);
+        if (sourceSection == null || foundTab == null)
+        {
+            return false;
+        }
+
+        var targetSection = _sections[targetSectionIndex];
+        if (sourceSection == targetSection)
+        {
+            return false; // Already in the target section
+        }
+
+        // Move the tab
+        sourceSection.RemoveTab(tab);
+        targetSection.AddTab(tab);
+        targetSection.SelectTab(tab);
+
+        return true;
     }
 
     private void CreateSection(int index)
@@ -309,6 +327,13 @@ public sealed partial class DocumentSectionContainer : UserControl
         RootGrid.Children.Clear();
         RootGrid.ColumnDefinitions.Clear();
         _splitters.Clear();
+
+
+        // Update VisibleSectionCount on all sections
+        foreach (var section in _sections)
+        {
+            section.VisibleSectionCount = _sectionCount;
+        }
 
         for (int i = 0; i < _sectionCount; i++)
         {

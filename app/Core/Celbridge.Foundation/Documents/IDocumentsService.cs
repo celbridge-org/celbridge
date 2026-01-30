@@ -17,9 +17,9 @@ public interface IDocumentsService
     ResourceKey SelectedDocument { get; }
 
     /// <summary>
-    /// The list of currently open documents.
+    /// Gets all open documents with their addresses (UI positions).
     /// </summary>
-    List<ResourceKey> OpenDocuments { get; }
+    Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; }
 
     /// <summary>
     /// Create a document view for the specified file resource.
@@ -76,10 +76,10 @@ public interface IDocumentsService
     Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
-    /// Stores the list of currently open documents in persistent storage.
-    /// These documents will be opened at the start of the next editing session.
+    /// Stores the current document layout (open documents and their addresses) in persistent storage.
+    /// This layout will be restored at the start of the next editing session.
     /// </summary>
-    Task StoreOpenDocuments();
+    Task StoreDocumentLayout();
 
     /// <summary>
     /// Stores the currently selected document in persistent storage.

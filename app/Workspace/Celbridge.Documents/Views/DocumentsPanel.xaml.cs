@@ -87,8 +87,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return;
         }
 
-        var allDocuments = SectionContainer.GetAllOpenDocuments();
-        ViewModel.OnOpenDocumentsChanged(allDocuments);
+        ViewModel.OnDocumentLayoutChanged();
     }
 
     private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
@@ -154,9 +153,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.SetSectionRatios(ratios);
     }
 
-    public List<ResourceKey> GetOpenDocuments()
+    public Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses()
     {
-        return SectionContainer.GetAllOpenDocuments();
+        var addresses = new Dictionary<ResourceKey, DocumentAddress>();
+
+        for (int sectionIndex = 0; sectionIndex < SectionContainer.SectionCount; sectionIndex++)
+        {
+            var section = SectionContainer.GetSection(sectionIndex);
+            int tabOrder = 0;
+            foreach (var tab in section.GetAllTabs())
+            {
+                addresses[tab.ViewModel.FileResource] = new DocumentAddress(
+                    WindowIndex: 0, // Always 0 for now (single window)
+                    SectionIndex: sectionIndex,
+                    TabOrder: tabOrder++);
+            }
+        }
+
+        return addresses;
     }
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
@@ -234,6 +248,61 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             await NavigateToLocation(fileResource, location);
         }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address)
+    {
+        // Validate section index
+        int sectionIndex = address.SectionIndex;
+        if (sectionIndex < 0 || sectionIndex >= SectionContainer.SectionCount)
+        {
+            // Fall back to section 0 if invalid
+            sectionIndex = 0;
+        }
+
+        // Check if the file is already opened in any section
+        var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (existingTab != null && existingSection != null)
+        {
+            // If already open in a different section, move it
+            if (existingSection.SectionIndex != sectionIndex)
+            {
+                SectionContainer.MoveTabToSection(existingTab, sectionIndex);
+            }
+
+            // Activate the tab
+            var targetSection = SectionContainer.GetSection(sectionIndex);
+            targetSection.SelectTab(existingTab);
+            return Result.Ok();
+        }
+
+        // Open in the specified section
+        var targetSectionForNew = SectionContainer.GetSection(sectionIndex);
+
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.FilePath = filePath;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        targetSectionForNew.AddTab(documentTab);
+        targetSectionForNew.SelectTab(documentTab);
+
+        var createResult = await ViewModel.CreateDocumentView(fileResource);
+        if (createResult.IsFailure)
+        {
+            targetSectionForNew.RemoveTab(documentTab);
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .WithErrors(createResult);
+        }
+        var documentView = createResult.Value;
+
+        documentTab.ViewModel.DocumentView = documentView;
+        documentTab.Content = documentView;
+
+        targetSectionForNew.RefreshSelectedTab();
+        UpdateAllTabDisplayNames();
 
         return Result.Ok();
     }
@@ -509,6 +578,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.CloseAll:
                 CloseAllTabs(tab);
                 break;
+            case DocumentTabMenuAction.MoveLeft:
+                MoveTabLeft(tab);
+                break;
+            case DocumentTabMenuAction.MoveRight:
+                MoveTabRight(tab);
+                break;
             case DocumentTabMenuAction.CopyResourceKey:
                 CopyResourceKeyForTab(tab);
                 break;
@@ -531,6 +606,31 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         var fileResource = tab.ViewModel.FileResource;
         ViewModel.OnCloseDocumentRequested(fileResource);
+    }
+
+    private void MoveTabLeft(DocumentTab tab)
+    {
+        if (tab.SectionIndex > 0)
+        {
+            SectionContainer.MoveTabToSection(tab, tab.SectionIndex - 1);
+            UpdateAllTabDisplayNames();
+            NotifyLayoutChanged();
+        }
+    }
+
+    private void MoveTabRight(DocumentTab tab)
+    {
+        if (tab.SectionIndex < SectionContainer.SectionCount - 1)
+        {
+            SectionContainer.MoveTabToSection(tab, tab.SectionIndex + 1);
+            UpdateAllTabDisplayNames();
+            NotifyLayoutChanged();
+        }
+    }
+
+    private void NotifyLayoutChanged()
+    {
+        ViewModel.OnDocumentLayoutChanged();
     }
 
     private void CloseOtherTabs(DocumentTab keepTab)

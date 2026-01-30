@@ -489,6 +489,12 @@ Do you wish to continue?</value>
   <data name="DocumentTab_CloseAll" xml:space="preserve">
     <value>Close All</value>
   </data>
+  <data name="DocumentTab_MoveLeft" xml:space="preserve">
+    <value>Move Left</value>
+  </data>
+  <data name="DocumentTab_MoveRight" xml:space="preserve">
+    <value>Move Right</value>
+  </data>
   <data name="DocumentTab_SelectFile" xml:space="preserve">
     <value>Select File</value>
   </data>

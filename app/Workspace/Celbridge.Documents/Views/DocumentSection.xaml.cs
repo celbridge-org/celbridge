@@ -126,10 +126,34 @@ public sealed partial class DocumentSection : UserControl
     }
 
     /// <summary>
+    /// Gets or sets the number of currently visible sections. Used to determine which move options to show.
+    /// </summary>
+    public int VisibleSectionCount
+    {
+        get => _visibleSectionCount;
+        set
+        {
+            _visibleSectionCount = value;
+            // Update all tabs with the new count
+            foreach (var tabItem in TabView.TabItems)
+            {
+                if (tabItem is DocumentTab tab)
+                {
+                    tab.VisibleSectionCount = value;
+                }
+            }
+        }
+    }
+    private int _visibleSectionCount = 1;
+
+    /// <summary>
     /// Adds a document tab to this section.
     /// </summary>
     public void AddTab(DocumentTab tab)
     {
+        tab.SectionIndex = SectionIndex;
+        // Set from cached value - stays in sync via VisibleSectionCount property setter
+        tab.VisibleSectionCount = VisibleSectionCount;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         TabView.TabItems.Add(tab);
         UpdateEmptyPlaceholderVisibility();

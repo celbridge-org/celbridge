@@ -17,13 +17,13 @@ public interface IDocumentsPanel
     void SetSectionRatios(List<double> ratios);
 
     /// <summary>
-    /// Returns a list of open documents.
-    /// The list is in the same order as the document tabs in the documents panel.
+    /// Returns all open documents with their addresses (UI positions).
     /// </summary>
-    List<ResourceKey> GetOpenDocuments();
+    Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses();
 
     /// <summary>
     /// Open a file resource as a document in the documents panel.
+    /// Opens in the default section (section 0).
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload);
 
@@ -31,6 +31,11 @@ public interface IDocumentsPanel
     /// Open a file resource as a document in the documents panel and navigate to a specific location.
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location);
+
+    /// <summary>
+    /// Open a file resource as a document at a specific address (UI position).
+    /// </summary>
+    Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address);
 
     /// <summary>
     /// Close an opened document in the documents panel.

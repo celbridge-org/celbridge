@@ -12,7 +12,7 @@ public record SetTextDocumentContentMessage(ResourceKey Resource, string Content
 
 public class DocumentsService : IDocumentsService, IDisposable
 {
-    private const string OpenDocumentsKey = "OpenDocuments";
+    private const string DocumentLayoutKey = "DocumentLayout";
     private const string SelectedDocumentKey = "SelectedDocument";
     private const string SectionRatiosKey = "SectionRatios";
 
@@ -27,7 +27,10 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public ResourceKey SelectedDocument { get; private set; }
 
-    public List<ResourceKey> OpenDocuments { get; } = new();
+    /// <summary>
+    /// Gets all open documents with their addresses (UI positions).
+    /// </summary>
+    public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
 
     // This utility is only used internally and is not exposed via IDocumentService
     internal TextEditorWebViewPool TextEditorWebViewPool { get; }
@@ -59,7 +62,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
-        _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
+        _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
@@ -94,14 +97,24 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private void OnOpenDocumentsChangedMessage(object recipient, OpenDocumentsChangedMessage message)
+    private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
-        OpenDocuments.ReplaceWith(message.OpenDocuments);
+        // Query the panel for current document addresses
+        if (_documentsPanel != null)
+        {
+            var addresses = _documentsPanel.GetDocumentAddresses();
+            
+            DocumentAddresses.Clear();
+            foreach (var kvp in addresses)
+            {
+                DocumentAddresses[kvp.Key] = kvp.Value;
+            }
+        }
 
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreOpenDocuments();
+            _ = StoreDocumentLayout();
         }
     }
 
@@ -307,19 +320,31 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task StoreOpenDocuments()
+    /// <summary>
+    /// DTO for serializing document addresses to workspace settings.
+    /// </summary>
+    private record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder);
+
+    public async Task StoreDocumentLayout()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        List<string> documents = [];
-        foreach (var fileResource in OpenDocuments)
-        {
-            documents.Add(fileResource.ToString());
-        }
+        // Store documents with their addresses
+        var storedAddresses = DocumentAddresses
+            .Select(kvp => new StoredDocumentAddress(
+                kvp.Key.ToString(),
+                kvp.Value.WindowIndex,
+                kvp.Value.SectionIndex,
+                kvp.Value.TabOrder))
+            .OrderBy(addr => addr.WindowIndex)
+            .ThenBy(addr => addr.SectionIndex)
+            .ThenBy(addr => addr.TabOrder)
+            .ToList();
 
-        await workspaceSettings.SetPropertyAsync(OpenDocumentsKey, documents);
+        await workspaceSettings.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
     }
+
 
     public async Task StoreSelectedDocument()
     {
@@ -354,68 +379,62 @@ public class DocumentsService : IDocumentsService, IDisposable
             _documentsPanel!.SetSectionRatios(sectionRatios);
         }
 
-        var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(OpenDocumentsKey);
-        if (openDocuments is null ||
-            openDocuments.Count == 0)
+        // Try to load document addresses - if format is incompatible, just start fresh
+        List<StoredDocumentAddress>? storedAddresses = null;
+        try
         {
-            // If no documents are currently open then try to open the default readme file.
-            var readmeResource = new ResourceKey("readme.md");
-
-            // Normalize the resource key to match the actual casing on disk
-            var normalizeResult = resourceRegistry.NormalizeResourceKey(readmeResource);
-            if (normalizeResult.IsSuccess)
-            {
-                var normalizedResource = normalizeResult.Value;
-                var readmePath = resourceRegistry.GetResourcePath(normalizedResource);
-                if (CanAccessFile(readmePath))
-                {
-                    // Todo: Force the file to open in preview mode (we want the user to read it, not edit it).
-
-                    // Execute a command to open the readme file.
-                    _commandService.Execute<IOpenDocumentCommand>(command =>
-                    {
-                        command.FileResource = normalizedResource;
-                        command.ForceReload = false;
-                    });
-                }
-            }
-
+            storedAddresses = await workspaceSettings.GetPropertyAsync<List<StoredDocumentAddress>>(DocumentLayoutKey);
+        }
+        catch
+        {
+            // Old format or corrupted data - ignore and start fresh
+            _logger.LogDebug("Could not load document addresses - starting fresh");
+        }
+        
+        if (storedAddresses is null || storedAddresses.Count == 0)
+        {
+            // No documents to restore - open default readme
+            await OpenDefaultReadme(resourceRegistry);
             return;
         }
 
-        // Open the previously opened documents
-
-        foreach (var resourceKey in openDocuments)
+        int currentSectionCount = _documentsPanel!.SectionCount;
+        
+        foreach (var stored in storedAddresses)
         {
-            if (!ResourceKey.IsValidKey(resourceKey))
+            if (!ResourceKey.IsValidKey(stored.Resource))
             {
-                // An invalid resource key was saved in the settings somehow.
-                _logger.LogWarning($"Invalid resource key '{resourceKey}' found in previously open documents");
+                _logger.LogWarning($"Invalid resource key '{stored.Resource}' found in previously open documents");
                 continue;
             }
 
-            var fileResource = new ResourceKey(resourceKey);
+            var fileResource = new ResourceKey(stored.Resource);
             var getResourceResult = resourceRegistry.GetResource(fileResource);
             if (getResourceResult.IsFailure)
             {
-                // This resource doesn't exist now so we can't open it again.
                 _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
                 continue;
             }
 
-            // Execute a command to load the document
-            // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
-            var openResult = await _commandService.ExecuteImmediate<IOpenDocumentCommand>(command =>
+            var filePath = resourceRegistry.GetResourcePath(fileResource);
+            if (!CanAccessFile(filePath))
             {
-                command.FileResource = fileResource;
-            });
+                _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
+                continue;
+            }
 
+            // Handle mismatch: if saved section doesn't exist, merge into last section
+            int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
+            var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
+
+            var openResult = await _documentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
             if (openResult.IsFailure)
             {
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
             }
         }
 
+        // Restore selected document
         var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(SelectedDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
@@ -428,16 +447,30 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        // Execute a command to select the previously selected document
-        // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
-        var selectResult = await _commandService.ExecuteImmediate<ISelectDocumentCommand>(command =>
-        {
-            command.FileResource = new ResourceKey(selectedDocument);
-        });
-
+        var selectResult = _documentsPanel.SelectDocument(new ResourceKey(selectedDocument));
         if (selectResult.IsFailure)
         {
             _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
+        }
+    }
+
+    private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)
+    {
+        var readmeResource = new ResourceKey("readme.md");
+
+        var normalizeResult = resourceRegistry.NormalizeResourceKey(readmeResource);
+        if (normalizeResult.IsSuccess)
+        {
+            var normalizedResource = normalizeResult.Value;
+            var readmePath = resourceRegistry.GetResourcePath(normalizedResource);
+            if (CanAccessFile(readmePath))
+            {
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = normalizedResource;
+                    command.ForceReload = false;
+                });
+            }
         }
     }
 
