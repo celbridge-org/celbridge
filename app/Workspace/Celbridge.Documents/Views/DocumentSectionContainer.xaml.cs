@@ -482,13 +482,11 @@ public sealed partial class DocumentSectionContainer : UserControl
         targetSection.AddTab(tab);
         targetSection.SelectTab(tab);
 
-        // Update active section if this was the active document
-        if (tab.ViewModel.FileResource == _activeDocument)
-        {
-            _activeSectionIndex = targetSectionIndex;
-            UpdateTabSelectionIndicators();
-            ActiveDocumentChanged?.Invoke(_activeDocument);
-        }
+        // Always make the moved tab the active document
+        _activeSectionIndex = targetSectionIndex;
+        _activeDocument = tab.ViewModel.FileResource;
+        UpdateTabSelectionIndicators();
+        ActiveDocumentChanged?.Invoke(_activeDocument);
 
         return true;
     }
