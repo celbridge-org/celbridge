@@ -17,6 +17,12 @@ public record DocumentLayoutChangedMessage();
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 
 /// <summary>
+/// A message sent when a document tab is clicked/tapped.
+/// Used to update the active document.
+/// </summary>
+public record DocumentTabClickedMessage(ResourceKey DocumentResource, DocumentAddress Address);
+
+/// <summary>
 /// A message sent when the document section proportions change.
 /// Contains ratios (relative values that sum to 1.0).
 /// </summary>

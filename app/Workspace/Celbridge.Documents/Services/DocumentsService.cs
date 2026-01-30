@@ -103,7 +103,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (_documentsPanel != null)
         {
             var addresses = _documentsPanel.GetDocumentAddresses();
-            
+
             DocumentAddresses.Clear();
             foreach (var kvp in addresses)
             {
@@ -390,7 +390,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             // Old format or corrupted data - ignore and start fresh
             _logger.LogDebug("Could not load document addresses - starting fresh");
         }
-        
+
         if (storedAddresses is null || storedAddresses.Count == 0)
         {
             // No documents to restore - open default readme
@@ -399,7 +399,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         int currentSectionCount = _documentsPanel!.SectionCount;
-        
+
         foreach (var stored in storedAddresses)
         {
             if (!ResourceKey.IsValidKey(stored.Resource))
@@ -447,11 +447,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        var selectResult = _documentsPanel.SelectDocument(new ResourceKey(selectedDocument));
-        if (selectResult.IsFailure)
-        {
-            _logger.LogWarning($"Failed to select previously selected document '{selectedDocument}'");
-        }
+        // Set the active document (which also selects it in its section)
+        _documentsPanel.ActiveDocument = new ResourceKey(selectedDocument);
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)

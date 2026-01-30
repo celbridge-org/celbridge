@@ -32,6 +32,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         set => SectionContainer.SetSectionCount(value);
     }
 
+    /// <summary>
+    /// Gets or sets the active document - the document being inspected and where new documents open.
+    /// </summary>
+    public ResourceKey ActiveDocument
+    {
+        get => SectionContainer.ActiveDocument;
+        set => SectionContainer.SetActiveDocument(value);
+    }
+
     public DocumentsPanel(
         IServiceProvider serviceProvider,
         IDocumentsLogger logger,
@@ -56,7 +65,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         this.DataContext = ViewModel;
 
         // Wire up section container events
-        SectionContainer.SelectionChanged += OnSectionSelectionChanged;
+        SectionContainer.ActiveDocumentChanged += OnActiveDocumentChanged;
         SectionContainer.OpenDocumentsChanged += OnSectionOpenDocumentsChanged;
         SectionContainer.CloseRequested += OnSectionCloseRequested;
         SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
@@ -70,7 +79,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         Unloaded += DocumentsPanel_Unloaded;
     }
 
-    private void OnSectionSelectionChanged(DocumentSection section, ResourceKey documentResource)
+    private void OnActiveDocumentChanged(ResourceKey documentResource)
     {
         if (_isShuttingDown)
         {
@@ -124,14 +133,31 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for window mode changes to show/hide tab strip in Presenter mode
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
 
+        // Listen for document tab clicks to update active document
+        _messengerService.Register<DocumentTabClickedMessage>(this, OnDocumentTabClicked);
+
         // Apply initial tab strip visibility based on current window mode
         UpdateTabStripVisibility(_layoutManager.WindowMode);
+    }
+
+    private void OnDocumentTabClicked(object recipient, DocumentTabClickedMessage message)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Update the active document when a tab is clicked
+        // This is the primary mechanism for changing the active document
+        // Future: Use message.Address.WindowIndex to route to correct window
+        SectionContainer.HandleTabClicked(message.DocumentResource, message.Address.SectionIndex);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
         _messengerService.Unregister<WindowModeChangedMessage>(this);
+        _messengerService.Unregister<DocumentTabClickedMessage>(this);
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
@@ -187,6 +213,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // Activate the existing tab
             existingSection.SelectTab(existingTab);
 
+            // Make it the active document
+            SectionContainer.HandleTabClicked(fileResource, existingSection.SectionIndex);
+
             if (forceReload)
             {
                 var reloadResult = await existingTab.ViewModel.ReloadDocument();
@@ -206,9 +235,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return Result.Ok();
         }
 
-        // Open in the first section (section 0) by default
-        // Future: could open in the section containing the active document
-        var targetSection = SectionContainer.GetSection(0);
+        // Open in the active section (the section containing the active document)
+        var activeSectionIndex = SectionContainer.ActiveSectionIndex;
+        var targetSection = SectionContainer.GetSection(activeSectionIndex);
 
         //
         // Add a new DocumentTab to the section immediately.
@@ -242,6 +271,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         // Update all tab names to handle any filename ambiguity
         UpdateAllTabDisplayNames();
+
+        // Make the newly opened document the active document
+        SectionContainer.HandleTabClicked(fileResource, activeSectionIndex);
 
         // Navigate to location if specified
         if (!string.IsNullOrEmpty(location))
@@ -339,6 +371,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             if (didClose)
             {
+                // Get the tab index before removing it (needed for selecting next document)
+                int tabIndex = section.GetTabIndex(documentTab);
+
+                // Handle selection of next document before removing the tab
+                SectionContainer.HandleDocumentClosing(fileResource, section.SectionIndex, tabIndex);
+
                 section.RemoveTab(documentTab);
 
                 // Update all tab names since closing a tab may resolve filename ambiguity
@@ -419,6 +457,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var (section, documentTab) = SectionContainer.FindDocumentTab(fileResource);
         if (documentTab != null && section != null)
         {
+            // Selecting a tab will trigger section selection, which will update container selection
             section.SelectTab(documentTab);
             return Result.Ok();
         }

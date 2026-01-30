@@ -18,11 +18,19 @@ public sealed partial class DocumentSectionContainer : UserControl
     private int _activeSplitterIndex = -1;
 
     private int _sectionCount = 1;
+    private int _activeSectionIndex = 0;
+    private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
     /// Event raised when the selected document changes in any section.
     /// </summary>
-    public event Action<DocumentSection, ResourceKey>? SelectionChanged;
+    public event Action<DocumentSection, ResourceKey>? SectionSelectionChanged;
+
+    /// <summary>
+    /// Event raised when the active document changes.
+    /// This is the document that should be inspected and determines where new documents open.
+    /// </summary>
+    public event Action<ResourceKey>? ActiveDocumentChanged;
 
     /// <summary>
     /// Event raised when the open documents in any section change.
@@ -53,6 +61,16 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Gets the current number of sections.
     /// </summary>
     public int SectionCount => _sectionCount;
+
+    /// <summary>
+    /// Gets the active document - the document being inspected and where new documents open.
+    /// </summary>
+    public ResourceKey ActiveDocument => _activeDocument;
+
+    /// <summary>
+    /// Gets the index of the active section (the section containing the active document).
+    /// </summary>
+    public int ActiveSectionIndex => _activeSectionIndex;
 
     public DocumentSectionContainer()
     {
@@ -213,6 +231,192 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
+    /// Handles a tab click message - updates the active document.
+    /// This is the primary mechanism for changing the active document.
+    /// </summary>
+    public void HandleTabClicked(ResourceKey fileResource, int sectionIndex)
+    {
+        if (fileResource.IsEmpty)
+        {
+            return;
+        }
+
+        // Validate section index
+        if (sectionIndex < 0 || sectionIndex >= _sectionCount)
+        {
+            return;
+        }
+
+        // Update the active document directly
+        _activeSectionIndex = sectionIndex;
+        _activeDocument = fileResource;
+
+        // Update visual indicators across all sections
+        UpdateTabSelectionIndicators();
+
+        // Notify listeners of the active document change
+        ActiveDocumentChanged?.Invoke(_activeDocument);
+    }
+
+    /// <summary>
+    /// Called when a document is about to be closed. If it's the active document,
+    /// selects the next best document (closest tab in same section, or from other sections).
+    /// </summary>
+    public void HandleDocumentClosing(ResourceKey closingResource, int closingSectionIndex, int closingTabIndex)
+    {
+        // Only need to select another document if the closing one is the active document
+        if (closingResource != _activeDocument)
+        {
+            return;
+        }
+
+        // Find the next best document to select
+        var nextDocument = FindNextDocumentToSelect(closingSectionIndex, closingTabIndex);
+
+        if (nextDocument.HasValue)
+        {
+            // Select the next document
+            _activeSectionIndex = nextDocument.Value.SectionIndex;
+            _activeDocument = nextDocument.Value.Resource;
+
+            // Select the tab in its section
+            var section = _sections[nextDocument.Value.SectionIndex];
+            var tab = section.GetDocumentTab(nextDocument.Value.Resource);
+            if (tab != null)
+            {
+                section.SelectTab(tab);
+            }
+
+            UpdateTabSelectionIndicators();
+            ActiveDocumentChanged?.Invoke(_activeDocument);
+        }
+        else
+        {
+            // No documents left to select
+            _activeDocument = ResourceKey.Empty;
+            _activeSectionIndex = 0;
+            UpdateTabSelectionIndicators();
+            ActiveDocumentChanged?.Invoke(_activeDocument);
+        }
+    }
+
+    /// <summary>
+    /// Finds the next best document to select when a document is closed.
+    /// Prefers documents in the same section (closest to the closed tab's position),
+    /// then falls back to other sections.
+    /// </summary>
+    private (ResourceKey Resource, int SectionIndex)? FindNextDocumentToSelect(int closingSectionIndex, int closingTabIndex)
+    {
+        // First, try to find a document in the same section
+        if (closingSectionIndex >= 0 && closingSectionIndex < _sectionCount)
+        {
+            var sameSection = _sections[closingSectionIndex];
+            var tabsInSection = sameSection.GetAllTabs().ToList();
+
+            // Account for the tab that's being closed (it's still in the list)
+            // After closing, the tab count will be tabsInSection.Count - 1
+            int remainingTabs = tabsInSection.Count - 1;
+
+            if (remainingTabs > 0)
+            {
+                // Find the closest tab to the closing position
+                // If there's a tab to the right, select it; otherwise select the one to the left
+                int nextIndex;
+                if (closingTabIndex < remainingTabs)
+                {
+                    // There's a tab to the right (which will shift into this position)
+                    nextIndex = closingTabIndex + 1; // +1 because the closing tab is still in the list
+                }
+                else
+                {
+                    // Select the tab to the left
+                    nextIndex = closingTabIndex - 1;
+                }
+
+                if (nextIndex >= 0 && nextIndex < tabsInSection.Count)
+                {
+                    var nextTab = tabsInSection[nextIndex];
+                    // Make sure we don't select the tab that's being closed
+                    if (nextTab.ViewModel.FileResource != _activeDocument)
+                    {
+                        return (nextTab.ViewModel.FileResource, closingSectionIndex);
+                    }
+                }
+
+                // If the calculated index didn't work, try any other tab in the section
+                foreach (var tab in tabsInSection)
+                {
+                    if (tab.ViewModel.FileResource != _activeDocument)
+                    {
+                        return (tab.ViewModel.FileResource, closingSectionIndex);
+                    }
+                }
+            }
+        }
+
+        // No documents in the same section, try other sections
+        // Start from the closest section and work outward
+        for (int distance = 1; distance < _sectionCount; distance++)
+        {
+            // Try section to the right
+            int rightIndex = closingSectionIndex + distance;
+            if (rightIndex < _sectionCount && rightIndex >= 0)
+            {
+                var rightSection = _sections[rightIndex];
+                var firstTab = rightSection.GetAllTabs().FirstOrDefault();
+                if (firstTab != null)
+                {
+                    return (firstTab.ViewModel.FileResource, rightIndex);
+                }
+            }
+
+            // Try section to the left
+            int leftIndex = closingSectionIndex - distance;
+            if (leftIndex >= 0 && leftIndex < _sectionCount)
+            {
+                var leftSection = _sections[leftIndex];
+                var firstTab = leftSection.GetAllTabs().FirstOrDefault();
+                if (firstTab != null)
+                {
+                    return (firstTab.ViewModel.FileResource, leftIndex);
+                }
+            }
+        }
+
+        // No documents found in any section
+        return null;
+    }
+
+    /// <summary>
+    /// Sets the active document.
+    /// </summary>
+    public void SetActiveDocument(ResourceKey fileResource)
+    {
+        if (fileResource.IsEmpty)
+        {
+            _activeDocument = ResourceKey.Empty;
+            _activeSectionIndex = 0;
+            UpdateTabSelectionIndicators();
+            ActiveDocumentChanged?.Invoke(_activeDocument);
+            return;
+        }
+
+        // Find which section contains this document
+        var (section, tab) = FindDocumentTab(fileResource);
+        if (section != null && tab != null)
+        {
+            // Select the tab in its section
+            section.SelectTab(tab);
+
+            // Directly update active document (don't rely on events for programmatic selection)
+            _activeSectionIndex = section.SectionIndex;
+            _activeDocument = fileResource;
+            UpdateTabSelectionIndicators();
+            ActiveDocumentChanged?.Invoke(_activeDocument);
+        }
+    }
+
+    /// <summary>
     /// Gets the DocumentTab for a given resource across all sections.
     /// </summary>
     public (DocumentSection? Section, DocumentTab? Tab) FindDocumentTab(ResourceKey fileResource)
@@ -278,6 +482,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         targetSection.AddTab(tab);
         targetSection.SelectTab(tab);
 
+        // Update active section if this was the active document
+        if (tab.ViewModel.FileResource == _activeDocument)
+        {
+            _activeSectionIndex = targetSectionIndex;
+            UpdateTabSelectionIndicators();
+            ActiveDocumentChanged?.Invoke(_activeDocument);
+        }
+
         return true;
     }
 
@@ -300,6 +512,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         // Move documents from sections that will be hidden to the rightmost visible section
         var targetSection = _sections[newSectionCount - 1];
+        var targetSectionIndex = newSectionCount - 1;
 
         for (int i = newSectionCount; i < _sections.Count; i++)
         {
@@ -311,6 +524,13 @@ public sealed partial class DocumentSectionContainer : UserControl
                 sourceSection.RemoveTab(tab);
                 targetSection.AddTab(tab);
             }
+        }
+
+        // Update active section if it was in a hidden section
+        if (_activeSectionIndex >= newSectionCount)
+        {
+            _activeSectionIndex = targetSectionIndex;
+            UpdateTabSelectionIndicators();
         }
     }
 
@@ -328,11 +548,26 @@ public sealed partial class DocumentSectionContainer : UserControl
         RootGrid.ColumnDefinitions.Clear();
         _splitters.Clear();
 
-
         // Update VisibleSectionCount on all sections
         foreach (var section in _sections)
         {
             section.VisibleSectionCount = _sectionCount;
+        }
+
+        // Ensure all sections have events wired up (defensive check)
+        for (int i = 0; i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            // Unwire and rewire to ensure no duplicates
+            section.SelectionChanged -= OnSectionSelectionChanged;
+            section.OpenDocumentsChanged -= OnSectionOpenDocumentsChanged;
+            section.CloseRequested -= OnSectionCloseRequested;
+            section.ContextMenuActionRequested -= OnSectionContextMenuActionRequested;
+
+            section.SelectionChanged += OnSectionSelectionChanged;
+            section.OpenDocumentsChanged += OnSectionOpenDocumentsChanged;
+            section.CloseRequested += OnSectionCloseRequested;
+            section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         }
 
         for (int i = 0; i < _sectionCount; i++)
@@ -424,7 +659,29 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void OnSectionSelectionChanged(DocumentSection section, ResourceKey documentResource)
     {
-        SelectionChanged?.Invoke(section, documentResource);
+        // This handles section-level selection (which tab is selected within a section's TabView).
+        // This is distinct from the active document, which is updated via HandleTabClicked/SetActiveDocument.
+        // Forward the event for any listeners that need to track section-level selection.
+        SectionSelectionChanged?.Invoke(section, documentResource);
+    }
+
+    /// <summary>
+    /// Updates the visual selection indicators on all tabs across all sections.
+    /// </summary>
+    private void UpdateTabSelectionIndicators()
+    {
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            bool isActiveSection = i == _activeSectionIndex;
+
+            foreach (var tab in section.GetAllTabs())
+            {
+                bool isActiveDocument = isActiveSection &&
+                    tab.ViewModel.FileResource == _activeDocument;
+                tab.UpdateActiveDocumentState(isActiveDocument);
+            }
+        }
     }
 
     private void OnSectionOpenDocumentsChanged(DocumentSection section, List<ResourceKey> documents)

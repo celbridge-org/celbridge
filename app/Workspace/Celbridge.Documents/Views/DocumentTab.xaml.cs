@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
@@ -32,6 +33,7 @@ public partial class DocumentTab : TabViewItem
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
 
     public DocumentTabViewModel ViewModel { get; }
 
@@ -46,6 +48,11 @@ public partial class DocumentTab : TabViewItem
     public int VisibleSectionCount { get; set; } = 1;
 
     /// <summary>
+    /// Gets whether this tab is the active document.
+    /// </summary>
+    public bool IsActiveDocument { get; private set; }
+
+    /// <summary>
     /// Event raised when a context menu action is triggered.
     /// </summary>
     public event Action<DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
@@ -56,6 +63,7 @@ public partial class DocumentTab : TabViewItem
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
@@ -70,6 +78,22 @@ public partial class DocumentTab : TabViewItem
         SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileExplorer");
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
+    }
+
+    /// <summary>
+    /// Updates the visual state to indicate whether this tab is the active document.
+    /// </summary>
+    public void UpdateActiveDocumentState(bool isActiveDocument)
+    {
+        if (IsActiveDocument == isActiveDocument)
+        {
+            return;
+        }
+
+        IsActiveDocument = isActiveDocument;
+
+        // Directly update the selection indicator visibility
+        SelectionIndicator.Visibility = isActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ContextMenu_Close(object sender, RoutedEventArgs e)
@@ -201,6 +225,13 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
+        // Send message to notify that this tab was clicked - this updates the active document
+        // Using messaging ensures reliable notification even if the tab is already selected in its section
+        int tabOrder = FindParentTabView()?.TabItems.IndexOf(this) ?? 0;
+        var address = new DocumentAddress(WindowIndex: 0, SectionIndex: SectionIndex, TabOrder: tabOrder);
+        var message = new DocumentTabClickedMessage(ViewModel.FileResource, address);
+        _messengerService.Send(message);
+
         // Focus the document editor when the tab is clicked (even if tab is already selected)
         _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {

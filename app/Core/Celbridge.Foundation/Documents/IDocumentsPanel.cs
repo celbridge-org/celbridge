@@ -6,9 +6,14 @@ namespace Celbridge.Documents;
 public interface IDocumentsPanel
 {
     /// <summary>
-    /// Gets or sets the number of document sections (1-3).
+    /// Gets or sets the number of document sections.
     /// </summary>
     int SectionCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the active document that is being inspected.
+    /// </summary>
+    ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
     /// Sets the proportional widths (ratios) of document sections.

@@ -32,22 +32,33 @@
     </muxc:TabViewItem.ContextFlyout>
 
     <muxc:TabViewItem.Header>
-        <StackPanel Orientation="Horizontal">
+        <Grid Margin="0,-4,0,0">
+            <!-- Selection indicator at top - extends beyond header bounds using negative margins -->
+            <Border x:Name="SelectionIndicator"
+                    Height="3"
+                    CornerRadius="0"
+                    Background="{ThemeResource SystemAccentColor}"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Margin="-12,-2,-36,0" />
 
-            <controls:FileIcon x:Name="ResourceIcon"
-                               Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
-                               Size="16"
-                               MinWidth="20"
-                               Margin="0"
-                               />
+            <!-- Tab content -->
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <controls:FileIcon x:Name="ResourceIcon"
+                                   Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
+                                   Size="16"
+                                   MinWidth="20"
+                                   Margin="0"
+                                   />
 
-            <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
-                       Margin="4,0,0,0"
-                       ToolTipService.ToolTip="{x:Bind ViewModel.FilePath, Mode=OneWay}"
-                       ToolTipService.Placement="Bottom"
-                       />
-          
-         </StackPanel>
-     </muxc:TabViewItem.Header>
+                <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                           Margin="4,0,0,0"
+                           ToolTipService.ToolTip="{x:Bind ViewModel.FilePath, Mode=OneWay}"
+                           ToolTipService.Placement="Bottom"
+                           />
+            </StackPanel>
+        </Grid>
+    </muxc:TabViewItem.Header>
 
 </muxc:TabViewItem>

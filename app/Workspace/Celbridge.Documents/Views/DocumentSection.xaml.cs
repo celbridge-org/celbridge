@@ -191,6 +191,14 @@ public sealed partial class DocumentSection : UserControl
     public int TabCount => TabView.TabItems.Count;
 
     /// <summary>
+    /// Gets the index of the specified tab, or -1 if not found.
+    /// </summary>
+    public int GetTabIndex(DocumentTab tab)
+    {
+        return TabView.TabItems.IndexOf(tab);
+    }
+
+    /// <summary>
     /// Gets all document tabs in this section.
     /// </summary>
     public IEnumerable<DocumentTab> GetAllTabs()
