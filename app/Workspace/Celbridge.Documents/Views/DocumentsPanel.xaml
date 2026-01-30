@@ -9,6 +9,7 @@
     <local:DocumentSectionContainer x:Name="SectionContainer"/>
     <local:DocumentToolbar x:Name="DocumentToolbar" 
                            HorizontalAlignment="Right"
-                           VerticalAlignment="Top"/>
+                           VerticalAlignment="Top"
+                           Margin="0,6"/>
   </Grid>
 </UserControl>

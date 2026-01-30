@@ -7,6 +7,7 @@ public sealed partial class DocumentToolbar : UserControl
     private readonly IStringLocalizer _stringLocalizer;
 
     private int _currentSectionCount = 1;
+    private bool _isUpdatingSelection = false;
 
     // Toolbar tooltip strings
     private string SplitEditorTooltipString => _stringLocalizer.GetString("DocumentToolbar_SplitEditorTooltip");
@@ -41,31 +42,47 @@ public sealed partial class DocumentToolbar : UserControl
 
     private void UpdateMenuItemStates()
     {
-        // Use a checkmark or similar indicator for the current selection
-        // WinUI MenuFlyoutItem doesn't have IsChecked, so we use FontWeight
-        OneSection.FontWeight = _currentSectionCount == 1
-            ? Microsoft.UI.Text.FontWeights.Bold
-            : Microsoft.UI.Text.FontWeights.Normal;
-        TwoSections.FontWeight = _currentSectionCount == 2
-            ? Microsoft.UI.Text.FontWeights.Bold
-            : Microsoft.UI.Text.FontWeights.Normal;
-        ThreeSections.FontWeight = _currentSectionCount == 3
-            ? Microsoft.UI.Text.FontWeights.Bold
-            : Microsoft.UI.Text.FontWeights.Normal;
+        _isUpdatingSelection = true;
+        try
+        {
+            // Update radio button selection
+            OneSection.IsChecked = _currentSectionCount == 1;
+            TwoSections.IsChecked = _currentSectionCount == 2;
+            ThreeSections.IsChecked = _currentSectionCount == 3;
+
+            // Update the button icon to reflect current section count
+            ButtonIcon.SectionCount = _currentSectionCount;
+        }
+        finally
+        {
+            _isUpdatingSelection = false;
+        }
     }
 
-    private void OneSection_Click(object sender, RoutedEventArgs e)
+    private void OneSection_Checked(object sender, RoutedEventArgs e)
     {
-        SectionCountChangeRequested?.Invoke(1);
+        if (!_isUpdatingSelection)
+        {
+            SectionCountChangeRequested?.Invoke(1);
+            SplitEditorFlyout.Hide();
+        }
     }
 
-    private void TwoSections_Click(object sender, RoutedEventArgs e)
+    private void TwoSections_Checked(object sender, RoutedEventArgs e)
     {
-        SectionCountChangeRequested?.Invoke(2);
+        if (!_isUpdatingSelection)
+        {
+            SectionCountChangeRequested?.Invoke(2);
+            SplitEditorFlyout.Hide();
+        }
     }
 
-    private void ThreeSections_Click(object sender, RoutedEventArgs e)
+    private void ThreeSections_Checked(object sender, RoutedEventArgs e)
     {
-        SectionCountChangeRequested?.Invoke(3);
+        if (!_isUpdatingSelection)
+        {
+            SectionCountChangeRequested?.Invoke(3);
+            SplitEditorFlyout.Hide();
+        }
     }
 }
