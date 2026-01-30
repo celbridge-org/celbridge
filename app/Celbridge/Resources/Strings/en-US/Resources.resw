@@ -459,8 +459,20 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
   </data>
-  <data name="DocumentToolbar_SplitViewTooltip" xml:space="preserve">
-    <value>Split view for side-by-side editing</value>
+  <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
+    <value>Split Editor</value>
+  </data>
+  <data name="DocumentToolbar_OneSection" xml:space="preserve">
+    <value>Single Editor</value>
+  </data>
+  <data name="DocumentToolbar_TwoSections" xml:space="preserve">
+    <value>Two Editors</value>
+  </data>
+  <data name="DocumentToolbar_ThreeSections" xml:space="preserve">
+    <value>Three Editors</value>
+  </data>
+  <data name="DocumentSection_NoDocumentsOpen" xml:space="preserve">
+    <value>No documents open</value>
   </data>
   <data name="DocumentTab_Close" xml:space="preserve">
     <value>Close</value>

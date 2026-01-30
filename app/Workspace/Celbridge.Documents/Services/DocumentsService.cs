@@ -1,10 +1,10 @@
+using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using System.Text.RegularExpressions;
 
 namespace Celbridge.Documents.Services;
 
@@ -12,8 +12,9 @@ public record SetTextDocumentContentMessage(ResourceKey Resource, string Content
 
 public class DocumentsService : IDocumentsService, IDisposable
 {
-    private const string PreviousOpenDocumentsKey = "PreviousOpenDocuments";
-    private const string PreviousSelectedDocumentKey = "PreviousSelectedDocument";
+    private const string OpenDocumentsKey = "OpenDocuments";
+    private const string SelectedDocumentKey = "SelectedDocument";
+    private const string SectionRatiosKey = "SectionRatios";
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DocumentsService> _logger;
@@ -60,6 +61,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<OpenDocumentsChangedMessage>(this, OnOpenDocumentsChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
         _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
@@ -100,6 +102,15 @@ public class DocumentsService : IDocumentsService, IDisposable
         {
             // Ignore change events that happen while loading the workspace
             _ = StoreOpenDocuments();
+        }
+    }
+
+    private void OnSectionRatiosChangedMessage(object recipient, SectionRatiosChangedMessage message)
+    {
+        if (_isWorkspaceLoaded)
+        {
+            // Ignore change events that happen while loading the workspace
+            _ = StoreSectionRatios(message.SectionRatios);
         }
     }
 
@@ -307,7 +318,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             documents.Add(fileResource.ToString());
         }
 
-        await workspaceSettings.SetPropertyAsync(PreviousOpenDocumentsKey, documents);
+        await workspaceSettings.SetPropertyAsync(OpenDocumentsKey, documents);
     }
 
     public async Task StoreSelectedDocument()
@@ -317,7 +328,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var fileResource = SelectedDocument.ToString();
 
-        await workspaceSettings.SetPropertyAsync(PreviousSelectedDocumentKey, fileResource);
+        await workspaceSettings.SetPropertyAsync(SelectedDocumentKey, fileResource);
+    }
+
+    public async Task StoreSectionRatios(List<double> ratios)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        await workspaceSettings.SetPropertyAsync(SectionRatiosKey, ratios);
     }
 
     public async Task RestorePanelState()
@@ -327,7 +346,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(PreviousOpenDocumentsKey);
+        // Restore section layout (count is inferred from ratios list length)
+        var sectionRatios = await workspaceSettings.GetPropertyAsync<List<double>>(SectionRatiosKey);
+        if (sectionRatios != null && sectionRatios.Count >= 1 && sectionRatios.Count <= 3)
+        {
+            _documentsPanel!.SectionCount = sectionRatios.Count;
+            _documentsPanel!.SetSectionRatios(sectionRatios);
+        }
+
+        var openDocuments = await workspaceSettings.GetPropertyAsync<List<string>>(OpenDocumentsKey);
         if (openDocuments is null ||
             openDocuments.Count == 0)
         {
@@ -389,7 +416,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
         }
 
-        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedDocumentKey);
+        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(SelectedDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
             return;

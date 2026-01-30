@@ -5,15 +5,10 @@
     xmlns:local="using:Celbridge.Documents.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
-  <TabView x:Name="TabView"
-           IsAddTabButtonVisible="False"
-           TabWidthMode="SizeToContent"
-           VerticalAlignment="Stretch"
-           TabCloseRequested="TabView_CloseRequested"
-           SelectionChanged="TabView_SelectionChanged"
-           TabItemsChanged="TabView_TabItemsChanged">
-    <TabView.TabStripFooter>
-      <local:DocumentToolbar x:Name="DocumentToolbar" />
-    </TabView.TabStripFooter>
-  </TabView>
+  <Grid>
+    <local:DocumentSectionContainer x:Name="SectionContainer"/>
+    <local:DocumentToolbar x:Name="DocumentToolbar" 
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Top"/>
+  </Grid>
 </UserControl>

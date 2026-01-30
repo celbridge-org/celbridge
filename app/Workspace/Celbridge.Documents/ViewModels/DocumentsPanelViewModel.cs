@@ -67,4 +67,11 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var message = new SelectedDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
     }
+
+    public void OnSectionRatiosChanged(List<double> ratios)
+    {
+        // Notify the DocumentsService about the section ratios change.
+        var message = new SectionRatiosChangedMessage(ratios);
+        _messengerService.Send(message);
+    }
 }

@@ -11,12 +11,30 @@
               Spacing="0"
               VerticalAlignment="Center"
               Margin="0,0,4,0">
-    <Button x:Name="SplitViewButton"
-            ToolTipService.ToolTip="{x:Bind SplitViewTooltipString}"
-            Padding="4"
-            Click="SplitViewButton_Click">
+    <Button x:Name="SplitEditorButton"
+            ToolTipService.ToolTip="{x:Bind SplitEditorTooltipString}"
+            Padding="4">
       <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                 Glyph="&#xE8C0;"/>
+      <Button.Flyout>
+        <MenuFlyout x:Name="SplitEditorFlyout" Placement="Bottom">
+          <MenuFlyoutItem x:Name="OneSection" Text="{x:Bind OneSectionString}" Click="OneSection_Click">
+            <MenuFlyoutItem.Icon>
+              <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE745;"/>
+            </MenuFlyoutItem.Icon>
+          </MenuFlyoutItem>
+          <MenuFlyoutItem x:Name="TwoSections" Text="{x:Bind TwoSectionsString}" Click="TwoSections_Click">
+            <MenuFlyoutItem.Icon>
+              <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE746;"/>
+            </MenuFlyoutItem.Icon>
+          </MenuFlyoutItem>
+          <MenuFlyoutItem x:Name="ThreeSections" Text="{x:Bind ThreeSectionsString}" Click="ThreeSections_Click">
+            <MenuFlyoutItem.Icon>
+              <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE747;"/>
+            </MenuFlyoutItem.Icon>
+          </MenuFlyoutItem>
+        </MenuFlyout>
+      </Button.Flyout>
     </Button>
   </StackPanel>
 </UserControl>

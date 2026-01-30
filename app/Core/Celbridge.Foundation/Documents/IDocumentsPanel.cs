@@ -6,6 +6,17 @@ namespace Celbridge.Documents;
 public interface IDocumentsPanel
 {
     /// <summary>
+    /// Gets or sets the number of document sections (1-3).
+    /// </summary>
+    int SectionCount { get; set; }
+
+    /// <summary>
+    /// Sets the proportional widths (ratios) of document sections.
+    /// Ratios are relative values that sum to 1.0.
+    /// </summary>
+    void SetSectionRatios(List<double> ratios);
+
+    /// <summary>
     /// Returns a list of open documents.
     /// The list is in the same order as the document tabs in the documents panel.
     /// </summary>

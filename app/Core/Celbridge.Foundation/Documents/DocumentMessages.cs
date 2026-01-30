@@ -16,6 +16,12 @@ public record OpenDocumentsChangedMessage(List<ResourceKey> OpenDocuments);
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 
 /// <summary>
+/// A message sent when the document section proportions change.
+/// Contains ratios (relative values that sum to 1.0).
+/// </summary>
+public record SectionRatiosChangedMessage(List<double> SectionRatios);
+
+/// <summary>
 /// A message sent when an open document's resource has been renamed or moved.
 /// </summary>
 public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKey NewResource);

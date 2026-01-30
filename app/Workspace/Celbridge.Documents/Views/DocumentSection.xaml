@@ -1,0 +1,33 @@
+﻿<UserControl
+    x:Class="Celbridge.Documents.Views.DocumentSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+  
+  <Grid>
+    <!-- Empty section placeholder (shown when no tabs) -->
+    <Border x:Name="EmptyPlaceholder"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            Visibility="Collapsed">
+      <TextBlock Text="{x:Bind NoDocumentsOpenString}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                 FontStyle="Italic"/>
+    </Border>
+    
+    <!-- TabView for documents -->
+    <TabView x:Name="TabView"
+             IsAddTabButtonVisible="False"
+             TabWidthMode="SizeToContent"
+             VerticalAlignment="Stretch"
+             TabCloseRequested="TabView_CloseRequested"
+             SelectionChanged="TabView_SelectionChanged"
+             TabItemsChanged="TabView_TabItemsChanged">
+      <TabView.TabStripFooter>
+        <ContentPresenter x:Name="FooterPresenter"/>
+      </TabView.TabStripFooter>
+    </TabView>
+  </Grid>
+</UserControl>
