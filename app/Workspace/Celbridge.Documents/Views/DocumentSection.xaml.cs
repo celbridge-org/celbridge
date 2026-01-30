@@ -1,5 +1,6 @@
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation.Collections;
 
@@ -63,6 +64,23 @@ public sealed partial class DocumentSection : UserControl
         InitializeComponent();
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+
+        // Disable tab add/remove animations so tabs snap into place immediately
+        TabView.Loaded += (s, e) => DisableTabViewAnimations();
+    }
+
+    /// <summary>
+    /// Disables the add/remove animations on the TabView's internal tab strip.
+    /// </summary>
+    private void DisableTabViewAnimations()
+    {
+        // The TabView uses a ListViewBase internally for the tab strip.
+        // We need to find it and clear its ChildrenTransitions.
+        var listView = VisualTreeHelperEx.FindDescendant<ListViewBase>(TabView);
+        if (listView is not null)
+        {
+            listView.ItemContainerTransitions = new TransitionCollection();
+        }
     }
 
     /// <summary>
@@ -161,6 +179,7 @@ public sealed partial class DocumentSection : UserControl
             }
         }
     }
+
     private int _visibleSectionCount = 1;
 
     /// <summary>
