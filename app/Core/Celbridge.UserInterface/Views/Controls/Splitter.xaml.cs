@@ -91,6 +91,7 @@ public sealed partial class Splitter : UserControl
     private double _dragStartPosition;
     private Brush? _normalBrush;
     private Brush? _draggingBrush;
+    private InputSystemCursor? _currentCursor;
 
     public Splitter()
     {
@@ -108,6 +109,7 @@ public sealed partial class Splitter : UserControl
         SplitterBorder.PointerCaptureLost += OnPointerCaptureLost;
 
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -120,6 +122,13 @@ public sealed partial class Splitter : UserControl
         UpdateOrientation();
         UpdateLineThickness();
         UpdateGrabAreaSize();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        // Dispose cursor when control is unloaded
+        _currentCursor?.Dispose();
+        _currentCursor = null;
     }
 
     private static void OnOrientationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -209,7 +218,7 @@ public sealed partial class Splitter : UserControl
     {
         if (!_isDragging)
         {
-            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+            SetCursor(InputSystemCursorShape.Arrow);
         }
     }
 
@@ -307,7 +316,7 @@ public sealed partial class Splitter : UserControl
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
 
-        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        SetCursor(InputSystemCursorShape.Arrow);
     }
 
     private void UpdateCursor()
@@ -316,6 +325,14 @@ public sealed partial class Splitter : UserControl
             ? InputSystemCursorShape.SizeWestEast
             : InputSystemCursorShape.SizeNorthSouth;
 
-        ProtectedCursor = InputSystemCursor.Create(cursorShape);
+        SetCursor(cursorShape);
+    }
+
+    private void SetCursor(InputSystemCursorShape cursorShape)
+    {
+        // Dispose previous cursor before creating a new one
+        _currentCursor?.Dispose();
+        _currentCursor = InputSystemCursor.Create(cursorShape);
+        ProtectedCursor = _currentCursor;
     }
 }
