@@ -9,7 +9,7 @@
           Background="Transparent">
     <!-- Thin visible line - expands when dragging -->
     <Rectangle x:Name="SplitterLine"
-               Fill="{ThemeResource SplitterBrush}"
+               Fill="{ThemeResource DividerBrush}"
                HorizontalAlignment="Center"
                VerticalAlignment="Center"/>
   </Border>

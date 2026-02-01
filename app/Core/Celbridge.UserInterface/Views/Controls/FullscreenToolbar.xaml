@@ -22,7 +22,7 @@
     <Grid x:Name="ToolbarContainer"
           Height="36"
           Background="{ThemeResource PanelBackgroundBBrush}"
-          BorderBrush="{ThemeResource SplitterBrush}"
+          BorderBrush="{ThemeResource DividerBrush}"
           BorderThickness="0,0,0,2"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Top"

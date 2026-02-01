@@ -10,7 +10,7 @@
       <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
       <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
       <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
-      <Color x:Key="SplitterColor">#E5E5E5</Color>
+      <Color x:Key="DividerColor">#E5E5E5</Color>
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
       <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
@@ -23,7 +23,7 @@
       <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
       <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
       <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
-      <Color x:Key="SplitterColor">#3E4144</Color>
+      <Color x:Key="DividerColor">#3E4144</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
       <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>
@@ -40,8 +40,8 @@
   <SolidColorBrush x:Key="PanelBackgroundBBrush"
                      Color="{ThemeResource PanelBackgroundBColor}" />
 
-  <SolidColorBrush x:Key="SplitterBrush"
-                     Color="{ThemeResource SplitterColor}" />
+  <SolidColorBrush x:Key="DividerBrush"
+                     Color="{ThemeResource DividerColor}" />
 
   <SolidColorBrush x:Key="ErrorTextBrush"
                      Color="{ThemeResource ErrorTextColor}" />
