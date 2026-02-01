@@ -1,3 +1,4 @@
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 
 namespace Celbridge.Documents.Views;
@@ -11,10 +12,9 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private readonly List<DocumentSection> _sections = new();
     private readonly List<Splitter> _splitters = new();
+    private readonly Dictionary<int, SplitterHelper> _splitterHelpers = new();
 
-    // Track drag state for resizing
-    private double _leftColumnStartWidth;
-    private double _rightColumnStartWidth;
+    // Track active splitter for drag completed event
     private int _activeSplitterIndex = -1;
 
     private int _sectionCount = 1;
@@ -624,8 +624,14 @@ public sealed partial class DocumentSectionContainer : UserControl
             var leftColumnIndex = _activeSplitterIndex * 2;
             var rightColumnIndex = leftColumnIndex + 2;
 
-            _leftColumnStartWidth = RootGrid.ColumnDefinitions[leftColumnIndex].ActualWidth;
-            _rightColumnStartWidth = RootGrid.ColumnDefinitions[rightColumnIndex].ActualWidth;
+            // Create or get the SplitterHelper for this splitter
+            if (!_splitterHelpers.TryGetValue(index, out var helper))
+            {
+                helper = new SplitterHelper(RootGrid, GridResizeMode.Columns, leftColumnIndex, rightColumnIndex, minSize: MinSectionWidth);
+                _splitterHelpers[index] = helper;
+            }
+
+            helper.OnDragStarted();
         }
     }
 
@@ -636,17 +642,9 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
-        var leftColumnIndex = _activeSplitterIndex * 2;
-        var rightColumnIndex = leftColumnIndex + 2;
-
-        var newLeftWidth = _leftColumnStartWidth + delta;
-        var newRightWidth = _rightColumnStartWidth - delta;
-
-        // Enforce minimum widths
-        if (newLeftWidth >= MinSectionWidth && newRightWidth >= MinSectionWidth)
+        if (_splitterHelpers.TryGetValue(_activeSplitterIndex, out var helper))
         {
-            RootGrid.ColumnDefinitions[leftColumnIndex].Width = new GridLength(newLeftWidth, GridUnitType.Pixel);
-            RootGrid.ColumnDefinitions[rightColumnIndex].Width = new GridLength(newRightWidth, GridUnitType.Pixel);
+            helper.OnDragDelta(delta);
         }
     }
 

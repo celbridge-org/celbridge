@@ -1,5 +1,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.Documents.Views;
 
@@ -19,9 +20,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private bool _supportsPreview;
 
-    // Splitter drag state
-    private double _leftColumnStartWidth;
-    private double _rightColumnStartWidth;
+    private SplitterHelper? _splitterHelper;
 
     public TextEditorDocumentView()
     {
@@ -33,6 +32,13 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         ViewModel.OnSetContent += ViewModel_OnSetContent;
+
+        // Initialize splitter helper
+        var grid = this.Content as Grid;
+        if (grid != null)
+        {
+            _splitterHelper = new SplitterHelper(grid, GridResizeMode.Columns, 0, 1, minSize: 200);
+        }
 
         // Set up splitter event handlers
         PreviewSplitter.DragStarted += PreviewSplitter_DragStarted;
@@ -206,28 +212,11 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private void PreviewSplitter_DragStarted(object? sender, EventArgs e)
     {
-        _leftColumnStartWidth = LeftColumn.ActualWidth;
-        _rightColumnStartWidth = RightColumn.ActualWidth;
+        _splitterHelper?.OnDragStarted();
     }
 
     private void PreviewSplitter_DragDelta(object? sender, double delta)
     {
-        // Dragging right increases left column, decreases right column
-        var newLeftWidth = _leftColumnStartWidth + delta;
-        var newRightWidth = _rightColumnStartWidth - delta;
-
-        // Enforce minimum widths (200px each)
-        const double minWidth = 200;
-        if (newLeftWidth >= minWidth && newRightWidth >= minWidth)
-        {
-#if WINDOWS
-            LeftColumn.Width = new GridLength(newLeftWidth, GridUnitType.Pixel);
-            RightColumn.Width = new GridLength(newRightWidth, GridUnitType.Pixel);
-#else
-            // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
-            LeftColumn.Width = new GridLength(newLeftWidth);
-            RightColumn.Width = new GridLength(newRightWidth);
-#endif
-        }
+        _splitterHelper?.OnDragDelta(delta);
     }
 }

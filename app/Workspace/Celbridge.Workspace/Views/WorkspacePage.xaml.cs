@@ -1,6 +1,7 @@
 using Celbridge.Console.Views;
 using Celbridge.Messaging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace.ViewModels;
 
 namespace Celbridge.Workspace.Views;
@@ -16,11 +17,9 @@ public sealed partial class WorkspacePage : Page
     private ProjectPanel? _projectPanel;
     private UIElement? _inspectorPanel;
 
-    // Splitter drag state
-    private double _primaryPanelStartWidth;
-    private double _secondaryPanelStartWidth;
-    private double _consolePanelStartHeight;
-    private double _documentsPanelStartHeight;
+    private SplitterHelper? _primaryPanelSplitterHelper;
+    private SplitterHelper? _secondaryPanelSplitterHelper;
+    private SplitterHelper? _consolePanelSplitterHelper;
 
     public WorkspacePage()
     {
@@ -94,6 +93,11 @@ public sealed partial class WorkspacePage : Page
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
         ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        // Initialize splitter helpers
+        _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: 100);
+        _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: 100, invertDelta: true);
+        _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: 100, invertDelta: true);
 
         // Set up splitter event handlers
         PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
@@ -306,46 +310,31 @@ public sealed partial class WorkspacePage : Page
 
     private void PrimaryPanelSplitter_DragStarted(object? sender, EventArgs e)
     {
-        _primaryPanelStartWidth = PrimaryPanelColumn.ActualWidth;
+        _primaryPanelSplitterHelper?.OnDragStarted();
     }
 
     private void PrimaryPanelSplitter_DragDelta(object? sender, double delta)
     {
-        var newWidth = _primaryPanelStartWidth + delta;
-        if (newWidth >= PrimaryPanelColumn.MinWidth)
-        {
-            PrimaryPanelColumn.Width = new GridLength(newWidth);
-        }
+        _primaryPanelSplitterHelper?.OnDragDelta(delta);
     }
 
     private void SecondaryPanelSplitter_DragStarted(object? sender, EventArgs e)
     {
-        _secondaryPanelStartWidth = SecondaryPanelColumn.ActualWidth;
+        _secondaryPanelSplitterHelper?.OnDragStarted();
     }
 
     private void SecondaryPanelSplitter_DragDelta(object? sender, double delta)
     {
-        // For secondary panel, negative delta increases width (dragging left makes panel wider)
-        var newWidth = _secondaryPanelStartWidth - delta;
-        if (newWidth >= SecondaryPanelColumn.MinWidth)
-        {
-            SecondaryPanelColumn.Width = new GridLength(newWidth);
-        }
+        _secondaryPanelSplitterHelper?.OnDragDelta(delta);
     }
 
     private void ConsolePanelSplitter_DragStarted(object? sender, EventArgs e)
     {
-        _consolePanelStartHeight = ConsolePanelRow.ActualHeight;
-        _documentsPanelStartHeight = DocumentsPanel.ActualHeight;
+        _consolePanelSplitterHelper?.OnDragStarted();
     }
 
     private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
     {
-        // For console panel, negative delta increases height (dragging up makes panel taller)
-        var newHeight = _consolePanelStartHeight - delta;
-        if (newHeight >= ConsolePanelRow.MinHeight)
-        {
-            ConsolePanelRow.Height = new GridLength(newHeight);
-        }
+        _consolePanelSplitterHelper?.OnDragDelta(delta);
     }
 }

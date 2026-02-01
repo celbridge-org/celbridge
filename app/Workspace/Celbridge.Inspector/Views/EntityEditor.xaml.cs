@@ -1,4 +1,5 @@
 using Celbridge.Inspector.ViewModels;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.Inspector.Views;
 
@@ -6,9 +7,7 @@ public sealed partial class EntityEditor : UserControl
 {
     public EntityEditorViewModel ViewModel { get; set; }
 
-    // Splitter drag state
-    private double _componentListStartHeight;
-    private double _detailStartHeight;
+    private SplitterHelper? _splitterHelper;
 
     public EntityEditor()
     {
@@ -24,6 +23,13 @@ public sealed partial class EntityEditor : UserControl
     private void EntityEditor_Loaded(object sender, RoutedEventArgs e)
     {
         ViewModel.InspectedComponentChanged += ViewModel_InspectedComponentChanged;
+
+        // Initialize splitter helper
+        var grid = this.Content as Grid;
+        if (grid != null)
+        {
+            _splitterHelper = new SplitterHelper(grid, GridResizeMode.Rows, 1, 2, minSize: 100);
+        }
 
         // Set up splitter event handlers
         DetailSplitter.DragStarted += DetailSplitter_DragStarted;
@@ -64,36 +70,11 @@ public sealed partial class EntityEditor : UserControl
 
     private void DetailSplitter_DragStarted(object? sender, EventArgs e)
     {
-        // Get the Grid's row definitions to access actual heights
-        var grid = this.Content as Grid;
-        if (grid != null && grid.RowDefinitions.Count >= 3)
-        {
-            _componentListStartHeight = grid.RowDefinitions[1].ActualHeight;
-            _detailStartHeight = grid.RowDefinitions[2].ActualHeight;
-        }
+        _splitterHelper?.OnDragStarted();
     }
 
     private void DetailSplitter_DragDelta(object? sender, double delta)
     {
-        var grid = this.Content as Grid;
-        if (grid == null || grid.RowDefinitions.Count < 3)
-        {
-            return;
-        }
-
-        var componentRow = grid.RowDefinitions[1];
-        var detailRow = grid.RowDefinitions[2];
-
-        // Dragging down increases component list, decreases detail panel
-        var newComponentHeight = _componentListStartHeight + delta;
-        var newDetailHeight = _detailStartHeight - delta;
-
-        // Enforce minimum heights (100px each)
-        const double minHeight = 100;
-        if (newComponentHeight >= minHeight && newDetailHeight >= minHeight)
-        {
-            componentRow.Height = new GridLength(newComponentHeight, GridUnitType.Pixel);
-            detailRow.Height = new GridLength(newDetailHeight, GridUnitType.Pixel);
-        }
+        _splitterHelper?.OnDragDelta(delta);
     }
 }
