@@ -321,17 +321,9 @@ public sealed partial class DocumentSectionContainer : UserControl
             {
                 // Find the closest tab to the closing position
                 // If there's a tab to the right, select it; otherwise select the one to the left
-                int nextIndex;
-                if (closingTabIndex < remainingTabs)
-                {
-                    // There's a tab to the right (which will shift into this position)
-                    nextIndex = closingTabIndex + 1; // +1 because the closing tab is still in the list
-                }
-                else
-                {
-                    // Select the tab to the left
-                    nextIndex = closingTabIndex - 1;
-                }
+                int nextIndex = closingTabIndex < remainingTabs
+                    ? closingTabIndex + 1 // There's a tab to the right (which will shift into this position)
+                    : closingTabIndex - 1; // Select the tab to the left
 
                 if (nextIndex >= 0 && nextIndex < tabsInSection.Count)
                 {
