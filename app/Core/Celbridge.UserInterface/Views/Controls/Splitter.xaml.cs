@@ -209,7 +209,7 @@ public sealed partial class Splitter : UserControl
     {
         if (!_isDragging)
         {
-            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+            SetCursor(InputSystemCursorShape.Arrow);
         }
     }
 
@@ -307,7 +307,7 @@ public sealed partial class Splitter : UserControl
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
 
-        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        SetCursor(InputSystemCursorShape.Arrow);
     }
 
     private void UpdateCursor()
@@ -316,6 +316,13 @@ public sealed partial class Splitter : UserControl
             ? InputSystemCursorShape.SizeWestEast
             : InputSystemCursorShape.SizeNorthSouth;
 
+        SetCursor(cursorShape);
+    }
+
+    private void SetCursor(InputSystemCursorShape cursorShape)
+    {
+        var oldCursor = ProtectedCursor;
         ProtectedCursor = InputSystemCursor.Create(cursorShape);
+        oldCursor?.Dispose();
     }
 }
