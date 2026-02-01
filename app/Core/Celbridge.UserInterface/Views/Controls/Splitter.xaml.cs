@@ -331,7 +331,9 @@ public sealed partial class Splitter : UserControl
     public new void Dispose()
     {
         _resizeCursor?.Dispose();
+        _resizeCursor = null;
         _arrowCursor?.Dispose();
+        _arrowCursor = null;
         base.Dispose();
     }
 }
