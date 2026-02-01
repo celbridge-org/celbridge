@@ -128,7 +128,6 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
                 _logger.LogError(ex, "An error occurred while preparing TextEditorDocumentView to close");
             }
         }
-        ;
 
         // Quick fire-and-forget call to avoid blocking the UI thread.
         CloseEditorViews();
