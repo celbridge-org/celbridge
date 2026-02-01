@@ -15,7 +15,7 @@
           HorizontalAlignment="Stretch"
           VerticalAlignment="Top"
           Background="{ThemeResource TitleBarActiveColor}"
-          BorderBrush="{ThemeResource PanelBorderBrush}"
+          BorderBrush="{ThemeResource SplitterBrush}"
           BorderThickness="0 0 0 1">
 
         <!-- TitleBar changes to a lighter color when the application loses focus (Windows only) -->

@@ -17,8 +17,6 @@
 
     <!-- Title Bar -->
     <Grid Grid.Row="0"
-          BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,0,0,1"
           Background="{ThemeResource PanelBackgroundABrush}"
           Tapped="TitleBar_Tapped">
       <Grid.ColumnDefinitions>
@@ -70,7 +68,7 @@
 
     <WebView2 x:Name="TerminalWebView"
               Grid.Row="4"
-              Margin="4,0,4,0"
+              Margin="8,8,8,0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
               DefaultBackgroundColor="Transparent"/>

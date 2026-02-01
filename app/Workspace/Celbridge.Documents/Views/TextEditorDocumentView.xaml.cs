@@ -19,6 +19,10 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private bool _supportsPreview;
 
+    // Splitter drag state
+    private double _leftColumnStartWidth;
+    private double _rightColumnStartWidth;
+
     public TextEditorDocumentView()
     {
         this.InitializeComponent();
@@ -29,6 +33,10 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         ViewModel.OnSetContent += ViewModel_OnSetContent;
+
+        // Set up splitter event handlers
+        PreviewSplitter.DragStarted += PreviewSplitter_DragStarted;
+        PreviewSplitter.DragDelta += PreviewSplitter_DragDelta;
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -113,7 +121,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             {
                 _logger.LogError(ex, "An error occurred while preparing TextEditorDocumentView to close");
             }
-        };
+        }
+        ;
 
         // Quick fire-and-forget call to avoid blocking the UI thread.
         CloseEditorViews();
@@ -189,5 +198,36 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         RightColumn.Width = isPreviewVisible ? new GridLength(400) : new GridLength(0);
 #endif
         PreviewSplitter.Visibility = isPreviewVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    //
+    // Splitter event handlers for editor/preview resizing
+    //
+
+    private void PreviewSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _leftColumnStartWidth = LeftColumn.ActualWidth;
+        _rightColumnStartWidth = RightColumn.ActualWidth;
+    }
+
+    private void PreviewSplitter_DragDelta(object? sender, double delta)
+    {
+        // Dragging right increases left column, decreases right column
+        var newLeftWidth = _leftColumnStartWidth + delta;
+        var newRightWidth = _rightColumnStartWidth - delta;
+
+        // Enforce minimum widths (200px each)
+        const double minWidth = 200;
+        if (newLeftWidth >= minWidth && newRightWidth >= minWidth)
+        {
+#if WINDOWS
+            LeftColumn.Width = new GridLength(newLeftWidth, GridUnitType.Pixel);
+            RightColumn.Width = new GridLength(newRightWidth, GridUnitType.Pixel);
+#else
+            // Todo: Using GridUnitType.Star causes an exception in Skia+GTK
+            LeftColumn.Width = new GridLength(newLeftWidth);
+            RightColumn.Width = new GridLength(newRightWidth);
+#endif
+        }
     }
 }
