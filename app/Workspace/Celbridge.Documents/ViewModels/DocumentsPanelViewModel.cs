@@ -54,10 +54,11 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public void OnOpenDocumentsChanged(List<ResourceKey> documentResources)
+    public void OnDocumentLayoutChanged()
     {
-        // Notify the DocumentsService about the current list of open documents.
-        var message = new OpenDocumentsChangedMessage(documentResources);
+        // Notify that the document layout has changed (documents opened, closed, or moved).
+        // Receivers should query the service for current state.
+        var message = new DocumentLayoutChangedMessage();
         _messengerService.Send(message);
     }
 
@@ -65,6 +66,13 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         // Notify the DocumentsService about the currently selected documents.
         var message = new SelectedDocumentChangedMessage(documentResource);
+        _messengerService.Send(message);
+    }
+
+    public void OnSectionRatiosChanged(List<double> ratios)
+    {
+        // Notify the DocumentsService about the section ratios change.
+        var message = new SectionRatiosChangedMessage(ratios);
         _messengerService.Send(message);
     }
 }

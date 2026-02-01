@@ -11,8 +11,7 @@
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
-    <Grid BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,0,0,1">
+    <Grid>
       
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>

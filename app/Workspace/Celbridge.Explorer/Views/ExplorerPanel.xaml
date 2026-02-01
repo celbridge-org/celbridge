@@ -19,9 +19,7 @@
     </Grid.RowDefinitions>
 
     <!-- Title Bar -->
-    <Grid Grid.Row="0"
-          BorderBrush="{ThemeResource PanelBorderBrush}"
-          BorderThickness="0,0,0,1">
+    <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>

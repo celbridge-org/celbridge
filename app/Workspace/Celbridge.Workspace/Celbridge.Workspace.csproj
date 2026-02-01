@@ -23,7 +23,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
     <PackageReference Include="sqlite-net-pcl" />
   </ItemGroup>
   

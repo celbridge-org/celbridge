@@ -1,5 +1,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.Documents.Views;
 
@@ -19,6 +20,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private bool _supportsPreview;
 
+    private SplitterHelper? _splitterHelper;
+
     public TextEditorDocumentView()
     {
         this.InitializeComponent();
@@ -29,6 +32,17 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         ViewModel.OnSetContent += ViewModel_OnSetContent;
+
+        // Initialize splitter helper
+        var grid = this.Content as Grid;
+        if (grid != null)
+        {
+            _splitterHelper = new SplitterHelper(grid, GridResizeMode.Columns, 0, 1, minSize: 200);
+        }
+
+        // Set up splitter event handlers
+        PreviewSplitter.DragStarted += PreviewSplitter_DragStarted;
+        PreviewSplitter.DragDelta += PreviewSplitter_DragDelta;
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -113,7 +127,8 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             {
                 _logger.LogError(ex, "An error occurred while preparing TextEditorDocumentView to close");
             }
-        };
+        }
+        ;
 
         // Quick fire-and-forget call to avoid blocking the UI thread.
         CloseEditorViews();
@@ -189,5 +204,19 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         RightColumn.Width = isPreviewVisible ? new GridLength(400) : new GridLength(0);
 #endif
         PreviewSplitter.Visibility = isPreviewVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    //
+    // Splitter event handlers for editor/preview resizing
+    //
+
+    private void PreviewSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _splitterHelper?.OnDragStarted();
+    }
+
+    private void PreviewSplitter_DragDelta(object? sender, double delta)
+    {
+        _splitterHelper?.OnDragDelta(delta);
     }
 }

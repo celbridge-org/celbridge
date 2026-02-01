@@ -6,13 +6,29 @@ namespace Celbridge.Documents;
 public interface IDocumentsPanel
 {
     /// <summary>
-    /// Returns a list of open documents.
-    /// The list is in the same order as the document tabs in the documents panel.
+    /// Gets or sets the number of document sections.
     /// </summary>
-    List<ResourceKey> GetOpenDocuments();
+    int SectionCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the active document that is being inspected.
+    /// </summary>
+    ResourceKey ActiveDocument { get; set; }
+
+    /// <summary>
+    /// Sets the proportional widths (ratios) of document sections.
+    /// Ratios are relative values that sum to 1.0.
+    /// </summary>
+    void SetSectionRatios(List<double> ratios);
+
+    /// <summary>
+    /// Returns all open documents with their addresses (UI positions).
+    /// </summary>
+    Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses();
 
     /// <summary>
     /// Open a file resource as a document in the documents panel.
+    /// Opens in the default section (section 0).
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload);
 
@@ -20,6 +36,11 @@ public interface IDocumentsPanel
     /// Open a file resource as a document in the documents panel and navigate to a specific location.
     /// </summary>
     Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location);
+
+    /// <summary>
+    /// Open a file resource as a document at a specific address (UI position).
+    /// </summary>
+    Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address);
 
     /// <summary>
     /// Close an opened document in the documents panel.
