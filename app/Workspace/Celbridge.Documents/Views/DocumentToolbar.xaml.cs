@@ -49,9 +49,6 @@ public sealed partial class DocumentToolbar : UserControl
             OneSection.IsChecked = _currentSectionCount == 1;
             TwoSections.IsChecked = _currentSectionCount == 2;
             ThreeSections.IsChecked = _currentSectionCount == 3;
-
-            // Update the button icon to reflect current section count
-            ButtonIcon.SectionCount = _currentSectionCount;
         }
         finally
         {
