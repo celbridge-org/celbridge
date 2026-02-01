@@ -233,13 +233,9 @@ public sealed partial class Splitter : UserControl
 
         // Expand the line to the dragging thickness while dragging
         if (Orientation == Orientation.Vertical)
-        {
             SplitterLine.Width = DraggingLineThickness;
-        }
         else
-        {
             SplitterLine.Height = DraggingLineThickness;
-        }
 
         // Notify that drag has started
         DragStarted?.Invoke(this, EventArgs.Empty);
