@@ -1,6 +1,4 @@
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Shapes;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
@@ -27,7 +25,7 @@ public sealed partial class Splitter : UserControl
             new PropertyMetadata(Orientation.Vertical, OnOrientationChanged));
 
     /// <summary>
-    /// The thickness of the visible splitter line in pixels.
+    /// The thickness of the visible splitter line.
     /// </summary>
     public double LineThickness
     {
@@ -41,6 +39,22 @@ public sealed partial class Splitter : UserControl
             typeof(double),
             typeof(Splitter),
             new PropertyMetadata(1.0, OnLineThicknessChanged));
+
+    /// <summary>
+    /// The thickness of the splitter line while dragging.
+    /// </summary>
+    public double DraggingLineThickness
+    {
+        get => (double)GetValue(DraggingLineThicknessProperty);
+        set => SetValue(DraggingLineThicknessProperty, value);
+    }
+
+    public static readonly DependencyProperty DraggingLineThicknessProperty =
+        DependencyProperty.Register(
+            nameof(DraggingLineThickness),
+            typeof(double),
+            typeof(Splitter),
+            new PropertyMetadata(4.0));
 
     /// <summary>
     /// The width of the interactive (grabbable) area in pixels.
@@ -82,6 +96,9 @@ public sealed partial class Splitter : UserControl
     {
         InitializeComponent();
 
+        // Ensure splitter renders above adjacent content when using negative margins for overlap.
+        Canvas.SetZIndex(this, 100);
+
         // Set up pointer event handlers
         SplitterBorder.PointerEntered += OnPointerEntered;
         SplitterBorder.PointerExited += OnPointerExited;
@@ -96,7 +113,7 @@ public sealed partial class Splitter : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         // Cache brushes
-        _normalBrush = (Brush)Application.Current.Resources["PanelBorderBrush"];
+        _normalBrush = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
         _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
 
         // Apply initial orientation
@@ -143,7 +160,7 @@ public sealed partial class Splitter : UserControl
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Stretch;
             SplitterLine.VerticalAlignment = VerticalAlignment.Center;
         }
-        
+
         UpdateLineThickness();
         UpdateGrabAreaSize();
     }
@@ -168,11 +185,18 @@ public sealed partial class Splitter : UserControl
         {
             Width = GrabAreaSize;
             Height = double.NaN; // Stretch
+
+            // Use negative margins to overlap with adjacent content (like VS Code)
+            var halfGrab = GrabAreaSize / 2;
+            Margin = new Thickness(-halfGrab, 0, -halfGrab, 0);
         }
         else
         {
             Width = double.NaN; // Stretch
             Height = GrabAreaSize;
+            // Use negative margins to overlap with adjacent content (like VS Code)
+            var halfGrab = GrabAreaSize / 2;
+            Margin = new Thickness(0, -halfGrab, 0, -halfGrab);
         }
     }
 
@@ -192,34 +216,34 @@ public sealed partial class Splitter : UserControl
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _isDragging = true;
-        
+
         var point = e.GetCurrentPoint(this.Parent as UIElement);
-        _dragStartPosition = Orientation == Orientation.Vertical 
-            ? point.Position.X 
+        _dragStartPosition = Orientation == Orientation.Vertical
+            ? point.Position.X
             : point.Position.Y;
 
 
         SplitterBorder.CapturePointer(e.Pointer);
-        
+
         // Change to accent color and expand width while dragging
         if (_draggingBrush != null)
         {
             SplitterLine.Fill = _draggingBrush;
         }
-        
-        // Expand the line to fill the grab area while dragging
+
+        // Expand the line to the dragging thickness while dragging
         if (Orientation == Orientation.Vertical)
         {
-            SplitterLine.Width = GrabAreaSize;
+            SplitterLine.Width = DraggingLineThickness;
         }
         else
         {
-            SplitterLine.Height = GrabAreaSize;
+            SplitterLine.Height = DraggingLineThickness;
         }
-        
+
         // Notify that drag has started
         DragStarted?.Invoke(this, EventArgs.Empty);
-        
+
         UpdateCursor();
         e.Handled = true;
     }
@@ -232,14 +256,14 @@ public sealed partial class Splitter : UserControl
         }
 
         var point = e.GetCurrentPoint(this.Parent as UIElement);
-        var currentPosition = Orientation == Orientation.Vertical 
-            ? point.Position.X 
+        var currentPosition = Orientation == Orientation.Vertical
+            ? point.Position.X
             : point.Position.Y;
 
         var delta = currentPosition - _dragStartPosition;
-        
+
         DragDelta?.Invoke(this, delta);
-        
+
         e.Handled = true;
     }
 
@@ -249,18 +273,18 @@ public sealed partial class Splitter : UserControl
         {
             _isDragging = false;
             SplitterBorder.ReleasePointerCapture(e.Pointer);
-            
+
             // Restore normal color and size
             if (_normalBrush != null)
             {
                 SplitterLine.Fill = _normalBrush;
             }
-            
+
             // Restore original line thickness
             UpdateLineThickness();
-            
+
             DragCompleted?.Invoke(this, EventArgs.Empty);
-            
+
             e.Handled = true;
         }
     }
@@ -270,19 +294,19 @@ public sealed partial class Splitter : UserControl
         if (_isDragging)
         {
             _isDragging = false;
-            
+
             // Restore normal color and size
             if (_normalBrush != null)
             {
                 SplitterLine.Fill = _normalBrush;
             }
-            
+
             // Restore original line thickness
             UpdateLineThickness();
-            
+
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
-        
+
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
     }
 
@@ -291,7 +315,7 @@ public sealed partial class Splitter : UserControl
         var cursorShape = Orientation == Orientation.Vertical
             ? InputSystemCursorShape.SizeWestEast
             : InputSystemCursorShape.SizeNorthSouth;
-            
+
         ProtectedCursor = InputSystemCursor.Create(cursorShape);
     }
 }

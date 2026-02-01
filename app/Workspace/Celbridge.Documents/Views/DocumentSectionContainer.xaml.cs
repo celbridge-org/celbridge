@@ -557,6 +557,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         for (int i = 0; i < _sections.Count; i++)
         {
             var section = _sections[i];
+
             // Unwire and rewire to ensure no duplicates
             section.SelectionChanged -= OnSectionSelectionChanged;
             section.DocumentsLayoutChanged -= OnSectionDocumentsLayoutChanged;
@@ -565,13 +566,13 @@ public sealed partial class DocumentSectionContainer : UserControl
             section.TabDroppedInside -= OnSectionTabDroppedInside;
 
             section.SelectionChanged += OnSectionSelectionChanged;
-                section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
-                section.CloseRequested += OnSectionCloseRequested;
-                section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-                section.TabDroppedInside += OnSectionTabDroppedInside;
-            }
+            section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
+            section.CloseRequested += OnSectionCloseRequested;
+            section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
+            section.TabDroppedInside += OnSectionTabDroppedInside;
+        }
 
-            for (int i = 0; i < _sectionCount; i++)
+        for (int i = 0; i < _sectionCount; i++)
         {
             // Add section column with Star sizing for proportional layout
             // All sections use Star sizing so they resize proportionally with the window
