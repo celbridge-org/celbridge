@@ -6,14 +6,27 @@ namespace Celbridge.Documents;
 public record PendingDocumentSaveMessage(int PendingSaveCount);
 
 /// <summary>
-/// A message sent when the list of opened documents changes.
+/// A notification that the document layout has changed (documents opened, closed, or moved).
+/// Receivers should query IDocumentsService for current state if needed.
 /// </summary>
-public record OpenDocumentsChangedMessage(List<ResourceKey> OpenDocuments);
+public record DocumentLayoutChangedMessage();
 
 /// <summary>
 /// A message sent when the selected document changes.
 /// </summary>
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when a document tab is clicked/tapped.
+/// Used to update the active document.
+/// </summary>
+public record DocumentTabClickedMessage(ResourceKey DocumentResource, DocumentAddress Address);
+
+/// <summary>
+/// A message sent when the document section proportions change.
+/// Contains ratios (relative values that sum to 1.0).
+/// </summary>
+public record SectionRatiosChangedMessage(List<double> SectionRatios);
 
 /// <summary>
 /// A message sent when an open document's resource has been renamed or moved.

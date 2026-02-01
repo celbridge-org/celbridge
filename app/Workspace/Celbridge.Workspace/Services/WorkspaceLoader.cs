@@ -118,7 +118,7 @@ public class WorkspaceLoader
         //
         await explorerService.StoreSelectedResource();
         await documentsService.StoreSelectedDocument();
-        await documentsService.StoreOpenDocuments();
+        await documentsService.StoreDocumentLayout();
 
         //
         // Initialize terminal window and Python scripting

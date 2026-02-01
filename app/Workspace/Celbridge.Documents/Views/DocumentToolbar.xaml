@@ -1,0 +1,52 @@
+﻿<UserControl
+    x:Class="Celbridge.Documents.Views.DocumentToolbar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Celbridge.Documents.Views.Controls"
+    HorizontalAlignment="Right">
+
+  <!-- Toolbar Buttons -->
+  <StackPanel x:Name="ToolbarPanel"
+              Orientation="Horizontal"
+              Spacing="0"
+              VerticalAlignment="Center"
+              Margin="0, 0, 4, 0">
+    <Button x:Name="SplitEditorButton"
+            ToolTipService.ToolTip="{x:Bind SplitEditorTooltipString}"
+            Padding="4"
+            VerticalAlignment="Center">
+      <controls:SplitEditorIcon x:Name="ButtonIcon" SectionCount="2"/>
+      <Button.Flyout>
+        <Flyout x:Name="SplitEditorFlyout" Placement="Bottom">
+          <StackPanel Spacing="4">
+            <RadioButton x:Name="OneSection" 
+                         GroupName="SectionCount"
+                         Checked="OneSection_Checked">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <controls:SplitEditorIcon SectionCount="1"/>
+                <TextBlock Text="{x:Bind OneSectionString}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="TwoSections" 
+                         GroupName="SectionCount"
+                         Checked="TwoSections_Checked">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <controls:SplitEditorIcon SectionCount="2"/>
+                <TextBlock Text="{x:Bind TwoSectionsString}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="ThreeSections" 
+                         GroupName="SectionCount"
+                         Checked="ThreeSections_Checked">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <controls:SplitEditorIcon SectionCount="3"/>
+                <TextBlock Text="{x:Bind ThreeSectionsString}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </RadioButton>
+          </StackPanel>
+        </Flyout>
+      </Button.Flyout>
+    </Button>
+  </StackPanel>
+</UserControl>

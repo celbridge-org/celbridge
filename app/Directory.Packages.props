@@ -1,7 +1,6 @@
 <Project ToolsVersion="15.0">
   <ItemGroup>
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
-    <PackageVersion Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="FluentAssertions" Version="8.8.0" />
     <PackageVersion Include="Humanizer" Version="3.0.1" />

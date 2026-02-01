@@ -1,0 +1,35 @@
+﻿<UserControl
+    x:Class="Celbridge.Documents.Views.Controls.SplitEditorIcon"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Viewbox Width="16" Height="16">
+        <Grid Width="16" Height="16">
+            <!-- Outer rounded rectangle border -->
+            <Rectangle Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                       StrokeThickness="1.2"
+                       RadiusX="2" RadiusY="2"/>
+            
+            <!-- Center divider for 2 sections -->
+            <Line x:Name="CenterDivider"
+                  X1="8" Y1="1" X2="8" Y2="15"
+                  Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                  StrokeThickness="1.2"
+                  Visibility="Collapsed"/>
+            
+            <!-- Left divider for 3 sections (at 1/3 position) -->
+            <Line x:Name="LeftDivider"
+                  X1="5.4" Y1="1" X2="5.3" Y2="15"
+                  Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                  StrokeThickness="1.2"
+                  Visibility="Collapsed"/>
+            
+            <!-- Right divider for 3 sections (at 2/3 position) -->
+            <Line x:Name="RightDivider"
+                  X1="10.6" Y1="1" X2="10.7" Y2="15"
+                  Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
+                  StrokeThickness="1.2"
+                  Visibility="Collapsed"/>
+        </Grid>
+    </Viewbox>
+</UserControl>

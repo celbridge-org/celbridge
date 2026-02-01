@@ -1,7 +1,8 @@
+using Celbridge.Console.Views;
 using Celbridge.Messaging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace.ViewModels;
-using Celbridge.Console.Views;
 
 namespace Celbridge.Workspace.Views;
 
@@ -15,6 +16,10 @@ public sealed partial class WorkspacePage : Page
     private bool _initialized = false;
     private ProjectPanel? _projectPanel;
     private UIElement? _inspectorPanel;
+
+    private SplitterHelper? _primaryPanelSplitterHelper;
+    private SplitterHelper? _secondaryPanelSplitterHelper;
+    private SplitterHelper? _consolePanelSplitterHelper;
 
     public WorkspacePage()
     {
@@ -88,6 +93,21 @@ public sealed partial class WorkspacePage : Page
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
         ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        // Initialize splitter helpers
+        _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: 100);
+        _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: 100, invertDelta: true);
+        _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: 100, invertDelta: true);
+
+        // Set up splitter event handlers
+        PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
+        PrimaryPanelSplitter.DragDelta += PrimaryPanelSplitter_DragDelta;
+
+        SecondaryPanelSplitter.DragStarted += SecondaryPanelSplitter_DragStarted;
+        SecondaryPanelSplitter.DragDelta += SecondaryPanelSplitter_DragDelta;
+
+        ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
+        ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -256,7 +276,7 @@ public sealed partial class WorkspacePage : Page
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement frameworkElement && 
+        if (sender is FrameworkElement frameworkElement &&
             frameworkElement.Tag is string panelTag &&
             !string.IsNullOrEmpty(panelTag))
         {
@@ -266,7 +286,7 @@ public sealed partial class WorkspacePage : Page
 
     private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement frameworkElement && 
+        if (sender is FrameworkElement frameworkElement &&
             frameworkElement.Tag is string panelTag &&
             !string.IsNullOrEmpty(panelTag))
         {
@@ -282,5 +302,39 @@ public sealed partial class WorkspacePage : Page
         }
 
         ViewModel.SetActivePanel(panel);
+    }
+
+    //
+    // Splitter event handlers for panel resizing
+    //
+
+    private void PrimaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _primaryPanelSplitterHelper?.OnDragStarted();
+    }
+
+    private void PrimaryPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        _primaryPanelSplitterHelper?.OnDragDelta(delta);
+    }
+
+    private void SecondaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _secondaryPanelSplitterHelper?.OnDragStarted();
+    }
+
+    private void SecondaryPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        _secondaryPanelSplitterHelper?.OnDragDelta(delta);
+    }
+
+    private void ConsolePanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _consolePanelSplitterHelper?.OnDragStarted();
+    }
+
+    private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
+    {
+        _consolePanelSplitterHelper?.OnDragDelta(delta);
     }
 }

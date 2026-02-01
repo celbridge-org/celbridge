@@ -1,0 +1,16 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.Splitter"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <!-- Transparent grab area with centered visible line. -->
+  <Border x:Name="SplitterBorder"
+          Background="Transparent">
+    <!-- Thin visible line - expands when dragging -->
+    <Rectangle x:Name="SplitterLine"
+               Fill="{ThemeResource DividerBrush}"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"/>
+  </Border>
+</UserControl>

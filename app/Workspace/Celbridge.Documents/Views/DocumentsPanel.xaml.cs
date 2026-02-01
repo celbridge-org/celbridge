@@ -6,7 +6,6 @@ using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
-using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
 
@@ -16,13 +15,30 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
     private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
 
     private bool _isShuttingDown = false;
 
     public DocumentsPanelViewModel ViewModel { get; }
+
+    /// <summary>
+    /// Gets or sets the current number of document sections (1-3).
+    /// </summary>
+    public int SectionCount
+    {
+        get => SectionContainer.SectionCount;
+        set => SectionContainer.SetSectionCount(value);
+    }
+
+    /// <summary>
+    /// Gets or sets the active document - the document being inspected and where new documents open.
+    /// </summary>
+    public ResourceKey ActiveDocument
+    {
+        get => SectionContainer.ActiveDocument;
+        set => SectionContainer.SetActiveDocument(value);
+    }
 
     public DocumentsPanel(
         IServiceProvider serviceProvider,
@@ -37,7 +53,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _layoutManager = layoutManager;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
@@ -47,64 +62,100 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         //
         this.DataContext = ViewModel;
 
+        // Wire up section container events
+        SectionContainer.ActiveDocumentChanged += OnActiveDocumentChanged;
+        SectionContainer.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
+        SectionContainer.CloseRequested += OnSectionCloseRequested;
+        SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
+        SectionContainer.SectionCountChanged += OnSectionCountChanged;
+        SectionContainer.SectionRatiosChanged += OnSectionRatiosChanged;
+
+        // Wire up toolbar events
+        DocumentToolbar.SectionCountChangeRequested += OnToolbarSectionCountChangeRequested;
+
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
     }
 
-    private void TabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnActiveDocumentChanged(ResourceKey documentResource)
     {
         if (_isShuttingDown)
         {
             return;
-        }
-
-        ResourceKey documentResource = ResourceKey.Empty;
-
-        var documentTab = TabView.SelectedItem as DocumentTab;
-        if (documentTab is not null)
-        {
-            documentResource = documentTab.ViewModel.FileResource;
         }
 
         ViewModel.OnSelectedDocumentChanged(documentResource);
     }
 
-    private void TabView_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
+    private void OnSectionDocumentsLayoutChanged(DocumentSection section, List<ResourceKey> documents)
     {
         if (_isShuttingDown)
         {
             return;
         }
 
-        var documentResources = GetOpenDocuments();
-        ViewModel.OnOpenDocumentsChanged(documentResources);
-
-        ToolTipService.SetToolTip(TabView, null);
+        ViewModel.OnDocumentLayoutChanged();
     }
 
-    private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
     {
-        var tab = args.Tab as DocumentTab;
-        Guard.IsNotNull(tab);
-
-        var fileResource = tab.ViewModel.FileResource;
-
         ViewModel.OnCloseDocumentRequested(fileResource);
+    }
+
+    private void OnSectionContextMenuActionRequested(DocumentSection section, DocumentTab tab, DocumentTabMenuAction action)
+    {
+        OnDocumentTabContextMenuAction(tab, action);
+    }
+
+    private void OnSectionCountChanged(int newCount)
+    {
+        // Update toolbar to reflect new section count
+        DocumentToolbar.UpdateSectionCount(newCount);
+        // Note: Ratios are persisted via OnSectionRatiosChanged which fires after count changes
+    }
+
+    private void OnSectionRatiosChanged(List<double> ratios)
+    {
+        // Notify the ViewModel to persist the section ratios
+        // The section count is inferred from the ratios list length
+        ViewModel.OnSectionRatiosChanged(ratios);
+    }
+
+    private void OnToolbarSectionCountChangeRequested(int requestedCount)
+    {
+        SectionContainer.SetSectionCount(requestedCount);
     }
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
         // Listen for window mode changes to show/hide tab strip in Presenter mode
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
-        
+
+        // Listen for document tab clicks to update active document
+        _messengerService.Register<DocumentTabClickedMessage>(this, OnDocumentTabClicked);
+
         // Apply initial tab strip visibility based on current window mode
         UpdateTabStripVisibility(_layoutManager.WindowMode);
+    }
+
+    private void OnDocumentTabClicked(object recipient, DocumentTabClickedMessage message)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Update the active document when a tab is clicked
+        // This is the primary mechanism for changing the active document
+        // Todo: Use message.Address.WindowIndex to route to correct window
+        SectionContainer.HandleTabClicked(message.DocumentResource, message.Address.SectionIndex);
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
         _messengerService.Unregister<WindowModeChangedMessage>(this);
+        _messengerService.Unregister<DocumentTabClickedMessage>(this);
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
@@ -114,55 +165,36 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void UpdateTabStripVisibility(WindowMode windowMode)
     {
-        // In Presenter mode, hide the tab strip to show only the document content
-        // In all other modes, show the tab strip
+        // In Presenter mode, hide the tab strip and toolbar to show only the document content
+        // In all other modes, show the tab strip and toolbar
         bool showTabStrip = windowMode != WindowMode.Presenter;
-        
-        // Find the TabStrip element within the TabView template and set its visibility
-        // The TabView's tab strip is in a Grid row that we can collapse
-        if (TabView.IsLoaded)
-        {
-            try
-            {
-                // From testing this, it appears we have to do both of these in order to hide/show the tab strip reliably
-
-                // Use a style to control the tab strip visibility
-                // This approach modifies the TabView's internal template
-                var tabListView = VisualTreeHelperEx.FindDescendant<ListView>(TabView);
-                if (tabListView != null)
-                {
-                    tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
-                }
-
-                // Also try to find and hide the tab strip container
-                var tabStripContainer = VisualTreeHelperEx.FindDescendantByName(TabView, "TabContainerGrid");
-                if (tabStripContainer is FrameworkElement container)
-                {
-                    container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
-                }
-            }
-            catch
-            {
-                // Silently handle any template traversal errors
-            }
-        }
+        SectionContainer.UpdateTabStripVisibility(showTabStrip);
+        DocumentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public List<ResourceKey> GetOpenDocuments()
+    public void SetSectionRatios(List<double> ratios)
     {
-        var openDocuments = new List<ResourceKey>();
-        foreach (var tabItem in TabView.TabItems)
+        SectionContainer.SetSectionRatios(ratios);
+    }
+
+    public Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses()
+    {
+        var addresses = new Dictionary<ResourceKey, DocumentAddress>();
+
+        for (int sectionIndex = 0; sectionIndex < SectionContainer.SectionCount; sectionIndex++)
         {
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
-
-            var fileResource = tab.ViewModel.FileResource;
-            Guard.IsFalse(openDocuments.Contains(fileResource));
-
-            openDocuments.Add(fileResource);
+            var section = SectionContainer.GetSection(sectionIndex);
+            int tabOrder = 0;
+            foreach (var tab in section.GetAllTabs())
+            {
+                addresses[tab.ViewModel.FileResource] = new DocumentAddress(
+                    WindowIndex: 0, // Always 0 for now (single window)
+                    SectionIndex: sectionIndex,
+                    TabOrder: tabOrder++);
+            }
         }
 
-        return openDocuments;
+        return addresses;
     }
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
@@ -172,39 +204,41 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location)
     {
-        // Check if the file is already opened
-        foreach (var tabItem in TabView.TabItems)
+        // Check if the file is already opened in any section
+        var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (existingTab != null && existingSection != null)
         {
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
+            // Activate the existing tab
+            existingSection.SelectTab(existingTab);
 
-            if (fileResource == tab.ViewModel.FileResource)
+            // Make it the active document
+            SectionContainer.HandleTabClicked(fileResource, existingSection.SectionIndex);
+
+            if (forceReload)
             {
-                //  Activate the existing tab instead of opening a new one
-                TabView.SelectedItem = tab;
-
-                if (forceReload)
+                var reloadResult = await existingTab.ViewModel.ReloadDocument();
+                if (reloadResult.IsFailure)
                 {
-                    var reloadResult = await tab.ViewModel.ReloadDocument();
-                    if (reloadResult.IsFailure)
-                    {
-                        return Result.Fail($"Failed to reload document: {fileResource}")
-                            .WithErrors(reloadResult);
-                    }
+                    return Result.Fail($"Failed to reload document: {fileResource}")
+                        .WithErrors(reloadResult);
                 }
-
-                // Navigate to location if specified
-                if (!string.IsNullOrEmpty(location))
-                {
-                    await NavigateToLocation(fileResource, location);
-                }
-
-                return Result.Ok();
             }
+
+            // Navigate to location if specified
+            if (!string.IsNullOrEmpty(location))
+            {
+                await NavigateToLocation(fileResource, location);
+            }
+
+            return Result.Ok();
         }
 
+        // Open in the active section (the section containing the active document)
+        var activeSectionIndex = SectionContainer.ActiveSectionIndex;
+        var targetSection = SectionContainer.GetSection(activeSectionIndex);
+
         //
-        // Add a new DocumentTab to the TabView immediately.
+        // Add a new DocumentTab to the section immediately.
         // This provides some early visual feedback that the document is loading.
         //
 
@@ -212,21 +246,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
-        documentTab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
 
-        // This triggers an update of the stored open documents, so documentTab.ViewModel.FileResource
-        // must be populated at this point.
-        TabView.TabItems.Add(documentTab);
-
-        // Select the tab and make the content active
-        TabView.SelectedItem = documentTab;
-
-        int tabIndex = TabView.TabItems.Count - 1;
+        targetSection.AddTab(documentTab);
+        targetSection.SelectTab(documentTab);
 
         var createResult = await ViewModel.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
         {
-            TabView.TabItems.RemoveAt(tabIndex);
+            targetSection.RemoveTab(documentTab);
 
             return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
                 .WithErrors(createResult);
@@ -237,12 +264,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
-        // Select the tab and force the content to refresh
-        TabView.SelectedItem = null;
-        TabView.SelectedItem = documentTab;
+        // Force the content to refresh
+        targetSection.RefreshSelectedTab();
 
         // Update all tab names to handle any filename ambiguity
         UpdateAllTabDisplayNames();
+
+        // Make the newly opened document the active document
+        SectionContainer.HandleTabClicked(fileResource, activeSectionIndex);
 
         // Navigate to location if specified
         if (!string.IsNullOrEmpty(location))
@@ -253,22 +282,72 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
+    public async Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address)
+    {
+        // Validate section index
+        int sectionIndex = address.SectionIndex;
+        if (sectionIndex < 0 || sectionIndex >= SectionContainer.SectionCount)
+        {
+            // Fall back to section 0 if invalid
+            sectionIndex = 0;
+        }
+
+        // Check if the file is already opened in any section
+        var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (existingTab != null && existingSection != null)
+        {
+            // If already open in a different section, move it
+            if (existingSection.SectionIndex != sectionIndex)
+            {
+                SectionContainer.MoveTabToSection(existingTab, sectionIndex);
+            }
+
+            // Activate the tab
+            var targetSection = SectionContainer.GetSection(sectionIndex);
+            targetSection.SelectTab(existingTab);
+            return Result.Ok();
+        }
+
+        // Open in the specified section
+        var targetSectionForNew = SectionContainer.GetSection(sectionIndex);
+
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.FileResource = fileResource;
+        documentTab.ViewModel.FilePath = filePath;
+        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        targetSectionForNew.AddTab(documentTab);
+        targetSectionForNew.SelectTab(documentTab);
+
+        var createResult = await ViewModel.CreateDocumentView(fileResource);
+        if (createResult.IsFailure)
+        {
+            targetSectionForNew.RemoveTab(documentTab);
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
+                .WithErrors(createResult);
+        }
+        var documentView = createResult.Value;
+
+        documentTab.ViewModel.DocumentView = documentView;
+        documentTab.Content = documentView;
+
+        targetSectionForNew.RefreshSelectedTab();
+        UpdateAllTabDisplayNames();
+
+        return Result.Ok();
+    }
+
     public async Task<Result> NavigateToLocation(ResourceKey fileResource, string location)
     {
-        foreach (var tabItem in TabView.TabItems)
+        var (_, documentTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (documentTab != null)
         {
-            var documentTab = tabItem as DocumentTab;
-            Guard.IsNotNull(documentTab);
-
-            if (fileResource == documentTab.ViewModel.FileResource)
+            var documentView = documentTab.Content as IDocumentView;
+            if (documentView != null)
             {
-                var documentView = documentTab.Content as IDocumentView;
-                if (documentView != null)
-                {
-                    return await documentView.NavigateToLocation(location);
-                }
-                return Result.Ok();
+                return await documentView.NavigateToLocation(location);
             }
+            return Result.Ok();
         }
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
@@ -276,33 +355,33 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
     {
-        foreach (var tabItem in TabView.TabItems)
+        var (section, documentTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (documentTab != null && section != null)
         {
-            var documentTab = tabItem as DocumentTab;
-            Guard.IsNotNull(documentTab);
-
-            if (fileResource == documentTab.ViewModel.FileResource)
+            var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
+            if (closeResult.IsFailure)
             {
-                var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
-                if (closeResult.IsFailure)
-                {
-                    return Result.Fail($"An error occured when closing the document for file resource: '{fileResource}'")
-                        .WithErrors(closeResult);
-                }
-
-                var didClose = closeResult.Value;
-
-                if (didClose)
-                {
-                    documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
-                    TabView.TabItems.Remove(documentTab);
-
-                    // Update all tab names since closing a tab may resolve filename ambiguity
-                    UpdateAllTabDisplayNames();
-                }
-
-                return Result.Ok();
+                return Result.Fail($"An error occurred when closing the document for file resource: '{fileResource}'")
+                    .WithErrors(closeResult);
             }
+
+            var didClose = closeResult.Value;
+
+            if (didClose)
+            {
+                // Get the tab index before removing it (needed for selecting next document)
+                int tabIndex = section.GetTabIndex(documentTab);
+
+                // Handle selection of next document before removing the tab
+                SectionContainer.HandleDocumentClosing(fileResource, section.SectionIndex, tabIndex);
+
+                section.RemoveTab(documentTab);
+
+                // Update all tab names since closing a tab may resolve filename ambiguity
+                UpdateAllTabDisplayNames();
+            }
+
+            return Result.Ok();
         }
 
         // We failed to find any open document for this fileResource, but this is the
@@ -317,40 +396,41 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         int pendingSaveCount = 0;
         List<ResourceKey> failedSaves = new();
 
-        foreach (var tabItem in TabView.TabItems)
+        for (int i = 0; i < SectionContainer.SectionCount; i++)
         {
-            var documentTab = tabItem as DocumentTab;
-            Guard.IsNotNull(documentTab);
-
-            var documentView = documentTab.Content as IDocumentView;
-            Guard.IsNotNull(documentView);
-
-            if (documentView.HasUnsavedChanges)
+            var section = SectionContainer.GetSection(i);
+            foreach (var documentTab in section.GetAllTabs())
             {
-                var updateResult = documentView.UpdateSaveTimer(deltaTime);
-                Guard.IsTrue(updateResult.IsSuccess); // Should never fail
+                var documentView = documentTab.Content as IDocumentView;
+                Guard.IsNotNull(documentView);
 
-                var shouldSave = updateResult.Value;
-                if (!shouldSave)
+                if (documentView.HasUnsavedChanges)
                 {
-                    pendingSaveCount++;
-                    continue;
-                }
+                    var updateResult = documentView.UpdateSaveTimer(deltaTime);
+                    Guard.IsTrue(updateResult.IsSuccess); // Should never fail
 
-                var saveResult = await documentView.SaveDocument();
-                if (saveResult.IsFailure)
-                {
-                    // Make a note of the failed save and continue saving other documents
-                    failedSaves.Add(documentTab.ViewModel.FileResource);
-                }
-                else
-                {
-                    var savedResource = documentTab.ViewModel.FileResource;
-                    var message = new DocumentSaveRequestedMessage(savedResource);
+                    var shouldSave = updateResult.Value;
+                    if (!shouldSave)
+                    {
+                        pendingSaveCount++;
+                        continue;
+                    }
 
-                    _messengerService.Send(message);
+                    var saveResult = await documentView.SaveDocument();
+                    if (saveResult.IsFailure)
+                    {
+                        // Make a note of the failed save and continue saving other documents
+                        failedSaves.Add(documentTab.ViewModel.FileResource);
+                    }
+                    else
+                    {
+                        var savedResource = documentTab.ViewModel.FileResource;
+                        var message = new DocumentSaveRequestedMessage(savedResource);
 
-                    savedCount++;
+                        _messengerService.Send(message);
+
+                        savedCount++;
+                    }
                 }
             }
         }
@@ -372,16 +452,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public Result SelectDocument(ResourceKey fileResource)
     {
-        foreach (var tabItem in TabView.TabItems)
+        var (section, documentTab) = SectionContainer.FindDocumentTab(fileResource);
+        if (documentTab != null && section != null)
         {
-            var documentTab = tabItem as DocumentTab;
-            Guard.IsNotNull(documentTab);
-
-            if (fileResource == documentTab.ViewModel.FileResource)
-            {
-                TabView.SelectedItem = documentTab;
-                return Result.Ok();
-            }
+            // Selecting a tab will trigger section selection, which will update container selection
+            section.SelectTab(documentTab);
+            return Result.Ok();
         }
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
@@ -390,23 +466,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public async Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType)
     {
         // Find the document tab for the old resource
-        DocumentTab? documentTab = null;
-        int tabIndex = -1;
-        for (int i = 0; i < TabView.TabItems.Count; i++)
-        {
-            object? tabItem = TabView.TabItems[i];
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
+        var (section, documentTab) = SectionContainer.FindDocumentTab(oldResource);
 
-            if (oldResource == tab.ViewModel.FileResource)
-            {
-                documentTab = tab;
-                tabIndex = i;
-                break;
-            }
-        }
-
-        if (documentTab is null)
+        if (documentTab is null || section is null)
         {
             // The document isn't open, so we don't need to do anything
             return Result.Ok();
@@ -453,13 +515,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // At this point there should be no remaining references to oldDocumentView, so it should go
             // out of scope and eventually be cleaned up by GC.
 
-            var selectedIndex = TabView.SelectedIndex;
-            if (selectedIndex == tabIndex)
+            // Check if this document is the selected tab and force refresh if so
+            if (section.GetSelectedDocument() == oldResource)
             {
-                // This document is the selected tab.
-                // Force a layout update to display its new contents.
-                TabView.SelectedIndex = -1;
-                TabView.SelectedIndex = selectedIndex;
+                section.RefreshSelectedTab();
             }
         }
 
@@ -480,13 +539,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     /// </summary>
     private void UpdateAllTabDisplayNames()
     {
+        // Collect all tabs from all sections
+        var allTabs = new List<DocumentTab>();
+        for (int i = 0; i < SectionContainer.SectionCount; i++)
+        {
+            var section = SectionContainer.GetSection(i);
+            allTabs.AddRange(section.GetAllTabs());
+        }
+
         // Group tabs by their filename
         var tabsByFilename = new Dictionary<string, List<DocumentTab>>();
-        foreach (var tabItem in TabView.TabItems)
+        foreach (var tab in allTabs)
         {
-            var tab = tabItem as DocumentTab;
-            Guard.IsNotNull(tab);
-
             var filename = Path.GetFileName(tab.ViewModel.FilePath);
             if (!tabsByFilename.TryGetValue(filename, out var tabList))
             {
@@ -529,25 +593,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Set shutdown flag to prevent event handlers from triggering workspace updates
         _isShuttingDown = true;
 
-        // Close all open documents and clean up their WebView2 resources
-        foreach (var tabItem in TabView.TabItems)
-        {
-            var documentTab = tabItem as DocumentTab;
-            Guard.IsNotNull(documentTab);
-
-            // Unsubscribe from context menu events
-            documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
-
-            var documentView = documentTab.Content as IDocumentView;
-            if (documentView != null)
-            {
-                // Call PrepareToClose to clean up WebView2 resources
-                // Note: We can't await here since Shutdown is synchronous, but the cleanup will happen asynchronously
-                _ = documentView.PrepareToClose();
-            }
-        }
-
-        TabView.TabItems.Clear();
+        SectionContainer.Shutdown();
     }
 
     private void OnDocumentTabContextMenuAction(DocumentTab tab, DocumentTabMenuAction action)
@@ -567,7 +613,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 CloseOtherTabsLeft(tab);
                 break;
             case DocumentTabMenuAction.CloseAll:
-                CloseAllTabs();
+                CloseAllTabs(tab);
+                break;
+            case DocumentTabMenuAction.MoveLeft:
+                MoveTabLeft(tab);
+                break;
+            case DocumentTabMenuAction.MoveRight:
+                MoveTabRight(tab);
                 break;
             case DocumentTabMenuAction.CopyResourceKey:
                 CopyResourceKeyForTab(tab);
@@ -593,84 +645,134 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
+    private void MoveTabLeft(DocumentTab tab)
+    {
+        if (tab.SectionIndex > 0)
+        {
+            SectionContainer.MoveTabToSection(tab, tab.SectionIndex - 1);
+            UpdateAllTabDisplayNames();
+            NotifyLayoutChanged();
+        }
+    }
+
+    private void MoveTabRight(DocumentTab tab)
+    {
+        if (tab.SectionIndex < SectionContainer.SectionCount - 1)
+        {
+            SectionContainer.MoveTabToSection(tab, tab.SectionIndex + 1);
+            UpdateAllTabDisplayNames();
+            NotifyLayoutChanged();
+        }
+    }
+
+    private void NotifyLayoutChanged()
+    {
+        ViewModel.OnDocumentLayoutChanged();
+    }
+
     private void CloseOtherTabs(DocumentTab keepTab)
     {
-        var tabsToClose = new List<DocumentTab>();
-        foreach (var tabItem in TabView.TabItems)
+        // Find which section contains the tab to keep
+        var (section, _) = SectionContainer.FindDocumentTab(keepTab.ViewModel.FileResource);
+        if (section == null)
         {
-            var documentTab = tabItem as DocumentTab;
-            if (documentTab != null && documentTab != keepTab)
+            return;
+        }
+
+        var tabsToClose = new List<ResourceKey>();
+
+        // Only close other tabs within the same section
+        foreach (var documentTab in section.GetAllTabs())
+        {
+            if (documentTab != keepTab)
             {
-                tabsToClose.Add(documentTab);
+                tabsToClose.Add(documentTab.ViewModel.FileResource);
             }
         }
 
-        foreach (var tab in tabsToClose)
+        foreach (var fileResource in tabsToClose)
         {
-            var fileResource = tab.ViewModel.FileResource;
             ViewModel.OnCloseDocumentRequested(fileResource);
         }
     }
 
     private void CloseOtherTabsRight(DocumentTab referenceTab)
     {
-        var tabIndex = TabView.TabItems.IndexOf(referenceTab);
-        if (tabIndex < 0) return;
-
-        var tabsToClose = new List<DocumentTab>();
-        for (int i = tabIndex + 1; i < TabView.TabItems.Count; i++)
+        // Find which section contains the reference tab
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
         {
-            var documentTab = TabView.TabItems[i] as DocumentTab;
-            if (documentTab != null)
+            return;
+        }
+
+        var tabsToClose = new List<ResourceKey>();
+        bool foundReference = false;
+
+        // Close tabs to the right within the same section
+        foreach (var documentTab in section.GetAllTabs())
+        {
+            if (foundReference)
             {
-                tabsToClose.Add(documentTab);
+                tabsToClose.Add(documentTab.ViewModel.FileResource);
+            }
+            if (documentTab == referenceTab)
+            {
+                foundReference = true;
             }
         }
 
-        foreach (var tab in tabsToClose)
+        foreach (var fileResource in tabsToClose)
         {
-            var fileResource = tab.ViewModel.FileResource;
             ViewModel.OnCloseDocumentRequested(fileResource);
         }
     }
 
     private void CloseOtherTabsLeft(DocumentTab referenceTab)
     {
-        var tabIndex = TabView.TabItems.IndexOf(referenceTab);
-        if (tabIndex < 0) return;
-
-        var tabsToClose = new List<DocumentTab>();
-        for (int i = 0; i < tabIndex; i++)
+        // Find which section contains the reference tab
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
         {
-            var documentTab = TabView.TabItems[i] as DocumentTab;
-            if (documentTab != null)
-            {
-                tabsToClose.Add(documentTab);
-            }
+            return;
         }
 
-        foreach (var tab in tabsToClose)
+        var tabsToClose = new List<ResourceKey>();
+
+        // Close tabs to the left within the same section
+        foreach (var documentTab in section.GetAllTabs())
         {
-            var fileResource = tab.ViewModel.FileResource;
+            if (documentTab == referenceTab)
+            {
+                break;
+            }
+            tabsToClose.Add(documentTab.ViewModel.FileResource);
+        }
+
+        foreach (var fileResource in tabsToClose)
+        {
             ViewModel.OnCloseDocumentRequested(fileResource);
         }
     }
 
-    private void CloseAllTabs()
+    private void CloseAllTabs(DocumentTab referenceTab)
     {
-        var tabsToClose = new List<DocumentTab>();
-        foreach (var tabItem in TabView.TabItems)
+        // Find which section contains the reference tab
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
         {
-            var documentTab = tabItem as DocumentTab;
-            if (documentTab != null)
-            {
-                tabsToClose.Add(documentTab);
-            }
+            return;
         }
 
-        foreach (var tab in tabsToClose)
+        var tabsToClose = new List<ResourceKey>();
+
+        // Only close tabs within the same section
+        foreach (var documentTab in section.GetAllTabs())
         {
-            var fileResource = tab.ViewModel.FileResource;
+            tabsToClose.Add(documentTab.ViewModel.FileResource);
+        }
+
+        foreach (var fileResource in tabsToClose)
+        {
             ViewModel.OnCloseDocumentRequested(fileResource);
         }
     }
