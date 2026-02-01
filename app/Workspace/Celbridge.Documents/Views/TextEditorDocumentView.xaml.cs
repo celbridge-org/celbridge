@@ -20,7 +20,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
     private bool _supportsPreview;
 
-    private SplitterHelper? _splitterHelper;
+    private readonly SplitterHelper? _splitterHelper;
 
     public TextEditorDocumentView()
     {
