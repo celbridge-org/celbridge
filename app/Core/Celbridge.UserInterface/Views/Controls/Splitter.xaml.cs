@@ -186,7 +186,7 @@ public sealed partial class Splitter : UserControl
             Width = GrabAreaSize;
             Height = double.NaN; // Stretch
 
-            // Use negative margins to overlap with adjacent content (like VS Code)
+            // Use negative margins to overlap with adjacent content
             var halfGrab = GrabAreaSize / 2;
             Margin = new Thickness(-halfGrab, 0, -halfGrab, 0);
         }
@@ -194,7 +194,7 @@ public sealed partial class Splitter : UserControl
         {
             Width = double.NaN; // Stretch
             Height = GrabAreaSize;
-            // Use negative margins to overlap with adjacent content (like VS Code)
+            // Use negative margins to overlap with adjacent content
             var halfGrab = GrabAreaSize / 2;
             Margin = new Thickness(0, -halfGrab, 0, -halfGrab);
         }

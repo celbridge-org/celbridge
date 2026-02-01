@@ -15,7 +15,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
     private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly ICommandService _commandService;
     private readonly ILayoutManager _layoutManager;
 
@@ -54,7 +53,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _layoutManager = layoutManager;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
@@ -149,7 +147,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         // Update the active document when a tab is clicked
         // This is the primary mechanism for changing the active document
-        // Future: Use message.Address.WindowIndex to route to correct window
+        // Todo: Use message.Address.WindowIndex to route to correct window
         SectionContainer.HandleTabClicked(message.DocumentResource, message.Address.SectionIndex);
     }
 
@@ -675,13 +673,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void CloseOtherTabs(DocumentTab keepTab)
     {
         // Find which section contains the tab to keep
-        var (refSection, _) = SectionContainer.FindDocumentTab(keepTab.ViewModel.FileResource);
-        if (refSection == null) return;
+        var (section, _) = SectionContainer.FindDocumentTab(keepTab.ViewModel.FileResource);
+        if (section == null)
+        {
+            return;
+        }
 
         var tabsToClose = new List<ResourceKey>();
 
         // Only close other tabs within the same section
-        foreach (var documentTab in refSection.GetAllTabs())
+        foreach (var documentTab in section.GetAllTabs())
         {
             if (documentTab != keepTab)
             {
@@ -698,14 +699,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void CloseOtherTabsRight(DocumentTab referenceTab)
     {
         // Find which section contains the reference tab
-        var (refSection, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
-        if (refSection == null) return;
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
+        {
+            return;
+        }
 
         var tabsToClose = new List<ResourceKey>();
         bool foundReference = false;
 
         // Close tabs to the right within the same section
-        foreach (var documentTab in refSection.GetAllTabs())
+        foreach (var documentTab in section.GetAllTabs())
         {
             if (foundReference)
             {
@@ -726,13 +730,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void CloseOtherTabsLeft(DocumentTab referenceTab)
     {
         // Find which section contains the reference tab
-        var (refSection, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
-        if (refSection == null) return;
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
+        {
+            return;
+        }
 
         var tabsToClose = new List<ResourceKey>();
 
         // Close tabs to the left within the same section
-        foreach (var documentTab in refSection.GetAllTabs())
+        foreach (var documentTab in section.GetAllTabs())
         {
             if (documentTab == referenceTab)
             {
@@ -750,13 +757,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void CloseAllTabs(DocumentTab referenceTab)
     {
         // Find which section contains the reference tab
-        var (refSection, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
-        if (refSection == null) return;
+        var (section, _) = SectionContainer.FindDocumentTab(referenceTab.ViewModel.FileResource);
+        if (section == null)
+        {
+            return;
+        }
 
         var tabsToClose = new List<ResourceKey>();
 
         // Only close tabs within the same section
-        foreach (var documentTab in refSection.GetAllTabs())
+        foreach (var documentTab in section.GetAllTabs())
         {
             tabsToClose.Add(documentTab.ViewModel.FileResource);
         }

@@ -85,7 +85,6 @@ public class SplitterHelper
     /// <summary>
     /// Call this when the splitter is dragged to calculate and apply the new sizes.
     /// </summary>
-    /// <param name="delta">The drag delta (positive = right/down, negative = left/up)</param>
     public void OnDragDelta(double delta)
     {
         if (_resizeMode == SplitterResizeMode.Single)
