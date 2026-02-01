@@ -344,12 +344,13 @@ public sealed partial class DocumentSectionContainer : UserControl
                 }
 
                 // If the calculated index didn't work, try any other tab in the section
-                foreach (var tab in tabsInSection)
+                var otherTab = tabsInSection
+                    .Where(tab => tab.ViewModel.FileResource != _activeDocument)
+                    .FirstOrDefault();
+                
+                if (otherTab != null)
                 {
-                    if (tab.ViewModel.FileResource != _activeDocument)
-                    {
-                        return (tab.ViewModel.FileResource, closingSectionIndex);
-                    }
+                    return (otherTab.ViewModel.FileResource, closingSectionIndex);
                 }
             }
         }
