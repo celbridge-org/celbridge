@@ -126,6 +126,17 @@ public sealed partial class Splitter : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        // Unsubscribe from events to prevent memory leaks
+        SplitterBorder.PointerEntered -= OnPointerEntered;
+        SplitterBorder.PointerExited -= OnPointerExited;
+        SplitterBorder.PointerPressed -= OnPointerPressed;
+        SplitterBorder.PointerMoved -= OnPointerMoved;
+        SplitterBorder.PointerReleased -= OnPointerReleased;
+        SplitterBorder.PointerCaptureLost -= OnPointerCaptureLost;
+
+        Loaded -= OnLoaded;
+        Unloaded -= OnUnloaded;
+
         // Dispose cursor when control is unloaded
         _currentCursor?.Dispose();
         _currentCursor = null;
