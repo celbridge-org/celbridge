@@ -652,6 +652,32 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void Splitter_DragCompleted(object? sender, EventArgs e)
     {
+        if (_activeSplitterIndex >= 0)
+        {
+            // Convert pixel widths back to proportional (star) sizing
+            // so sections resize properly when the parent container resizes
+            var leftColumnIndex = _activeSplitterIndex * 2;
+            var rightColumnIndex = leftColumnIndex + 2;
+
+            var leftColumn = RootGrid.ColumnDefinitions[leftColumnIndex];
+            var rightColumn = RootGrid.ColumnDefinitions[rightColumnIndex];
+
+            // Get current pixel widths
+            var leftWidth = leftColumn.ActualWidth;
+            var rightWidth = rightColumn.ActualWidth;
+            var totalWidth = leftWidth + rightWidth;
+
+            if (totalWidth > 0)
+            {
+                // Convert to proportional star values
+                var leftRatio = leftWidth / totalWidth;
+                var rightRatio = rightWidth / totalWidth;
+
+                leftColumn.Width = new GridLength(leftRatio, GridUnitType.Star);
+                rightColumn.Width = new GridLength(rightRatio, GridUnitType.Star);
+            }
+        }
+
         _activeSplitterIndex = -1;
 
         // Notify about ratio changes when splitter drag completes

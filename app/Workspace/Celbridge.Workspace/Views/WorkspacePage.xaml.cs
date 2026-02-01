@@ -1,7 +1,7 @@
+using Celbridge.Console.Views;
 using Celbridge.Messaging;
 using Celbridge.Navigation;
 using Celbridge.Workspace.ViewModels;
-using Celbridge.Console.Views;
 
 namespace Celbridge.Workspace.Views;
 
@@ -15,6 +15,12 @@ public sealed partial class WorkspacePage : Page
     private bool _initialized = false;
     private ProjectPanel? _projectPanel;
     private UIElement? _inspectorPanel;
+
+    // Splitter drag state
+    private double _primaryPanelStartWidth;
+    private double _secondaryPanelStartWidth;
+    private double _consolePanelStartHeight;
+    private double _documentsPanelStartHeight;
 
     public WorkspacePage()
     {
@@ -88,6 +94,16 @@ public sealed partial class WorkspacePage : Page
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
         ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        // Set up splitter event handlers
+        PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
+        PrimaryPanelSplitter.DragDelta += PrimaryPanelSplitter_DragDelta;
+
+        SecondaryPanelSplitter.DragStarted += SecondaryPanelSplitter_DragStarted;
+        SecondaryPanelSplitter.DragDelta += SecondaryPanelSplitter_DragDelta;
+
+        ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
+        ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -256,7 +272,7 @@ public sealed partial class WorkspacePage : Page
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement frameworkElement && 
+        if (sender is FrameworkElement frameworkElement &&
             frameworkElement.Tag is string panelTag &&
             !string.IsNullOrEmpty(panelTag))
         {
@@ -266,7 +282,7 @@ public sealed partial class WorkspacePage : Page
 
     private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement frameworkElement && 
+        if (sender is FrameworkElement frameworkElement &&
             frameworkElement.Tag is string panelTag &&
             !string.IsNullOrEmpty(panelTag))
         {
@@ -282,5 +298,54 @@ public sealed partial class WorkspacePage : Page
         }
 
         ViewModel.SetActivePanel(panel);
+    }
+
+    //
+    // Splitter event handlers for panel resizing
+    //
+
+    private void PrimaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _primaryPanelStartWidth = PrimaryPanelColumn.ActualWidth;
+    }
+
+    private void PrimaryPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        var newWidth = _primaryPanelStartWidth + delta;
+        if (newWidth >= PrimaryPanelColumn.MinWidth)
+        {
+            PrimaryPanelColumn.Width = new GridLength(newWidth);
+        }
+    }
+
+    private void SecondaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _secondaryPanelStartWidth = SecondaryPanelColumn.ActualWidth;
+    }
+
+    private void SecondaryPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        // For secondary panel, negative delta increases width (dragging left makes panel wider)
+        var newWidth = _secondaryPanelStartWidth - delta;
+        if (newWidth >= SecondaryPanelColumn.MinWidth)
+        {
+            SecondaryPanelColumn.Width = new GridLength(newWidth);
+        }
+    }
+
+    private void ConsolePanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _consolePanelStartHeight = ConsolePanelRow.ActualHeight;
+        _documentsPanelStartHeight = DocumentsPanel.ActualHeight;
+    }
+
+    private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
+    {
+        // For console panel, negative delta increases height (dragging up makes panel taller)
+        var newHeight = _consolePanelStartHeight - delta;
+        if (newHeight >= ConsolePanelRow.MinHeight)
+        {
+            ConsolePanelRow.Height = new GridLength(newHeight);
+        }
     }
 }
