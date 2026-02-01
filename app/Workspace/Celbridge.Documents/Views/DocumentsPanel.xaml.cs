@@ -339,7 +339,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public async Task<Result> NavigateToLocation(ResourceKey fileResource, string location)
     {
-        var (section, documentTab) = SectionContainer.FindDocumentTab(fileResource);
+        var (_, documentTab) = SectionContainer.FindDocumentTab(fileResource);
         if (documentTab != null)
         {
             var documentView = documentTab.Content as IDocumentView;
