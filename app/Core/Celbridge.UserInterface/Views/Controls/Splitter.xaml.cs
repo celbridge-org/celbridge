@@ -1,4 +1,5 @@
 using Microsoft.UI.Input;
+using System;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
@@ -91,6 +92,8 @@ public sealed partial class Splitter : UserControl
     private double _dragStartPosition;
     private Brush? _normalBrush;
     private Brush? _draggingBrush;
+    private InputSystemCursor? _resizeCursor;
+    private InputSystemCursor? _arrowCursor;
 
     public Splitter()
     {
@@ -115,6 +118,9 @@ public sealed partial class Splitter : UserControl
         // Cache brushes
         _normalBrush = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
         _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+
+        // Cache cursors
+        _arrowCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
 
         // Apply initial orientation
         UpdateOrientation();
@@ -160,6 +166,13 @@ public sealed partial class Splitter : UserControl
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Stretch;
             SplitterLine.VerticalAlignment = VerticalAlignment.Center;
         }
+
+        // Dispose old resize cursor and create new one for the new orientation
+        _resizeCursor?.Dispose();
+        var cursorShape = Orientation == Orientation.Vertical
+            ? InputSystemCursorShape.SizeWestEast
+            : InputSystemCursorShape.SizeNorthSouth;
+        _resizeCursor = InputSystemCursor.Create(cursorShape);
 
         UpdateLineThickness();
         UpdateGrabAreaSize();
@@ -209,7 +222,7 @@ public sealed partial class Splitter : UserControl
     {
         if (!_isDragging)
         {
-            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+            ProtectedCursor = _arrowCursor;
         }
     }
 
@@ -307,15 +320,18 @@ public sealed partial class Splitter : UserControl
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
 
-        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        ProtectedCursor = _arrowCursor;
     }
 
     private void UpdateCursor()
     {
-        var cursorShape = Orientation == Orientation.Vertical
-            ? InputSystemCursorShape.SizeWestEast
-            : InputSystemCursorShape.SizeNorthSouth;
+        ProtectedCursor = _resizeCursor;
+    }
 
-        ProtectedCursor = InputSystemCursor.Create(cursorShape);
+    public new void Dispose()
+    {
+        _resizeCursor?.Dispose();
+        _arrowCursor?.Dispose();
+        base.Dispose();
     }
 }
