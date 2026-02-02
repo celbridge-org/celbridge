@@ -336,9 +336,6 @@
   <data name="WebInspector_CurrentURL" xml:space="preserve">
     <value>Current URL</value>
   </data>
-  <data name="WebInspector_CopyTooltip" xml:space="preserve">
-    <value>Copy to Clipboard</value>
-  </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>
   </data>

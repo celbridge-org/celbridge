@@ -8,48 +8,7 @@
 
     <StackPanel Orientation="Vertical"
                 Spacing="8">
-        <!-- Home URL input -->
-        <TextBox x:Name="UrlTextBox"
-                 Header="{x:Bind HomeURLString}"
-                 PlaceholderText="{x:Bind AddressPlaceholderString}"
-                 HorizontalAlignment="Stretch"
-                 IsSpellCheckEnabled="False"
-                 TextWrapping="Wrap"
-                 Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 KeyDown="UrlTextBox_KeyDown"/>
-
-        <!-- Error InfoBar -->
-        <InfoBar IsOpen="{x:Bind ViewModel.HasUrlError, Mode=OneWay}"
-                 Severity="Error"
-                 Message="{x:Bind ViewModel.UrlErrorMessage, Mode=OneWay}"
-                 IsClosable="False" />
-
-        <!-- Current URL display with copy button -->
-        <Grid HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <TextBox Grid.Column="0"
-                     Header="{x:Bind CurrentURLString}"
-                     Text="{x:Bind ViewModel.CurrentUrl, Mode=OneWay}"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     Opacity="0.7" />
-
-            <Button Grid.Column="1"
-                    Margin="4,0,0,0"
-                    VerticalAlignment="Bottom"
-                    Command="{x:Bind ViewModel.CopyCurrentUrlCommand}"
-                    ToolTipService.ToolTip="{x:Bind CopyTooltipString}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE8C8;"
-                          FontSize="16" />
-            </Button>
-        </Grid>
-
-        <!-- Navigation buttons row (centered) -->
+        <!-- Navigation buttons row -->
         <StackPanel Orientation="Horizontal"
                     Spacing="4"
                     HorizontalAlignment="Center">
@@ -84,6 +43,33 @@
                           Glyph="&#xE72C;"
                           FontSize="16" />
             </Button>
+        </StackPanel>
+
+        <!-- Home URL input -->
+        <TextBox x:Name="UrlTextBox"
+                 Header="{x:Bind HomeURLString}"
+                 PlaceholderText="{x:Bind AddressPlaceholderString}"
+                 HorizontalAlignment="Stretch"
+                 IsSpellCheckEnabled="False"
+                 TextWrapping="Wrap"
+                 Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 KeyDown="UrlTextBox_KeyDown"/>
+
+        <!-- Error InfoBar -->
+        <InfoBar IsOpen="{x:Bind ViewModel.HasUrlError, Mode=OneWay}"
+                 Severity="Error"
+                 Message="{x:Bind ViewModel.UrlErrorMessage, Mode=OneWay}"
+                 IsClosable="False" />
+
+        <!-- Current URL -->
+        <StackPanel Orientation="Vertical" Spacing="4">
+            <TextBlock Text="{x:Bind CurrentURLString}"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Opacity="0.7" />
+            <TextBlock Text="{x:Bind ViewModel.CurrentUrl, Mode=OneWay}"
+                       TextWrapping="Wrap"
+                       IsTextSelectionEnabled="True"
+                       Opacity="0.7" />
         </StackPanel>
     </StackPanel>
 </UserControl>

@@ -17,7 +17,6 @@ public partial class WebInspector : UserControl, IInspector
     private string GoForwardTooltipString => _stringLocalizer.GetString("WebInspector_GoForwardTooltip");
     private string HomeTooltipString => _stringLocalizer.GetString("WebInspector_HomeTooltip");
     private string CurrentURLString => _stringLocalizer.GetString("WebInspector_CurrentURL");
-    private string CopyTooltipString => _stringLocalizer.GetString("WebInspector_CopyTooltip");
 
     public ResourceKey Resource
     {

@@ -87,17 +87,6 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _messengerService.Send(new WebAppNavigateMessage(Resource, normalizedUrl));
     }
 
-    public IRelayCommand CopyCurrentUrlCommand => new RelayCommand(CopyCurrentUrl_Executed);
-    private void CopyCurrentUrl_Executed()
-    {
-        if (!string.IsNullOrEmpty(CurrentUrl))
-        {
-            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-            dataPackage.SetText(CurrentUrl);
-            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
-        }
-    }
-
     public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);
     private void Refresh_Executed()
     {
