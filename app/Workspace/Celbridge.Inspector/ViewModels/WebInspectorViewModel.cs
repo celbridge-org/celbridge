@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
-using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,14 +11,29 @@ namespace Celbridge.Inspector.ViewModels;
 public partial class WebInspectorViewModel : InspectorViewModel
 {
     private readonly ILogger<WebInspectorViewModel> _logger;
-    private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUrlValid))]
+    [NotifyPropertyChangedFor(nameof(HasUrlError))]
+    [NotifyPropertyChangedFor(nameof(UrlErrorMessage))]
     private string _sourceUrl = string.Empty;
 
-    public bool IsUrlValid => !string.IsNullOrWhiteSpace(SourceUrl);
+    [ObservableProperty]
+    private bool _canGoBack;
+
+    [ObservableProperty]
+    private bool _canGoForward;
+
+    [ObservableProperty]
+    private bool _canRefresh;
+
+    public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, out _);
+
+    public bool HasUrlError => !string.IsNullOrWhiteSpace(SourceUrl) && !IsUrlValid;
+
+    public string UrlErrorMessage => HasUrlError ? "The entered URL is not valid. Please enter a valid web address." : string.Empty;
 
     private bool _supressSaving;
 
@@ -30,25 +45,105 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
     public WebInspectorViewModel(
         ILogger<WebInspectorViewModel> logger,
-        ICommandService commandService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _commandService = commandService;
+        _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
+        _messengerService.Register<WebAppNavigationStateChangedMessage>(this, OnWebAppNavigationStateChanged);
         PropertyChanged += ViewModel_PropertyChanged;
     }
 
-    public IRelayCommand OpenDocumentCommand => new RelayCommand(OpenDocument_Executed);
-    private void OpenDocument_Executed()
+    private void OnWebAppNavigationStateChanged(object recipient, WebAppNavigationStateChangedMessage message)
     {
-        // Execute a command to open the web document. Force the document to reload if it is already open.
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        if (message.DocumentResource == Resource)
         {
-            command.FileResource = Resource;
-            command.ForceReload = true;
-        });
+            CanGoBack = message.CanGoBack;
+            CanGoForward = message.CanGoForward;
+            CanRefresh = message.CanRefresh;
+        }
+    }
+
+    public IRelayCommand NavigateCommand => new RelayCommand(Navigate_Executed);
+    private void Navigate_Executed()
+    {
+        if (!ValidateAndNormalizeUrl(SourceUrl, out var normalizedUrl))
+        {
+            return;
+        }
+
+        // Update the source URL if it was normalized (e.g., added https://)
+        if (normalizedUrl != SourceUrl)
+        {
+            SourceUrl = normalizedUrl;
+        }
+
+        _messengerService.Send(new WebAppNavigateMessage(Resource, normalizedUrl));
+    }
+
+    public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);
+    private void Refresh_Executed()
+    {
+        _messengerService.Send(new WebAppRefreshMessage(Resource));
+    }
+
+    public IRelayCommand GoBackCommand => new RelayCommand(GoBack_Executed);
+    private void GoBack_Executed()
+    {
+        _messengerService.Send(new WebAppGoBackMessage(Resource));
+    }
+
+    public IRelayCommand GoForwardCommand => new RelayCommand(GoForward_Executed);
+    private void GoForward_Executed()
+    {
+        _messengerService.Send(new WebAppGoForwardMessage(Resource));
+    }
+
+    private static bool ValidateAndNormalizeUrl(string url, out string normalizedUrl)
+    {
+        normalizedUrl = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        var trimmedUrl = url.Trim();
+
+        // If it already has a supported scheme, validate it as-is
+        if (trimmedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            trimmedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            trimmedUrl.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeFile))
+            {
+                normalizedUrl = trimmedUrl;
+                return true;
+            }
+            return false;
+        }
+
+        // Try adding https:// and validate using .NET's Uri class
+        // This handles IDN (internationalized domain names), IPv4, IPv6, ports, paths, etc.
+        var urlWithScheme = $"https://{trimmedUrl}";
+        if (Uri.TryCreate(urlWithScheme, UriKind.Absolute, out var testUri) &&
+            testUri.Scheme == Uri.UriSchemeHttps)
+        {
+            // Additional validation: ensure the host is a valid DNS name, IPv4, or IPv6
+            var hostType = Uri.CheckHostName(testUri.Host);
+            if (hostType == UriHostNameType.Dns ||
+                hostType == UriHostNameType.IPv4 ||
+                hostType == UriHostNameType.IPv6)
+            {
+                normalizedUrl = urlWithScheme;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

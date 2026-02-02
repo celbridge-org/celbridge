@@ -6,7 +6,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
 
-    <StackPanel Orientation="Vertical">
+    <StackPanel Orientation="Vertical"
+                Spacing="8">
+        <!-- URL input row -->
         <Grid HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -20,17 +22,53 @@
                      HorizontalAlignment="Stretch"
                      IsSpellCheckEnabled="False"
                      TextWrapping="Wrap"
-                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay}"
+                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      KeyDown="UrlTextBox_KeyDown"/>
 
             <Button Grid.Column="1"
-                    Margin="2,0,2,0"
+                    Margin="4,0,0,0"
                     VerticalAlignment="Bottom"
-                    Command="{x:Bind ViewModel.OpenDocumentCommand}"
-                    ToolTipService.ToolTip="{x:Bind OpenURLTooltipString}"
+                    Command="{x:Bind ViewModel.NavigateCommand}"
+                    ToolTipService.ToolTip="{x:Bind NavigateTooltipString}"
                     IsEnabled="{x:Bind ViewModel.IsUrlValid, Mode=OneWay}">
-                <SymbolIcon Symbol="OpenFile"/>
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE768;"
+                          FontSize="16" />
             </Button>
         </Grid>
+
+        <!-- Error InfoBar -->
+        <InfoBar IsOpen="{x:Bind ViewModel.HasUrlError, Mode=OneWay}"
+                 Severity="Error"
+                 Message="{x:Bind ViewModel.UrlErrorMessage, Mode=OneWay}"
+                 IsClosable="False" />
+
+        <!-- Navigation buttons row -->
+        <StackPanel Orientation="Horizontal"
+                    Spacing="4">
+            <Button Command="{x:Bind ViewModel.GoBackCommand}"
+                    ToolTipService.ToolTip="{x:Bind GoBackTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE72B;"
+                          FontSize="16" />
+            </Button>
+
+            <Button Command="{x:Bind ViewModel.GoForwardCommand}"
+                    ToolTipService.ToolTip="{x:Bind GoForwardTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE72A;"
+                          FontSize="16" />
+            </Button>
+
+            <Button Command="{x:Bind ViewModel.RefreshCommand}"
+                    ToolTipService.ToolTip="{x:Bind RefreshTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.CanRefresh, Mode=OneWay}">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE72C;"
+                          FontSize="16" />
+            </Button>
+        </StackPanel>
     </StackPanel>
 </UserControl>

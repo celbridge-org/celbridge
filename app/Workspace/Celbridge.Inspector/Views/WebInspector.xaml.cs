@@ -12,7 +12,10 @@ public partial class WebInspector : UserControl, IInspector
 
     private string StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
     private string AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
-    private string OpenURLTooltipString => _stringLocalizer.GetString("WebInspector_OpenURLTooltip");
+    private string NavigateTooltipString => _stringLocalizer.GetString("WebInspector_NavigateTooltip");
+    private string RefreshTooltipString => _stringLocalizer.GetString("WebInspector_RefreshTooltip");
+    private string GoBackTooltipString => _stringLocalizer.GetString("WebInspector_GoBackTooltip");
+    private string GoForwardTooltipString => _stringLocalizer.GetString("WebInspector_GoForwardTooltip");
 
     public ResourceKey Resource
     {
@@ -32,12 +35,7 @@ public partial class WebInspector : UserControl, IInspector
     {
         if (e.Key == VirtualKey.Enter)
         {
-            // Force the currently entered text to be submitted
-            var textBox = sender as TextBox;
-            var bindingExpression = textBox?.GetBindingExpression(TextBox.TextProperty);
-            bindingExpression?.UpdateSource();
-
-            ViewModel.OpenDocumentCommand.Execute(this);
+            ViewModel.NavigateCommand.Execute(null);
             e.Handled = true;
         }
     }

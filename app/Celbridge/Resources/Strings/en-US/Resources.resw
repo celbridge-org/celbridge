@@ -330,11 +330,20 @@
   <data name="WebInspector_StartURL" xml:space="preserve">
     <value>Start URL</value>
   </data>
-  <data name="WebInspector_OpenURLTooltip" xml:space="preserve">
-    <value>Open Web Application Document</value>
+  <data name="WebInspector_NavigateTooltip" xml:space="preserve">
+    <value>Navigate to URL</value>
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>
+  </data>
+  <data name="WebInspector_GoBackTooltip" xml:space="preserve">
+    <value>Go Back</value>
+  </data>
+  <data name="WebInspector_GoForwardTooltip" xml:space="preserve">
+    <value>Go Forward</value>
+  </data>
+  <data name="WebInspector_RefreshTooltip" xml:space="preserve">
+    <value>Refresh (clears cache)</value>
   </data>
   <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
     <value>Add a New Component</value>
