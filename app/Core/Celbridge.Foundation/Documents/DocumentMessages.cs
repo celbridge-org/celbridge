@@ -43,3 +43,28 @@ public record DocumentSaveRequestedMessage(ResourceKey DocumentResource);
 /// This message is only sent for specific document types with complex async save sequences (e.g. spreadsheets).
 /// </summary>
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent to request a web app document to navigate to a URL.
+/// </summary>
+public record WebAppNavigateMessage(ResourceKey DocumentResource, string Url);
+
+/// <summary>
+/// A message sent to request a web app document to refresh with cache clearing.
+/// </summary>
+public record WebAppRefreshMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent to request a web app document to navigate back in history.
+/// </summary>
+public record WebAppGoBackMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent to request a web app document to navigate forward in history.
+/// </summary>
+public record WebAppGoForwardMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when the web app document's navigation state changes.
+/// </summary>
+public record WebAppNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);
