@@ -71,17 +71,14 @@ public class MarkdownEditor : ComponentEditorBase
 
             case EditorButtonId:
                 SetEditorMode(EditorMode.Editor);
-                OpenDocument();
                 break;
 
             case EditorAndPreviewButtonId:
                 SetEditorMode(EditorMode.EditorAndPreview);
-                OpenDocument();
                 break;
 
             case PreviewButtonId:
                 SetEditorMode(EditorMode.Preview);
-                OpenDocument();
                 break;
         }
     }

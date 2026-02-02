@@ -81,14 +81,16 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
             Guard.IsNotNull(resourceInspector);
             inspectorElements.Add(resourceInspector);
         }
-
-        // Component list view
-        var componentListResult = factory.CreateComponentListView(resource);
-        if (componentListResult.IsSuccess)
+        else
         {
-            var entityInspector = componentListResult.Value as UserControl;
-            Guard.IsNotNull(entityInspector);
-            inspectorElements.Add(entityInspector);
+            // Only show component list view if no resource-specific inspector is available
+            var componentListResult = factory.CreateComponentListView(resource);
+            if (componentListResult.IsSuccess)
+            {
+                var entityInspector = componentListResult.Value as UserControl;
+                Guard.IsNotNull(entityInspector);
+                inspectorElements.Add(entityInspector);
+            }
         }
 
         EntityEditor.PopulateComponentsPanel(inspectorElements);
