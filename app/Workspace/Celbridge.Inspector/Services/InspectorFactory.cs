@@ -84,7 +84,11 @@ public class InspectorFactory : IInspectorFactory
         IInspector? inspector = null;
         if (fileExtension == ExplorerConstants.WebAppExtension)
         {
-            inspector = CreateInspector<WebInspector, WebInspectorViewModel>(resource);
+            // WebInspector uses XAML with a parameterless constructor
+            inspector = new WebInspector
+            {
+                Resource = resource
+            };
         }
 
         if (inspector is not null)

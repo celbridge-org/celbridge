@@ -1,0 +1,36 @@
+﻿<UserControl
+    x:Class="Celbridge.Inspector.Views.WebInspector"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Inspector.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    DataContext="{x:Bind ViewModel}">
+
+    <StackPanel Orientation="Vertical">
+        <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="UrlTextBox"
+                     Grid.Column="0"
+                     Header="{x:Bind StartURLString}"
+                     PlaceholderText="{x:Bind AddressPlaceholderString}"
+                     HorizontalAlignment="Stretch"
+                     IsSpellCheckEnabled="False"
+                     TextWrapping="Wrap"
+                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay}"
+                     KeyDown="UrlTextBox_KeyDown"/>
+
+            <Button Grid.Column="1"
+                    Margin="2,0,2,0"
+                    VerticalAlignment="Bottom"
+                    Command="{x:Bind ViewModel.OpenDocumentCommand}"
+                    ToolTipService.ToolTip="{x:Bind OpenURLTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.IsUrlValid, Mode=OneWay}">
+                <SymbolIcon Symbol="OpenFile"/>
+            </Button>
+        </Grid>
+    </StackPanel>
+</UserControl>

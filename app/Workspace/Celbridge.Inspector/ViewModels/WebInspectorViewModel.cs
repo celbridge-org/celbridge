@@ -1,10 +1,10 @@
+using System.Text.Json.Nodes;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Text.Json.Nodes;
 
 namespace Celbridge.Inspector.ViewModels;
 
@@ -15,7 +15,10 @@ public partial class WebInspectorViewModel : InspectorViewModel
     private readonly IResourceRegistry _resourceRegistry;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUrlValid))]
     private string _sourceUrl = string.Empty;
+
+    public bool IsUrlValid => !string.IsNullOrWhiteSpace(SourceUrl);
 
     private bool _supressSaving;
 
@@ -55,7 +58,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
             var webFilePath = _resourceRegistry.GetResourcePath(Resource);
             var loadResult = LoadURL(webFilePath);
             if (loadResult.IsFailure)
-            { 
+            {
                 _logger.LogError(loadResult, $"Failed to load URL from file: {webFilePath}");
                 return;
             }

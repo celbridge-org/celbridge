@@ -11,44 +11,27 @@ namespace Celbridge.Documents.Views;
 
 public sealed partial class WebAppDocumentView : DocumentView
 {
-    private ILogger<WebAppDocumentView> _logger;
-    private ICommandService _commandService;
-    private IUtilityService _utilityService;
-    private IResourceRegistry _resourceRegistry;
+    private readonly ILogger<WebAppDocumentView> _logger;
+    private readonly ICommandService _commandService;
+    private readonly IUtilityService _utilityService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+
+    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    private WebView2? _webView;
-
-    public WebAppDocumentView(
-        IServiceProvider serviceProvider,
-        ILogger<WebAppDocumentView> logger,
-        ICommandService commandService,
-        IUtilityService utilityService,
-        IWorkspaceWrapper workspaceWrapper)
+    public WebAppDocumentView()
     {
-        _logger = logger;
-        _commandService = commandService;
-        _utilityService = utilityService;
+        this.InitializeComponent();
 
-        ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
+        _logger = ServiceLocator.AcquireService<ILogger<WebAppDocumentView>>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _utilityService = ServiceLocator.AcquireService<IUtilityService>();
+        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        _webView = new WebView2();
-
-        // Fixes a visual bug where the WebView2 control would show a white background briefly when
-        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-        _webView.DefaultBackgroundColor = Colors.Transparent;
+        ViewModel = ServiceLocator.AcquireService<WebAppDocumentViewModel>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-        //
-        // Set the data context and control content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(_webView));
     }
 
     private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -57,13 +40,8 @@ public sealed partial class WebAppDocumentView : DocumentView
         {
             try
             {
-                if (_webView == null)
-                {
-                    return;
-                }
-                
-                await _webView.EnsureCoreWebView2Async();
-                _webView.CoreWebView2.Navigate(ViewModel.SourceUrl);
+                await WebView.EnsureCoreWebView2Async();
+                WebView.CoreWebView2.Navigate(ViewModel.SourceUrl);
             }
             catch (Exception ex)
             {
@@ -80,13 +58,13 @@ public sealed partial class WebAppDocumentView : DocumentView
             args.Cancel = true;
             return;
         }
-        
+
         var filename = Path.GetFileName(downloadPath);
 
         //
         // Map the download path to a unique path in the project folder 
         //
-        var requestedPath = _resourceRegistry.GetResourcePath(filename);
+        var requestedPath = ResourceRegistry.GetResourcePath(filename);
         var getResult = _utilityService.GetUniquePath(requestedPath);
         if (getResult.IsFailure)
         {
@@ -99,7 +77,7 @@ public sealed partial class WebAppDocumentView : DocumentView
         //
         // Get the resource key for the save path
         //
-        var getResourceResult = _resourceRegistry.GetResourceKey(savePath);
+        var getResourceResult = ResourceRegistry.GetResourceKey(savePath);
         if (getResourceResult.IsFailure)
         {
             args.Cancel = true;
@@ -139,9 +117,9 @@ public sealed partial class WebAppDocumentView : DocumentView
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+        var filePath = ResourceRegistry.GetResourcePath(fileResource);
 
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
+        if (ResourceRegistry.GetResource(fileResource).IsFailure)
         {
             return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
         }
@@ -164,26 +142,21 @@ public sealed partial class WebAppDocumentView : DocumentView
         // Be aware that this method can be called multiple times if the document is reloaded as a result of
         // the user changing the URL in the inspector.
 
-        if (_webView == null)
-        {
-            return Result.Fail("WebView2 control is not initialized");
-        }
-
-        await _webView.EnsureCoreWebView2Async();
+        await WebView.EnsureCoreWebView2Async();
 
         // Ensure we only register once for these events
-        _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-        _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+        WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+        WebView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
 
-        _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-        _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
+        WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+        WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
 
         // Listen for messages from the WebView (used for keyboard shortcut handling)
-        _webView.WebMessageReceived -= WebView_WebMessageReceived;
-        _webView.WebMessageReceived += WebView_WebMessageReceived;
+        WebView.WebMessageReceived -= WebView_WebMessageReceived;
+        WebView.WebMessageReceived += WebView_WebMessageReceived;
 
         // Inject JavaScript to handle F11 key for full screen toggle.
-        await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+        await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
             (function() {
                 window.addEventListener('keydown', function(event) {
                     if (event.key === 'F11') {
@@ -228,19 +201,15 @@ public sealed partial class WebAppDocumentView : DocumentView
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
-        if (_webView != null)
-        {
-            _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            
-            if (_webView.CoreWebView2 != null)
-            {
-                _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-                _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-            }
+        WebView.WebMessageReceived -= WebView_WebMessageReceived;
 
-            _webView.Close();
-            _webView = null;
+        if (WebView.CoreWebView2 != null)
+        {
+            WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+            WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
         }
+
+        WebView.Close();
 
         await base.PrepareToClose();
     }
