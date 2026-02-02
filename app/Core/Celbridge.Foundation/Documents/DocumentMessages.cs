@@ -67,4 +67,4 @@ public record WebAppGoForwardMessage(ResourceKey DocumentResource);
 /// <summary>
 /// A message sent when the web app document's navigation state changes.
 /// </summary>
-public record WebAppNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh);
+public record WebAppNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);

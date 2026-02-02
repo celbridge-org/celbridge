@@ -10,12 +10,14 @@ public partial class WebInspector : UserControl, IInspector
 
     public WebInspectorViewModel ViewModel { get; }
 
-    private string StartURLString => _stringLocalizer.GetString("WebInspector_StartURL");
+    private string HomeURLString => _stringLocalizer.GetString("WebInspector_HomeURL");
     private string AddressPlaceholderString => _stringLocalizer.GetString("WebInspector_AddressPlaceholder");
-    private string NavigateTooltipString => _stringLocalizer.GetString("WebInspector_NavigateTooltip");
     private string RefreshTooltipString => _stringLocalizer.GetString("WebInspector_RefreshTooltip");
     private string GoBackTooltipString => _stringLocalizer.GetString("WebInspector_GoBackTooltip");
     private string GoForwardTooltipString => _stringLocalizer.GetString("WebInspector_GoForwardTooltip");
+    private string HomeTooltipString => _stringLocalizer.GetString("WebInspector_HomeTooltip");
+    private string CurrentURLString => _stringLocalizer.GetString("WebInspector_CurrentURL");
+    private string CopyTooltipString => _stringLocalizer.GetString("WebInspector_CopyTooltip");
 
     public ResourceKey Resource
     {
@@ -35,7 +37,7 @@ public partial class WebInspector : UserControl, IInspector
     {
         if (e.Key == VirtualKey.Enter)
         {
-            ViewModel.NavigateCommand.Execute(null);
+            ViewModel.HomeCommand.Execute(null);
             e.Handled = true;
         }
     }

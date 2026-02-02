@@ -29,6 +29,9 @@ public partial class WebInspectorViewModel : InspectorViewModel
     [ObservableProperty]
     private bool _canRefresh;
 
+    [ObservableProperty]
+    private string _currentUrl = string.Empty;
+
     public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, out _);
 
     public bool HasUrlError => !string.IsNullOrWhiteSpace(SourceUrl) && !IsUrlValid;
@@ -63,11 +66,12 @@ public partial class WebInspectorViewModel : InspectorViewModel
             CanGoBack = message.CanGoBack;
             CanGoForward = message.CanGoForward;
             CanRefresh = message.CanRefresh;
+            CurrentUrl = message.CurrentUrl;
         }
     }
 
-    public IRelayCommand NavigateCommand => new RelayCommand(Navigate_Executed);
-    private void Navigate_Executed()
+    public IRelayCommand HomeCommand => new RelayCommand(Home_Executed);
+    private void Home_Executed()
     {
         if (!ValidateAndNormalizeUrl(SourceUrl, out var normalizedUrl))
         {
@@ -81,6 +85,17 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
 
         _messengerService.Send(new WebAppNavigateMessage(Resource, normalizedUrl));
+    }
+
+    public IRelayCommand CopyCurrentUrlCommand => new RelayCommand(CopyCurrentUrl_Executed);
+    private void CopyCurrentUrl_Executed()
+    {
+        if (!string.IsNullOrEmpty(CurrentUrl))
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(CurrentUrl);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+        }
     }
 
     public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);

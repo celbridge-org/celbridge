@@ -139,11 +139,16 @@ public sealed partial class WebAppDocumentView : DocumentView
                          !string.IsNullOrEmpty(WebView.CoreWebView2.Source) &&
                          WebView.CoreWebView2.Source != "about:blank";
 
-        _messengerService.Send(new WebAppNavigationStateChangedMessage(
+        var currentUrl = WebView.CoreWebView2?.Source ?? string.Empty;
+
+        var message = new WebAppNavigationStateChangedMessage(
             ViewModel.FileResource,
             WebView.CoreWebView2?.CanGoBack ?? false,
             WebView.CoreWebView2?.CanGoForward ?? false,
-            canRefresh));
+            canRefresh,
+            currentUrl);
+
+        _messengerService.Send(message);
     }
 
     private void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)

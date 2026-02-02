@@ -327,11 +327,17 @@
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
     <value>Open with Application</value>
   </data>
-  <data name="WebInspector_StartURL" xml:space="preserve">
-    <value>Start URL</value>
+  <data name="WebInspector_HomeURL" xml:space="preserve">
+    <value>Home URL</value>
   </data>
-  <data name="WebInspector_NavigateTooltip" xml:space="preserve">
-    <value>Navigate to URL</value>
+  <data name="WebInspector_HomeTooltip" xml:space="preserve">
+    <value>Navigate to Home URL</value>
+  </data>
+  <data name="WebInspector_CurrentURL" xml:space="preserve">
+    <value>Current URL</value>
+  </data>
+  <data name="WebInspector_CopyTooltip" xml:space="preserve">
+    <value>Copy to Clipboard</value>
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
     <value>Enter web address</value>

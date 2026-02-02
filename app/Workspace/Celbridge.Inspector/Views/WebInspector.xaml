@@ -8,34 +8,15 @@
 
     <StackPanel Orientation="Vertical"
                 Spacing="8">
-        <!-- URL input row -->
-        <Grid HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <TextBox x:Name="UrlTextBox"
-                     Grid.Column="0"
-                     Header="{x:Bind StartURLString}"
-                     PlaceholderText="{x:Bind AddressPlaceholderString}"
-                     HorizontalAlignment="Stretch"
-                     IsSpellCheckEnabled="False"
-                     TextWrapping="Wrap"
-                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     KeyDown="UrlTextBox_KeyDown"/>
-
-            <Button Grid.Column="1"
-                    Margin="4,0,0,0"
-                    VerticalAlignment="Bottom"
-                    Command="{x:Bind ViewModel.NavigateCommand}"
-                    ToolTipService.ToolTip="{x:Bind NavigateTooltipString}"
-                    IsEnabled="{x:Bind ViewModel.IsUrlValid, Mode=OneWay}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE768;"
-                          FontSize="16" />
-            </Button>
-        </Grid>
+        <!-- Home URL input -->
+        <TextBox x:Name="UrlTextBox"
+                 Header="{x:Bind HomeURLString}"
+                 PlaceholderText="{x:Bind AddressPlaceholderString}"
+                 HorizontalAlignment="Stretch"
+                 IsSpellCheckEnabled="False"
+                 TextWrapping="Wrap"
+                 Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 KeyDown="UrlTextBox_KeyDown"/>
 
         <!-- Error InfoBar -->
         <InfoBar IsOpen="{x:Bind ViewModel.HasUrlError, Mode=OneWay}"
@@ -43,9 +24,35 @@
                  Message="{x:Bind ViewModel.UrlErrorMessage, Mode=OneWay}"
                  IsClosable="False" />
 
-        <!-- Navigation buttons row -->
+        <!-- Current URL display with copy button -->
+        <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     Header="{x:Bind CurrentURLString}"
+                     Text="{x:Bind ViewModel.CurrentUrl, Mode=OneWay}"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     Opacity="0.7" />
+
+            <Button Grid.Column="1"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Bottom"
+                    Command="{x:Bind ViewModel.CopyCurrentUrlCommand}"
+                    ToolTipService.ToolTip="{x:Bind CopyTooltipString}">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE8C8;"
+                          FontSize="16" />
+            </Button>
+        </Grid>
+
+        <!-- Navigation buttons row (centered) -->
         <StackPanel Orientation="Horizontal"
-                    Spacing="4">
+                    Spacing="4"
+                    HorizontalAlignment="Center">
             <Button Command="{x:Bind ViewModel.GoBackCommand}"
                     ToolTipService.ToolTip="{x:Bind GoBackTooltipString}"
                     IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}">
@@ -59,6 +66,14 @@
                     IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}">
                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                           Glyph="&#xE72A;"
+                          FontSize="16" />
+            </Button>
+
+            <Button Command="{x:Bind ViewModel.HomeCommand}"
+                    ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.IsUrlValid, Mode=OneWay}">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                          Glyph="&#xE80F;"
                           FontSize="16" />
             </Button>
 
