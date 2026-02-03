@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
@@ -14,7 +13,6 @@ public sealed partial class MonacoEditorView : DocumentView
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
     private readonly IMessengerService _messengerService;
-    private readonly ILogger<MonacoEditorView> _logger;
 
     public MonacoEditorViewModel ViewModel { get; }
 
@@ -27,7 +25,6 @@ public sealed partial class MonacoEditorView : DocumentView
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _logger = ServiceLocator.AcquireService<ILogger<MonacoEditorView>>();
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
