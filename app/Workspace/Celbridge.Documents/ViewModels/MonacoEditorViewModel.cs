@@ -126,7 +126,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     {
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.ToggleLayout;
+            command.Transition = LayoutTransition.ToggleZenMode;
         });
     }
 

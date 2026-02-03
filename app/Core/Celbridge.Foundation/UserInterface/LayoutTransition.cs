@@ -26,9 +26,9 @@ public enum LayoutTransition
     EnterPresenterMode,
 
     /// <summary>
-    /// Toggles between a windowed and a fullscreen window layout (Zen Mode).
+    /// Toggles between Windowed mode and Zen Mode (fullscreen with all panels hidden).
     /// </summary>
-    ToggleLayout,
+    ToggleZenMode,
 
     /// <summary>
     /// Restore all panels to visible and reset their sizes to defaults.

@@ -29,6 +29,10 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         _commandService = commandService;
         _editorSettings = editorSettings;
         _undoService = undoService;
+
+        // Register for undo/redo messages
+        _messengerService.Register<UndoRequestedMessage>(this, OnUndoRequested);
+        _messengerService.Register<RedoRequestedMessage>(this, OnRedoRequested);
     }
 
     public event Func<Type, object, Result>? OnNavigate;
@@ -55,7 +59,7 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
         var previousProjectFile = _editorSettings.PreviousProject;
         if (!string.IsNullOrEmpty(previousProjectFile) &&
             File.Exists(previousProjectFile))
-        { 
+        {
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {
                 command.ProjectFilePath = previousProjectFile;
@@ -69,7 +73,19 @@ public partial class MainPageViewModel : ObservableObject, INavigationProvider
     }
 
     public void OnMainPage_Unloaded()
-    { }
+    {
+        _messengerService.UnregisterAll(this);
+    }
+
+    private void OnUndoRequested(object recipient, UndoRequestedMessage message)
+    {
+        _undoService.Undo();
+    }
+
+    private void OnRedoRequested(object recipient, RedoRequestedMessage message)
+    {
+        _undoService.Redo();
+    }
 
     public void Undo()
     {

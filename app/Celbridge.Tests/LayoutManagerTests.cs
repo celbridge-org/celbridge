@@ -144,12 +144,12 @@ public class LayoutManagerTests
 
     #endregion
 
-    #region Toggle Layout Tests
+    #region Toggle ZenMode Tests
 
     [Test]
-    public void ToggleLayout_FromWindowed_EntersZenMode()
+    public void ToggleZenMode_FromWindowed_EntersZenMode()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
@@ -157,29 +157,29 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ToggleLayout_FromZenMode_ReturnsToWindowed()
+    public void ToggleZenMode_FromZenMode_ReturnsToWindowed()
     {
         _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
     }
 
     [Test]
-    public void ToggleLayout_FromFullScreen_ReturnsToWindowed()
+    public void ToggleZenMode_FromFullScreen_ReturnsToWindowed()
     {
         _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
     }
 
     [Test]
-    public void ToggleLayout_FromWindowedWithAllPanelsCollapsed_MaintainsNoPanel()
+    public void ToggleZenMode_FromWindowedWithAllPanelsCollapsed_MaintainsNoPanel()
     {
         // Manually collapse all panels while in Windowed mode
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
@@ -187,13 +187,13 @@ public class LayoutManagerTests
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
 
         // Toggle to ZenMode
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
         
         // Toggle back to Windowed - should restore the persisted preference (None)
-        result = _layoutManager.RequestTransition(LayoutTransition.ToggleLayout);
+        result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
         
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);

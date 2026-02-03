@@ -3,7 +3,8 @@ using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.UserInterface;
+using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
@@ -17,6 +18,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
     private IStringLocalizer _stringLocalizer;
     private ICommandService _commandService;
     private IDialogService _dialogService;
+    private IMessengerService _messengerService;
     private IResourceRegistry _resourceRegistry;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
@@ -37,6 +39,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         ViewModel = serviceProvider.GetRequiredService<SpreadsheetDocumentViewModel>();
@@ -45,6 +48,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         _commandService = commandService;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
+        _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         Loaded += SpreadsheetDocumentView_Loaded;
@@ -103,8 +107,8 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             var webView = new WebView2();
             await webView.EnsureCoreWebView2Async();
 
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("spreadjs.celbridge", 
-                "Celbridge.Documents/Web/SpreadJS", 
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("spreadjs.celbridge",
+                "Celbridge.Documents/Web/SpreadJS",
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // This fixes a visual bug where the WebView2 control would show a white background briefly when
@@ -130,6 +134,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+            // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
 
             webView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
 
@@ -175,6 +182,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             // Fixes a visual bug where the WebView2 control would show a white background briefly when
             // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
             webView.DefaultBackgroundColor = Colors.Transparent;
+
+            // Handle focus to set this document as active
+            webView.GotFocus += WebView_GotFocus;
 
             _webView = webView;
 
@@ -276,7 +286,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         {
             // Log the error but don't crash - the spreadsheet stays in its current state
             _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
-            
+
             // Clear the import flag so we can try again
             _isImportInProgress = false;
         }
@@ -291,15 +301,13 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "toggle_layout")
+        // Try to handle as a global keyboard shortcut first
+        if (WebView2Helper.HandleKeyboardShortcut(webMessage))
         {
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            { 
-                command.Transition = LayoutTransition.ToggleLayout; 
-            });
             return;
         }
-        else if (webMessage == "load_excel_data")
+
+        if (webMessage == "load_excel_data")
         {
             // This will discard any pending changes so ask user to confirm
 
@@ -385,7 +393,8 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         if (_webView != null)
         {
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            
+            _webView.GotFocus -= WebView_GotFocus;
+
             // Note: Event handlers were added with lambda functions, so we can't unregister them
             // individually but the Close() method will clean them up anyway.
 
@@ -394,6 +403,13 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         }
 
         await base.PrepareToClose();
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+        _messengerService.Send(message);
     }
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)

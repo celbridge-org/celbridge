@@ -76,7 +76,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             {
                 // Focus the WebView2 control first
                 TerminalWebView.Focus(FocusState.Programmatic);
-                
+
                 // Then send a message to the terminal to focus the Xterm.js instance
                 try
                 {
@@ -102,7 +102,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         {
             // Focus the WebView2 control first
             TerminalWebView.Focus(FocusState.Programmatic);
-            
+
             // Then send a message to the terminal to focus the Xterm.js instance
             try
             {
@@ -148,7 +148,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
         // Hide the "Inspect" context menu option
         var settings = TerminalWebView.CoreWebView2.Settings;
-        settings.AreDevToolsEnabled = false;                 
+        settings.AreDevToolsEnabled = false;
         settings.AreDefaultContextMenusEnabled = true;
 
         var tcs = new TaskCompletionSource<bool>();
@@ -170,7 +170,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         // Wait for navigation to complete
         bool success = await tcs.Task;
 
-        if (!success) 
+        if (!success)
         {
             return Result.Fail($"Failed to navigate to terminal HTML page.");
         }
@@ -241,11 +241,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         }
 
         // Handle full screen toggle request from the terminal
-        if (message == "toggle_layout")
+        if (message == "toggle_fullscreen")
         {
             _commandService.Execute<ISetLayoutCommand>(command =>
             {
-                command.Transition = LayoutTransition.ToggleLayout;
+                command.Transition = LayoutTransition.ToggleZenMode;
             });
             return;
         }

@@ -2,7 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -258,23 +258,16 @@ public sealed partial class WebAppDocumentView : DocumentView
         WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
         WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
+        // Handle focus to set this document as active
+        WebView.GotFocus -= WebView_GotFocus;
+        WebView.GotFocus += WebView_GotFocus;
+
         // Listen for messages from the WebView (used for keyboard shortcut handling)
         WebView.WebMessageReceived -= WebView_WebMessageReceived;
         WebView.WebMessageReceived += WebView_WebMessageReceived;
 
-        // Inject JavaScript to handle F11 key for full screen toggle.
-        await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
-            (function() {
-                window.addEventListener('keydown', function(event) {
-                    if (event.key === 'F11') {
-                        event.preventDefault();
-                        if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_layout');
-                        }
-                    }
-                });
-            })();
-        ");
+        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(WebView.CoreWebView2);
 
         // Load URL from file and navigate
         var loadResult = await ViewModel.LoadContent();
@@ -289,13 +282,9 @@ public sealed partial class WebAppDocumentView : DocumentView
     private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var message = args.TryGetWebMessageAsString();
-        if (message == "toggle_layout")
-        {
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = LayoutTransition.ToggleLayout;
-            });
-        }
+
+        // Handle keyboard shortcuts via centralized helper
+        WebView2Helper.HandleKeyboardShortcut(message);
     }
 
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
@@ -311,14 +300,19 @@ public sealed partial class WebAppDocumentView : DocumentView
         }
     }
 
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+        _messengerService.Send(message);
+    }
+
     public override async Task PrepareToClose()
     {
-        _messengerService.Unregister<WebAppNavigateMessage>(this);
-        _messengerService.Unregister<WebAppRefreshMessage>(this);
-        _messengerService.Unregister<WebAppGoBackMessage>(this);
-        _messengerService.Unregister<WebAppGoForwardMessage>(this);
+        _messengerService.UnregisterAll(this);
 
         WebView.WebMessageReceived -= WebView_WebMessageReceived;
+        WebView.GotFocus -= WebView_GotFocus;
 
         if (WebView.CoreWebView2 != null)
         {

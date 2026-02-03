@@ -1,7 +1,8 @@
+using System.Collections.Concurrent;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Web.WebView2.Core;
-using System.Collections.Concurrent;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Services;
@@ -67,7 +68,7 @@ public class TextEditorWebViewPool
     {
         WebView2? webView = null;
         bool needsCreation = false;
-        
+
         lock (_lock)
         {
             if (_isShuttingDown)
@@ -90,7 +91,7 @@ public class TextEditorWebViewPool
         if (needsCreation)
         {
             webView = await CreateTextEditorWebView();
-            
+
             lock (_lock)
             {
                 if (_isShuttingDown)
@@ -138,7 +139,7 @@ public class TextEditorWebViewPool
             try
             {
                 var newWebView = await CreateTextEditorWebView();
-                
+
                 lock (_lock)
                 {
                     if (!_isShuttingDown)
@@ -256,6 +257,9 @@ public class TextEditorWebViewPool
             CoreWebView2HostResourceAccessKind.Allow);
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
 
         // Set Monaco color theme to match the user interface theme        
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();

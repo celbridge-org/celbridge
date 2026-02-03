@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
-using Celbridge.UserInterface;
+using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
@@ -10,6 +12,8 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     public EditorPreviewViewModel ViewModel { get; }
 
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
+    private readonly ILogger<EditorPreviewView> _logger;
 
     private WebView2? _webView;
 
@@ -20,6 +24,8 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     {
         ViewModel = ServiceLocator.AcquireService<EditorPreviewViewModel>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _logger = ServiceLocator.AcquireService<ILogger<EditorPreviewView>>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -63,12 +69,12 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         {
             _webView.NavigationCompleted -= WebView_NavigationCompleted;
             _webView.NavigationStarting -= WebView_NavigationStarting;
-            
+
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             }
-            
+
             _webView.Close();
             _webView = null;
         }
@@ -99,19 +105,8 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
 
         await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-        // Inject JavaScript to handle F11 key for full screen toggle.
-        await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
-            (function() {
-                window.addEventListener('keydown', function(event) {
-                    if (event.key === 'F11') {
-                        event.preventDefault();
-                        if (window.chrome && window.chrome.webview) {
-                            window.chrome.webview.postMessage('toggle_layout');
-                        }
-                    }
-                });
-            })();
-        ");
+        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(_webView.CoreWebView2);
 
         _webView.NavigationCompleted += WebView_NavigationCompleted;
 
@@ -129,6 +124,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         _webView.NavigationStarting += WebView_NavigationStarting;
         _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
         _webView.WebMessageReceived += WebView_WebMessageReceived;
+        _webView.GotFocus += WebView_GotFocus;
 
         // Display the webview
         Content = _webView;
@@ -137,13 +133,9 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
         var message = args.TryGetWebMessageAsString();
-        if (message == "toggle_layout")
-        {
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = LayoutTransition.ToggleLayout;
-            });
-        }
+
+        // Handle keyboard shortcuts via centralized helper
+        WebView2Helper.HandleKeyboardShortcut(message);
     }
 
     private async void WebView_NavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
@@ -232,7 +224,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     public void PrepareToClose()
     {
         if (_isClosed)
-        { 
+        {
             return;
         }
 
@@ -245,14 +237,25 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
             _webView.NavigationCompleted -= WebView_NavigationCompleted;
             _webView.NavigationStarting -= WebView_NavigationStarting;
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            
+            _webView.GotFocus -= WebView_GotFocus;
+
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             }
-            
+
             _webView.Close();
             _webView = null;
+        }
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        if (!ViewModel.FileResource.IsEmpty)
+        {
+            var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+            _messengerService.Send(message);
         }
     }
 }

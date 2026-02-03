@@ -184,16 +184,6 @@
             });
         }
 
-        function setupKeyboardShortcuts() {
-            // Listen for F11 key to toggle full screen layout
-            window.addEventListener('keydown', function(event) {
-                if (event.key === 'F11') {
-                    event.preventDefault();
-                    postWebViewMessage('toggle_layout');
-                }
-            });
-        }
-
         window.onload = function () {
 
             // Apply license keys
@@ -239,7 +229,7 @@
 
             listenForWebViewMessages();
             listenForChanges();
-            setupKeyboardShortcuts();
+
             postWebViewMessage("editor_ready");
         };
     </script>

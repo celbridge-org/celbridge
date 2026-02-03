@@ -2,8 +2,9 @@
 
 ## General Guidelines
 
-* First general instruction
-* Second general instruction
+* To improve readability, prefer using a temporary variable rather than creating new instances inline, e.g.
+var message = new DocumentSaveRequestedMessage(resource);
+_messengerService.Send(message);
 
 ## Code Style
 
