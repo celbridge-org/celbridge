@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
-using System.Text.Json;
 
 namespace Celbridge.Documents.Views;
 
@@ -10,6 +12,7 @@ public sealed partial class MonacoEditorView : DocumentView
 {
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
+    private readonly IMessengerService _messengerService;
 
     public MonacoEditorViewModel ViewModel { get; }
 
@@ -21,6 +24,7 @@ public sealed partial class MonacoEditorView : DocumentView
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
@@ -102,10 +106,12 @@ public sealed partial class MonacoEditorView : DocumentView
         // Ensure we only register the event handlers once
         _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
         _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+        _webView.GotFocus -= WebView_GotFocus;
 
         // Start listening for text updates from the web view
         _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
         _webView.CoreWebView2.NewWindowRequested += TextDocumentView_NewWindowRequested;
+        _webView.GotFocus += WebView_GotFocus;
 
         return Result.Ok();
     }
@@ -132,7 +138,7 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public override async Task<Result> NavigateToLocation(string location)
     {
-        if (_webView == null || 
+        if (_webView == null ||
             _webView.CoreWebView2 == null)
         {
             return Result.Fail("WebView is not initialized");
@@ -173,7 +179,8 @@ public sealed partial class MonacoEditorView : DocumentView
         }
 
         _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
-        
+        _webView.GotFocus -= WebView_GotFocus;
+
         if (_webView.CoreWebView2 != null)
         {
             _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
@@ -190,7 +197,7 @@ public sealed partial class MonacoEditorView : DocumentView
         var documentsService = _documentsService as DocumentsService;
         Guard.IsNotNull(documentsService);
         var pool = documentsService.TextEditorWebViewPool;
-        
+
         await pool.ReleaseInstanceAsync(_webView);
 
         _webView = null;
@@ -199,14 +206,17 @@ public sealed partial class MonacoEditorView : DocumentView
     private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var message = e.TryGetWebMessageAsString();
+
+        // Try to handle as a global keyboard shortcut first
+        if (WebView2Helper.HandleKeyboardShortcut(message))
+        {
+            return;
+        }
+
         if (message == "did_change_content")
         {
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
-        }
-        else if (message == "toggle_layout")
-        {
-            ViewModel.ToggleLayout();
         }
     }
 
@@ -221,6 +231,13 @@ public sealed partial class MonacoEditorView : DocumentView
         {
             ViewModel.NavigateToURL(url);
         }
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+        _messengerService.Send(message);
     }
 
     private async Task UpdateTextEditorLanguage()

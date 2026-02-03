@@ -110,13 +110,17 @@
 
         term.attachCustomKeyEventHandler((ev) => {
 
-            // F11 toggles full screen layout
-            if (ev.key === 'F11') {
+            // F11 toggles full screen layout (only on keydown, not keyup)
+            if (ev.type === 'keydown' && ev.key === 'F11') {
                 ev.preventDefault?.();
                 if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage('toggle_layout');
+                    window.chrome.webview.postMessage('toggle_fullscreen');
                 }
                 return false; // consume the event
+            }
+            // Also consume keyup for F11 to prevent any default behavior
+            if (ev.type === 'keyup' && ev.key === 'F11') {
+                return false;
             }
 
             // Copy: if there's a selection, ctl-c copies it to the clipboard

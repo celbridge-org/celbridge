@@ -144,42 +144,11 @@ public partial class MainPage : Page
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
 
-        // F11 shortcut toggles fullscreen mode
-        if (key == VirtualKey.F11)
-        {
-            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
-            commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = LayoutTransition.ToggleLayout;
-            });
+        var alt = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu)
+            .HasFlag(CoreVirtualKeyStates.Down);
 
-            return true;
-        }
-
-        // All platforms redo shortcut
-        if (control && shift && key == VirtualKey.Z)
-        {
-            ViewModel.Redo();
-            return true;
-        }
-
-#if WINDOWS
-        // Windows only redo shortcut
-        if (control && key == VirtualKey.Y)
-        {
-            ViewModel.Redo();
-            return true;
-        }
-#endif
-
-        // All platforms undo shortcut
-        if (control && key == VirtualKey.Z)
-        {
-            ViewModel.Undo();
-            return true;
-        }
-
-        return false;
+        var shortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        return shortcutService.HandleGlobalShortcut(key, control, shift, alt);
     }
 
     private Result OnViewModel_Navigate(Type pageType, object parameter)

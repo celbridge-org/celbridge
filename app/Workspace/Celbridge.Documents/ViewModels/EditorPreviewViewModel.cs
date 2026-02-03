@@ -19,6 +19,9 @@ public partial class EditorPreviewViewModel : ObservableObject
     [ObservableProperty]
     private string _filePath = string.Empty;
 
+    [ObservableProperty]
+    private ResourceKey _fileResource = ResourceKey.Empty;
+
     public EditorPreviewViewModel(
         ICommandService commandService,
         IProjectService projectService,
@@ -42,7 +45,7 @@ public partial class EditorPreviewViewModel : ObservableObject
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
             command.URL = url;
-        });      
+        });
     }
 
     public Result OpenRelativePath(string relativePath)

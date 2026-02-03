@@ -32,6 +32,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ILayoutManager, LayoutManager>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
+        services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IFormService, FormService>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();

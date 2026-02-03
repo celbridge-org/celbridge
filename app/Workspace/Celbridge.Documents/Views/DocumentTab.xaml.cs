@@ -220,10 +220,10 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        // Double-clicking a document tab toggles fullscreen layout
+        // Double-clicking a document tab toggles Zen Mode (fullscreen with panels hidden)
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.ToggleLayout;
+            command.Transition = LayoutTransition.ToggleZenMode;
         });
         e.Handled = true;
     }
@@ -231,10 +231,7 @@ public partial class DocumentTab : TabViewItem
     private void DocumentTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
         // Send message to notify that this tab was clicked - this updates the active document
-        // Using messaging ensures reliable notification even if the tab is already selected in its section
-        int tabOrder = FindParentTabView()?.TabItems.IndexOf(this) ?? 0;
-        var address = new DocumentAddress(WindowIndex: 0, SectionIndex: SectionIndex, TabOrder: tabOrder);
-        var message = new DocumentTabClickedMessage(ViewModel.FileResource, address);
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
         _messengerService.Send(message);
 
         // Focus the document editor when the tab is clicked (even if tab is already selected)

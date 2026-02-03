@@ -231,10 +231,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Handles a tab click message - updates the active document.
-    /// This is the primary mechanism for changing the active document.
+    /// Makes the specified document the active document.
     /// </summary>
-    public void HandleTabClicked(ResourceKey fileResource, int sectionIndex)
+    public void ActivateDocument(ResourceKey fileResource, int sectionIndex)
     {
         if (fileResource.IsEmpty)
         {

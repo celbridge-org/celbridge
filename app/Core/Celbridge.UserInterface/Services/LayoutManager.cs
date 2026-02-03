@@ -82,8 +82,8 @@ public class LayoutManager : ILayoutManager
             case LayoutTransition.EnterPresenterMode:
                 return TransitionToPresenterMode();
 
-            case LayoutTransition.ToggleLayout:
-                return HandleToggleLayout();
+            case LayoutTransition.ToggleZenMode:
+                return HandleToggleZenMode();
 
             case LayoutTransition.ResetLayout:
                 return HandleResetLayout();
@@ -207,12 +207,11 @@ public class LayoutManager : ILayoutManager
         return Result.Ok();
     }
 
-    private Result HandleToggleLayout()
+    private Result HandleToggleZenMode()
     {
         if (WindowMode == WindowMode.Windowed)
         {
-            // Enter fullscreen
-            // We actually use ZenMode rather than FullScreen as this provides a better user experience.
+            // Enter Zen Mode (fullscreen with all panels hidden)
             return TransitionToZenMode();
         }
         else
