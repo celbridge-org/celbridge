@@ -36,3 +36,14 @@ public record RestoreWindowStateMessage();
 /// This allows the UI to synchronize its state with the actual window state.
 /// </summary>
 public record ExitedFullscreenViaDragMessage();
+
+/// <summary>
+/// Message sent to request an undo operation.
+/// </summary>
+public record UndoRequestedMessage();
+
+/// <summary>
+/// Message sent to request a redo operation.
+/// </summary>
+public record RedoRequestedMessage();
+

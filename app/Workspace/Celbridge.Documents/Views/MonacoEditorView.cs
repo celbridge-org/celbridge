@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
@@ -12,6 +14,7 @@ public sealed partial class MonacoEditorView : DocumentView
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
     private readonly IMessengerService _messengerService;
+    private readonly ILogger<MonacoEditorView> _logger;
 
     public MonacoEditorViewModel ViewModel { get; }
 
@@ -24,6 +27,7 @@ public sealed partial class MonacoEditorView : DocumentView
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _logger = ServiceLocator.AcquireService<ILogger<MonacoEditorView>>();
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
@@ -205,14 +209,17 @@ public sealed partial class MonacoEditorView : DocumentView
     private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var message = e.TryGetWebMessageAsString();
+
+        // Try to handle as a global keyboard shortcut first
+        if (WebView2Helper.HandleKeyboardShortcut(message))
+        {
+            return;
+        }
+
         if (message == "did_change_content")
         {
             // Mark the document as pending a save
             ViewModel.OnTextChanged();
-        }
-        else if (message == "toggle_layout")
-        {
-            ViewModel.ToggleLayout();
         }
     }
 

@@ -4,7 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
@@ -134,6 +134,9 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+            // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
 
             webView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
 
@@ -298,15 +301,13 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "toggle_layout")
+        // Try to handle as a global keyboard shortcut first
+        if (WebView2Helper.HandleKeyboardShortcut(webMessage))
         {
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = LayoutTransition.ToggleLayout;
-            });
             return;
         }
-        else if (webMessage == "load_excel_data")
+
+        if (webMessage == "load_excel_data")
         {
             // This will discard any pending changes so ask user to confirm
 

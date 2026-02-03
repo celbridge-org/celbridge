@@ -220,10 +220,10 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        // Double-clicking a document tab toggles fullscreen layout
+        // Double-clicking a document tab toggles Zen Mode (fullscreen with panels hidden)
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.ToggleLayout;
+            command.Transition = LayoutTransition.ToggleZenMode;
         });
         e.Handled = true;
     }

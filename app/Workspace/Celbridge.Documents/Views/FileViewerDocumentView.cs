@@ -1,13 +1,17 @@
 using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
 public sealed partial class FileViewerDocumentView : DocumentView
 {
-    private IResourceRegistry _resourceRegistry;
-    private IMessengerService _messengerService;
+    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IMessengerService _messengerService;
+    private readonly ILogger<FileViewerDocumentView> _logger;
 
     public FileViewerDocumentViewModel ViewModel { get; }
 
@@ -16,12 +20,14 @@ public sealed partial class FileViewerDocumentView : DocumentView
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
-        IMessengerService messengerService)
+        IMessengerService messengerService,
+        ILogger<FileViewerDocumentView> logger)
     {
         ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _messengerService = messengerService;
+        _logger = logger;
 
         _webView = new WebView2()
             .Source(x => x.Binding(() => ViewModel.Source));
@@ -65,6 +71,18 @@ public sealed partial class FileViewerDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
+        if (_webView != null)
+        {
+            await _webView.EnsureCoreWebView2Async();
+
+            // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectKeyboardShortcutHandlerAsync(_webView.CoreWebView2);
+
+            // Listen for messages from the WebView (used for keyboard shortcut handling)
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
+            _webView.WebMessageReceived += WebView_WebMessageReceived;
+        }
+
         return await ViewModel.LoadContent();
     }
 
@@ -73,6 +91,7 @@ public sealed partial class FileViewerDocumentView : DocumentView
         if (_webView != null)
         {
             _webView.GotFocus -= WebView_GotFocus;
+            _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.Close();
             _webView = null;
         }
@@ -85,5 +104,13 @@ public sealed partial class FileViewerDocumentView : DocumentView
         // Set this document as the active document when the WebView2 receives focus
         var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
         _messengerService.Send(message);
+    }
+
+    private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        var message = args.TryGetWebMessageAsString();
+
+        // Handle keyboard shortcuts via centralized helper
+        WebView2Helper.HandleKeyboardShortcut(message);
     }
 }
