@@ -6,12 +6,6 @@
     "children": [
       {
         "element": "Button",
-        "tooltip": "Open document",
-        "icon": "OpenFile",
-        "buttonId": "OpenDocument"
-      },
-      {
-        "element": "Button",
         "isEnabled": "/editorEnabled",
         "tooltip": "Editor view",
         "icon": "DockLeft",
