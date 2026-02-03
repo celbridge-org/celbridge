@@ -122,6 +122,12 @@ public class InspectorService : IInspectorService, IDisposable
 
     private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
     {
+        if (InspectedResource == message.DocumentResource)
+        {
+            // Avoid unnecessary cache invalidation and UI updates when the same document is re-selected
+            return;
+        }
+
         InspectedResource = message.DocumentResource;
         InspectedComponentIndex = -1;
 

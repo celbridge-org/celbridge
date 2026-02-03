@@ -1,34 +1,23 @@
-using Celbridge.Commands;
+using System.Text.Json;
 using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Logging;
-using System.Text.Json;
 
 namespace Celbridge.Markdown.ComponentEditors;
 
 public class MarkdownEditor : ComponentEditorBase
 {
-    private readonly ILogger<MarkdownEditor> _logger;
-    private readonly ICommandService _commandService;
-
     private const string ConfigPath = "Celbridge.Markdown.Assets.Components.MarkdownComponent.json";
     private const string ComponentFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownForm.json";
     private const string ComponentRootFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownRootForm.json";
 
-    private const string OpenDocumentButtonId = "OpenDocument";
     private const string EditorButtonId = "Editor";
     private const string EditorAndPreviewButtonId = "EditorAndPreview";
     private const string PreviewButtonId = "Preview";
 
     public const string ComponentType = "Markdown.Markdown";
 
-    public MarkdownEditor(
-        ILogger<MarkdownEditor> logger,
-        ICommandService commandService)
-    {
-        _logger = logger;
-        _commandService = commandService;
-    }
+    public MarkdownEditor()
+    { }
 
     public override string GetComponentConfig()
     {
@@ -65,10 +54,6 @@ public class MarkdownEditor : ComponentEditorBase
     {
         switch (buttonId)
         {
-            case OpenDocumentButtonId:
-                OpenDocument();
-                break;
-
             case EditorButtonId:
                 SetEditorMode(EditorMode.Editor);
                 break;
@@ -114,18 +99,6 @@ public class MarkdownEditor : ComponentEditorBase
         }
 
         return Result<string>.Fail();
-    }
-
-    private void OpenDocument()
-    {
-        var resource = Component.Key.Resource;
-
-        // Execute a command to open the markdown document.
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = resource;
-            command.ForceReload = false;
-        });
     }
 
     private void SetEditorMode(EditorMode editorMode)
