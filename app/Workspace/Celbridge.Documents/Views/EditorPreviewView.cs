@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
 
@@ -10,6 +11,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     public EditorPreviewViewModel ViewModel { get; }
 
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
 
     private WebView2? _webView;
 
@@ -20,6 +22,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     {
         ViewModel = ServiceLocator.AcquireService<EditorPreviewViewModel>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -63,12 +66,12 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         {
             _webView.NavigationCompleted -= WebView_NavigationCompleted;
             _webView.NavigationStarting -= WebView_NavigationStarting;
-            
+
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             }
-            
+
             _webView.Close();
             _webView = null;
         }
@@ -129,6 +132,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
         _webView.NavigationStarting += WebView_NavigationStarting;
         _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
         _webView.WebMessageReceived += WebView_WebMessageReceived;
+        _webView.GotFocus += WebView_GotFocus;
 
         // Display the webview
         Content = _webView;
@@ -232,7 +236,7 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
     public void PrepareToClose()
     {
         if (_isClosed)
-        { 
+        {
             return;
         }
 
@@ -245,14 +249,25 @@ public sealed partial class EditorPreviewView : UserControl, IEditorPreview
             _webView.NavigationCompleted -= WebView_NavigationCompleted;
             _webView.NavigationStarting -= WebView_NavigationStarting;
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            
+            _webView.GotFocus -= WebView_GotFocus;
+
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             }
-            
+
             _webView.Close();
             _webView = null;
+        }
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        if (!ViewModel.FileResource.IsEmpty)
+        {
+            var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+            _messengerService.Send(message);
         }
     }
 }

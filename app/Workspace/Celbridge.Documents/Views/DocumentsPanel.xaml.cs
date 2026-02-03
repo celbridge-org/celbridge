@@ -131,31 +131,32 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for window mode changes to show/hide tab strip in Presenter mode
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
 
-        // Listen for document tab clicks to update active document
-        _messengerService.Register<DocumentTabClickedMessage>(this, OnDocumentTabClicked);
+        // Listen for document view focus to update active document
+        _messengerService.Register<DocumentViewFocusedMessage>(this, OnDocumentViewFocused);
 
         // Apply initial tab strip visibility based on current window mode
         UpdateTabStripVisibility(_layoutManager.WindowMode);
     }
 
-    private void OnDocumentTabClicked(object recipient, DocumentTabClickedMessage message)
+    private void OnDocumentViewFocused(object recipient, DocumentViewFocusedMessage message)
     {
         if (_isShuttingDown)
         {
             return;
         }
 
-        // Update the active document when a tab is clicked
-        // This is the primary mechanism for changing the active document
-        // Todo: Use message.Address.WindowIndex to route to correct window
-        SectionContainer.HandleTabClicked(message.DocumentResource, message.Address.SectionIndex);
+        // Find the section containing this document and update the active document
+        var (section, _) = SectionContainer.FindDocumentTab(message.DocumentResource);
+        if (section != null)
+        {
+            SectionContainer.ActivateDocument(message.DocumentResource, section.SectionIndex);
+        }
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnViewUnloaded();
-        _messengerService.Unregister<WindowModeChangedMessage>(this);
-        _messengerService.Unregister<DocumentTabClickedMessage>(this);
+        _messengerService.UnregisterAll(this);
     }
 
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
@@ -212,7 +213,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             existingSection.SelectTab(existingTab);
 
             // Make it the active document
-            SectionContainer.HandleTabClicked(fileResource, existingSection.SectionIndex);
+            SectionContainer.ActivateDocument(fileResource, existingSection.SectionIndex);
 
             if (forceReload)
             {
@@ -271,7 +272,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         UpdateAllTabDisplayNames();
 
         // Make the newly opened document the active document
-        SectionContainer.HandleTabClicked(fileResource, activeSectionIndex);
+        SectionContainer.ActivateDocument(fileResource, activeSectionIndex);
 
         // Navigate to location if specified
         if (!string.IsNullOrEmpty(location))

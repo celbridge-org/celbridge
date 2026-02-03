@@ -17,12 +17,6 @@ public record DocumentLayoutChangedMessage();
 public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent when a document tab is clicked/tapped.
-/// Used to update the active document.
-/// </summary>
-public record DocumentTabClickedMessage(ResourceKey DocumentResource, DocumentAddress Address);
-
-/// <summary>
 /// A message sent when the document section proportions change.
 /// Contains ratios (relative values that sum to 1.0).
 /// </summary>
@@ -43,6 +37,11 @@ public record DocumentSaveRequestedMessage(ResourceKey DocumentResource);
 /// This message is only sent for specific document types with complex async save sequences (e.g. spreadsheets).
 /// </summary>
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when a document view's content area receives focus.
+/// </summary>
+public record DocumentViewFocusedMessage(ResourceKey DocumentResource);
 
 /// <summary>
 /// A message sent to request a web app document to navigate to a URL.

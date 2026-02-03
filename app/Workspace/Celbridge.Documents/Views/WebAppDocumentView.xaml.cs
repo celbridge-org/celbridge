@@ -258,6 +258,10 @@ public sealed partial class WebAppDocumentView : DocumentView
         WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
         WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
+        // Handle focus to set this document as active
+        WebView.GotFocus -= WebView_GotFocus;
+        WebView.GotFocus += WebView_GotFocus;
+
         // Listen for messages from the WebView (used for keyboard shortcut handling)
         WebView.WebMessageReceived -= WebView_WebMessageReceived;
         WebView.WebMessageReceived += WebView_WebMessageReceived;
@@ -311,14 +315,19 @@ public sealed partial class WebAppDocumentView : DocumentView
         }
     }
 
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+        _messengerService.Send(message);
+    }
+
     public override async Task PrepareToClose()
     {
-        _messengerService.Unregister<WebAppNavigateMessage>(this);
-        _messengerService.Unregister<WebAppRefreshMessage>(this);
-        _messengerService.Unregister<WebAppGoBackMessage>(this);
-        _messengerService.Unregister<WebAppGoForwardMessage>(this);
+        _messengerService.UnregisterAll(this);
 
         WebView.WebMessageReceived -= WebView_WebMessageReceived;
+        WebView.GotFocus -= WebView_GotFocus;
 
         if (WebView.CoreWebView2 != null)
         {
