@@ -21,6 +21,12 @@ public partial class InspectorPanelViewModel : ObservableObject
 
     private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
     {
+        if (SelectedResource == message.DocumentResource)
+        {
+            // Avoid unnecessary UI rebuild when the same document is re-selected
+            return;
+        }
+
         SelectedResource = message.DocumentResource;
     }
 }
