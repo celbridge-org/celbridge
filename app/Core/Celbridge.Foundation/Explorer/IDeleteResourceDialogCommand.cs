@@ -3,12 +3,12 @@ using Celbridge.Commands;
 namespace Celbridge.Explorer;
 
 /// <summary>
-/// Display the Delete Resource dialog to allow the user to confirm deleting a resource.
+/// Display the Delete Resource dialog to allow the user to confirm deleting one or more resources.
 /// </summary>
 public interface IDeleteResourceDialogCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to delete.
+    /// Resources to delete.
     /// </summary>
-    ResourceKey Resource { get; set; }
+    List<ResourceKey> Resources { get; set; }
 }

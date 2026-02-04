@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -9,20 +10,23 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 {
     public override CommandFlags CommandFlags => CommandFlags.None;
 
-    public ResourceKey Resource { get; set; }
+    public List<ResourceKey> Resources { get; set; } = new();
 
+    private readonly ILogger<DeleteResourceDialogCommand> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceDialogCommand(
+        ILogger<DeleteResourceDialogCommand> logger,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _dialogService = dialogService;
@@ -38,35 +42,44 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
+            return Result.Fail($"Failed to show delete resource dialog because workspace is not loaded");
+        }
+
+        if (Resources.Count == 0)
+        {
+            return Result.Ok();
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(Resource);
-        if (getResult.IsFailure)
-        {
-            return Result.Fail(getResult.Error);
-        }
-        var resource = getResult.Value;
-
-        var resourceName = resource.Name;
-
-        string confirmDeleteStringKey;
-        switch (resource)
-        {
-            case IFileResource:
-                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFile";
-                break;
-            case IFolderResource:
-                confirmDeleteStringKey = "ResourceTree_ConfirmDeleteFolder";
-                break;
-            default:
-                throw new ArgumentException();
-        }
-
-        var confirmDeleteString = _stringLocalizer.GetString(confirmDeleteStringKey, resourceName);
         var deleteString = _stringLocalizer.GetString("ResourceTree_Delete");
+
+        string confirmDeleteString;
+
+        if (Resources.Count == 1)
+        {
+            // Single item - show specific name
+            var getResult = resourceRegistry.GetResource(Resources[0]);
+            if (getResult.IsFailure)
+            {
+                return Result.Fail(getResult.Error);
+            }
+            var resource = getResult.Value;
+            var resourceName = resource.Name;
+
+            string confirmDeleteStringKey = resource switch
+            {
+                IFileResource => "ResourceTree_ConfirmDeleteFile",
+                IFolderResource => "ResourceTree_ConfirmDeleteFolder",
+                _ => throw new ArgumentException()
+            };
+
+            confirmDeleteString = _stringLocalizer.GetString(confirmDeleteStringKey, resourceName);
+        }
+        else
+        {
+            // Multiple items - show count
+            confirmDeleteString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteMultiple", Resources.Count);
+        }
 
         var showResult = await _dialogService.ShowConfirmationDialogAsync(deleteString, confirmDeleteString);
         if (showResult.IsSuccess)
@@ -74,12 +87,22 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             var confirmed = showResult.Value;
             if (confirmed)
             {
-                // Execute a command to delete the resource
+                _logger.LogDebug($"Delete confirmed for {Resources.Count} resource(s), enqueueing DeleteResourceCommand.");
+
+                // Execute a command to delete the resources (fire-and-forget to avoid deadlock)
                 _commandService.Execute<IDeleteResourceCommand>(command =>
                 {
-                    command.Resource = Resource;
+                    command.Resources = Resources;
                 });
             }
+            else
+            {
+                _logger.LogDebug("Delete cancelled by user");
+            }
+        }
+        else
+        {
+            _logger.LogWarning($"ShowConfirmationDialogAsync failed: {showResult.Error}");
         }
 
         return Result.Ok();
@@ -95,7 +118,17 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
         commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resources = new List<ResourceKey> { resource };
+        });
+    }
+
+    public static void DeleteResourcesDialog(List<ResourceKey> resources)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<IDeleteResourceDialogCommand>(command =>
+        {
+            command.Resources = resources;
         });
     }
 }

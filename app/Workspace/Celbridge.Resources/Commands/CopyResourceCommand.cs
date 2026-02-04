@@ -1,10 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Dialog;
 using Celbridge.Explorer;
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Commands;
 
@@ -12,27 +11,24 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
 
-    public ResourceKey SourceResource { get; set; }
+    public List<ResourceKey> SourceResources { get; set; } = new();
     public ResourceKey DestResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
     public bool ExpandCopiedFolder { get; set; }
 
+    private readonly ILogger<CopyResourceCommand> _logger;
     private readonly IProjectService _projectService;
-    private readonly IDialogService _dialogService;
-    private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public CopyResourceCommand(
+        ILogger<CopyResourceCommand> logger,
         IProjectService projectService,
-        IDialogService dialogService,
-        IStringLocalizer stringLocalizer,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
+        _logger = logger;
         _projectService = projectService;
-        _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
@@ -42,6 +38,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return Result.Fail($"Workspace is not loaded");
+        }
+
+        if (SourceResources.Count == 0)
+        {
+            return Result.Ok();
         }
 
         var project = _projectService.CurrentProject;
@@ -57,11 +58,86 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
 
+        // Begin batch for single undo operation
+        resourceOpService.BeginBatch();
+
+        List<string> failedItems = new();
+        List<ResourceKey> copiedFolders = new();
+        ResourceKey? lastParentFolder = null;
+
+        try
+        {
+            foreach (var sourceResource in SourceResources)
+            {
+                var (result, parentFolder) = await CopySingleResourceAsync(
+                    sourceResource,
+                    projectFolderPath,
+                    resourceRegistry,
+                    resourceOpService,
+                    copiedFolders);
+
+                if (result.IsFailure)
+                {
+                    _logger.LogError(result.Error);
+                    failedItems.Add(sourceResource.ResourceName);
+                }
+                else if (parentFolder.HasValue)
+                {
+                    lastParentFolder = parentFolder;
+                }
+            }
+        }
+        finally
+        {
+            // Always commit batch - partial success is acceptable
+            resourceOpService.CommitBatch();
+        }
+
+        // Expand destination folder once at end (not per-item)
+        if (lastParentFolder.HasValue && !lastParentFolder.Value.IsEmpty)
+        {
+            _commandService.Execute<IExpandFolderCommand>(command =>
+            {
+                command.FolderResource = lastParentFolder.Value;
+                command.Expanded = true;
+            });
+        }
+
+        // Expand copied folders if requested
+        if (ExpandCopiedFolder)
+        {
+            foreach (var folder in copiedFolders)
+            {
+                _commandService.Execute<IExpandFolderCommand>(command =>
+                {
+                    command.FolderResource = folder;
+                    command.Expanded = true;
+                });
+            }
+        }
+
+        if (failedItems.Count > 0)
+        {
+            var failedList = string.Join(", ", failedItems);
+            var operation = TransferMode == DataTransferMode.Copy ? "copy" : "move";
+            return Result.Fail($"Failed to {operation}: {failedList}");
+        }
+
+        return Result.Ok();
+    }
+
+    private async Task<(Result result, ResourceKey? parentFolder)> CopySingleResourceAsync(
+        ResourceKey sourceResource,
+        string projectFolderPath,
+        IResourceRegistry resourceRegistry,
+        IResourceOperationService resourceOpService,
+        List<ResourceKey> copiedFolders)
+    {
         // Resolve destination to handle folder drops
-        var resolvedDestResource = resourceRegistry.ResolveDestinationResource(SourceResource, DestResource);
+        var resolvedDestResource = resourceRegistry.ResolveDestinationResource(sourceResource, DestResource);
 
         // Convert resource keys to paths
-        var sourcePath = Path.GetFullPath(Path.Combine(projectFolderPath, SourceResource));
+        var sourcePath = Path.GetFullPath(Path.Combine(projectFolderPath, sourceResource));
         var destPath = Path.GetFullPath(Path.Combine(projectFolderPath, resolvedDestResource));
 
         // Determine resource type
@@ -70,8 +146,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         if (!isFile && !isFolder)
         {
-            await OnOperationFailed();
-            return Result.Fail($"Resource does not exist: {sourcePath}");
+            return (Result.Fail($"Resource does not exist: {sourcePath}"), null);
         }
 
         Result result;
@@ -97,45 +172,25 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             {
                 result = await resourceOpService.MoveFolderAsync(sourcePath, destPath);
             }
-        }
 
-        if (result.IsFailure)
-        {
-            await OnOperationFailed();
-            return result;
-        }
-
-        // Expand destination folder
-        var newParentFolder = resolvedDestResource.GetParent();
-        if (!newParentFolder.IsEmpty)
-        {
-            _commandService.Execute<IExpandFolderCommand>(command =>
+            if (result.IsSuccess)
             {
-                command.FolderResource = newParentFolder;
-                command.Expanded = true;
-            });
+                copiedFolders.Add(resolvedDestResource);
+            }
         }
 
-        if (ExpandCopiedFolder && isFolder)
+        ResourceKey? parentFolder = null;
+        if (result.IsSuccess)
         {
-            _commandService.Execute<IExpandFolderCommand>(command =>
+            // Track the parent folder for expansion at the end
+            var newParentFolder = resolvedDestResource.GetParent();
+            if (!newParentFolder.IsEmpty)
             {
-                command.FolderResource = resolvedDestResource;
-                command.Expanded = true;
-            });
+                parentFolder = newParentFolder;
+            }
         }
 
-        return Result.Ok();
-    }
-
-    private async Task OnOperationFailed()
-    {
-        var titleKey = TransferMode == DataTransferMode.Copy ? "ResourceTree_CopyResource" : "ResourceTree_MoveResource";
-        var messageKey = TransferMode == DataTransferMode.Copy ? "ResourceTree_CopyResourceFailed" : "ResourceTree_MoveResourceFailed";
-
-        var titleString = _stringLocalizer.GetString(titleKey);
-        var messageString = _stringLocalizer.GetString(messageKey, SourceResource, DestResource);
-        await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+        return (result, parentFolder);
     }
 
     //
@@ -148,7 +203,19 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         commandService.Execute<ICopyResourceCommand>(command =>
         {
-            command.SourceResource = sourceResource;
+            command.SourceResources = new List<ResourceKey> { sourceResource };
+            command.DestResource = destResource;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    public static void CopyResources(List<ResourceKey> sourceResources, ResourceKey destResource)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<ICopyResourceCommand>(command =>
+        {
+            command.SourceResources = sourceResources;
             command.DestResource = destResource;
             command.TransferMode = DataTransferMode.Copy;
         });
@@ -160,7 +227,19 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         commandService.Execute<ICopyResourceCommand>(command =>
         {
-            command.SourceResource = sourceResource;
+            command.SourceResources = new List<ResourceKey> { sourceResource };
+            command.DestResource = destResource;
+            command.TransferMode = DataTransferMode.Move;
+        });
+    }
+
+    public static void MoveResources(List<ResourceKey> sourceResources, ResourceKey destResource)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<ICopyResourceCommand>(command =>
+        {
+            command.SourceResources = sourceResources;
             command.DestResource = destResource;
             command.TransferMode = DataTransferMode.Move;
         });

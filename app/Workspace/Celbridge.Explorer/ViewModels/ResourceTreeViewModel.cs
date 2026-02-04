@@ -309,7 +309,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Execute a command to show the delete resource dialog
         _commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
-            command.Resource = resourceKey;
+            command.Resources = new List<ResourceKey> { resourceKey };
         });
     }
 
@@ -358,10 +358,13 @@ public partial class ResourceTreeViewModel : ObservableObject
             destFolder = _resourceRegistry.RootFolder;
         }
 
+        var destResource = _resourceRegistry.GetResourceKey(destFolder);
+
+        // Collect source resources, filtering out no-op moves
+        var sourceResources = new List<ResourceKey>();
         foreach (var resource in resources)
         {
             var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var destResource = _resourceRegistry.GetResourceKey(destFolder);
             var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
@@ -372,9 +375,14 @@ public partial class ResourceTreeViewModel : ObservableObject
                 continue;
             }
 
+            sourceResources.Add(sourceResource);
+        }
+
+        if (sourceResources.Count > 0)
+        {
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResource = sourceResource;
+                command.SourceResources = sourceResources;
                 command.DestResource = destResource;
                 command.TransferMode = DataTransferMode.Move;
             });

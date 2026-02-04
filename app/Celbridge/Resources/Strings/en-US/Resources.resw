@@ -189,6 +189,9 @@
   <data name="ResourceTree_ConfirmDeleteFolder" xml:space="preserve">
     <value>Delete '{0}' folder?</value>
   </data>
+  <data name="ResourceTree_ConfirmDeleteMultiple" xml:space="preserve">
+    <value>Delete {0} items?</value>
+  </data>
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>

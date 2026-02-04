@@ -1,8 +1,6 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
-using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 using Celbridge.Logging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
@@ -10,73 +8,93 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
 
-    public ResourceKey Resource { get; set; }
+    public List<ResourceKey> Resources { get; set; } = new();
 
     private readonly ILogger<DeleteResourceCommand> _logger;
-    private readonly IDialogService _dialogService;
-    private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
-        IDialogService dialogService,
-        IStringLocalizer stringLocalizer,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
+        _logger.LogDebug($"DeleteResourceCommand.ExecuteAsync started with {Resources.Count} resource(s)");
+
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
+            _logger.LogWarning("DeleteResourceCommand failed: Workspace is not loaded");
             return Result.Fail("Workspace is not loaded");
+        }
+
+        if (Resources.Count == 0)
+        {
+            _logger.LogDebug("DeleteResourceCommand: No resources to delete");
+            return Result.Ok();
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
 
-        var resourcePath = resourceRegistry.GetResourcePath(Resource);
+        // Begin batch for single undo operation
+        _logger.LogDebug("DeleteResourceCommand: Beginning batch operation");
+        resourceOpService.BeginBatch();
 
-        Result deleteResult;
+        List<string> failedItems = new();
 
-        if (File.Exists(resourcePath))
+        try
         {
-            deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
-            if (deleteResult.IsFailure)
+            foreach (var resource in Resources)
             {
-                _logger.LogError(deleteResult.Error);
+                var resourcePath = resourceRegistry.GetResourcePath(resource);
+                _logger.LogDebug($"DeleteResourceCommand: Deleting '{resource}' at path '{resourcePath}'");
 
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+                Result deleteResult;
 
-                return deleteResult;
+                if (File.Exists(resourcePath))
+                {
+                    deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
+                    _logger.LogDebug($"DeleteResourceCommand: DeleteFileAsync result: {(deleteResult.IsSuccess ? "Success" : deleteResult.Error)}");
+                }
+                else if (Directory.Exists(resourcePath))
+                {
+                    deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
+                    _logger.LogDebug($"DeleteResourceCommand: DeleteFolderAsync result: {(deleteResult.IsSuccess ? "Success" : deleteResult.Error)}");
+                }
+                else
+                {
+                    _logger.LogWarning($"Resource does not exist: {resource}");
+                    failedItems.Add(resource.ResourceName);
+                    continue;
+                }
+
+                if (deleteResult.IsFailure)
+                {
+                    _logger.LogError(deleteResult.Error);
+                    failedItems.Add(resource.ResourceName);
+                }
             }
         }
-        else if (Directory.Exists(resourcePath))
+        finally
         {
-            deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
-            if (deleteResult.IsFailure)
-            {
-                _logger.LogError(deleteResult.Error);
-
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-
-                return deleteResult;
-            }
-        }
-        else
-        {
-            return Result.Fail($"Resource does not exist: {Resource}");
+            // Always commit batch - partial success is acceptable
+            _logger.LogDebug("DeleteResourceCommand: Committing batch operation");
+            resourceOpService.CommitBatch();
         }
 
+        if (failedItems.Count > 0)
+        {
+            var failedList = string.Join(", ", failedItems);
+            _logger.LogWarning($"DeleteResourceCommand completed with failures: {failedList}");
+            return Result.Fail($"Failed to delete: {failedList}");
+        }
+
+        _logger.LogDebug("DeleteResourceCommand completed successfully");
         return Result.Ok();
     }
 
@@ -90,7 +108,17 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
         commandService.Execute<IDeleteResourceCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resources = new List<ResourceKey> { resource };
+        });
+    }
+
+    public static void DeleteResources(List<ResourceKey> resources)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<IDeleteResourceCommand>(command =>
+        {
+            command.Resources = resources;
         });
     }
 }
