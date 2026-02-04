@@ -17,17 +17,20 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     public bool ExpandCopiedFolder { get; set; }
 
     private readonly ILogger<CopyResourceCommand> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,
+        IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
@@ -120,6 +123,15 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             var failedList = string.Join(", ", failedItems);
             var operation = TransferMode == DataTransferMode.Copy ? "copy" : "move";
+            _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
+
+            // Notify the UI about the failure
+            var operationType = TransferMode == DataTransferMode.Copy
+                ? ResourceOperationType.Copy
+                : ResourceOperationType.Move;
+            var message = new ResourceOperationFailedMessage(operationType, failedItems);
+            _messengerService.Send(message);
+
             return Result.Fail($"Failed to {operation}: {failedList}");
         }
 

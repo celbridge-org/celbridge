@@ -11,13 +11,16 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     public List<ResourceKey> Resources { get; set; } = new();
 
     private readonly ILogger<DeleteResourceCommand> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -91,6 +94,11 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         {
             var failedList = string.Join(", ", failedItems);
             _logger.LogWarning($"DeleteResourceCommand completed with failures: {failedList}");
+
+            // Notify the UI about the failure
+            var message = new ResourceOperationFailedMessage(ResourceOperationType.Delete, failedItems);
+            _messengerService.Send(message);
+
             return Result.Fail($"Failed to delete: {failedList}");
         }
 

@@ -1,6 +1,24 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// Types of resource operations that can fail.
+/// </summary>
+public enum ResourceOperationType
+{
+    Delete,
+    Copy,
+    Move,
+    Rename,
+    Create
+}
+
+/// <summary>
+/// A message sent when a resource operation fails.
+/// The Explorer panel displays this as a notification to the user.
+/// </summary>
+public record ResourceOperationFailedMessage(ResourceOperationType OperationType, List<string> FailedItems);
+
+/// <summary>
 /// A message sent when the resource registry has been updated.
 /// </summary>
 public record ResourceRegistryUpdatedMessage;
