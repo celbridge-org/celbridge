@@ -42,9 +42,9 @@
                              CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
     </Grid>
 
-    <!-- Resource Tree View -->
-    <local:ResourceTreeView x:Name="ResourceTreeView"
-                            Grid.Row="1"/>
+    <!-- Resource View -->
+    <local:ResourceView x:Name="ResourceView"
+                        Grid.Row="1"/>
 
     <!-- Notification Bar -->
     <local:ExplorerNotificationBar Grid.Row="2"/>

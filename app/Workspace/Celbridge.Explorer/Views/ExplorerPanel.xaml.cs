@@ -18,12 +18,12 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ResourceKey GetSelectedResource()
     {
-        return ResourceTreeView.GetSelectedResource();
+        return ResourceView.GetSelectedResource();
     }
 
     public async Task<Result> SelectResource(ResourceKey resource)
     {
-        return await ResourceTreeView.SetSelectedResource(resource);
+        return await ResourceView.SetSelectedResource(resource);
     }
 
     private void UserControl_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -59,16 +59,16 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     private void ExplorerToolbar_AddFileClicked(object sender, EventArgs e)
     {
-        ResourceTreeView.AddFileToSelectedFolder();
+        ResourceView.AddFileToSelectedFolder();
     }
 
     private void ExplorerToolbar_AddFolderClicked(object sender, EventArgs e)
     {
-        ResourceTreeView.AddFolderToSelectedFolder();
+        ResourceView.AddFolderToSelectedFolder();
     }
 
     private void ExplorerToolbar_CollapseFoldersClicked(object sender, EventArgs e)
     {
-        ResourceTreeView.CollapseAllFolders();
+        ResourceView.CollapseAllFolders();
     }
 }
