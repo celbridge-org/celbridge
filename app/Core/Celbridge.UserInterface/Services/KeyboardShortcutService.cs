@@ -74,6 +74,12 @@ public class KeyboardShortcutService : IKeyboardShortcutService
             return false;
         }
 
+        // Quick check: keyboard shortcut messages are JSON objects starting with '{'
+        if (!jsonMessage.StartsWith('{'))
+        {
+            return false;
+        }
+
         try
         {
             using var doc = JsonDocument.Parse(jsonMessage);
