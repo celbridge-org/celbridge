@@ -59,19 +59,7 @@ public sealed partial class ExplorerNotificationBar : UserControl
 
     private string GetLocalizedMessage(ResourceOperationType operationType, List<string> failedItems)
     {
-        const int maxItemsToShow = 3;
-
-        string failedList;
-        if (failedItems.Count <= maxItemsToShow)
-        {
-            failedList = string.Join(", ", failedItems);
-        }
-        else
-        {
-            failedList = string.Join(", ", failedItems.Take(maxItemsToShow)) + "…";
-        }
-
-        var messageKey = operationType switch
+        var baseKey = operationType switch
         {
             ResourceOperationType.Delete => "Explorer_OperationFailed_Delete",
             ResourceOperationType.Copy => "Explorer_OperationFailed_Copy",
@@ -81,7 +69,15 @@ public sealed partial class ExplorerNotificationBar : UserControl
             _ => "Explorer_OperationFailed_Unknown"
         };
 
-        return _stringLocalizer.GetString(messageKey, failedList);
+        // Single item: show filename. Multiple items: show count
+        if (failedItems.Count == 1)
+        {
+            return _stringLocalizer.GetString($"{baseKey}_Single", failedItems[0]);
+        }
+        else
+        {
+            return _stringLocalizer.GetString($"{baseKey}_Multiple", failedItems.Count);
+        }
     }
 
     private void AutoDismissTimer_Tick(DispatcherQueueTimer sender, object args)

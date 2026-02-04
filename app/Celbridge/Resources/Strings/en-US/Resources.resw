@@ -198,23 +198,41 @@
   <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>
-  <data name="Explorer_OperationFailed_Delete" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Failed to delete: {0}</value>
   </data>
-  <data name="Explorer_OperationFailed_Copy" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Delete_Multiple" xml:space="preserve">
+    <value>Failed to delete {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Copy_Single" xml:space="preserve">
     <value>Failed to copy: {0}</value>
   </data>
-  <data name="Explorer_OperationFailed_Move" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Copy_Multiple" xml:space="preserve">
+    <value>Failed to copy {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Move_Single" xml:space="preserve">
     <value>Failed to move: {0}</value>
   </data>
-  <data name="Explorer_OperationFailed_Rename" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Move_Multiple" xml:space="preserve">
+    <value>Failed to move {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Rename_Single" xml:space="preserve">
     <value>Failed to rename: {0}</value>
   </data>
-  <data name="Explorer_OperationFailed_Create" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Rename_Multiple" xml:space="preserve">
+    <value>Failed to rename {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Create_Single" xml:space="preserve">
     <value>Failed to create: {0}</value>
   </data>
-  <data name="Explorer_OperationFailed_Unknown" xml:space="preserve">
+  <data name="Explorer_OperationFailed_Create_Multiple" xml:space="preserve">
+    <value>Failed to create {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Unknown_Single" xml:space="preserve">
     <value>Operation failed: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Unknown_Multiple" xml:space="preserve">
+    <value>Operation failed on {0} items</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
