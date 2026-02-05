@@ -53,7 +53,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel.OnLoaded();
     }
 
-
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnUnloaded();
@@ -241,16 +240,42 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     // Event handlers
     //
 
+    // Track if right-click was on root folder (for context menu handling)
+    private bool _isContextMenuForRootFolder;
+
     private void ListView_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        // When right-clicking, select the item under the cursor before opening context menu
-        // This ensures context menu operations work on the right-clicked item, not the previously selected one
+        // If right-clicking on an already-selected item, preserve the multi-selection
+        // If right-clicking on an unselected item, select only that item
+        // If right-clicking on root folder or empty space, show root folder context menu
         var position = e.GetPosition(ResourceListView);
         var clickedItem = FindItemAtPosition(position);
 
         if (clickedItem != null)
         {
-            ViewModel.SelectedItem = clickedItem;
+            if (clickedItem.IsRootFolder)
+            {
+                // Root folder is not selectable, but we track it for context menu
+                _isContextMenuForRootFolder = true;
+                ResourceListView.SelectedItems.Clear();
+                ViewModel.OnContextMenuOpening(ViewModel.RootFolder);
+            }
+            else
+            {
+                _isContextMenuForRootFolder = false;
+                bool isAlreadySelected = ResourceListView.SelectedItems.Contains(clickedItem);
+                if (!isAlreadySelected)
+                {
+                    ViewModel.SelectedItem = clickedItem;
+                }
+            }
+        }
+        else
+        {
+            // Right-clicking empty space - show root folder context menu
+            _isContextMenuForRootFolder = true;
+            ResourceListView.SelectedItems.Clear();
+            ViewModel.OnContextMenuOpening(ViewModel.RootFolder);
         }
     }
 
@@ -262,7 +287,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             OpenResource(selectedItem);
         }
     }
-
 
     private void ExpanderButton_Click(object sender, RoutedEventArgs e)
     {
@@ -283,7 +307,15 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     {
         if (item.Resource is IFolderResource)
         {
-            ViewModel.ToggleExpand(item);
+            // Double-clicking root folder opens it in File Explorer
+            if (item.IsRootFolder)
+            {
+                ViewModel.OpenResourceInExplorer(item.Resource);
+            }
+            else
+            {
+                ViewModel.ToggleExpand(item);
+            }
         }
         else if (item.Resource is IFileResource fileResource)
         {
@@ -370,6 +402,17 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // Filter out root folder from selection - it should not be selectable
+        var rootItem = ResourceListView.SelectedItems
+            .OfType<ResourceViewItem>()
+            .FirstOrDefault(item => item.IsRootFolder);
+
+        if (rootItem != null)
+        {
+            ResourceListView.SelectedItems.Remove(rootItem);
+            return; // Selection changed event will fire again after removal
+        }
+
         // Update the ViewModel with the current selection (also sends notification)
         var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
         ViewModel.UpdateSelectedItems(selectedItems);
@@ -391,11 +434,31 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     // Context menu handlers
     //
 
+    /// <summary>
+    /// Gets the resource targeted by the context menu.
+    /// Returns the selected item's resource, or the root folder if root was right-clicked.
+    /// </summary>
+    private IResource? GetContextMenuTargetResource()
+    {
+        if (ViewModel.IsRootFolderTargeted)
+        {
+            return ViewModel.RootFolder;
+        }
+        return ViewModel.SelectedItem?.Resource;
+    }
+
     private void ResourceContextMenu_Opening(object sender, object e)
     {
-        // With ListView, we use the currently selected item for context menu operations
-        var resource = ViewModel.SelectedItem?.Resource;
-        ViewModel.OnContextMenuOpening(resource);
+        // If not already handled by right-click (e.g., keyboard context menu key),
+        // use the currently selected item
+        if (!_isContextMenuForRootFolder)
+        {
+            var resource = ViewModel.SelectedItem?.Resource;
+            ViewModel.OnContextMenuOpening(resource);
+        }
+
+        // Reset the flag after menu opens
+        _isContextMenuForRootFolder = false;
     }
 
     private void ResourceContextMenu_Run(object sender, RoutedEventArgs e)
@@ -418,7 +481,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ResourceContextMenu_AddFolder(object? sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
+        var resource = GetContextMenuTargetResource();
 
         if (resource is IFolderResource destFolder)
         {
@@ -437,7 +500,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ResourceContextMenu_AddFile(object? sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
+        var resource = GetContextMenuTargetResource();
 
         if (resource is IFolderResource destFolder)
         {
@@ -474,7 +537,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ResourceContextMenu_Paste(object sender, RoutedEventArgs e)
     {
-        var destResource = ViewModel.SelectedItem?.Resource;
+        var destResource = GetContextMenuTargetResource();
         ViewModel.PasteResourceFromClipboard(destResource);
     }
 
@@ -496,7 +559,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ResourceContextMenu_OpenFileExplorer(object sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
+        var resource = GetContextMenuTargetResource();
         ViewModel.OpenResourceInExplorer(resource);
     }
 
@@ -508,14 +571,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ResourceContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
+        var resource = GetContextMenuTargetResource();
         Guard.IsNotNull(resource);
         ViewModel.CopyResourceKeyToClipboard(resource);
     }
 
     private void ResourceContextMenu_CopyFilePath(object sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
+        var resource = GetContextMenuTargetResource();
         Guard.IsNotNull(resource);
         ViewModel.CopyFilePathToClipboard(resource);
     }
@@ -528,14 +591,21 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        // Store the dragged items for later use
+        // Store the dragged items for later use, excluding root folder
         var draggedResources = new List<IResource>();
         foreach (var item in e.Items)
         {
-            if (item is ResourceViewItem treeItem)
+            if (item is ResourceViewItem treeItem && !treeItem.IsRootFolder)
             {
                 draggedResources.Add(treeItem.Resource);
             }
+        }
+
+        // Cancel drag if no valid items (e.g., only root folder was selected)
+        if (draggedResources.Count == 0)
+        {
+            e.Cancel = true;
+            return;
         }
 
         e.Data.Properties["DraggedResources"] = draggedResources;

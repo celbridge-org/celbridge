@@ -70,9 +70,47 @@ public partial class ResourceTreeViewModel : ObservableObject
     public bool IsSingleItemSelected => SelectedItems.Count == 1;
 
     /// <summary>
+    /// True when exactly one item is selected OR the root folder is targeted via right-click.
+    /// Used for context menu visibility of single-item operations.
+    /// </summary>
+    public bool IsSingleItemOrRootTargeted => SelectedItems.Count == 1 || IsRootFolderTargeted;
+
+    /// <summary>
     /// True when multiple items are selected.
     /// </summary>
     public bool HasMultipleSelection => SelectedItems.Count > 1;
+
+    /// <summary>
+    /// True when the root folder is targeted via right-click (i.e. not selected, but context menu target).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isRootFolderTargeted;
+
+    /// <summary>
+    /// True when the selection can be cut or copied (has items and none are the root folder).
+    /// </summary>
+    public bool CanCutOrCopySelection => IsResourceSelected && !SelectionContainsRootFolder;
+
+    /// <summary>
+    /// True when the selection can be deleted (has items and none are root folder).
+    /// </summary>
+    public bool CanDeleteSelection => IsResourceSelected && !SelectionContainsRootFolder;
+
+    /// <summary>
+    /// True when the selection can be renamed (single non-root item selected).
+    /// </summary>
+    public bool CanRenameSelection => IsSingleItemSelected && !SelectionContainsRootFolder;
+
+    /// <summary>
+    /// True when the resource key can be copied (single item selected, not root folder).
+    /// Root folder has empty resource key, so copying it is not useful.
+    /// </summary>
+    public bool CanCopyResourceKey => IsSingleItemSelected && !SelectionContainsRootFolder;
+
+    /// <summary>
+    /// True if the current selection contains the root folder.
+    /// </summary>
+    public bool SelectionContainsRootFolder => SelectedItems.Any(item => item.IsRootFolder);
 
     /// <summary>
     /// Set to true if the selected context menu item is a file resource that can be opened as a document.
@@ -97,6 +135,16 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isFileResourceSelected;
+
+    /// <summary>
+    /// The name of the project (root folder name).
+    /// </summary>
+    public string ProjectName => _resourceRegistry.RootFolder.Name;
+
+    /// <summary>
+    /// The root folder resource.
+    /// </summary>
+    public IFolderResource RootFolder => _resourceRegistry.RootFolder;
 
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
@@ -188,14 +236,23 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     /// <summary>
     /// Builds a flat list of ResourceViewItems from the resource registry's folder hierarchy.
+    /// Includes the root folder as the first item, followed by its children.
     /// Only includes children of expanded folders.
     /// </summary>
-    private static List<ResourceViewItem> BuildFlatList(
+    private List<ResourceViewItem> BuildFlatList(
         IFolderResource rootFolder,
         IFolderStateService folderStateService,
         IResourceRegistry resourceRegistry)
     {
         var items = new List<ResourceViewItem>();
+
+        // Add the root folder as the first item (always expanded, never collapsible)
+        var hasChildren = rootFolder.Children.Count > 0;
+        var projectName = Path.GetFileName(resourceRegistry.ProjectFolderPath);
+        var rootItem = new ResourceViewItem(rootFolder, indentLevel: 0, isExpanded: true, hasChildren, isRootFolder: true, displayName: projectName);
+        items.Add(rootItem);
+
+        // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
         BuildFlatListRecursive(rootFolder.Children, items, 0, folderStateService, resourceRegistry);
         return items;
     }
@@ -324,11 +381,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
 
     /// <summary>
-    /// Toggles the expansion state of a folder item.
+    /// Toggles the expansion state of a folder item (except root folder).
     /// </summary>
     public void ToggleExpand(ResourceViewItem item)
     {
-        if (!item.IsFolder || !item.HasChildren)
+        // Don't allow toggling root folder expansion
+        if (!item.IsFolder || !item.HasChildren || item.IsRootFolder)
         {
             return;
         }
@@ -386,7 +444,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public void CollapseItem(ResourceViewItem item)
     {
-        if (!item.IsFolder || !item.IsExpanded)
+        // Don't allow collapsing the root folder
+        if (!item.IsFolder || !item.IsExpanded || item.IsRootFolder)
         {
             return;
         }
@@ -409,13 +468,14 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Collapses all folders in the tree.
+    /// Collapses all folders in the tree (except root folder).
     /// </summary>
     public void CollapseAllFolders()
     {
         foreach (var item in TreeItems.ToList())
         {
-            if (item.IsFolder && item.IsExpanded)
+            // Skip root folder - it should never be collapsed
+            if (item.IsFolder && item.IsExpanded && !item.IsRootFolder)
             {
                 item.IsExpanded = false;
                 if (item.Resource is IFolderResource folderResource)
@@ -562,6 +622,17 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     private async Task UpdateContextMenuOptions(IResource? resource)
     {
+        // Track if the root folder is being targeted (via right-click, since root is not selectable)
+        IsRootFolderTargeted = resource == RootFolder;
+
+        // Notify that selection-dependent properties may have changed
+        OnPropertyChanged(nameof(IsSingleItemOrRootTargeted));
+        OnPropertyChanged(nameof(CanCutOrCopySelection));
+        OnPropertyChanged(nameof(CanDeleteSelection));
+        OnPropertyChanged(nameof(CanRenameSelection));
+        OnPropertyChanged(nameof(CanCopyResourceKey));
+        OnPropertyChanged(nameof(SelectionContainsRootFolder));
+
         // Single-item specific properties (only valid when exactly one item selected)
         IsDocumentResourceSelected = IsSingleItemSelected && IsSupportedDocumentFormat(resource);
         IsExecutableResourceSelected = IsSingleItemSelected && IsResourceExecutable(resource);

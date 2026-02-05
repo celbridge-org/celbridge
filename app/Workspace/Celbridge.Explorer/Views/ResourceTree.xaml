@@ -14,7 +14,7 @@
     <MenuFlyout x:Name="ResourceContextMenu"
                 Placement="RightEdgeAlignedTop"
                 Opening="ResourceContextMenu_Opening">
-      <!-- Single-item only operations -->
+      <!-- Single-item only operations (not applicable to root) -->
       <MenuFlyoutItem Text="{x:Bind RunString}"
                       Click="ResourceContextMenu_Run"
                       Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
@@ -24,55 +24,56 @@
                       Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
 
+      <!-- Single-item or root folder operations -->
       <MenuFlyoutItem Text="{x:Bind AddFileString}"
                       Icon="Page2"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
                       Click="ResourceContextMenu_AddFile">
       </MenuFlyoutItem>
 
       <MenuFlyoutItem Text="{x:Bind AddFolderString}"
                       Icon="Folder"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
                       Click="ResourceContextMenu_AddFolder">
       </MenuFlyoutItem>
       <MenuFlyoutSeparator />
-      <!-- Multi-select enabled operations -->
+      <!-- Multi-select enabled operations (disabled for root folder) -->
       <MenuFlyoutItem Text="{x:Bind CutString}"
                       Icon="Cut"
                       Click="ResourceContextMenu_Cut"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+                      IsEnabled="{x:Bind ViewModel.CanCutOrCopySelection, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind CopyString}"
                       Icon="Copy"
                       Click="ResourceContextMenu_Copy"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+                      IsEnabled="{x:Bind ViewModel.CanCutOrCopySelection, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind PasteString}"
                       Icon="Paste"
                       Click="ResourceContextMenu_Paste"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind DeleteString}"
                       Icon="Delete"
                       Click="ResourceContextMenu_Delete"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
-      <!-- Single-item only operations -->
+                      IsEnabled="{x:Bind ViewModel.CanDeleteSelection, Mode=OneWay}" />
+      <!-- Single-item only operations (not applicable to root) -->
       <MenuFlyoutItem Text="{x:Bind RenameString}"
                       Icon="Edit"
                       Click="ResourceContextMenu_Rename"
                       Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+                      IsEnabled="{x:Bind ViewModel.CanRenameSelection, Mode=OneWay}" />
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind CopyResourceKeyString}"
                       Click="ResourceContextMenu_CopyResourceKey"
                       Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+                      IsEnabled="{x:Bind ViewModel.CanCopyResourceKey, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind CopyFilePathString}"
                       Click="ResourceContextMenu_CopyFilePath"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
+                      IsEnabled="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}" />
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
                       Click="ResourceContextMenu_OpenFileExplorer"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"/>
+                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"/>
       <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
                       Click="ResourceContextMenu_OpenApplication"
                       Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
@@ -92,10 +93,10 @@
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Expand/Collapse chevron button -->
+        <!-- Expand/Collapse chevron button (hidden for root folder) -->
         <Button Grid.Column="0"
                 Click="ExpanderButton_Click"
-                Visibility="{x:Bind HasChildren}"
+                Visibility="{x:Bind ChevronVisibility}"
                 Style="{StaticResource TreeExpanderButtonStyle}">
           <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                     Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpanderGlyphConverter}}"
@@ -109,11 +110,12 @@
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Left" />
 
-        <!-- Resource name -->
+        <!-- Resource name (semi-bold for root folder) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
                    VerticalAlignment="Center"
-                   TextTrimming="CharacterEllipsis" />
+                   TextTrimming="CharacterEllipsis"
+                   FontWeight="{x:Bind IsRootFolder, Converter={StaticResource RootFolderFontWeightConverter}}" />
       </Grid>
     </DataTemplate>
 
@@ -138,8 +140,9 @@
       </Setter>
     </Style>
 
-    <!-- Converter for expand/collapse glyph -->
+    <!-- Converters -->
     <converters:ExpanderGlyphConverter x:Key="ExpanderGlyphConverter"/>
+    <converters:BoolToFontWeightConverter x:Key="RootFolderFontWeightConverter"/>
   </UserControl.Resources>
 
   <!-- Resource List View styled as a tree -->
@@ -163,6 +166,7 @@
             ContextFlyout="{StaticResource ResourceContextMenu}"
             TabNavigation="Once"
             IsTabStop="True">
+    
     <ListView.ItemContainerStyle>
       <Style TargetType="ListViewItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
