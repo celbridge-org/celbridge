@@ -1,60 +1,69 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Logging;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Workspace.Commands;
 
 public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipboardCommand
 {
-    public ResourceKey SourceResource { get; set; }
+    public List<ResourceKey> SourceResources { get; set; } = new();
     public DataTransferMode TransferMode { get; set; }
-  
+
+    private readonly ILogger<CopyResourceToClipboardCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public CopyResourceToClipboardCommand(IWorkspaceWrapper workspaceWrapper)
+    public CopyResourceToClipboardCommand(
+        ILogger<CopyResourceToClipboardCommand> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(SourceResource);
-        if (getResult.IsFailure)
+        if (SourceResources.Count == 0)
         {
-            return getResult;
+            return Result.Ok();
         }
-        var resource = getResult.Value;
 
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var storageItems = new List<IStorageItem>();
 
-        if (resource is IFileResource fileResource)
+        foreach (var sourceResource in SourceResources)
         {
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
-            if (string.IsNullOrEmpty(filePath))
+            var getResult = resourceRegistry.GetResource(sourceResource);
+            if (getResult.IsFailure)
             {
-                return Result.Fail($"Failed to get path for file resource '{fileResource}'");
+                _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {getResult.Error}");
+                continue;
             }
+            var resource = getResult.Value;
 
-            var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
-            if (storageFile != null)
+            if (resource is IFileResource fileResource)
             {
-                storageItems.Add(storageFile);
+                var filePath = resourceRegistry.GetResourcePath(fileResource);
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
+                    if (storageFile != null)
+                    {
+                        storageItems.Add(storageFile);
+                    }
+                }
             }
-        }
-        else if (resource is IFolderResource folderResource)
-        {
-            var folderPath = resourceRegistry.GetResourcePath(folderResource);
-            if (string.IsNullOrEmpty(folderPath))
+            else if (resource is IFolderResource folderResource)
             {
-                return Result.Fail($"Failed to get path for folder resource '{folderResource}'");
-            }
-
-            var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
-            if (storageFolder != null)
-            {
-                storageItems.Add(storageFolder);
+                var folderPath = resourceRegistry.GetResourcePath(folderResource);
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+                    if (storageFolder != null)
+                    {
+                        storageItems.Add(storageFolder);
+                    }
+                }
             }
         }
 
@@ -84,7 +93,18 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResource = resource;
+            command.SourceResources = new List<ResourceKey> { resource };
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    public static void CopyResourcesToClipboard(List<ResourceKey> resources)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resources;
             command.TransferMode = DataTransferMode.Copy;
         });
     }
@@ -95,7 +115,18 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResource = resource;
+            command.SourceResources = new List<ResourceKey> { resource };
+            command.TransferMode = DataTransferMode.Move;
+        });
+    }
+
+    public static void CutResourcesToClipboard(List<ResourceKey> resources)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resources;
             command.TransferMode = DataTransferMode.Move;
         });
     }

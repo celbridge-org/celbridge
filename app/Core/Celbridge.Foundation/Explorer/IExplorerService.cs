@@ -13,30 +13,30 @@ public interface IExplorerService
     IExplorerPanel? ExplorerPanel { get; }
 
     /// <summary>
-    /// Returns the Resource Tree View associated with the current project.
-    /// </summary>
-    IResourceTreeView ResourceTreeView { get; }
-
-    /// <summary>
     /// Returns the Folder State Service that manages folder expanded state in the resource tree.
     /// </summary>
     IFolderStateService FolderStateService { get; }
 
     /// <summary>
-    /// The currenlty selected resource in the Explorer Panel.
+    /// The currently selected resource in the Explorer Panel (the anchor item).
     /// </summary>
     ResourceKey SelectedResource { get; }
 
     /// <summary>
-    /// Select a resource in the explorer panel.
+    /// All currently selected resources in the Explorer Panel.
     /// </summary>
-    Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel);
+    List<ResourceKey> SelectedResources { get; }
 
     /// <summary>
-    /// Stores the selected resource in persistent storage.
-    /// This resource will be selected at the start of the next editing session.
+    /// Select a resource in the explorer panel.
     /// </summary>
-    Task StoreSelectedResource();
+    Task<Result> SelectResource(ResourceKey resource);
+
+    /// <summary>
+    /// Stores the selected resources in persistent storage.
+    /// These resources will be selected at the start of the next editing session.
+    /// </summary>
+    Task StoreSelectedResources();
 
     /// <summary>
     /// Restores the state of the panel from the previous session.

@@ -4,7 +4,6 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Models;
-using Celbridge.Explorer.Services;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Python;
@@ -29,24 +28,51 @@ public partial class ResourceViewViewModel : ObservableObject
     private readonly IDataTransferService _dataTransferService;
     private readonly IPythonService _pythonService;
 
-    private IResourceTreeView? _resourceTreeView;
-
     /// <summary>
     /// The flat list of items to display in the ListView.
     /// </summary>
     public ObservableCollection<ResourceViewItem> TreeItems { get; } = new();
 
     /// <summary>
-    /// The currently selected item in the tree.
+    /// The selected item in the tree (the anchor). Required for ListView two-way binding
+    /// and serves as the keyboard focus/anchor item in multi-select scenarios.
     /// </summary>
     [ObservableProperty]
     private ResourceViewItem? _selectedItem;
 
     /// <summary>
-    /// Set to true if the selected context menu item is a valid file or folder resource.
+    /// All selected items for multi-select operations. Updated from ListView.SelectedItems
+    /// which is read-only and cannot be bound directly.
     /// </summary>
-    [ObservableProperty]
-    private bool _isResourceSelected;
+    private List<ResourceViewItem> _selectedItems = [];
+    public List<ResourceViewItem> SelectedItems
+    {
+        get => _selectedItems;
+        private set
+        {
+            if (SetProperty(ref _selectedItems, value))
+            {
+                OnPropertyChanged(nameof(IsResourceSelected));
+                OnPropertyChanged(nameof(IsSingleItemSelected));
+                OnPropertyChanged(nameof(HasMultipleSelection));
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when at least one resource is selected.
+    /// </summary>
+    public bool IsResourceSelected => SelectedItems.Count > 0;
+
+    /// <summary>
+    /// True when exactly one item is selected.
+    /// </summary>
+    public bool IsSingleItemSelected => SelectedItems.Count == 1;
+
+    /// <summary>
+    /// True when multiple items are selected.
+    /// </summary>
+    public bool HasMultipleSelection => SelectedItems.Count > 1;
 
     /// <summary>
     /// Set to true if the selected context menu item is a file resource that can be opened as a document.
@@ -97,16 +123,8 @@ public partial class ResourceViewViewModel : ObservableObject
 
     public void OnLoaded(IResourceTreeView resourceTreeView)
     {
-        _resourceTreeView = resourceTreeView;
-
-        // Use the concrete type to set the resource tree view because the
-        // interface does not expose the setter.
-        var explorerService = _explorerService as ExplorerService;
-        Guard.IsNotNull(explorerService);
-
-        explorerService.ResourceTreeView = resourceTreeView;
-
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     public void OnUnloaded()
@@ -129,13 +147,23 @@ public partial class ResourceViewViewModel : ObservableObject
         }
     }
 
+    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    {
+        // Clean up expanded folders that no longer exist in the registry
+        // This must happen before rebuilding the tree to avoid stale folder states
+        _folderStateService.Cleanup();
+
+        // Rebuild the tree with the updated registry
+        RebuildTreeList();
+    }
+
     //
     // Tree population
     //
 
     /// <summary>
     /// Rebuilds the flat list from the current resource registry state.
-    /// Preserves the current selection if possible.
+    /// Preserves the selected item if possible.
     /// </summary>
     public void RebuildTreeList()
     {
@@ -208,7 +236,23 @@ public partial class ResourceViewViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Gets the resource key for the currently selected item.
+    /// Gets the resource key for a resource.
+    /// </summary>
+    public ResourceKey GetResourceKey(IResource resource)
+    {
+        return _resourceRegistry.GetResourceKey(resource);
+    }
+
+    /// <summary>
+    /// Checks if a resource exists in the registry.
+    /// </summary>
+    public bool ResourceExists(ResourceKey resourceKey)
+    {
+        return _resourceRegistry.GetResource(resourceKey).IsSuccess;
+    }
+
+    /// <summary>
+    /// Gets the resource key for the currently selected item (anchor).
     /// </summary>
     public ResourceKey GetSelectedResourceKey()
     {
@@ -217,6 +261,16 @@ public partial class ResourceViewViewModel : ObservableObject
             return _resourceRegistry.GetResourceKey(SelectedItem.Resource);
         }
         return ResourceKey.Empty;
+    }
+
+    /// <summary>
+    /// Gets the list of selected resource keys.
+    /// </summary>
+    public List<ResourceKey> GetSelectedResourceKeys()
+    {
+        return SelectedItems
+            .Select(item => _resourceRegistry.GetResourceKey(item.Resource))
+            .ToList();
     }
 
     /// <summary>
@@ -243,6 +297,26 @@ public partial class ResourceViewViewModel : ObservableObject
 
         _logger.LogDebug($"SetSelectedResource: Item '{resourceKey}' not found in tree (count = {TreeItems.Count})");
         return false;
+    }
+
+    /// <summary>
+    /// Selects the parent folder of the currently selected item.
+    /// Returns true if a parent was selected, false otherwise.
+    /// </summary>
+    public bool SelectParentFolder()
+    {
+        if (SelectedItem?.Resource.ParentFolder == null)
+        {
+            return false;
+        }
+
+        var parentKey = _resourceRegistry.GetResourceKey(SelectedItem.Resource.ParentFolder);
+        if (parentKey.IsEmpty)
+        {
+            return false;
+        }
+
+        return SetSelectedResource(parentKey);
     }
 
     //
@@ -415,6 +489,69 @@ public partial class ResourceViewViewModel : ObservableObject
     }
 
     //
+    // Multi-selection support
+    //
+
+    /// <summary>
+    /// Updates the SelectedItems collection from the view and sends the selection changed notification.
+    /// Called when selection changes in the ListView.
+    /// </summary>
+    public void UpdateSelectedItems(List<ResourceViewItem> selectedItems)
+    {
+        SelectedItems = selectedItems;
+
+        // Send the selection changed notification
+        var selectedResourceKey = GetSelectedResourceKey();
+        OnSelectedResourceChanged(selectedResourceKey);
+    }
+
+    /// <summary>
+    /// Gets the list of selected resources.
+    /// </summary>
+    public List<IResource> GetSelectedResources()
+    {
+        return SelectedItems.Select(item => item.Resource).ToList();
+    }
+
+    /// <summary>
+    /// Finds tree items matching the given resource keys.
+    /// </summary>
+    public List<ResourceViewItem> FindItemsByResourceKeys(List<ResourceKey> resourceKeys)
+    {
+        var items = new List<ResourceViewItem>();
+        var keySet = new HashSet<ResourceKey>(resourceKeys);
+
+        foreach (var item in TreeItems)
+        {
+            var itemKey = _resourceRegistry.GetResourceKey(item.Resource);
+            if (keySet.Contains(itemKey))
+            {
+                items.Add(item);
+            }
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Resolves the destination folder for a drop operation.
+    /// If the target is a file, returns its parent folder.
+    /// If the target is null, returns the root folder.
+    /// </summary>
+    public IFolderResource ResolveDropTargetFolder(IResource? dropTarget)
+    {
+        if (dropTarget is IFileResource fileResource)
+        {
+            return fileResource.ParentFolder ?? _resourceRegistry.RootFolder;
+        }
+        else if (dropTarget is IFolderResource folderResource)
+        {
+            return folderResource;
+        }
+        return _resourceRegistry.RootFolder;
+    }
+
+    //
     // Context menu
     //
 
@@ -425,10 +562,10 @@ public partial class ResourceViewViewModel : ObservableObject
 
     private async Task UpdateContextMenuOptions(IResource? resource)
     {
-        IsResourceSelected = resource is not null;
-        IsDocumentResourceSelected = IsSupportedDocumentFormat(resource);
-        IsExecutableResourceSelected = IsResourceExecutable(resource);
-        IsFileResourceSelected = resource is IFileResource;
+        // Single-item specific properties (only valid when exactly one item selected)
+        IsDocumentResourceSelected = IsSingleItemSelected && IsSupportedDocumentFormat(resource);
+        IsExecutableResourceSelected = IsSingleItemSelected && IsResourceExecutable(resource);
+        IsFileResourceSelected = IsSingleItemSelected && resource is IFileResource;
 
         bool isResourceOnClipboard = false;
         var contentDescription = _dataTransferService.GetClipboardContentDescription();
@@ -534,6 +671,26 @@ public partial class ResourceViewViewModel : ObservableObject
         });
     }
 
+    /// <summary>
+    /// Shows the delete dialog for multiple resources.
+    /// </summary>
+    public void ShowDeleteResourcesDialog(List<IResource> resources)
+    {
+        if (resources.Count == 0)
+        {
+            return;
+        }
+
+        var resourceKeys = resources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
+        {
+            command.Resources = resourceKeys;
+        });
+    }
+
     public void ShowRenameResourceDialog(IResource resource)
     {
         var resourceKey = _resourceRegistry.GetResourceKey(resource);
@@ -608,7 +765,23 @@ public partial class ResourceViewViewModel : ObservableObject
 
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResource = sourceResourceKey;
+            command.SourceResources = new List<ResourceKey> { sourceResourceKey };
+            command.TransferMode = DataTransferMode.Move;
+        });
+    }
+
+    /// <summary>
+    /// Cuts multiple resources to the clipboard.
+    /// </summary>
+    public void CutResourcesToClipboard(List<IResource> resources)
+    {
+        var resourceKeys = resources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resourceKeys;
             command.TransferMode = DataTransferMode.Move;
         });
     }
@@ -619,7 +792,23 @@ public partial class ResourceViewViewModel : ObservableObject
 
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResource = resourceKey;
+            command.SourceResources = new List<ResourceKey> { resourceKey };
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    /// <summary>
+    /// Copies multiple resources to the clipboard.
+    /// </summary>
+    public void CopyResourcesToClipboard(List<IResource> resources)
+    {
+        var resourceKeys = resources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resourceKeys;
             command.TransferMode = DataTransferMode.Copy;
         });
     }

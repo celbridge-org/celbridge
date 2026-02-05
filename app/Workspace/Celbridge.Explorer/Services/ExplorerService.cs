@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
@@ -7,7 +8,7 @@ namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
-    private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
+    private const string PreviousSelectedResourcesKey = "PreviousSelectedResources";
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExplorerService> _logger;
@@ -23,22 +24,11 @@ public class ExplorerService : IExplorerService, IDisposable
     private IExplorerPanel? _explorerPanel;
     public IExplorerPanel ExplorerPanel => _explorerPanel!;
 
-    private IResourceTreeView? _resourceTreeView;
-    public IResourceTreeView ResourceTreeView
-    {
-        get
-        {
-            return _resourceTreeView ?? throw new NullReferenceException("ResourceTreeView is null.");
-        }
-        set
-        {
-            _resourceTreeView = value;
-        }
-    }
-
     public IFolderStateService FolderStateService { get; }
 
     public ResourceKey SelectedResource { get; private set; }
+
+    public List<ResourceKey> SelectedResources => ExplorerPanel?.GetSelectedResources() ?? [];
 
     private bool _isWorkspaceLoaded;
 
@@ -65,7 +55,6 @@ public class ExplorerService : IExplorerService, IDisposable
         _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
@@ -86,34 +75,11 @@ public class ExplorerService : IExplorerService, IDisposable
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreSelectedResource();
+            _ = StoreSelectedResources();
         }
     }
 
-    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
-    {
-        // Clean up expanded folders that no longer exist in the registry
-        FolderStateService.Cleanup();
-
-        var result = await PopulateTreeViewAsync();
-        if (result.IsFailure)
-        {
-            _logger.LogWarning(result.Error);
-        }
-    }
-
-    private async Task<Result> PopulateTreeViewAsync()
-    {
-        var populateResult = await ResourceTreeView.PopulateTreeView(ResourceRegistry);
-        if (populateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to populate tree view. {populateResult.Error}");
-        }
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel)
+    public async Task<Result> SelectResource(ResourceKey resource)
     {
         Guard.IsNotNull(ExplorerPanel);
 
@@ -124,24 +90,18 @@ public class ExplorerService : IExplorerService, IDisposable
                 .WithErrors(selectResult);
         }
 
-        if (showExplorerPanel)
-        {
-            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
-            {
-                command.Panels = PanelVisibilityFlags.Primary;
-                command.IsVisible = true;
-            });
-        }
-
         return Result.Ok();
     }
 
-    public async Task StoreSelectedResource()
+    public async Task StoreSelectedResources()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
+        // Store all selected resources as a JSON array
+        var resourceStrings = SelectedResources.Select(r => r.ToString()).ToList();
+        var json = JsonSerializer.Serialize(resourceStrings);
+        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourcesKey, json);
     }
 
     public async Task RestorePanelState()
@@ -149,21 +109,33 @@ public class ExplorerService : IExplorerService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var resource = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourceKey);
-        if (string.IsNullOrEmpty(resource))
+        var json = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourcesKey);
+        if (string.IsNullOrEmpty(json))
         {
             return;
         }
 
-        // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
-        var selectResult = await _commandService.ExecuteImmediate<ISelectResourceCommand>(command =>
+        try
         {
-            command.Resource = resource;
-        });
+            var resourceStrings = JsonSerializer.Deserialize<List<string>>(json);
+            if (resourceStrings == null || resourceStrings.Count == 0)
+            {
+                return;
+            }
 
-        if (selectResult.IsFailure)
+            var resources = resourceStrings.Select(s => new ResourceKey(s)).ToList();
+
+            // Select all previously selected resources
+            Guard.IsNotNull(ExplorerPanel);
+            var selectResult = await ExplorerPanel.SelectResources(resources);
+            if (selectResult.IsFailure)
+            {
+                _logger.LogWarning(selectResult, $"Failed to restore previously selected resources");
+            }
+        }
+        catch (JsonException ex)
         {
-            _logger.LogWarning(selectResult, $"Failed to select previously selected resource '{resource}'");
+            _logger.LogWarning($"Failed to deserialize previously selected resources: {ex.Message}");
         }
     }
 

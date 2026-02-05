@@ -13,23 +13,29 @@
     <MenuFlyout x:Name="ResourceContextMenu"
                 Placement="RightEdgeAlignedTop"
                 Opening="ResourceContextMenu_Opening">
+      <!-- Single-item only operations -->
       <MenuFlyoutItem Text="{x:Bind RunString}"
                       Click="ResourceContextMenu_Run"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsExecutableResourceSelected, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind OpenString}"
                       Click="ResourceContextMenu_Open"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
 
       <MenuFlyoutItem Text="{x:Bind AddFileString}"
                       Icon="Page2"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       Click="ResourceContextMenu_AddFile">
       </MenuFlyoutItem>
 
       <MenuFlyoutItem Text="{x:Bind AddFolderString}"
                       Icon="Folder"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       Click="ResourceContextMenu_AddFolder">
       </MenuFlyoutItem>
       <MenuFlyoutSeparator />
+      <!-- Multi-select enabled operations -->
       <MenuFlyoutItem Text="{x:Bind CutString}"
                       Icon="Cut"
                       Click="ResourceContextMenu_Cut"
@@ -41,27 +47,34 @@
       <MenuFlyoutItem Text="{x:Bind PasteString}"
                       Icon="Paste"
                       Click="ResourceContextMenu_Paste"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind DeleteString}"
                       Icon="Delete"
                       Click="ResourceContextMenu_Delete"
                       IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
+      <!-- Single-item only operations -->
       <MenuFlyoutItem Text="{x:Bind RenameString}"
                       Icon="Edit"
                       Click="ResourceContextMenu_Rename"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind CopyResourceKeyString}"
                       Click="ResourceContextMenu_CopyResourceKey"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
       <MenuFlyoutItem Text="{x:Bind CopyFilePathString}"
                       Click="ResourceContextMenu_CopyFilePath"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsResourceSelected, Mode=OneWay}" />
       <MenuFlyoutSeparator />
       <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
-                      Click="ResourceContextMenu_OpenFileExplorer"/>
+                      Click="ResourceContextMenu_OpenFileExplorer"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"/>
       <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
                       Click="ResourceContextMenu_OpenApplication"
+                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
                       IsEnabled="{x:Bind ViewModel.IsFileResourceSelected, Mode=OneWay}"/>
     </MenuFlyout>
 
@@ -132,7 +145,7 @@
   <ListView x:Name="ResourceListView"
             ItemsSource="{x:Bind ViewModel.TreeItems, Mode=OneWay}"
             ItemTemplate="{StaticResource TreeListItemTemplate}"
-            SelectionMode="Single"
+            SelectionMode="Extended"
             SelectedItem="{x:Bind ViewModel.SelectedItem, Mode=TwoWay}"
             CanDragItems="True"
             AllowDrop="True"
@@ -145,7 +158,9 @@
             DragOver="ListView_DragOver"
             Drop="ListView_Drop"
             SelectionChanged="ListView_SelectionChanged"
-            ContextFlyout="{StaticResource ResourceContextMenu}">
+            ContextFlyout="{StaticResource ResourceContextMenu}"
+            TabNavigation="Once"
+            IsTabStop="True">
     <ListView.ItemContainerStyle>
       <Style TargetType="ListViewItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

@@ -1,18 +1,23 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Commands;
 
 public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 {
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey Resource { get; set; }
 
     public bool ShowExplorerPanel { get; set; } = true;
 
-    public SelectResourceCommand(IWorkspaceWrapper workspaceWrapper)
+    public SelectResourceCommand(
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -20,13 +25,21 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = await explorerService.SelectResource(Resource, ShowExplorerPanel);
+        var selectResult = await explorerService.SelectResource(Resource);
         if (selectResult.IsFailure)
         {
             return selectResult;
         }
 
-        await Task.CompletedTask;
+        if (ShowExplorerPanel)
+        {
+            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+            {
+                command.Panels = PanelVisibilityFlags.Primary;
+                command.IsVisible = true;
+            });
+        }
+
         return Result.Ok();
     }
 

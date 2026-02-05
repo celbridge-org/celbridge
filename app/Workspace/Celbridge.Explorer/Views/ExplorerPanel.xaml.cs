@@ -21,9 +21,19 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         return ResourceView.GetSelectedResource();
     }
 
+    public List<ResourceKey> GetSelectedResources()
+    {
+        return ResourceView.GetSelectedResources();
+    }
+
     public async Task<Result> SelectResource(ResourceKey resource)
     {
-        return await ResourceView.SetSelectedResource(resource);
+        return await ResourceView.SelectResource(resource);
+    }
+
+    public async Task<Result> SelectResources(List<ResourceKey> resources)
+    {
+        return await ResourceView.SelectResources(resources);
     }
 
     private void UserControl_PointerEntered(object sender, PointerRoutedEventArgs e)

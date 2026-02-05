@@ -17,7 +17,6 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 {
     private readonly ILogger<ResourceView> _logger;
     private readonly IStringLocalizer _stringLocalizer;
-    private IResourceRegistry? _resourceRegistry;
     private bool _isPopulating;
 
     public ResourceViewViewModel ViewModel { get; }
@@ -74,8 +73,6 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 
         try
         {
-            _resourceRegistry = resourceRegistry;
-
             // Save state before rebuilding
             var savedScrollOffset = GetScrollOffset();
             var selectedResourceKey = GetSelectedResource();
@@ -91,10 +88,10 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
                     .WithException(ex);
             }
 
-            // Restore selection
-            if (_resourceRegistry.GetResource(selectedResourceKey) != null)
+            // Restore selection if the resource still exists
+            if (ViewModel.ResourceExists(selectedResourceKey))
             {
-                await SetSelectedResource(selectedResourceKey, scrollIntoView: false);
+                await SelectResource(selectedResourceKey, scrollIntoView: false);
             }
 
             // Restore scroll position
@@ -114,13 +111,13 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
         return ViewModel.GetSelectedResourceKey();
     }
 
-    public async Task<Result> SetSelectedResource(ResourceKey resource, bool scrollIntoView = true)
+    public List<ResourceKey> GetSelectedResources()
     {
-        if (_resourceRegistry is null)
-        {
-            return Result.Ok();
-        }
+        return ViewModel.GetSelectedResourceKeys();
+    }
 
+    public async Task<Result> SelectResource(ResourceKey resource, bool scrollIntoView = true)
+    {
         if (resource.IsEmpty)
         {
             ViewModel.SelectedItem = null;
@@ -128,11 +125,9 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
         }
 
         // Check if the requested resource exists
-        var getResult = _resourceRegistry.GetResource(resource);
-        if (getResult.IsFailure)
+        if (!ViewModel.ResourceExists(resource))
         {
-            return Result.Fail($"Failed to get resource from resource registry: {resource}")
-                .WithErrors(getResult);
+            return Result.Fail($"Resource does not exist in registry: {resource}");
         }
 
         // Expand parent folders to make the resource visible
@@ -147,6 +142,39 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
         if (scrollIntoView && ViewModel.SelectedItem != null)
         {
             ResourceListView.ScrollIntoView(ViewModel.SelectedItem);
+        }
+
+        return await Task.FromResult(Result.Ok());
+    }
+
+    public async Task<Result> SelectResources(List<ResourceKey> resources)
+    {
+        if (resources.Count == 0)
+        {
+            return Result.Ok();
+        }
+
+        // First, expand all parent folders to make all resources visible.
+        // Each call to ExpandPathToResource rebuilds TreeItems with new instances,
+        // so we must do all expansions before selecting items.
+        foreach (var resource in resources)
+        {
+            ViewModel.ExpandPathToResource(resource);
+        }
+
+        // Clear current selection and add matching items
+        ResourceListView.SelectedItems.Clear();
+
+        var items = ViewModel.FindItemsByResourceKeys(resources);
+        foreach (var item in items)
+        {
+            ResourceListView.SelectedItems.Add(item);
+        }
+
+        // Scroll the first item into view
+        if (items.Count > 0)
+        {
+            ResourceListView.ScrollIntoView(items[0]);
         }
 
         return await Task.FromResult(Result.Ok());
@@ -268,12 +296,14 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
             .HasFlag(CoreVirtualKeyStates.Down);
 
         var selectedItem = ViewModel.SelectedItem;
+        var selectedResources = ViewModel.GetSelectedResources();
 
         if (e.Key == VirtualKey.Delete)
         {
-            if (selectedItem?.Resource != null)
+            if (selectedResources.Count > 0)
             {
-                ViewModel.ShowDeleteResourceDialog(selectedItem.Resource);
+                ViewModel.ShowDeleteResourcesDialog(selectedResources);
+                e.Handled = true;
             }
         }
         else if (e.Key == VirtualKey.Right)
@@ -295,15 +325,9 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
                     ViewModel.CollapseItem(selectedItem);
                     e.Handled = true;
                 }
-                else if (selectedItem.Resource.ParentFolder != null)
+                else if (ViewModel.SelectParentFolder())
                 {
-                    // Select the parent folder
-                    var parentKey = _resourceRegistry?.GetResourceKey(selectedItem.Resource.ParentFolder);
-                    if (parentKey.HasValue && !parentKey.Value.IsEmpty)
-                    {
-                        ViewModel.SetSelectedResource(parentKey.Value);
-                        e.Handled = true;
-                    }
+                    e.Handled = true;
                 }
             }
         }
@@ -315,36 +339,33 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
                 e.Handled = true;
             }
         }
-        else if (control && selectedItem?.Resource != null)
+        else if (control && selectedResources.Count > 0)
         {
             if (e.Key == VirtualKey.C)
             {
-                ViewModel.CopyResourceToClipboard(selectedItem.Resource);
+                ViewModel.CopyResourcesToClipboard(selectedResources);
+                e.Handled = true;
             }
             else if (e.Key == VirtualKey.X)
             {
-                ViewModel.CutResourceToClipboard(selectedItem.Resource);
+                ViewModel.CutResourcesToClipboard(selectedResources);
+                e.Handled = true;
             }
             else if (e.Key == VirtualKey.V)
             {
-                ViewModel.PasteResourceFromClipboard(selectedItem.Resource);
+                // Paste to the selected item's folder
+                var destResource = selectedItem?.Resource;
+                ViewModel.PasteResourceFromClipboard(destResource);
+                e.Handled = true;
             }
         }
     }
 
     private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        Guard.IsNotNull(_resourceRegistry);
-
-        var selectedItem = e.AddedItems.FirstOrDefault() as ResourceViewItem;
-        if (selectedItem?.Resource == null)
-        {
-            ViewModel.OnSelectedResourceChanged(ResourceKey.Empty);
-            return;
-        }
-
-        var selectedResource = _resourceRegistry.GetResourceKey(selectedItem.Resource);
-        ViewModel.OnSelectedResourceChanged(selectedResource);
+        // Update the ViewModel with the current selection (also sends notification)
+        var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
+        ViewModel.UpdateSelectedItems(selectedItems);
     }
 
     //
@@ -416,16 +437,20 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 
     private void ResourceContextMenu_Cut(object sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
-        Guard.IsNotNull(resource);
-        ViewModel.CutResourceToClipboard(resource);
+        var selectedResources = ViewModel.GetSelectedResources();
+        if (selectedResources.Count > 0)
+        {
+            ViewModel.CutResourcesToClipboard(selectedResources);
+        }
     }
 
     private void ResourceContextMenu_Copy(object sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
-        Guard.IsNotNull(resource);
-        ViewModel.CopyResourceToClipboard(resource);
+        var selectedResources = ViewModel.GetSelectedResources();
+        if (selectedResources.Count > 0)
+        {
+            ViewModel.CopyResourcesToClipboard(selectedResources);
+        }
     }
 
     private void ResourceContextMenu_Paste(object sender, RoutedEventArgs e)
@@ -436,9 +461,11 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 
     private void ResourceContextMenu_Delete(object? sender, RoutedEventArgs e)
     {
-        var resource = ViewModel.SelectedItem?.Resource;
-        Guard.IsNotNull(resource);
-        ViewModel.ShowDeleteResourceDialog(resource);
+        var selectedResources = ViewModel.GetSelectedResources();
+        if (selectedResources.Count > 0)
+        {
+            ViewModel.ShowDeleteResourcesDialog(selectedResources);
+        }
     }
 
     private void ResourceContextMenu_Rename(object? sender, RoutedEventArgs e)
@@ -584,8 +611,6 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 
     private void ListView_Drop(object sender, DragEventArgs e)
     {
-        Guard.IsNotNull(_resourceRegistry);
-
         // Clear drag-over highlight
         _dragOverItem = null;
 
@@ -594,20 +619,7 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
         // Find the drop target
         var position = e.GetPosition(ResourceListView);
         var dropTargetItem = FindItemAtPosition(position);
-
-        IFolderResource destFolder;
-        if (dropTargetItem?.Resource is IFileResource fileResource)
-        {
-            destFolder = fileResource.ParentFolder ?? _resourceRegistry.RootFolder;
-        }
-        else if (dropTargetItem?.Resource is IFolderResource folderResource)
-        {
-            destFolder = folderResource;
-        }
-        else
-        {
-            destFolder = _resourceRegistry.RootFolder;
-        }
+        var destFolder = ViewModel.ResolveDropTargetFolder(dropTargetItem?.Resource);
 
         // Check if this is an internal drag (from our ListView)
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true &&
