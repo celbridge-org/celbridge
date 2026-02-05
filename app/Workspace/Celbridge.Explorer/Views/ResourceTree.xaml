@@ -1,13 +1,13 @@
 ﻿<UserControl
-    x:Class="Celbridge.Explorer.Views.ResourceView"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Celbridge.Explorer.Views"
-    xmlns:localControls="using:Celbridge.Explorer.Views.Controls"
-    xmlns:models="using:Celbridge.Explorer.Models"
-    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-    DataContext="{x:Bind ViewModel}"
-    Background="{ThemeResource ApplicationBackgroundBrush}">
+x:Class="Celbridge.Explorer.Views.ResourceTree"
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:local="using:Celbridge.Explorer.Views"
+xmlns:localControls="using:Celbridge.Explorer.Views.Controls"
+xmlns:models="using:Celbridge.Explorer.Models"
+xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+DataContext="{x:Bind ViewModel}"
+Background="{ThemeResource ApplicationBackgroundBrush}">
 
   <UserControl.Resources>
     <MenuFlyout x:Name="ResourceContextMenu"

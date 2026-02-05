@@ -13,11 +13,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.Explorer.ViewModels;
 
 /// <summary>
-/// View model for the control that displays resources.
+/// View model for the control that displays the resource tree in the Explorer panel.
 /// </summary>
-public partial class ResourceViewViewModel : ObservableObject
+public partial class ResourceTreeViewModel : ObservableObject
 {
-    private readonly ILogger<ResourceViewViewModel> _logger;
+    private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
@@ -98,8 +98,8 @@ public partial class ResourceViewViewModel : ObservableObject
     [ObservableProperty]
     private bool _isFileResourceSelected;
 
-    public ResourceViewViewModel(
-        ILogger<ResourceViewViewModel> logger,
+    public ResourceTreeViewModel(
+        ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
         IProjectService projectService,
@@ -121,7 +121,7 @@ public partial class ResourceViewViewModel : ObservableObject
     // Lifecycle
     //
 
-    public void OnLoaded(IResourceTreeView resourceTreeView)
+    public void OnLoaded()
     {
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
@@ -154,7 +154,7 @@ public partial class ResourceViewViewModel : ObservableObject
         _folderStateService.Cleanup();
 
         // Rebuild the tree with the updated registry
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     //
@@ -165,7 +165,7 @@ public partial class ResourceViewViewModel : ObservableObject
     /// Rebuilds the flat list from the current resource registry state.
     /// Preserves the selected item if possible.
     /// </summary>
-    public void RebuildTreeList()
+    public void RebuildResourceTree()
     {
         // Save the currently selected resource key before rebuilding
         var selectedResourceKey = GetSelectedResourceKey();
@@ -351,7 +351,7 @@ public partial class ResourceViewViewModel : ObservableObject
         }
 
         // Rebuild the list to reflect the new state
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     /// <summary>
@@ -378,7 +378,7 @@ public partial class ResourceViewViewModel : ObservableObject
             SetFolderIsExpanded(folderResource, true);
         }
 
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     /// <summary>
@@ -405,7 +405,7 @@ public partial class ResourceViewViewModel : ObservableObject
             SetFolderIsExpanded(folderResource, false);
         }
 
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     /// <summary>
@@ -432,7 +432,7 @@ public partial class ResourceViewViewModel : ObservableObject
             }
         }
 
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     /// <summary>
@@ -461,7 +461,7 @@ public partial class ResourceViewViewModel : ObservableObject
         }
 
         // Rebuild the list to include newly expanded items
-        RebuildTreeList();
+        RebuildResourceTree();
     }
 
     //

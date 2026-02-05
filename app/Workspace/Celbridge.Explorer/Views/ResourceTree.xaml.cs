@@ -13,13 +13,13 @@ namespace Celbridge.Explorer.Views;
 /// <summary>
 /// A custom tree control built on ListView, because TreeView is not flexible enough.
 /// </summary>
-public sealed partial class ResourceView : UserControl, IResourceTreeView
+public sealed partial class ResourceTree : UserControl, IResourceTree
 {
-    private readonly ILogger<ResourceView> _logger;
+    private readonly ILogger<ResourceTree> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private bool _isPopulating;
 
-    public ResourceViewViewModel ViewModel { get; }
+    public ResourceTreeViewModel ViewModel { get; }
 
     // Localized strings for context menu
     private string RunString => _stringLocalizer.GetString("ResourceTree_Run");
@@ -36,33 +36,34 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
     private string CopyResourceKeyString => _stringLocalizer.GetString("ResourceTree_CopyResourceKey");
     private string CopyFilePathString => _stringLocalizer.GetString("ResourceTree_CopyFilePath");
 
-    public ResourceView()
+    public ResourceTree()
     {
         this.InitializeComponent();
 
-        _logger = ServiceLocator.AcquireService<ILogger<ResourceView>>();
-        ViewModel = ServiceLocator.AcquireService<ResourceViewViewModel>();
+        _logger = ServiceLocator.AcquireService<ILogger<ResourceTree>>();
+        ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        Loaded += ResourceTreeListView_Loaded;
-        Unloaded += ResourceTreeListView_Unloaded;
+        Loaded += ResourceTree_Loaded;
+        Unloaded += ResourceTree_Unloaded;
     }
 
-    private void ResourceTreeListView_Loaded(object sender, RoutedEventArgs e)
+    private void ResourceTree_Loaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.OnLoaded(this);
+        ViewModel.OnLoaded();
     }
 
-    private void ResourceTreeListView_Unloaded(object sender, RoutedEventArgs e)
+
+    private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnUnloaded();
     }
 
     //
-    // IResourceTreeView implementation
+    // IResourceTree implementation
     //
 
-    public async Task<Result> PopulateTreeView(IResourceRegistry resourceRegistry)
+    public async Task<Result> PopulateResourceTree(IResourceRegistry resourceRegistry)
     {
         // Prevent concurrent population which causes duplicate resources.
         if (_isPopulating)
@@ -79,8 +80,8 @@ public sealed partial class ResourceView : UserControl, IResourceTreeView
 
             try
             {
-                // Rebuild the flat list from the resource registry
-                ViewModel.RebuildTreeList();
+                // Rebuild the resource tree from the resource registry
+                ViewModel.RebuildResourceTree();
             }
             catch (Exception ex)
             {
