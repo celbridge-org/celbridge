@@ -164,30 +164,16 @@ Background="{ThemeResource ApplicationBackgroundBrush}">
     <ListView.ItemContainerStyle>
       <Style TargetType="ListViewItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Padding" Value="0,0,0,0"/>
+        <Setter Property="Padding" Value="0"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="MinHeight" Value="32"/>
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="ListViewItem">
-              <Grid>
-                <!-- Item content with background -->
-                <Grid x:Name="ContentGrid"
-                      Padding="{TemplateBinding Padding}"
-                      Background="Transparent">
-                  <ContentPresenter/>
-                </Grid>
-
-                <!-- Selection indicator bar -->
-                <Border x:Name="SelectionIndicator"
-                        Width="3"
-                        Height="16"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Margin="6,0,0,0"
-                        CornerRadius="1.5"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Opacity="0"/>
+              <Grid x:Name="ContentGrid"
+                    Padding="{TemplateBinding Padding}"
+                    Background="Transparent">
+                <ContentPresenter/>
                 
                 <VisualStateManager.VisualStateGroups>
                   <VisualStateGroup x:Name="CommonStates">
@@ -208,27 +194,24 @@ Background="{ThemeResource ApplicationBackgroundBrush}">
                       </VisualState.Setters>
                     </VisualState>
                     
-                    <!-- Selected state -->
+                    <!-- Selected state - full row accent background -->
                     <VisualState x:Name="Selected">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-                        <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                     
                     <!-- Selected + PointerOver state -->
                     <VisualState x:Name="SelectedPointerOver">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-                        <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                     
                     <!-- Selected + Pressed state -->
                     <VisualState x:Name="SelectedPressed">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}"/>
-                        <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                   </VisualStateGroup>
