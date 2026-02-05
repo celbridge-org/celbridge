@@ -21,8 +21,6 @@ public class InspectorService : IInspectorService, IDisposable
     private readonly ComponentEditorCache _componentEditorCache;
     private readonly EntityAnnotationCache _entityAnnotationCache;
 
-    public IInspectorPanel InspectorPanel { get; set; } = null!;
-
     public IInspectorFactory InspectorFactory { get; }
 
     public ResourceKey InspectedResource { get; private set; }

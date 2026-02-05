@@ -4,7 +4,7 @@ namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
-    public IConsolePanel ConsolePanel { get; set; } = null!;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ITerminal Terminal { get; private set; }
 
@@ -15,14 +15,14 @@ public class ConsoleService : IConsoleService, IDisposable
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
+        _workspaceWrapper = workspaceWrapper;
         Terminal = serviceProvider.AcquireService<ITerminal>();
     }
 
     public async Task<Result> InitializeTerminalWindow()
     {
-        Guard.IsNotNull(ConsolePanel); Guard.IsNotNull(ConsolePanel);
-
-        return await ConsolePanel.InitializeTerminalWindow(Terminal);
+        var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
+        return await consolePanel.InitializeTerminalWindow(Terminal);
     }
 
     public void RunCommand(string command)

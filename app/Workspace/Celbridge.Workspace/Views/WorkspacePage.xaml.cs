@@ -117,21 +117,19 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        // Create panels and inject them into services
+        // Create panels via DI
         var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
-        workspaceService.ActivityPanel = activityPanel;
-        PrimaryPanel.Children.Add(activityPanel as UIElement);
-
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
-        workspaceService.DocumentsService.DocumentsPanel = documentsPanel;
-        DocumentsPanel.Children.Add(documentsPanel as UIElement);
-
         var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
-        workspaceService.InspectorService.InspectorPanel = inspectorPanel;
-        SecondaryPanel.Children.Add(inspectorPanel as UIElement);
-
         var consolePanel = ServiceLocator.AcquireService<IConsolePanel>();
-        workspaceService.ConsoleService.ConsolePanel = consolePanel;
+
+        // Register panels with the workspace service
+        workspaceService.SetPanels(activityPanel, documentsPanel, inspectorPanel, consolePanel);
+
+        // Add panels to the UI
+        PrimaryPanel.Children.Add(activityPanel as UIElement);
+        DocumentsPanel.Children.Add(documentsPanel as UIElement);
+        SecondaryPanel.Children.Add(inspectorPanel as UIElement);
         ConsolePanel.Children.Add(consolePanel as UIElement);
 
         _ = ViewModel.LoadWorkspaceAsync();
@@ -155,12 +153,13 @@ public sealed partial class WorkspacePage : Page
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
         // Close all open documents and clean up their WebView2 resources
-        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel;
-        documentsPanel?.Shutdown();
+        workspaceService.DocumentsPanel.Shutdown();
 
         // Clean up WebView2 resources in the ConsolePanel
-        var consolePanel = workspaceService.ConsoleService.ConsolePanel as ConsolePanel;
-        consolePanel?.Shutdown();
+        if (workspaceService.ConsolePanel is ConsolePanel consolePanel)
+        {
+            consolePanel.Shutdown();
+        }
 
         ViewModel.OnWorkspacePageUnloaded();
 

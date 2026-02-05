@@ -89,7 +89,32 @@ public interface IWorkspaceService
     /// <summary>
     /// Returns the Activity Panel view.
     /// </summary>
-    IActivityPanel ActivityPanel { get; set; }
+    IActivityPanel ActivityPanel { get; }
+
+    /// <summary>
+    /// Returns the Documents Panel view.
+    /// </summary>
+    IDocumentsPanel DocumentsPanel { get; }
+
+    /// <summary>
+    /// Returns the Inspector Panel view.
+    /// </summary>
+    IInspectorPanel InspectorPanel { get; }
+
+    /// <summary>
+    /// Returns the Console Panel view.
+    /// </summary>
+    IConsolePanel ConsolePanel { get; }
+
+    /// <summary>
+    /// Sets all workspace panel references.
+    /// Called by WorkspacePage during initialization.
+    /// </summary>
+    void SetPanels(
+        IActivityPanel activityPanel,
+        IDocumentsPanel documentsPanel,
+        IInspectorPanel inspectorPanel,
+        IConsolePanel consolePanel);
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

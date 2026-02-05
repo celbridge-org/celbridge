@@ -6,11 +6,6 @@ namespace Celbridge.Documents;
 public interface IDocumentsService
 {
     /// <summary>
-    /// Gets or sets the documents panel view.
-    /// </summary>
-    IDocumentsPanel DocumentsPanel { get; set; }
-
-    /// <summary>
     /// The resource key for the currently selected document.
     /// This is the empty resource if no document is currently selected.
     /// </summary>

@@ -22,7 +22,11 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public IDocumentsPanel DocumentsPanel { get; set; } = null!;
+    /// <summary>
+    /// Gets the documents panel, using cached reference if available or fetching from workspace service.
+    /// </summary>
+    private IDocumentsPanel _documentsPanel = null!;
+    private IDocumentsPanel DocumentsPanel => _documentsPanel ?? _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     public ResourceKey SelectedDocument { get; private set; }
 
@@ -75,6 +79,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
     {
+        // Cache the documents panel reference for the lifetime of the workspace
+        _documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
+
         // Once set, this will remain true for the lifetime of the service
         _isWorkspaceLoaded = true;
     }
@@ -93,15 +100,12 @@ public class DocumentsService : IDocumentsService, IDisposable
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
         // Query the panel for current document addresses
-        if (DocumentsPanel != null)
-        {
-            var addresses = DocumentsPanel.GetDocumentAddresses();
+        var addresses = DocumentsPanel.GetDocumentAddresses();
 
-            DocumentAddresses.Clear();
-            foreach (var kvp in addresses)
-            {
-                DocumentAddresses[kvp.Key] = kvp.Value;
-            }
+        DocumentAddresses.Clear();
+        foreach (var kvp in addresses)
+        {
+            DocumentAddresses[kvp.Key] = kvp.Value;
         }
 
         if (_isWorkspaceLoaded)

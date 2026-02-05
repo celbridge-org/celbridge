@@ -35,7 +35,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspacePanel ActivePanel { get; set; }
 
-    public IActivityPanel ActivityPanel { get; set; } = null!;
+    public IActivityPanel ActivityPanel { get; private set; } = null!;
+    public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
+    public IInspectorPanel InspectorPanel { get; private set; } = null!;
+    public IConsolePanel ConsolePanel { get; private set; } = null!;
 
     private bool _workspaceStateIsDirty;
 
@@ -74,6 +77,19 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
+    }
+
+    public void SetPanels(
+        IActivityPanel activityPanel,
+        IDocumentsPanel documentsPanel,
+        IInspectorPanel inspectorPanel,
+        IConsolePanel consolePanel)
+    {
+        // Store panel references
+        ActivityPanel = activityPanel;
+        DocumentsPanel = documentsPanel;
+        InspectorPanel = inspectorPanel;
+        ConsolePanel = consolePanel;
     }
 
     private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
