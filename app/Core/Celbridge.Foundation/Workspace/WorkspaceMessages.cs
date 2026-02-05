@@ -12,12 +12,6 @@ public record WorkspaceServiceCreatedMessage(IWorkspaceService WorkspaceService)
 public record WorkspaceLoadedMessage();
 
 /// <summary>
-/// Sent when the workspace page has loaded and is about to populate the workspace panels.
-/// Workspace services should create their panel views when they receive this message.
-/// </summary>
-public record WorkspaceWillPopulatePanelsMessage();
-
-/// <summary>
 /// Sent when the loaded workspace has finished unloading.
 /// </summary>
 public record WorkspaceUnloadedMessage();

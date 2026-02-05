@@ -24,9 +24,9 @@ public interface IInspectorService
     ComponentPanelMode ComponentPanelMode { get; set; }
 
     /// <summary>
-    /// Returns the inspector panel view.
+    /// Gets or sets the inspector panel view.
     /// </summary>
-    IInspectorPanel InspectorPanel { get; }
+    IInspectorPanel InspectorPanel { get; set; }
 
     /// <summary>
     /// Returns the factory used to create inspector UI elements. 

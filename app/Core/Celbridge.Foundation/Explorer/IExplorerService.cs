@@ -8,11 +8,6 @@ namespace Celbridge.Explorer;
 public interface IExplorerService
 {
     /// <summary>
-    /// Returns the Explorer Panel view.
-    /// </summary>
-    IExplorerPanel? ExplorerPanel { get; }
-
-    /// <summary>
     /// Returns the Folder State Service that manages folder expanded state in the resource tree.
     /// </summary>
     IFolderStateService FolderStateService { get; }
@@ -47,13 +42,6 @@ public interface IExplorerService
     /// Open the specified resource in the system file manager.
     /// </summary>
     Task<Result> OpenFileManager(ResourceKey resource);
-
-    /// <summary>
-    /// Performs an Open on the given resource.
-    /// The resource will be opened in the manner appropriate to it's type, either in a browser, or in it's related application.
-    /// A command will be added to the queue to do this, calling to one of the two methods below.
-    /// </summary>
-    void OpenResource(ResourceKey resource);
 
     /// <summary>
     /// Open the specified resource in the associated application.

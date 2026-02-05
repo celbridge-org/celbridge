@@ -1,5 +1,7 @@
+using Celbridge.Console;
 using Celbridge.Console.Views;
-using Celbridge.Messaging;
+using Celbridge.Documents;
+using Celbridge.Inspector;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace.ViewModels;
@@ -8,14 +10,11 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    private readonly IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
 
     public WorkspacePageViewModel ViewModel { get; }
 
     private bool _initialized = false;
-    private ProjectPanel? _projectPanel;
-    private UIElement? _inspectorPanel;
 
     private SplitterHelper? _primaryPanelSplitterHelper;
     private SplitterHelper? _secondaryPanelSplitterHelper;
@@ -27,7 +26,6 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
 
         DataContext = ViewModel;
@@ -119,45 +117,22 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        // Send a message to tell services to initialize their workspace panels
-        var message = new WorkspaceWillPopulatePanelsMessage();
-        _messengerService.Send(message);
+        // Create panels and inject them into services
+        var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
+        workspaceService.ActivityPanel = activityPanel;
+        PrimaryPanel.Children.Add(activityPanel as UIElement);
 
-        // Create the ProjectPanel
-        _projectPanel = new ProjectPanel();
+        var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
+        workspaceService.DocumentsService.DocumentsPanel = documentsPanel;
+        DocumentsPanel.Children.Add(documentsPanel as UIElement);
 
-        // Get the explorer and search panels from the workspace service
-        var explorerPanel = workspaceService.ExplorerService.ExplorerPanel as UIElement;
-        var searchPanel = workspaceService.SearchService.SearchPanel as UIElement;
+        var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
+        workspaceService.InspectorService.InspectorPanel = inspectorPanel;
+        SecondaryPanel.Children.Add(inspectorPanel as UIElement);
 
-        if (explorerPanel != null && searchPanel != null)
-        {
-            // Register panels with the ProjectPanel UI control
-            _projectPanel.RegisterPanel(ProjectPanelTab.Explorer, explorerPanel);
-            _projectPanel.RegisterPanel(ProjectPanelTab.Search, searchPanel);
-        }
-
-        var documentsPanel = workspaceService.DocumentsService.DocumentsPanel as UIElement;
-        DocumentsPanel.Children.Add(documentsPanel);
-
-        _inspectorPanel = workspaceService.InspectorService.InspectorPanel as UIElement;
-
-        var consolePanel = workspaceService.ConsoleService.ConsolePanel as UIElement;
-        ConsolePanel.Children.Add(consolePanel);
-
-        // Add panels to their default positions
-        // ProjectPanel in Primary (left), Inspector in Secondary (right)
-        if (_projectPanel != null)
-        {
-            PrimaryPanel.Children.Add(_projectPanel);
-        }
-        if (_inspectorPanel != null)
-        {
-            SecondaryPanel.Children.Add(_inspectorPanel);
-        }
-
-        // Show the Explorer tab by default
-        _projectPanel?.ShowTab(ProjectPanelTab.Explorer);
+        var consolePanel = ServiceLocator.AcquireService<IConsolePanel>();
+        workspaceService.ConsoleService.ConsolePanel = consolePanel;
+        ConsolePanel.Children.Add(consolePanel as UIElement);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }

@@ -22,8 +22,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private IDocumentsPanel? _documentsPanel;
-    public IDocumentsPanel DocumentsPanel => _documentsPanel!;
+    public IDocumentsPanel DocumentsPanel { get; set; } = null!;
 
     public ResourceKey SelectedDocument { get; private set; }
 
@@ -60,24 +59,18 @@ public class DocumentsService : IDocumentsService, IDisposable
         // Initialize the TextEditorWebViewPool
         TextEditorWebViewPool = new TextEditorWebViewPool(3);
 
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
-        _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
+        _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
         }
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _documentsPanel = _serviceProvider.GetRequiredService<IDocumentsPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -100,9 +93,9 @@ public class DocumentsService : IDocumentsService, IDisposable
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
         // Query the panel for current document addresses
-        if (_documentsPanel != null)
+        if (DocumentsPanel != null)
         {
-            var addresses = _documentsPanel.GetDocumentAddresses();
+            var addresses = DocumentsPanel.GetDocumentAddresses();
 
             DocumentAddresses.Clear();
             foreach (var kvp in addresses)
@@ -375,8 +368,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var sectionRatios = await workspaceSettings.GetPropertyAsync<List<double>>(SectionRatiosKey);
         if (sectionRatios != null && sectionRatios.Count >= 1 && sectionRatios.Count <= 3)
         {
-            _documentsPanel!.SectionCount = sectionRatios.Count;
-            _documentsPanel!.SetSectionRatios(sectionRatios);
+            DocumentsPanel.SectionCount = sectionRatios.Count;
+            DocumentsPanel.SetSectionRatios(sectionRatios);
         }
 
         // Try to load document addresses - if format is incompatible, just start fresh
@@ -398,7 +391,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        int currentSectionCount = _documentsPanel!.SectionCount;
+        int currentSectionCount = DocumentsPanel.SectionCount;
 
         foreach (var stored in storedAddresses)
         {
@@ -427,7 +420,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            var openResult = await _documentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+            var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
             if (openResult.IsFailure)
             {
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
@@ -448,7 +441,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         // Set the active document (which also selects it in its section)
-        _documentsPanel.ActiveDocument = new ResourceKey(selectedDocument);
+        DocumentsPanel.ActiveDocument = new ResourceKey(selectedDocument);
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)

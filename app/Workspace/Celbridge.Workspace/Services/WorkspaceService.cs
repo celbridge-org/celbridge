@@ -35,6 +35,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspacePanel ActivePanel { get; set; }
 
+    public IActivityPanel ActivityPanel { get; set; } = null!;
+
     private bool _workspaceStateIsDirty;
 
     public WorkspaceService(

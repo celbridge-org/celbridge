@@ -87,6 +87,11 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
+    /// Returns the Activity Panel view.
+    /// </summary>
+    IActivityPanel ActivityPanel { get; set; }
+
+    /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);

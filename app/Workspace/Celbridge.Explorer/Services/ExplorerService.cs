@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
@@ -11,10 +10,8 @@ public class ExplorerService : IExplorerService, IDisposable
 {
     private const string PreviousSelectedResourcesKey = "PreviousSelectedResources";
 
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -22,14 +19,12 @@ public class ExplorerService : IExplorerService, IDisposable
     private IResourceRegistry ResourceRegistry =>
         _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-    private IExplorerPanel? _explorerPanel;
-    public IExplorerPanel ExplorerPanel => _explorerPanel!;
-
     public IFolderStateService FolderStateService { get; }
 
     public ResourceKey SelectedResource { get; private set; }
 
-    public List<ResourceKey> SelectedResources => ExplorerPanel?.GetSelectedResources() ?? [];
+    private List<ResourceKey> _selectedResources = [];
+    public List<ResourceKey> SelectedResources => _selectedResources;
 
     private bool _isWorkspaceLoaded;
 
@@ -37,30 +32,21 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
-        ICommandService commandService,
         IFileIconService fileIconService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
-        _commandService = commandService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
 
         FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _explorerPanel = _serviceProvider.GetRequiredService<IExplorerPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -73,6 +59,10 @@ public class ExplorerService : IExplorerService, IDisposable
     {
         SelectedResource = message.Resource;
 
+        // Update the selected resources list from the panel
+        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+        _selectedResources = explorerPanel.GetSelectedResources();
+
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
@@ -82,9 +72,9 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> SelectResource(ResourceKey resource)
     {
-        Guard.IsNotNull(ExplorerPanel);
+        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
 
-        var selectResult = await ExplorerPanel.SelectResource(resource);
+        var selectResult = await explorerPanel.SelectResource(resource);
         if (selectResult.IsFailure)
         {
             return Result.Fail($"Failed to select resource: {resource}")
@@ -127,8 +117,8 @@ public class ExplorerService : IExplorerService, IDisposable
             var resources = resourceStrings.Select(s => new ResourceKey(s)).ToList();
 
             // Select all previously selected resources
-            Guard.IsNotNull(ExplorerPanel);
-            var selectResult = await ExplorerPanel.SelectResources(resources);
+            var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+            var selectResult = await explorerPanel.SelectResources(resources);
             if (selectResult.IsFailure)
             {
                 _logger.LogWarning(selectResult, $"Failed to restore previously selected resources");
@@ -205,38 +195,6 @@ public class ExplorerService : IExplorerService, IDisposable
 
         // Return the default file icon if we couldn't find a better match
         return _fileIconService.DefaultFileIcon;
-    }
-
-    public void OpenResource(ResourceKey resource)
-    {
-        var fileExtension = Path.GetExtension(resource.ResourceName);
-
-        if (fileExtension == ExplorerConstants.WebAppExtension)
-        {
-            var webFilePath = ResourceRegistry.GetResourcePath(resource);
-
-            var extractResult = ResourceUtils.ExtractUrlFromWebAppFile(webFilePath);
-            if (extractResult.IsFailure)
-            {
-                _logger.LogError(extractResult.Error);
-                return;
-            }
-            var url = extractResult.Value;
-
-            // Execute a command to open the resource with the system default browser
-            _commandService.Execute<IOpenBrowserCommand>(command =>
-            {
-                command.URL = url;
-            });
-        }
-        else
-        {
-            // Execute a command to open the resource with the associated application
-            _commandService.Execute<IOpenApplicationCommand>(command =>
-            {
-                command.Resource = resource;
-            });
-        }
     }
 
     private bool _disposed;
