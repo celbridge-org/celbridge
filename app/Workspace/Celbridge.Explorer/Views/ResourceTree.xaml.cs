@@ -340,6 +340,12 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
                 e.Handled = true;
             }
         }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            // Deselect all items
+            ResourceListView.SelectedItems.Clear();
+            e.Handled = true;
+        }
         else if (control && selectedResources.Count > 0)
         {
             if (e.Key == VirtualKey.C)
@@ -367,6 +373,18 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Update the ViewModel with the current selection (also sends notification)
         var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
         ViewModel.UpdateSelectedItems(selectedItems);
+    }
+
+    private void ListView_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // Clear selection when tapping in empty area (not on an item)
+        var position = e.GetPosition(ResourceListView);
+        var clickedItem = FindItemAtPosition(position);
+
+        if (clickedItem == null)
+        {
+            ResourceListView.SelectedItems.Clear();
+        }
     }
 
     //
