@@ -727,28 +727,3 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel.CollapseAllFolders();
     }
 }
-
-/// <summary>
-/// Converter that returns the appropriate chevron glyph based on expanded state.
-/// </summary>
-public class ExpanderGlyphConverter : IValueConverter
-{
-    // Chevron right (collapsed)
-    private const string CollapsedGlyph = "\uE76C";
-    // Chevron down (expanded)
-    private const string ExpandedGlyph = "\uE70D";
-
-    public object Convert(object value, Type targetType, object parameter, string language)
-    {
-        if (value is bool isExpanded && isExpanded)
-        {
-            return ExpandedGlyph;
-        }
-        return CollapsedGlyph;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
-    {
-        throw new NotImplementedException();
-    }
-}
