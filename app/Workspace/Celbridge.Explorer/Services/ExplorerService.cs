@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Services;
@@ -188,8 +189,7 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 var icon = _fileIconService.DefaultFolderIcon with
                 {
-                    // Todo: Define this color in resources
-                    FontColor = "#FFCC40"
+                    FontColor = FileIconService.DefaultFolderColor
                 };
                 return icon;
             }
