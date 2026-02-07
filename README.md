@@ -167,7 +167,7 @@ All feedback and contributions are very welcome! If you'd like to contribute a n
 
 # Credits
 
-Thank you to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith), and [Matt Johnson](https://github.com/amazinggitboy).
+Thank you to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith), [Matt Johnson](https://github.com/amazinggitboy) and [Ruth Shields](https://www.linkedin.com/in/ruth-shields-b0662788/).
 
 This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda Romero🏅 & John Romero and all of the incredible team at Romero Games for their support. ❤️❤️❤️
 
