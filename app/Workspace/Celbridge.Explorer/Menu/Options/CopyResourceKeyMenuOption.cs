@@ -34,21 +34,22 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canCopy = context.HasSingleSelection && !context.SelectionContainsRootFolder;
+        // Don't show for root folder (it has an empty ResourceKey)
+        var canCopy = context.ClickedResource != null && context.ClickedResource != context.RootFolder;
         return new MenuItemState(
-            IsVisible: context.HasSingleSelection,
+            IsVisible: context.ClickedResource != null,
             IsEnabled: canCopy);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasSingleSelection || context.SelectionContainsRootFolder)
+        if (context.ClickedResource == null || context.ClickedResource == context.RootFolder)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource!);
+        var resourceKey = resourceRegistry.GetResourceKey(context.ClickedResource);
 
         _commandService.Execute<ICopyResourceKeyCommand>(command =>
         {

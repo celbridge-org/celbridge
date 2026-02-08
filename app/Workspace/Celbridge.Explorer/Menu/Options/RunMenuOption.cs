@@ -35,24 +35,26 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        if (!context.HasSingleSelection)
+        if (context.ClickedResource is not IFileResource clickedFile)
         {
             return new MenuItemState(IsVisible: false, IsEnabled: false);
         }
 
-        var isExecutable = IsResourceExecutable(context.SingleSelectedResource);
-        return new MenuItemState(IsVisible: true, IsEnabled: isExecutable);
+        var isExecutable = IsResourceExecutable(clickedFile);
+        
+        // Only show Run for executable file types
+        return new MenuItemState(IsVisible: isExecutable, IsEnabled: isExecutable);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.SingleSelectedResource is not IFileResource fileResource)
+        if (context.ClickedResource is not IFileResource clickedFile)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
         var extension = Path.GetExtension(resourceKey);
 
         if (extension != ExplorerConstants.PythonExtension &&

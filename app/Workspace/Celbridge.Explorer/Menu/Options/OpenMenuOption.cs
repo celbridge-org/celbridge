@@ -36,20 +36,14 @@ public class OpenMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        if (!context.HasSingleSelection)
+        if (context.ClickedResource is not IFileResource clickedFile)
         {
             return new MenuItemState(IsVisible: false, IsEnabled: false);
         }
 
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        
-        if (context.SingleSelectedResource is not IFileResource fileResource)
-        {
-            return new MenuItemState(IsVisible: true, IsEnabled: false);
-        }
-
-        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
         var isSupported = documentsService.IsDocumentSupported(resourceKey);
         
         return new MenuItemState(IsVisible: true, IsEnabled: isSupported);
@@ -57,13 +51,13 @@ public class OpenMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.SingleSelectedResource is not IFileResource fileResource)
+        if (context.ClickedResource is not IFileResource clickedFile)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(fileResource);
+        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {

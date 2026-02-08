@@ -41,7 +41,7 @@ public class CopyFilePathMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        var target = context.ClickedResource ?? (context.HasSingleSelection ? context.SingleSelectedResource : null) ?? context.RootFolder;
+        var target = context.ClickedResource ?? context.RootFolder;
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(target);

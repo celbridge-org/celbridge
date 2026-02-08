@@ -36,21 +36,21 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canRename = context.HasSingleSelection && !context.SelectionContainsRootFolder;
+        var canRename = context.ClickedResource != null && !context.SelectionContainsRootFolder;
         return new MenuItemState(
-            IsVisible: context.HasSingleSelection,
+            IsVisible: context.ClickedResource != null,
             IsEnabled: canRename);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasSingleSelection || context.SelectionContainsRootFolder)
+        if (context.ClickedResource == null || context.SelectionContainsRootFolder)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource!);
+        var resourceKey = resourceRegistry.GetResourceKey(context.ClickedResource);
 
         _commandService.Execute<IRenameResourceDialogCommand>(command =>
         {

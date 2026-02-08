@@ -34,21 +34,21 @@ public class OpenApplicationMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var isFile = context.HasSingleSelection && context.SingleSelectedResource is IFileResource;
+        var isFile = context.ClickedResource is IFileResource;
         return new MenuItemState(
-            IsVisible: context.HasSingleSelection,
+            IsVisible: context.ClickedResource != null,
             IsEnabled: isFile);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasSingleSelection || context.SingleSelectedResource is not IFileResource)
+        if (context.ClickedResource is not IFileResource)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource);
+        var resourceKey = resourceRegistry.GetResourceKey(context.ClickedResource);
 
         _commandService.Execute<IOpenApplicationCommand>(command =>
         {
