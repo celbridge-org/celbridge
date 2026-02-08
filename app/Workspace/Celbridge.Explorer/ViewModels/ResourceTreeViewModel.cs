@@ -961,4 +961,62 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
         return null;
     }
+
+    /// <summary>
+    /// Gets all sibling items of the selected item (or root-level items if nothing selected).
+    /// </summary>
+    public List<ResourceViewItem> GetSiblingItems()
+    {
+        var siblings = new List<ResourceViewItem>();
+
+        // Determine the parent folder key to match against
+        ResourceKey targetParentKey;
+
+        if (SelectedItem != null)
+        {
+            var parentFolder = SelectedItem.Resource.ParentFolder;
+            targetParentKey = parentFolder != null
+                ? _resourceRegistry.GetResourceKey(parentFolder)
+                : ResourceKey.Empty;
+        }
+        else
+        {
+            // Nothing selected - select root-level items (parent key is empty)
+            targetParentKey = ResourceKey.Empty;
+        }
+
+        // Find all visible items that have the same parent folder
+        foreach (var item in TreeItems)
+        {
+            if (item.IsRootFolder)
+            {
+                continue; // Never include root folder
+            }
+
+            var itemParentFolder = item.Resource.ParentFolder;
+            var itemParentKey = itemParentFolder != null
+                ? _resourceRegistry.GetResourceKey(itemParentFolder)
+                : ResourceKey.Empty;
+
+            if (itemParentKey == targetParentKey)
+            {
+                siblings.Add(item);
+            }
+        }
+
+        return siblings;
+    }
+
+    /// <summary>
+    /// Shows the duplicate dialog for the first selected resource.
+    /// </summary>
+    public void DuplicateResource(IResource resource)
+    {
+        var resourceKey = _resourceRegistry.GetResourceKey(resource);
+
+        _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
+        {
+            command.Resource = resourceKey;
+        });
+    }
 }

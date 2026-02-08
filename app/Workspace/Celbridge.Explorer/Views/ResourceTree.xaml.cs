@@ -286,71 +286,135 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
         if (e.Key == VirtualKey.Delete)
         {
-            if (selectedResources.Count > 0)
-            {
-                ViewModel.ShowDeleteResourcesDialog(selectedResources);
-                e.Handled = true;
-            }
+            e.Handled = HandleDeleteKey(selectedResources);
+        }
+        else if (e.Key == VirtualKey.F2)
+        {
+            e.Handled = HandleRenameKey(selectedItem);
         }
         else if (e.Key == VirtualKey.Right)
         {
-            // Expand folder
-            if (selectedItem != null && selectedItem.IsFolder && !selectedItem.IsExpanded)
-            {
-                ViewModel.ExpandItem(selectedItem);
-                e.Handled = true;
-            }
+            e.Handled = HandleExpandKey(selectedItem);
         }
         else if (e.Key == VirtualKey.Left)
         {
-            // Collapse folder or move to parent
-            if (selectedItem != null)
-            {
-                if (selectedItem.IsFolder && selectedItem.IsExpanded)
-                {
-                    ViewModel.CollapseItem(selectedItem);
-                    e.Handled = true;
-                }
-                else if (ViewModel.SelectParentFolder())
-                {
-                    e.Handled = true;
-                }
-            }
+            e.Handled = HandleCollapseKey(selectedItem);
         }
         else if (e.Key == VirtualKey.Enter)
         {
-            if (selectedItem != null)
-            {
-                OpenResource(selectedItem);
-                e.Handled = true;
-            }
+            e.Handled = HandleEnterKey(selectedItem);
         }
         else if (e.Key == VirtualKey.Escape)
         {
-            // Deselect all items
-            ResourceListView.SelectedItems.Clear();
-            e.Handled = true;
+            e.Handled = HandleEscapeKey();
         }
-        else if (control && selectedResources.Count > 0)
+        else if (control)
         {
-            if (e.Key == VirtualKey.C)
-            {
-                ViewModel.CopyResourcesToClipboard(selectedResources);
-                e.Handled = true;
-            }
-            else if (e.Key == VirtualKey.X)
-            {
-                ViewModel.CutResourcesToClipboard(selectedResources);
-                e.Handled = true;
-            }
-            else if (e.Key == VirtualKey.V)
-            {
-                // Paste to the selected item's folder
-                var destResource = selectedItem?.Resource;
-                ViewModel.PasteResourceFromClipboard(destResource);
-                e.Handled = true;
-            }
+            e.Handled = HandleControlKey(e.Key, selectedItem, selectedResources);
         }
+    }
+
+    private bool HandleDeleteKey(List<IResource> selectedResources)
+    {
+        if (selectedResources.Count > 0)
+        {
+            ViewModel.ShowDeleteResourcesDialog(selectedResources);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleRenameKey(ResourceViewItem? selectedItem)
+    {
+        if (selectedItem != null && !selectedItem.IsRootFolder)
+        {
+            ViewModel.ShowRenameResourceDialog(selectedItem.Resource);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleExpandKey(ResourceViewItem? selectedItem)
+    {
+        if (selectedItem != null && selectedItem.IsFolder && !selectedItem.IsExpanded)
+        {
+            ViewModel.ExpandItem(selectedItem);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleCollapseKey(ResourceViewItem? selectedItem)
+    {
+        if (selectedItem == null)
+        {
+            return false;
+        }
+
+        if (selectedItem.IsFolder && selectedItem.IsExpanded)
+        {
+            ViewModel.CollapseItem(selectedItem);
+            return true;
+        }
+
+        return ViewModel.SelectParentFolder();
+    }
+
+    private bool HandleEnterKey(ResourceViewItem? selectedItem)
+    {
+        if (selectedItem != null)
+        {
+            OpenResource(selectedItem);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleEscapeKey()
+    {
+        ResourceListView.SelectedItems.Clear();
+        return true;
+    }
+
+    private bool HandleControlKey(VirtualKey key, ResourceViewItem? selectedItem, List<IResource> selectedResources)
+    {
+        switch (key)
+        {
+            case VirtualKey.A:
+                return HandleSelectAllSiblings();
+
+            case VirtualKey.D when selectedItem != null && !selectedItem.IsRootFolder:
+                ViewModel.DuplicateResource(selectedItem.Resource);
+                return true;
+
+            case VirtualKey.C when selectedResources.Count > 0:
+                ViewModel.CopyResourcesToClipboard(selectedResources);
+                return true;
+
+            case VirtualKey.X when selectedResources.Count > 0:
+                ViewModel.CutResourcesToClipboard(selectedResources);
+                return true;
+
+            case VirtualKey.V:
+                ViewModel.PasteResourceFromClipboard(selectedItem?.Resource);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private bool HandleSelectAllSiblings()
+    {
+        ResourceListView.SelectedItems.Clear();
+
+        var siblings = ViewModel.GetSiblingItems();
+        foreach (var item in siblings)
+        {
+            ResourceListView.SelectedItems.Add(item);
+        }
+
+        return true;
     }
 
     private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
