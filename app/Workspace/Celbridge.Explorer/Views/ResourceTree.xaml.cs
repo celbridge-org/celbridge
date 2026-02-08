@@ -388,15 +388,15 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
                 return true;
 
             case VirtualKey.C when selectedResources.Count > 0:
-                ViewModel.CopyResourcesToClipboard(selectedResources);
+                ViewModel.Clipboard.CopyResourcesToClipboard(selectedResources);
                 return true;
 
             case VirtualKey.X when selectedResources.Count > 0:
-                ViewModel.CutResourcesToClipboard(selectedResources);
+                ViewModel.Clipboard.CutResourcesToClipboard(selectedResources);
                 return true;
 
             case VirtualKey.V:
-                ViewModel.PasteResourceFromClipboard(selectedItem?.Resource);
+                ViewModel.Clipboard.PasteResourceFromClipboard(selectedItem?.Resource);
                 return true;
 
             default:
@@ -722,7 +722,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             }
         }
 
-        _ = ViewModel.ImportResources(sourcePaths, destFolder);
+        _ = ViewModel.Clipboard.ImportResources(sourcePaths, destFolder);
     }
 
     private ResourceViewItem? FindItemAtPosition(Point position)

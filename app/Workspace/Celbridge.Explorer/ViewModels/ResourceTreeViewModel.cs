@@ -4,9 +4,8 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Models;
+using Celbridge.Explorer.ViewModels.Helpers;
 using Celbridge.Logging;
-using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -21,12 +20,14 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IResourceTransferService _resourceTransferService;
-    private readonly IExplorerService _explorerService;
     private readonly IFolderStateService _folderStateService;
-    private readonly IDocumentsService _documentsService;
     private readonly IDataTransferService _dataTransferService;
-    private readonly IPythonService _pythonService;
+    private readonly ResourceTreeContextMenuHelper _contextMenuHelper;
+
+    /// <summary>
+    /// Helper for clipboard operations. Exposed for View usage.
+    /// </summary>
+    public ResourceTreeClipboardHelper Clipboard { get; }
 
     /// <summary>
     /// The flat list of items to display in the ListView.
@@ -137,11 +138,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     private bool _isFileResourceSelected;
 
     /// <summary>
-    /// The name of the project (root folder name).
-    /// </summary>
-    public string ProjectName => _resourceRegistry.RootFolder.Name;
-
-    /// <summary>
     /// The root folder resource.
     /// </summary>
     public IFolderResource RootFolder => _resourceRegistry.RootFolder;
@@ -150,19 +146,29 @@ public partial class ResourceTreeViewModel : ObservableObject
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        _folderStateService = _explorerService.FolderStateService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
-        _pythonService = workspaceWrapper.WorkspaceService.PythonService;
+
+        var resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        var pythonService = workspaceWrapper.WorkspaceService.PythonService;
+
+        Clipboard = new ResourceTreeClipboardHelper(
+            _commandService,
+            _resourceRegistry,
+            resourceTransferService);
+
+        _contextMenuHelper = new ResourceTreeContextMenuHelper(
+            _resourceRegistry,
+            documentsService,
+            _dataTransferService,
+            pythonService);
     }
 
     //
@@ -219,7 +225,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         var selectedResourceKey = GetSelectedResourceKey();
 
         var rootFolder = _resourceRegistry.RootFolder;
-        var items = BuildFlatList(rootFolder, _folderStateService, _resourceRegistry);
+        var items = ResourceTreeBuilder.BuildFlatList(rootFolder, _folderStateService, _resourceRegistry);
 
         TreeItems.Clear();
         foreach (var item in items)
@@ -235,67 +241,9 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Builds a flat list of ResourceViewItems from the resource registry's folder hierarchy.
-    /// Includes the root folder as the first item, followed by its children.
-    /// Only includes children of expanded folders.
-    /// </summary>
-    private List<ResourceViewItem> BuildFlatList(
-        IFolderResource rootFolder,
-        IFolderStateService folderStateService,
-        IResourceRegistry resourceRegistry)
-    {
-        var items = new List<ResourceViewItem>();
-
-        // Add the root folder as the first item (always expanded, never collapsible)
-        var hasChildren = rootFolder.Children.Count > 0;
-        var projectName = Path.GetFileName(resourceRegistry.ProjectFolderPath);
-        var rootItem = new ResourceViewItem(rootFolder, indentLevel: 0, isExpanded: true, hasChildren, isRootFolder: true, displayName: projectName);
-        items.Add(rootItem);
-
-        // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
-        BuildFlatListRecursive(rootFolder.Children, items, 0, folderStateService, resourceRegistry);
-        return items;
-    }
-
-    /// <summary>
-    /// Recursively builds the flat list by traversing the tree structure.
-    /// </summary>
-    private static void BuildFlatListRecursive(
-        IList<IResource> resources,
-        List<ResourceViewItem> items,
-        int indentLevel,
-        IFolderStateService folderStateService,
-        IResourceRegistry resourceRegistry)
-    {
-        foreach (var resource in resources)
-        {
-            if (resource is IFolderResource folderResource)
-            {
-                var hasChildren = folderResource.Children.Count > 0;
-                var resourceKey = resourceRegistry.GetResourceKey(folderResource);
-                var isExpanded = folderStateService.IsExpanded(resourceKey);
-
-                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren);
-                items.Add(item);
-
-                // Only add children if the folder is expanded
-                if (isExpanded && hasChildren)
-                {
-                    BuildFlatListRecursive(folderResource.Children, items, indentLevel + 1, folderStateService, resourceRegistry);
-                }
-            }
-            else if (resource is IFileResource)
-            {
-                var item = new ResourceViewItem(resource, indentLevel, false, false);
-                items.Add(item);
-            }
-        }
-    }
-
-    /// <summary>
     /// Gets the resource key for a resource.
     /// </summary>
-    public ResourceKey GetResourceKey(IResource resource)
+    private ResourceKey GetResourceKey(IResource resource)
     {
         return _resourceRegistry.GetResourceKey(resource);
     }
@@ -634,50 +582,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectionContainsRootFolder));
 
         // Single-item specific properties (only valid when exactly one item selected)
-        IsDocumentResourceSelected = IsSingleItemSelected && IsSupportedDocumentFormat(resource);
-        IsExecutableResourceSelected = IsSingleItemSelected && IsResourceExecutable(resource);
+        IsDocumentResourceSelected = IsSingleItemSelected && _contextMenuHelper.IsSupportedDocumentFormat(resource);
+        IsExecutableResourceSelected = IsSingleItemSelected && _contextMenuHelper.IsResourceExecutable(resource);
         IsFileResourceSelected = IsSingleItemSelected && resource is IFileResource;
 
-        bool isResourceOnClipboard = false;
-        var contentDescription = _dataTransferService.GetClipboardContentDescription();
-        if (contentDescription.ContentType == ClipboardContentType.Resource)
-        {
-            var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(resource);
-            var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderResource);
-            if (getResult.IsSuccess)
-            {
-                var content = getResult.Value;
-                isResourceOnClipboard = content.TransferItems.Count > 0;
-            }
-        }
-        IsResourceOnClipboard = isResourceOnClipboard;
-    }
-
-    private bool IsSupportedDocumentFormat(IResource? resource)
-    {
-        if (resource is not null && resource is IFileResource fileResource)
-        {
-            var resourceKey = _resourceRegistry.GetResourceKey(fileResource);
-            var documentType = _documentsService.GetDocumentViewType(resourceKey);
-            return documentType != DocumentViewType.UnsupportedFormat;
-        }
-        return false;
-    }
-
-    private bool IsResourceExecutable(IResource? resource)
-    {
-        if (resource is not null && resource is IFileResource fileResource)
-        {
-            var resourceKey = _resourceRegistry.GetResourceKey(fileResource);
-            var extension = Path.GetExtension(resourceKey);
-
-            if (extension == ExplorerConstants.PythonExtension ||
-                extension == ExplorerConstants.IPythonExtension)
-            {
-                return _pythonService.IsPythonHostAvailable;
-            }
-        }
-        return false;
+        IsResourceOnClipboard = await _contextMenuHelper.IsResourceOnClipboardAsync(resource);
     }
 
     //
@@ -703,7 +612,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OpenDocument(IFileResource fileResource)
     {
-        if (!IsSupportedDocumentFormat(fileResource))
+        if (!_contextMenuHelper.IsSupportedDocumentFormat(fileResource))
         {
             return;
         }
@@ -824,120 +733,6 @@ public partial class ResourceTreeViewModel : ObservableObject
                 command.TransferMode = DataTransferMode.Move;
             });
         }
-    }
-
-    //
-    // Clipboard support
-    //
-
-    public void CutResourceToClipboard(IResource sourceResource)
-    {
-        var sourceResourceKey = _resourceRegistry.GetResourceKey(sourceResource);
-
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.SourceResources = new List<ResourceKey> { sourceResourceKey };
-            command.TransferMode = DataTransferMode.Move;
-        });
-    }
-
-    /// <summary>
-    /// Cuts multiple resources to the clipboard.
-    /// </summary>
-    public void CutResourcesToClipboard(List<IResource> resources)
-    {
-        var resourceKeys = resources
-            .Select(r => _resourceRegistry.GetResourceKey(r))
-            .ToList();
-
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.SourceResources = resourceKeys;
-            command.TransferMode = DataTransferMode.Move;
-        });
-    }
-
-    public void CopyResourceToClipboard(IResource sourceResource)
-    {
-        var resourceKey = _resourceRegistry.GetResourceKey(sourceResource);
-
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.SourceResources = new List<ResourceKey> { resourceKey };
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    /// <summary>
-    /// Copies multiple resources to the clipboard.
-    /// </summary>
-    public void CopyResourcesToClipboard(List<IResource> resources)
-    {
-        var resourceKeys = resources
-            .Select(r => _resourceRegistry.GetResourceKey(r))
-            .ToList();
-
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.SourceResources = resourceKeys;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public void PasteResourceFromClipboard(IResource? destResource)
-    {
-        var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(destResource);
-
-        _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
-        {
-            command.DestFolderResource = destFolderResource;
-        });
-    }
-
-    public void CopyResourceKeyToClipboard(IResource resource)
-    {
-        var resourceKey = _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = resourceKey;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public void CopyFilePathToClipboard(IResource resource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(resource);
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = filePath;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public Result ImportResources(List<string> sourcePaths, IResource? destResource)
-    {
-        if (destResource is null)
-        {
-            return Result.Fail("Destination resource is null");
-        }
-
-        var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(destResource);
-        var createResult = _resourceTransferService.CreateResourceTransfer(sourcePaths, destFolderResource, DataTransferMode.Copy);
-        if (createResult.IsFailure)
-        {
-            return Result.Fail($"Failed to create resource transfer. {createResult.Error}");
-        }
-        var resourceTransfer = createResult.Value;
-
-        var transferResult = _resourceTransferService.TransferResources(destFolderResource, resourceTransfer);
-        if (transferResult.IsFailure)
-        {
-            return Result.Fail($"Failed to transfer resources. {transferResult.Error}");
-        }
-
-        return Result.Ok();
     }
 
     public void OnSelectedResourceChanged(ResourceKey resource)
