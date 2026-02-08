@@ -11,74 +11,8 @@
   Background="{ThemeResource ApplicationBackgroundBrush}">
 
   <UserControl.Resources>
-    <MenuFlyout x:Name="ResourceContextMenu"
-                Placement="RightEdgeAlignedTop"
-                Opening="ResourceContextMenu_Opening">
-      <!-- Single-item only operations (not applicable to root) -->
-      <MenuFlyoutItem Text="{x:Bind RunString}"
-                      Click="ResourceContextMenu_Run"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsExecutableResourceSelected, Mode=OneWay}" />
-      <MenuFlyoutItem Text="{x:Bind OpenString}"
-                      Click="ResourceContextMenu_Open"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsDocumentResourceSelected, Mode=OneWay}" />
-
-      <!-- Single-item or root folder operations -->
-      <MenuFlyoutItem Text="{x:Bind AddFileString}"
-                      Icon="Page2"
-                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
-                      Click="ResourceContextMenu_AddFile">
-      </MenuFlyoutItem>
-
-      <MenuFlyoutItem Text="{x:Bind AddFolderString}"
-                      Icon="Folder"
-                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
-                      Click="ResourceContextMenu_AddFolder">
-      </MenuFlyoutItem>
-      <MenuFlyoutSeparator />
-      <!-- Multi-select enabled operations (disabled for root folder) -->
-      <MenuFlyoutItem Text="{x:Bind CutString}"
-                      Icon="Cut"
-                      Click="ResourceContextMenu_Cut"
-                      IsEnabled="{x:Bind ViewModel.CanCutOrCopySelection, Mode=OneWay}" />
-      <MenuFlyoutItem Text="{x:Bind CopyString}"
-                      Icon="Copy"
-                      Click="ResourceContextMenu_Copy"
-                      IsEnabled="{x:Bind ViewModel.CanCutOrCopySelection, Mode=OneWay}" />
-      <MenuFlyoutItem Text="{x:Bind PasteString}"
-                      Icon="Paste"
-                      Click="ResourceContextMenu_Paste"
-                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsResourceOnClipboard, Mode=OneWay}" />
-      <MenuFlyoutItem Text="{x:Bind DeleteString}"
-                      Icon="Delete"
-                      Click="ResourceContextMenu_Delete"
-                      IsEnabled="{x:Bind ViewModel.CanDeleteSelection, Mode=OneWay}" />
-      <!-- Single-item only operations (not applicable to root) -->
-      <MenuFlyoutItem Text="{x:Bind RenameString}"
-                      Icon="Edit"
-                      Click="ResourceContextMenu_Rename"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.CanRenameSelection, Mode=OneWay}" />
-      <MenuFlyoutSeparator />
-      <MenuFlyoutItem Text="{x:Bind CopyResourceKeyString}"
-                      Click="ResourceContextMenu_CopyResourceKey"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.CanCopyResourceKey, Mode=OneWay}" />
-      <MenuFlyoutItem Text="{x:Bind CopyFilePathString}"
-                      Click="ResourceContextMenu_CopyFilePath"
-                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}" />
-      <MenuFlyoutSeparator />
-      <MenuFlyoutItem Text="{x:Bind OpenFileExplorerString}"
-                      Click="ResourceContextMenu_OpenFileExplorer"
-                      Visibility="{x:Bind ViewModel.IsSingleItemOrRootTargeted, Mode=OneWay}"/>
-      <MenuFlyoutItem Text="{x:Bind OpenApplicationString}"
-                      Click="ResourceContextMenu_OpenApplication"
-                      Visibility="{x:Bind ViewModel.IsSingleItemSelected, Mode=OneWay}"
-                      IsEnabled="{x:Bind ViewModel.IsFileResourceSelected, Mode=OneWay}"/>
-    </MenuFlyout>
+    <!-- MenuFlyout for context menu -->
+    <MenuFlyout x:Name="ResourceContextMenu"/>
 
     <!-- Item template for the ListView -->
     <DataTemplate x:Key="TreeListItemTemplate"
@@ -92,6 +26,13 @@
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
+
+        <!-- Tooltip for root folder -->
+        <ToolTipService.ToolTip>
+          <ToolTip Visibility="{x:Bind IsRootFolder}">
+            <TextBlock Text="Double-click to open in File Explorer"/>
+          </ToolTip>
+        </ToolTipService.ToolTip>
 
         <!-- Expand/Collapse chevron button (hidden for root folder) -->
         <Button Grid.Column="0"
@@ -163,7 +104,6 @@
             DragOver="ListView_DragOver"
             Drop="ListView_Drop"
             SelectionChanged="ListView_SelectionChanged"
-            ContextFlyout="{StaticResource ResourceContextMenu}"
             TabNavigation="Once"
             IsTabStop="True">
     

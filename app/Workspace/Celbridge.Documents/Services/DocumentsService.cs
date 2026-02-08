@@ -190,6 +190,12 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetDocumentViewType(extension);
     }
 
+    public bool IsDocumentSupported(ResourceKey fileResource)
+    {
+        var documentType = GetDocumentViewType(fileResource);
+        return documentType != DocumentViewType.UnsupportedFormat;
+    }
+
     public string GetDocumentLanguage(ResourceKey fileResource)
     {
         var extension = Path.GetExtension(fileResource).ToLowerInvariant();

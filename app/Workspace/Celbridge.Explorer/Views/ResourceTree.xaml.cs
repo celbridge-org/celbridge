@@ -1,7 +1,9 @@
+using Celbridge.DataTransfer;
+using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
-using Celbridge.Logging;
-using Microsoft.Extensions.Localization;
+using Celbridge.UserInterface.ContextMenu;
+using Celbridge.Workspace;
 using Microsoft.UI.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -15,34 +17,21 @@ namespace Celbridge.Explorer.Views;
 /// </summary>
 public sealed partial class ResourceTree : UserControl, IResourceTree
 {
-    private readonly ILogger<ResourceTree> _logger;
-    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
+    private readonly IDataTransferService _dataTransferService;
     private bool _isPopulating;
 
     public ResourceTreeViewModel ViewModel { get; }
-
-    // Localized strings for context menu
-    private string RunString => _stringLocalizer.GetString("ResourceTree_Run");
-    private string OpenString => _stringLocalizer.GetString("ResourceTree_Open");
-    private string AddFileString => _stringLocalizer.GetString("ResourceTree_AddFile");
-    private string AddFolderString => _stringLocalizer.GetString("ResourceTree_AddFolder");
-    private string CutString => _stringLocalizer.GetString("ResourceTree_Cut");
-    private string CopyString => _stringLocalizer.GetString("ResourceTree_Copy");
-    private string PasteString => _stringLocalizer.GetString("ResourceTree_Paste");
-    private string DeleteString => _stringLocalizer.GetString("ResourceTree_Delete");
-    private string RenameString => _stringLocalizer.GetString("ResourceTree_Rename");
-    private string OpenFileExplorerString => _stringLocalizer.GetString("ResourceTree_OpenFileExplorer");
-    private string OpenApplicationString => _stringLocalizer.GetString("ResourceTree_OpenApplication");
-    private string CopyResourceKeyString => _stringLocalizer.GetString("ResourceTree_CopyResourceKey");
-    private string CopyFilePathString => _stringLocalizer.GetString("ResourceTree_CopyFilePath");
 
     public ResourceTree()
     {
         this.InitializeComponent();
 
-        _logger = ServiceLocator.AcquireService<ILogger<ResourceTree>>();
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
+
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
 
         Loaded += ResourceTree_Loaded;
         Unloaded += ResourceTree_Unloaded;
@@ -240,51 +229,15 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     // Event handlers
     //
 
-    // Track if right-click was on root folder (for context menu handling)
-    private bool _isContextMenuForRootFolder;
-
-    private void ListView_RightTapped(object sender, RightTappedRoutedEventArgs e)
-    {
-        // If right-clicking on an already-selected item, preserve the multi-selection
-        // If right-clicking on an unselected item, select only that item
-        // If right-clicking on root folder or empty space, show root folder context menu
-        var position = e.GetPosition(ResourceListView);
-        var clickedItem = FindItemAtPosition(position);
-
-        if (clickedItem != null)
-        {
-            if (clickedItem.IsRootFolder)
-            {
-                // Root folder is not selectable, but we track it for context menu
-                _isContextMenuForRootFolder = true;
-                ResourceListView.SelectedItems.Clear();
-                ViewModel.OnContextMenuOpening(ViewModel.RootFolder);
-            }
-            else
-            {
-                _isContextMenuForRootFolder = false;
-                bool isAlreadySelected = ResourceListView.SelectedItems.Contains(clickedItem);
-                if (!isAlreadySelected)
-                {
-                    ViewModel.SelectedItem = clickedItem;
-                }
-            }
-        }
-        else
-        {
-            // Right-clicking empty space - show root folder context menu
-            _isContextMenuForRootFolder = true;
-            ResourceListView.SelectedItems.Clear();
-            ViewModel.OnContextMenuOpening(ViewModel.RootFolder);
-        }
-    }
-
     private void ListView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        var selectedItem = ViewModel.SelectedItem;
-        if (selectedItem != null)
+        // Get the item at the tap position (works for both selectable and non-selectable items like root)
+        var position = e.GetPosition(ResourceListView);
+        var tappedItem = FindItemAtPosition(position);
+        
+        if (tappedItem != null)
         {
-            OpenResource(selectedItem);
+            OpenResource(tappedItem);
         }
     }
 
@@ -434,153 +387,112 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     // Context menu handlers
     //
 
-    /// <summary>
-    /// Gets the resource targeted by the context menu.
-    /// Returns the selected item's resource, or the root folder if root was right-clicked.
-    /// </summary>
-    private IResource? GetContextMenuTargetResource()
+    private async void ListView_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (ViewModel.IsRootFolderTargeted)
-        {
-            return ViewModel.RootFolder;
-        }
-        return ViewModel.SelectedItem?.Resource;
-    }
+        // If right-clicking on an already-selected item, preserve the multi-selection
+        // If right-clicking on an unselected item, select only that item
+        // If right-clicking on root folder or empty space, track root as the clicked resource
+        var position = e.GetPosition(ResourceListView);
+        var clickedItem = FindItemAtPosition(position);
 
-    private void ResourceContextMenu_Opening(object sender, object e)
-    {
-        // If not already handled by right-click (e.g., keyboard context menu key),
-        // use the currently selected item
-        if (!_isContextMenuForRootFolder)
+        IResource? clickedResource;
+        if (clickedItem != null)
         {
-            var resource = ViewModel.SelectedItem?.Resource;
-            ViewModel.OnContextMenuOpening(resource);
-        }
+            clickedResource = clickedItem.Resource;
 
-        // Reset the flag after menu opens
-        _isContextMenuForRootFolder = false;
-    }
-
-    private void ResourceContextMenu_Run(object sender, RoutedEventArgs e)
-    {
-        var resource = ViewModel.SelectedItem?.Resource;
-        if (resource is IFileResource fileResource)
-        {
-            ViewModel.RunScript(fileResource);
-        }
-    }
-
-    private void ResourceContextMenu_Open(object? sender, RoutedEventArgs e)
-    {
-        var resource = ViewModel.SelectedItem?.Resource;
-        if (resource is IFileResource fileResource)
-        {
-            ViewModel.OpenDocument(fileResource);
-        }
-    }
-
-    private void ResourceContextMenu_AddFolder(object? sender, RoutedEventArgs e)
-    {
-        var resource = GetContextMenuTargetResource();
-
-        if (resource is IFolderResource destFolder)
-        {
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
-        }
-        else if (resource is IFileResource destFile)
-        {
-            Guard.IsNotNull(destFile.ParentFolder);
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFile.ParentFolder);
+            if (clickedItem.IsRootFolder)
+            {
+                // Root folder is not selectable, clear selection
+                ResourceListView.SelectedItems.Clear();
+            }
+            else
+            {
+                bool isAlreadySelected = ResourceListView.SelectedItems.Contains(clickedItem);
+                if (!isAlreadySelected)
+                {
+                    ViewModel.SelectedItem = clickedItem;
+                }
+            }
         }
         else
         {
-            ViewModel.ShowAddResourceDialog(ResourceType.Folder, null);
+            // Right-clicking empty space - target root folder
+            clickedResource = ViewModel.RootFolder;
+            ResourceListView.SelectedItems.Clear();
         }
+
+        // Build and show the context menu
+        await ShowContextMenuAsync(position, clickedResource);
     }
 
-    private void ResourceContextMenu_AddFile(object? sender, RoutedEventArgs e)
+    private async Task ShowContextMenuAsync(Point position, IResource? clickedResource)
     {
-        var resource = GetContextMenuTargetResource();
+        // Build menu context
+        var context = await BuildMenuContext(clickedResource);
 
-        if (resource is IFolderResource destFolder)
+        // Clear existing items
+        ResourceContextMenu.Items.Clear();
+
+        // Build menu items dynamically
+        var items = _menuBuilder.BuildMenuItems(context);
+
+        // Add items to the flyout
+        foreach (var item in items)
         {
-            ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
+            ResourceContextMenu.Items.Add(item);
         }
-        else if (resource is IFileResource destFile)
-        {
-            Guard.IsNotNull(destFile.ParentFolder);
-            ViewModel.ShowAddResourceDialog(ResourceType.File, destFile.ParentFolder);
-        }
-        else
-        {
-            ViewModel.ShowAddResourceDialog(ResourceType.File, null);
-        }
+
+        // Show the menu at the pointer position
+        ResourceContextMenu.ShowAt(ResourceListView, position);
     }
 
-    private void ResourceContextMenu_Cut(object sender, RoutedEventArgs e)
+    private async Task<ExplorerMenuContext> BuildMenuContext(IResource? clickedResource)
     {
         var selectedResources = ViewModel.GetSelectedResources();
-        if (selectedResources.Count > 0)
+        var rootFolder = ViewModel.RootFolder;
+        var isRootFolderTargeted = clickedResource == rootFolder;
+
+        // Check clipboard state
+        var contentDescription = _dataTransferService.GetClipboardContentDescription();
+        var hasClipboardData = false;
+
+        if (contentDescription.ContentType == ClipboardContentType.Resource)
         {
-            ViewModel.CutResourcesToClipboard(selectedResources);
+            var destFolder = ResolveDropTargetFolder(clickedResource);
+            var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+            var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+            var destFolderKey = resourceRegistry.GetResourceKey(destFolder);
+            
+            var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderKey);
+            if (getResult.IsSuccess)
+            {
+                var content = getResult.Value;
+                hasClipboardData = content.TransferItems.Count > 0;
+            }
         }
+
+        return new ExplorerMenuContext(
+            ClickedResource: clickedResource,
+            SelectedResources: selectedResources,
+            RootFolder: rootFolder,
+            IsRootFolderTargeted: isRootFolderTargeted,
+            HasClipboardData: hasClipboardData,
+            ClipboardContentType: contentDescription.ContentType,
+            ClipboardOperation: contentDescription.ContentOperation
+        );
     }
 
-    private void ResourceContextMenu_Copy(object sender, RoutedEventArgs e)
+    private IFolderResource ResolveDropTargetFolder(IResource? resource)
     {
-        var selectedResources = ViewModel.GetSelectedResources();
-        if (selectedResources.Count > 0)
+        if (resource is IFileResource fileResource && fileResource.ParentFolder != null)
         {
-            ViewModel.CopyResourcesToClipboard(selectedResources);
+            return fileResource.ParentFolder;
         }
-    }
-
-    private void ResourceContextMenu_Paste(object sender, RoutedEventArgs e)
-    {
-        var destResource = GetContextMenuTargetResource();
-        ViewModel.PasteResourceFromClipboard(destResource);
-    }
-
-    private void ResourceContextMenu_Delete(object? sender, RoutedEventArgs e)
-    {
-        var selectedResources = ViewModel.GetSelectedResources();
-        if (selectedResources.Count > 0)
+        else if (resource is IFolderResource folderResource)
         {
-            ViewModel.ShowDeleteResourcesDialog(selectedResources);
+            return folderResource;
         }
-    }
-
-    private void ResourceContextMenu_Rename(object? sender, RoutedEventArgs e)
-    {
-        var resource = ViewModel.SelectedItem?.Resource;
-        Guard.IsNotNull(resource);
-        ViewModel.ShowRenameResourceDialog(resource);
-    }
-
-    private void ResourceContextMenu_OpenFileExplorer(object sender, RoutedEventArgs e)
-    {
-        var resource = GetContextMenuTargetResource();
-        ViewModel.OpenResourceInExplorer(resource);
-    }
-
-    private void ResourceContextMenu_OpenApplication(object sender, RoutedEventArgs e)
-    {
-        var resource = ViewModel.SelectedItem?.Resource;
-        ViewModel.OpenResourceInApplication(resource);
-    }
-
-    private void ResourceContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
-    {
-        var resource = GetContextMenuTargetResource();
-        Guard.IsNotNull(resource);
-        ViewModel.CopyResourceKeyToClipboard(resource);
-    }
-
-    private void ResourceContextMenu_CopyFilePath(object sender, RoutedEventArgs e)
-    {
-        var resource = GetContextMenuTargetResource();
-        Guard.IsNotNull(resource);
-        ViewModel.CopyFilePathToClipboard(resource);
+        return ViewModel.RootFolder;
     }
 
     //

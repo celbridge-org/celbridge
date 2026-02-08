@@ -29,6 +29,12 @@ public interface IDocumentsService
     DocumentViewType GetDocumentViewType(ResourceKey fileResource);
 
     /// <summary>
+    /// Determines if a file resource can be opened as a document in the editor.
+    /// Returns false if the file format is not supported or the resource is not a file.
+    /// </summary>
+    bool IsDocumentSupported(ResourceKey fileResource);
+
+    /// <summary>
     /// Returns the text editor language associated with the specified file resource.
     /// Returns an empty string if no matching language is found.
     /// </summary>

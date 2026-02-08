@@ -1,7 +1,11 @@
+using Celbridge.ContextMenu;
 using Celbridge.Explorer.Commands;
+using Celbridge.Explorer.Menu;
+using Celbridge.Explorer.Menu.Options;
 using Celbridge.Explorer.Services;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Explorer.Views;
+using Celbridge.UserInterface.ContextMenu;
 
 namespace Celbridge.Explorer;
 
@@ -42,5 +46,26 @@ public static class ServiceConfiguration
         services.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
         services.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
         services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
+        services.AddTransient<ICopyResourceKeyCommand, CopyResourceKeyCommand>();
+        services.AddTransient<ICopyFilePathCommand, CopyFilePathCommand>();
+
+        //
+        // Register menu system
+        //
+
+        services.AddSingleton<IMenuBuilder<ExplorerMenuContext>, ExplorerMenuBuilder>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, RunMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, AddFileMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, AddFolderMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CutMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, PasteMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, DeleteMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, RenameMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyResourceKeyMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyFilePathMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
     }
 }
