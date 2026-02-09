@@ -1,4 +1,6 @@
+using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
@@ -17,6 +19,10 @@ namespace Celbridge.Explorer.Views;
 /// </summary>
 public sealed partial class ResourceTree : UserControl, IResourceTree
 {
+    private readonly ICommandService _commandService;
+    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IResourceTransferService _resourceTransferService;
+    private readonly IDocumentsService _documentsService;
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
     private bool _isPopulating;
@@ -28,9 +34,13 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         this.InitializeComponent();
 
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
 
         Loaded += ResourceTree_Loaded;
@@ -263,7 +273,11 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             // Double-clicking root folder opens it in File Explorer
             if (item.IsRootFolder)
             {
-                ViewModel.OpenResourceInExplorer(item.Resource);
+                var resourceKey = _resourceRegistry.GetResourceKey(item.Resource);
+                _commandService.Execute<IOpenFileManagerCommand>(command =>
+                {
+                    command.Resource = resourceKey;
+                });
             }
             else
             {
@@ -272,79 +286,89 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         }
         else if (item.Resource is IFileResource fileResource)
         {
-            ViewModel.OpenDocument(fileResource);
+            var resourceKey = _resourceRegistry.GetResourceKey(fileResource);
+            if (!_documentsService.IsDocumentSupported(resourceKey))
+            {
+                return;
+            }
+
+            _commandService.Execute<IOpenDocumentCommand>(command =>
+            {
+                command.FileResource = resourceKey;
+            });
         }
     }
 
     private void ListView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(CoreVirtualKeyStates.Down);
 
         var selectedItem = ViewModel.SelectedItem;
         var selectedResources = ViewModel.GetSelectedResources();
 
-        if (e.Key == VirtualKey.Delete)
+        e.Handled = (ctrl, e.Key) switch
         {
-            e.Handled = HandleDeleteKey(selectedResources);
-        }
-        else if (e.Key == VirtualKey.F2)
-        {
-            e.Handled = HandleRenameKey(selectedItem);
-        }
-        else if (e.Key == VirtualKey.Right)
-        {
-            e.Handled = HandleExpandKey(selectedItem);
-        }
-        else if (e.Key == VirtualKey.Left)
-        {
-            e.Handled = HandleCollapseKey(selectedItem);
-        }
-        else if (e.Key == VirtualKey.Enter)
-        {
-            e.Handled = HandleEnterKey(selectedItem);
-        }
-        else if (e.Key == VirtualKey.Escape)
-        {
-            e.Handled = HandleEscapeKey();
-        }
-        else if (control)
-        {
-            e.Handled = HandleControlKey(e.Key, selectedItem, selectedResources);
-        }
+            (false, VirtualKey.Delete) => HandleDelete(selectedResources),
+            (false, VirtualKey.F2) => HandleRename(selectedItem),
+            (false, VirtualKey.Right) => HandleExpand(selectedItem),
+            (false, VirtualKey.Left) => HandleCollapse(selectedItem),
+            (false, VirtualKey.Enter) => HandleOpen(selectedItem),
+            (false, VirtualKey.Escape) => HandleClearSelection(),
+            (true, VirtualKey.A) => HandleSelectAllSiblings(),
+            (true, VirtualKey.D) => HandleDuplicate(selectedItem),
+            (true, VirtualKey.C) => HandleCopy(selectedResources),
+            (true, VirtualKey.X) => HandleCut(selectedResources),
+            (true, VirtualKey.V) => HandlePaste(selectedItem),
+            _ => false
+        };
     }
 
-    private bool HandleDeleteKey(List<IResource> selectedResources)
+    private bool HandleDelete(List<IResource> selectedResources)
     {
-        if (selectedResources.Count > 0)
+        if (selectedResources.Count == 0)
         {
-            ViewModel.ShowDeleteResourcesDialog(selectedResources);
-            return true;
+            return false;
         }
-        return false;
+
+        var resourceKeys = selectedResources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
+        {
+            command.Resources = resourceKeys;
+        });
+        return true;
     }
 
-    private bool HandleRenameKey(ResourceViewItem? selectedItem)
+    private bool HandleRename(ResourceViewItem? selectedItem)
     {
-        if (selectedItem != null && !selectedItem.IsRootFolder)
+        if (selectedItem == null || selectedItem.IsRootFolder)
         {
-            ViewModel.ShowRenameResourceDialog(selectedItem.Resource);
-            return true;
+            return false;
         }
-        return false;
+
+        var resourceKey = _resourceRegistry.GetResourceKey(selectedItem.Resource);
+        _commandService.Execute<IRenameResourceDialogCommand>(command =>
+        {
+            command.Resource = resourceKey;
+        });
+        return true;
     }
 
-    private bool HandleExpandKey(ResourceViewItem? selectedItem)
+    private bool HandleExpand(ResourceViewItem? selectedItem)
     {
-        if (selectedItem != null && selectedItem.IsFolder && !selectedItem.IsExpanded)
+        if (selectedItem == null || !selectedItem.IsFolder || selectedItem.IsExpanded)
         {
-            ViewModel.ExpandItem(selectedItem);
-            return true;
+            return false;
         }
-        return false;
+
+        ViewModel.ExpandItem(selectedItem);
+        return true;
     }
 
-    private bool HandleCollapseKey(ResourceViewItem? selectedItem)
+    private bool HandleCollapse(ResourceViewItem? selectedItem)
     {
         if (selectedItem == null)
         {
@@ -360,48 +384,21 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         return ViewModel.SelectParentFolder();
     }
 
-    private bool HandleEnterKey(ResourceViewItem? selectedItem)
+    private bool HandleOpen(ResourceViewItem? selectedItem)
     {
-        if (selectedItem != null)
+        if (selectedItem == null)
         {
-            OpenResource(selectedItem);
-            return true;
+            return false;
         }
-        return false;
-    }
 
-    private bool HandleEscapeKey()
-    {
-        ResourceListView.SelectedItems.Clear();
+        OpenResource(selectedItem);
         return true;
     }
 
-    private bool HandleControlKey(VirtualKey key, ResourceViewItem? selectedItem, List<IResource> selectedResources)
+    private bool HandleClearSelection()
     {
-        switch (key)
-        {
-            case VirtualKey.A:
-                return HandleSelectAllSiblings();
-
-            case VirtualKey.D when selectedItem != null && !selectedItem.IsRootFolder:
-                ViewModel.DuplicateResource(selectedItem.Resource);
-                return true;
-
-            case VirtualKey.C when selectedResources.Count > 0:
-                ViewModel.Clipboard.CopyResourcesToClipboard(selectedResources);
-                return true;
-
-            case VirtualKey.X when selectedResources.Count > 0:
-                ViewModel.Clipboard.CutResourcesToClipboard(selectedResources);
-                return true;
-
-            case VirtualKey.V:
-                ViewModel.Clipboard.PasteResourceFromClipboard(selectedItem?.Resource);
-                return true;
-
-            default:
-                return false;
-        }
+        ResourceListView.SelectedItems.Clear();
+        return true;
     }
 
     private bool HandleSelectAllSiblings()
@@ -414,6 +411,69 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             ResourceListView.SelectedItems.Add(item);
         }
 
+        return true;
+    }
+
+    private bool HandleDuplicate(ResourceViewItem? selectedItem)
+    {
+        if (selectedItem == null || selectedItem.IsRootFolder)
+        {
+            return false;
+        }
+
+        var resourceKey = _resourceRegistry.GetResourceKey(selectedItem.Resource);
+        _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
+        {
+            command.Resource = resourceKey;
+        });
+        return true;
+    }
+
+    private bool HandleCopy(List<IResource> selectedResources)
+    {
+        if (selectedResources.Count == 0)
+        {
+            return false;
+        }
+
+        var resourceKeys = selectedResources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resourceKeys;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+        return true;
+    }
+
+    private bool HandleCut(List<IResource> selectedResources)
+    {
+        if (selectedResources.Count == 0)
+        {
+            return false;
+        }
+
+        var resourceKeys = selectedResources
+            .Select(r => _resourceRegistry.GetResourceKey(r))
+            .ToList();
+
+        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        {
+            command.SourceResources = resourceKeys;
+            command.TransferMode = DataTransferMode.Move;
+        });
+        return true;
+    }
+
+    private bool HandlePaste(ResourceViewItem? selectedItem)
+    {
+        var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(selectedItem?.Resource);
+        _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
+        {
+            command.DestFolderResource = destFolderResource;
+        });
         return true;
     }
 
@@ -676,13 +736,13 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Find the drop target
         var position = e.GetPosition(ResourceListView);
         var dropTargetItem = FindItemAtPosition(position);
-        var destFolder = ViewModel.ResolveDropTargetFolder(dropTargetItem?.Resource);
+        var destFolder = ResolveDropTargetFolder(dropTargetItem?.Resource);
 
         // Check if this is an internal drag (from our ListView)
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true &&
             draggedObj is List<IResource> draggedResources)
         {
-            ViewModel.MoveResourcesToFolder(draggedResources, destFolder);
+            MoveResourcesToFolder(draggedResources, destFolder);
             return;
         }
 
@@ -690,6 +750,35 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
             _ = ProcessExternalDrop(e.DataView, destFolder);
+        }
+    }
+
+    private void MoveResourcesToFolder(List<IResource> resources, IFolderResource destFolder)
+    {
+        var destResource = _resourceRegistry.GetResourceKey(destFolder);
+        var sourceResources = new List<ResourceKey>();
+
+        foreach (var resource in resources)
+        {
+            var sourceResource = _resourceRegistry.GetResourceKey(resource);
+            var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
+
+            if (sourceResource == resolvedDestResource)
+            {
+                continue; // Skip - already at destination
+            }
+
+            sourceResources.Add(sourceResource);
+        }
+
+        if (sourceResources.Count > 0)
+        {
+            _commandService.Execute<ICopyResourceCommand>(command =>
+            {
+                command.SourceResources = sourceResources;
+                command.DestResource = destResource;
+                command.TransferMode = DataTransferMode.Move;
+            });
         }
     }
 
@@ -714,7 +803,19 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             }
         }
 
-        _ = ViewModel.Clipboard.ImportResources(sourcePaths, destFolder);
+        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
+        var createResult = _resourceTransferService.CreateResourceTransfer(
+            sourcePaths,
+            destFolderResource,
+            DataTransferMode.Copy);
+
+        if (createResult.IsFailure)
+        {
+            return;
+        }
+
+        var resourceTransfer = createResult.Value;
+        _resourceTransferService.TransferResources(destFolderResource, resourceTransfer);
     }
 
     private ResourceViewItem? FindItemAtPosition(Point position)
@@ -744,8 +845,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     /// </summary>
     public void AddFileToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder();
-        ViewModel.ShowAddResourceDialog(ResourceType.File, destFolder);
+        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.RootFolder;
+        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
+
+        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        {
+            command.ResourceType = ResourceType.File;
+            command.DestFolderResource = destFolderResource;
+        });
     }
 
     /// <summary>
@@ -753,8 +860,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     /// </summary>
     public void AddFolderToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder();
-        ViewModel.ShowAddResourceDialog(ResourceType.Folder, destFolder);
+        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.RootFolder;
+        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
+
+        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        {
+            command.ResourceType = ResourceType.Folder;
+            command.DestFolderResource = destFolderResource;
+        });
     }
 
     /// <summary>

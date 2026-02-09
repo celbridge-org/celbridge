@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Documents;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels.Helpers;
 using Celbridge.Logging;
@@ -21,12 +20,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
-    private readonly IDocumentsService _documentsService;
-
-    /// <summary>
-    /// Helper for clipboard operations. Exposed for View usage.
-    /// </summary>
-    public ResourceTreeClipboardHelper Clipboard { get; }
 
     /// <summary>
     /// The flat list of items to display in the ListView.
@@ -63,14 +56,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-
-        var resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
-
-        Clipboard = new ResourceTreeClipboardHelper(
-            _commandService,
-            _resourceRegistry,
-            resourceTransferService);
     }
 
     //
@@ -438,132 +423,9 @@ public partial class ResourceTreeViewModel : ObservableObject
         return items;
     }
 
-    /// <summary>
-    /// Resolves the destination folder for a drop operation.
-    /// If the target is a file, returns its parent folder.
-    /// If the target is null, returns the root folder.
-    /// </summary>
-    public IFolderResource ResolveDropTargetFolder(IResource? dropTarget)
-    {
-        if (dropTarget is IFileResource fileResource)
-        {
-            return fileResource.ParentFolder ?? _resourceRegistry.RootFolder;
-        }
-        else if (dropTarget is IFolderResource folderResource)
-        {
-            return folderResource;
-        }
-        return _resourceRegistry.RootFolder;
-    }
-
     //
-    // Resource operations
+    // Selection notification
     //
-
-    public void OpenDocument(IFileResource fileResource)
-    {
-        var resource = _resourceRegistry.GetResourceKey(fileResource);
-
-        if (!_documentsService.IsDocumentSupported(resource))
-        {
-            return;
-        }
-
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = resource;
-        });
-    }
-
-    public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
-    {
-        if (destFolder is null)
-        {
-            destFolder = _resourceRegistry.RootFolder;
-        }
-
-        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
-
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
-        {
-            command.ResourceType = resourceType;
-            command.DestFolderResource = destFolderResource;
-        });
-    }
-
-    /// <summary>
-    /// Shows the delete dialog for multiple resources.
-    /// </summary>
-    public void ShowDeleteResourcesDialog(List<IResource> resources)
-    {
-        if (resources.Count == 0)
-        {
-            return;
-        }
-
-        var resourceKeys = resources
-            .Select(r => _resourceRegistry.GetResourceKey(r))
-            .ToList();
-
-        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resources = resourceKeys;
-        });
-    }
-
-    public void ShowRenameResourceDialog(IResource resource)
-    {
-        var resourceKey = _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<IRenameResourceDialogCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void OpenResourceInExplorer(IResource? resource)
-    {
-        var resourceKey = resource is null ? ResourceKey.Empty : _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void MoveResourcesToFolder(List<IResource> resources, IFolderResource? destFolder)
-    {
-        if (destFolder is null)
-        {
-            destFolder = _resourceRegistry.RootFolder;
-        }
-
-        var destResource = _resourceRegistry.GetResourceKey(destFolder);
-        var sourceResources = new List<ResourceKey>();
-
-        foreach (var resource in resources)
-        {
-            var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
-
-            if (sourceResource == resolvedDestResource)
-            {
-                continue; // Skip - already at destination
-            }
-
-            sourceResources.Add(sourceResource);
-        }
-
-        if (sourceResources.Count > 0)
-        {
-            _commandService.Execute<ICopyResourceCommand>(command =>
-            {
-                command.SourceResources = sourceResources;
-                command.DestResource = destResource;
-                command.TransferMode = DataTransferMode.Move;
-            });
-        }
-    }
 
     public void OnSelectedResourceChanged(ResourceKey resource)
     {
@@ -630,18 +492,5 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         return siblings;
-    }
-
-    /// <summary>
-    /// Shows the duplicate dialog for the first selected resource.
-    /// </summary>
-    public void DuplicateResource(IResource resource)
-    {
-        var resourceKey = _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
     }
 }
