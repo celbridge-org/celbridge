@@ -26,15 +26,15 @@ public class UndoService : IUndoService
 
             if (activePanel == WorkspacePanel.Secondary)
             {
-                var explorerService = workspaceService.ExplorerService;
-                var selectedResource = explorerService.SelectedResource;
+                var inspectorService = workspaceService.InspectorService;
+                var inspectedResource = inspectorService.InspectedResource;
 
-                if (!selectedResource.IsEmpty)
+                if (!inspectedResource.IsEmpty)
                 {
                     var entityService = workspaceService.EntityService;
-                    if (entityService.GetUndoCount(selectedResource) > 0)
+                    if (entityService.GetUndoCount(inspectedResource) > 0)
                     {
-                        entityService.UndoEntity(selectedResource);
+                        entityService.UndoEntity(inspectedResource);
                         return Result.Ok();
                     }
                 }
@@ -75,15 +75,15 @@ public class UndoService : IUndoService
 
             if (activePanel == WorkspacePanel.Secondary)
             {
-                var explorerService = workspaceService.ExplorerService;
-                var selectedResource = explorerService.SelectedResource;
+                var inspectorService = workspaceService.InspectorService;
+                var inspectedResource = inspectorService.InspectedResource;
 
-                if (!selectedResource.IsEmpty)
+                if (!inspectedResource.IsEmpty)
                 {
                     var entityService = workspaceService.EntityService;
-                    if (entityService.GetRedoCount(selectedResource) > 0)
+                    if (entityService.GetRedoCount(inspectedResource) > 0)
                     {
-                        entityService.RedoEntity(selectedResource);
+                        entityService.RedoEntity(inspectedResource);
                         return Result.Ok();
                     }
                 }
