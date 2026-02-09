@@ -127,7 +127,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Use provided selection, or preserve current selection
         var resourcesToSelect = selectedResources ?? GetSelectedResourceKeys();
 
-        var items = BuildFlatItemList();
+        var items = BuildResourceViewItems();
 
         // Replace the entire collection to trigger a single UI update (no flicker)
         TreeItems = new ObservableCollection<ResourceViewItem>(items);
@@ -144,7 +144,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// <summary>
     /// Builds a flat list of ResourceViewItems from the resource registry's folder hierarchy.
     /// </summary>
-    private List<ResourceViewItem> BuildFlatItemList()
+    private List<ResourceViewItem> BuildResourceViewItems()
     {
         var items = new List<ResourceViewItem>();
         var rootFolder = _resourceRegistry.RootFolder;
@@ -162,7 +162,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         items.Add(rootItem);
 
         // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
-        BuildFlatItemListRecursive(rootFolder.Children, items, indentLevel: 0);
+        BuildResourceViewItemsRecursive(rootFolder.Children, items, indentLevel: 0);
 
         return items;
     }
@@ -170,7 +170,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// <summary>
     /// Recursively builds the flat list by traversing the tree structure.
     /// </summary>
-    private void BuildFlatItemListRecursive(
+    private void BuildResourceViewItemsRecursive(
         IList<IResource> resources,
         List<ResourceViewItem> items,
         int indentLevel)
@@ -189,7 +189,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                 // Only add children if the folder is expanded
                 if (isExpanded && hasChildren)
                 {
-                    BuildFlatItemListRecursive(
+                    BuildResourceViewItemsRecursive(
                         folderResource.Children,
                         items,
                         indentLevel + 1);
