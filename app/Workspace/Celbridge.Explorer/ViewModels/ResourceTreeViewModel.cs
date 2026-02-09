@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer.Models;
@@ -461,23 +460,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     // Resource operations
     //
 
-    public void RunScript(IFileResource scriptResource)
-    {
-        var resource = _resourceRegistry.GetResourceKey(scriptResource);
-        var extension = Path.GetExtension(resource);
-
-        if (extension != ExplorerConstants.PythonExtension &&
-            extension != ExplorerConstants.IPythonExtension)
-        {
-            return;
-        }
-
-        _commandService.Execute<IRunCommand>(command =>
-        {
-            command.ScriptResource = resource;
-        });
-    }
-
     public void OpenDocument(IFileResource fileResource)
     {
         var resource = _resourceRegistry.GetResourceKey(fileResource);
@@ -506,16 +488,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         {
             command.ResourceType = resourceType;
             command.DestFolderResource = destFolderResource;
-        });
-    }
-
-    public void ShowDeleteResourceDialog(IResource resource)
-    {
-        var resourceKey = _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resources = new List<ResourceKey> { resourceKey };
         });
     }
 
@@ -554,16 +526,6 @@ public partial class ResourceTreeViewModel : ObservableObject
         var resourceKey = resource is null ? ResourceKey.Empty : _resourceRegistry.GetResourceKey(resource);
 
         _commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void OpenResourceInApplication(IResource? resource)
-    {
-        var resourceKey = resource is null ? ResourceKey.Empty : _resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<IOpenApplicationCommand>(command =>
         {
             command.Resource = resourceKey;
         });
