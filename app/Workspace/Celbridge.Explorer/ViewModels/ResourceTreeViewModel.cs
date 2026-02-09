@@ -20,8 +20,10 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     /// <summary>
     /// The flat list of items to display in the ListView.
+    /// Replacing the entire collection ensures a single UI update with no flicker.
     /// </summary>
-    public ObservableCollection<ResourceViewItem> TreeItems { get; } = new();
+    [ObservableProperty]
+    private ObservableCollection<ResourceViewItem> _treeItems = [];
 
     /// <summary>
     /// The selected item in the tree (the anchor). Required for ListView two-way binding
@@ -114,11 +116,8 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         var items = BuildFlatItemList();
 
-        TreeItems.Clear();
-        foreach (var item in items)
-        {
-            TreeItems.Add(item);
-        }
+        // Replace the entire collection to trigger a single UI update (no flicker)
+        TreeItems = new ObservableCollection<ResourceViewItem>(items);
 
         if (resourcesToSelect.Count > 0)
         {
