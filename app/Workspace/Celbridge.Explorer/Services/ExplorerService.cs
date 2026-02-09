@@ -70,14 +70,14 @@ public class ExplorerService : IExplorerService, IDisposable
         }
     }
 
-    public async Task<Result> SelectResource(ResourceKey resource)
+    public async Task<Result> SelectResources(List<ResourceKey> resources)
     {
         var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
 
-        var selectResult = await explorerPanel.SelectResources([resource]);
+        var selectResult = await explorerPanel.SelectResources(resources);
         if (selectResult.IsFailure)
         {
-            return Result.Fail($"Failed to select resource: {resource}")
+            return Result.Fail($"Failed to select resources")
                 .WithErrors(selectResult);
         }
 

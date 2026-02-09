@@ -23,9 +23,9 @@ public interface IExplorerService
     List<ResourceKey> SelectedResources { get; }
 
     /// <summary>
-    /// Select a resource in the explorer panel.
+    /// Select resources in the explorer panel.
     /// </summary>
-    Task<Result> SelectResource(ResourceKey resource);
+    Task<Result> SelectResources(List<ResourceKey> resources);
 
     /// <summary>
     /// Stores the selected resources in persistent storage.
