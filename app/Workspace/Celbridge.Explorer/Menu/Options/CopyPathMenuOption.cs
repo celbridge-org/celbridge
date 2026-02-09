@@ -1,23 +1,24 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
-/// Menu option to copy file path to clipboard.
+/// Menu option to copy the resource's path to clipboard.
 /// </summary>
-public class CopyFilePathMenuOption : IMenuOption<ExplorerMenuContext>
+public class CopyPathMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public int Priority => 2;
+    public int Priority => 1;
     public string GroupId => ExplorerMenuGroups.Utilities;
 
-    public CopyFilePathMenuOption(
+    public CopyPathMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
@@ -29,7 +30,7 @@ public class CopyFilePathMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
-        return new MenuItemDisplayInfo(_stringLocalizer.GetString("ResourceTree_CopyFilePath"));
+        return new MenuItemDisplayInfo(_stringLocalizer.GetString("ResourceTree_CopyPath"));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
@@ -45,10 +46,11 @@ public class CopyFilePathMenuOption : IMenuOption<ExplorerMenuContext>
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(target);
+        var filePath = Path.Combine(resourceRegistry.ProjectFolderPath, resourceKey.ToString());
 
-        _commandService.Execute<ICopyFilePathCommand>(command =>
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Text = filePath;
         });
     }
 }

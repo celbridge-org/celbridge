@@ -46,8 +46,6 @@ public static class ServiceConfiguration
         services.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
         services.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
         services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
-        services.AddTransient<ICopyResourceKeyCommand, CopyResourceKeyCommand>();
-        services.AddTransient<ICopyFilePathCommand, CopyFilePathCommand>();
 
         //
         // Register menu system
@@ -63,8 +61,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, PasteMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, DeleteMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, RenameMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyPathMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyResourceKeyMenuOption>();
-        services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyFilePathMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
     }

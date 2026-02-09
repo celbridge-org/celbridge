@@ -562,7 +562,7 @@ Do you wish to continue?</value>
     <value>Open in File Explorer</value>
   </data>
   <data name="DocumentTab_OpenApplication" xml:space="preserve">
-    <value>Open with Application</value>
+    <value>Open in Application</value>
   </data>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
@@ -606,8 +606,8 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
     <value>Copy Resource Key</value>
   </data>
-  <data name="ResourceTree_CopyFilePath" xml:space="preserve">
-    <value>Copy File Path</value>
+  <data name="ResourceTree_CopyPath" xml:space="preserve">
+    <value>Copy Path</value>
   </data>
   <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
     <value>Toggle Primary Panel</value>

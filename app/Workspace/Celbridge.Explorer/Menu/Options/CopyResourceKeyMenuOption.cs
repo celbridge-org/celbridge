@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -14,7 +15,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public int Priority => 1;
+    public int Priority => 2;
     public string GroupId => ExplorerMenuGroups.Utilities;
 
     public CopyResourceKeyMenuOption(
@@ -51,9 +52,9 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(context.ClickedResource);
 
-        _commandService.Execute<ICopyResourceKeyCommand>(command =>
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.ResourceKey = resourceKey;
+            command.Text = resourceKey.ToString();
         });
     }
 }
