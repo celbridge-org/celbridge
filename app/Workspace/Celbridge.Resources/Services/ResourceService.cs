@@ -73,7 +73,7 @@ public class ResourceService : IResourceService, IDisposable
         }
 
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
-        _messengerService.Register<ResourceUpdateRequestedMessage>(this, OnResourceUpdateRequestedMessage);
+        _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnResourceUpdateRequestedMessage);
     }
 
     private void OnMainWindowActivatedMessage(object recipient, MainWindowActivatedMessage message)
@@ -85,7 +85,7 @@ public class ResourceService : IResourceService, IDisposable
 #endif
     }
 
-    private void OnResourceUpdateRequestedMessage(object recipient, ResourceUpdateRequestedMessage message)
+    private void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
         if (message.ForceImmediate)
         {

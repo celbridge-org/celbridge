@@ -74,7 +74,7 @@ public class ExplorerService : IExplorerService, IDisposable
     {
         var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
 
-        var selectResult = await explorerPanel.SelectResource(resource);
+        var selectResult = await explorerPanel.SelectResources([resource]);
         if (selectResult.IsFailure)
         {
             return Result.Fail($"Failed to select resource: {resource}")
