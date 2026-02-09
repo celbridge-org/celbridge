@@ -136,6 +136,23 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
+    /// Returns true if this resource is a descendant of the specified folder.
+    /// A resource is a descendant if its path starts with the folder path followed by "/".
+    /// </summary>
+    public bool IsDescendantOf(ResourceKey folderKey)
+    {
+        var folderPath = folderKey.ToString();
+
+        if (string.IsNullOrEmpty(folderPath))
+        {
+            // Everything is a descendant of the root folder (except empty keys)
+            return !string.IsNullOrEmpty(_key);
+        }
+
+        return _key?.StartsWith(folderPath + "/", StringComparison.Ordinal) ?? false;
+    }
+
+    /// <summary>
     /// Returns a new ResourceKey that is the combination of the current key and the specified segment.
     /// </summary>
     public ResourceKey Combine(string segment)

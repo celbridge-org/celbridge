@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
 using Celbridge.Logging;
@@ -15,7 +14,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
@@ -43,15 +41,18 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public IFolderResource RootFolder => _resourceRegistry.RootFolder;
 
+    /// <summary>
+    /// Raised when the view should update the selected resources.
+    /// </summary>
+    public event Action<List<ResourceKey>>? SelectionRequested;
+
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
-        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
@@ -103,12 +104,13 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     /// <summary>
     /// Rebuilds the flat list from the current resource registry state.
-    /// Preserves the selected item if possible.
+    /// If selectedResources is provided, those resources will be selected after rebuild.
+    /// Otherwise, the current selection is preserved.
     /// </summary>
-    public void RebuildResourceTree()
+    public void RebuildResourceTree(List<ResourceKey>? selectedResources = null)
     {
-        // Save the currently selected resource key before rebuilding
-        var selectedResourceKey = GetSelectedResourceKey();
+        // Use provided selection, or preserve current selection
+        var resourcesToSelect = selectedResources ?? GetSelectedResourceKeys();
 
         var items = BuildFlatItemList();
 
@@ -118,10 +120,9 @@ public partial class ResourceTreeViewModel : ObservableObject
             TreeItems.Add(item);
         }
 
-        // Restore selection if the resource still exists
-        if (!selectedResourceKey.IsEmpty)
+        if (resourcesToSelect.Count > 0)
         {
-            SetSelectedResource(selectedResourceKey);
+            SelectionRequested?.Invoke(resourcesToSelect);
         }
     }
 
@@ -280,29 +281,19 @@ public partial class ResourceTreeViewModel : ObservableObject
             return;
         }
 
-        var newExpandedState = !item.IsExpanded;
-        item.IsExpanded = newExpandedState;
-
-        // Update the folder state service and persist
-        if (item.Resource is IFolderResource folderResource)
+        if (item.IsExpanded)
         {
-            folderResource.IsExpanded = newExpandedState;
-
-            // Update FolderStateService synchronously before rebuilding
-            // so the new state is immediately available when BuildFlatList reads it
-            var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
-            _folderStateService.SetExpanded(folderResourceKey, newExpandedState);
-
-            // Also execute the command for undo/redo support (this happens asynchronously)
-            SetFolderIsExpanded(folderResource, newExpandedState);
+            CollapseItem(item);
         }
-
-        // Rebuild the list to reflect the new state
-        RebuildResourceTree();
+        else
+        {
+            ExpandItem(item);
+        }
     }
 
     /// <summary>
     /// Expands a folder item if it's collapsed.
+    /// Preserves all existing selections.
     /// </summary>
     public void ExpandItem(ResourceViewItem item)
     {
@@ -311,25 +302,27 @@ public partial class ResourceTreeViewModel : ObservableObject
             return;
         }
 
+        // Preserve current selection
+        var selectedKeys = GetSelectedResourceKeys();
+
         item.IsExpanded = true;
 
         if (item.Resource is IFolderResource folderResource)
         {
             folderResource.IsExpanded = true;
 
-            // Update FolderStateService synchronously before rebuilding
             var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
             _folderStateService.SetExpanded(folderResourceKey, true);
-
-            // Also execute command for undo/redo
-            SetFolderIsExpanded(folderResource, true);
         }
 
-        RebuildResourceTree();
+        RebuildResourceTree(selectedKeys);
+        RequestWorkspaceSave();
     }
 
     /// <summary>
     /// Collapses a folder item if it's expanded.
+    /// When collapsing, any selected items inside the folder cause the folder to become selected.
+    /// Items selected outside the folder remain selected.
     /// </summary>
     public void CollapseItem(ResourceViewItem item)
     {
@@ -339,49 +332,71 @@ public partial class ResourceTreeViewModel : ObservableObject
             return;
         }
 
+        var folderKey = _resourceRegistry.GetResourceKey(item.Resource);
+
+        // Compute new selection: items inside folder transfer to the folder, others remain
+        var selectedKeys = GetSelectedResourceKeys();
+        var keysInsideFolder = selectedKeys.Where(key => key.IsDescendantOf(folderKey)).ToList();
+        var keysOutsideFolder = selectedKeys.Where(key => !key.IsDescendantOf(folderKey)).ToList();
+
+        var newSelectedKeys = new List<ResourceKey>(keysOutsideFolder);
+        if (keysInsideFolder.Count > 0)
+        {
+            newSelectedKeys.Add(folderKey);
+        }
+
         item.IsExpanded = false;
 
         if (item.Resource is IFolderResource folderResource)
         {
             folderResource.IsExpanded = false;
-
-            // Update FolderStateService synchronously before rebuilding
-            var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
-            _folderStateService.SetExpanded(folderResourceKey, false);
-
-            // Also execute command for undo/redo
-            SetFolderIsExpanded(folderResource, false);
+            _folderStateService.SetExpanded(folderKey, false);
         }
 
-        RebuildResourceTree();
+        RebuildResourceTree(newSelectedKeys);
+        RequestWorkspaceSave();
     }
 
     /// <summary>
-    /// Collapses all folders in the tree (except root folder).
+    /// Collapses all folders in the tree.
     /// </summary>
     public void CollapseAllFolders()
     {
+        // Map selected items to their top-level parent folders so we can
+        // preserve the selection (to an extent) after collapsing everything.
+        var selectedKeys = GetSelectedResourceKeys();
+        var topLevelFolderKeys = new HashSet<ResourceKey>();
+        foreach (var key in selectedKeys)
+        {
+            var path = key.ToString();
+            if (!string.IsNullOrEmpty(path))
+            {
+                var firstSlash = path.IndexOf('/');
+                var topLevelPath = firstSlash > 0 ? path.Substring(0, firstSlash) : path;
+                topLevelFolderKeys.Add(new ResourceKey(topLevelPath));
+            }
+        }
+
         foreach (var item in TreeItems.ToList())
         {
             // Skip root folder - it should never be collapsed
-            if (item.IsFolder && item.IsExpanded && !item.IsRootFolder)
+            if (item.IsFolder &&
+                item.IsExpanded &&
+                !item.IsRootFolder)
             {
                 item.IsExpanded = false;
                 if (item.Resource is IFolderResource folderResource)
                 {
                     folderResource.IsExpanded = false;
 
-                    // Update FolderStateService synchronously
                     var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
                     _folderStateService.SetExpanded(folderResourceKey, false);
-
-                    // Also execute command for undo/redo
-                    SetFolderIsExpanded(folderResource, false);
                 }
             }
         }
 
-        RebuildResourceTree();
+        RebuildResourceTree(topLevelFolderKeys.ToList());
+        RequestWorkspaceSave();
     }
 
     /// <summary>
@@ -391,6 +406,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         var segments = resource.ToString().Split('/');
         var currentPath = string.Empty;
+        var anyExpanded = false;
 
         // Expand each folder in the path (except the last segment which is the target)
         for (int i = 0; i < segments.Length - 1; i++)
@@ -404,37 +420,25 @@ public partial class ResourceTreeViewModel : ObservableObject
                 if (!folder.IsExpanded)
                 {
                     folder.IsExpanded = true;
-                    SetFolderIsExpanded(folder, true);
+                    _folderStateService.SetExpanded(folderKey, true);
+                    anyExpanded = true;
                 }
             }
         }
 
         // Rebuild the list to include newly expanded items
         RebuildResourceTree();
+
+        if (anyExpanded)
+        {
+            RequestWorkspaceSave();
+        }
     }
 
-    //
-    // Tree View state
-    //
-
-    private void SetFolderIsExpanded(IFolderResource folder, bool isExpanded)
+    private void RequestWorkspaceSave()
     {
-        var folderResource = _resourceRegistry.GetResourceKey(folder);
-
-        bool currentStateServiceState = _folderStateService.IsExpanded(folderResource);
-        bool currentFolderState = folder.IsExpanded;
-
-        if (currentStateServiceState == isExpanded &&
-            currentFolderState == isExpanded)
-        {
-            return;
-        }
-
-        _commandService.Execute<IExpandFolderCommand>(command =>
-        {
-            command.FolderResource = folderResource;
-            command.Expanded = isExpanded;
-        });
+        var message = new WorkspaceStateDirtyMessage();
+        _messengerService.Send(message);
     }
 
     //

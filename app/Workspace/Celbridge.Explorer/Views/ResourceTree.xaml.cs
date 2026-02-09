@@ -46,11 +46,24 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private void ResourceTree_Loaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnLoaded();
+        ViewModel.SelectionRequested += OnSelectionRequested;
     }
 
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
     {
+        ViewModel.SelectionRequested -= OnSelectionRequested;
         ViewModel.OnUnloaded();
+    }
+
+    private void OnSelectionRequested(List<ResourceKey> resourceKeys)
+    {
+        ResourceListView.SelectedItems.Clear();
+
+        var items = ViewModel.FindItemsByResourceKeys(resourceKeys);
+        foreach (var item in items)
+        {
+            ResourceListView.SelectedItems.Add(item);
+        }
     }
 
     //
@@ -240,7 +253,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Get the item at the tap position (works for both selectable and non-selectable items like root)
         var position = e.GetPosition(ResourceListView);
         var tappedItem = FindItemAtPosition(position);
-        
+
         if (tappedItem != null)
         {
             OpenResource(tappedItem);
