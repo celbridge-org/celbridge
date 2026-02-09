@@ -61,6 +61,10 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
 
+        // Filter out resources whose parent folders are also selected.
+        // This prevents duplicate operations when both a folder and its contents are selected.
+        var filteredResources = FilterRedundantResources(SourceResources);
+
         // Begin batch for single undo operation
         resourceOpService.BeginBatch();
 
@@ -70,7 +74,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         try
         {
-            foreach (var sourceResource in SourceResources)
+            foreach (var sourceResource in filteredResources)
             {
                 var (result, parentFolder) = await CopySingleResourceAsync(
                     sourceResource,
@@ -203,6 +207,34 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         return (result, parentFolder);
+    }
+
+    /// <summary>
+    /// Filters out resources that are descendants of other selected resources.
+    /// This prevents duplicate operations when both a folder and its contents are selected.
+    /// </summary>
+    private static List<ResourceKey> FilterRedundantResources(List<ResourceKey> resources)
+    {
+        if (resources.Count <= 1)
+        {
+            return resources;
+        }
+
+        var result = new List<ResourceKey>();
+
+        foreach (var resource in resources)
+        {
+            // Check if any other selected resource is an ancestor of this one
+            var isRedundant = resources.Any(other =>
+                !other.Equals(resource) && resource.IsDescendantOf(other));
+
+            if (!isRedundant)
+            {
+                result.Add(resource);
+            }
+        }
+
+        return result;
     }
 
     //
