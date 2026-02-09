@@ -48,24 +48,24 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     {
         ViewModel.OnLoaded();
         ViewModel.SelectionRequested += OnSelectionRequested;
-        ViewModel.PreBuildTree += OnPreBuildTree;
-        ViewModel.PostBuildTree += OnPostBuildTree;
+        ViewModel.PreBuildResourceTree += OnPreBuildResourceTree;
+        ViewModel.PostBuildResourceTree += OnPostBuildResourceTree;
     }
 
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.SelectionRequested -= OnSelectionRequested;
-        ViewModel.PreBuildTree -= OnPreBuildTree;
-        ViewModel.PostBuildTree -= OnPostBuildTree;
+        ViewModel.PreBuildResourceTree -= OnPreBuildResourceTree;
+        ViewModel.PostBuildResourceTree -= OnPostBuildResourceTree;
         ViewModel.OnUnloaded();
     }
 
-    private void OnPreBuildTree()
+    private void OnPreBuildResourceTree()
     {
         _savedScrollOffset = GetScrollOffset();
     }
 
-    private void OnPostBuildTree()
+    private void OnPostBuildResourceTree()
     {
         ResourceListView.UpdateLayout();
         SetScrollOffset(_savedScrollOffset);

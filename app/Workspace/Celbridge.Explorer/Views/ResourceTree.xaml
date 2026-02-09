@@ -3,7 +3,6 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Explorer.Views"
-  xmlns:localControls="using:Celbridge.Explorer.Views.Controls"
   xmlns:models="using:Celbridge.Explorer.Models"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
@@ -45,11 +44,11 @@
         </Button>
 
         <!-- Resource icon -->
-        <localControls:ResourceIcon Grid.Column="1"
-                                    Resource="{x:Bind Resource}"
-                                    Margin="-2,0,12,0"
-                                    VerticalAlignment="Center"
-                                    HorizontalAlignment="Left" />
+        <local:ResourceIcon Grid.Column="1"
+                            Resource="{x:Bind Resource}"
+                            Margin="-2,0,12,0"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Left" />
 
         <!-- Resource name (semi-bold for root folder) -->
         <TextBlock Grid.Column="2"

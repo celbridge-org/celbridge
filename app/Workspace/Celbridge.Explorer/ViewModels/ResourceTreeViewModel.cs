@@ -51,12 +51,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// <summary>
     /// Raised before the tree is rebuilt. View should save scroll position.
     /// </summary>
-    public event Action? PreBuildTree;
+    public event Action? PreBuildResourceTree;
 
     /// <summary>
     /// Raised after the tree is rebuilt. View should restore scroll position.
     /// </summary>
-    public event Action? PostBuildTree;
+    public event Action? PostBuildResourceTree;
 
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
@@ -122,7 +122,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     public void RebuildResourceTree(List<ResourceKey>? selectedResources = null)
     {
         // Notify view to save scroll position before rebuild
-        PreBuildTree?.Invoke();
+        PreBuildResourceTree?.Invoke();
 
         // Use provided selection, or preserve current selection
         var resourcesToSelect = selectedResources ?? GetSelectedResourceKeys();
@@ -138,7 +138,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
 
         // Notify view to restore scroll position after rebuild
-        PostBuildTree?.Invoke();
+        PostBuildResourceTree?.Invoke();
     }
 
     /// <summary>
