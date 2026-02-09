@@ -510,47 +510,29 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Gets all sibling items of the selected item (or root-level items if nothing selected).
+    /// Gets all sibling items of the specified item (or root-level items if nothing specified).
     /// </summary>
-    public List<ResourceViewItem> GetSiblingItems()
+    public List<ResourceViewItem> GetSiblingItems(ResourceViewItem? selectedItem = null)
     {
-        var siblings = new List<ResourceViewItem>();
+        // Use the provided item, or fall back to the current selection
+        var item = selectedItem ?? SelectedItem;
 
-        // Determine the parent folder key to match against
-        ResourceKey targetParentKey;
+        // Determine the parent folder key:
+        // - If an item is provided/selected, use its parent folder's key
+        // - If nothing is selected, use the root folder's key (for root-level items)
+        var targetParentKey = item != null
+            ? GetParentKey(item.Resource.ParentFolder)
+            : _resourceRegistry.GetResourceKey(RootFolder);
 
-        if (SelectedItem != null)
-        {
-            var parentFolder = SelectedItem.Resource.ParentFolder;
-            targetParentKey = parentFolder != null
-                ? _resourceRegistry.GetResourceKey(parentFolder)
-                : ResourceKey.Empty;
-        }
-        else
-        {
-            // Nothing selected - select root-level items (parent key is empty)
-            targetParentKey = ResourceKey.Empty;
-        }
+        return TreeItems
+            .Where(i => !i.IsRootFolder && GetParentKey(i.Resource.ParentFolder) == targetParentKey)
+            .ToList();
+    }
 
-        // Find all visible items that have the same parent folder
-        foreach (var item in TreeItems)
-        {
-            if (item.IsRootFolder)
-            {
-                continue; // Never include root folder
-            }
-
-            var itemParentFolder = item.Resource.ParentFolder;
-            var itemParentKey = itemParentFolder != null
-                ? _resourceRegistry.GetResourceKey(itemParentFolder)
-                : ResourceKey.Empty;
-
-            if (itemParentKey == targetParentKey)
-            {
-                siblings.Add(item);
-            }
-        }
-
-        return siblings;
+    private ResourceKey GetParentKey(IFolderResource? parentFolder)
+    {
+        return parentFolder != null
+            ? _resourceRegistry.GetResourceKey(parentFolder)
+            : _resourceRegistry.GetResourceKey(RootFolder);
     }
 }

@@ -323,6 +323,9 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         {
             ResourceListView.SelectedItems.Clear();
         }
+
+        // Ensure ListView keeps focus for keyboard navigation
+        ResourceListView.Focus(FocusState.Programmatic);
     }
 
     //

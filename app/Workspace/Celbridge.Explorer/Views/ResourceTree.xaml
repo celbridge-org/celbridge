@@ -98,7 +98,7 @@
             IsDoubleTapEnabled="True"
             DoubleTapped="ListView_DoubleTapped"
             RightTapped="ListView_RightTapped"
-            KeyDown="ListView_KeyDown"
+            PreviewKeyDown="ListView_PreviewKeyDown"
             Tapped="ListView_Tapped"
             DragItemsStarting="ListView_DragItemsStarting"
             DragOver="ListView_DragOver"

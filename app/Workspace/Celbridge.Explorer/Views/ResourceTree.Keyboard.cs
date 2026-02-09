@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Views;
 
 public sealed partial class ResourceTree
 {
-    private void ListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void ListView_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(CoreVirtualKeyStates.Down);
@@ -24,7 +24,7 @@ public sealed partial class ResourceTree
             (false, VirtualKey.Left) => HandleCollapse(selectedItem),
             (false, VirtualKey.Enter) => HandleOpen(selectedItem),
             (false, VirtualKey.Escape) => HandleClearSelection(),
-            (true, VirtualKey.A) => HandleSelectAllSiblings(),
+            (true, VirtualKey.A) => HandleSelectAll(selectedItem),
             (true, VirtualKey.D) => HandleDuplicate(selectedItem),
             (true, VirtualKey.C) => HandleCopy(selectedResources),
             (true, VirtualKey.X) => HandleCut(selectedResources),
@@ -107,11 +107,11 @@ public sealed partial class ResourceTree
         return true;
     }
 
-    private bool HandleSelectAllSiblings()
+    private bool HandleSelectAll(ResourceViewItem? selectedItem)
     {
-        ResourceListView.SelectedItems.Clear();
+        var siblings = ViewModel.GetSiblingItems(selectedItem);
 
-        var siblings = ViewModel.GetSiblingItems();
+        ResourceListView.SelectedItems.Clear();
         foreach (var item in siblings)
         {
             ResourceListView.SelectedItems.Add(item);
