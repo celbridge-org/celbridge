@@ -26,17 +26,13 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        _logger.LogDebug($"DeleteResourceCommand.ExecuteAsync started with {Resources.Count} resource(s)");
-
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            _logger.LogWarning("DeleteResourceCommand failed: Workspace is not loaded");
             return Result.Fail("Workspace is not loaded");
         }
 
         if (Resources.Count == 0)
         {
-            _logger.LogDebug("DeleteResourceCommand: No resources to delete");
             return Result.Ok();
         }
 
@@ -45,7 +41,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var resourceOpService = workspaceService.ResourceService.OperationService;
 
         // Begin batch for single undo operation
-        _logger.LogDebug("DeleteResourceCommand: Beginning batch operation");
         resourceOpService.BeginBatch();
 
         List<string> failedItems = new();
@@ -55,30 +50,27 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             foreach (var resource in Resources)
             {
                 var resourcePath = resourceRegistry.GetResourcePath(resource);
-                _logger.LogDebug($"DeleteResourceCommand: Deleting '{resource}' at path '{resourcePath}'");
 
                 Result deleteResult;
 
                 if (File.Exists(resourcePath))
                 {
                     deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
-                    _logger.LogDebug($"DeleteResourceCommand: DeleteFileAsync result: {(deleteResult.IsSuccess ? "Success" : deleteResult.Error)}");
                 }
                 else if (Directory.Exists(resourcePath))
                 {
                     deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
-                    _logger.LogDebug($"DeleteResourceCommand: DeleteFolderAsync result: {(deleteResult.IsSuccess ? "Success" : deleteResult.Error)}");
                 }
                 else
                 {
-                    _logger.LogWarning($"Resource does not exist: {resource}");
+                    _logger.LogWarning($"Cannot delete resource because it does not exist: '{resource}'");
                     failedItems.Add(resource.ResourceName);
                     continue;
                 }
 
                 if (deleteResult.IsFailure)
                 {
-                    _logger.LogError(deleteResult.Error);
+                    _logger.LogError($"Failed to delete resource '{resource}': {deleteResult.Error}");
                     failedItems.Add(resource.ResourceName);
                 }
             }
@@ -86,14 +78,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         finally
         {
             // Always commit batch - partial success is acceptable
-            _logger.LogDebug("DeleteResourceCommand: Committing batch operation");
             resourceOpService.CommitBatch();
         }
 
         if (failedItems.Count > 0)
         {
             var failedList = string.Join(", ", failedItems);
-            _logger.LogWarning($"DeleteResourceCommand completed with failures: {failedList}");
 
             // Notify the UI about the failure
             var message = new ResourceOperationFailedMessage(ResourceOperationType.Delete, failedItems);
@@ -102,7 +92,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return Result.Fail($"Failed to delete: {failedList}");
         }
 
-        _logger.LogDebug("DeleteResourceCommand completed successfully");
         return Result.Ok();
     }
 
