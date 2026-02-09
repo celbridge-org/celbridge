@@ -14,7 +14,6 @@
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
       <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
-      <!-- Selection background - semi-transparent blue matching VS Code style -->
       <Color x:Key="ListItemSelectedBackgroundColor">#3C0078D4</Color>
     </ResourceDictionary>
 
@@ -29,7 +28,6 @@
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
       <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>
-      <!-- Selection background - semi-transparent blue matching VS Code style -->
       <Color x:Key="ListItemSelectedBackgroundColor">#3C0078D4</Color>
     </ResourceDictionary>
 
