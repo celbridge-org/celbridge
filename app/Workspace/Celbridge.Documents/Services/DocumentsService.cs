@@ -23,10 +23,9 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     /// <summary>
-    /// Gets the documents panel, using cached reference if available or fetching from workspace service.
+    /// Gets the documents panel from the workspace service.
     /// </summary>
-    private IDocumentsPanel _documentsPanel = null!;
-    private IDocumentsPanel DocumentsPanel => _documentsPanel ?? _workspaceWrapper.WorkspaceService.DocumentsPanel;
+    private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     public ResourceKey SelectedDocument { get; private set; }
 
@@ -79,9 +78,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
     {
-        // Cache the documents panel reference for the lifetime of the workspace
-        _documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
-
         // Once set, this will remain true for the lifetime of the service
         _isWorkspaceLoaded = true;
     }
