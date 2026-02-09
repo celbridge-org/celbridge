@@ -1,7 +1,5 @@
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 using Path = System.IO.Path;
 
 namespace Celbridge.Search.Services;
@@ -13,40 +11,24 @@ public class SearchService : ISearchService, IDisposable
 {
     private const int MaxResults = 1000;
 
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SearchService> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly FileFilter _fileFilter;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
 
-    private ISearchPanel? _searchPanel;
-    public ISearchPanel? SearchPanel => _searchPanel;
-
     public SearchService(
-        IServiceProvider serviceProvider,
         ILogger<SearchService> logger,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        _serviceProvider = serviceProvider;
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _fileFilter = new FileFilter();
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
-
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _searchPanel = _serviceProvider.GetRequiredService<ISearchPanel>();
     }
 
     private bool _disposed;
@@ -64,7 +46,6 @@ public class SearchService : ISearchService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.UnregisterAll(this);
             }
 
             _disposed = true;

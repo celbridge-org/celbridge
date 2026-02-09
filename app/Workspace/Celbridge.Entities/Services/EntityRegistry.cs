@@ -1,11 +1,11 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using Celbridge.Entities.Models;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using Json.Schema;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
-using System.Text.Json;
 
 namespace Celbridge.Entities.Services;
 
@@ -93,7 +93,15 @@ public class EntityRegistry
                 // Get the resource key from the entity file path
                 var relativeResourcePath = Path.GetRelativePath(entitiesFolderPath, entityFile);
                 relativeResourcePath = Path.ChangeExtension(relativeResourcePath, null);
-                var resourceKey = new ResourceKey(relativeResourcePath);
+
+                // On Windows, Path.GetRelativePath returns backslashes, so normalize to forward slashes
+                relativeResourcePath = relativeResourcePath.Replace('\\', '/');
+
+                if (!ResourceKey.TryCreate(relativeResourcePath, out var resourceKey))
+                {
+                    // Skip invalid resource keys (e.g., from malformed paths)
+                    continue;
+                }
 
                 // Get the resource path (may be a file or a folder)
                 var resourcePath = resourceRegistry.GetResourcePath(resourceKey);
@@ -342,7 +350,7 @@ public class EntityRegistry
             {
                 // Notify activity service so it can attempt to initialize the new entity with default components.
                 var message = new EntityCreatedMessage(resource);
-                _messengerService.Send(message);               
+                _messengerService.Send(message);
             }
 
             return Result<Entity>.Ok(entity);
@@ -368,7 +376,7 @@ public class EntityRegistry
         }
         var entity = acquireResult.Value;
 
-        var getIndexResult =  EntityUtils.GetComponentsOfType(entity.EntityData.EntityJsonObject, componentType);
+        var getIndexResult = EntityUtils.GetComponentsOfType(entity.EntityData.EntityJsonObject, componentType);
         if (getIndexResult.IsFailure)
         {
             return Result<List<int>>.Fail($"Failed to get component indices for component type: {componentType}");

@@ -58,6 +58,11 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
+    public List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources)
+    {
+        return resources.Select(GetResourceKey).ToList();
+    }
+
     public Result<ResourceKey> GetResourceKey(string resourcePath)
     {
         try

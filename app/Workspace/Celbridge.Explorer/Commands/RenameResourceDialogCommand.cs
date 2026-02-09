@@ -93,7 +93,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             // Execute a command to move the resource to perform the rename
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResource = Resource;
+                command.SourceResources = [Resource];
                 command.DestResource = destResource;
                 command.TransferMode = DataTransferMode.Move;
 

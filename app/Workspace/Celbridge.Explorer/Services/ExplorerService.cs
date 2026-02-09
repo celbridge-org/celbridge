@@ -1,18 +1,17 @@
-using Celbridge.Commands;
+using System.Text.Json;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Services;
 
 public class ExplorerService : IExplorerService, IDisposable
 {
-    private const string PreviousSelectedResourceKey = "PreviousSelectedResource";
+    private const string PreviousSelectedResourcesKey = "PreviousSelectedResources";
 
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -20,25 +19,12 @@ public class ExplorerService : IExplorerService, IDisposable
     private IResourceRegistry ResourceRegistry =>
         _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-    private IExplorerPanel? _explorerPanel;
-    public IExplorerPanel ExplorerPanel => _explorerPanel!;
-
-    private IResourceTreeView? _resourceTreeView;
-    public IResourceTreeView ResourceTreeView
-    {
-        get
-        {
-            return _resourceTreeView ?? throw new NullReferenceException("ResourceTreeView is null.");
-        }
-        set
-        {
-            _resourceTreeView = value;
-        }
-    }
-
     public IFolderStateService FolderStateService { get; }
 
     public ResourceKey SelectedResource { get; private set; }
+
+    private List<ResourceKey> _selectedResources = [];
+    public List<ResourceKey> SelectedResources => _selectedResources;
 
     private bool _isWorkspaceLoaded;
 
@@ -46,31 +32,21 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
-        ICommandService commandService,
         IFileIconService fileIconService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
-        _commandService = commandService;
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;
 
         FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _explorerPanel = _serviceProvider.GetRequiredService<IExplorerPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -83,65 +59,40 @@ public class ExplorerService : IExplorerService, IDisposable
     {
         SelectedResource = message.Resource;
 
+        // Update the selected resources list from the panel
+        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+        _selectedResources = explorerPanel.GetSelectedResources();
+
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreSelectedResource();
+            _ = StoreSelectedResources();
         }
     }
 
-    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    public async Task<Result> SelectResources(List<ResourceKey> resources)
     {
-        // Clean up expanded folders that no longer exist in the registry
-        FolderStateService.Cleanup();
+        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
 
-        var result = await PopulateTreeViewAsync();
-        if (result.IsFailure)
-        {
-            _logger.LogWarning(result.Error);
-        }
-    }
-
-    private async Task<Result> PopulateTreeViewAsync()
-    {
-        var populateResult = await ResourceTreeView.PopulateTreeView(ResourceRegistry);
-        if (populateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to populate tree view. {populateResult.Error}");
-        }
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel)
-    {
-        Guard.IsNotNull(ExplorerPanel);
-
-        var selectResult = await ExplorerPanel.SelectResource(resource);
+        var selectResult = await explorerPanel.SelectResources(resources);
         if (selectResult.IsFailure)
         {
-            return Result.Fail($"Failed to select resource: {resource}")
+            return Result.Fail($"Failed to select resources")
                 .WithErrors(selectResult);
         }
 
-        if (showExplorerPanel)
-        {
-            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
-            {
-                command.Panels = PanelVisibilityFlags.Primary;
-                command.IsVisible = true;
-            });
-        }
-
         return Result.Ok();
     }
 
-    public async Task StoreSelectedResource()
+    public async Task StoreSelectedResources()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourceKey, SelectedResource.ToString());
+        // Store all selected resources as a JSON array
+        var resourceStrings = SelectedResources.Select(r => r.ToString()).ToList();
+        var json = JsonSerializer.Serialize(resourceStrings);
+        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourcesKey, json);
     }
 
     public async Task RestorePanelState()
@@ -149,21 +100,36 @@ public class ExplorerService : IExplorerService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var resource = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourceKey);
-        if (string.IsNullOrEmpty(resource))
+        var json = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourcesKey);
+        if (string.IsNullOrEmpty(json))
         {
             return;
         }
 
-        // Use ExecuteImmediate() to ensure the command is executed while the workspace is still loading.
-        var selectResult = await _commandService.ExecuteImmediate<ISelectResourceCommand>(command =>
+        try
         {
-            command.Resource = resource;
-        });
+            var resourceStrings = JsonSerializer.Deserialize<List<string>>(json);
+            if (resourceStrings == null || resourceStrings.Count == 0)
+            {
+                return;
+            }
 
-        if (selectResult.IsFailure)
+            var resources = resourceStrings
+                .Where(s => ResourceKey.TryCreate(s, out _))
+                .Select(s => ResourceKey.Create(s))
+                .ToList();
+
+            // Select all previously selected resources
+            var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+            var selectResult = await explorerPanel.SelectResources(resources);
+            if (selectResult.IsFailure)
+            {
+                _logger.LogWarning(selectResult, $"Failed to restore previously selected resources");
+            }
+        }
+        catch (JsonException ex)
         {
-            _logger.LogWarning(selectResult, $"Failed to select previously selected resource '{resource}'");
+            _logger.LogWarning($"Failed to deserialize previously selected resources: {ex.Message}");
         }
     }
 
@@ -216,8 +182,7 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 var icon = _fileIconService.DefaultFolderIcon with
                 {
-                    // Todo: Define this color in resources
-                    FontColor = "#FFCC40"
+                    FontColor = FileIconService.DefaultFolderColor
                 };
                 return icon;
             }
@@ -233,38 +198,6 @@ public class ExplorerService : IExplorerService, IDisposable
 
         // Return the default file icon if we couldn't find a better match
         return _fileIconService.DefaultFileIcon;
-    }
-
-    public void OpenResource(ResourceKey resource)
-    {
-        var fileExtension = Path.GetExtension(resource.ResourceName);
-
-        if (fileExtension == ExplorerConstants.WebAppExtension)
-        {
-            var webFilePath = ResourceRegistry.GetResourcePath(resource);
-
-            var extractResult = ResourceUtils.ExtractUrlFromWebAppFile(webFilePath);
-            if (extractResult.IsFailure)
-            {
-                _logger.LogError(extractResult.Error);
-                return;
-            }
-            var url = extractResult.Value;
-
-            // Execute a command to open the resource with the system default browser
-            _commandService.Execute<IOpenBrowserCommand>(command =>
-            {
-                command.URL = url;
-            });
-        }
-        else
-        {
-            // Execute a command to open the resource with the associated application
-            _commandService.Execute<IOpenApplicationCommand>(command =>
-            {
-                command.Resource = resource;
-            });
-        }
     }
 
     private bool _disposed;

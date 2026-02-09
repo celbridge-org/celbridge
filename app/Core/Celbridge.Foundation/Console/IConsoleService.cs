@@ -17,11 +17,6 @@ public enum MessageType
 public interface IConsoleService
 {
     /// <summary>
-    /// Returns the console panel view.
-    /// </summary>
-    IConsolePanel ConsolePanel { get; }
-
-    /// <summary>
     /// Returns the terminal instance created by the console service during initialization. 
     /// </summary>
     ITerminal Terminal { get; }

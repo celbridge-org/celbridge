@@ -6,11 +6,6 @@ namespace Celbridge.Search;
 public interface ISearchService
 {
     /// <summary>
-    /// Returns the Search Panel view.
-    /// </summary>
-    ISearchPanel? SearchPanel { get; }
-
-    /// <summary>
     /// Searches for text across all project files.
     /// </summary>
     Task<SearchResults> SearchAsync(

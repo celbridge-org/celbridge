@@ -6,14 +6,12 @@ namespace Celbridge.Explorer;
 public interface IExplorerPanel
 {
     /// <summary>
-    /// Returns the selected resource in the explorer panel.
-    /// Returns an empty resource if no resource is currently selected.
+    /// Returns all selected resources in the explorer panel.
     /// </summary>
-    ResourceKey GetSelectedResource();
+    List<ResourceKey> GetSelectedResources();
 
     /// <summary>
-    /// Select a resource in the explorer panel.
-    /// Automatically expands the folders containing the resource.
+    /// Select resources in the explorer panel.
     /// </summary>
-    Task<Result> SelectResource(ResourceKey resource);
+    Task<Result> SelectResources(List<ResourceKey> resources);
 }

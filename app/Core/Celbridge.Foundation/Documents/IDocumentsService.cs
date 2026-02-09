@@ -6,11 +6,6 @@ namespace Celbridge.Documents;
 public interface IDocumentsService
 {
     /// <summary>
-    /// Returns the documents panel view.
-    /// </summary>
-    IDocumentsPanel DocumentsPanel { get; }
-
-    /// <summary>
     /// The resource key for the currently selected document.
     /// This is the empty resource if no document is currently selected.
     /// </summary>
@@ -32,6 +27,12 @@ public interface IDocumentsService
     /// Returns the document view type for the specified file resource.
     /// </summary>
     DocumentViewType GetDocumentViewType(ResourceKey fileResource);
+
+    /// <summary>
+    /// Determines if a file resource can be opened as a document in the editor.
+    /// Returns false if the file format is not supported or the resource is not a file.
+    /// </summary>
+    bool IsDocumentSupported(ResourceKey fileResource);
 
     /// <summary>
     /// Returns the text editor language associated with the specified file resource.

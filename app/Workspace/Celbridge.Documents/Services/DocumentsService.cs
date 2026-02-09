@@ -22,8 +22,10 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private IDocumentsPanel? _documentsPanel;
-    public IDocumentsPanel DocumentsPanel => _documentsPanel!;
+    /// <summary>
+    /// Gets the documents panel from the workspace service.
+    /// </summary>
+    private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     public ResourceKey SelectedDocument { get; private set; }
 
@@ -60,24 +62,18 @@ public class DocumentsService : IDocumentsService, IDisposable
         // Initialize the TextEditorWebViewPool
         TextEditorWebViewPool = new TextEditorWebViewPool(3);
 
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
-        _fileTypeHelper = _serviceProvider.GetRequiredService<FileTypeHelper>();
+        _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
         }
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _documentsPanel = _serviceProvider.GetRequiredService<IDocumentsPanel>();
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -100,15 +96,12 @@ public class DocumentsService : IDocumentsService, IDisposable
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
         // Query the panel for current document addresses
-        if (_documentsPanel != null)
-        {
-            var addresses = _documentsPanel.GetDocumentAddresses();
+        var addresses = DocumentsPanel.GetDocumentAddresses();
 
-            DocumentAddresses.Clear();
-            foreach (var kvp in addresses)
-            {
-                DocumentAddresses[kvp.Key] = kvp.Value;
-            }
+        DocumentAddresses.Clear();
+        foreach (var kvp in addresses)
+        {
+            DocumentAddresses[kvp.Key] = kvp.Value;
         }
 
         if (_isWorkspaceLoaded)
@@ -191,6 +184,12 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         return _fileTypeHelper.GetDocumentViewType(extension);
+    }
+
+    public bool IsDocumentSupported(ResourceKey fileResource)
+    {
+        var documentType = GetDocumentViewType(fileResource);
+        return documentType != DocumentViewType.UnsupportedFormat;
     }
 
     public string GetDocumentLanguage(ResourceKey fileResource)
@@ -375,8 +374,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         var sectionRatios = await workspaceSettings.GetPropertyAsync<List<double>>(SectionRatiosKey);
         if (sectionRatios != null && sectionRatios.Count >= 1 && sectionRatios.Count <= 3)
         {
-            _documentsPanel!.SectionCount = sectionRatios.Count;
-            _documentsPanel!.SetSectionRatios(sectionRatios);
+            DocumentsPanel.SectionCount = sectionRatios.Count;
+            DocumentsPanel.SetSectionRatios(sectionRatios);
         }
 
         // Try to load document addresses - if format is incompatible, just start fresh
@@ -398,17 +397,16 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        int currentSectionCount = _documentsPanel!.SectionCount;
+        int currentSectionCount = DocumentsPanel.SectionCount;
 
         foreach (var stored in storedAddresses)
         {
-            if (!ResourceKey.IsValidKey(stored.Resource))
+            if (!ResourceKey.TryCreate(stored.Resource, out var fileResource))
             {
                 _logger.LogWarning($"Invalid resource key '{stored.Resource}' found in previously open documents");
                 continue;
             }
 
-            var fileResource = new ResourceKey(stored.Resource);
             var getResourceResult = resourceRegistry.GetResource(fileResource);
             if (getResourceResult.IsFailure)
             {
@@ -427,7 +425,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            var openResult = await _documentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+            var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
             if (openResult.IsFailure)
             {
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
@@ -441,14 +439,14 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        if (!ResourceKey.IsValidKey(selectedDocument))
+        if (!ResourceKey.TryCreate(selectedDocument, out var selectedDocumentKey))
         {
             _logger.LogWarning($"Invalid resource key '{selectedDocument}' found for previously selected document");
             return;
         }
 
         // Set the active document (which also selects it in its section)
-        _documentsPanel.ActiveDocument = new ResourceKey(selectedDocument);
+        DocumentsPanel.ActiveDocument = selectedDocumentKey;
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)

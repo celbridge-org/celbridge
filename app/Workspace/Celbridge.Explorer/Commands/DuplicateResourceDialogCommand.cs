@@ -95,10 +95,10 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             bool isExpandedFolder = isFolderResource &&
                 folderStateService.IsExpanded(Resource);
 
-            // Execute a command to move the folder resource to perform the rename
+            // Execute a command to copy the resource to perform the duplication
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResource = Resource;
+                command.SourceResources = [Resource];
                 command.DestResource = destResource;
 
                 if (isExpandedFolder)

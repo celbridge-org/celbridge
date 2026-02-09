@@ -189,11 +189,50 @@
   <data name="ResourceTree_ConfirmDeleteFolder" xml:space="preserve">
     <value>Delete '{0}' folder?</value>
   </data>
+  <data name="ResourceTree_ConfirmDeleteMultiple" xml:space="preserve">
+    <value>Delete {0} items?</value>
+  </data>
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
   <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
+  </data>
+  <data name="Explorer_OperationFailed_Delete_Single" xml:space="preserve">
+    <value>Failed to delete: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Delete_Multiple" xml:space="preserve">
+    <value>Failed to delete {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Copy_Single" xml:space="preserve">
+    <value>Failed to copy: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Copy_Multiple" xml:space="preserve">
+    <value>Failed to copy {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Move_Single" xml:space="preserve">
+    <value>Failed to move: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Move_Multiple" xml:space="preserve">
+    <value>Failed to move {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Rename_Single" xml:space="preserve">
+    <value>Failed to rename: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Rename_Multiple" xml:space="preserve">
+    <value>Failed to rename {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Create_Single" xml:space="preserve">
+    <value>Failed to create: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Create_Multiple" xml:space="preserve">
+    <value>Failed to create {0} items</value>
+  </data>
+  <data name="Explorer_OperationFailed_Unknown_Single" xml:space="preserve">
+    <value>Operation failed: {0}</value>
+  </data>
+  <data name="Explorer_OperationFailed_Unknown_Multiple" xml:space="preserve">
+    <value>Operation failed on {0} items</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
@@ -218,9 +257,6 @@
   </data>
   <data name="ResourceTree_CopyResourceFailed" xml:space="preserve">
     <value>Failed to copy resource '{0}' to '{1}'</value>
-  </data>
-  <data name="ResourceTree_TransferResourcesFailed" xml:space="preserve">
-    <value>Failed to transfer resources: {0}</value>
   </data>
   <data name="Validation_FileNameAlreadyExists" xml:space="preserve">
     <value>A file with the name '{0}' already exists</value>
@@ -526,7 +562,7 @@ Do you wish to continue?</value>
     <value>Open in File Explorer</value>
   </data>
   <data name="DocumentTab_OpenApplication" xml:space="preserve">
-    <value>Open with Application</value>
+    <value>Open in Application</value>
   </data>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
@@ -570,8 +606,8 @@ Do you wish to continue?</value>
   <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
     <value>Copy Resource Key</value>
   </data>
-  <data name="ResourceTree_CopyFilePath" xml:space="preserve">
-    <value>Copy File Path</value>
+  <data name="ResourceTree_CopyPath" xml:space="preserve">
+    <value>Copy Path</value>
   </data>
   <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
     <value>Toggle Primary Panel</value>

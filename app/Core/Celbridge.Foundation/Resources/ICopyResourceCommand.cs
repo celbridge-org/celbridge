@@ -4,28 +4,28 @@ using Celbridge.DataTransfer;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Copy a resource to a different location in the project.
+/// Copy one or more resources to a different location in the project.
 /// </summary>
 public interface ICopyResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to be copied.
+    /// Resources to be copied.
     /// </summary>
-    ResourceKey SourceResource { get; set; }
+    List<ResourceKey> SourceResources { get; set; }
 
     /// <summary>
-    /// Location to move the resource to.
+    /// Location to move the resources to.
     /// </summary>
     ResourceKey DestResource { get; set; }
 
     /// <summary>
-    /// Controls whether the resource is copied or moved to the new location.
-    /// If the resource is moved, the resource in the original location is deleted.
+    /// Controls whether the resources are copied or moved to the new location.
+    /// If the resources are moved, the resources in the original location are deleted.
     /// </summary>
     DataTransferMode TransferMode { get; set; }
 
     /// <summary>
-    /// If the copied resource is a folder, expand the folder after moving it.
+    /// If a copied resource is a folder, expand the folder after moving it.
     /// </summary>
     bool ExpandCopiedFolder { get; set; }
 }

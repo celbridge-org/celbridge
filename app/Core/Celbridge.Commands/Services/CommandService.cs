@@ -205,12 +205,12 @@ public class CommandService : ICommandService
                         // Handle resource updates based on command flags
                         if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
                         {
-                            var message = new ResourceUpdateRequestedMessage(ForceImmediate: true);
+                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: true);
                             _messengerService.Send(message);
                         }
                         else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
                         {
-                            var message = new ResourceUpdateRequestedMessage(ForceImmediate: false);
+                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: false);
                             _messengerService.Send(message);
                         }
 

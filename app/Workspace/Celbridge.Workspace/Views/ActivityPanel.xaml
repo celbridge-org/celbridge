@@ -1,7 +1,9 @@
 ﻿<UserControl
-    x:Class="Celbridge.Workspace.Views.ProjectPanel"
+    x:Class="Celbridge.Workspace.Views.ActivityPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:explorer="using:Celbridge.Explorer.Views"
+    xmlns:search="using:Celbridge.Search.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <Grid x:Name="LayoutRoot">
@@ -21,7 +23,7 @@
             </Grid.RowDefinitions>
 
             <!-- Vertical Navigation View for tab selection -->
-            <NavigationView x:Name="ProjectNavigation"
+            <NavigationView x:Name="ActivityNavigation"
                             Grid.Row="0"
                             IsPaneToggleButtonVisible="False"
                             IsBackButtonVisible="Collapsed"
@@ -29,7 +31,7 @@
                             PaneDisplayMode="LeftCompact"
                             CompactPaneLength="48"
                             Background="Transparent"
-                            SelectionChanged="ProjectNavigation_SelectionChanged">
+                            SelectionChanged="ActivityNavigation_SelectionChanged">
                 <NavigationView.MenuItems>
                     <!-- Explorer -->
                     <NavigationViewItem x:Name="ExplorerNavItem"
@@ -90,6 +92,8 @@
         <Grid x:Name="ContentArea"
               Grid.Column="1"
               Background="{ThemeResource PanelBackgroundABrush}">
+            <explorer:ExplorerPanel x:Name="ExplorerPanelControl" />
+            <search:SearchPanel x:Name="SearchPanelControl" Visibility="Collapsed" />
         </Grid>
     </Grid>
 </UserControl>

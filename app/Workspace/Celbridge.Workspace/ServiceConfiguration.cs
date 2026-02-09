@@ -37,11 +37,17 @@ public static class ServiceConfiguration
         services.AddTransient<WorkspaceLoader>();
 
         //
+        // Register panels
+        //
+
+        services.AddTransient<IActivityPanel, ActivityPanel>();
+
+        //
         // Register view models
         //
 
         services.AddTransient<WorkspacePageViewModel>();
-        services.AddTransient<ProjectPanelViewModel>();
+        services.AddTransient<ActivityPanelViewModel>();
 
         //
         // Register commands

@@ -1,44 +1,28 @@
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IMessengerService _messengerService;
-
-    private IConsolePanel? _consolePanel;
-    public IConsolePanel ConsolePanel => _consolePanel!;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ITerminal Terminal { get; private set; }
 
     public ConsoleService(
         IServiceProvider serviceProvider,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        _serviceProvider = serviceProvider;
-        _messengerService = messengerService;
-
-        _messengerService.Register<WorkspaceWillPopulatePanelsMessage>(this, OnWorkspaceWillPopulatePanelsMessage);
-
+        _workspaceWrapper = workspaceWrapper;
         Terminal = serviceProvider.AcquireService<ITerminal>();
-    }
-
-    private void OnWorkspaceWillPopulatePanelsMessage(object recipient, WorkspaceWillPopulatePanelsMessage message)
-    {
-        _consolePanel = _serviceProvider.GetRequiredService<IConsolePanel>();
     }
 
     public async Task<Result> InitializeTerminalWindow()
     {
-        Guard.IsNotNull(_consolePanel);
-
-        return await _consolePanel.InitializeTerminalWindow(Terminal);
+        var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
+        return await consolePanel.InitializeTerminalWindow(Terminal);
     }
 
     public void RunCommand(string command)
@@ -68,7 +52,6 @@ public class ConsoleService : IConsoleService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _messengerService.UnregisterAll(this);
                 Terminal?.Dispose();
             }
 
