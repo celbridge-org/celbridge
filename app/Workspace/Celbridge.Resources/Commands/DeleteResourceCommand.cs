@@ -1,8 +1,6 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
-using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 using Celbridge.Logging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
@@ -10,22 +8,19 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
 
-    public ResourceKey Resource { get; set; }
+    public List<ResourceKey> Resources { get; set; } = new();
 
     private readonly ILogger<DeleteResourceCommand> _logger;
-    private readonly IDialogService _dialogService;
-    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
-        IDialogService dialogService,
-        IStringLocalizer stringLocalizer,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -36,45 +31,65 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return Result.Fail("Workspace is not loaded");
         }
 
+        if (Resources.Count == 0)
+        {
+            return Result.Ok();
+        }
+
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
 
-        var resourcePath = resourceRegistry.GetResourcePath(Resource);
+        // Begin batch for single undo operation
+        resourceOpService.BeginBatch();
 
-        Result deleteResult;
+        List<string> failedItems = new();
 
-        if (File.Exists(resourcePath))
+        try
         {
-            deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
-            if (deleteResult.IsFailure)
+            foreach (var resource in Resources)
             {
-                _logger.LogError(deleteResult.Error);
+                var resourcePath = resourceRegistry.GetResourcePath(resource);
 
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFile");
-                var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFileFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
+                Result deleteResult;
 
-                return deleteResult;
+                if (File.Exists(resourcePath))
+                {
+                    deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
+                }
+                else if (Directory.Exists(resourcePath))
+                {
+                    deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
+                }
+                else
+                {
+                    _logger.LogWarning($"Cannot delete resource because it does not exist: '{resource}'");
+                    failedItems.Add(resource.ResourceName);
+                    continue;
+                }
+
+                if (deleteResult.IsFailure)
+                {
+                    _logger.LogError($"Failed to delete resource '{resource}': {deleteResult.Error}");
+                    failedItems.Add(resource.ResourceName);
+                }
             }
         }
-        else if (Directory.Exists(resourcePath))
+        finally
         {
-            deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
-            if (deleteResult.IsFailure)
-            {
-                _logger.LogError(deleteResult.Error);
-
-                var titleString = _stringLocalizer.GetString("ResourceTree_DeleteFolder");
-                var messageString = _stringLocalizer.GetString("ResourceTree_DeleteFolderFailed", Resource);
-                await _dialogService.ShowAlertDialogAsync(titleString, messageString);
-
-                return deleteResult;
-            }
+            // Always commit batch - partial success is acceptable
+            resourceOpService.CommitBatch();
         }
-        else
+
+        if (failedItems.Count > 0)
         {
-            return Result.Fail($"Resource does not exist: {Resource}");
+            var failedList = string.Join(", ", failedItems);
+
+            // Notify the UI about the failure
+            var message = new ResourceOperationFailedMessage(ResourceOperationType.Delete, failedItems);
+            _messengerService.Send(message);
+
+            return Result.Fail($"Failed to delete: {failedList}");
         }
 
         return Result.Ok();
@@ -90,7 +105,17 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
         commandService.Execute<IDeleteResourceCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resources = new List<ResourceKey> { resource };
+        });
+    }
+
+    public static void DeleteResources(List<ResourceKey> resources)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        commandService.Execute<IDeleteResourceCommand>(command =>
+        {
+            command.Resources = resources;
         });
     }
 }

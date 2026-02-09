@@ -16,6 +16,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="40"/>
       <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Title Bar -->
@@ -41,8 +42,11 @@
                              CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
     </Grid>
 
-    <!-- Resource Tree View -->
-    <local:ResourceTreeView x:Name="ResourceTreeView"
-                            Grid.Row="1"/>
+    <!-- Resource Tree -->
+    <local:ResourceTree x:Name="ResourceTree"
+                        Grid.Row="1"/>
+
+    <!-- Notification Bar -->
+    <local:ExplorerNotificationBar Grid.Row="2"/>
   </Grid>
 </UserControl>

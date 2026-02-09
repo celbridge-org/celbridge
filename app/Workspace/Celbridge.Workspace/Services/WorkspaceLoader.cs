@@ -106,7 +106,7 @@ public class WorkspaceLoader
         // Any failures that occur here are logged as warnings and do not prevent the workspace from loading.
         //
 
-        // Select the previous selected resource in the Explorer Panel.
+        // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
         // Open previous opened documents in the Documents Panel
@@ -116,7 +116,7 @@ public class WorkspaceLoader
         //
         // Update the current stored state of the workspace in preparation for the next session.
         //
-        await explorerService.StoreSelectedResource();
+        await explorerService.StoreSelectedResources();
         await documentsService.StoreSelectedDocument();
         await documentsService.StoreDocumentLayout();
 

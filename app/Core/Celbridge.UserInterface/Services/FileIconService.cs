@@ -1,5 +1,5 @@
-using System.Text.Json.Nodes;
 using System.Reflection;
+using System.Text.Json.Nodes;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -8,6 +8,7 @@ public class FileIconService : IFileIconService
     private const string DefaultFileIconName = "_file";
     private const string DefaultFolderIconName = "_folder";
     private const string DefaultColor = "#9dc0ce";
+    public const string DefaultFolderColor = "#FFCC40";
 
     private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
 

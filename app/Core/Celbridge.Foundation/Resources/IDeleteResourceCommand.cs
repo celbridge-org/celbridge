@@ -3,12 +3,12 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Delete a file or folder resource from the project.
+/// Delete one or more file or folder resources from the project.
 /// </summary>
 public interface IDeleteResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// Resource to delete.
+    /// Resources to delete.
     /// </summary>
-    ResourceKey Resource { get; set; }
+    List<ResourceKey> Resources { get; set; }
 }

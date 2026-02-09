@@ -8,35 +8,30 @@ namespace Celbridge.Explorer;
 public interface IExplorerService
 {
     /// <summary>
-    /// Returns the Explorer Panel view.
-    /// </summary>
-    IExplorerPanel? ExplorerPanel { get; }
-
-    /// <summary>
-    /// Returns the Resource Tree View associated with the current project.
-    /// </summary>
-    IResourceTreeView ResourceTreeView { get; }
-
-    /// <summary>
     /// Returns the Folder State Service that manages folder expanded state in the resource tree.
     /// </summary>
     IFolderStateService FolderStateService { get; }
 
     /// <summary>
-    /// The currenlty selected resource in the Explorer Panel.
+    /// The currently selected resource in the Explorer Panel (the anchor item).
     /// </summary>
     ResourceKey SelectedResource { get; }
 
     /// <summary>
-    /// Select a resource in the explorer panel.
+    /// All currently selected resources in the Explorer Panel.
     /// </summary>
-    Task<Result> SelectResource(ResourceKey resource, bool showExplorerPanel);
+    List<ResourceKey> SelectedResources { get; }
 
     /// <summary>
-    /// Stores the selected resource in persistent storage.
-    /// This resource will be selected at the start of the next editing session.
+    /// Select resources in the explorer panel.
     /// </summary>
-    Task StoreSelectedResource();
+    Task<Result> SelectResources(List<ResourceKey> resources);
+
+    /// <summary>
+    /// Stores the selected resources in persistent storage.
+    /// These resources will be selected at the start of the next editing session.
+    /// </summary>
+    Task StoreSelectedResources();
 
     /// <summary>
     /// Restores the state of the panel from the previous session.
@@ -47,13 +42,6 @@ public interface IExplorerService
     /// Open the specified resource in the system file manager.
     /// </summary>
     Task<Result> OpenFileManager(ResourceKey resource);
-
-    /// <summary>
-    /// Performs an Open on the given resource.
-    /// The resource will be opened in the manner appropriate to it's type, either in a browser, or in it's related application.
-    /// A command will be added to the queue to do this, calling to one of the two methods below.
-    /// </summary>
-    void OpenResource(ResourceKey resource);
 
     /// <summary>
     /// Open the specified resource in the associated application.

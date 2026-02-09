@@ -1,9 +1,9 @@
-namespace Celbridge.Search.Views;
+namespace Celbridge.UserInterface.Converters;
 
 /// <summary>
 /// Converts a boolean expanded state to the appropriate chevron glyph.
 /// </summary>
-public class ExpandCollapseGlyphConverter : IValueConverter
+public class ExpanderGlyphConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {

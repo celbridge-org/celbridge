@@ -1,65 +1,83 @@
-using Celbridge.Commands;
-using Celbridge.Console;
+using System.Collections.ObjectModel;
 using Celbridge.DataTransfer;
-using Celbridge.Documents;
-using Celbridge.Explorer.Services;
+using Celbridge.Explorer.Models;
 using Celbridge.Logging;
-using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Explorer.ViewModels;
 
+/// <summary>
+/// View model for the control that displays the resource tree in the Explorer panel.
+/// </summary>
 public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IResourceTransferService _resourceTransferService;
-    private readonly IExplorerService _explorerService;
     private readonly IFolderStateService _folderStateService;
-    private readonly IDocumentsService _documentsService;
     private readonly IDataTransferService _dataTransferService;
-    private readonly IPythonService _pythonService;
 
-    public IList<IResource> Resources => _resourceRegistry.RootFolder.Children;
+    /// <summary>
+    /// The flat list of items to display in the ListView.
+    /// Replacing the entire collection ensures a single UI update with no flicker.
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ResourceViewItem> _treeItems = [];
+
+    /// <summary>
+    /// The selected item in the tree (the anchor). Required for ListView two-way binding
+    /// and serves as the keyboard focus/anchor item in multi-select scenarios.
+    /// </summary>
+    [ObservableProperty]
+    private ResourceViewItem? _selectedItem;
+
+    /// <summary>
+    /// All selected items for multi-select operations. Updated from ListView.SelectedItems
+    /// which is read-only and cannot be bound directly.
+    /// </summary>
+    public List<ResourceViewItem> SelectedItems { get; private set; } = [];
+
+    /// <summary>
+    /// The root folder resource.
+    /// </summary>
+    public IFolderResource RootFolder => _resourceRegistry.RootFolder;
+
+    /// <summary>
+    /// Raised when the view should update the selected resources.
+    /// </summary>
+    public event Action<List<ResourceKey>>? SelectionRequested;
+
+    /// <summary>
+    /// Raised before the tree is rebuilt. View should save scroll position.
+    /// </summary>
+    public event Action? PreBuildResourceTree;
+
+    /// <summary>
+    /// Raised after the tree is rebuilt. View should restore scroll position.
+    /// </summary>
+    public event Action? PostBuildResourceTree;
 
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
-        ICommandService commandService,
-        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _commandService = commandService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
-        _explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        _folderStateService = _explorerService.FolderStateService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
-        _pythonService = workspaceWrapper.WorkspaceService.PythonService;
     }
 
     //
-    // Event handlers
+    // Lifecycle
     //
 
-    public void OnLoaded(IResourceTreeView resourceTreeView)
+    public void OnLoaded()
     {
-        // Use the concrete type to set the resource tree view because the
-        // interface does not expose the setter.
-
-        var explorerService = _explorerService as ExplorerService;
-        Guard.IsNotNull(explorerService);
-
-        explorerService.ResourceTreeView = resourceTreeView;
-
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
+        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
     }
 
     public void OnUnloaded()
@@ -82,402 +100,458 @@ public partial class ResourceTreeViewModel : ObservableObject
         }
     }
 
-    public void OnContextMenuOpening(IResource? resource)
+    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        _ = UpdateContextMenuOptions(resource);
-    }
+        // Clean up expanded folders that no longer exist in the registry
+        // This must happen before rebuilding the tree to avoid stale folder states
+        _folderStateService.Cleanup();
 
-    /// <summary>
-    /// Set to true if the selected context menu item is a valid file or folder resource.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isResourceSelected;
-
-    /// <summary>
-    /// Set to true if the selected context menu item is a file resource that can be opened as a document.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isDocumentResourceSelected;
-
-    /// <summary>
-    /// Set to true if the selected context menu item is an executable script that can be run.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isExecutableResourceSelected;
-
-    /// <summary>
-    /// Set to true if the clipboard content contains a resource.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isResourceOnClipboard;
-
-    /// <summary>
-    /// Set to true if the selected context menu item is a file resource (not a folder) that can be opened with an application.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isFileResourceSelected;
-
-    private async Task UpdateContextMenuOptions(IResource? resource)
-    {
-        // Some context menu options are only available if a resource is selected
-        IsResourceSelected = resource is not null;
-
-        // The Open context menu option is only available for file resources that can be opened as documents
-        IsDocumentResourceSelected = IsSupportedDocumentFormat(resource);
-
-        // The Run context menu option is only available for script resources that can be executed
-        IsExecutableResourceSelected = IsResourceExecutable(resource);
-
-        // The "Open with Application" context menu option is only available for file resources (not folders)
-        IsFileResourceSelected = resource is IFileResource;
-
-        // The Paste context menu option is only available if there is a resource on the clipboard
-        bool isResourceOnClipboard = false;
-        var contentDescription = _dataTransferService.GetClipboardContentDescription();
-        if (contentDescription.ContentType == ClipboardContentType.Resource)
-        {
-            var resourceRegistry = _resourceRegistry;
-            var destFolderResource = resourceRegistry.GetContextMenuItemFolder(resource);
-
-            var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderResource);
-            if (getResult.IsSuccess)
-            {
-                var content = getResult.Value;
-                isResourceOnClipboard = content.TransferItems.Count > 0;
-            }
-        }
-        IsResourceOnClipboard = isResourceOnClipboard;
-    }
-
-    private bool IsSupportedDocumentFormat(IResource? resource)
-    {
-        if (resource is not null &&
-            resource is IFileResource fileResource)
-        {
-            var resourceRegistry = _resourceRegistry;
-            var resourceKey = resourceRegistry.GetResourceKey(fileResource);
-            var documentType = _documentsService.GetDocumentViewType(resourceKey);
-
-            return documentType != DocumentViewType.UnsupportedFormat;
-        }
-
-        return false;
-    }
-
-    private bool IsResourceExecutable(IResource? resource)
-    {
-        if (resource is not null &&
-            resource is IFileResource fileResource)
-        {
-            var resourceRegistry = _resourceRegistry;
-            var resourceKey = resourceRegistry.GetResourceKey(fileResource);
-
-            var extension = Path.GetExtension(resourceKey);
-
-            if (extension == ExplorerConstants.PythonExtension ||
-                extension == ExplorerConstants.IPythonExtension)
-            {
-                // Only enable the Run option if the python host is available to run the script
-                return _pythonService.IsPythonHostAvailable;
-            }
-        }
-
-        return false;
-    }
-
-
-    //
-    // Tree View state
-    //
-
-    public void SetFolderIsExpanded(IFolderResource folder, bool isExpanded)
-    {
-        var folderResource = _resourceRegistry.GetResourceKey(folder);
-
-        bool currentStateServiceState = _folderStateService.IsExpanded(folderResource);
-        bool currentFolderState = folder.IsExpanded;
-
-        if (currentStateServiceState == isExpanded &&
-            currentFolderState == isExpanded)
-        {
-            return;
-        }
-
-        _commandService.Execute<IExpandFolderCommand>(command =>
-        {
-            command.FolderResource = folderResource;
-            command.Expanded = isExpanded;
-        });
-    }
-
-    public void RefreshExplorer()
-    {
-        _commandService.Execute<IUpdateResourcesCommand>();
-    }
-
-    public void OpenProjectSettings()
-    {
-        // Get the project file path and open it as a document
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        var currentProject = projectService.CurrentProject;
-        if (currentProject is null)
-        {
-            return;
-        }
-
-        // Get the project file name (e.g., "myproject.celbridge")
-        var projectFilePath = currentProject.ProjectFilePath;
-        var projectFileName = Path.GetFileName(projectFilePath);
-
-        // Create a resource key for the project file
-        var fileResource = new ResourceKey(projectFileName);
-
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-        });
+        // Rebuild the tree with the updated registry
+        RebuildResourceTree();
     }
 
     //
-    // Resource editing
+    // Tree population
     //
 
-    public void RunScript(IFileResource scriptResource)
+    /// <summary>
+    /// Rebuilds the flat list from the current resource registry state.
+    /// If selectedResources is provided, those resources will be selected after rebuild.
+    /// Otherwise, the current selection is preserved.
+    /// </summary>
+    public void RebuildResourceTree(List<ResourceKey>? selectedResources = null)
     {
-        var resourceRegistry = _resourceRegistry;
-        var resource = resourceRegistry.GetResourceKey(scriptResource);
+        // Notify view to save scroll position before rebuild
+        PreBuildResourceTree?.Invoke();
 
-        var extension = Path.GetExtension(resource);
+        // Use provided selection, or preserve current selection
+        var resourcesToSelect = selectedResources ?? GetSelectedResourceKeys();
 
-        if (extension != ExplorerConstants.PythonExtension &&
-            extension != ExplorerConstants.IPythonExtension)
+        var items = BuildResourceViewItems();
+
+        // Replace the entire collection to trigger a single UI update (no flicker)
+        TreeItems = new ObservableCollection<ResourceViewItem>(items);
+
+        if (resourcesToSelect.Count > 0)
         {
-            // Attempting to run a non Python resource has no effect
-            return;
+            SelectionRequested?.Invoke(resourcesToSelect);
         }
 
-        // Todo: Read an argument string from the meta data for the resource
-
-        _commandService.Execute<IRunCommand>(command =>
-        {
-            command.ScriptResource = resource;
-        });
+        // Notify view to restore scroll position after rebuild
+        PostBuildResourceTree?.Invoke();
     }
 
-    public void OpenDocument(IFileResource fileResource)
+    /// <summary>
+    /// Builds a flat list of ResourceViewItems from the resource registry's folder hierarchy.
+    /// </summary>
+    private List<ResourceViewItem> BuildResourceViewItems()
     {
-        if (!IsSupportedDocumentFormat(fileResource))
-        {
-            // Attempting to open an unsupported resource has no effect.
-            return;
-        }
+        var items = new List<ResourceViewItem>();
+        var rootFolder = _resourceRegistry.RootFolder;
 
-        var resourceRegistry = _resourceRegistry;
-        var resource = resourceRegistry.GetResourceKey(fileResource);
+        // Add the root folder as the first item (always expanded, never collapsible)
+        var hasChildren = rootFolder.Children.Count > 0;
+        var projectName = Path.GetFileName(_resourceRegistry.ProjectFolderPath);
+        var rootItem = new ResourceViewItem(
+            rootFolder,
+            indentLevel: 0,
+            isExpanded: true,
+            hasChildren,
+            isRootFolder: true,
+            displayName: projectName);
+        items.Add(rootItem);
 
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = resource;
-        });
+        // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
+        BuildResourceViewItemsRecursive(rootFolder.Children, items, indentLevel: 0);
+
+        return items;
     }
 
-    public void ShowAddResourceDialog(ResourceType resourceType, IFolderResource? destFolder)
+    /// <summary>
+    /// Recursively builds the flat list by traversing the tree structure.
+    /// </summary>
+    private void BuildResourceViewItemsRecursive(
+        IList<IResource> resources,
+        List<ResourceViewItem> items,
+        int indentLevel)
     {
-        var resourceRegistry = _resourceRegistry;
-
-        if (destFolder is null)
-        {
-            // If the destination folder is null, add the new folder to the root folder
-            destFolder = resourceRegistry.RootFolder;
-        }
-
-        var destFolderResource = resourceRegistry.GetResourceKey(destFolder);
-
-        // Execute a command to show the add resource dialog
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
-        {
-            command.ResourceType = resourceType; // File or folder
-            command.DestFolderResource = destFolderResource;
-        });
-    }
-
-    public void ShowDeleteResourceDialog(IResource resource)
-    {
-        var resourceRegistry = _resourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(resource);
-
-        // Execute a command to show the delete resource dialog
-        _commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void ShowRenameResourceDialog(IResource resource)
-    {
-        var resourceRegistry = _resourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(resource);
-
-        // Execute a command to show the rename resource dialog
-        _commandService.Execute<IRenameResourceDialogCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void OpenResourceInExplorer(IResource? resource)
-    {
-        // A null resource here indicates the root folder
-        var resourceRegistry = _resourceRegistry;
-        var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
-
-        // Execute a command to open the resource in the system file manager
-        _commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = resourceKey;
-        });
-    }
-
-    public void OpenResourceInApplication(IResource? resource)
-    {
-        // A null resource here indicates the root folder
-        var resourceRegistry = _resourceRegistry;
-        var resourceKey = resource is null ? ResourceKey.Empty : resourceRegistry.GetResourceKey(resource);
-
-        if (!resourceKey.IsEmpty)
-        {
-            _explorerService.OpenResource(resourceKey);
-        }
-    }
-
-    public void MoveResourcesToFolder(List<IResource> resources, IFolderResource? destFolder)
-    {
-        if (destFolder is null)
-        {
-            // A null folder reference indicates the root folder
-            destFolder = _resourceRegistry.RootFolder;
-        }
-
         foreach (var resource in resources)
         {
-            var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var destResource = _resourceRegistry.GetResourceKey(destFolder);
-            var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
-
-            if (sourceResource == resolvedDestResource)
+            if (resource is IFolderResource folderResource)
             {
-                // Moving a resource to the same location is technically a no-op, but we still need to update
-                // the resource tree because the TreeView may now be displaying the resources in the wrong order.
-                _commandService.Execute<IUpdateResourcesCommand>();
-                continue;
+                var hasChildren = folderResource.Children.Count > 0;
+                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
+                var isExpanded = _folderStateService.IsExpanded(resourceKey);
+
+                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren);
+                items.Add(item);
+
+                // Only add children if the folder is expanded
+                if (isExpanded && hasChildren)
+                {
+                    BuildResourceViewItemsRecursive(
+                        folderResource.Children,
+                        items,
+                        indentLevel + 1);
+                }
             }
-
-            _commandService.Execute<ICopyResourceCommand>(command =>
+            else if (resource is IFileResource)
             {
-                command.SourceResource = sourceResource;
-                command.DestResource = destResource;
-                command.TransferMode = DataTransferMode.Move;
-            });
+                var item = new ResourceViewItem(resource, indentLevel, false, false);
+                items.Add(item);
+            }
         }
+    }
+
+    /// <summary>
+    /// Checks if a resource exists in the registry.
+    /// </summary>
+    public bool ResourceExists(ResourceKey resourceKey)
+    {
+        return _resourceRegistry.GetResource(resourceKey).IsSuccess;
+    }
+
+    /// <summary>
+    /// Gets the resource key for the currently selected item (anchor).
+    /// </summary>
+    public ResourceKey GetSelectedResourceKey()
+    {
+        if (SelectedItem?.Resource != null)
+        {
+            return _resourceRegistry.GetResourceKey(SelectedItem.Resource);
+        }
+        return ResourceKey.Empty;
+    }
+
+    /// <summary>
+    /// Gets the list of selected resource keys.
+    /// </summary>
+    public List<ResourceKey> GetSelectedResourceKeys()
+    {
+        var selectedResources = SelectedItems
+            .Select(item => _resourceRegistry.GetResourceKey(item.Resource))
+            .ToList();
+
+        return selectedResources;
+    }
+
+    /// <summary>
+    /// Sets the selected item by resource key.
+    /// </summary>
+    public bool SetSelectedResource(ResourceKey resourceKey)
+    {
+        if (resourceKey.IsEmpty)
+        {
+            SelectedItem = null;
+            return true;
+        }
+
+        // Find the item in the tree
+        foreach (var item in TreeItems)
+        {
+            var itemKey = _resourceRegistry.GetResourceKey(item.Resource);
+            if (itemKey == resourceKey)
+            {
+                SelectedItem = item;
+                return true;
+            }
+        }
+
+        _logger.LogDebug($"SetSelectedResource: Item '{resourceKey}' not found in tree (count = {TreeItems.Count})");
+        return false;
+    }
+
+    /// <summary>
+    /// Selects the parent folder of the currently selected item.
+    /// Returns true if a parent was selected, false otherwise.
+    /// </summary>
+    public bool SelectParentFolder()
+    {
+        if (SelectedItem?.Resource.ParentFolder == null)
+        {
+            return false;
+        }
+
+        var parentKey = _resourceRegistry.GetResourceKey(SelectedItem.Resource.ParentFolder);
+        if (parentKey.IsEmpty)
+        {
+            return false;
+        }
+
+        return SetSelectedResource(parentKey);
     }
 
     //
-    // Clipboard support
+    // Expand/Collapse
     //
 
-    public void CutResourceToClipboard(IResource sourceResource)
+    /// <summary>
+    /// Toggles the expansion state of a folder item (except root folder).
+    /// </summary>
+    public void ToggleExpand(ResourceViewItem item)
     {
-        var resourceRegistry = _resourceRegistry;
-
-        var sourceResourceKey = resourceRegistry.GetResourceKey(sourceResource);
-
-        // Execute a command to cut the resource to the clipboard
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        // Don't allow toggling root folder expansion
+        if (!item.IsFolder || !item.HasChildren || item.IsRootFolder)
         {
-            command.SourceResource = sourceResourceKey;
-            command.TransferMode = DataTransferMode.Move;
-        });
-    }
-
-    public void CopyResourceToClipboard(IResource sourceResource)
-    {
-        var resourceRegistry = _resourceRegistry;
-
-        var resourceKey = resourceRegistry.GetResourceKey(sourceResource);
-
-        // Execute a command to copy the resource to the clipboard
-        _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
-        {
-            command.SourceResource = resourceKey;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public void PasteResourceFromClipboard(IResource? destResource)
-    {
-        var resourceRegistry = _resourceRegistry;
-
-        var destFolderResource = resourceRegistry.GetContextMenuItemFolder(destResource);
-
-        // Execute a command to paste the clipboard content to the folder resource
-        _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
-        {
-            command.DestFolderResource = destFolderResource;
-        });
-    }
-
-    public void CopyResourceKeyToClipboard(IResource resource)
-    {
-        var resourceRegistry = _resourceRegistry;
-        var resourceKey = resourceRegistry.GetResourceKey(resource);
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = resourceKey;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public void CopyFilePathToClipboard(IResource resource)
-    {
-        var resourceRegistry = _resourceRegistry;
-        var filePath = resourceRegistry.GetResourcePath(resource);
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = filePath;
-            command.TransferMode = DataTransferMode.Copy;
-        });
-    }
-
-    public Result ImportResources(List<string> sourcePaths, IResource? destResource)
-    {
-        if (destResource is null)
-        {
-            return Result.Fail("Destination resource is null");
+            return;
         }
 
-        var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(destResource);
-        var createResult = _resourceTransferService.CreateResourceTransfer(sourcePaths, destFolderResource, DataTransferMode.Copy);
-        if (createResult.IsFailure)
+        if (item.IsExpanded)
         {
-            return Result.Fail($"Failed to create resource transfer. {createResult.Error}");
+            CollapseItem(item);
         }
-        var resourceTransfer = createResult.Value;
-
-        var transferResult = _resourceTransferService.TransferResources(destFolderResource, resourceTransfer);
-        if (transferResult.IsFailure)
+        else
         {
-            return Result.Fail($"Failed to transfer resources. {transferResult.Error}");
+            ExpandItem(item);
         }
-
-        return Result.Ok();
     }
+
+    /// <summary>
+    /// Expands a folder item if it's collapsed.
+    /// Preserves all existing selections.
+    /// </summary>
+    public void ExpandItem(ResourceViewItem item)
+    {
+        if (!item.IsFolder || !item.HasChildren || item.IsExpanded)
+        {
+            return;
+        }
+
+        // Preserve current selection
+        var selectedKeys = GetSelectedResourceKeys();
+
+        item.IsExpanded = true;
+
+        if (item.Resource is IFolderResource folderResource)
+        {
+            folderResource.IsExpanded = true;
+
+            var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
+            _folderStateService.SetExpanded(folderResourceKey, true);
+        }
+
+        RebuildResourceTree(selectedKeys);
+        RequestWorkspaceSave();
+    }
+
+    /// <summary>
+    /// Collapses a folder item if it's expanded.
+    /// When collapsing, any selected items inside the folder cause the folder to become selected.
+    /// Items selected outside the folder remain selected.
+    /// </summary>
+    public void CollapseItem(ResourceViewItem item)
+    {
+        // Don't allow collapsing the root folder
+        if (!item.IsFolder || !item.IsExpanded || item.IsRootFolder)
+        {
+            return;
+        }
+
+        var folderKey = _resourceRegistry.GetResourceKey(item.Resource);
+
+        // Compute new selection: items inside folder transfer to the folder, others remain
+        var selectedKeys = GetSelectedResourceKeys();
+        var keysInsideFolder = selectedKeys.Where(key => key.IsDescendantOf(folderKey)).ToList();
+        var keysOutsideFolder = selectedKeys.Where(key => !key.IsDescendantOf(folderKey)).ToList();
+
+        var newSelectedKeys = new List<ResourceKey>(keysOutsideFolder);
+        if (keysInsideFolder.Count > 0)
+        {
+            newSelectedKeys.Add(folderKey);
+        }
+
+        item.IsExpanded = false;
+
+        if (item.Resource is IFolderResource folderResource)
+        {
+            folderResource.IsExpanded = false;
+            _folderStateService.SetExpanded(folderKey, false);
+        }
+
+        RebuildResourceTree(newSelectedKeys);
+        RequestWorkspaceSave();
+    }
+
+    /// <summary>
+    /// Collapses all folders in the tree.
+    /// </summary>
+    public void CollapseAllFolders()
+    {
+        // Map selected items to their top-level parent folders so we can
+        // preserve the selection (to an extent) after collapsing everything.
+        var selectedKeys = GetSelectedResourceKeys();
+        var topLevelFolderKeys = new HashSet<ResourceKey>();
+        foreach (var key in selectedKeys)
+        {
+            var path = key.ToString();
+            if (!string.IsNullOrEmpty(path))
+            {
+                var firstSlash = path.IndexOf('/');
+                var topLevelPath = firstSlash > 0 ? path.Substring(0, firstSlash) : path;
+                topLevelFolderKeys.Add(new ResourceKey(topLevelPath));
+            }
+        }
+
+        foreach (var item in TreeItems.ToList())
+        {
+            // Skip root folder - it should never be collapsed
+            if (item.IsFolder &&
+                item.IsExpanded &&
+                !item.IsRootFolder)
+            {
+                item.IsExpanded = false;
+                if (item.Resource is IFolderResource folderResource)
+                {
+                    folderResource.IsExpanded = false;
+
+                    var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
+                    _folderStateService.SetExpanded(folderResourceKey, false);
+                }
+            }
+        }
+
+        RebuildResourceTree(topLevelFolderKeys.ToList());
+        RequestWorkspaceSave();
+    }
+
+    /// <summary>
+    /// Expands all parent folders of a resource to make it visible.
+    /// </summary>
+    public void ExpandPathToResource(ResourceKey resource)
+    {
+        var segments = resource.ToString().Split('/');
+        var currentPath = string.Empty;
+        var anyExpanded = false;
+
+        // Expand each folder in the path (except the last segment which is the target)
+        for (int i = 0; i < segments.Length - 1; i++)
+        {
+            currentPath = i == 0 ? segments[i] : $"{currentPath}/{segments[i]}";
+            var folderKey = new ResourceKey(currentPath);
+
+            var folderResult = _resourceRegistry.GetResource(folderKey);
+            if (folderResult.IsSuccess && folderResult.Value is IFolderResource folder)
+            {
+                if (!folder.IsExpanded)
+                {
+                    folder.IsExpanded = true;
+                    _folderStateService.SetExpanded(folderKey, true);
+                    anyExpanded = true;
+                }
+            }
+        }
+
+        // Rebuild the list to include newly expanded items
+        RebuildResourceTree();
+
+        if (anyExpanded)
+        {
+            RequestWorkspaceSave();
+        }
+    }
+
+    private void RequestWorkspaceSave()
+    {
+        var message = new WorkspaceStateDirtyMessage();
+        _messengerService.Send(message);
+    }
+
+    //
+    // Multi-selection support
+    //
+
+    /// <summary>
+    /// Updates the SelectedItems collection from the view and sends the selection changed notification.
+    /// Called when selection changes in the ListView.
+    /// </summary>
+    public void UpdateSelectedItems(List<ResourceViewItem> selectedItems)
+    {
+        SelectedItems.Clear();
+        SelectedItems.AddRange(selectedItems);
+
+        // Send the selection changed notification
+        var selectedResourceKey = GetSelectedResourceKey();
+        OnSelectedResourceChanged(selectedResourceKey);
+    }
+
+    /// <summary>
+    /// Gets the list of selected resources.
+    /// </summary>
+    public List<IResource> GetSelectedResources()
+    {
+        return SelectedItems.Select(item => item.Resource).ToList();
+    }
+
+    /// <summary>
+    /// Finds tree items matching the given resource keys.
+    /// </summary>
+    public List<ResourceViewItem> FindItemsByResourceKeys(List<ResourceKey> resourceKeys)
+    {
+        var items = new List<ResourceViewItem>();
+        var keySet = new HashSet<ResourceKey>(resourceKeys);
+
+        foreach (var item in TreeItems)
+        {
+            var itemKey = _resourceRegistry.GetResourceKey(item.Resource);
+            if (keySet.Contains(itemKey))
+            {
+                items.Add(item);
+            }
+        }
+
+        return items;
+    }
+
+    //
+    // Selection notification
+    //
 
     public void OnSelectedResourceChanged(ResourceKey resource)
     {
-        // Notify listeners that the selected resource has changed
         var message = new SelectedResourceChangedMessage(resource);
         _messengerService.Send(message);
+    }
+
+    /// <summary>
+    /// Gets the folder resource for the currently selected item.
+    /// </summary>
+    public IFolderResource? GetSelectedResourceFolder()
+    {
+        if (SelectedItem?.Resource is IFolderResource folderResource)
+        {
+            return folderResource;
+        }
+        else if (SelectedItem?.Resource is IFileResource fileResource)
+        {
+            return fileResource.ParentFolder;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets all sibling items of the specified item (or root-level items if nothing specified).
+    /// </summary>
+    public List<ResourceViewItem> GetSiblingItems(ResourceViewItem? selectedItem = null)
+    {
+        // Use the provided item, or fall back to the current selection
+        var item = selectedItem ?? SelectedItem;
+
+        // Determine the parent folder key:
+        // - If an item is provided/selected, use its parent folder's key
+        // - If nothing is selected, use the root folder's key (for root-level items)
+        var targetParentKey = item != null
+            ? GetParentKey(item.Resource.ParentFolder)
+            : _resourceRegistry.GetResourceKey(RootFolder);
+
+        return TreeItems
+            .Where(i => !i.IsRootFolder && GetParentKey(i.Resource.ParentFolder) == targetParentKey)
+            .ToList();
+    }
+
+    private ResourceKey GetParentKey(IFolderResource? parentFolder)
+    {
+        return parentFolder != null
+            ? _resourceRegistry.GetResourceKey(parentFolder)
+            : _resourceRegistry.GetResourceKey(RootFolder);
     }
 }

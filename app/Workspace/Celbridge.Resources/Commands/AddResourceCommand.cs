@@ -15,13 +15,16 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     public ResourceKey DestResource { get; set; }
     public bool OpenAfterAdding { get; set; } = false;
 
+    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly AddResourceHelper _addResourceHelper;
 
     public AddResourceCommand(
+        IMessengerService messengerService,
         ICommandService commandService,
         AddResourceHelper addResourceHelper)
     {
+        _messengerService = messengerService;
         _commandService = commandService;
         _addResourceHelper = addResourceHelper;
     }
@@ -32,6 +35,11 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         if (addResult.IsFailure)
         {
+            // Notify the UI about the failure
+            List<string> failedItems = [DestResource.ResourceName];
+            var message = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedItems);
+            _messengerService.Send(message);
+
             return addResult;
         }
 

@@ -21,6 +21,11 @@ public interface IResourceRegistry
     ResourceKey GetResourceKey(IResource resource);
 
     /// <summary>
+    /// Returns resource keys for multiple resources.
+    /// </summary>
+    List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources);
+
+    /// <summary>
     /// Returns the resource key for a resource at the specified path in the project.
     /// The resource key will be generated even if the resource does not exist yet in the project.
     /// Fails if the path is not within the project folder.

@@ -20,9 +20,7 @@ public class ClearHistoryCommand : CommandBase, IClearHistoryCommand
             return Result.Fail("Workspace not loaded");
         }
 
-        var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
-
-        var consolePanel = consoleService.ConsolePanel as ConsolePanel;
+        var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel as ConsolePanel;
         Guard.IsNotNull(consolePanel);
             
         // consolePanel.ViewModel.ClearHistory();

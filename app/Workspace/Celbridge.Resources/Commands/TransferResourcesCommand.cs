@@ -1,9 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Commands;
 
@@ -15,19 +13,16 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     public DataTransferMode TransferMode { get; set; }
     public List<ResourceTransferItem> TransferItems { get; set; } = new();
 
-    private readonly IDialogService _dialogService;
-    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public TransferResourcesCommand(
-        IDialogService dialogService,
-        IStringLocalizer stringLocalizer,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
-        _dialogService = dialogService;
-        _stringLocalizer = stringLocalizer;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
@@ -85,10 +80,14 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             command.Expanded = true;
         });
 
-        // Show error dialog if any items failed
+        // Notify the UI if any items failed
         if (failedItems.Count > 0)
         {
-            await ShowTransferErrorAsync(failedItems);
+            var operationType = TransferMode == DataTransferMode.Copy
+                ? ResourceOperationType.Copy
+                : ResourceOperationType.Move;
+            var message = new ResourceOperationFailedMessage(operationType, failedItems);
+            _messengerService.Send(message);
         }
 
         return Result.Ok();
@@ -167,18 +166,5 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         return result;
-    }
-
-    private async Task ShowTransferErrorAsync(List<string> failedItems)
-    {
-        var titleKey = TransferMode == DataTransferMode.Copy
-            ? "ResourceTree_CopyResource"
-            : "ResourceTree_MoveResource";
-
-        var title = _stringLocalizer.GetString(titleKey);
-        var failedList = string.Join(", ", failedItems);
-        var message = _stringLocalizer.GetString("ResourceTree_TransferResourcesFailed", failedList);
-
-        await _dialogService.ShowAlertDialogAsync(title, message);
     }
 }
