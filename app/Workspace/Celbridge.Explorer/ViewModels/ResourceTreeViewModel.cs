@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
-using Celbridge.Explorer.ViewModels.Helpers;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -111,8 +110,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         // Save the currently selected resource key before rebuilding
         var selectedResourceKey = GetSelectedResourceKey();
 
-        var rootFolder = _resourceRegistry.RootFolder;
-        var items = ResourceTreeBuilder.BuildFlatList(rootFolder, _folderStateService, _resourceRegistry);
+        var items = BuildFlatItemList();
 
         TreeItems.Clear();
         foreach (var item in items)
@@ -124,6 +122,68 @@ public partial class ResourceTreeViewModel : ObservableObject
         if (!selectedResourceKey.IsEmpty)
         {
             SetSelectedResource(selectedResourceKey);
+        }
+    }
+
+    /// <summary>
+    /// Builds a flat list of ResourceViewItems from the resource registry's folder hierarchy.
+    /// </summary>
+    private List<ResourceViewItem> BuildFlatItemList()
+    {
+        var items = new List<ResourceViewItem>();
+        var rootFolder = _resourceRegistry.RootFolder;
+
+        // Add the root folder as the first item (always expanded, never collapsible)
+        var hasChildren = rootFolder.Children.Count > 0;
+        var projectName = Path.GetFileName(_resourceRegistry.ProjectFolderPath);
+        var rootItem = new ResourceViewItem(
+            rootFolder,
+            indentLevel: 0,
+            isExpanded: true,
+            hasChildren,
+            isRootFolder: true,
+            displayName: projectName);
+        items.Add(rootItem);
+
+        // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
+        BuildFlatItemListRecursive(rootFolder.Children, items, indentLevel: 0);
+
+        return items;
+    }
+
+    /// <summary>
+    /// Recursively builds the flat list by traversing the tree structure.
+    /// </summary>
+    private void BuildFlatItemListRecursive(
+        IList<IResource> resources,
+        List<ResourceViewItem> items,
+        int indentLevel)
+    {
+        foreach (var resource in resources)
+        {
+            if (resource is IFolderResource folderResource)
+            {
+                var hasChildren = folderResource.Children.Count > 0;
+                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
+                var isExpanded = _folderStateService.IsExpanded(resourceKey);
+
+                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren);
+                items.Add(item);
+
+                // Only add children if the folder is expanded
+                if (isExpanded && hasChildren)
+                {
+                    BuildFlatItemListRecursive(
+                        folderResource.Children,
+                        items,
+                        indentLevel + 1);
+                }
+            }
+            else if (resource is IFileResource)
+            {
+                var item = new ResourceViewItem(resource, indentLevel, false, false);
+                items.Add(item);
+            }
         }
     }
 
