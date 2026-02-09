@@ -114,7 +114,10 @@ public class ExplorerService : IExplorerService, IDisposable
                 return;
             }
 
-            var resources = resourceStrings.Select(s => new ResourceKey(s)).ToList();
+            var resources = resourceStrings
+                .Where(s => ResourceKey.TryCreate(s, out _))
+                .Select(s => ResourceKey.Create(s))
+                .ToList();
 
             // Select all previously selected resources
             var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;

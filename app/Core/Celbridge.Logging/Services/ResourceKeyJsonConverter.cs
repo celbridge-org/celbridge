@@ -13,6 +13,10 @@ public class ResourceKeyConverter : JsonConverter<ResourceKey>
     public override ResourceKey Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var key = reader.GetString()!;
-        return new ResourceKey(key);
+        if (!ResourceKey.TryCreate(key, out var resourceKey))
+        {
+            throw new JsonException($"Invalid resource key: '{key}'");
+        }
+        return resourceKey;
     }
 }

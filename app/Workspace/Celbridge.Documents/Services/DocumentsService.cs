@@ -405,13 +405,12 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         foreach (var stored in storedAddresses)
         {
-            if (!ResourceKey.IsValidKey(stored.Resource))
+            if (!ResourceKey.TryCreate(stored.Resource, out var fileResource))
             {
                 _logger.LogWarning($"Invalid resource key '{stored.Resource}' found in previously open documents");
                 continue;
             }
 
-            var fileResource = new ResourceKey(stored.Resource);
             var getResourceResult = resourceRegistry.GetResource(fileResource);
             if (getResourceResult.IsFailure)
             {
@@ -444,14 +443,14 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        if (!ResourceKey.IsValidKey(selectedDocument))
+        if (!ResourceKey.TryCreate(selectedDocument, out var selectedDocumentKey))
         {
             _logger.LogWarning($"Invalid resource key '{selectedDocument}' found for previously selected document");
             return;
         }
 
         // Set the active document (which also selects it in its section)
-        DocumentsPanel.ActiveDocument = new ResourceKey(selectedDocument);
+        DocumentsPanel.ActiveDocument = selectedDocumentKey;
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)

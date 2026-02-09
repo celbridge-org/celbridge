@@ -22,6 +22,34 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// </summary>
     public static ResourceKey Empty => new ResourceKey();
 
+    /// <summary>
+    /// Creates a new ResourceKey from the specified key string, throwing if the key is invalid.
+    /// Use this when constructing from external/untrusted input.
+    /// </summary>
+    public static ResourceKey Create(string key)
+    {
+        if (!IsValidKey(key))
+        {
+            throw new ArgumentException($"Invalid resource key: '{key}'", nameof(key));
+        }
+        return new ResourceKey(key);
+    }
+
+    /// <summary>
+    /// Attempts to create a ResourceKey from the specified key string.
+    /// Returns true if successful, false if the key is invalid.
+    /// </summary>
+    public static bool TryCreate(string key, out ResourceKey result)
+    {
+        if (IsValidKey(key))
+        {
+            result = new ResourceKey(key);
+            return true;
+        }
+        result = Empty;
+        return false;
+    }
+
     public override string ToString()
     {
         return _key ?? string.Empty;
@@ -141,7 +169,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// </summary>
     public bool IsDescendantOf(ResourceKey folderKey)
     {
-        var folderPath = folderKey.ToString();
+        var folderPath = folderKey.ToString().TrimEnd('/');
 
         if (string.IsNullOrEmpty(folderPath))
         {
@@ -235,8 +263,8 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
             return false;
         }
 
-        // Resource keys may not start with a separator character
-        if (key[0] == '/')
+        // Resource keys may not start or end with a separator character
+        if (key[0] == '/' || key[^1] == '/')
         {
             return false;
         }
