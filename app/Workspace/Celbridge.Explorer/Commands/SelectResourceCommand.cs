@@ -25,7 +25,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
 
-        var selectResult = await explorerService.SelectResource(Resource);
+        var selectResult = await explorerService.SelectResources([Resource]);
         if (selectResult.IsFailure)
         {
             return selectResult;

@@ -118,7 +118,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
         commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
-            command.Resources = new List<ResourceKey> { resource };
+            command.Resources = [resource];
         });
     }
 

@@ -98,7 +98,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             // Execute a command to copy the resource to perform the duplication
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResources = new List<ResourceKey> { Resource };
+                command.SourceResources = [Resource];
                 command.DestResource = destResource;
 
                 if (isExpandedFolder)
