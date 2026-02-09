@@ -215,7 +215,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         commandService.Execute<ICopyResourceCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { sourceResource };
+            command.SourceResources = [sourceResource];
             command.DestResource = destResource;
             command.TransferMode = DataTransferMode.Copy;
         });
@@ -239,7 +239,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         commandService.Execute<ICopyResourceCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { sourceResource };
+            command.SourceResources = [sourceResource];
             command.DestResource = destResource;
             command.TransferMode = DataTransferMode.Move;
         });

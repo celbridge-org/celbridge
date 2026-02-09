@@ -36,7 +36,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         if (addResult.IsFailure)
         {
             // Notify the UI about the failure
-            var failedItems = new List<string> { DestResource.ResourceName };
+            List<string> failedItems = [DestResource.ResourceName];
             var message = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedItems);
             _messengerService.Send(message);
 

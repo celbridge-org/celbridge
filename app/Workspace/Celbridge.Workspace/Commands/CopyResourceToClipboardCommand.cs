@@ -93,7 +93,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { resource };
+            command.SourceResources = [resource];
             command.TransferMode = DataTransferMode.Copy;
         });
     }
@@ -115,7 +115,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { resource };
+            command.SourceResources = [resource];
             command.TransferMode = DataTransferMode.Move;
         });
     }
