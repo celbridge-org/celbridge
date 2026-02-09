@@ -535,7 +535,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             }
         }
 
-        return new ExplorerMenuContext(
+        var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
             RootFolder: rootFolder,
@@ -544,6 +544,8 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             ClipboardContentType: contentDescription.ContentType,
             ClipboardOperation: contentDescription.ContentOperation
         );
+
+        return context;
     }
 
     private IFolderResource ResolveDropTargetFolder(IResource? resource)

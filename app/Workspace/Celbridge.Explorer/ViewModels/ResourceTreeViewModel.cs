@@ -22,7 +22,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
-    private readonly ResourceTreeContextMenuHelper _contextMenuHelper;
+    private readonly IDocumentsService _documentsService;
 
     /// <summary>
     /// Helper for clipboard operations. Exposed for View usage.
@@ -45,97 +45,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// All selected items for multi-select operations. Updated from ListView.SelectedItems
     /// which is read-only and cannot be bound directly.
     /// </summary>
-    private List<ResourceViewItem> _selectedItems = [];
-    public List<ResourceViewItem> SelectedItems
-    {
-        get => _selectedItems;
-        private set
-        {
-            if (SetProperty(ref _selectedItems, value))
-            {
-                OnPropertyChanged(nameof(IsResourceSelected));
-                OnPropertyChanged(nameof(IsSingleItemSelected));
-                OnPropertyChanged(nameof(HasMultipleSelection));
-            }
-        }
-    }
-
-    /// <summary>
-    /// True when at least one resource is selected.
-    /// </summary>
-    public bool IsResourceSelected => SelectedItems.Count > 0;
-
-    /// <summary>
-    /// True when exactly one item is selected.
-    /// </summary>
-    public bool IsSingleItemSelected => SelectedItems.Count == 1;
-
-    /// <summary>
-    /// True when exactly one item is selected OR the root folder is targeted via right-click.
-    /// Used for context menu visibility of single-item operations.
-    /// </summary>
-    public bool IsSingleItemOrRootTargeted => SelectedItems.Count == 1 || IsRootFolderTargeted;
-
-    /// <summary>
-    /// True when multiple items are selected.
-    /// </summary>
-    public bool HasMultipleSelection => SelectedItems.Count > 1;
-
-    /// <summary>
-    /// True when the root folder is targeted via right-click (i.e. not selected, but context menu target).
-    /// </summary>
-    [ObservableProperty]
-    private bool _isRootFolderTargeted;
-
-    /// <summary>
-    /// True when the selection can be cut or copied (has items and none are the root folder).
-    /// </summary>
-    public bool CanCutOrCopySelection => IsResourceSelected && !SelectionContainsRootFolder;
-
-    /// <summary>
-    /// True when the selection can be deleted (has items and none are root folder).
-    /// </summary>
-    public bool CanDeleteSelection => IsResourceSelected && !SelectionContainsRootFolder;
-
-    /// <summary>
-    /// True when the selection can be renamed (single non-root item selected).
-    /// </summary>
-    public bool CanRenameSelection => IsSingleItemSelected && !SelectionContainsRootFolder;
-
-    /// <summary>
-    /// True when the resource key can be copied (single item selected, not root folder).
-    /// Root folder has empty resource key, so copying it is not useful.
-    /// </summary>
-    public bool CanCopyResourceKey => IsSingleItemSelected && !SelectionContainsRootFolder;
-
-    /// <summary>
-    /// True if the current selection contains the root folder.
-    /// </summary>
-    public bool SelectionContainsRootFolder => SelectedItems.Any(item => item.IsRootFolder);
-
-    /// <summary>
-    /// Set to true if the selected context menu item is a file resource that can be opened as a document.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isDocumentResourceSelected;
-
-    /// <summary>
-    /// Set to true if the selected context menu item is an executable script that can be run.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isExecutableResourceSelected;
-
-    /// <summary>
-    /// Set to true if the clipboard content contains a resource.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isResourceOnClipboard;
-
-    /// <summary>
-    /// Set to true if the selected context menu item is a file resource (not a folder).
-    /// </summary>
-    [ObservableProperty]
-    private bool _isFileResourceSelected;
+    public List<ResourceViewItem> SelectedItems { get; private set; } = [];
 
     /// <summary>
     /// The root folder resource.
@@ -154,21 +64,14 @@ public partial class ResourceTreeViewModel : ObservableObject
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
+        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
         var resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
-        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-        var pythonService = workspaceWrapper.WorkspaceService.PythonService;
 
         Clipboard = new ResourceTreeClipboardHelper(
             _commandService,
             _resourceRegistry,
             resourceTransferService);
-
-        _contextMenuHelper = new ResourceTreeContextMenuHelper(
-            _resourceRegistry,
-            documentsService,
-            _dataTransferService,
-            pythonService);
     }
 
     //
@@ -241,14 +144,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Gets the resource key for a resource.
-    /// </summary>
-    private ResourceKey GetResourceKey(IResource resource)
-    {
-        return _resourceRegistry.GetResourceKey(resource);
-    }
-
-    /// <summary>
     /// Checks if a resource exists in the registry.
     /// </summary>
     public bool ResourceExists(ResourceKey resourceKey)
@@ -273,9 +168,11 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public List<ResourceKey> GetSelectedResourceKeys()
     {
-        return SelectedItems
+        var selectedResources = SelectedItems
             .Select(item => _resourceRegistry.GetResourceKey(item.Resource))
             .ToList();
+
+        return selectedResources;
     }
 
     /// <summary>
@@ -506,7 +403,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public void UpdateSelectedItems(List<ResourceViewItem> selectedItems)
     {
-        SelectedItems = selectedItems;
+        SelectedItems.Clear();
+        SelectedItems.AddRange(selectedItems);
 
         // Send the selection changed notification
         var selectedResourceKey = GetSelectedResourceKey();
@@ -560,36 +458,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     //
-    // Context menu
-    //
-
-    public void OnContextMenuOpening(IResource? resource)
-    {
-        _ = UpdateContextMenuOptions(resource);
-    }
-
-    private async Task UpdateContextMenuOptions(IResource? resource)
-    {
-        // Track if the root folder is being targeted (via right-click, since root is not selectable)
-        IsRootFolderTargeted = resource == RootFolder;
-
-        // Notify that selection-dependent properties may have changed
-        OnPropertyChanged(nameof(IsSingleItemOrRootTargeted));
-        OnPropertyChanged(nameof(CanCutOrCopySelection));
-        OnPropertyChanged(nameof(CanDeleteSelection));
-        OnPropertyChanged(nameof(CanRenameSelection));
-        OnPropertyChanged(nameof(CanCopyResourceKey));
-        OnPropertyChanged(nameof(SelectionContainsRootFolder));
-
-        // Single-item specific properties (only valid when exactly one item selected)
-        IsDocumentResourceSelected = IsSingleItemSelected && _contextMenuHelper.IsSupportedDocumentFormat(resource);
-        IsExecutableResourceSelected = IsSingleItemSelected && _contextMenuHelper.IsResourceExecutable(resource);
-        IsFileResourceSelected = IsSingleItemSelected && resource is IFileResource;
-
-        IsResourceOnClipboard = await _contextMenuHelper.IsResourceOnClipboardAsync(resource);
-    }
-
-    //
     // Resource operations
     //
 
@@ -612,12 +480,12 @@ public partial class ResourceTreeViewModel : ObservableObject
 
     public void OpenDocument(IFileResource fileResource)
     {
-        if (!_contextMenuHelper.IsSupportedDocumentFormat(fileResource))
+        var resource = _resourceRegistry.GetResourceKey(fileResource);
+
+        if (!_documentsService.IsDocumentSupported(resource))
         {
             return;
         }
-
-        var resource = _resourceRegistry.GetResourceKey(fileResource);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
