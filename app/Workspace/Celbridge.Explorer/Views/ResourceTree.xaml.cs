@@ -614,13 +614,8 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Check for internal drag (from our ListView)
         if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
         {
-            // Internal drag - check if target is valid
-            if (targetItem?.Resource is IFolderResource)
-            {
-                canDrop = true;
-                _dragOverItem = targetItem;
-            }
-            else if (targetItem?.Resource is IFileResource)
+            // Internal drag - check if target is valid (folder or file)
+            if (targetItem?.Resource is IFolderResource or IFileResource)
             {
                 canDrop = true;
                 _dragOverItem = targetItem;
@@ -629,14 +624,9 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Check for external drag (from File Explorer, etc.)
         else if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
-            // External drag - allow drop on any folder or file (will use parent)
-            if (targetItem?.Resource is IFolderResource || targetItem?.Resource is IFileResource)
-            {
-                canDrop = true;
-                _dragOverItem = targetItem;
-            }
-            // Allow drop on empty space (root folder)
+            // External drag - allow drop on folder, file (uses parent), or empty space (root folder)
             canDrop = true;
+            _dragOverItem = targetItem;
         }
 
         // Update cursor and accepted operation
