@@ -1,10 +1,10 @@
 ﻿<UserControl
-x:Class="Celbridge.Workspace.Views.ActivityPanel"
-xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:explorer="using:Celbridge.Explorer.Views"
-xmlns:search="using:Celbridge.Search.Views"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    x:Class="Celbridge.Workspace.Views.ActivityPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:explorer="using:Celbridge.Explorer.Views"
+    xmlns:search="using:Celbridge.Search.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <Grid x:Name="LayoutRoot">
         <Grid.ColumnDefinitions>

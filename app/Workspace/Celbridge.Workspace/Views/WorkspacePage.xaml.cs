@@ -155,7 +155,6 @@ public sealed partial class WorkspacePage : Page
         // Close all open documents and clean up their WebView2 resources
         workspaceService.DocumentsPanel.Shutdown();
 
-        // Clean up WebView2 resources in the ConsolePanel
         if (workspaceService.ConsolePanel is ConsolePanel consolePanel)
         {
             consolePanel.Shutdown();
