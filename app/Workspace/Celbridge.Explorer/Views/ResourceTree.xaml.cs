@@ -22,6 +22,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
     private bool _isPopulating;
+    private double _savedScrollOffset;
 
     public ResourceTreeViewModel ViewModel { get; }
 
@@ -47,12 +48,27 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     {
         ViewModel.OnLoaded();
         ViewModel.SelectionRequested += OnSelectionRequested;
+        ViewModel.PreBuildTree += OnPreBuildTree;
+        ViewModel.PostBuildTree += OnPostBuildTree;
     }
 
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.SelectionRequested -= OnSelectionRequested;
+        ViewModel.PreBuildTree -= OnPreBuildTree;
+        ViewModel.PostBuildTree -= OnPostBuildTree;
         ViewModel.OnUnloaded();
+    }
+
+    private void OnPreBuildTree()
+    {
+        _savedScrollOffset = GetScrollOffset();
+    }
+
+    private void OnPostBuildTree()
+    {
+        ResourceListView.UpdateLayout();
+        SetScrollOffset(_savedScrollOffset);
     }
 
     private void OnSelectionRequested(List<ResourceKey> resourceKeys)
