@@ -100,7 +100,8 @@ public class PythonService : IPythonService, IDisposable
             // Ensure that python support files are installed
             var workingDir = project.ProjectFolderPath;
 
-            var installResult = await PythonInstaller.InstallPythonAsync();
+            var appVersion = _utilityService.GetEnvironmentInfo().AppVersion;
+            var installResult = await PythonInstaller.InstallPythonAsync(appVersion);
             if (installResult.IsFailure)
             {
                 var errorMessage = new ConsoleErrorMessage(
@@ -212,6 +213,7 @@ public class PythonService : IPythonService, IDisposable
                 .Add("--cache-dir", uvCacheDir)             // cache uv files in app data folder (not globally per-user)
                 .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
                 .Add("--python", pythonVersion!)            // python interpreter version
+                .Add("--managed-python")                    // only use uv-managed Python, ignore system Python
                 //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
                 .Add(packageArgs.ToArray())                 // specify the packages to install     
                 .Add("python")                              // run the python interpreter

@@ -10,6 +10,7 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+        services.AddSingleton<IPythonConfigService, PythonConfigService>();
         services.AddTransient<IPythonService, PythonService>();
                 
         services.AddTransient<Func<string, IRpcService>>(serviceProvider => pipeName =>
