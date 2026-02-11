@@ -12,6 +12,7 @@ public static class PythonInstaller
     private const string BuildVersionFileName = "build_version.txt";
     private const string UVToolsSubfolder = "uv_tools";
     private const string UVBinSubfolder = "uv_bin";
+    private const string UVPythonInstallsSubfolder = "uv_python_installs";
     private const string UVExecutableName = "uv.exe";
     private const string UVTempFileName = "uv.zip";
 
@@ -114,11 +115,13 @@ public static class PythonInstaller
 
     private static async Task InstallCelbridgeToolAsync(string pythonFolderPath)
     {
-        // Create directories for uv tools and binaries
+        // Create directories for uv tools, binaries, and Python installations
         var uvToolDir = Path.Combine(pythonFolderPath, UVToolsSubfolder);
         var uvToolBinDir = Path.Combine(pythonFolderPath, UVBinSubfolder);
+        var uvPythonInstallDir = Path.Combine(pythonFolderPath, UVPythonInstallsSubfolder);
         Directory.CreateDirectory(uvToolDir);
         Directory.CreateDirectory(uvToolBinDir);
+        Directory.CreateDirectory(uvPythonInstallDir);
 
         var uvExePath = Path.Combine(pythonFolderPath, UVExecutableName);
         if (!File.Exists(uvExePath))
@@ -136,10 +139,11 @@ public static class PythonInstaller
 
         // Configure the process to run uv tool install
         // Use --force to overwrite any existing installation
+        // Use --managed-python to only use uv-managed Python, ignoring system Python
         var processStartInfo = new ProcessStartInfo
         {
             FileName = uvExePath,
-            Arguments = $"tool install --force \"{celbridgeWheelPath}\"",
+            Arguments = $"tool install --force --managed-python \"{celbridgeWheelPath}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -147,10 +151,10 @@ public static class PythonInstaller
             WorkingDirectory = pythonFolderPath
         };
 
-        // Set environment variables for UV_TOOL_DIR and UV_TOOL_BIN_DIR
-        // These must be set in the process environment to override uv's default locations
+        // Set environment variables to override uv's default locations
         processStartInfo.EnvironmentVariables["UV_TOOL_DIR"] = uvToolDir;
         processStartInfo.EnvironmentVariables["UV_TOOL_BIN_DIR"] = uvToolBinDir;
+        processStartInfo.EnvironmentVariables["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;
 
         using var process = new Process { StartInfo = processStartInfo };
         process.Start();
