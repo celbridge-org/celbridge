@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Python;
 using Celbridge.Tests.Migration.TestHelpers;
 
 namespace Celbridge.Tests.Projects;
@@ -20,9 +21,12 @@ public class ProjectFactoryTests
     {
         _mockLogger = MigrationTestHelper.CreateMockLogger<ProjectFactory>();
         
+        var mockPythonConfigService = Substitute.For<IPythonConfigService>();
+        mockPythonConfigService.DefaultPythonVersion.Returns("3.12");
+
         _mockServiceProvider = Substitute.For<IServiceProvider>();
         _mockServiceProvider.GetService(typeof(IProjectConfigService))
-            .Returns(new ProjectConfigService());
+            .Returns(new ProjectConfigService(mockPythonConfigService));
         
         _factory = new ProjectFactory(_mockLogger, _mockServiceProvider);
     }

@@ -8,25 +8,28 @@ public static class PythonInstaller
     private const string PythonFolderName = "Python";
     private const string PythonAssetsFolder = "Assets\\Python";
     private const string UVZipAssetPath = "ms-appx:///Assets/UV/uv-x86_64-pc-windows-msvc.zip";
-    private const string BuildVersionPath = "ms-appx:///Assets/Python/build_version.txt";
-    private const string BuildVersionFileName = "build_version.txt";
+    private const string InstalledVersionFileName = "installed_version.txt";
     private const string UVToolsSubfolder = "uv_tools";
     private const string UVBinSubfolder = "uv_bin";
+    private const string UVPythonInstallsSubfolder = "uv_python_installs";
     private const string UVExecutableName = "uv.exe";
     private const string UVTempFileName = "uv.zip";
 
-    public static async Task<Result<string>> InstallPythonAsync()
+    /// <summary>
+    /// Installs Python support files if needed.
+    /// </summary>
+    public static async Task<Result<string>> InstallPythonAsync(string appVersion)
     {
         try
         {
             var localFolder = ApplicationData.Current.LocalFolder;
             var pythonFolderPath = Path.Combine(localFolder.Path, PythonFolderName);
 
-            bool needsReinstall = await IsInstallRequiredAsync(pythonFolderPath);
+            bool needsReinstall = IsInstallRequired(pythonFolderPath, appVersion);
 
             if (needsReinstall)
             {
-                await ReinstallAsync(localFolder, pythonFolderPath);
+                await ReinstallAsync(localFolder, pythonFolderPath, appVersion);
             }
 
             return Result<string>.Ok(pythonFolderPath);
@@ -38,7 +41,7 @@ public static class PythonInstaller
         }
     }
 
-    private static async Task<bool> IsInstallRequiredAsync(string pythonFolderPath)
+    private static bool IsInstallRequired(string pythonFolderPath, string currentVersion)
     {
         // If the python folder doesn't exist, we need to install
         if (!Directory.Exists(pythonFolderPath))
@@ -46,32 +49,19 @@ public static class PythonInstaller
             return true;
         }
 
-        var localBuildVersionPath = Path.Combine(pythonFolderPath, BuildVersionFileName);
+        var installedVersionPath = Path.Combine(pythonFolderPath, InstalledVersionFileName);
 
-        // Load the GUID text in the file at BuildVersionFilePath (i.e. from embedded asset)
-        var assetBuildVersionFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(BuildVersionPath));
-        string assetGuid;
-        using (var assetStream = await assetBuildVersionFile.OpenStreamForReadAsync())
-        using (var reader = new StreamReader(assetStream))
+        // If version file doesn't exist, we need to install
+        if (!File.Exists(installedVersionPath))
         {
-            assetGuid = await reader.ReadToEndAsync();
-            assetGuid = assetGuid.Trim();
+            return true;
         }
 
-        // Load the GUID text from the build_version.txt file in pythonFolderPath (local install)
-        string? localGuid = null;
-        if (File.Exists(localBuildVersionPath))
-        {
-            using (var localStream = File.OpenRead(localBuildVersionPath))
-            using (var reader = new StreamReader(localStream))
-            {
-                localGuid = await reader.ReadToEndAsync();
-                localGuid = localGuid.Trim();
-            }
-        }
+        // Read the installed version
+        var installedVersion = File.ReadAllText(installedVersionPath).Trim();
 
-        // If the GUID text doesn't match, this indicates a new build, so we need to reinstall
-        if (!string.Equals(assetGuid, localGuid, StringComparison.Ordinal))
+        // If versions don't match, we need to reinstall
+        if (!string.Equals(currentVersion, installedVersion, StringComparison.Ordinal))
         {
             return true;
         }
@@ -79,12 +69,13 @@ public static class PythonInstaller
         return false;
     }
 
-    private static async Task ReinstallAsync(StorageFolder localFolder, string pythonFolderPath)
+    private static async Task ReinstallAsync(StorageFolder localFolder, string pythonFolderPath, string currentVersion)
     {
         // Delete existing folder if it exists (handles upgrade scenario)
+        // Use retry logic as files may be locked by a previous Python process
         if (Directory.Exists(pythonFolderPath))
         {
-            Directory.Delete(pythonFolderPath, true);
+            await DeleteDirectoryWithRetryAsync(pythonFolderPath);
         }
 
         var pythonFolder = await localFolder.CreateFolderAsync(PythonFolderName, CreationCollisionOption.OpenIfExists);
@@ -99,26 +90,24 @@ public static class PythonInstaller
         StorageFolder pythonAssetsFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
         await CopyStorageFolderAsync(pythonAssetsFolder, pythonFolder.Path);
 
-        // Rename build_version.txt to a temporary file (in case the celbridge tool install step fails)
-        var versionFile = Path.Combine(pythonFolderPath, BuildVersionFileName);
-        var tempVersionFile = Path.Combine(pythonFolderPath, BuildVersionFileName + ".temp");
-        File.Move(versionFile, tempVersionFile);
-
         // Install the celbridge package as a tool using uv
         await InstallCelbridgeToolAsync(pythonFolderPath);
 
-        // The install process examines build_version.txt to determine if a reinstall is needed
-        // This step signals that the install completed successfully.
-        File.Move(tempVersionFile, versionFile);
+        // Write the version file after successful install
+        // This signals that the install completed successfully.
+        var versionFile = Path.Combine(pythonFolderPath, InstalledVersionFileName);
+        await File.WriteAllTextAsync(versionFile, currentVersion);
     }
 
     private static async Task InstallCelbridgeToolAsync(string pythonFolderPath)
     {
-        // Create directories for uv tools and binaries
+        // Create directories for uv tools, binaries, and Python installations
         var uvToolDir = Path.Combine(pythonFolderPath, UVToolsSubfolder);
         var uvToolBinDir = Path.Combine(pythonFolderPath, UVBinSubfolder);
+        var uvPythonInstallDir = Path.Combine(pythonFolderPath, UVPythonInstallsSubfolder);
         Directory.CreateDirectory(uvToolDir);
         Directory.CreateDirectory(uvToolBinDir);
+        Directory.CreateDirectory(uvPythonInstallDir);
 
         var uvExePath = Path.Combine(pythonFolderPath, UVExecutableName);
         if (!File.Exists(uvExePath))
@@ -136,10 +125,11 @@ public static class PythonInstaller
 
         // Configure the process to run uv tool install
         // Use --force to overwrite any existing installation
+        // Use --managed-python to only use uv-managed Python, ignoring system Python
         var processStartInfo = new ProcessStartInfo
         {
             FileName = uvExePath,
-            Arguments = $"tool install --force \"{celbridgeWheelPath}\"",
+            Arguments = $"tool install --force --managed-python \"{celbridgeWheelPath}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -147,10 +137,10 @@ public static class PythonInstaller
             WorkingDirectory = pythonFolderPath
         };
 
-        // Set environment variables for UV_TOOL_DIR and UV_TOOL_BIN_DIR
-        // These must be set in the process environment to override uv's default locations
+        // Set environment variables to override uv's default locations
         processStartInfo.EnvironmentVariables["UV_TOOL_DIR"] = uvToolDir;
         processStartInfo.EnvironmentVariables["UV_TOOL_BIN_DIR"] = uvToolBinDir;
+        processStartInfo.EnvironmentVariables["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;
 
         using var process = new Process { StartInfo = processStartInfo };
         process.Start();
@@ -245,5 +235,34 @@ public static class PythonInstaller
             var subfolderPath = Path.Combine(destinationPath, subfolder.Name);
             await CopyStorageFolderAsync(subfolder, subfolderPath);
         }
+    }
+
+    /// <summary>
+    /// Deletes a directory with retry logic to handle locked files.
+    /// Files may be locked by a previous Python process that hasn't fully exited yet.
+    /// </summary>
+    private static async Task DeleteDirectoryWithRetryAsync(string directoryPath, int maxRetries = 5, int delayMs = 500)
+    {
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                Directory.Delete(directoryPath, recursive: true);
+                return;
+            }
+            catch (UnauthorizedAccessException) when (attempt < maxRetries)
+            {
+                // Files may be locked - wait and retry
+                await Task.Delay(delayMs * attempt);
+            }
+            catch (IOException) when (attempt < maxRetries)
+            {
+                // Files may be in use - wait and retry
+                await Task.Delay(delayMs * attempt);
+            }
+        }
+
+        // Final attempt without catching - let it throw if it fails
+        Directory.Delete(directoryPath, recursive: true);
     }
 }

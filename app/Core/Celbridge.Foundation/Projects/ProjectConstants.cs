@@ -6,11 +6,6 @@ namespace Celbridge.Projects;
 public static class ProjectConstants
 {
     /// <summary>
-    /// Default Python version for new projects.
-    /// </summary>
-    public const string DefaultPythonVersion = "3.12";
-
-    /// <summary>
     /// File extension for Celbridge projects.
     /// </summary>
     public const string ProjectFileExtension = ".celbridge";
