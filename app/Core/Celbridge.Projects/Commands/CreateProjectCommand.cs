@@ -8,7 +8,6 @@ namespace Celbridge.Projects.Commands;
 
 public class CreateProjectCommand : CommandBase, ICreateProjectCommand
 {
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
     private readonly ICommandService _commandService;
@@ -26,7 +25,6 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         _commandService = commandService;
         _projectService = projectService;
         _navigationService = navigationService;
-        _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
     }
