@@ -10,7 +10,6 @@ public class PythonConfigService : IPythonConfigService
 
     private string? _cachedDefaultPythonVersion;
 
-    /// <inheritdoc/>
     public string DefaultPythonVersion
     {
         get

@@ -31,7 +31,6 @@ public partial class ProjectConfigService : IProjectConfigService
                 return Result.Ok();
             }
 
-
             var text = File.ReadAllText(configFilePath);
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
