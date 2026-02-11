@@ -1,3 +1,4 @@
+using Celbridge.Python;
 using Celbridge.Utilities;
 using Microsoft.Extensions.Localization;
 using System.IO.Compression;
@@ -10,12 +11,15 @@ public class ProjectTemplateService : IProjectTemplateService
 
     private readonly List<ProjectTemplate> _templates;
     private readonly IUtilityService _utilityService;
+    private readonly IPythonConfigService _pythonConfigService;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
-        IUtilityService utilityService)
+        IUtilityService utilityService,
+        IPythonConfigService pythonConfigService)
     {
         _utilityService = utilityService;
+        _pythonConfigService = pythonConfigService;
 
         _templates =
         [
@@ -90,7 +94,7 @@ public class ProjectTemplateService : IProjectTemplateService
 
             projectFileContents = projectFileContents
                 .Replace("<application-version>", appVersion)
-                .Replace("<python-version>", ProjectConstants.DefaultPythonVersion);
+                .Replace("<python-version>", _pythonConfigService.DefaultPythonVersion);
             await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
 
             // Rename the project settings file to the user-specified name in staging

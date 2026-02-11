@@ -1,4 +1,5 @@
 using System.Globalization;
+using Celbridge.Python;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -8,8 +9,15 @@ public partial class ProjectConfigService : IProjectConfigService
 {
     private const char PathSeparator = '/';
 
+    private readonly IPythonConfigService _pythonConfigService;
+
     private TomlTable _root = new();
     private ProjectConfig _config = new();
+
+    public ProjectConfigService(IPythonConfigService pythonConfigService)
+    {
+        _pythonConfigService = pythonConfigService;
+    }
 
     public Result InitializeFromFile(string configFilePath)
     {
@@ -23,6 +31,7 @@ public partial class ProjectConfigService : IProjectConfigService
                 return Result.Ok();
             }
 
+
             var text = File.ReadAllText(configFilePath);
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
@@ -35,7 +44,7 @@ public partial class ProjectConfigService : IProjectConfigService
             }
 
             _root = (TomlTable)parse.ToModel();
-            _config = MapRootToModel(_root);
+            _config = MapRootToModel(_root, _pythonConfigService.DefaultPythonVersion);
 
             return Result.Ok();
         }
@@ -54,7 +63,7 @@ public partial class ProjectConfigService : IProjectConfigService
     {
         get
         {
-            _config = MapRootToModel(_root);
+            _config = MapRootToModel(_root, _pythonConfigService.DefaultPythonVersion);
             return _config;
         }
     }
@@ -118,7 +127,7 @@ public partial class ProjectConfigService : IProjectConfigService
         }
     }
 
-    private static ProjectConfig MapRootToModel(TomlTable root)
+    private static ProjectConfig MapRootToModel(TomlTable root, string defaultPythonVersion)
     {
         var projectSection = new ProjectSection();
         var celbridgeSection = new CelbridgeSection();
@@ -151,7 +160,7 @@ public partial class ProjectConfigService : IProjectConfigService
                 requiresPythonValue = requiresPython?.ToString();
                 if (requiresPythonValue == "<python-version>")
                 {
-                    requiresPythonValue = ProjectConstants.DefaultPythonVersion;
+                    requiresPythonValue = defaultPythonVersion;
                 }
             }
 
