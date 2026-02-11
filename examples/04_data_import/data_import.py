@@ -3,15 +3,32 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 
-API_URL = "https://api.citybik.es/v2/networks/dublinbikes"
-OUTPUT_XLSX = "04_data_import/citybikes.xlsx"
+# Dublin Bikes GBFS API endpoints
+GBFS_STATION_INFO_URL = "https://api.cyclocity.fr/contracts/dublin/gbfs/v2/station_information.json"
+GBFS_STATION_STATUS_URL = "https://api.cyclocity.fr/contracts/dublin/gbfs/v2/station_status.json"
+OUTPUT_XLSX = "04_data_import/dublinbikes.xlsx"
 
 def main():
 
-    # Download bike station data
-    response = requests.get(API_URL, timeout=15)
-    response.raise_for_status()
-    stations = response.json()["network"]["stations"]
+    # Download station information (names, locations)
+    info_response = requests.get(GBFS_STATION_INFO_URL, timeout=15)
+    info_response.raise_for_status()
+    
+    # Build a dictionary of stations by their ID
+    station_info = {}
+    for station in info_response.json()["data"]["stations"]:
+        station_id = station["station_id"]
+        station_info[station_id] = station
+
+    # Download station status (real-time availability)
+    status_response = requests.get(GBFS_STATION_STATUS_URL, timeout=15)
+    status_response.raise_for_status()
+    
+    # Build a dictionary of station status by ID
+    station_status = {}
+    for station in status_response.json()["data"]["stations"]:
+        station_id = station["station_id"]
+        station_status[station_id] = station
 
     # Create workbook & sheet
     wb = Workbook()
@@ -36,15 +53,23 @@ def main():
         cell.fill = header_fill
         cell.alignment = header_align
 
-    # Sort stations by name
-    stations.sort(key=lambda s: s.get("name", "").lower())
+    # Combine station info and status
+    stations = []
+    for station_id, info in station_info.items():
+        if station_id in station_status:
+            status = station_status[station_id]
+            stations.append({
+                "name": info.get("name", ""),
+                "bikes": status.get("num_bikes_available", 0),
+                "docks": status.get("num_docks_available", 0)
+            })
+    
+    # Sort stations alphabetically by name (case-insensitive)
+    stations.sort(key=lambda s: s["name"].lower())
 
     # Write a row for each station
     for s in stations:
-        name = s.get("name", "")
-        free = s.get("free_bikes") or 0
-        empty = s.get("empty_slots") or 0
-        ws.append([name, free, empty])
+        ws.append([s["name"], s["bikes"], s["docks"]])
 
     # Save the Excel file
     wb.save(OUTPUT_XLSX)
