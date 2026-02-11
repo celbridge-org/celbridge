@@ -100,7 +100,8 @@ public class PythonService : IPythonService, IDisposable
             // Ensure that python support files are installed
             var workingDir = project.ProjectFolderPath;
 
-            var installResult = await PythonInstaller.InstallPythonAsync();
+            var appVersion = _utilityService.GetEnvironmentInfo().AppVersion;
+            var installResult = await PythonInstaller.InstallPythonAsync(appVersion);
             if (installResult.IsFailure)
             {
                 var errorMessage = new ConsoleErrorMessage(
