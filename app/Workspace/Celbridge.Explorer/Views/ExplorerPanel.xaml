@@ -3,7 +3,6 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Explorer.Views"
-  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent"
@@ -25,29 +24,23 @@
     <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
-      <!-- Focus Indicator -->
-      <controls:FocusIndicator Grid.Column="0"
-                               Panel="Explorer"
-                               Margin="6,0,0,0"/>
-
-      <TextBlock Grid.Column="1"
-                 Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-                 Margin="6,0,0,0"
-                 VerticalAlignment="Center"/>
+      <TextBlock Grid.Column="0"
+               Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
+               Margin="12,0,0,0"
+               VerticalAlignment="Center"/>
 
       <!-- Explorer Toolbar -->
       <local:ExplorerToolbar x:Name="ExplorerToolbar"
-                             Grid.Column="3"
-                             VerticalAlignment="Center"
-                             Margin="0,0,8,0"
-                             AddFileClicked="ExplorerToolbar_AddFileClicked"
-                             AddFolderClicked="ExplorerToolbar_AddFolderClicked"
-                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
+                           Grid.Column="2"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           AddFileClicked="ExplorerToolbar_AddFileClicked"
+                           AddFolderClicked="ExplorerToolbar_AddFolderClicked"
+                           CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
     </Grid>
 
     <!-- Resource Tree -->

@@ -54,6 +54,9 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     {
         ApplyTooltips();
 
+        // Set Explorer as the initially selected nav item
+        ActivityNavigation.SelectedItem = ExplorerNavItem;
+
         var currentProject = _projectService.CurrentProject;
         if (currentProject is null)
         {

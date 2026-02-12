@@ -16,7 +16,7 @@
 
   <Grid VerticalAlignment="Stretch"
         Background="Transparent">
-    
+
     <Grid.RowDefinitions>
       <RowDefinition Height="40"/>
       <RowDefinition Height="Auto"/>
@@ -26,20 +26,8 @@
 
     <!-- Title Bar -->
     <Grid Grid.Row="0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
-
-      <!-- Focus Indicator -->
-      <controls:FocusIndicator Grid.Column="0"
-                             Panel="Search"
-                             Margin="6,0,0,0"/>
-
-      <TextBlock Grid.Column="1"
-               Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-               Margin="6,0,0,0"
+      <TextBlock Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
+               Margin="12,0,0,0"
                VerticalAlignment="Center"/>
     </Grid>
 

@@ -33,10 +33,10 @@
                             Background="Transparent"
                             SelectionChanged="ActivityNavigation_SelectionChanged">
                 <NavigationView.MenuItems>
+
                     <!-- Explorer -->
                     <NavigationViewItem x:Name="ExplorerNavItem"
-                                        Tag="Explorer"
-                                        IsSelected="True">
+                                        Tag="Explorer">
                         <NavigationViewItem.Icon>
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       Glyph="&#xEC50;"/>
