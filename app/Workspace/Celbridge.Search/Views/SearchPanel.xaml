@@ -6,7 +6,9 @@
   xmlns:vm="using:Celbridge.Search.ViewModels"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
-  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  GotFocus="UserControl_GotFocus"
+  PointerPressed="UserControl_PointerPressed">
 
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>
@@ -14,6 +16,7 @@
 
   <Grid VerticalAlignment="Stretch"
         Background="Transparent">
+
     <Grid.RowDefinitions>
       <RowDefinition Height="40"/>
       <RowDefinition Height="Auto"/>
@@ -24,8 +27,8 @@
     <!-- Title Bar -->
     <Grid Grid.Row="0">
       <TextBlock Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-                 Margin="12,0,0,0"
-                 VerticalAlignment="Center"/>
+               Margin="12,0,0,0"
+               VerticalAlignment="Center"/>
     </Grid>
 
     <!-- Search Input -->
@@ -35,20 +38,20 @@
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
-      
+
       <TextBox x:Name="SearchTextBox"
                Grid.Column="0"
                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                PlaceholderText="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
                KeyDown="SearchTextBox_KeyDown"/>
-      
+
       <!-- Progress ring overlay -->
       <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
                     Width="16"
                     Height="16"
                     HorizontalAlignment="Right"
                     Margin="0,0,40,0"/>
-      
+
       <!-- Search button -->
       <Button Grid.Column="1"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"

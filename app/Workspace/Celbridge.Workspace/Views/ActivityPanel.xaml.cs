@@ -3,6 +3,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Search;
+using Celbridge.UserInterface;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;
@@ -15,6 +16,7 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
     private readonly IDispatcher _dispatcher;
+    private readonly IPanelFocusService _panelFocusService;
 
     private ShortcutMenuBuilder? _shortcutMenuBuilder;
 
@@ -36,6 +38,7 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
         _dispatcher = ServiceLocator.AcquireService<IDispatcher>();
+        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
 
         ViewModel = ServiceLocator.AcquireService<ActivityPanelViewModel>();
         DataContext = ViewModel;
@@ -50,6 +53,9 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     private void ActivityPanel_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyTooltips();
+
+        // Set Explorer as the initially selected nav item
+        ActivityNavigation.SelectedItem = ExplorerNavItem;
 
         var currentProject = _projectService.CurrentProject;
         if (currentProject is null)
@@ -129,14 +135,16 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         ExplorerPanelControl.Visibility = Visibility.Collapsed;
         SearchPanelControl.Visibility = Visibility.Collapsed;
 
-        // Show the requested panel
+        // Show the requested panel and set focus
         switch (tab)
         {
             case ActivityPanelTab.Explorer:
                 ExplorerPanelControl.Visibility = Visibility.Visible;
+                _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
                 break;
             case ActivityPanelTab.Search:
                 SearchPanelControl.Visibility = Visibility.Visible;
+                _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
                 // Use dispatcher to ensure the panel is fully loaded before focusing
                 _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
                 break;

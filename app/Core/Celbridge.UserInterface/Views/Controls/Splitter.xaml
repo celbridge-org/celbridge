@@ -9,8 +9,6 @@
           Background="Transparent">
     <!-- Thin visible line - expands when dragging -->
     <Rectangle x:Name="SplitterLine"
-               Fill="{ThemeResource DividerBrush}"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"/>
+               Fill="{ThemeResource DividerBrush}"/>
   </Border>
 </UserControl>

@@ -1,9 +1,10 @@
 ﻿<UserControl
-    x:Class="Celbridge.Documents.Views.DocumentSection"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+  x:Class="Celbridge.Documents.Views.DocumentSection"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+  GotFocus="UserControl_GotFocus">
   
   <Grid x:Name="RootGrid"
         AllowDrop="True"

@@ -96,8 +96,6 @@ public partial class DocumentTab : TabViewItem
         }
 
         IsActiveDocument = isActiveDocument;
-
-        // Directly update the selection indicator visibility
         SelectionIndicator.Visibility = isActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
