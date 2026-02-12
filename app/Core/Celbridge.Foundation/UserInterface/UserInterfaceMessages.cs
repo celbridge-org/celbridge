@@ -38,6 +38,11 @@ public record RestoreWindowStateMessage();
 public record ExitedFullscreenViaDragMessage();
 
 /// <summary>
+/// Message sent when the focused panel changes.
+/// </summary>
+public record PanelFocusChangedMessage(FocusablePanel FocusedPanel);
+
+/// <summary>
 /// Message sent to request an undo operation.
 /// </summary>
 public record UndoRequestedMessage();

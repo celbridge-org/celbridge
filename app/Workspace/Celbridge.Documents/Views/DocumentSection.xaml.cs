@@ -1,3 +1,4 @@
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -13,6 +14,7 @@ namespace Celbridge.Documents.Views;
 public sealed partial class DocumentSection : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IPanelFocusService _panelFocusService;
     private bool _isShuttingDown = false;
 
     /// <summary>
@@ -64,9 +66,15 @@ public sealed partial class DocumentSection : UserControl
         InitializeComponent();
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
+    }
+
+    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
+    {
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Documents);
     }
 
     /// <summary>

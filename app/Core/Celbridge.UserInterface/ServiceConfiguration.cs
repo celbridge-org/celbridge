@@ -34,6 +34,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IFormService, FormService>();
+        services.AddSingleton<IPanelFocusService, PanelFocusService>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 

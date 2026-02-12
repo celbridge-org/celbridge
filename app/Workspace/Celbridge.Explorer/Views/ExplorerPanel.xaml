@@ -3,11 +3,13 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Explorer.Views"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent"
   PointerEntered="UserControl_PointerEntered"
   PointerExited="UserControl_PointerExited"
+  PointerPressed="UserControl_PointerPressed"
   GotFocus="UserControl_GotFocus"
   LostFocus="UserControl_LostFocus">
 
@@ -23,18 +25,24 @@
     <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
-      <TextBlock Grid.Column="0"
+      <!-- Focus Indicator -->
+      <controls:FocusIndicator Grid.Column="0"
+                               Panel="Explorer"
+                               Margin="6,0,0,0"/>
+
+      <TextBlock Grid.Column="1"
                  Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-                 Margin="12,0,0,0"
+                 Margin="6,0,0,0"
                  VerticalAlignment="Center"/>
 
       <!-- Explorer Toolbar -->
       <local:ExplorerToolbar x:Name="ExplorerToolbar"
-                             Grid.Column="2"
+                             Grid.Column="3"
                              VerticalAlignment="Center"
                              Margin="0,0,8,0"
                              AddFileClicked="ExplorerToolbar_AddFileClicked"
