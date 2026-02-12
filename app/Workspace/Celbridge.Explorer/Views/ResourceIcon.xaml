@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
-    <Grid>
+    <Grid VerticalAlignment="Center">
         <!-- Folder icon (FontIcon) - shown when resource is a folder -->
         <FontIcon x:Name="FolderIcon"
                   FontFamily="{StaticResource SymbolThemeFontFamily}"
                   Glyph="&#xE8D5;"
                   FontSize="16"
-                  Margin="0,4,0,0"
+                  Margin="0"
                   VerticalAlignment="Center"
                   Foreground="#FFCC40"
                   Visibility="Collapsed" />
@@ -20,6 +20,7 @@
                            Size="16"
                            MinWidth="20"
                            Margin="0"
+                           VerticalAlignment="Center"
                            Visibility="Collapsed" />
     </Grid>
 </UserControl>

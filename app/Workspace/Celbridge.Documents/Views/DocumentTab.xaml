@@ -1,15 +1,15 @@
 ﻿<muxc:TabViewItem
-x:Class="Celbridge.Documents.Views.DocumentTab"
-xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:local="using:Celbridge.Documents.Views"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-DataContext="{x:Bind ViewModel}"
-DoubleTapped="DocumentTab_DoubleTapped"
-Tapped="DocumentTab_Tapped"
-DragStarting="DocumentTab_DragStarting">
+    x:Class="Celbridge.Documents.Views.DocumentTab"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.Documents.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    DataContext="{x:Bind ViewModel}"
+    DoubleTapped="DocumentTab_DoubleTapped"
+    Tapped="DocumentTab_Tapped"
+    DragStarting="DocumentTab_DragStarting">
 
     <muxc:TabViewItem.ContextFlyout>
         <MenuFlyout x:Name="TabContextMenu" Opening="TabContextMenu_Opening">
@@ -33,32 +33,30 @@ DragStarting="DocumentTab_DragStarting">
     </muxc:TabViewItem.ContextFlyout>
 
     <muxc:TabViewItem.Header>
-        <Grid Margin="0,-4,0,0">
-            <!-- Selection indicator at top - extends beyond header bounds using negative margins -->
-            <Border x:Name="SelectionIndicator"
-                    Height="3"
-                    CornerRadius="0"
-                    Background="{ThemeResource SystemAccentColor}"
-                    Visibility="Collapsed"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Margin="-12,-2,-36,0" />
-
+        <Grid Margin="0,-4,0,2">
             <!-- Tab content -->
-            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                 <controls:FileIcon x:Name="ResourceIcon"
                                    Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
                                    Size="16"
                                    MinWidth="20"
-                                   Margin="0"
-                                   />
+                                   Margin="0" />
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
                            Margin="4,0,0,0"
                            ToolTipService.ToolTip="{x:Bind ViewModel.FilePath, Mode=OneWay}"
-                           ToolTipService.Placement="Bottom"
-                           />
+                           ToolTipService.Placement="Bottom" />
             </StackPanel>
+            
+            <!-- Selection indicator -->
+            <Border x:Name="SelectionIndicator"
+                    Height="3"
+                    CornerRadius="1.5"
+                    Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,-36,-4" />
         </Grid>
     </muxc:TabViewItem.Header>
 

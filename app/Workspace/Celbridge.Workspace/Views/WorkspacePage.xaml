@@ -70,24 +70,18 @@ DataContext="{x:Bind ViewModel}">
                        Grid.Column="0"
                        Grid.RowSpan="2"
                        HorizontalAlignment="Right"
-                       Orientation="Vertical"
-                       LineThickness="2"
-                       GrabAreaSize="8"/>
+                       Orientation="Vertical"/>
 
     <controls:Splitter x:Name="SecondaryPanelSplitter"
                        Grid.Column="2"
                        Grid.RowSpan="2"
                        HorizontalAlignment="Left"
-                       Orientation="Vertical"
-                       LineThickness="2"
-                       GrabAreaSize="8"/>
+                       Orientation="Vertical"/>
 
     <controls:Splitter x:Name="ConsolePanelSplitter"
                        Grid.Column="1"
                        Grid.Row="1"
                        VerticalAlignment="Top"
-                       Orientation="Horizontal"
-                       LineThickness="2"
-                       GrabAreaSize="8"/>
+                       Orientation="Horizontal"/>
   </Grid>
 </Page>

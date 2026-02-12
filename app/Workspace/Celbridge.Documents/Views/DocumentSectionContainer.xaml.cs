@@ -595,8 +595,6 @@ public sealed partial class DocumentSectionContainer : UserControl
         var splitter = new Splitter
         {
             Orientation = Orientation.Vertical,
-            LineThickness = 2,
-            GrabAreaSize = 8,
             Tag = index
         };
 

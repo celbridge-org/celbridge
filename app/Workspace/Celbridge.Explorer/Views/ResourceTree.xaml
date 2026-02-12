@@ -46,7 +46,7 @@
         <!-- Resource icon -->
         <local:ResourceIcon Grid.Column="1"
                             Resource="{x:Bind Resource}"
-                            Margin="-2,0,12,0"
+                            Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
 

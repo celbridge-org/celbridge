@@ -5,12 +5,12 @@
 
     <!-- Light Theme -->
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="ApplicationBackgroundColor">#FFFFFF</Color>
+      <Color x:Key="ApplicationBackgroundColor">#F3F3F3</Color>
       <Color x:Key="TitleBarActiveColor">#F3F3F3</Color>
       <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
       <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
       <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
-      <Color x:Key="DividerColor">#E5E5E5</Color>
+      <Color x:Key="DividerColor">#D0D0D0</Color>
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
       <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
@@ -19,12 +19,12 @@
 
     <!-- Dark Theme -->
     <ResourceDictionary x:Key="Dark">
-      <Color x:Key="ApplicationBackgroundColor">#121212</Color>
+      <Color x:Key="ApplicationBackgroundColor">#2B2D30</Color>
       <Color x:Key="TitleBarActiveColor">#2B2D30</Color>
       <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
       <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
       <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
-      <Color x:Key="DividerColor">#3E4144</Color>
+      <Color x:Key="DividerColor">#1E1F22</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
       <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>

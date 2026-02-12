@@ -17,6 +17,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IPanelFocusService _panelFocusService;
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
@@ -34,6 +35,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
@@ -56,6 +58,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             _currentTheme = currentTheme;
             SendThemeToTerminal();
         }
+    }
+
+    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
+    {
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Console);
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)

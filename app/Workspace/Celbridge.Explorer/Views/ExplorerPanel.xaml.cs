@@ -1,9 +1,11 @@
 using Celbridge.Explorer.ViewModels;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Explorer.Views;
 
 public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 {
+    private readonly IPanelFocusService _panelFocusService;
     private bool _isPointerOver;
     private bool _hasFocus;
 
@@ -11,6 +13,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanel()
     {
+        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
         ViewModel = ServiceLocator.AcquireService<ExplorerPanelViewModel>();
 
         InitializeComponent();
@@ -38,9 +41,15 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         UpdateToolbarVisibility();
     }
 
+    private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
+    }
+
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
         _hasFocus = true;
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
         UpdateToolbarVisibility();
     }
 

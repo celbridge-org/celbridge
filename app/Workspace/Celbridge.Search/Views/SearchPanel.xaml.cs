@@ -1,16 +1,30 @@
 using Celbridge.Search.ViewModels;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Search.Views;
 
 public sealed partial class SearchPanel : UserControl, ISearchPanel
 {
+    private readonly IPanelFocusService _panelFocusService;
+
     public SearchPanelViewModel ViewModel { get; }
 
     public SearchPanel()
     {
+        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
         ViewModel = ServiceLocator.AcquireService<SearchPanelViewModel>();
 
         this.InitializeComponent();
+    }
+
+    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
+    {
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
+    }
+
+    private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)

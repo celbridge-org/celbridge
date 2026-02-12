@@ -1,8 +1,11 @@
 ﻿<UserControl x:Class="Celbridge.Inspector.Views.InspectorPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:local="using:Celbridge.Inspector.Views"
+             xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             GotFocus="UserControl_GotFocus"
+             PointerPressed="UserControl_PointerPressed">
 
   <Grid>
 
@@ -11,21 +14,26 @@
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
-    <Grid>
-      
+    <!-- Title Bar -->
+    <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
 
-      <TextBlock Grid.Column="0"
+      <!-- Focus Indicator -->
+      <controls:FocusIndicator Grid.Column="0"
+                               Panel="Inspector"
+                               Margin="6,0,0,0"/>
+
+      <TextBlock Grid.Column="1"
                  Margin="6,0,0,0"
                  VerticalAlignment="Center"
                  Text="{x:Bind TitleString}" />
     </Grid>
     
     <local:EntityEditor x:Name="EntityEditor"
-                        Grid.Row="1"
-                        Margin="4" />
+                        Grid.Row="1" />
   </Grid>
 </UserControl>

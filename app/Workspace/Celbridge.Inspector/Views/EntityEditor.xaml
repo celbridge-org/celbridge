@@ -16,13 +16,14 @@ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <StackPanel x:Name="UtilitiesPanel"
                 Grid.Row="0"
-                Orientation="Vertical"/>
+                Orientation="Vertical"
+                Margin="4,4,4,0"/>
 
     <ScrollViewer x:Name="ComponentsScrollViewer"
                   Grid.Row="1"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
-                  Margin="4,0,0,0">
+                  Margin="4,0,4,0">
       <StackPanel x:Name="ComponentListPanel"
                   Orientation="Vertical"/>
     </ScrollViewer>
@@ -31,7 +32,7 @@ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
                   Grid.Row="2"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
-                  Margin="4">
+                  Margin="4,4,4,4">
       <Grid Margin="4,0,0,0">
         <local:ComponentValueEditor x:Name="ComponentValueEditor"
                                     Visibility="{x:Bind ViewModel.ComponentValueEditorVisibility, Mode=OneWay}"/>
@@ -43,8 +44,6 @@ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
     <controls:Splitter x:Name="DetailSplitter"
                        Grid.Row="2"
                        VerticalAlignment="Top"
-                       Orientation="Horizontal"
-                       LineThickness="2"
-                       GrabAreaSize="8"/>
+                       Orientation="Horizontal"/>
   </Grid>
 </UserControl>
