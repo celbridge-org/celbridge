@@ -25,7 +25,6 @@
     </Grid>
     
     <local:EntityEditor x:Name="EntityEditor"
-                        Grid.Row="1"
-                        Margin="4" />
+                        Grid.Row="1" />
   </Grid>
 </UserControl>

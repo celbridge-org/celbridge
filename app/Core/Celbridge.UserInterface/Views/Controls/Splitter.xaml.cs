@@ -87,6 +87,9 @@ public sealed partial class Splitter : UserControl
     /// </summary>
     public event EventHandler<double>? DragDelta;
 
+    private const int NormalZIndex = 100;
+    private const int DraggingZIndex = 200;
+
     private bool _isDragging;
     private double _dragStartPosition;
     private Brush? _normalBrush;
@@ -97,7 +100,7 @@ public sealed partial class Splitter : UserControl
         InitializeComponent();
 
         // Ensure splitter renders above adjacent content when using negative margins for overlap.
-        Canvas.SetZIndex(this, 100);
+        Canvas.SetZIndex(this, NormalZIndex);
 
         // Set up pointer event handlers
         SplitterBorder.PointerEntered += OnPointerEntered;
@@ -112,8 +115,7 @@ public sealed partial class Splitter : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Cache brushes
-        _normalBrush = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+        _normalBrush = (Brush)Application.Current.Resources["DividerBrush"];
         _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
 
         // Apply initial orientation
@@ -222,6 +224,8 @@ public sealed partial class Splitter : UserControl
             ? point.Position.X
             : point.Position.Y;
 
+        // Raise z-index so this splitter appears above others while dragging
+        Canvas.SetZIndex(this, DraggingZIndex);
 
         SplitterBorder.CapturePointer(e.Pointer);
 
@@ -274,6 +278,9 @@ public sealed partial class Splitter : UserControl
             _isDragging = false;
             SplitterBorder.ReleasePointerCapture(e.Pointer);
 
+            // Restore normal z-index
+            Canvas.SetZIndex(this, NormalZIndex);
+
             // Restore normal color and size
             if (_normalBrush != null)
             {
@@ -294,6 +301,9 @@ public sealed partial class Splitter : UserControl
         if (_isDragging)
         {
             _isDragging = false;
+
+            // Restore normal z-index
+            Canvas.SetZIndex(this, NormalZIndex);
 
             // Restore normal color and size
             if (_normalBrush != null)

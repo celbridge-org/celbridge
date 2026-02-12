@@ -15,7 +15,7 @@
         <!-- Navigation Bar Container -->
         <Grid Grid.Column="0"
               Background="{ThemeResource PanelBackgroundABrush}"
-              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerBrush}"
               BorderThickness="0,0,1,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
