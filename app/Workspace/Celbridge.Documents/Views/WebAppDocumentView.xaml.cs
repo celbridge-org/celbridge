@@ -3,7 +3,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
@@ -14,7 +13,6 @@ public sealed partial class WebAppDocumentView : DocumentView
     private readonly ILogger<WebAppDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
-    private readonly IUtilityService _utilityService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -28,7 +26,6 @@ public sealed partial class WebAppDocumentView : DocumentView
         _logger = ServiceLocator.AcquireService<ILogger<WebAppDocumentView>>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _utilityService = ServiceLocator.AcquireService<IUtilityService>();
         _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         ViewModel = ServiceLocator.AcquireService<WebAppDocumentViewModel>();
@@ -166,7 +163,7 @@ public sealed partial class WebAppDocumentView : DocumentView
         // Map the download path to a unique path in the project folder 
         //
         var requestedPath = ResourceRegistry.GetResourcePath(filename);
-        var getResult = _utilityService.GetUniquePath(requestedPath);
+        var getResult = PathHelper.GetUniquePath(requestedPath);
         if (getResult.IsFailure)
         {
             // Don't allow the download to proceed if we can't generate a unique path
@@ -190,7 +187,7 @@ public sealed partial class WebAppDocumentView : DocumentView
         // Redirect download to a temporary path
         //
         var extension = Path.GetExtension(filename);
-        var tempPath = _utilityService.GetTemporaryFilePath("Downloads", extension);
+        var tempPath = PathHelper.GetTemporaryFilePath("Downloads", extension);
         args.ResultFilePath = tempPath;
 
         //

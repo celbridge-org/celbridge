@@ -1,7 +1,6 @@
-using Celbridge.Utilities;
 using Path = System.IO.Path;
 
-namespace Celbridge.Search.Services;
+namespace Celbridge.Search;
 
 /// <summary>
 /// Determines which files should be included in search operations.
@@ -14,22 +13,6 @@ public class FileFilter
     {
         ".webapp",
         ".celbridge"
-    };
-
-    private readonly HashSet<string> _binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".exe", ".dll", ".pdb", ".obj", ".o", ".a", ".lib",
-        ".so", ".dylib", ".bin", ".dat",
-        ".zip", ".tar", ".gz", ".7z", ".rar", ".bz2",
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-        ".mp3", ".wav", ".ogg", ".flac", ".aac",
-        ".mp4", ".avi", ".mkv", ".mov", ".webm",
-        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-        ".ttf", ".otf", ".woff", ".woff2", ".eot",
-        ".pyc", ".pyo", ".class",
-        ".db", ".sqlite", ".sqlite3",
-        ".nupkg", ".snupkg",
-        ".vsix", ".msi", ".cab"
     };
 
     /// <summary>
@@ -52,7 +35,7 @@ public class FileFilter
 
         // Skip excluded file types
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        if (_metadataExtensions.Contains(extension) || _binaryExtensions.Contains(extension))
+        if (_metadataExtensions.Contains(extension) || TextBinarySniffer.IsBinaryExtension(extension))
         {
             return false;
         }

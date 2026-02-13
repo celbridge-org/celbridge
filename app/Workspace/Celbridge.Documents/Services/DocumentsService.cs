@@ -3,7 +3,6 @@ using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;

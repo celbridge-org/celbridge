@@ -1,5 +1,5 @@
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Logging;
-using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Migration.TestHelpers;
 
@@ -17,14 +17,13 @@ public static class MigrationTestHelper
     }
 
     /// <summary>
-    /// Creates a mock IUtilityService with a configurable application version.
+    /// Creates a mock IEnvironmentService with the specified application version.
     /// </summary>
-    public static IUtilityService CreateMockUtilityService(string appVersion)
+    public static IEnvironmentService CreateMockEnvironmentService(string appVersion)
     {
-        var mockUtilityService = Substitute.For<IUtilityService>();
-        mockUtilityService.GetEnvironmentInfo()
-            .Returns(new EnvironmentInfo(appVersion, "Test", "Debug"));
-        return mockUtilityService;
+        var mock = Substitute.For<IEnvironmentService>();
+        mock.GetEnvironmentInfo().Returns(new EnvironmentInfo(appVersion, "Test", "Debug"));
+        return mock;
     }
 
     /// <summary>
@@ -89,7 +88,7 @@ public static class MigrationTestHelper
     {
         var content = File.ReadAllText(projectFilePath);
         var lines = content.Split('\n');
-        
+
         foreach (var line in lines)
         {
             if (line.Contains("celbridge-version"))

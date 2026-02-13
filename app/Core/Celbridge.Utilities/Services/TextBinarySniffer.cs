@@ -12,6 +12,54 @@ public static class TextBinarySniffer
     private const int SampleSize = 8192;
 
     /// <summary>
+    /// Known binary file extensions for fast-path detection.
+    /// </summary>
+    private static readonly HashSet<string> _binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Executables and libraries
+        ".exe", ".dll", ".pdb", ".obj", ".o", ".a", ".lib",
+        ".so", ".dylib", ".bin", ".dat",
+        // Archives
+        ".zip", ".tar", ".gz", ".7z", ".rar", ".bz2",
+        // Images
+        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
+        // Audio
+        ".mp3", ".wav", ".ogg", ".flac", ".aac",
+        // Video
+        ".mp4", ".avi", ".mkv", ".mov", ".webm",
+        // Documents
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        // Fonts
+        ".ttf", ".otf", ".woff", ".woff2", ".eot",
+        // Compiled code
+        ".pyc", ".pyo", ".class",
+        // Databases
+        ".db", ".sqlite", ".sqlite3",
+        // Packages
+        ".nupkg", ".snupkg", ".vsix", ".msi", ".cab"
+    };
+
+    /// <summary>
+    /// Quickly checks if a file extension indicates a binary file format.
+    /// This is a fast path that avoids reading file content.
+    /// </summary>
+    public static bool IsBinaryExtension(string extension)
+    {
+        if (string.IsNullOrEmpty(extension))
+        {
+            return false;
+        }
+
+        // Normalize: ensure it starts with a dot
+        if (!extension.StartsWith('.'))
+        {
+            extension = "." + extension;
+        }
+
+        return _binaryExtensions.Contains(extension);
+    }
+
+    /// <summary>
     /// Determines if a file is likely a text file by examining its content.
     /// </summary>
     public static Result<bool> IsTextFile(string path)

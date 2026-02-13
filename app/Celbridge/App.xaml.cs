@@ -1,11 +1,11 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Modules.Services;
 using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
-using Celbridge.Utilities;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
@@ -122,7 +122,7 @@ public partial class App : Application
                     // modules from untrusted sources. The core set of modules shipped with the application will be trusted by default.
                     // Modules must only depend on the Celbridge.BaseLibrary project, and may not depend on other modules.
                     // Modules may use Nuget packages
-                    var modules = new List<string>() 
+                    var modules = new List<string>()
                     {
                         "Celbridge.Core",
                         "Celbridge.HTML",
@@ -147,8 +147,8 @@ public partial class App : Application
         ServiceLocator.Initialize(Host.Services);
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
-        var utilityService = Host.Services.GetRequiredService<IUtilityService>();
-        var environmentInfo = utilityService.GetEnvironmentInfo();
+        var environmentService = Host.Services.GetRequiredService<IEnvironmentService>();
+        var environmentInfo = environmentService.GetEnvironmentInfo();
         logger.LogDebug(environmentInfo.ToString());
 
         // Check if the application was opened with a project file argument 
@@ -190,16 +190,16 @@ public partial class App : Application
 
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
-        if (MainWindow.Content is not Grid rootGrid || 
+        if (MainWindow.Content is not Grid rootGrid ||
             rootGrid.Name != "RootContainer")
         {
             // Create a Frame to act as the navigation context and navigate to the first page
             var rootFrame = new Frame();
 
             // Create a root container Grid to hold both the Frame and the FullscreenToolbar overlay
-            rootGrid = new Grid 
-            { 
-                Name = "RootContainer" 
+            rootGrid = new Grid
+            {
+                Name = "RootContainer"
             };
             rootGrid.Children.Add(rootFrame);
 
@@ -374,3 +374,4 @@ public partial class App : Application
         Environment.SetEnvironmentVariable("CELBRIDGE_LOG_FILE", logFilePath);
     }
 }
+
