@@ -9,13 +9,13 @@ namespace Celbridge.Documents.Views;
 public sealed partial class DocumentSectionContainer : UserControl
 {
     private const double MinSectionWidth = 200;
+    private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
 
     private readonly List<DocumentSection> _sections = new();
     private readonly List<Splitter> _splitters = new();
     private readonly Dictionary<int, SplitterHelper> _splitterHelpers = new();
 
-    // Track active splitter for drag completed event
-    private int _activeSplitterIndex = -1;
+    private double _totalDragDelta = 0;
 
     private int _sectionCount = 1;
     private int _activeSectionIndex = 0;
@@ -538,6 +538,7 @@ public sealed partial class DocumentSectionContainer : UserControl
             splitter.DragStarted -= Splitter_DragStarted;
             splitter.DragDelta -= Splitter_DragDelta;
             splitter.DragCompleted -= Splitter_DragCompleted;
+            splitter.DoubleClicked -= Splitter_DoubleClicked;
         }
 
         RootGrid.Children.Clear();
@@ -607,6 +608,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         splitter.DragStarted += Splitter_DragStarted;
         splitter.DragDelta += Splitter_DragDelta;
         splitter.DragCompleted += Splitter_DragCompleted;
+        splitter.DoubleClicked += Splitter_DoubleClicked;
 
         return splitter;
     }
@@ -615,8 +617,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         if (sender is Splitter splitter && splitter.Tag is int index)
         {
-            _activeSplitterIndex = index;
-            var leftColumnIndex = _activeSplitterIndex * 2;
+            _totalDragDelta = 0;
+
+            var leftColumnIndex = index * 2;
             var rightColumnIndex = leftColumnIndex + 2;
 
             // Create or get the SplitterHelper for this splitter
@@ -632,12 +635,14 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void Splitter_DragDelta(object? sender, double delta)
     {
-        if (_activeSplitterIndex < 0)
+        if (sender is not Splitter splitter || splitter.Tag is not int index)
         {
             return;
         }
 
-        if (_splitterHelpers.TryGetValue(_activeSplitterIndex, out var helper))
+        _totalDragDelta += Math.Abs(delta);
+
+        if (_splitterHelpers.TryGetValue(index, out var helper))
         {
             helper.OnDragDelta(delta);
         }
@@ -645,36 +650,99 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void Splitter_DragCompleted(object? sender, EventArgs e)
     {
-        if (_activeSplitterIndex >= 0)
+        // Skip if no significant drag occurred (e.g., just a click without dragging)
+        if (_totalDragDelta < MinDragDistance)
         {
-            // Convert pixel widths back to proportional (star) sizing
-            // so sections resize properly when the parent container resizes
-            var leftColumnIndex = _activeSplitterIndex * 2;
-            var rightColumnIndex = leftColumnIndex + 2;
+            return;
+        }
 
-            var leftColumn = RootGrid.ColumnDefinitions[leftColumnIndex];
-            var rightColumn = RootGrid.ColumnDefinitions[rightColumnIndex];
+        // Convert all section columns to proportional Star sizing
+        ConvertAllColumnsToStar();
 
-            // Get current pixel widths
-            var leftWidth = leftColumn.ActualWidth;
-            var rightWidth = rightColumn.ActualWidth;
-            var totalWidth = leftWidth + rightWidth;
+        // Notify about ratio changes
+        SectionRatiosChanged?.Invoke(GetSectionRatios());
+    }
 
-            if (totalWidth > 0)
+    /// <summary>
+    /// Converts all section columns from pixel widths back to proportional Star sizing.
+    /// This ensures consistent proportions are maintained across all sections.
+    /// </summary>
+    private void ConvertAllColumnsToStar()
+    {
+        // Calculate total width of all sections
+        double totalWidth = 0;
+        var sectionWidths = new List<double>();
+
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var columnIndex = i * 2; // Section columns are at even indices
+            if (columnIndex < RootGrid.ColumnDefinitions.Count)
             {
-                // Convert to proportional star values
-                var leftRatio = leftWidth / totalWidth;
-                var rightRatio = rightWidth / totalWidth;
-
-                leftColumn.Width = new GridLength(leftRatio, GridUnitType.Star);
-                rightColumn.Width = new GridLength(rightRatio, GridUnitType.Star);
+                var width = RootGrid.ColumnDefinitions[columnIndex].ActualWidth;
+                sectionWidths.Add(width);
+                totalWidth += width;
             }
         }
 
-        _activeSplitterIndex = -1;
+        if (totalWidth <= 0)
+        {
+            return;
+        }
 
-        // Notify about ratio changes when splitter drag completes
-        SectionRatiosChanged?.Invoke(GetSectionRatios());
+        // Set each section column to its proportional Star value
+        for (int i = 0; i < sectionWidths.Count; i++)
+        {
+            var columnIndex = i * 2;
+            if (columnIndex < RootGrid.ColumnDefinitions.Count)
+            {
+                var ratio = sectionWidths[i] / totalWidth;
+                RootGrid.ColumnDefinitions[columnIndex].Width = new GridLength(ratio, GridUnitType.Star);
+            }
+        }
+    }
+
+    private void Splitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        // Reset all sections to equal ratios
+        _ = ResetSectionRatiosAsync();
+    }
+
+    /// <summary>
+    /// Resets all visible sections to equal widths asynchronously.
+    /// </summary>
+    public async Task ResetSectionRatiosAsync()
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        // Set all section columns to equal star values
+        for (int i = 0; i < RootGrid.ColumnDefinitions.Count; i++)
+        {
+            var colDef = RootGrid.ColumnDefinitions[i];
+            // Section columns are at even indices (0, 2, 4)
+            // Splitter columns are at odd indices (1, 3)
+            if (i % 2 == 0)
+            {
+                colDef.Width = new GridLength(1, GridUnitType.Star);
+            }
+        }
+
+        // Create equal ratios based on the current section count
+        // Don't use GetSectionRatios() which reads ActualWidth - that may not be settled yet
+        var equalRatios = new List<double>();
+        var equalRatio = 1.0 / _sectionCount;
+        for (int i = 0; i < _sectionCount; i++)
+        {
+            equalRatios.Add(equalRatio);
+        }
+
+        // Wait for layout to complete, then notify with the known equal ratios
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            SectionRatiosChanged?.Invoke(equalRatios);
+            tcs.SetResult(true);
+        });
+
+        await tcs.Task;
     }
 
     private void OnSectionSelectionChanged(DocumentSection section, ResourceKey documentResource)

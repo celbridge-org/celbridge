@@ -3,6 +3,7 @@ using Celbridge.Console.Views;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Navigation;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace.ViewModels;
 
@@ -100,12 +101,15 @@ public sealed partial class WorkspacePage : Page
         // Set up splitter event handlers
         PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
         PrimaryPanelSplitter.DragDelta += PrimaryPanelSplitter_DragDelta;
+        PrimaryPanelSplitter.DoubleClicked += PrimaryPanelSplitter_DoubleClicked;
 
         SecondaryPanelSplitter.DragStarted += SecondaryPanelSplitter_DragStarted;
         SecondaryPanelSplitter.DragDelta += SecondaryPanelSplitter_DragDelta;
+        SecondaryPanelSplitter.DoubleClicked += SecondaryPanelSplitter_DoubleClicked;
 
         ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
         ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
+        ConsolePanelSplitter.DoubleClicked += ConsolePanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -309,5 +313,20 @@ public sealed partial class WorkspacePage : Page
     private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
     {
         _consolePanelSplitterHelper?.OnDragDelta(delta);
+    }
+
+    private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        ViewModel.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+    }
+
+    private void SecondaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        ViewModel.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
+    }
+
+    private void ConsolePanelSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        ViewModel.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
     }
 }

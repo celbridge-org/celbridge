@@ -229,6 +229,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.SetSectionRatios(ratios);
     }
 
+    public async Task ResetSectionRatiosAsync()
+    {
+        await SectionContainer.ResetSectionRatiosAsync();
+    }
+
     public Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses()
     {
         var addresses = new Dictionary<ResourceKey, DocumentAddress>();

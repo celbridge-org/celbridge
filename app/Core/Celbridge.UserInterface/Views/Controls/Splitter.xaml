@@ -4,11 +4,44 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
+  <UserControl.Resources>
+    <!-- Fade in animation for hover - slightly delayed, smooth fade -->
+    <Storyboard x:Name="HoverFadeIn">
+      <DoubleAnimation Storyboard.TargetName="HoverLine"
+                       Storyboard.TargetProperty="Opacity"
+                       To="1.0"
+                       BeginTime="0:0:0.20"
+                       Duration="0:0:0.20">
+        <DoubleAnimation.EasingFunction>
+          <QuadraticEase EasingMode="EaseOut"/>
+        </DoubleAnimation.EasingFunction>
+      </DoubleAnimation>
+    </Storyboard>
+    
+    <!-- Fade out animation - quick fade -->
+    <Storyboard x:Name="HoverFadeOut">
+      <DoubleAnimation Storyboard.TargetName="HoverLine"
+                       Storyboard.TargetProperty="Opacity"
+                       To="0.0"
+                       Duration="0:0:0.20">
+        <DoubleAnimation.EasingFunction>
+          <QuadraticEase EasingMode="EaseIn"/>
+        </DoubleAnimation.EasingFunction>
+      </DoubleAnimation>
+    </Storyboard>
+  </UserControl.Resources>
+
   <!-- Transparent grab area with centered visible line. -->
   <Border x:Name="SplitterBorder"
           Background="Transparent">
-    <!-- Thin visible line - expands when dragging -->
-    <Rectangle x:Name="SplitterLine"
-               Fill="{ThemeResource DividerBrush}"/>
+    <Grid>
+      <!-- Base thin visible line -->
+      <Rectangle x:Name="SplitterLine"
+                 Fill="{ThemeResource DividerBrush}"/>
+      <!-- Accent hover line - fades in on hover -->
+      <Rectangle x:Name="HoverLine"
+                 Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                 Opacity="0"/>
+    </Grid>
   </Border>
 </UserControl>

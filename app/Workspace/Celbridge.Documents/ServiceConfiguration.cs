@@ -50,5 +50,6 @@ public static class ServiceConfiguration
         services.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
         services.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
         services.AddTransient<ISelectDocumentCommand, SelectDocumentCommand>();
+        services.AddTransient<IResetSectionsCommand, ResetSectionsCommand>();
     }
 }
