@@ -25,15 +25,12 @@ public sealed partial class EntityEditor : UserControl
         ViewModel.InspectedComponentChanged += ViewModel_InspectedComponentChanged;
 
         // Initialize splitter helper
-        var grid = this.Content as Grid;
-        if (grid != null)
-        {
-            _splitterHelper = new SplitterHelper(grid, GridResizeMode.Rows, 1, 2, minSize: 100);
-        }
+        _splitterHelper = new SplitterHelper(RootGrid, GridResizeMode.Rows, 1, 2, minSize: 100);
 
         // Set up splitter event handlers
         DetailSplitter.DragStarted += DetailSplitter_DragStarted;
         DetailSplitter.DragDelta += DetailSplitter_DragDelta;
+        DetailSplitter.DoubleClicked += DetailSplitter_DoubleClicked;
     }
 
     private void EntityEditor_Unloaded(object sender, RoutedEventArgs e)
@@ -43,6 +40,7 @@ public sealed partial class EntityEditor : UserControl
         // Clean up splitter event handlers
         DetailSplitter.DragStarted -= DetailSplitter_DragStarted;
         DetailSplitter.DragDelta -= DetailSplitter_DragDelta;
+        DetailSplitter.DoubleClicked -= DetailSplitter_DoubleClicked;
     }
 
     private void ViewModel_InspectedComponentChanged()
@@ -76,5 +74,12 @@ public sealed partial class EntityEditor : UserControl
     private void DetailSplitter_DragDelta(object? sender, double delta)
     {
         _splitterHelper?.OnDragDelta(delta);
+    }
+
+    private void DetailSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        // Reset both rows to equal Star sizing (same as initial XAML layout)
+        RootGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+        RootGrid.RowDefinitions[2].Height = new GridLength(1, GridUnitType.Star);
     }
 }
