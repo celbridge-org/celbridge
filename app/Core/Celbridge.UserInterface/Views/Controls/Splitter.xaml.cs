@@ -87,13 +87,20 @@ public sealed partial class Splitter : UserControl
     /// </summary>
     public event EventHandler<double>? DragDelta;
 
+    /// <summary>
+    /// Event raised when the splitter is double-clicked.
+    /// </summary>
+    public event EventHandler? DoubleClicked;
+
     private const int NormalZIndex = 100;
     private const int DraggingZIndex = 200;
+    private const int DoubleClickDebounceMs = 500;
 
     private bool _isDragging;
     private double _dragStartPosition;
     private Brush? _normalBrush;
     private Brush? _draggingBrush;
+    private DateTime _lastDoubleClickTime;
 
     public Splitter()
     {
@@ -109,6 +116,7 @@ public sealed partial class Splitter : UserControl
         SplitterBorder.PointerMoved += OnPointerMoved;
         SplitterBorder.PointerReleased += OnPointerReleased;
         SplitterBorder.PointerCaptureLost += OnPointerCaptureLost;
+        SplitterBorder.DoubleTapped += OnDoubleTapped;
 
         Loaded += OnLoaded;
     }
@@ -155,12 +163,16 @@ public sealed partial class Splitter : UserControl
             // Vertical splitter (resizes columns left/right)
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Center;
             SplitterLine.VerticalAlignment = VerticalAlignment.Stretch;
+            HoverLine.HorizontalAlignment = HorizontalAlignment.Center;
+            HoverLine.VerticalAlignment = VerticalAlignment.Stretch;
         }
         else
         {
             // Horizontal splitter (resizes rows top/bottom)
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Stretch;
             SplitterLine.VerticalAlignment = VerticalAlignment.Center;
+            HoverLine.HorizontalAlignment = HorizontalAlignment.Stretch;
+            HoverLine.VerticalAlignment = VerticalAlignment.Center;
         }
 
         UpdateLineThickness();
@@ -173,11 +185,15 @@ public sealed partial class Splitter : UserControl
         {
             SplitterLine.Width = LineThickness;
             SplitterLine.Height = double.NaN; // Stretch
+            HoverLine.Width = DraggingLineThickness;
+            HoverLine.Height = double.NaN; // Stretch
         }
         else
         {
             SplitterLine.Width = double.NaN; // Stretch
             SplitterLine.Height = LineThickness;
+            HoverLine.Width = double.NaN; // Stretch
+            HoverLine.Height = DraggingLineThickness;
         }
     }
 
@@ -196,6 +212,7 @@ public sealed partial class Splitter : UserControl
         {
             Width = double.NaN; // Stretch
             Height = GrabAreaSize;
+
             // Use negative margins to overlap with adjacent content
             var halfGrab = GrabAreaSize / 2;
             Margin = new Thickness(0, -halfGrab, 0, -halfGrab);
@@ -205,6 +222,9 @@ public sealed partial class Splitter : UserControl
     private void OnPointerEntered(object sender, PointerRoutedEventArgs e)
     {
         UpdateCursor();
+
+        // Start hover fade-in animation
+        HoverFadeIn.Begin();
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
@@ -212,11 +232,21 @@ public sealed partial class Splitter : UserControl
         if (!_isDragging)
         {
             SetCursor(InputSystemCursorShape.Arrow);
+
+            // Start hover fade-out animation
+            HoverFadeOut.Begin();
         }
     }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        // Prevent drag operations immediately after a double-click
+        if ((DateTime.UtcNow - _lastDoubleClickTime).TotalMilliseconds < DoubleClickDebounceMs)
+        {
+            e.Handled = true;
+            return;
+        }
+
         _isDragging = true;
 
         var point = e.GetCurrentPoint(this.Parent as UIElement);
@@ -259,6 +289,14 @@ public sealed partial class Splitter : UserControl
             return;
         }
 
+        // Skip DragDelta events within debounce window after a double-click
+        // This prevents cached sizes in SplitterHelper from overwriting reset values
+        if ((DateTime.UtcNow - _lastDoubleClickTime).TotalMilliseconds < DoubleClickDebounceMs)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var point = e.GetCurrentPoint(this.Parent as UIElement);
         var currentPosition = Orientation == Orientation.Vertical
             ? point.Position.X
@@ -290,6 +328,9 @@ public sealed partial class Splitter : UserControl
             // Restore original line thickness
             UpdateLineThickness();
 
+            // Fade out hover line
+            HoverFadeOut.Begin();
+
             DragCompleted?.Invoke(this, EventArgs.Empty);
 
             e.Handled = true;
@@ -314,6 +355,9 @@ public sealed partial class Splitter : UserControl
             // Restore original line thickness
             UpdateLineThickness();
 
+            // Fade out hover line
+            HoverFadeOut.Begin();
+
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
 
@@ -334,5 +378,16 @@ public sealed partial class Splitter : UserControl
         var oldCursor = ProtectedCursor;
         ProtectedCursor = InputSystemCursor.Create(cursorShape);
         oldCursor?.Dispose();
+    }
+
+    private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        _lastDoubleClickTime = DateTime.UtcNow;
+
+        // Start fade-out animation
+        HoverFadeOut.Begin();
+
+        DoubleClicked?.Invoke(this, EventArgs.Empty);
+        e.Handled = true;
     }
 }

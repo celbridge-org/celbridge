@@ -22,6 +22,11 @@ public interface IDocumentsPanel
     void SetSectionRatios(List<double> ratios);
 
     /// <summary>
+    /// Resets all document sections to equal widths.
+    /// </summary>
+    Task ResetSectionRatiosAsync();
+
+    /// <summary>
     /// Returns all open documents with their addresses (UI positions).
     /// </summary>
     Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses();
