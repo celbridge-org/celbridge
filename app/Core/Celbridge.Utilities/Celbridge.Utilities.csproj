@@ -1,5 +1,4 @@
 <Project Sdk="Uno.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
@@ -24,12 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <PackageReference Include="Tomlyn" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
   
 </Project>

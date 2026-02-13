@@ -1,7 +1,8 @@
+using System.IO.Compression;
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Python;
 using Celbridge.Utilities;
 using Microsoft.Extensions.Localization;
-using System.IO.Compression;
 
 namespace Celbridge.Projects.Services;
 
@@ -10,15 +11,15 @@ public class ProjectTemplateService : IProjectTemplateService
     private const string TemplateProjectFileName = "project.celbridge";
 
     private readonly List<ProjectTemplate> _templates;
-    private readonly IUtilityService _utilityService;
+    private readonly IEnvironmentService _environmentService;
     private readonly IPythonConfigService _pythonConfigService;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
-        IUtilityService utilityService,
+        IEnvironmentService environmentService,
         IPythonConfigService pythonConfigService)
     {
-        _utilityService = utilityService;
+        _environmentService = environmentService;
         _pythonConfigService = pythonConfigService;
 
         _templates =
@@ -50,7 +51,7 @@ public class ProjectTemplateService : IProjectTemplateService
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
         // Use a temporary staging folder to prevent leftover files on failure
-        var tempFile = _utilityService.GetTemporaryFilePath("NewProject", string.Empty);
+        var tempFile = PathHelper.GetTemporaryFilePath("NewProject", string.Empty);
         var tempStagingPath = Path.GetDirectoryName(tempFile);
 
         try
@@ -75,7 +76,7 @@ public class ProjectTemplateService : IProjectTemplateService
             Directory.CreateDirectory(stagingDataFolderPath);
 
             // Get Celbridge application version
-            var appVersion = _utilityService.GetEnvironmentInfo().AppVersion;
+            var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
 
             // Extract template zip to staging location
             var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");

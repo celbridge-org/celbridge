@@ -414,8 +414,13 @@
   <data name="Documents_SaveDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to save '{0}'.</value>
   </data>
+  <data name="Documents_UnsupportedFileFormatTitle" xml:space="preserve">
+    <value>Unsupported File Format</value>
+  </data>
   <data name="Documents_OpenDocumentFailedNotSupported" xml:space="preserve">
-    <value>The file format is not supported: '{0}'</value>
+    <value>Celbridge does not support '{0}' files.
+
+Open with default application instead?</value>
   </data>
   <data name="Screenplay_LoadingScreenplayTitle" xml:space="preserve">
     <value>Loading Screenplay</value>
@@ -519,8 +524,8 @@ Do you wish to continue?</value>
   <data name="DocumentToolbar_ThreeSections" xml:space="preserve">
     <value>Three Editors</value>
   </data>
-  <data name="DocumentSection_NoDocumentsOpen" xml:space="preserve">
-    <value>No documents open</value>
+  <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
+    <value>Drop files here to open them</value>
   </data>
   <data name="DocumentTab_Close" xml:space="preserve">
     <value>Close</value>

@@ -312,11 +312,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         else if (item.Resource is IFileResource fileResource)
         {
             var resourceKey = _resourceRegistry.GetResourceKey(fileResource);
-            if (!_documentsService.IsDocumentSupported(resourceKey))
-            {
-                return;
-            }
-
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
                 command.FileResource = resourceKey;

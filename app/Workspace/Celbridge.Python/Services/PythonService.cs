@@ -1,7 +1,7 @@
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +35,7 @@ public class PythonService : IPythonService, IDisposable
 
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IUtilityService _utilityService;
+    private readonly IEnvironmentService _environmentService;
     private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
     private readonly Func<string, IRpcService> _rpcServiceFactory;
@@ -51,7 +51,7 @@ public class PythonService : IPythonService, IDisposable
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IUtilityService utilityService,
+        IEnvironmentService environmentService,
         IMessengerService messengerService,
         ILogger<PythonService> logger,
         Func<string, IRpcService> rpcServiceFactory,
@@ -59,7 +59,7 @@ public class PythonService : IPythonService, IDisposable
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
-        _utilityService = utilityService;
+        _environmentService = environmentService;
         _messengerService = messengerService;
         _logger = logger;
         _rpcServiceFactory = rpcServiceFactory;
@@ -100,12 +100,12 @@ public class PythonService : IPythonService, IDisposable
             // Ensure that python support files are installed
             var workingDir = project.ProjectFolderPath;
 
-            var appVersion = _utilityService.GetEnvironmentInfo().AppVersion;
+            var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
             var installResult = await PythonInstaller.InstallPythonAsync(appVersion);
             if (installResult.IsFailure)
             {
                 var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.PythonHostPreInitError, 
+                    ConsoleErrorType.PythonHostPreInitError,
                     "Failed to install Python support files");
                 _messengerService.Send(errorMessage);
                 return Result.Fail("Failed to ensure Python support files are installed")
@@ -120,7 +120,7 @@ public class PythonService : IPythonService, IDisposable
             if (!File.Exists(uvExePath))
             {
                 var errorMessage = new ConsoleErrorMessage(
-                    ConsoleErrorType.PythonHostPreInitError, 
+                    ConsoleErrorType.PythonHostPreInitError,
                     $"uv not found at '{uvExePath}'");
                 _messengerService.Send(errorMessage);
                 return Result.Fail($"uv not found at '{uvExePath}'");
@@ -146,7 +146,7 @@ public class PythonService : IPythonService, IDisposable
             Directory.CreateDirectory(ipythonDir);
 
             // Set the Celbridge version number as an environment variable so we can print it at startup.
-            var environmentInfo = _utilityService.GetEnvironmentInfo();
+            var environmentInfo = _environmentService.GetEnvironmentInfo();
             var version = environmentInfo.AppVersion;
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
@@ -193,7 +193,7 @@ public class PythonService : IPythonService, IDisposable
                 "--with", hostWheelPath,
                 "--with", IPythonCacheFolderName
             };
-            
+
             // Add any additional packages specified in the project config
             var pythonPackages = pythonConfig.Dependencies;
             if (pythonPackages is not null)
@@ -201,7 +201,7 @@ public class PythonService : IPythonService, IDisposable
                 foreach (var pythonPackage in pythonPackages)
                 {
                     packageArgs.Add("--with");
-                    packageArgs.Add(pythonPackage);    
+                    packageArgs.Add(pythonPackage);
                 }
             }
 
@@ -214,7 +214,7 @@ public class PythonService : IPythonService, IDisposable
                 .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
                 .Add("--python", pythonVersion!)            // python interpreter version
                 .Add("--managed-python")                    // only use uv-managed Python, ignore system Python
-                //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
+                                                            //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
                 .Add(packageArgs.ToArray())                 // specify the packages to install     
                 .Add("python")                              // run the python interpreter
                 .Add("-m", "IPython")                       // use IPython
@@ -225,7 +225,7 @@ public class PythonService : IPythonService, IDisposable
                 .ToString();
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
-            
+
             // Start the terminal process
             // Any errors during Python/uv initialization will be displayed in the terminal
             terminal.Start(commandLine, workingDir);
