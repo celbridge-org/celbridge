@@ -10,6 +10,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IDocumentsService _documentsService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
@@ -18,6 +19,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
@@ -74,5 +76,11 @@ public partial class DocumentsPanelViewModel : ObservableObject
         // Notify the DocumentsService about the section ratios change.
         var message = new SectionRatiosChangedMessage(ratios);
         _messengerService.Send(message);
+    }
+
+    public ResourceKey GetResourceKey(IFileResource fileResource)
+    {
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        return resourceRegistry.GetResourceKey(fileResource);
     }
 }

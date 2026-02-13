@@ -16,6 +16,16 @@ public interface IConfirmationDialog
     string MessageText { get; set; }
 
     /// <summary>
+    /// The text for the primary (confirm) button. If null, uses default "OK" text.
+    /// </summary>
+    string? PrimaryButtonText { get; set; }
+
+    /// <summary>
+    /// The text for the secondary (cancel) button. If null, uses default "Cancel" text.
+    /// </summary>
+    string? SecondaryButtonText { get; set; }
+
+    /// <summary>
     /// Present the confirms dialog to the user.
     /// The async call completes when the user closes the dialog by accepting or cancelling the action.
     /// </summary>

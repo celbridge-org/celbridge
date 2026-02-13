@@ -17,12 +17,14 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText)
+    public IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
         var dialog = new ConfirmationDialog
         {
             TitleText = titleText,
-            MessageText = messageText
+            MessageText = messageText,
+            PrimaryButtonText = primaryButtonText,
+            SecondaryButtonText = secondaryButtonText
         };
 
         return dialog;

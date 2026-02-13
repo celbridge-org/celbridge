@@ -21,4 +21,10 @@ public interface IOpenDocumentCommand : IExecutableCommand
     /// Optional location within the document to navigate to when opening.
     /// </summary>
     string Location { get; set; }
+
+    /// <summary>
+    /// Optional target section index (0, 1, or 2) to open the document in.
+    /// If null, the document opens in the active section.
+    /// </summary>
+    int? TargetSectionIndex { get; set; }
 }

@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Explorer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -11,6 +12,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
@@ -19,13 +21,17 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string Location { get; set; } = string.Empty;
 
+    public int? TargetSectionIndex { get; set; }
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -36,16 +42,36 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         var viewType = documentsService.GetDocumentViewType(FileResource);
         if (viewType == DocumentViewType.UnsupportedFormat)
         {
-            // Alert the user that the file format is not supported
-            var file = Path.GetFileName(FileResource);
-            var title = _stringLocalizer.GetString("Documents_OpenDocumentFailedTitle");
-            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedNotSupported", file);
-            await _dialogService.ShowAlertDialogAsync(title, message);
+            var extension = Path.GetExtension(FileResource);
+            var title = _stringLocalizer.GetString("Documents_UnsupportedFileFormatTitle");
+            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedNotSupported", extension);
+            var primaryButtonText = _stringLocalizer.GetString("ResourceTree_OpenApplication");
+            var secondaryButtonText = _stringLocalizer.GetString("DialogButton_Cancel");
+
+            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message, primaryButtonText, secondaryButtonText);
+            if (confirmResult.IsSuccess && confirmResult.Value)
+            {
+                _commandService.Execute<IOpenApplicationCommand>(command =>
+                {
+                    command.Resource = FileResource;
+                });
+            }
 
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
-        var openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
+        Result openResult;
+        if (TargetSectionIndex.HasValue)
+        {
+            // Open in the specified section
+            openResult = await documentsService.OpenDocumentAtSection(FileResource, TargetSectionIndex.Value, ForceReload, Location);
+        }
+        else
+        {
+            // Open in the active section (default behavior)
+            openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
+        }
+
         if (openResult.IsFailure)
         {
             // Alert the user that the document failed to open

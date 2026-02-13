@@ -1,4 +1,4 @@
-using Celbridge.Search.Services;
+using Celbridge.Search;
 
 namespace Celbridge.Tests.Search;
 

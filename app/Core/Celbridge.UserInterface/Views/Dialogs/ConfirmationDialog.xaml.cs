@@ -5,6 +5,8 @@ namespace Celbridge.UserInterface.Views;
 public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private string? _primaryButtonText;
+    private string? _secondaryButtonText;
 
     public ConfirmationDialogViewModel ViewModel { get; }
 
@@ -14,14 +16,34 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         set => ViewModel.TitleText = value;
     }
 
-    public string MessageText 
-    { 
+    public string MessageText
+    {
         get => ViewModel.MessageText;
-        set => ViewModel.MessageText = value; 
+        set => ViewModel.MessageText = value;
     }
 
-    public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
-    public string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
+    public string? PrimaryButtonText
+    {
+        get => _primaryButtonText;
+        set
+        {
+            _primaryButtonText = value;
+            OnPropertyChanged(nameof(PrimaryButtonDisplayText));
+        }
+    }
+
+    public string? SecondaryButtonText
+    {
+        get => _secondaryButtonText;
+        set
+        {
+            _secondaryButtonText = value;
+            OnPropertyChanged(nameof(SecondaryButtonDisplayText));
+        }
+    }
+
+    public string PrimaryButtonDisplayText => _primaryButtonText ?? _stringLocalizer.GetString("DialogButton_Ok");
+    public string SecondaryButtonDisplayText => _secondaryButtonText ?? _stringLocalizer.GetString("DialogButton_Cancel");
 
     public ConfirmationDialog()
     {
@@ -45,5 +67,11 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         }
 
         return false;
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        // Trigger binding update for the property
+        this.Bindings.Update();
     }
 }

@@ -28,9 +28,9 @@ public class DialogService : IDialogService
         });
     }
 
-    public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText)
+    public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
-        var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText);
+        var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText, primaryButtonText, secondaryButtonText);
         var showResult = await ShowDialogAsync(dialog.ShowDialogAsync);
         return Result<bool>.Ok(showResult);
     }

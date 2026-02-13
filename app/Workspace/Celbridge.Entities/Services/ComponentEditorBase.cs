@@ -1,4 +1,3 @@
-using Celbridge.Utilities;
 using System.Reflection;
 using System.Text.Json;
 
@@ -134,26 +133,35 @@ public abstract class ComponentEditorBase : IComponentEditor
     }
 
     public virtual void OnButtonClicked(string buttonId)
-    {}
+    { }
 
     /// <summary>
     /// Loads a text file from an embedded resource.
     /// </summary>
     protected string LoadEmbeddedResource(string resourcePath)
     {
-        var utilityService = ServiceLocator.AcquireService<IUtilityService>();
-
         // Get the type of the component editor class.
         // The embedded resource must be in the same assembly as the class that inherits
         // from ComponentEditorBase.
-        var loadResult = utilityService.LoadEmbeddedResource(GetType(), resourcePath);
-        if (loadResult.IsFailure)
+        var assembly = GetType().Assembly;
+        var stream = assembly.GetManifestResourceStream(resourcePath);
+        if (stream is null)
         {
             return string.Empty;
         }
-        var content = loadResult.Value;
 
-        return content;
+        try
+        {
+            using (stream)
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd();
+            }
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     /// <summary>
@@ -171,7 +179,7 @@ public abstract class ComponentEditorBase : IComponentEditor
     /// Event handler called when a form property has changed
     /// </summary>
     protected virtual void OnFormPropertyChanged(string propertyPath)
-    {}
+    { }
 
     private void OnComponentPropertyChanged(string propertyPath)
     {

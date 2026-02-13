@@ -5,8 +5,8 @@
     xmlns:local="using:Celbridge.UserInterface.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-    PrimaryButtonText="{x:Bind OkString}"
-    SecondaryButtonText="{x:Bind CancelString}">
+    PrimaryButtonText="{x:Bind PrimaryButtonDisplayText, Mode=OneWay}"
+    SecondaryButtonText="{x:Bind SecondaryButtonDisplayText, Mode=OneWay}">
 
     <Grid HorizontalAlignment="Left"
           VerticalAlignment="Center">

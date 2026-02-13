@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Core\Celbridge.Projects\Celbridge.Projects.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Settings\Celbridge.Settings.csproj" />
     <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
   

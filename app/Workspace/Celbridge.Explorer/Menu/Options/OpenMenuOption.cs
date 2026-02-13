@@ -41,12 +41,7 @@ public class OpenMenuOption : IMenuOption<ExplorerMenuContext>
             return new MenuItemState(IsVisible: false, IsEnabled: false);
         }
 
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
-        var isSupported = documentsService.IsDocumentSupported(resourceKey);
-        
-        return new MenuItemState(IsVisible: true, IsEnabled: isSupported);
+        return new MenuItemState(IsVisible: true, IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)

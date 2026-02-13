@@ -1,5 +1,10 @@
-namespace Celbridge.Utilities.Services;
+using Path = System.IO.Path;
 
+namespace Celbridge.Utilities;
+
+/// <summary>
+/// A simple dump file utility for writing diagnostic output.
+/// </summary>
 public class DumpFile : IDumpFile
 {
     private string _dumpFilePath = string.Empty;
@@ -40,10 +45,8 @@ public class DumpFile : IDumpFile
             using (var fileStream = new FileStream(_dumpFilePath, FileMode.Append, FileAccess.Write))
             using (var writer = new StreamWriter(fileStream))
             {
-                // Write the line of text, adding a newline
                 writer.WriteLine(line);
             }
-
         }
         catch (Exception ex)
         {

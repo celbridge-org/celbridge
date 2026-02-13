@@ -1,5 +1,3 @@
-using Celbridge.Messaging;
-
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>

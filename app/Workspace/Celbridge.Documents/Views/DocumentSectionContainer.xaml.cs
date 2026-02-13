@@ -58,6 +58,11 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<List<double>>? SectionRatiosChanged;
 
     /// <summary>
+    /// Event raised when resource files are dropped into a section from the ResourceTree.
+    /// </summary>
+    public event Action<DocumentSection, List<IResource>>? FilesDropped;
+
+    /// <summary>
     /// Gets the current number of sections.
     /// </summary>
     public int SectionCount => _sectionCount;
@@ -494,6 +499,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         section.CloseRequested += OnSectionCloseRequested;
         section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         section.TabDroppedInside += OnSectionTabDroppedInside;
+        section.FilesDropped += OnSectionFilesDropped;
 
         _sections.Add(section);
     }
@@ -720,6 +726,11 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             NotifyLayoutChanged();
         }
+    }
+
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
+    {
+        FilesDropped?.Invoke(targetSection, resources);
     }
 
     private void NotifyLayoutChanged()

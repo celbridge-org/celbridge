@@ -13,9 +13,9 @@ public interface IDialogFactory
     IAlertDialog CreateAlertDialog(string titleText, string messageText);
 
     /// <summary>
-    /// Create an Confirmation Dialog with configurable title and message text.
+    /// Create a Confirmation Dialog with configurable title, message text, and optional button text.
     /// </summary>
-    IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText);
+    IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null);
 
     /// <summary>
     /// Create a Progress Dialog.
