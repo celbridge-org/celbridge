@@ -9,7 +9,6 @@
   <Grid x:Name="RootGrid"
         AllowDrop="True"
         DragOver="RootGrid_DragOver"
-        DragLeave="RootGrid_DragLeave"
         Drop="RootGrid_Drop">
     <!-- Empty section placeholder (shown when no tabs) -->
     <Border x:Name="EmptyPlaceholder"

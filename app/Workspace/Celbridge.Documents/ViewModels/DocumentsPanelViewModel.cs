@@ -83,15 +83,4 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         return resourceRegistry.GetResourceKey(fileResource);
     }
-
-    public bool IsDocumentSupported(ResourceKey fileResource)
-    {
-        return _documentsService.IsDocumentSupported(fileResource);
-    }
-
-    public string GetFilePath(ResourceKey fileResource)
-    {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.GetResourcePath(fileResource);
-    }
 }

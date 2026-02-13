@@ -64,7 +64,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         if (TargetSectionIndex.HasValue)
         {
             // Open in the specified section
-            openResult = await documentsService.OpenDocumentAtSection(FileResource, ForceReload, Location, TargetSectionIndex.Value);
+            openResult = await documentsService.OpenDocumentAtSection(FileResource, TargetSectionIndex.Value, ForceReload, Location);
         }
         else
         {

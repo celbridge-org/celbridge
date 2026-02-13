@@ -450,11 +450,6 @@ public sealed partial class DocumentSection : UserControl
         }
     }
 
-    private void RootGrid_DragLeave(object sender, DragEventArgs e)
-    {
-        // Intentionally empty - drag leave doesn't need special handling
-    }
-
     private void RootGrid_Drop(object sender, DragEventArgs e)
     {
         if (_isShuttingDown)

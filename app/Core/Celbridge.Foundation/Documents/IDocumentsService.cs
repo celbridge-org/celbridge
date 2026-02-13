@@ -41,20 +41,16 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
-    /// Opens a file resource as a document in the documents panel.
+    /// Opens a file resource as a document in the documents panel, optionally reloading if already open
+    /// and navigating to a specific location.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload);
-
-    /// <summary>
-    /// Opens a file resource as a document in the documents panel and navigates to a specific location.
-    /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location);
+    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "");
 
     /// <summary>
     /// Opens a file resource as a document in a specific section of the documents panel.
     /// If the document is already open in another section, it will be moved to the target section.
     /// </summary>
-    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, bool forceReload, string location, int sectionIndex);
+    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "");
 
     /// <summary>
     /// Closes an opened document in the documents panel.

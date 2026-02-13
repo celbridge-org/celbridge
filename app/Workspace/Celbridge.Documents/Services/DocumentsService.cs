@@ -221,12 +221,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload)
-    {
-        return await OpenDocument(fileResource, forceReload, string.Empty);
-    }
-
-    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "")
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -254,7 +249,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, bool forceReload, string location, int sectionIndex)
+    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "")
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
