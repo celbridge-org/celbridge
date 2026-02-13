@@ -1,6 +1,6 @@
-using Celbridge.Explorer;
 using System.Reflection;
 using System.Text.Json;
+using Celbridge.Explorer;
 
 namespace Celbridge.Documents.Services;
 
@@ -9,10 +9,16 @@ public class FileTypeHelper
     private const string TextEditorTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextEditorTypes.json";
     private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
     private const string PlaintextLanguage = "plaintext";
+    private const string SpreadJSLicense = "ms-appx:///Celbridge.Documents/Web/SpreadJS/lib/license.js";
 
     private Dictionary<string, string> _extensionToLanguage = new();
     private List<string> _fileViewerExtensions = new();
     private HashSet<string> _binaryFileExtensions = new();
+
+    /// <summary>
+    /// Indicates whether the SpreadJS Excel editor is available.
+    /// </summary>
+    public bool IsSpreadJSAvailable { get; private set; }
 
     public Result Initialize()
     {
@@ -28,11 +34,17 @@ public class FileTypeHelper
             return loadWebResult;
         }
 
-        // Initialize the set of supported binary file extensions.
-        // These are binary formats that have specific viewer support
-        _binaryFileExtensions.Add(ExplorerConstants.ExcelExtension);
+        // The SpreadJS Excel editor is only available in Celbridge installer builds.
+        IsSpreadJSAvailable = CheckSpreadJSAvailability();
 
-        // All file viewer extensions are considered binary files.
+        if (IsSpreadJSAvailable)
+        {
+            // Only add Excel extension if SpreadJS is available.
+            _binaryFileExtensions.Add(ExplorerConstants.ExcelExtension);
+        }
+
+        // Initialize the set of supported binary file extensions.
+        // These are binary formats that have specific file viewer support.
         foreach (var ext in _fileViewerExtensions)
         {
             _binaryFileExtensions.Add(ext);
@@ -53,7 +65,9 @@ public class FileTypeHelper
 
         if (fileExtension == ExplorerConstants.ExcelExtension)
         {
-            return DocumentViewType.Spreadsheet;
+            // Only return Spreadsheet view type if SpreadJS is available.
+            // Otherwise, return UnsupportedFormat so the user is prompted to open with default app.
+            return IsSpreadJSAvailable ? DocumentViewType.Spreadsheet : DocumentViewType.UnsupportedFormat;
         }
 
         if (IsWebViewerFile(fileExtension))
@@ -212,4 +226,23 @@ public class FileTypeHelper
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Checks if the SpreadJS license file is available in the app package.
+    /// </summary>
+    private static bool CheckSpreadJSAvailability()
+    {
+        try
+        {
+            var uri = new Uri(SpreadJSLicense);
+            // Use synchronous wait since this is called during initialization
+            var task = StorageFile.GetFileFromApplicationUriAsync(uri).AsTask();
+            task.Wait();
+            return true;
+        }
+        catch
+        {
+            // The SpreadJS license file is not present
+            return false;
+        }
+    }
 }

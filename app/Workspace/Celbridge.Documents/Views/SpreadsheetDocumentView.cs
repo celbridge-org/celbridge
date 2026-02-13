@@ -115,22 +115,6 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
             // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
             webView.DefaultBackgroundColor = Colors.Transparent;
 
-            try
-            {
-                // The SpreadJS Excel editor is only available in Celbridge installer builds.
-                // Check if the SpreadJS license file exists in the app package.
-                var uri = new Uri("ms-appx:///Celbridge.Documents/Web/SpreadJS/lib/license.js");
-                _ = await StorageFile.GetFileFromApplicationUriAsync(uri);
-            }
-            catch (Exception)
-            {
-                // The SpreadJS license file is not present, display an error message and exit.
-                webView.CoreWebView2.Navigate("https://spreadjs.celbridge/error.html");
-                _webView = webView;
-                this.Content = _webView;
-                return;
-            }
-
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
