@@ -14,9 +14,9 @@ public interface IDialogService
     Task ShowAlertDialogAsync(string titleText, string messageText);
 
     /// <summary>
-    /// Display an Confirmation Dialog with configurable title and message text.
+    /// Display a Confirmation Dialog with configurable title, message text, and optional button text.
     /// </summary>
-    Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText);
+    Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null);
 
     /// <summary>
     /// Acquire a progress dialog token.

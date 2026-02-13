@@ -144,10 +144,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
 
             var fileResourceKey = ViewModel.GetResourceKey(fileResource);
-            if (!ViewModel.IsDocumentSupported(fileResourceKey))
-            {
-                continue;
-            }
 
             // Check if the file is already open in any section
             var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResourceKey);
