@@ -144,11 +144,16 @@ public static class TextBinarySniffer
             return true;
         }
 
-        // 2. NUL bytes without BOM => binary
-        // (UTF-16/UTF-32 without BOM is rare; treating as binary is the pragmatic choice)
+        // 2. Check for NUL bytes - could be UTF-16/UTF-32 without BOM or actual binary
         if (bytes.IndexOf((byte)0) >= 0)
         {
-            return false;
+            // Try to detect UTF-16/UTF-32 without BOM before rejecting as binary
+            if (IsValidUtf16(bytes) || IsValidUtf32(bytes))
+            {
+                return true; // Valid UTF-16/32 text encoding
+            }
+            
+            return false; // Actual binary with NUL bytes
         }
 
         // 3. Strict UTF-8 decode test
@@ -189,6 +194,204 @@ public static class TextBinarySniffer
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Checks if the bytes appear to be valid UTF-16 (LE or BE) without BOM.
+    /// Uses heuristics: tries to decode and checks if result is valid text.
+    /// Also checks for UTF-16 structural patterns to avoid false positives.
+    /// </summary>
+    private static bool IsValidUtf16(ReadOnlySpan<byte> bytes)
+    {
+        // Need at least 2 bytes for UTF-16
+        if (bytes.Length < 2)
+        {
+            return false;
+        }
+
+        // UTF-16 requires even number of bytes
+        if (bytes.Length % 2 != 0)
+        {
+            return false;
+        }
+
+        // Check for UTF-16 LE patterns first (most common)
+        if (LooksLikeUtf16LE(bytes) && TryDecodeUtf16(bytes, Encoding.Unicode))
+        {
+            return true;
+        }
+
+        // Check for UTF-16 BE patterns
+        if (LooksLikeUtf16BE(bytes) && TryDecodeUtf16(bytes, Encoding.BigEndianUnicode))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if bytes match UTF-16 LE patterns (every other byte is often 0x00 for ASCII-range text).
+    /// </summary>
+    private static bool LooksLikeUtf16LE(ReadOnlySpan<byte> bytes)
+    {
+        // For UTF-16 LE, ASCII characters have pattern: [char, 0x00]
+        // Count how many even-positioned bytes are printable ASCII and odd-positioned are 0x00
+        int asciiLikeCount = 0;
+        int totalPairs = bytes.Length / 2;
+
+        for (int i = 0; i < bytes.Length - 1; i += 2)
+        {
+            byte lowByte = bytes[i];
+            byte highByte = bytes[i + 1];
+
+            // Check if this looks like an ASCII character in UTF-16 LE
+            if (highByte == 0x00 && (lowByte >= 0x20 && lowByte <= 0x7E || lowByte == 0x09 || lowByte == 0x0A || lowByte == 0x0D))
+            {
+                asciiLikeCount++;
+            }
+        }
+
+        // If at least 50% of pairs look like ASCII in UTF-16 LE, it's likely UTF-16 LE
+        return asciiLikeCount >= totalPairs * 0.5;
+    }
+
+    /// <summary>
+    /// Checks if bytes match UTF-16 BE patterns.
+    /// </summary>
+    private static bool LooksLikeUtf16BE(ReadOnlySpan<byte> bytes)
+    {
+        // For UTF-16 BE, ASCII characters have pattern: [0x00, char]
+        int asciiLikeCount = 0;
+        int totalPairs = bytes.Length / 2;
+
+        for (int i = 0; i < bytes.Length - 1; i += 2)
+        {
+            byte highByte = bytes[i];
+            byte lowByte = bytes[i + 1];
+
+            // Check if this looks like an ASCII character in UTF-16 BE
+            if (highByte == 0x00 && (lowByte >= 0x20 && lowByte <= 0x7E || lowByte == 0x09 || lowByte == 0x0A || lowByte == 0x0D))
+            {
+                asciiLikeCount++;
+            }
+        }
+
+        // If at least 50% of pairs look like ASCII in UTF-16 BE, it's likely UTF-16 BE
+        return asciiLikeCount >= totalPairs * 0.5;
+    }
+
+    /// <summary>
+    /// Checks if the bytes appear to be valid UTF-32 without BOM.
+    /// </summary>
+    private static bool IsValidUtf32(ReadOnlySpan<byte> bytes)
+    {
+        // Need at least 4 bytes for UTF-32
+        if (bytes.Length < 4)
+        {
+            return false;
+        }
+
+        try
+        {
+            var encoding = new UTF32Encoding(bigEndian: false, byteOrderMark: false, throwOnInvalidCharacters: true);
+            var chars = encoding.GetChars(bytes.ToArray());
+            
+            // Validate that decoded text looks reasonable (not mostly control characters)
+            return IsDecodedTextValid(chars);
+        }
+        catch
+        {
+            // Try big-endian UTF-32
+            try
+            {
+                var encoding = new UTF32Encoding(bigEndian: true, byteOrderMark: false, throwOnInvalidCharacters: true);
+                var chars = encoding.GetChars(bytes.ToArray());
+                return IsDecodedTextValid(chars);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Attempts to decode bytes as UTF-16 and validates the result.
+    /// </summary>
+    private static bool TryDecodeUtf16(ReadOnlySpan<byte> bytes, Encoding encoding)
+    {
+        try
+        {
+            var decoder = encoding.GetDecoder();
+            decoder.Fallback = DecoderFallback.ExceptionFallback;
+            
+            var chars = encoding.GetChars(bytes.ToArray());
+            
+            // Validate that decoded text looks reasonable
+            return IsDecodedTextValid(chars);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Validates that decoded text contains reasonable characters (not binary garbage).
+    /// Checks for valid character patterns and absence of excessive control characters.
+    /// </summary>
+    private static bool IsDecodedTextValid(char[] chars)
+    {
+        if (chars.Length == 0)
+        {
+            return true;
+        }
+
+        int suspicious = 0;
+        int printable = 0;
+
+        foreach (char c in chars)
+        {
+            // Allow common whitespace and control characters
+            if (c == '\t' || c == '\n' || c == '\r' || c == '\f')
+            {
+                continue;
+            }
+
+            // Check for printable characters (basic ASCII and Unicode)
+            if (c >= 0x20 && c < 0x7F) // ASCII printable
+            {
+                printable++;
+            }
+            else if (c >= 0x80 && c < 0xFFFE) // Unicode range (excluding special markers)
+            {
+                // Most Unicode characters are valid for text
+                // Exclude replacement characters and other special markers
+                if (c == 0xFFFD || c == 0xFFFE || c == 0xFFFF)
+                {
+                    suspicious++;
+                }
+                else
+                {
+                    printable++;
+                }
+            }
+            else if (c < 0x20) // Control characters (excluding allowed ones above)
+            {
+                suspicious++;
+            }
+        }
+
+        // If we have very few printable characters, it's likely binary
+        if (chars.Length > 10 && printable < chars.Length * 0.3)
+        {
+            return false;
+        }
+
+        // Check suspicious character ratio (similar to the 2% threshold for bytes)
+        double ratio = (double)suspicious / chars.Length;
+        return ratio <= 0.05; // Slightly more lenient for decoded text
     }
 
     /// <summary>
