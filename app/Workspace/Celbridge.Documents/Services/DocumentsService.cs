@@ -255,6 +255,41 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
+    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, bool forceReload, string location, int sectionIndex)
+    {
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+        var filePath = resourceRegistry.GetResourcePath(fileResource);
+        if (string.IsNullOrEmpty(filePath) ||
+            !File.Exists(filePath))
+        {
+            return Result.Fail($"File path does not exist: '{filePath}'");
+        }
+
+        if (!CanAccessFile(filePath))
+        {
+            return Result.Fail($"File exists but cannot be opened: '{filePath}'");
+        }
+
+        var address = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
+        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+        if (openResult.IsFailure)
+        {
+            return Result.Fail($"Failed to open document for file resource '{fileResource}' at section {sectionIndex}")
+                .WithErrors(openResult);
+        }
+
+        // Navigate to location if specified
+        if (!string.IsNullOrEmpty(location))
+        {
+            await DocumentsPanel.NavigateToLocation(fileResource, location);
+        }
+
+        _logger.LogTrace($"Opened document for file resource '{fileResource}' at section {sectionIndex}");
+
+        return Result.Ok();
+    }
+
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
     {
         var closeResult = await DocumentsPanel.CloseDocument(fileResource, forceClose);

@@ -51,6 +51,12 @@ public interface IDocumentsService
     Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload, string location);
 
     /// <summary>
+    /// Opens a file resource as a document in a specific section of the documents panel.
+    /// If the document is already open in another section, it will be moved to the target section.
+    /// </summary>
+    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, bool forceReload, string location, int sectionIndex);
+
+    /// <summary>
     /// Closes an opened document in the documents panel.
     /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>

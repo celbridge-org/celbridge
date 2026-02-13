@@ -19,6 +19,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string Location { get; set; } = string.Empty;
 
+    public int? TargetSectionIndex { get; set; }
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
@@ -45,7 +47,18 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
-        var openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
+        Result openResult;
+        if (TargetSectionIndex.HasValue)
+        {
+            // Open in the specified section
+            openResult = await documentsService.OpenDocumentAtSection(FileResource, ForceReload, Location, TargetSectionIndex.Value);
+        }
+        else
+        {
+            // Open in the active section (default behavior)
+            openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
+        }
+
         if (openResult.IsFailure)
         {
             // Alert the user that the document failed to open

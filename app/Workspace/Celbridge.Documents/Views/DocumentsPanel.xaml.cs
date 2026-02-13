@@ -69,6 +69,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         SectionContainer.SectionCountChanged += OnSectionCountChanged;
         SectionContainer.SectionRatiosChanged += OnSectionRatiosChanged;
+        SectionContainer.FilesDropped += OnSectionFilesDropped;
 
         // Wire up toolbar events
         DocumentToolbar.SectionCountChangeRequested += OnToolbarSectionCountChangeRequested;
@@ -119,6 +120,60 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Notify the ViewModel to persist the section ratios
         // The section count is inferred from the ratios list length
         ViewModel.OnSectionRatiosChanged(ratios);
+    }
+
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
+    {
+        HandleDroppedFiles(targetSection, resources);
+    }
+
+    private void HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        var targetSectionIndex = targetSection.SectionIndex;
+
+        foreach (var resource in resources)
+        {
+            if (resource is not IFileResource fileResource)
+            {
+                continue;
+            }
+
+            var fileResourceKey = ViewModel.GetResourceKey(fileResource);
+            if (!ViewModel.IsDocumentSupported(fileResourceKey))
+            {
+                continue;
+            }
+
+            // Check if the file is already open in any section
+            var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResourceKey);
+            if (existingTab != null && existingSection != null)
+            {
+                // Already open - move to target section if different, otherwise just select it
+                if (existingSection.SectionIndex != targetSectionIndex)
+                {
+                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex);
+                }
+                else
+                {
+                    existingSection.SelectTab(existingTab);
+                    SectionContainer.ActivateDocument(fileResourceKey, targetSectionIndex);
+                }
+            }
+            else
+            {
+                // Not open - use the command to open in the target section
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = fileResourceKey;
+                    command.TargetSectionIndex = targetSectionIndex;
+                });
+            }
+        }
     }
 
     private void OnToolbarSectionCountChangeRequested(int requestedCount)
@@ -303,9 +358,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 SectionContainer.MoveTabToSection(existingTab, sectionIndex);
             }
 
-            // Activate the tab
+            // Activate the tab and make it the active document
             var targetSection = SectionContainer.GetSection(sectionIndex);
             targetSection.SelectTab(existingTab);
+            SectionContainer.ActivateDocument(fileResource, sectionIndex);
             return Result.Ok();
         }
 
@@ -334,6 +390,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
+
+        // Make the newly opened document the active document
+        SectionContainer.ActivateDocument(fileResource, sectionIndex);
 
         return Result.Ok();
     }

@@ -519,8 +519,8 @@ Do you wish to continue?</value>
   <data name="DocumentToolbar_ThreeSections" xml:space="preserve">
     <value>Three Editors</value>
   </data>
-  <data name="DocumentSection_NoDocumentsOpen" xml:space="preserve">
-    <value>No documents open</value>
+  <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
+    <value>Drop files here to open them</value>
   </data>
   <data name="DocumentTab_Close" xml:space="preserve">
     <value>Close</value>
