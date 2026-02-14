@@ -4,39 +4,25 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Console.Views"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   GotFocus="UserControl_GotFocus">
 
-<Grid>
-  <Grid.RowDefinitions>
-    <RowDefinition Height="40"/>
-    <RowDefinition Height="Auto"/>
-    <RowDefinition Height="Auto"/>
-    <RowDefinition Height="Auto"/>
-    <RowDefinition Height="*"/>
-  </Grid.RowDefinitions>
+  <Grid>
+    
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
 
-  <!-- Title Bar -->
-  <Grid Grid.Row="0"
-        Background="{ThemeResource PanelBackgroundABrush}"
-        Tapped="TitleBar_Tapped">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="Auto"/>
-      <ColumnDefinition Width="Auto"/>
-      <ColumnDefinition Width="*"/>
-    </Grid.ColumnDefinitions>
-
-    <!-- Focus Indicator -->
-    <controls:FocusIndicator Grid.Column="0"
-                             Panel="Console"
-                             Margin="6,0,0,0"/>
-
-    <TextBlock Grid.Column="1"
-               Text="{x:Bind TitleText}"
-               Margin="6,0,0,0"
-               VerticalAlignment="Center"/>
-  </Grid>
+    <!-- Panel Header -->
+    <controls:PanelHeader Grid.Row="0"
+                          Panel="Console"
+                          VisibilityFlag="Console"
+                          Title="{x:Bind TitleText}"
+                          Tapped="TitleBar_Tapped"/>
 
     <InfoBar x:Name="ErrorInfoBar"
              Grid.Row="1"
