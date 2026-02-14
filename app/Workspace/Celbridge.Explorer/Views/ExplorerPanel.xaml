@@ -3,6 +3,7 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Explorer.Views"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent"
@@ -14,34 +15,29 @@
 
   <Grid VerticalAlignment="Stretch"
         Background="Transparent">
+
     <Grid.RowDefinitions>
-      <RowDefinition Height="40"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Title Bar -->
-    <Grid Grid.Row="0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
+    <!-- Panel Header -->
+    <controls:PanelHeader x:Name="PanelHeader"
+                          Grid.Row="0"
+                          Panel="Explorer"
+                          VisibilityFlag="Primary"
+                          Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">
+      <controls:PanelHeader.ToolbarContent>
+        
+        <local:ExplorerToolbar x:Name="ExplorerToolbar"
+                               VerticalAlignment="Center"
+                               AddFileClicked="ExplorerToolbar_AddFileClicked"
+                               AddFolderClicked="ExplorerToolbar_AddFolderClicked"
+                               CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
 
-      <TextBlock Grid.Column="0"
-               Text="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-               Margin="12,0,0,0"
-               VerticalAlignment="Center"/>
-
-      <!-- Explorer Toolbar -->
-      <local:ExplorerToolbar x:Name="ExplorerToolbar"
-                           Grid.Column="2"
-                           VerticalAlignment="Center"
-                           Margin="0,0,8,0"
-                           AddFileClicked="ExplorerToolbar_AddFileClicked"
-                           AddFolderClicked="ExplorerToolbar_AddFolderClicked"
-                           CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
-    </Grid>
+      </controls:PanelHeader.ToolbarContent>
+    </controls:PanelHeader>
 
     <!-- Resource Tree -->
     <local:ResourceTree x:Name="ResourceTree"
@@ -49,5 +45,6 @@
 
     <!-- Notification Bar -->
     <local:ExplorerNotificationBar Grid.Row="2"/>
+    
   </Grid>
 </UserControl>
