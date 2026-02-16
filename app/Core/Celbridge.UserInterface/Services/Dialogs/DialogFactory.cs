@@ -22,10 +22,19 @@ public class DialogFactory : IDialogFactory
         var dialog = new ConfirmationDialog
         {
             TitleText = titleText,
-            MessageText = messageText,
-            PrimaryButtonText = primaryButtonText,
-            SecondaryButtonText = secondaryButtonText
+            MessageText = messageText
         };
+
+        // Only override the default button text if custom text is provided
+        if (primaryButtonText is not null)
+        {
+            dialog.PrimaryButtonText = primaryButtonText;
+        }
+
+        if (secondaryButtonText is not null)
+        {
+            dialog.SecondaryButtonText = secondaryButtonText;
+        }
 
         return dialog;
     }
