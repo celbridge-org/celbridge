@@ -114,10 +114,15 @@ public class LayoutManager : ILayoutManager
         UpdatePanelVisibility(newVisibility, shouldPersist: true);
 
         // Handle mode transitions based on panel visibility changes
-        if (WindowMode == WindowMode.ZenMode && newVisibility != PanelVisibilityFlags.None)
+        if (WindowMode == WindowMode.ZenMode)
         {
-            // User showed a panel while in ZenMode, transition to FullScreen
-            SetWindowModeInternal(WindowMode.FullScreen);
+            // In ZenMode, console can be visible (if maximized). Transition to FullScreen
+            // if user shows a sidebar panel (Primary or Secondary).
+            var sidebarPanels = PanelVisibilityFlags.Primary | PanelVisibilityFlags.Secondary;
+            if ((newVisibility & sidebarPanels) != PanelVisibilityFlags.None)
+            {
+                SetWindowModeInternal(WindowMode.FullScreen);
+            }
         }
         else if (WindowMode == WindowMode.FullScreen && newVisibility == PanelVisibilityFlags.None)
         {
@@ -143,12 +148,6 @@ public class LayoutManager : ILayoutManager
 
         // Cannot maximize console if it's not visible
         if (isMaximized && !IsConsolePanelVisible)
-        {
-            return;
-        }
-
-        // Cannot maximize console in ZenMode (console is hidden)
-        if (isMaximized && WindowMode == WindowMode.ZenMode)
         {
             return;
         }
@@ -220,15 +219,15 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in ZenMode
         }
 
-        // Restore console if maximized before entering ZenMode
-        if (IsConsoleMaximized)
-        {
-            SetConsoleMaximized(false);
-        }
+        // If console is maximized, keep it visible in Zen Mode (fullscreen console).
+        // This allows the user to continue working in the console with full screen space.
+        // Otherwise, hide all panels for fullscreen documents.
+        var zenModeVisibility = IsConsoleMaximized
+            ? PanelVisibilityFlags.Console
+            : PanelVisibilityFlags.None;
 
-        // Hide all panels temporarily
         // Don't persist this change as it's only temporary.
-        UpdatePanelVisibility(PanelVisibilityFlags.None, shouldPersist: false);
+        UpdatePanelVisibility(zenModeVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.ZenMode);
 
         return Result.Ok();
