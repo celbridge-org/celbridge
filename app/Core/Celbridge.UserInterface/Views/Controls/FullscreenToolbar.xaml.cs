@@ -282,7 +282,7 @@ public sealed partial class FullscreenToolbar : UserControl
         // Return to Windowed mode using SetLayoutCommand
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.EnterWindowed;
+            command.Transition = WindowModeTransition.EnterWindowed;
         });
     }
 }

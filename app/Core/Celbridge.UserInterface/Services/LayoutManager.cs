@@ -44,6 +44,37 @@ public class LayoutManager : ILayoutManager
         }
     }
 
+    public Result RequestWindowModeTransition(WindowModeTransition transition)
+    {
+        _logger.LogDebug($"Requesting layout transition: {transition} (current mode: {WindowMode})");
+
+        switch (transition)
+        {
+            case WindowModeTransition.EnterWindowed:
+                return TransitionToWindowed();
+
+            case WindowModeTransition.EnterFullScreen:
+                return TransitionToFullScreen();
+
+            case WindowModeTransition.EnterZenMode:
+                return TransitionToZenMode();
+
+            case WindowModeTransition.EnterPresenterMode:
+                return TransitionToPresenterMode();
+
+            case WindowModeTransition.ToggleZenMode:
+                return HandleToggleZenMode();
+
+            case WindowModeTransition.ResetLayout:
+                return HandleResetLayout();
+
+            default:
+                return Result.Fail($"Unknown layout transition: {transition}");
+        }
+    }
+
+    public bool IsFullScreen => WindowMode != WindowMode.Windowed;
+
     public PanelVisibilityFlags PanelVisibility
     {
         get => _panelVisibility;
@@ -56,42 +87,11 @@ public class LayoutManager : ILayoutManager
         }
     }
 
-    public bool IsFullScreen => WindowMode != WindowMode.Windowed;
-
     public bool IsContextPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Primary);
 
     public bool IsInspectorPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Secondary);
 
     public bool IsConsolePanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Console);
-
-    public Result RequestTransition(LayoutTransition transition)
-    {
-        _logger.LogDebug($"Requesting layout transition: {transition} (current mode: {WindowMode})");
-
-        switch (transition)
-        {
-            case LayoutTransition.EnterWindowed:
-                return TransitionToWindowed();
-
-            case LayoutTransition.EnterFullScreen:
-                return TransitionToFullScreen();
-
-            case LayoutTransition.EnterZenMode:
-                return TransitionToZenMode();
-
-            case LayoutTransition.EnterPresenterMode:
-                return TransitionToPresenterMode();
-
-            case LayoutTransition.ToggleZenMode:
-                return HandleToggleZenMode();
-
-            case LayoutTransition.ResetLayout:
-                return HandleResetLayout();
-
-            default:
-                return Result.Fail($"Unknown layout transition: {transition}");
-        }
-    }
 
     public void SetPanelVisibility(PanelVisibilityFlags panel, bool isVisible)
     {
@@ -102,6 +102,12 @@ public class LayoutManager : ILayoutManager
         if (newVisibility == PanelVisibility)
         {
             return;
+        }
+
+        // If hiding console while maximized, restore first
+        if (!isVisible && panel.HasFlag(PanelVisibilityFlags.Console) && IsConsoleMaximized)
+        {
+            SetConsoleMaximized(false);
         }
 
         // This is a user-initiated change, so it should should persist
@@ -124,6 +130,36 @@ public class LayoutManager : ILayoutManager
     {
         var isCurrentlyVisible = PanelVisibility.HasFlag(panel);
         SetPanelVisibility(panel, !isCurrentlyVisible);
+    }
+
+    public bool IsConsoleMaximized => _editorSettings.IsConsoleMaximized;
+
+    public void SetConsoleMaximized(bool isMaximized)
+    {
+        if (_editorSettings.IsConsoleMaximized == isMaximized)
+        {
+            return;
+        }
+
+        // Cannot maximize console if it's not visible
+        if (isMaximized && !IsConsolePanelVisible)
+        {
+            return;
+        }
+
+        // Cannot maximize console in ZenMode (console is hidden)
+        if (isMaximized && WindowMode == WindowMode.ZenMode)
+        {
+            return;
+        }
+
+        _editorSettings.IsConsoleMaximized = isMaximized;
+
+        // Broadcast the change
+        var message = new ConsoleMaximizedChangedMessage(isMaximized);
+        _messengerService.Send(message);
+
+        _logger.LogDebug($"Console maximized state changed: {isMaximized}");
     }
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
@@ -184,6 +220,12 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in ZenMode
         }
 
+        // Restore console if maximized before entering ZenMode
+        if (IsConsoleMaximized)
+        {
+            SetConsoleMaximized(false);
+        }
+
         // Hide all panels temporarily
         // Don't persist this change as it's only temporary.
         UpdatePanelVisibility(PanelVisibilityFlags.None, shouldPersist: false);
@@ -223,10 +265,17 @@ public class LayoutManager : ILayoutManager
 
     private Result HandleResetLayout()
     {
+        // Reset console maximized state
+        if (IsConsoleMaximized)
+        {
+            SetConsoleMaximized(false);
+        }
+
         // Reset panel sizes
         _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
         _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
         _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
+        _editorSettings.RestoreConsoleHeight = UserInterfaceConstants.ConsolePanelHeight;
 
         // Reset preferred window geometry
         _editorSettings.UsePreferredWindowGeometry = false;
@@ -251,6 +300,10 @@ public class LayoutManager : ILayoutManager
             // Already in Windowed mode, but need to sync window state (e.g., restore from maximized)
             _messengerService.Send(new RestoreWindowStateMessage());
         }
+
+        // Notify listeners to reset their layout state (e.g., document sections)
+        var message = new ResetLayoutRequestedMessage();
+        _messengerService.Send(message);
 
         return Result.Ok();
     }

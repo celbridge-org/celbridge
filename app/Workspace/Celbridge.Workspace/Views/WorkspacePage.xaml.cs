@@ -91,7 +91,15 @@ public sealed partial class WorkspacePage : Page
 
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
-        ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        // Only update console height setting when not maximized (to preserve restore height)
+        ConsolePanel.SizeChanged += (s, e) =>
+        {
+            if (!ViewModel.IsConsoleMaximized)
+            {
+                ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+            }
+        };
 
         // Initialize splitter helpers
         _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: 100);
@@ -178,6 +186,9 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
                 break;
+            case nameof(ViewModel.IsConsoleMaximized):
+                UpdateConsoleMaximized();
+                break;
             case nameof(ViewModel.PrimaryPanelWidth):
                 if (ViewModel.IsPrimaryPanelVisible && ViewModel.PrimaryPanelWidth > 0)
                 {
@@ -191,7 +202,8 @@ public sealed partial class WorkspacePage : Page
                 }
                 break;
             case nameof(ViewModel.ConsolePanelHeight):
-                if (ViewModel.IsConsolePanelVisible && ViewModel.ConsolePanelHeight > 0)
+                // Don't update row height when console is maximized (it uses Star sizing)
+                if (ViewModel.IsConsolePanelVisible && ViewModel.ConsolePanelHeight > 0 && !ViewModel.IsConsoleMaximized)
                 {
                     ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
                 }
@@ -249,6 +261,68 @@ public sealed partial class WorkspacePage : Page
             ConsolePanelRow.MinHeight = 0;
             ConsolePanelRow.Height = new GridLength(0);
         }
+
+        // Apply console maximized state after panel visibility
+        UpdateConsoleMaximized();
+    }
+
+    private void UpdateConsoleMaximized()
+    {
+        if (!ViewModel.IsConsolePanelVisible)
+        {
+            // Console is hidden, nothing to maximize
+            return;
+        }
+
+        if (ViewModel.IsConsoleMaximized)
+        {
+            // Save the current console height before maximizing so we can restore it later.
+            // Only save if we have a valid height (not already maximized).
+            var currentConsoleHeight = (float)ConsolePanel.ActualHeight;
+            if (currentConsoleHeight > 0 && ConsolePanelRow.Height.GridUnitType != GridUnitType.Star)
+            {
+                ViewModel.RestoreConsoleHeight = currentConsoleHeight;
+            }
+
+            // Hide the splitter while maximized
+            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
+
+            // Hide Documents panel and row
+            DocumentsPanel.Visibility = Visibility.Collapsed;
+            DocumentsPanelRow.MinHeight = 0;
+            DocumentsPanelRow.Height = new GridLength(0);
+
+            // Maximize Console row using Star sizing so it fills available space
+            ConsolePanelRow.MinHeight = 0;
+            ConsolePanelRow.Height = new GridLength(1, GridUnitType.Star);
+        }
+        else
+        {
+            // Show the splitter when restored
+            ConsolePanelSplitter.Visibility = Visibility.Visible;
+
+            // Restore Documents panel and row
+            DocumentsPanel.Visibility = Visibility.Visible;
+            DocumentsPanelRow.MinHeight = 0;
+            DocumentsPanelRow.Height = new GridLength(1, GridUnitType.Star);
+
+            // Restore console MinHeight
+            ConsolePanelRow.MinHeight = 100;
+
+            // Restore console to the height it was before maximizing
+            var consoleHeight = ViewModel.RestoreConsoleHeight;
+            if (consoleHeight <= 0)
+            {
+                consoleHeight = UserInterfaceConstants.ConsolePanelHeight;
+            }
+
+            // Set Console row to fixed height
+            ConsolePanelRow.Height = new GridLength(consoleHeight);
+        }
+
+        // Force layout recalculation
+        LayoutRoot.InvalidateMeasure();
+        LayoutRoot.InvalidateArrange();
     }
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)

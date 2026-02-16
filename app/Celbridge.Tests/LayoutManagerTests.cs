@@ -77,7 +77,7 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToFullScreen_FromWindowed_ChangesMode()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
@@ -87,7 +87,7 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToZenMode_FromWindowed_HidesAllPanels()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
@@ -98,7 +98,7 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToPresenterMode_FromWindowed_HidesAllPanels()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterPresenterMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterPresenterMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Presenter);
@@ -109,9 +109,9 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToWindowed_FromFullScreen_RestoresPreferredPanelVisibility()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -122,9 +122,9 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToWindowed_FromZenMode_RestoresPreferredPanelVisibility()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -134,9 +134,9 @@ public class LayoutManagerTests
     [Test]
     public void TransitionToSameMode_Succeeds()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
@@ -149,7 +149,7 @@ public class LayoutManagerTests
     [Test]
     public void ToggleZenMode_FromWindowed_EntersZenMode()
     {
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
@@ -159,9 +159,9 @@ public class LayoutManagerTests
     [Test]
     public void ToggleZenMode_FromZenMode_ReturnsToWindowed()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -170,9 +170,9 @@ public class LayoutManagerTests
     [Test]
     public void ToggleZenMode_FromFullScreen_ReturnsToWindowed()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -187,13 +187,13 @@ public class LayoutManagerTests
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
 
         // Toggle to ZenMode
-        var result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
         
         // Toggle back to Windowed - should restore the persisted preference (None)
-        result = _layoutManager.RequestTransition(LayoutTransition.ToggleZenMode);
+        result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
         
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -240,7 +240,7 @@ public class LayoutManagerTests
     [Test]
     public void SetPanelVisibility_InZenMode_ShowingPanelTransitionsToFullScreen()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, true);
 
@@ -251,7 +251,7 @@ public class LayoutManagerTests
     [Test]
     public void SetPanelVisibility_InFullScreen_HidingAllPanelsTransitionsToZenMode()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
@@ -283,7 +283,7 @@ public class LayoutManagerTests
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
@@ -292,9 +292,9 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_FromFullScreen_ReturnsToWindowed()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
-        var result = _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
+        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
@@ -303,7 +303,7 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_ResetsPanelSizesInEditorSettings()
     {
-        _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
         _editorSettings.Received(1).PrimaryPanelWidth = 300f;
         _editorSettings.Received(1).SecondaryPanelWidth = 300f;
@@ -313,7 +313,7 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_ResetsPreferredPanelVisibilityInEditorSettings()
     {
-        _layoutManager.RequestTransition(LayoutTransition.ResetLayout);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
         _editorSettings.Received().PreferredPanelVisibility = PanelVisibilityFlags.All;
     }
@@ -329,7 +329,7 @@ public class LayoutManagerTests
         var recipient = new object();
         _messengerService.Register<WindowModeChangedMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
         receivedMessage.Should().NotBeNull();
         receivedMessage!.WindowMode.Should().Be(WindowMode.FullScreen);
@@ -364,7 +364,7 @@ public class LayoutManagerTests
     [Test]
     public void SetPanelVisibility_InFullScreenMode_UpdatesPreferredPanelVisibility()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
         _editorSettings.ClearReceivedCalls();
 
         _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
@@ -376,7 +376,7 @@ public class LayoutManagerTests
     [Test]
     public void SetPanelVisibility_ToNone_UpdatesPreferredPanelVisibility()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
         _editorSettings.ClearReceivedCalls();
 
         // Hide all panels
@@ -398,11 +398,11 @@ public class LayoutManagerTests
     [Test]
     public void MultipleQuickTransitions_MaintainsConsistentState()
     {
-        _layoutManager.RequestTransition(LayoutTransition.EnterFullScreen);
-        _layoutManager.RequestTransition(LayoutTransition.EnterZenMode);
-        _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
-        _layoutManager.RequestTransition(LayoutTransition.EnterPresenterMode);
-        _layoutManager.RequestTransition(LayoutTransition.EnterWindowed);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterPresenterMode);
+        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
 
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
         _layoutManager.IsFullScreen.Should().BeFalse();

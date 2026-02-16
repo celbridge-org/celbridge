@@ -60,6 +60,11 @@ public partial class App : Application
             Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Converters.xaml")
         }));
 
+        Resources.Build(r => r.Merged(new ResourceDictionary
+        {
+            Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Styles.xaml")
+        }));
+
         // Load Uno.UI.Toolkit Resources
         Resources.Build(r => r.Merged(
             new ToolkitResources()));

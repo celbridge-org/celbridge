@@ -35,21 +35,11 @@
     <!-- Close Button -->
     <Button x:Name="CloseButton"
             Grid.Column="4"
+            Style="{StaticResource TransparentIconButtonStyle}"
             ToolTipService.ToolTip="Close panel"
-            Padding="4"
             Margin="0,0,8,0"
             VerticalAlignment="Center"
             Click="CloseButton_Click">
-
-      <Button.Resources>
-        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SystemListLowColor}" />
-        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SystemListMediumColor}" />
-        <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
-        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
-      </Button.Resources>
-
       <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
                 Glyph="&#xE711;"
                 FontSize="14" />

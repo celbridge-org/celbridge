@@ -9,7 +9,9 @@ xmlns:vm="using:Celbridge.Workspace.ViewModels"
 NavigationCacheMode="Required"
 DataContext="{x:Bind ViewModel}">
 
-  <Grid x:Name="LayoutRoot">
+  <Grid x:Name="LayoutRoot"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch">
     
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="PrimaryPanelColumn" Width="300" MinWidth="100"/>
@@ -18,7 +20,7 @@ DataContext="{x:Bind ViewModel}">
     </Grid.ColumnDefinitions>
     
     <Grid.RowDefinitions>
-      <RowDefinition Height="*"/>
+      <RowDefinition x:Name="DocumentsPanelRow" Height="*"/>
       <RowDefinition x:Name="ConsolePanelRow" Height="200" MinHeight="100"/>
     </Grid.RowDefinitions>
 
@@ -57,7 +59,6 @@ DataContext="{x:Bind ViewModel}">
     <Grid x:Name="ConsolePanel"
           Grid.Column="1"
           Grid.Row="1"
-          MinHeight="100"
           Tag="Console"
           Background="{ThemeResource PanelBackgroundBBrush}"
           GotFocus="Panel_GotFocus"
