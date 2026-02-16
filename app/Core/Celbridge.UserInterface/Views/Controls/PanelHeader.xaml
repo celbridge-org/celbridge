@@ -5,7 +5,8 @@
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
   <Grid Height="40"
-        Background="{ThemeResource PanelBackgroundABrush}">
+        Background="{ThemeResource PanelBackgroundABrush}"
+        DoubleTapped="TitleBar_DoubleTapped">
 
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="Auto"/>

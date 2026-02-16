@@ -126,4 +126,18 @@ public sealed partial class PanelHeader : UserControl
             command.IsVisible = false;
         });
     }
+
+    private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (VisibilityFlag == PanelVisibilityFlags.None)
+        {
+            return;
+        }
+
+        // Double-clicking the title bar resets the panel to its default size
+        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        {
+            command.Panel = VisibilityFlag;
+        });
+    }
 }

@@ -16,7 +16,7 @@ public sealed partial class WorkspacePage : Page
     private const double MinDocumentsHeightBeforeMaximize = 100;
 
     // Maximum fraction of available vertical space for restored console height
-    private const double MaxRestoredConsoleHeightFraction = 0.6;
+    private const double MaxRestoredConsoleHeightFraction = 0.7;
 
     private readonly INavigationService _navigationService;
     private readonly ICommandService _commandService;
@@ -423,16 +423,25 @@ public sealed partial class WorkspacePage : Page
 
     private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Primary;
+        });
     }
 
     private void SecondaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
+        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Secondary;
+        });
     }
 
     private void ConsolePanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
+        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Console;
+        });
     }
 }
