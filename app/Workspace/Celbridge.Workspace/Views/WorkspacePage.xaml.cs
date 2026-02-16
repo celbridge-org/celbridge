@@ -316,6 +316,14 @@ public sealed partial class WorkspacePage : Page
                 consoleHeight = UserInterfaceConstants.ConsolePanelHeight;
             }
 
+            // Clamp to max 70% of available height to ensure documents area is visible.
+            // This handles the case where the window was resized smaller while console was maximized.
+            var maxConsoleHeight = (float)(LayoutRoot.ActualHeight * 0.7);
+            if (consoleHeight > maxConsoleHeight && maxConsoleHeight > 100)
+            {
+                consoleHeight = maxConsoleHeight;
+            }
+
             // Set Console row to fixed height
             ConsolePanelRow.Height = new GridLength(consoleHeight);
         }
