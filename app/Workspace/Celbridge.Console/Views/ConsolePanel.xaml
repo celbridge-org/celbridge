@@ -22,7 +22,8 @@
                           Panel="Console"
                           VisibilityFlag="Console"
                           Title="{x:Bind TitleText}"
-                          Tapped="TitleBar_Tapped">
+                          Tapped="TitleBar_Tapped"
+                          DoubleTapped="TitleBar_DoubleTapped">
       <controls:PanelHeader.ToolbarContent>
         <Button x:Name="MaximizeRestoreButton"
                 Style="{StaticResource TransparentIconButtonStyle}"

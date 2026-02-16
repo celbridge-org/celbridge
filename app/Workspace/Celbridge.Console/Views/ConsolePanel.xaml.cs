@@ -108,6 +108,12 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         ViewModel.ToggleConsoleMaximized();
     }
 
+    private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        // Double-clicking the title bar toggles maximize/restore
+        ViewModel.ToggleConsoleMaximized();
+    }
+
     private void FocusTerminal()
     {
         if (TerminalWebView?.CoreWebView2 != null)
