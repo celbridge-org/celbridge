@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Console.Views;
 using Celbridge.Documents;
@@ -11,8 +12,14 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    private const double MaxRestoredConsoleHeight = 0.6; // Fraction of the available vertical space
+    // If documents area becomes smaller than this during console resize, snap to maximize console
+    private const double MinDocumentsHeightBeforeMaximize = 100;
+
+    // Maximum fraction of available vertical space for restored console height
+    private const double MaxRestoredConsoleHeightFraction = 0.6;
+
     private readonly INavigationService _navigationService;
+    private readonly ICommandService _commandService;
 
     public WorkspacePageViewModel ViewModel { get; }
 
@@ -29,6 +36,7 @@ public sealed partial class WorkspacePage : Page
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         DataContext = ViewModel;
 
@@ -118,6 +126,7 @@ public sealed partial class WorkspacePage : Page
 
         ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
         ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
+        ConsolePanelSplitter.DragCompleted += ConsolePanelSplitter_DragCompleted;
         ConsolePanelSplitter.DoubleClicked += ConsolePanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -317,9 +326,9 @@ public sealed partial class WorkspacePage : Page
                 consoleHeight = UserInterfaceConstants.ConsolePanelHeight;
             }
 
-            // Clamp to max 70% of available height to ensure documents area is visible.
+            // Clamp to max fraction of available height to ensure documents area is visible.
             // This handles the case where the window was resized smaller while console was maximized.
-            var maxConsoleHeight = (float)(LayoutRoot.ActualHeight * V);
+            var maxConsoleHeight = (float)(LayoutRoot.ActualHeight * MaxRestoredConsoleHeightFraction);
             if (consoleHeight > maxConsoleHeight && maxConsoleHeight > 100)
             {
                 consoleHeight = maxConsoleHeight;
@@ -396,6 +405,20 @@ public sealed partial class WorkspacePage : Page
     private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
     {
         _consolePanelSplitterHelper?.OnDragDelta(delta);
+    }
+
+    private void ConsolePanelSplitter_DragCompleted(object? sender, EventArgs e)
+    {
+        // If the user dragged the console splitter up until the documents area is very small,
+        // we interpret this as a request to maximize the console panel.
+        var documentsHeight = DocumentsPanel.ActualHeight;
+        if (documentsHeight < MinDocumentsHeightBeforeMaximize && !ViewModel.IsConsoleMaximized)
+        {
+            _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
+            {
+                command.IsMaximized = true;
+            });
+        }
     }
 
     private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)

@@ -51,6 +51,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreGlyph))]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
+    [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
     private bool _isConsoleMaximized;
 
     /// <summary>
@@ -64,6 +65,11 @@ public partial class ConsolePanelViewModel : ObservableObject
     public string MaximizeRestoreTooltip => IsConsoleMaximized
         ? _stringLocalizer.GetString("ConsolePanel_RestoreConsole")
         : _stringLocalizer.GetString("ConsolePanel_MaximizeConsole");
+
+    /// <summary>
+    /// Whether the maximize/restore button should be highlighted (when console is maximized).
+    /// </summary>
+    public bool IsMaximizeButtonHighlighted => IsConsoleMaximized;
 
     private byte[]? _originalProjectFileHash = null;
 

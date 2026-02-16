@@ -44,7 +44,10 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         // Restore console if maximized so user can see the document
         if (_layoutManager.IsConsoleMaximized)
         {
-            _layoutManager.SetConsoleMaximized(false);
+            _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
+            {
+                command.IsMaximized = false;
+            });
         }
 
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;

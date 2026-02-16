@@ -30,7 +30,7 @@
     <ContentPresenter Grid.Column="3"
                       Content="{x:Bind ToolbarContent, Mode=OneWay}"
                       VerticalAlignment="Center"
-                      Margin="0,0,12,0"/>
+                      Margin="0,0,4,0"/>
 
     <!-- Close Button -->
     <Button x:Name="CloseButton"
