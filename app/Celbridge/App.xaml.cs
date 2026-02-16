@@ -40,34 +40,14 @@ public partial class App : Application
 
         SetupLoggingEnvironment();
 
-        // Load WinUI Resources
-        Resources.Build(r => r.Merged(
-            new XamlControlsResources()));
-
-        // Load custom resources
-        Resources.Build(r => r.Merged(new ResourceDictionary
-        {
-            Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml")
-        }));
-
-        Resources.Build(r => r.Merged(new ResourceDictionary
-        {
-            Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/FileIcons.xaml")
-        }));
-
-        Resources.Build(r => r.Merged(new ResourceDictionary
-        {
-            Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Converters.xaml")
-        }));
-
-        Resources.Build(r => r.Merged(new ResourceDictionary
-        {
-            Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Styles.xaml")
-        }));
-
-        // Load Uno.UI.Toolkit Resources
-        Resources.Build(r => r.Merged(
-            new ToolkitResources()));
+        // Load WinUI, custom, and Uno.UI.Toolkit resources
+        Resources.Build(r => r
+            .Merged(new XamlControlsResources())
+            .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml") })
+            .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/FileIcons.xaml") })
+            .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Converters.xaml") })
+            .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Styles.xaml") })
+            .Merged(new ToolkitResources()));
         var builder = this.CreateBuilder(args)
             .Configure(host => host
 #if DEBUG
