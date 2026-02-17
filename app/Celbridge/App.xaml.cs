@@ -40,7 +40,7 @@ public partial class App : Application
 
         SetupLoggingEnvironment();
 
-        // Load WinUI, custom, and Uno.UI.Toolkit resources
+        // Load XAML resources
         Resources.Build(r => r
             .Merged(new XamlControlsResources())
             .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml") })

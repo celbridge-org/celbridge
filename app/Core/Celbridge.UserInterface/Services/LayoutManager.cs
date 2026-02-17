@@ -105,30 +105,18 @@ public class LayoutManager : ILayoutManager
         }
 
         // If hiding console while maximized, restore first
-        if (!isVisible && panel.HasFlag(PanelVisibilityFlags.Console) && IsConsoleMaximized)
+        if (!isVisible && 
+            panel.HasFlag(PanelVisibilityFlags.Console) && 
+            IsConsoleMaximized)
         {
             SetConsoleMaximized(false);
         }
 
-        // This is a user-initiated change, so it should should persist
+        // This is a user-initiated change, so it should persist
         UpdatePanelVisibility(newVisibility, shouldPersist: true);
 
-        // Handle mode transitions based on panel visibility changes
-        if (WindowMode == WindowMode.ZenMode)
-        {
-            // In ZenMode, console can be visible (if maximized). Transition to FullScreen
-            // if user shows a sidebar panel (Primary or Secondary).
-            var sidebarPanels = PanelVisibilityFlags.Primary | PanelVisibilityFlags.Secondary;
-            if ((newVisibility & sidebarPanels) != PanelVisibilityFlags.None)
-            {
-                SetWindowModeInternal(WindowMode.FullScreen);
-            }
-        }
-        else if (WindowMode == WindowMode.FullScreen && newVisibility == PanelVisibilityFlags.None)
-        {
-            // User hid all panels while in FullScreen, transition to ZenMode
-            SetWindowModeInternal(WindowMode.ZenMode);
-        }
+        // Sync window mode to match the new state
+        UpdateWindowMode();
     }
 
     public void TogglePanelVisibility(PanelVisibilityFlags panel)
@@ -159,6 +147,49 @@ public class LayoutManager : ILayoutManager
         _messengerService.Send(message);
 
         _logger.LogDebug($"Console maximized state changed: {isMaximized}");
+
+        // Sync window mode to match the new state
+        UpdateWindowMode();
+    }
+
+    /// <summary>
+    /// Evaluates the current panel visibility and console state to determine
+    /// the appropriate window mode, then transitions if necessary.
+    /// </summary>
+    private void UpdateWindowMode()
+    {
+        // Only sync between ZenMode and FullScreen - other modes are explicit user choices
+        if (WindowMode != WindowMode.ZenMode && 
+            WindowMode != WindowMode.FullScreen)
+        {
+            return;
+        }
+
+        var screenMode = EvaluateFullscreenMode();
+        if (WindowMode != screenMode)
+        {
+            SetWindowModeInternal(screenMode);
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the current state matches ZenMode or FullScreen criteria.
+    /// ZenMode: No sidebars visible AND (no panels OR only maximized console)
+    /// FullScreen: Any other fullscreen configuration
+    /// </summary>
+    private WindowMode EvaluateFullscreenMode()
+    {
+        var sidebarPanels = PanelVisibilityFlags.Primary | PanelVisibilityFlags.Secondary;
+        var sidebarsHidden = (PanelVisibility & sidebarPanels) == PanelVisibilityFlags.None;
+
+        // Zen Mode requires:
+        // 1. No sidebar panels visible, AND
+        // 2. Either no panels at all, OR only console visible AND maximized
+        var isZenModeState = sidebarsHidden && 
+            (PanelVisibility == PanelVisibilityFlags.None || 
+             (PanelVisibility == PanelVisibilityFlags.Console && IsConsoleMaximized));
+
+        return isZenModeState ? WindowMode.ZenMode : WindowMode.FullScreen;
     }
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
@@ -240,9 +271,15 @@ public class LayoutManager : ILayoutManager
             return Result.Ok(); // Already in Presenter mode
         }
 
-        // Hide all panels temporarily
+        // If console is maximized, keep it visible in Presenter Mode (fullscreen console).
+        // This allows the user to present console output with full screen space.
+        // Otherwise, hide all panels for fullscreen document presentation.
+        var presenterModeVisibility = IsConsoleMaximized
+            ? PanelVisibilityFlags.Console
+            : PanelVisibilityFlags.None;
+
         // Don't persist this change as it's only temporary.
-        UpdatePanelVisibility(PanelVisibilityFlags.None, shouldPersist: false);
+        UpdatePanelVisibility(presenterModeVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.Presenter);
 
         return Result.Ok();
