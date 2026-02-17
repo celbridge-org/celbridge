@@ -196,24 +196,32 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
                 break;
+
             case nameof(ViewModel.IsConsoleMaximized):
                 UpdateConsoleMaximized();
                 break;
+
             case nameof(ViewModel.PrimaryPanelWidth):
-                if (ViewModel.IsPrimaryPanelVisible && ViewModel.PrimaryPanelWidth > 0)
+                if (ViewModel.IsPrimaryPanelVisible && 
+                    ViewModel.PrimaryPanelWidth > 0)
                 {
                     PrimaryPanelColumn.Width = new GridLength(ViewModel.PrimaryPanelWidth);
                 }
                 break;
+
             case nameof(ViewModel.SecondaryPanelWidth):
-                if (ViewModel.IsSecondaryPanelVisible && ViewModel.SecondaryPanelWidth > 0)
+                if (ViewModel.IsSecondaryPanelVisible && 
+                    ViewModel.SecondaryPanelWidth > 0)
                 {
                     SecondaryPanelColumn.Width = new GridLength(ViewModel.SecondaryPanelWidth);
                 }
                 break;
+
             case nameof(ViewModel.ConsolePanelHeight):
                 // Don't update row height when console is maximized (it uses Star sizing)
-                if (ViewModel.IsConsolePanelVisible && ViewModel.ConsolePanelHeight > 0 && !ViewModel.IsConsoleMaximized)
+                if (ViewModel.IsConsolePanelVisible && 
+                    ViewModel.ConsolePanelHeight > 0 && 
+                    !ViewModel.IsConsoleMaximized)
                 {
                     ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
                 }

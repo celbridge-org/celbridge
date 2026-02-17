@@ -15,7 +15,7 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
         _editorSettings = editorSettings;
     }
 
-    public override Task<Result> ExecuteAsync()
+    public override async Task<Result> ExecuteAsync()
     {
         switch (Panel)
         {
@@ -32,9 +32,11 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
                 break;
 
             default:
-                return Task.FromResult<Result>(Result.Fail($"Unknown panel: {Panel}"));
+                return Result.Fail($"Unknown panel: {Panel}");
         }
 
-        return Task.FromResult(Result.Ok());
+        await Task.CompletedTask;
+
+        return Result.Ok();
     }
 }

@@ -14,14 +14,21 @@ DataContext="{x:Bind ViewModel}">
         VerticalAlignment="Stretch">
     
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="PrimaryPanelColumn" Width="300" MinWidth="100"/>
+      <ColumnDefinition x:Name="PrimaryPanelColumn"
+                        Width="300"
+                        MinWidth="100"/>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition x:Name="SecondaryPanelColumn" Width="300" MinWidth="100"/>
+      <ColumnDefinition x:Name="SecondaryPanelColumn"
+                        Width="300"
+                        MinWidth="100"/>
     </Grid.ColumnDefinitions>
     
     <Grid.RowDefinitions>
-      <RowDefinition x:Name="DocumentsPanelRow" Height="*"/>
-      <RowDefinition x:Name="ConsolePanelRow" Height="200" MinHeight="100"/>
+      <RowDefinition x:Name="DocumentsPanelRow"
+                     Height="*"/>
+      <RowDefinition x:Name="ConsolePanelRow"
+                     Height="200"
+                     MinHeight="100"/>
     </Grid.RowDefinitions>
 
     <!-- Primary Panel -->
